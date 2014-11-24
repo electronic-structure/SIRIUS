@@ -234,7 +234,7 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     return v;
 }
 
-vector3d<int> Utils::find_translation_limits(double radius, double lattice_vectors[3][3])
+vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__)
 {
     sirius::Timer t("sirius::Utils::find_translation_limits");
 
@@ -252,19 +252,13 @@ vector3d<int> Utils::find_translation_limits(double radius, double lattice_vecto
                 {
                     if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
                     {
-                        vector3d<int> vf(i0, i1, i2);
-                        vector3d<double> vc;
-                        for (int x = 0; x < 3; x++)
-                        {
-                            vc[x] += (vf[0] * lattice_vectors[0][x] + 
-                                      vf[1] * lattice_vectors[1][x] + 
-                                      vf[2] * lattice_vectors[2][x]);
-                        }
-                        double len = vc.length();
-                        if (len <= radius)
+                        vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
+                        if (vc.length() <= radius__)
                         {
                             found = true;
-                            for (int j = 0; j < 3; j++) limits[j] = std::max(2 * abs(vf[j]) + 1, limits[j]);
+                            limits[0] = std::max(2 * abs(i0) + 1, limits[0]);
+                            limits[1] = std::max(2 * abs(i1) + 1, limits[1]);
+                            limits[2] = std::max(2 * abs(i2) + 1, limits[2]);
                         }
                     }
                 }

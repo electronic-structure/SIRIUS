@@ -94,7 +94,7 @@ void Unit_cell::get_symmetry()
 
     for (int i = 0; i < 3; i++)
     {
-        for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_[j][i];
+        for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_(i, j);
     }
 
     mdarray<double, 2> positions(3, num_atoms());
@@ -457,35 +457,6 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 
     }
             
-    //== if (esm_type_ == ultrasoft_pseudopotential)
-    //== {
-    //==     assert(mt_basis_size_ == mt_lo_basis_size_); // in uspp those are identical because there are no APWs
-
-    //==     num_beta_t_ = 0;
-    //==     for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
-
-    //==     atom_pos_.set_dimensions(3, num_atoms());
-    //==     atom_pos_.allocate();
-    //==     for (int ia = 0; ia < num_atoms(); ia++)
-    //==     {
-    //==         for (int x = 0; x < 3; x++) atom_pos_(x, ia) = atom(ia)->position(x);
-    //==     }
-
-    //==     beta_t_idx_.set_dimensions(2, mt_lo_basis_size());
-    //==     beta_t_idx_.allocate();
-
-    //==     int n = 0;
-    //==     for (int ia = 0; ia < num_atoms(); ia++)
-    //==     {
-    //==         int iat = atom(ia)->type_id();
-    //==         for (int xi = 0; xi < atom_type(iat)->mt_lo_basis_size(); xi++, n++)
-    //==         {
-    //==             beta_t_idx_(0, n) = ia;
-    //==             beta_t_idx_(1, n) = atom_type(iat)->offset_lo() + xi;
-    //==         }
-    //==     }
-    //== }
-
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
     for (int ia = 0, n = 0; ia < num_atoms(); ia++)
     {
@@ -509,9 +480,9 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 
 void Unit_cell::update()
 {
-    vector3d<double> v0(lattice_vectors_[0]);
-    vector3d<double> v1(lattice_vectors_[1]);
-    vector3d<double> v2(lattice_vectors_[2]);
+    vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
+    vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
+    vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
 
     //== find_nearest_neighbours(v0.length() + v1.length() + v2.length());
     double r = std::min(v0.length(), std::min(v1.length(), v2.length()));
@@ -601,17 +572,17 @@ void Unit_cell::print_info()
     printf("lattice vectors\n");
     for (int i = 0; i < 3; i++)
     {
-        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors(i, 0), 
-                                                             lattice_vectors(i, 1), 
-                                                             lattice_vectors(i, 2)); 
+        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), 
+                                                             lattice_vectors_(1, i), 
+                                                             lattice_vectors_(2, i)); 
     }
-    printf("reciprocal lattice vectors\n");
-    for (int i = 0; i < 3; i++)
-    {
-        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
-                                                             reciprocal_lattice_vectors(i, 1), 
-                                                             reciprocal_lattice_vectors(i, 2));
-    }
+    //== printf("reciprocal lattice vectors\n");
+    //== for (int i = 0; i < 3; i++)
+    //== {
+    //==     printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
+    //==                                                          reciprocal_lattice_vectors(i, 1), 
+    //==                                                          reciprocal_lattice_vectors(i, 2));
+    //== }
     printf("\n");
     printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
     printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
@@ -696,9 +667,9 @@ unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
 {
     unit_cell_parameters_descriptor d;
 
-    vector3d<double> v0(lattice_vectors_[0]);
-    vector3d<double> v1(lattice_vectors_[1]);
-    vector3d<double> v2(lattice_vectors_[2]);
+    vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
+    vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
+    vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
 
     d.a = v0.length();
     d.b = v1.length();
@@ -757,7 +728,7 @@ void Unit_cell::write_json()
         for (int i = 0; i < 3; i++)
         {
             std::vector<double> v(3);
-            for (int x = 0; x < 3; x++) v[x] = lattice_vectors(i, x);
+            for (int x = 0; x < 3; x++) v[x] = lattice_vectors_(x, i);
             out.write(v);
         }
         out.end_array();
@@ -786,45 +757,15 @@ void Unit_cell::write_json()
     }
 }
 
-void Unit_cell::set_lattice_vectors(double* a1, double* a2, double* a3)
+void Unit_cell::set_lattice_vectors(double* a0__, double* a1__, double* a2__)
 {
     for (int x = 0; x < 3; x++)
     {
-        lattice_vectors_[0][x] = a1[x];
-        lattice_vectors_[1][x] = a2[x];
-        lattice_vectors_[2][x] = a3[x];
+        lattice_vectors_(x, 0) = a0__[x];
+        lattice_vectors_(x, 1) = a1__[x];
+        lattice_vectors_(x, 2) = a2__[x];
     }
-    double a[3][3];
-    memcpy(&a[0][0], &lattice_vectors_[0][0], 9 * sizeof(double));
-    
-    double t1 = a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]) + 
-                a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2]) + 
-                a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
-    
-    omega_ = fabs(t1);
-    
-    if (omega_ < 1e-10) error_local(__FILE__, __LINE__, "lattice vectors are linearly dependent");
-    
-    t1 = 1.0 / t1;
-
-    double b[3][3];
-    b[0][0] = t1 * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
-    b[0][1] = t1 * (a[0][2] * a[2][1] - a[0][1] * a[2][2]);
-    b[0][2] = t1 * (a[0][1] * a[1][2] - a[0][2] * a[1][1]);
-    b[1][0] = t1 * (a[1][2] * a[2][0] - a[1][0] * a[2][2]);
-    b[1][1] = t1 * (a[0][0] * a[2][2] - a[0][2] * a[2][0]);
-    b[1][2] = t1 * (a[0][2] * a[1][0] - a[0][0] * a[1][2]);
-    b[2][0] = t1 * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
-    b[2][1] = t1 * (a[0][1] * a[2][0] - a[0][0] * a[2][1]);
-    b[2][2] = t1 * (a[0][0] * a[1][1] - a[0][1] * a[1][0]);
-
-    memcpy(&inverse_lattice_vectors_[0][0], &b[0][0], 9 * sizeof(double));
-
-    for (int l = 0; l < 3; l++)
-    {
-        for (int x = 0; x < 3; x++) 
-            reciprocal_lattice_vectors_[l][x] = twopi * inverse_lattice_vectors_[x][l];
-    }
+    inverse_lattice_vectors_ = inverse(lattice_vectors_);
 }
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)
@@ -885,7 +826,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
         for (int i = 0; i < (int)nn.size(); i++) nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
     }
 
-    //== if (Platform::mpi_rank() == 0)
+    //== if (Platform::mpi_rank() == 0) // TODO: move to a separate task
     //== {
     //==     FILE* fout = fopen("nghbr.txt", "w");
     //==     for (int ia = 0; ia < num_atoms(); ia++)
@@ -912,7 +853,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 {
     vector3d<int> ntr;
     
-    // reduce coordinates to the primitive unit cell
+    /* reduce coordinates to the primitive unit cell */
     auto vr = Utils::reduce_coordinates(get_fractional_coordinates(vc));
 
     for (int ia = 0; ia < num_atoms(); ia++)
@@ -923,14 +864,11 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
             {
                 for (int i2 = -1; i2 <= 1; i2++)
                 {
-                    // atom position
-                    vector3d<double> posf(i0, i1, i2); 
+                    /* atom position */
+                    vector3d<double> posf = vector3d<double>(i0, i1, i2) + atom(ia)->position();
 
-                    for (int x = 0; x < 3; x++) posf[x] += atom(ia)->position(x);
-                    
-                    // vector connecting center of atom and reduced point
-                    vector3d<double> vf;
-                    for (int x = 0; x < 3; x++) vf[x] = vr.first[x] - posf[x];
+                    /* vector connecting center of atom and reduced point */
+                    vector3d<double> vf = vr.first - posf;
                     
                     /* convert to spherical coordinates */
                     auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));

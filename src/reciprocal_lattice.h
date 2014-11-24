@@ -42,11 +42,20 @@ class Reciprocal_lattice
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
         
-        /// three direct lattice vectors
-        double lattice_vectors_[3][3];
+        /// Bravais lattice vectors in column order.
+        matrix3d<double> lattice_vectors_;
         
-        /// three reciprocal lattice vectors
-        double reciprocal_lattice_vectors_[3][3];
+        /// Reciprocal lattice vectors in column order.
+        /** The following convention is used:
+         *  \f[
+         *    \vec a_{i} \vec b_{j} = 2 \pi \delta_{ij}
+         *  \f]
+         *  or in matrix notation
+         *  \f[
+         *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
+         *  \f]
+         */
+        matrix3d<double> reciprocal_lattice_vectors_;
         
         /// Plane wave cutoff radius (in inverse a.u. of length).
         /** Plane-wave cutoff controls the size of the FFT grid used in the interstitial region. */
@@ -261,23 +270,14 @@ class Reciprocal_lattice
         
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
         {
-            vector3d<double> b;
-            for (int l = 0; l < 3; l++)
-            {
-                for (int x = 0; x < 3; x++) b[l] += lattice_vectors_[l][x] * a[x] / twopi;
-            }
-            return b;
+            vector3d<double> b = lattice_vectors_ * a;
+            return b * (1 / twopi);
         }
         
         template <typename T>
         inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
         {
-            vector3d<double> b;
-            for (int x = 0; x < 3; x++)
-            {
-                for (int l = 0; l < 3; l++) b[x] += a[l] * reciprocal_lattice_vectors_[l][x];
-            }
-            return b;
+            return reciprocal_lattice_vectors_ * a;
         }
 
         /// G-vector in Cartesian coordinates

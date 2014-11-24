@@ -40,14 +40,8 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
       num_gvec_coarse_(0),
       comm_(comm__)
 {
-    for (int l = 0; l < 3; l++)
-    {
-        for (int x = 0; x < 3; x++)
-        {
-            lattice_vectors_[l][x] = unit_cell_->lattice_vectors(l, x);
-            reciprocal_lattice_vectors_[l][x] = unit_cell_->reciprocal_lattice_vectors(l, x);
-        }
-    }
+    lattice_vectors_ = unit_cell_->lattice_vectors();
+    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
 
     vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
     fft_ = new FFT3D<CPU>(max_frac_coord, comm__);

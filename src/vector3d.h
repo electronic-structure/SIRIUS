@@ -95,6 +95,14 @@ class vector3d
             for (int x = 0; x < 3; x++) a[x] -= b.vec_[x];
             return a;
         }
+        
+        template <typename U>
+        inline vector3d<T> operator*(U p)
+        {
+            vector3d<T> a = *this;
+            for (int x = 0; x < 3; x++) a[x] *= p;
+            return a;
+        }
 };
 
 #endif // __VECTOR3D_H__

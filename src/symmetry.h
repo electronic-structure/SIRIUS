@@ -52,7 +52,7 @@ class Symmetry
         {
         }
 
-        Symmetry(double lattice_vectors__[3][3], SpglibDataset* spg_dataset__);
+        Symmetry(matrix3d<double> lattice_vectors__, SpglibDataset* spg_dataset__);
         
         inline int num_sym_op()
         {

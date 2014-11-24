@@ -34,6 +34,7 @@
 #include "mdarray.h"
 #include "timer.h"
 #include "vector3d.h"
+#include "matrix3d.h"
 #include "error_handling.h"
 
 /// Utility class.
@@ -173,7 +174,7 @@ class Utils
 
         static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
 
-        static vector3d<int> find_translation_limits(double radius, double lattice_vectors[3][3]);
+        static vector3d<int> find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__);
 };
 
 #endif

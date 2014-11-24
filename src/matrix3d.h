@@ -26,6 +26,7 @@
 #define __MATRIX3D_H__
 
 #include <string.h>
+#include "vector3d.h"
 #include "typedefs.h"
 #include "error_handling.h"
 
@@ -79,8 +80,21 @@ class matrix3d
             return c;
         }
 
+        /// Matrix-vector multiplication.
+        template <typename U>
+        inline vector3d<T> operator*(vector3d<U> const& b)
+        {
+            vector3d<T> a;
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++) a[i] += (*this)(i, j) * b[j];
+            }
+            return a;
+        }
+
         /// Multiply matrix by an integer number.
-        inline matrix3d<T> operator*(int p)
+        template <typename U>
+        inline matrix3d<T> operator*(U p)
         {
             matrix3d<T> c;
             for (int i = 0; i < 3; i++)

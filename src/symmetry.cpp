@@ -26,12 +26,11 @@
 
 namespace sirius {
 
-Symmetry::Symmetry(double lattice_vectors__[3][3], SpglibDataset* spg_dataset__) 
-    : spg_dataset_(spg_dataset__)
+Symmetry::Symmetry(matrix3d<double> lattice_vectors__, SpglibDataset* spg_dataset__) 
+    : lattice_vectors_(lattice_vectors__),
+      spg_dataset_(spg_dataset__)
 {
     assert(spg_dataset__ != NULL);
-
-    lattice_vectors_ = transpose(matrix3d<double>(lattice_vectors__));
 
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
 }
