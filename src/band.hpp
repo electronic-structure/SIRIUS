@@ -245,9 +245,9 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
             int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
                                                                    kp->gklo_basis_descriptor_col(igk_col).ig);
             
-            // pw kinetic energy
-            double t1 = 0.5 * Utils::scalar_product(kp->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
-                                                    kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
+            /* pw kinetic energy */
+            double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart *
+                               kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
                               
             switch (sblock)
             {

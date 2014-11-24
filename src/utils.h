@@ -67,12 +67,6 @@ class Utils
             return false;
         }
 
-        template <typename U, typename V>
-        static inline double scalar_product(vector3d<U> a, vector3d<V> b)
-        {
-            return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
-        }
-
         static inline double fermi_dirac_distribution(double e)
         {
             double kT = 0.001;

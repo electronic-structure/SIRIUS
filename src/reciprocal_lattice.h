@@ -150,7 +150,7 @@ class Reciprocal_lattice
             {
                 case global:
                 {
-                    return std::exp(double_complex(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(ig)), unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig)) * unit_cell_->atom(ia)->position())));
                     break;
                 }
                 case local:
@@ -159,7 +159,7 @@ class Reciprocal_lattice
                     return gvec_phase_factors_(ig, ia);
                     #else
                     int igglob = (int)spl_num_gvec_[ig];
-                    return std::exp(double_complex(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(igglob)), unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(igglob)) * unit_cell_->atom(ia)->position())));
                     #endif
                     break;
                 }

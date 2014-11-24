@@ -675,9 +675,9 @@ unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
     d.b = v1.length();
     d.c = v2.length();
 
-    d.alpha = acos(Utils::scalar_product(v1, v2) / d.b / d.c) * 180 / pi;
-    d.beta = acos(Utils::scalar_product(v0, v2) / d.a / d.c) * 180 / pi;
-    d.gamma = acos(Utils::scalar_product(v0, v1) / d.a / d.b) * 180 / pi;
+    d.alpha = acos((v1 * v2) / d.b / d.c) * 180 / pi;
+    d.beta  = acos((v0 * v2) / d.a / d.c) * 180 / pi;
+    d.gamma = acos((v0 * v1) / d.a / d.b) * 180 / pi;
 
     return d;
 }
@@ -766,6 +766,7 @@ void Unit_cell::set_lattice_vectors(double* a0__, double* a1__, double* a2__)
         lattice_vectors_(x, 2) = a2__[x];
     }
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
+    omega_ = lattice_vectors_.det();
 }
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)

@@ -156,8 +156,8 @@ void Force::ibs_force(Global& parameters__,
 
                 double_complex zt = conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / parameters__.unit_cell()->omega();
 
-                double t1 = 0.5 * Utils::scalar_product(kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
-                                                        kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
+                double t1 = 0.5 * (kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
+                                   kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
 
                 h(igk_row, igk_col) -= t1 * zt;
                 o(igk_row, igk_col) -= zt;

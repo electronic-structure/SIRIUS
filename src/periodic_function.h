@@ -222,7 +222,7 @@ class Periodic_function
                 for (int ig = 0; ig < num_gvec_; ig++)
                 {
                     vector3d<double> vgc = parameters_.reciprocal_lattice()->gvec_cart(ig);
-                    p += real(f_pw_(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
+                    p += real(f_pw_(ig) * exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
             }
