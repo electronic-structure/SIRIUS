@@ -95,14 +95,14 @@ void log_function_exit(const char* func_name);
 
 #define TERMINATE_NO_SCALAPACK terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
 
-#define INFO std::cout << "[" << __func__ << ":" << Platform::comm_world().rank() << "] "
+#define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
 
-#define DUMP(...)                                                                             \
-{                                                                                             \
-    char str__[1024];                                                                         \
-    int x__ = snprintf(str__, 1024, "[%s:rank%i] ", __func__, Platform::comm_world().rank()); \
-    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                                         \
-    printf("%s\n", str__);                                                                    \
+#define DUMP(...)                                                                \
+{                                                                                \
+    char str__[1024];                                                            \
+    int x__ = snprintf(str__, 1024, "[%s:rank%i] ", __func__, Platform::rank()); \
+    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                            \
+    printf("%s\n", str__);                                                       \
 }
 
 #endif // __ERROR_HANDLING_H__
