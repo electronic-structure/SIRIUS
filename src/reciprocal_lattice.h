@@ -42,9 +42,6 @@ class Reciprocal_lattice
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
         
-        //== /// Bravais lattice vectors in column order.
-        //== matrix3d<double> lattice_vectors_;
-        
         /// Reciprocal lattice vectors in column order.
         /** The following convention is used:
          *  \f[
