@@ -27,7 +27,6 @@ void write_json_output(Global* p, DFT_ground_state* gs)
         jw.single("build_date", build_date);
         jw.single("num_ranks", p->comm().size());
         jw.single("max_num_threads", Platform::max_num_threads());
-        jw.single("num_fft_threads", Platform::num_fft_threads());
         //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", p->mpi_grid_dims());
         std::vector<int> fftgrid(3);

@@ -729,11 +729,13 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     bool economize_gpu_memory = true;
     matrix<double_complex> kappa;
     if (economize_gpu_memory) kappa = matrix<double_complex>(nullptr, kp__->num_gkvec(), std::max(uc->mt_basis_size(), num_phi) + num_bands);
-
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    
+    #ifdef _GPU_
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
     {
         printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
     }
+    #endif
 
     /* trial basis functions */
     assert(phi.size(0) == psi.size(0));
@@ -795,10 +797,6 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                                 &eval[0], evec.ptr(), evec.ld());
         }
-
-        std::cout << "Eigen-energies : ";
-        for (int i = 0; i < std::min(10, num_bands); i++) std::cout << eval[i] << " ";
-        std::cout << std::endl;
 
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)

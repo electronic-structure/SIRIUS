@@ -65,13 +65,11 @@ void Platform::initialize(bool call_mpi_init)
     #ifdef _LIBSCI_ACC_
     libsci_acc_init();
     #endif
-    #ifdef _FFTW_THREADED_
     if (!fftw_init_threads())
     {
         printf("error in fftw_init_threads()\n");
         exit(0);
     }
-    #endif
 
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
@@ -88,9 +86,7 @@ void Platform::finalize()
     cuda_destroy_streams(max_num_threads());
     cuda_device_reset();
     #endif
-    #ifdef _FFTW_THREADED_
     fftw_cleanup_threads();
-    #endif
     fftw_cleanup();
 }
 

@@ -28,6 +28,7 @@ class initial_input_parameters
         {
             std::vector<int> mpi_grid_dims_;
             int num_fft_threads_;
+            int num_fft_workers_;
             int cyclic_block_size_;
             int num_fv_states_;
             double smearing_width_;
@@ -38,6 +39,7 @@ class initial_input_parameters
 
             common_input_section()
                 : num_fft_threads_(Platform::max_num_threads()),
+                  num_fft_workers_(1),
                   cyclic_block_size_(64),
                   num_fv_states_(-1),
                   smearing_width_(0.001),
@@ -53,6 +55,7 @@ class initial_input_parameters
                 mpi_grid_dims_ = parser__["mpi_grid_dims"].get(mpi_grid_dims_); 
                 cyclic_block_size_ = parser__["cyclic_block_size"].get(cyclic_block_size_);
                 num_fft_threads_ = parser__["num_fft_threads"].get(num_fft_threads_);
+                num_fft_workers_ = parser__["num_fft_workers"].get(num_fft_workers_);
                 num_fv_states_ = parser__["num_fv_states"].get(num_fv_states_);
                 smearing_width_ = parser__["smearing_width"].get(smearing_width_);
 

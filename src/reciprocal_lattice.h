@@ -131,7 +131,9 @@ class Reciprocal_lattice
                            double pw_cutoff__, 
                            double gk_cutoff__, 
                            int lmax__,
-                           Communicator& comm__);
+                           Communicator& comm__,
+                           int num_fft_threads__,
+                           int num_fft_workers__);
 
         ~Reciprocal_lattice();
   

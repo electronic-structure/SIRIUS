@@ -106,8 +106,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 
     int offset = parameters_.unit_cell()->mt_basis_size();
 
-    int num_fft_threads = Platform::num_fft_threads();
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
+    #pragma omp parallel default(shared) num_threads(fft_->num_fft_threads())
     {        
         int thread_id = omp_get_thread_num();
         

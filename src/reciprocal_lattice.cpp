@@ -31,7 +31,9 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
                                        double pw_cutoff__, 
                                        double gk_cutoff__, 
                                        int lmax__,
-                                       Communicator& comm__)
+                                       Communicator& comm__,
+                                       int num_fft_threads__,
+                                       int num_fft_workers__)
     : unit_cell_(unit_cell__), 
       esm_type_(esm_type__),
       pw_cutoff_(pw_cutoff__), 
@@ -44,7 +46,7 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
     inverse_reciprocal_lattice_vectors_ = inverse(reciprocal_lattice_vectors_);
 
     vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
-    fft_ = new FFT3D<CPU>(max_frac_coord, comm__);
+    fft_ = new FFT3D<CPU>(max_frac_coord, comm__, num_fft_threads__, num_fft_workers__);
 
     #ifdef _GPU_
     fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 2);
@@ -54,7 +56,7 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
     {
         vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
                                                                              reciprocal_lattice_vectors_);
-        fft_coarse_ = new FFT3D<CPU>(max_frac_coord_coarse, comm__);
+        fft_coarse_ = new FFT3D<CPU>(max_frac_coord_coarse, comm__, num_fft_threads__, num_fft_workers__);
         
         #ifdef _GPU_
         fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);

@@ -112,9 +112,6 @@ void Global::parse_input()
     {
         TERMINATE("wrong type of electronic structure method");
     }
-
-    int num_fft_threads = iip_.common_input_section_.num_fft_threads_;
-    Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
 }
 
 void Global::read_unit_cell_input()
@@ -194,7 +191,9 @@ void Global::initialize()
             break;
         }
     }
-    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax, comm_);
+    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax, comm_,
+                                                 iip_.common_input_section_.num_fft_threads_,
+                                                 iip_.common_input_section_.num_fft_workers_);
 
     if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, comm_);
 
@@ -297,8 +296,9 @@ void Global::print_info()
     printf("MPI grid                      :");
     for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
     printf("\n");
-    printf("maximum number of OMP threads : %i\n", Platform::max_num_threads()); 
-    printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
+    printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
+    printf("number of OMP threads for FFT   : %i\n", iip_.common_input_section_.num_fft_threads_); 
+    printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
 
     unit_cell_->print_info();
     reciprocal_lattice_->print_info();
@@ -416,7 +416,6 @@ void Global::write_json_output()
         jw.single("build_date", build_date);
         jw.single("num_ranks", comm_.size());
         jw.single("max_num_threads", Platform::max_num_threads());
-        jw.single("num_fft_threads", Platform::num_fft_threads());
         jw.single("cyclic_block_size", iip_.common_input_section_.cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);

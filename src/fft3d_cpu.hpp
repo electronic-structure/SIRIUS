@@ -38,8 +38,13 @@
 template<> 
 class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_lattice) should be moved here.
 {                //       FFT class should take care about G-vector sphere, G-shells, etc.
-                 // TODO: normal threaded implementation (fft threads + threaded fft)
     private:
+
+        /// Number of working threads inside each FFT.
+        int num_fft_workers_;
+        
+        /// Number of threads doing individual FFTs.
+        int num_fft_threads_;
 
         /// Size of each dimension.
         int grid_size_[3];
@@ -107,39 +112,30 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
         
     public:
 
-        FFT3D(vector3d<int> dims, Communicator const& comm__) // TODO: remove comm from here. 
+        FFT3D(vector3d<int> dims__,
+              Communicator const& comm__, // TODO: remove comm from here.
+              int num_fft_threads__,
+              int num_fft_workers__)
+            : num_fft_workers_(num_fft_workers__),
+              num_fft_threads_(num_fft_threads__)
         {
             Timer t("sirius::FFT3D<CPU>::FFT3D");
             for (int i = 0; i < 3; i++)
             {
-                grid_size_[i] = find_grid_size(dims[i]);
+                grid_size_[i] = find_grid_size(dims__[i]);
                 
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
 
-            #ifdef _FFTW_THREADED_
-            fftw_plan_with_nthreads(Platform::num_fft_threads());
+            fftw_plan_with_nthreads(num_fft_workers_);
 
-            fftw_buffer_ = mdarray<double_complex, 2>(size(), 1);
+            fftw_buffer_ = mdarray<double_complex, 2>(size(), num_fft_threads_);
 
-            plan_backward_.resize(1);
-            plan_forward_.resize(1);
+            plan_backward_.resize(num_fft_threads_);
+            plan_forward_.resize(num_fft_threads_);
 
-            plan_backward_[0] = fftw_plan_dft_3d(size(2), size(1), size(0), 
-                                                 (fftw_complex*)&fftw_buffer_(0, 0), 
-                                                 (fftw_complex*)&fftw_buffer_(0, 0), 1, FFTW_MEASURE);
-            plan_forward_[0] = fftw_plan_dft_3d(size(2), size(1), size(0), 
-                                                (fftw_complex*)&fftw_buffer_(0, 0), 
-                                                (fftw_complex*)&fftw_buffer_(0, 0), -1, FFTW_MEASURE);
-            fftw_plan_with_nthreads(1);
-            #else
-            fftw_buffer_ = mdarray<double_complex, 2>(size(), Platform::num_fft_threads());
-
-            plan_backward_.resize(Platform::num_fft_threads());
-            plan_forward_.resize(Platform::num_fft_threads());
-
-            for (int i = 0; i < Platform::num_fft_threads(); i++)
+            for (int i = 0; i < num_fft_threads_; i++)
             {
                 plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                      (fftw_complex*)&fftw_buffer_(0, i), 
@@ -148,22 +144,18 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
                                                     (fftw_complex*)&fftw_buffer_(0, i), 
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_MEASURE);
             }
-            #endif
+            fftw_plan_with_nthreads(1);
+
             spl_fft_size_ = splindex<block>(size(), comm__.size(), comm__.rank());
         }
 
         ~FFT3D()
         {
-            #ifdef _FFTW_THREADED_
-            fftw_destroy_plan(plan_backward_[0]);
-            fftw_destroy_plan(plan_forward_[0]);
-            #else
-            for (int i = 0; i < Platform::num_fft_threads(); i++)
+            for (int i = 0; i < num_fft_threads_; i++)
             {
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
             }
-            #endif
         }
 
         /// Zero the input buffer for a given thread.
@@ -426,4 +418,10 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
         {
             return &index_map_[0];
         }
+
+        inline int num_fft_threads()
+        {
+            return num_fft_threads_;
+        }
 };
+

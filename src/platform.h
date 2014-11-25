@@ -77,18 +77,6 @@ class Platform
         {
             return omp_get_thread_num();
         }
-        
-        /// Return number of threads for independent FFT transformations.
-        static inline int num_fft_threads()
-        {
-            return num_fft_threads_;
-        }
-        
-        /// Set the number of FFT threads
-        static inline void set_num_fft_threads(int num_fft_threads__)
-        {
-            num_fft_threads_ = num_fft_threads__;
-        }
 };
 
 #endif

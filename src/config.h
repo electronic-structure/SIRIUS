@@ -43,8 +43,6 @@
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 
-//== #define _FFTW_THREADED_
-
 #ifdef _LIBSCI_ACC_
 const int alloc_mode = 1;
 #else

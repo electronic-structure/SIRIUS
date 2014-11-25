@@ -38,7 +38,7 @@ hydrogen:
 read_atom:
 	$(CXX) $(CXX_OPT) $(INCLUDE) read_atom.cpp     $(LIB_SIRIUS) $(LIBS) -o read_atom
 	
-fft:
+fft: fft.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
 	
 fft_t:
