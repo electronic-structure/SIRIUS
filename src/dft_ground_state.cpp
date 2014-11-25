@@ -189,6 +189,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         //rms = mx->mix();
         //density_->unpack(mx->output_buffer());
         rms = density_->mix();
+
         parameters_.comm().bcast(&rms, 1, 0);
 
         /* compute new total energy for a new density */

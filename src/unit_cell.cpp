@@ -455,6 +455,8 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
             }
         }
 
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
     }
             
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);

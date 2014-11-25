@@ -40,8 +40,8 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
       num_gvec_coarse_(0),
       comm_(comm__)
 {
-    lattice_vectors_ = unit_cell_->lattice_vectors();
-    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
+    reciprocal_lattice_vectors_ = transpose(inverse(unit_cell_->lattice_vectors())) * twopi;
+    inverse_reciprocal_lattice_vectors_ = inverse(reciprocal_lattice_vectors_);
 
     vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
     fft_ = new FFT3D<CPU>(max_frac_coord, comm__);
@@ -104,10 +104,8 @@ void Reciprocal_lattice::init(int lmax)
         }
     }
 
-    Timer t1("sirius::Reciprocal_lattice::init|sort_G");
     /* sort G-vectors by length */
     std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
-    t1.stop();
 
     /* create sorted list of G-vectors */
     gvec_ = mdarray<int, 2>(3, fft_->size());
@@ -124,8 +122,6 @@ void Reciprocal_lattice::init(int lmax)
     index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
                                      mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
                                      mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
-    index_by_gvec_.allocate();
-    
     fft_index_.resize(fft_->size());
     
     gvec_shell_.resize(fft_->size());
@@ -209,6 +205,26 @@ void Reciprocal_lattice::init(int lmax)
                         gvec_index_.push_back(index_by_gvec(i0, i1, i2));
 
                         num_gvec_coarse_++;
+                    }
+                }
+            }
+        }
+        // quick hack for now; this has to be implemented properly
+        for (int i0 = fft_coarse_->grid_limits(0).first; i0 <= fft_coarse_->grid_limits(0).second; i0++)
+        {
+            for (int i1 = fft_coarse_->grid_limits(1).first; i1 <= fft_coarse_->grid_limits(1).second; i1++)
+            {
+                for (int i2 = fft_coarse_->grid_limits(2).first; i2 <= fft_coarse_->grid_limits(2).second; i2++)
+                {
+                    vector3d<double> vc = get_cartesian_coordinates(vector3d<int>(i0, i1, i2));
+
+                    if (vc.length() > 2 * gk_cutoff_) 
+                    {
+                        /* linear index inside coarse FFT buffer */
+                        fft_index_coarse_.push_back(fft_coarse_->index(i0, i1, i2));
+                        
+                        /* corresponding G-vector index in the fine mesh */
+                        gvec_index_.push_back(index_by_gvec(i0, i1, i2));
                     }
                 }
             }

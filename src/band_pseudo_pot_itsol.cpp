@@ -1,4 +1,5 @@
 #include "band.h"
+#include "debug.hpp"
 
 namespace sirius {
 
@@ -794,6 +795,10 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                                 &eval[0], evec.ptr(), evec.ld());
         }
+
+        std::cout << "Eigen-energies : ";
+        for (int i = 0; i < std::min(10, num_bands); i++) std::cout << eval[i] << " ";
+        std::cout << std::endl;
 
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)

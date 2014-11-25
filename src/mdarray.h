@@ -566,8 +566,8 @@ class mdarray_base
                     printf("Error allocating memory for mdarray with dimensions:");
                     for (int i = 0; i < N; i++) printf(" %i", (int)dims_[i].size());
                     printf("\n");
-                    printf("Total array size: %i MB\n", int(sz >> 20));
-                    printf("Total allocated memory: %i MB\n", int(mdarray_mem_count::allocated() >> 20));
+                    printf("Total array size: %i MB\n", int((sizeof(T) * sz) >> 20));
+                    printf("Total allocated memory: %i MB\n", int((mdarray_mem_count::allocated() - sizeof(T) * sz) >> 20));
                     raise(SIGTERM);
                     exit(-1);
                 }

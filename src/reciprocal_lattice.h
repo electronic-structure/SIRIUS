@@ -42,8 +42,8 @@ class Reciprocal_lattice
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
         
-        /// Bravais lattice vectors in column order.
-        matrix3d<double> lattice_vectors_;
+        //== /// Bravais lattice vectors in column order.
+        //== matrix3d<double> lattice_vectors_;
         
         /// Reciprocal lattice vectors in column order.
         /** The following convention is used:
@@ -56,6 +56,9 @@ class Reciprocal_lattice
          *  \f]
          */
         matrix3d<double> reciprocal_lattice_vectors_;
+        
+        /// Inverse matrix or reciprocal vectors.
+        matrix3d<double> inverse_reciprocal_lattice_vectors_;
         
         /// Plane wave cutoff radius (in inverse a.u. of length).
         /** Plane-wave cutoff controls the size of the FFT grid used in the interstitial region. */
@@ -95,9 +98,11 @@ class Reciprocal_lattice
 
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
-
+        
+        /// Mapping between coarse G-vector index and a position in linear FFT buffer of the coarse grid.
         std::vector<int> fft_index_coarse_;
-
+        
+        /// Mapping between coarse G-vector index and G-vector index of the fine grid. // TODO: better name
         std::vector<int> gvec_index_;
 
         /// split index of G-vectors
@@ -270,8 +275,7 @@ class Reciprocal_lattice
         
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
         {
-            vector3d<double> b = lattice_vectors_ * a;
-            return b * (1 / twopi);
+            return inverse_reciprocal_lattice_vectors_ * a;
         }
         
         template <typename T>
@@ -393,6 +397,11 @@ class Reciprocal_lattice
         inline Unit_cell* unit_cell()
         {
             return unit_cell_;
+        }
+
+        matrix3d<double>& reciprocal_lattice_vectors()
+        {
+            return reciprocal_lattice_vectors_;
         }
 };
 

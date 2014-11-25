@@ -23,6 +23,7 @@
  */
 
 #include "global.h"
+#include "real_space_prj.h"
 
 namespace sirius {
 
@@ -196,6 +197,8 @@ void Global::initialize()
     reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax, comm_);
 
     if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, comm_);
+
+    if (false) real_space_prj_ = new Real_space_prj(reciprocal_lattice_, gk_cutoff(), comm_);
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 
