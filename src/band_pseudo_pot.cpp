@@ -1336,20 +1336,6 @@ void Band::residuals_parallel(int N__,
 }
 #endif // _SCALAPACK_
 
-template <typename T>
-inline T check_sum_1(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
-{
-    T sum = 0;
-
-    for (int j = 0; j < ncol; j++)
-    {
-        for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
-    }
-
-    return sum;
-}
-
-
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
