@@ -78,6 +78,19 @@ inline int get_num_threads()
     return num_threds;
 }
 
+template <typename T>
+inline T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
+{
+    T sum = 0;
+
+    for (int j = 0; j < ncol; j++)
+    {
+        for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
+    }
+
+    return sum;
+}
+
 #define MEMORY_USAGE_INFO()                                                                \
 {                                                                                          \
     size_t VmRSS, VmHWM;                                                                   \
