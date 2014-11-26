@@ -24,9 +24,9 @@ void Band::apply_h_local_slice(K_point* kp__,
 
     auto pu = parameters_.processing_unit();
 
-    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+    auto fft = parameters_.fft_coarse();
     #ifdef _GPU_
-    FFT3D<GPU>* fft_gpu = parameters_.reciprocal_lattice()->fft_gpu_coarse();
+    FFT3D<GPU>* fft_gpu = parameters_.fft_gpu_coarse();
     #endif
 
     int num_fft_threads = -1;
@@ -1481,7 +1481,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         }
     }
 
-    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+    auto fft = parameters_.fft_coarse();
     
     Timer t4("sirius::Band::apply_h_o_real_space_serial|phase_fac");
     std::vector<double_complex> k_phase_fac(fft->size());

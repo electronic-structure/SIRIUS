@@ -399,7 +399,7 @@ class Density
             //rms += linear_mixer_->mix();
             mixer_output();
 
-            fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
+            fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
             fft_->transform(1);
             fft_->output(&rho_->f_it<global>(0));
 

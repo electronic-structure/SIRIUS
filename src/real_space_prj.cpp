@@ -2,45 +2,40 @@
 
 namespace sirius {
 
-Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
-                               double gk_cutoff__,
+Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
+                               FFT3D<CPU>* fft__,
                                Communicator const& comm__)
-    : reciprocal_lattice_(reciprocal_lattice__),
+    : unit_cell_(unit_cell__),
+      fft_(fft__),
       comm_(comm__)
 {
     Timer t("sirius::Real_space_prj::Real_space_prj");
 
-    auto uc = reciprocal_lattice_->unit_cell();
-
-    /* take coarse FFT grid */
-    fft_ = reciprocal_lattice_->fft_coarse();
-
-    fft_->init_gvec(2 * gk_cutoff__, reciprocal_lattice_->reciprocal_lattice_vectors());
     spl_num_gvec_ = splindex<block>(fft_->num_gvec(), comm_.size(), comm_.rank());
 
-    std::vector<double> R_beta(uc->num_atom_types(), 0.0);
-    std::vector<int> nmt_beta(uc->num_atom_types(), 0);
+    std::vector<double> R_beta(unit_cell_->num_atom_types(), 0.0);
+    std::vector<int> nmt_beta(unit_cell_->num_atom_types(), 0);
     /* get the list of max beta radii */
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
     {
-        for (int idxrf = 0; idxrf < uc->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+        for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
         {
-            int nr = uc->atom_type(iat)->uspp().num_beta_radial_points[idxrf];
-            R_beta[iat] = std::max(R_beta[iat], uc->atom_type(iat)->radial_grid(nr - 1));
+            int nr = unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf];
+            R_beta[iat] = std::max(R_beta[iat], unit_cell_->atom_type(iat)->radial_grid(nr - 1));
             nmt_beta[iat] = std::max(nmt_beta[iat], nr);
         }
     }
 
-    auto beta_radial_integrals = generate_beta_radial_integrals(uc, nmt_beta, R_beta);
+    auto beta_radial_integrals = generate_beta_radial_integrals(unit_cell_, nmt_beta, R_beta);
 
-    auto beta_pw_t = generate_beta_pw_t(uc, beta_radial_integrals);
+    auto beta_pw_t = generate_beta_pw_t(unit_cell_, beta_radial_integrals);
 
-    beta_projectors_ = std::vector<beta_real_space_prj_descriptor>(uc->num_atoms());
+    beta_projectors_ = std::vector<beta_real_space_prj_descriptor>(unit_cell_->num_atoms());
     max_num_points_ = 0;
     num_points_ = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
     {
-        int iat = uc->atom(ia)->type_id();
+        int iat = unit_cell_->atom(ia)->type_id();
         double Rmask = R_beta[iat] * 1.2;
 
         beta_projectors_[ia].offset_ = num_points_;
@@ -63,8 +58,8 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
                         {
                             for (int t2 = -1; t2 <= 1; t2++)
                             {
-                                vector3d<double> v1 = v0 - (uc->atom(ia)->position() + vector3d<double>(t0, t1, t2));
-                                auto r = uc->get_cartesian_coordinates(vector3d<double>(v1));
+                                vector3d<double> v1 = v0 - (unit_cell_->atom(ia)->position() + vector3d<double>(t0, t1, t2));
+                                auto r = unit_cell_->get_cartesian_coordinates(vector3d<double>(v1));
                                 if (r.length() <= Rmask)
                                 {
                                     beta_projectors_[ia].num_points_++;
@@ -84,19 +79,19 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
     }
     if (comm_.rank() == 0)
     {
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
         {
-            int iat = uc->atom(ia)->type_id();
+            int iat = unit_cell_->atom(ia)->type_id();
             printf("atom: %3i,  R_beta: %8.4f, num_points: %5i\n", ia, R_beta[iat], beta_projectors_[ia].num_points_);
         }
         printf("sum(num_points): %i\n", num_points_);
     }
 
     std::vector<double_complex> beta_pw(fft_->num_gvec());
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
     {
-        int iat = uc->atom(ia)->type_id();
-        auto atom_type = uc->atom_type(iat);
+        int iat = unit_cell_->atom(ia)->type_id();
+        auto atom_type = unit_cell_->atom_type(iat);
         double Rmask = R_beta[iat] * 1.2;
         
         beta_projectors_[ia].beta_ = mdarray<double_complex, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
@@ -106,13 +101,13 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
             for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
             {
                 int ig = (int)spl_num_gvec_[ig_loc];
-                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * uc->atom(ia)->position())));
+                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_->atom(ia)->position())));
 
                 beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * conj(phase_factor);
             }
             comm_.allgather(&beta_pw[0], (int)spl_num_gvec_.global_offset(), (int)spl_num_gvec_.local_size());
 
-            fft_->input(fft_->num_gvec(), fft_->map(), &beta_pw[0]);
+            fft_->input(fft_->num_gvec(), fft_->index_map(), &beta_pw[0]);
             fft_->transform(1);
 
             for (int i = 0; i < beta_projectors_[ia].num_points_; i++)

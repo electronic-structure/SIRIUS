@@ -76,6 +76,8 @@ class Unit_cell // TODO: clear arragement of lattice vectors
          *  \f]
          */
         matrix3d<double> inverse_lattice_vectors_;
+
+        matrix3d<double> reciprocal_lattice_vectors_;
         
         /// Volume \f$ \Omega \f$ of the unit cell. Volume of Brillouin zone is then \f$ (2\Pi)^3 / \Omega \f$.
         double omega_;
@@ -532,6 +534,11 @@ class Unit_cell // TODO: clear arragement of lattice vectors
         inline matrix3d<double>& lattice_vectors()
         {
             return lattice_vectors_;
+        }
+
+        inline matrix3d<double>& reciprocal_lattice_vectors()
+        {
+            return reciprocal_lattice_vectors_;
         }
 
         inline int num_beta_t()

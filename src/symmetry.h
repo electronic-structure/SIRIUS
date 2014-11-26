@@ -33,6 +33,7 @@ extern "C" {
 #include "matrix3d.h"
 #include "constants.h"
 #include "utils.h"
+#include "fft3d.h"
 
 namespace sirius {
 
@@ -111,20 +112,9 @@ class Symmetry
             return t;
         }
 
-        void symmetrize_function(double_complex* f_pw__,
-                                 int num_gvec__,
-                                 mdarray<int, 2> const& gvec__,
-                                 mdarray<int, 3> const& index_by_gvec__,
-                                 std::pair<int, int> const& l0,
-                                 std::pair<int, int> const& l1,
-                                 std::pair<int, int> const& l2)
+        void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
         {
-            std::array<std::pair<int, int>, 3> limits;
-            limits[0] = l0;
-            limits[1] = l1;
-            limits[2] = l2;
-
-            mdarray<double_complex, 1> sym_f_pw(num_gvec__);
+            mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
             sym_f_pw.zero();
 
             for (int isym = 0; isym < num_sym_op(); isym++)
@@ -132,28 +122,28 @@ class Symmetry
                 auto sm = rot_mtrx(isym);
                 auto sv = fractional_translation(isym);
 
-                for (int ig = 0; ig < num_gvec__; ig++)
+                for (int ig = 0; ig < fft__->num_gvec(); ig++)
                 {
                     /* apply symmetry operation to the G-vector */
-                    vector3d<int> gv_rot;
+                    vector3d<int> gv_rot = sm * fft__->gvec(ig);
                     for (int x = 0; x < 3; x++)
                     {
-                        for (int i = 0; i < 3; i++) gv_rot[x] += sm(i, x) * gvec__(i, ig);
+                        auto limits = fft__->grid_limits(x);
                         /* check boundaries */
-                        if (gv_rot[x] < limits[x].first) gv_rot[x] = limits[x].second + (gv_rot[x] - limits[x].first) + 1;
-                        if (gv_rot[x] > limits[x].second) gv_rot[x] = limits[x].first + (gv_rot[x] - limits[x].second) - 1;
+                        if (gv_rot[x] < limits.first) gv_rot[x] = limits.second + (gv_rot[x] - limits.first) + 1;
+                        if (gv_rot[x] > limits.second) gv_rot[x] = limits.first + (gv_rot[x] - limits.second) - 1;
                     }
 
                     /* index of a rotated G-vector */
-                    int ig_rot = index_by_gvec__(gv_rot[0], gv_rot[1], gv_rot[2]);
+                    int ig_rot = fft__->gvec_index(gv_rot);
 
-                    assert(ig_rot >= 0 && ig_rot < num_gvec__);
+                    assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
 
                     sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, -twopi * (gv_rot[0] * sv[0] + gv_rot[1] * sv[1] + gv_rot[2] * sv[2])));
                 }
             }
 
-            for (int ig = 0; ig < num_gvec__; ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
+            for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
         }
 };
 

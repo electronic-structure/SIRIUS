@@ -34,7 +34,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 {
     Timer t("sirius::Potential::Potential");
     
-    fft_ = parameters_.reciprocal_lattice()->fft();
+    fft_ = parameters_.fft();
 
     switch (parameters_.esm_type())
     {
@@ -648,8 +648,7 @@ void Potential::generate_pw_coefs()
         fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * parameters_.step_function(ir);
     
     fft_->transform(-1);
-    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
-                 &effective_potential()->f_pw(0));
+    fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential()->f_pw(0));
 
     if (!use_second_variation) // for full diagonalization we also need Beff(G)
     {
@@ -659,8 +658,7 @@ void Potential::generate_pw_coefs()
                 fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * parameters_.step_function(ir);
     
             fft_->transform(-1);
-            fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
-                         &effective_magnetic_field(i)->f_pw(0));
+            fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_magnetic_field(i)->f_pw(0));
         }
     }
 
@@ -825,7 +823,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     }
     
     /* transform Hartree potential to real space */
-    fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));
+    fft_->input(fft_->num_gvec(), fft_->index_map(), &vh->f_pw(0));
     fft_->transform(1);
     fft_->output(&vh->f_it<global>(0));
     
@@ -1312,7 +1310,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    int num_loc_points = fft_->local_size();
+    int num_loc_points = (int)parameters_.spl_fft_size().local_size();
     
     /* check for negative values */
     double rhomin = 0.0;
@@ -1333,11 +1331,9 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     Smooth_periodic_function<spatial, double> lapl_rho_it;
     Smooth_periodic_function<spatial, double> grad_rho_grad_rho_it;
     
-    auto rl = parameters_.reciprocal_lattice();
-
     if (is_gga) 
     {
-        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it<global>(0), rl);
+        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it<global>(0), fft_);
 
         /* get plane-wave coefficients of the density */
         Smooth_periodic_function<spectral> rho_pw = transform(rho_it);
@@ -1426,8 +1422,8 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     if (is_gga)
     {
         /* gather vsigma */
-        Smooth_periodic_function<spatial, double> vsigma_it(rl);
-        parameters_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), fft_->global_offset(), fft_->local_size());
+        Smooth_periodic_function<spatial, double> vsigma_it(fft_);
+        parameters_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), (int)parameters_.spl_fft_size().global_offset(), (int)parameters_.spl_fft_size().local_size());
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral> vsigma_pw = transform(vsigma_it);
@@ -1468,12 +1464,10 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
     
-    auto rl = parameters_.reciprocal_lattice();
-
-    int num_loc_points = fft_->local_size();
+    int num_loc_points = (int)parameters_.spl_fft_size().local_size();
     
-    Smooth_periodic_function<spatial, double> rho_up_it(rl);
-    Smooth_periodic_function<spatial, double> rho_dn_it(rl);
+    Smooth_periodic_function<spatial, double> rho_up_it(fft_);
+    Smooth_periodic_function<spatial, double> rho_dn_it(fft_);
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin = 0.0;
@@ -1585,8 +1579,8 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                 std::vector<double> vxc_dn_t(spl_t.local_size());
 
                 ixc->get_lda((int)spl_t.local_size(), 
-                             &rho_up_it(fft_->global_offset() + spl_t.global_offset()), 
-                             &rho_dn_it(fft_->global_offset() + spl_t.global_offset()), 
+                             &rho_up_it(parameters_.spl_fft_size().global_offset() + spl_t.global_offset()), 
+                             &rho_dn_it(parameters_.spl_fft_size().global_offset() + spl_t.global_offset()), 
                              &vxc_up_t[0], 
                              &vxc_dn_t[0], 
                              &exc_t[0]);
@@ -1610,8 +1604,8 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                 std::vector<double> vsigma_dd_t(spl_t.local_size());
                 
                 ixc->get_gga((int)spl_t.local_size(), 
-                             &rho_up_it(fft_->global_offset() + spl_t.global_offset()), 
-                             &rho_dn_it(fft_->global_offset() + spl_t.global_offset()), 
+                             &rho_up_it(parameters_.spl_fft_size().global_offset() + spl_t.global_offset()), 
+                             &rho_dn_it(parameters_.spl_fft_size().global_offset() + spl_t.global_offset()), 
                              &grad_rho_up_grad_rho_up_it(spl_t.global_offset()), 
                              &grad_rho_up_grad_rho_dn_it(spl_t.global_offset()), 
                              &grad_rho_dn_grad_rho_dn_it(spl_t.global_offset()), 
@@ -1643,12 +1637,13 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     if (is_gga)
     {
         /* gather vsigma */
-        Smooth_periodic_function<spatial, double> vsigma_uu_it(rl);
-        Smooth_periodic_function<spatial, double> vsigma_ud_it(rl);
-        Smooth_periodic_function<spatial, double> vsigma_dd_it(rl);
-        parameters_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), fft_->global_offset(), fft_->local_size());
-        parameters_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), fft_->global_offset(), fft_->local_size());
-        parameters_.comm().allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), fft_->global_offset(), fft_->local_size());
+        Smooth_periodic_function<spatial, double> vsigma_uu_it(fft_);
+        Smooth_periodic_function<spatial, double> vsigma_ud_it(fft_);
+        Smooth_periodic_function<spatial, double> vsigma_dd_it(fft_);
+        int global_offset = (int)parameters_.spl_fft_size().global_offset();
+        parameters_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), global_offset, num_loc_points);
+        parameters_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), global_offset, num_loc_points);
+        parameters_.comm().allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), global_offset, num_loc_points);
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral> vsigma_uu_pw = transform(vsigma_uu_it);
@@ -1689,7 +1684,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     {
         exc->f_it<local>(irloc) = exc_tmp(irloc);
         vxc->f_it<local>(irloc) = 0.5 * (vxc_up_tmp(irloc) + vxc_dn_tmp(irloc));
-        double m = rho_up_it(fft_->global_offset() + irloc) - rho_dn_it(fft_->global_offset() + irloc);
+        double m = rho_up_it(parameters_.spl_fft_size().global_offset() + irloc) - rho_dn_it(parameters_.spl_fft_size().global_offset() + irloc);
 
         if (m > 1e-8)
         {
@@ -1830,22 +1825,22 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         /* destroy temporary function */
         delete rhovc;
 
-        // add XC potential to the effective potential
+        /* add XC potential to the effective potential */
         effective_potential_->add(xc_potential_);
         
-        // add local ionic potential to the effective potential
+        /* add local ionic potential to the effective potential */
         effective_potential_->add(local_potential_);
         effective_potential_->sync(false, true);
         
         Timer t1("sirius::Potential::generate_effective_potential|fft");
         fft_->input(&effective_potential_->f_it<global>(0));
         fft_->transform(-1);
-        fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+        fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
 
         /* get plane-wave coefficients of the charge density */
         fft_->input(&rho->f_it<global>(0));
         fft_->transform(-1);
-        fft_->output(rl->num_gvec(), rl->fft_index(), &rho->f_pw(0));
+        fft_->output(fft_->num_gvec(), fft_->index_map(), &rho->f_pw(0));
         t1.stop();
 
         std::vector<double_complex> vtmp(rl->spl_num_gvec().local_size());
@@ -1884,7 +1879,7 @@ void Potential::generate_d_mtrx()
         /* get plane-wave coefficients of effective potential */
         fft_->input(&effective_potential_->f_it<global>(0));
         fft_->transform(-1);
-        fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+        fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
     
         Timer t1("sirius::Potential::generate_d_mtrx|kernel");
         #pragma omp parallel
@@ -1969,7 +1964,7 @@ void Potential::generate_d_mtrx_gpu()
         /* get plane-wave coefficients of effective potential */
         fft_->input(&effective_potential_->f_it<global>(0));
         fft_->transform(-1);
-        fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+        fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
 
         mdarray<double_complex, 1> veff_gpu(&effective_potential_->f_pw(static_cast<int>(rl->spl_num_gvec().global_offset())), 
                                             static_cast<int>(rl->spl_num_gvec().local_size()));
@@ -2295,7 +2290,7 @@ void Potential::generate_local_potential()
                                  static_cast<int>(ld * spl_gshells.local_size()));
 
     std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());
-    fft_->input(rl->num_gvec(), rl->fft_index(), &v[0]); 
+    fft_->input(fft_->num_gvec(), fft_->index_map(), &v[0]); 
     fft_->transform(1);
     fft_->output(&local_potential_->f_it<global>(0));
 }

@@ -629,7 +629,7 @@ void K_point::generate_gkvec(double gk_cutoff)
     }
     
     fft_index_.resize(num_gkvec());
-    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.reciprocal_lattice()->fft_index(gvec_index_[igk]);
+    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.fft()->index_map(gvec_index_[igk]);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
@@ -643,7 +643,7 @@ void K_point::generate_gkvec(double gk_cutoff)
             vector3d<int> gvec = parameters_.reciprocal_lattice()->gvec(ig);
 
             /* linear index inside coarse FFT buffer */
-            fft_index_coarse_[igk] = parameters_.reciprocal_lattice()->fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
+            fft_index_coarse_[igk] = parameters_.fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
         }
     }
 }

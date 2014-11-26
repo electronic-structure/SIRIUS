@@ -100,6 +100,8 @@ class Periodic_function
 
         Communicator comm_;
 
+        splindex<block> spl_fft_size_;
+
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
@@ -113,7 +115,7 @@ class Periodic_function
         /// Set pointer to local part of interstitial array
         void set_local_it_ptr()
         {
-            f_it_local_.set_ptr(&f_it_(fft_->global_offset()));
+            f_it_local_.set_ptr(&f_it_(spl_fft_size_.global_offset()));
         }
 
     public:

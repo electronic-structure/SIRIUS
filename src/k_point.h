@@ -240,7 +240,7 @@ class K_point
             rank_row_ = comm_row_.rank();
             rank_col_ = comm_col_.rank();
 
-            fft_ = parameters_.reciprocal_lattice()->fft();
+            fft_ = parameters_.fft();
 
             /* distribue first-variational states along columns */
             spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());

@@ -27,8 +27,10 @@
 namespace sirius {
 
 Step_function::Step_function(Reciprocal_lattice* reciprocal_lattice__,
+                             FFT3D<CPU>* fft__,
                              Communicator const& comm__)
     : reciprocal_lattice_(reciprocal_lattice__),
+      fft_(fft__),
       comm_(comm__)
 {
     update();
@@ -68,25 +70,24 @@ void Step_function::update()
     Timer t("sirius::Step_function::Step_function::update");
 
     auto uc = reciprocal_lattice_->unit_cell();
-    auto fft = reciprocal_lattice_->fft();
 
     if (uc->num_atoms() == 0) return;
     
     auto ffac = get_step_function_form_factors(reciprocal_lattice_->num_gvec_shells_total());
 
-    step_function_pw_.resize(fft->size());
-    step_function_.resize(fft->size());
+    step_function_pw_.resize(fft_->size());
+    step_function_.resize(fft_->size());
     
-    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft->size());
-    for (int ig = 0; ig < fft->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
+    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft_->size());
+    for (int ig = 0; ig < fft_->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
 
-    fft->input(fft->size(), reciprocal_lattice_->fft_index(), &step_function_pw_[0]);
-    fft->transform(1);
-    fft->output(&step_function_[0]);
+    fft_->input(fft_->size(), fft_->index_map(), &step_function_pw_[0]);
+    fft_->transform(1);
+    fft_->output(&step_function_[0]);
     
     double vit = 0.0;
-    for (int i = 0; i < fft->size(); i++) vit += step_function_[i] * uc->omega() / fft->size();
+    for (int i = 0; i < fft_->size(); i++) vit += step_function_[i] * uc->omega() / fft_->size();
     
     if (fabs(vit - uc->volume_it()) > 1e-10)
     {

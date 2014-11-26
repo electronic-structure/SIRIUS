@@ -36,7 +36,7 @@ class Reciprocal_lattice
 {
     private:
 
-        /// Pointer to the corresponding Unit_cell class instance.
+        /// Pointer to the corresponding Unit_cell class instance. // TODO: is this logical to have unit cell class inside reciprocal lattice?
         Unit_cell* unit_cell_;
 
         /// Type of electronic structure method.
@@ -57,62 +57,17 @@ class Reciprocal_lattice
         /// Inverse matrix or reciprocal vectors.
         matrix3d<double> inverse_reciprocal_lattice_vectors_;
         
-        /// Plane wave cutoff radius (in inverse a.u. of length).
-        /** Plane-wave cutoff controls the size of the FFT grid used in the interstitial region. */
-        double pw_cutoff_;
-
-        /// Cutoff for G+k plane-waves (in inverse a.u. of length).
-        double gk_cutoff_;
-        
         /// FFT wrapper for dense grid.
         FFT3D<CPU>* fft_;
 
-        /// FFT wrapper for coarse grid.
-        FFT3D<CPU>* fft_coarse_;
-
-        #ifdef _GPU_
-        FFT3D<GPU>* fft_gpu_;
-        FFT3D<GPU>* fft_gpu_coarse_;
-        #endif
-
-        /// List of G-vector fractional coordinates.
-        mdarray<int, 2> gvec_;
-
-        /// Number of G-vectors within plane wave cutoff.
-        int num_gvec_;
-
-        /// Number of G-vectors within 2 * |G+k|_{max} cutoff.
-        int num_gvec_coarse_;
-
-        /// mapping between index of a G-shell and a list of G-vectors belonging to the shell 
-        //std::vector< std::vector<int> > ig_by_igs_;
-
-        /// mapping between G-vector and shell
-        std::vector<int> gvec_shell_;
-
-        /// mapping between linear G-vector index and G-vector coordinates
-        mdarray<int, 3> index_by_gvec_;
-
-        /// mapping betwee linear G-vector index and position in FFT buffer
-        std::vector<int> fft_index_;
-        
-        /// Mapping between coarse G-vector index and a position in linear FFT buffer of the coarse grid.
-        std::vector<int> fft_index_coarse_;
-        
-        /// Mapping between coarse G-vector index and G-vector index of the fine grid. // TODO: better name
-        std::vector<int> gvec_index_;
-
-        /// split index of G-vectors
+        /// Split index of G-vectors
         splindex<block> spl_num_gvec_;
         
-        /// cached Ylm components of G-vectors
+        /// Cached Ylm components of G-vectors
         mdarray<double_complex, 2> gvec_ylm_;
         
-        /// cached values of G-vector phase factors 
+        /// Cached values of G-vector phase factors 
         mdarray<double_complex, 2> gvec_phase_factors_;
-
-        /// length of G-vectors belonging to the same shell
-        std::vector<double> gvec_shell_len_;
 
         Communicator comm_;
 
@@ -127,20 +82,14 @@ class Reciprocal_lattice
     public:
         
         Reciprocal_lattice(Unit_cell* unit_cell__, 
-                           electronic_structure_method_t esm_type__, 
-                           double pw_cutoff__, 
-                           double gk_cutoff__, 
+                           electronic_structure_method_t esm_type__,
+                           FFT3D<CPU>* fft__,
                            int lmax__,
-                           Communicator& comm__,
-                           int num_fft_threads__,
-                           int num_fft_workers__);
+                           Communicator& comm__);
 
         ~Reciprocal_lattice();
   
         void update();
-
-        /// Print basic info
-        void print_info();
 
         /// Make periodic function out of form factors
         /** Return vector of plane-wave coefficients */
@@ -162,8 +111,7 @@ class Reciprocal_lattice
                     #ifdef _CACHE_GVEC_PHASE_FACTORS_
                     return gvec_phase_factors_(ig, ia);
                     #else
-                    int igglob = (int)spl_num_gvec_[ig];
-                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(igglob)) * unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (gvec(spl_num_gvec_[ig]) * unit_cell_->atom(ia)->position())));
                     #endif
                     break;
                 }
@@ -192,84 +140,67 @@ class Reciprocal_lattice
             }
         }
 
+        /// Number of G-vectors within plane-wave cutoff
+        inline int num_gvec()
+        {
+            return fft_->num_gvec();
+        }
+
+        /// G-vector in integer fractional coordinates
+        inline vector3d<int> gvec(int ig__)
+        {
+            return fft_->gvec(ig__);
+        }
+
+        /// G-vector in Cartesian coordinates
+        inline vector3d<double> gvec_cart(int ig__)
+        {
+            return fft_->gvec_cart(ig__);
+        }
+
+        /// Return length of G-vector.
+        inline double gvec_len(int ig__)
+        {
+            return fft_->gvec_len(ig__);
+        }
         
-        /// Index of G-vector shell
-        inline int gvec_shell(int ig)
+        inline int gvec_index(vector3d<int> gvec__)
         {
-            assert(ig >= 0 && ig < (int)gvec_shell_.size());
-            return gvec_shell_[ig];
+            return fft_->gvec_index(gvec__);
         }
 
-        inline FFT3D<CPU>* fft()
+        /// FFT index for a given G-vector index
+        inline int index_map(int ig__)
         {
-            return fft_;
-        }
-
-        inline FFT3D<CPU>* fft_coarse()
-        {
-            return fft_coarse_;
-        }
-
-        #ifdef _GPU_
-        inline FFT3D<GPU>* fft_gpu()
-        {
-            return fft_gpu_;
-        }
-
-        inline FFT3D<GPU>* fft_gpu_coarse()
-        {
-            return fft_gpu_coarse_;
-        }
-        #endif
-
-        inline int index_by_gvec(int i0, int i1, int i2)
-        {
-            return index_by_gvec_(i0, i1, i2);
-        }
-
-        inline mdarray<int, 3>& index_by_gvec()
-        {
-            return index_by_gvec_;
-        }
-
-        /// FFT index for a given  G-vector index
-        inline int fft_index(int ig)
-        {
-            return fft_index_[ig];
+            return fft_->index_map(ig__);
         }
 
         /// Pointer to FFT index array
-        inline int* fft_index()
+        inline int* index_map()
         {
-            return &fft_index_[0];
+            return fft_->index_map();
         }
 
-        inline int* fft_index_coarse()
+        /// Number of G-vector shells within plane-wave cutoff
+        inline int num_gvec_shells_inner()
         {
-            return &fft_index_coarse_[0];
-        }
-        
-        /// G-vector in integer fractional coordinates
-        inline vector3d<int> gvec(int ig)
-        {
-            return vector3d<int>(gvec_(0, ig), gvec_(1, ig), gvec_(2, ig));
+            return fft_->num_gvec_shells_inner();
         }
 
-        inline mdarray<int, 2>& gvec()
+        inline int num_gvec_shells_total()
         {
-            return gvec_;
+            return fft_->num_gvec_shells_total();
         }
 
-        inline double gvec_shell_len(int igs)
+        /// Index of G-vector shell
+        inline int gvec_shell(int ig__)
         {
-            assert(igs >=0 && igs < (int)gvec_shell_len_.size());
-            return gvec_shell_len_[igs];
+            return fft_->gvec_shell(ig__);
         }
-        
-        /// Return length of G-vector.
-        inline double gvec_len(int ig)
+
+        inline double gvec_shell_len(int igs__)
         {
-            return gvec_shell_len(gvec_shell_[ig]);
+            return fft_->gvec_shell_len(igs__);
         }
         
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
@@ -283,58 +214,21 @@ class Reciprocal_lattice
             return reciprocal_lattice_vectors_ * a;
         }
 
-        /// G-vector in Cartesian coordinates
-        inline vector3d<double> gvec_cart(int ig)
-        {
-            return get_cartesian_coordinates(gvec(ig));
-        }
-        
-        /// Number of G-vectors within plane-wave cutoff
-        inline int num_gvec()
-        {
-            return num_gvec_;
-        }
-
-        inline int num_gvec_coarse()
-        {
-            return num_gvec_coarse_;
-        }
-        
-        // TODO: give a better name
-        /// Return index of G-vector by index of coarse-grid G-vector 
-        inline int gvec_index(int igc)
-        {
-            assert(igc >= 0 && igc < (int)gvec_index_.size());
-            return gvec_index_[igc];
-        }
-
-        /// Number of G-vector shells within plane-wave cutoff
-        inline int num_gvec_shells_inner()
-        {
-            return gvec_shell_[num_gvec_];
-        }
-
-        inline int num_gvec_shells_total()
-        {
-            return (int)gvec_shell_len_.size();
-        }
-        
         /// Return global index of G1-G2 vector
-        inline int index_g12(int ig1, int ig2)
+        inline int index_g12(int ig1__, int ig2__)
         {
-            return index_by_gvec_(gvec_(0, ig1) - gvec_(0, ig2),
-                                  gvec_(1, ig1) - gvec_(1, ig2),
-                                  gvec_(2, ig1) - gvec_(2, ig2));
+            vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+            return fft_->gvec_index(v);
         }
         
-        inline int index_g12_safe(int ig1, int ig2)
+        inline int index_g12_safe(int ig1__, int ig2__)
         {
-            vector3d<int> v(gvec_(0, ig1) - gvec_(0, ig2), gvec_(1, ig1) - gvec_(1, ig2), gvec_(2, ig1) - gvec_(2, ig2));
+            vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
             if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
                 v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
                 v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
             {
-                return index_by_gvec(v[0], v[1], v[2]);
+                return fft_->gvec_index(v);
             }
             else
             {
@@ -356,16 +250,6 @@ class Reciprocal_lattice
         {
             return gvec_ylm_(lm, igloc);
         }
-
-        //inline int igs_size(int igs)
-        //{
-        //    return (int)ig_by_igs_.size();
-        //}
-
-        //inline std::vector<int>& ig_by_igs(int igs)
-        //{
-        //    return ig_by_igs_[igs];
-        //}
 
         void write_periodic_function()
         {

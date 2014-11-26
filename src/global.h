@@ -60,13 +60,13 @@ class Global
         /// maximum l for potential
         int lmax_pot_;
 
-        /// cutoff for augmented-wave functions
+        /// Cutoff for augmented-wave functions.
         double aw_cutoff_;
 
-        /// cutoff for plane-waves
+        /// Cutoff for plane-waves (for density and potential expansion).
         double pw_cutoff_;
 
-        /// cutoff for |G+k| plane-waves
+        /// Cutoff for |G+k| plane-waves.
         double gk_cutoff_;
         
         /// number of first-variational states
@@ -93,17 +93,17 @@ class Global
         /// MPI grid
         MPI_grid mpi_grid_;
 
-        /// starting time of the program
+        /// Starting time of the program.
         timeval start_time_;
 
         ev_solver_t std_evp_solver_type_;
 
         ev_solver_t gen_evp_solver_type_;
 
-        /// type of the processing unit
+        /// Type of the processing unit.
         processing_unit_t processing_unit_;
 
-        /// smearing function width
+        /// Smearing function width.
         double smearing_width_;
         
         electronic_structure_method_t esm_type_;
@@ -117,6 +117,22 @@ class Global
 
         /// Base communicator.
         Communicator comm_;
+
+        /// FFT wrapper for dense grid.
+        FFT3D<CPU>* fft_;
+
+        /// FFT wrapper for coarse grid.
+        FFT3D<CPU>* fft_coarse_;
+
+        #ifdef _GPU_
+        FFT3D<GPU>* fft_gpu_;
+
+        FFT3D<GPU>* fft_gpu_coarse_;
+        #endif
+
+        splindex<block> spl_fft_size_;
+
+        splindex<block> spl_fft_coarse_size_;
         
         /// Parse input data-structures.
         void parse_input();
@@ -417,6 +433,38 @@ class Global
         inline ev_solver_t gen_evp_solver_type()
         {
             return gen_evp_solver_type_;
+        }
+
+        inline FFT3D<CPU>* fft()
+        {
+            return fft_;
+        }
+
+        inline FFT3D<CPU>* fft_coarse()
+        {
+            return fft_coarse_;
+        }
+
+        #ifdef _GPU_
+        inline FFT3D<GPU>* fft_gpu()
+        {
+            return fft_gpu_;
+        }
+
+        inline FFT3D<GPU>* fft_gpu_coarse()
+        {
+            return fft_gpu_coarse_;
+        }
+        #endif
+        
+        inline splindex<block>& spl_fft_size()
+        {
+            return spl_fft_size_;
+        }
+
+        inline splindex<block>& spl_fft_coarse_size()
+        {
+            return spl_fft_coarse_size_;
         }
 };
 

@@ -30,7 +30,7 @@ namespace sirius {
 
 Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_(NULL)
 {
-    fft_ = parameters_.reciprocal_lattice()->fft();
+    fft_ = parameters_.fft();
 
     rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
 
@@ -78,7 +78,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
 
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
 
-    linear_mixer_ = new Linear_mixer(2 * (parameters_.reciprocal_lattice()->num_gvec() - parameters_.reciprocal_lattice()->num_gvec_coarse()),
+    linear_mixer_ = new Linear_mixer(2 * (parameters_.reciprocal_lattice()->num_gvec() - parameters_.fft_coarse()->num_gvec()),
                                      parameters_.iip_.mixer_input_section_.gamma_,
                                      parameters_.comm());
 
@@ -262,7 +262,7 @@ void Density::initial_density()
         memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
 
         /* convert charge deisnty to real space mesh */
-        fft_->input(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
+        fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
         fft_->transform(1);
         fft_->output(&rho_->f_it<global>(0));
 
@@ -468,7 +468,7 @@ void Density::initial_density()
             warning_global(__FILE__, __LINE__, s);
         }
 
-        fft_->input(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
+        fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
         fft_->transform(1);
         fft_->output(&rho_->f_it<global>(0));
         
@@ -480,7 +480,7 @@ void Density::initial_density()
         
         fft_->input(&rho_->f_it<global>(0));
         fft_->transform(-1);
-        fft_->output(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
+        fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
     }
 
     rho_->sync(true, true);
@@ -790,12 +790,12 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
-    auto fft_gpu = parameters_.reciprocal_lattice()->fft_gpu();
+    auto fft_gpu = parameters_.fft_gpu();
     #endif
 
     std::vector<std::thread> fft_threads;
 
-    auto fft = parameters_.reciprocal_lattice()->fft();
+    auto fft = parameters_.fft();
     int num_spins = parameters_.num_spins();
     int num_mag_dims = parameters_.num_mag_dims();
     double omega = parameters_.unit_cell()->omega();
@@ -1494,7 +1494,7 @@ void Density::generate_pseudo_core_charge_density()
 
     std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
 
-    fft_->input(rl->num_gvec(), rl->fft_index(), &v[0]);
+    fft_->input(fft_->num_gvec(), fft_->index_map(), &v[0]);
     fft_->transform(1);
     fft_->output(&rho_pseudo_core_->f_it<global>(0));
 }
@@ -1550,7 +1550,7 @@ void Density::generate_valence(K_set& ks__)
     /* get rho(G) */
     fft_->input(&rho_->f_it<global>(0));
     fft_->transform(-1);
-    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
+    fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
@@ -1795,8 +1795,7 @@ void Density::generate_pw_coefs()
     fft_->input(&rho_->f_it<global>(0));
     fft_->transform(-1);
 
-    auto rl = parameters_.reciprocal_lattice();
-    fft_->output(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
+    fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
 }
 
 }

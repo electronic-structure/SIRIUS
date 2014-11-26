@@ -1969,21 +1969,21 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 {
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
-    auto rl = parameters_.reciprocal_lattice();
+    auto fft_coarse = parameters_.fft_coarse();
 
     /* map effective potential to a corase grid */
-    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
-    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
+    std::vector<double> veff_it_coarse(fft_coarse->size());
+    std::vector<double_complex> veff_pw_coarse(fft_coarse->num_gvec());
 
     /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
-    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
+    for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
     {
-        int ig = rl->gvec_index(igc);
+        int ig = parameters_.fft()->gvec_index(fft_coarse->gvec(igc));
         veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
     }
-    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
-    rl->fft_coarse()->transform(1);
-    rl->fft_coarse()->output(&veff_it_coarse[0]);
+    fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);
+    fft_coarse->transform(1);
+    fft_coarse->output(&veff_it_coarse[0]);
 
     double v0 = real(effective_potential__->f_pw(0));
 

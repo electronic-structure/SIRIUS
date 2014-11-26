@@ -578,13 +578,13 @@ void Unit_cell::print_info()
                                                              lattice_vectors_(1, i), 
                                                              lattice_vectors_(2, i)); 
     }
-    //== printf("reciprocal lattice vectors\n");
-    //== for (int i = 0; i < 3; i++)
-    //== {
-    //==     printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
-    //==                                                          reciprocal_lattice_vectors(i, 1), 
-    //==                                                          reciprocal_lattice_vectors(i, 2));
-    //== }
+    printf("reciprocal lattice vectors\n");
+    for (int i = 0; i < 3; i++)
+    {
+        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i), 
+                                                             reciprocal_lattice_vectors_(1, i), 
+                                                             reciprocal_lattice_vectors_(2, i));
+    }
     printf("\n");
     printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
     printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
@@ -768,7 +768,8 @@ void Unit_cell::set_lattice_vectors(double* a0__, double* a1__, double* a2__)
         lattice_vectors_(x, 2) = a2__[x];
     }
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
-    omega_ = lattice_vectors_.det();
+    omega_ = std::abs(lattice_vectors_.det());
+    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
 }
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)

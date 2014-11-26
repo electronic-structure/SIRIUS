@@ -170,6 +170,35 @@ void Global::initialize()
 
     /* initialize variables, related to the unit cell */
     unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
+    
+    /* create FFT interface */
+    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors()),
+                          iip_.common_input_section_.num_fft_threads_,
+                          iip_.common_input_section_.num_fft_workers_);
+    
+    fft_->init_gvec(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors());
+
+    spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
+
+    #ifdef _GPU_
+    fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 2);
+    #endif
+    
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        /* create FFT interface for coarse grid */
+        fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors()),
+                                     iip_.common_input_section_.num_fft_threads_,
+                                     iip_.common_input_section_.num_fft_workers_);
+        
+        fft_coarse_->init_gvec(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors());
+
+        spl_fft_coarse_size_ = splindex<block>(fft_coarse_->size(), comm_.size(), comm_.rank());
+            
+        #ifdef _GPU_
+        fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
+        #endif
+    }
 
     /* create a reciprocal lattice */
     int lmax = -1;
@@ -191,13 +220,11 @@ void Global::initialize()
             break;
         }
     }
-    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax, comm_,
-                                                 iip_.common_input_section_.num_fft_threads_,
-                                                 iip_.common_input_section_.num_fft_workers_);
+    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), fft_, lmax, comm_);
 
-    if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, comm_);
+    if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, fft_, comm_);
 
-    if (false) real_space_prj_ = new Real_space_prj(reciprocal_lattice_, gk_cutoff(), comm_);
+    if (false) real_space_prj_ = new Real_space_prj(unit_cell_, fft_coarse_, comm_);
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 
@@ -301,7 +328,24 @@ void Global::print_info()
     printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
 
     unit_cell_->print_info();
-    reciprocal_lattice_->print_info();
+
+    printf("\n");
+    printf("plane wave cutoff : %f\n", pw_cutoff_);
+    printf("number of G-vectors within the cutoff : %i\n", fft_->num_gvec());
+    printf("number of G-shells : %i\n", fft_->num_gvec_shells_inner());
+    printf("FFT grid size : %i %i %i   total : %i\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size());
+    printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_->grid_limits(0).first, fft_->grid_limits(0).second,
+                                                        fft_->grid_limits(1).first, fft_->grid_limits(1).second,
+                                                        fft_->grid_limits(2).first, fft_->grid_limits(2).second);
+    
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        printf("number of G-vectors on the coarse grid within the cutoff : %i\n", fft_coarse_->num_gvec());
+        printf("FFT coarse grid size : %i %i %i   total : %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2), fft_coarse_->size());
+        printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_coarse_->grid_limits(0).first, fft_coarse_->grid_limits(0).second,
+                                                                   fft_coarse_->grid_limits(1).first, fft_coarse_->grid_limits(1).second,
+                                                                   fft_coarse_->grid_limits(2).first, fft_coarse_->grid_limits(2).second);
+    }
 
     for (int i = 0; i < unit_cell_->num_atom_types(); i++) unit_cell_->atom_type(i)->print_info();
 
@@ -419,7 +463,7 @@ void Global::write_json_output()
         jw.single("cyclic_block_size", iip_.common_input_section_.cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = reciprocal_lattice_->fft()->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = fft_->size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", unit_cell()->chemical_formula());
         jw.single("num_atoms", unit_cell()->num_atoms());

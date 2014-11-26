@@ -72,6 +72,9 @@ class Step_function
         
         /// Reciprocal lattice for the unit cell.
         Reciprocal_lattice* reciprocal_lattice_;
+        
+        /// FFT interface.
+        FFT3D<CPU>* fft_;
     
         /// Plane wave expansion coefficients of the step function.
         std::vector<double_complex> step_function_pw_;
@@ -84,7 +87,7 @@ class Step_function
     public:
         
         /// Constructor
-        Step_function(Reciprocal_lattice* reciprocal_lattice__, Communicator const& comm__);
+        Step_function(Reciprocal_lattice* reciprocal_lattice__, FFT3D<CPU>* fft__, Communicator const& comm__);
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
         /**

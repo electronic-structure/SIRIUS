@@ -36,8 +36,8 @@
  *  is a \em forward transformation from a function to a set of coefficients. 
 */
 template<> 
-class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_lattice) should be moved here.
-{                //       FFT class should take care about G-vector sphere, G-shells, etc.
+class FFT3D<CPU>
+{
     private:
 
         /// Number of working threads inside each FFT.
@@ -61,15 +61,12 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
         /// inout buffer for each thread
         mdarray<double_complex, 2> fftw_buffer_;
         
-        /// Split index of FFT buffer.
-        splindex<block> spl_fft_size_;
-
         int num_gvec_;
 
         mdarray<int, 2> gvec_;
         std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
 
-        mdarray<int, 3> index_by_gvec_;
+        mdarray<int, 3> gvec_index_;
 
         std::vector<int> index_map_;
         std::vector<int> gvec_shell_;
@@ -113,7 +110,6 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
     public:
 
         FFT3D(vector3d<int> dims__,
-              Communicator const& comm__, // TODO: remove comm from here.
               int num_fft_threads__,
               int num_fft_workers__)
             : num_fft_workers_(num_fft_workers__),
@@ -145,8 +141,6 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_MEASURE);
             }
             fftw_plan_with_nthreads(1);
-
-            spl_fft_size_ = splindex<block>(size(), comm__.size(), comm__.rank());
         }
 
         ~FFT3D()
@@ -269,21 +263,6 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
             return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
         }
 
-        inline int local_size()
-        {
-            return static_cast<int>(spl_fft_size_.local_size());
-        }
-
-        inline int global_index(int irloc)
-        {
-            return static_cast<int>(spl_fft_size_[irloc]);
-        }
-
-        inline int global_offset()
-        {
-            return static_cast<int>(spl_fft_size_.global_offset());
-        }
-        
         /// Direct access to the fft buffer
         inline double_complex& buffer(int i, int thread_id = 0)
         {
@@ -293,11 +272,6 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
         vector3d<int> grid_size()
         {
             return vector3d<int>(grid_size_);
-        }
-
-        inline splindex<block>& spl_fft_size()
-        {
-            return spl_fft_size_;
         }
 
         void init_gvec(double Gmax__, matrix3d<double>& M__)
@@ -342,9 +316,9 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
                 if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
             }
             
-            index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
-                                             mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
-                                             mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
+            gvec_index_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
+                                          mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
+                                          mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
             index_map_.resize(size());
             
             gvec_shell_.resize(size());
@@ -357,7 +331,7 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
                 int i2 = gvec_(2, ig);
 
                 /* mapping from G-vector to it's index */
-                index_by_gvec_(i0, i1, i2) = ig;
+                gvec_index_(i0, i1, i2) = ig;
 
                 /* mapping of FFT buffer linear index */
                 index_map_[ig] = index(i0, i1, i2);
@@ -367,61 +341,82 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
                 if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
                 gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
             }
-
-            //== if (lmax >= 0)
-            //== {
-            //==     /* precompute spherical harmonics of G-vectors */
-            //==     gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
-            //==     
-            //==     Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
-            //==     for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-            //==     {
-            //==         int ig = (int)spl_num_gvec_[igloc];
-            //==         auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
-            //==         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
-            //==     }
-            //==     t2.stop();
-            //== }
         }
-
+        
+        /// Return number of G-vectors within the cutoff.
         inline int num_gvec()
         {
             return num_gvec_;
         }
 
-        inline int num_gvec_shells_inner()
-        {
-            return gvec_shell_[num_gvec_];
-        }
-
-        inline double gvec_shell_len(int igsh__)
-        {
-            return gvec_shell_len_[igsh__];
-        }
-
-        inline int gvec_shell(int ig__)
-        {
-            return gvec_shell_[ig__];
-        }
-
-        inline vector3d<double>gvec_cart(int ig__)
-        {
-            return gvec_cart_[ig__];
-        }
-
+        /// Return G-vector in fractional coordinates (this are the three Miller indices).
         inline vector3d<int> gvec(int ig__)
         {
             return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
         }
+        
+        /// Return G-vector in Cartesian coordinates.
+        inline vector3d<double>gvec_cart(int ig__)
+        {
+            assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
+            return gvec_cart_[ig__];
+        }
 
-        inline int* map()
+        /// Return length of a G-vector.
+        inline double gvec_len(int ig__)
+        {
+            return gvec_shell_len(gvec_shell(ig__));
+        }
+
+        /// Return number of G-vector shells within the cutoff.
+        /** G-vectors with the same length belong to the same shell. */
+        inline int num_gvec_shells_inner()
+        {
+            return gvec_shell(num_gvec_);
+        }
+
+        /// Return total number of G-vector shells, including incomplete shells.
+        /** Incomplete G-shells are formed by G-vectors outisde the cutoff radius (for example,
+         *  by G-vectors at corners of FFT grid).
+         */
+        inline int num_gvec_shells_total()
+        {
+            return (int)gvec_shell_len_.size();
+        }
+
+        /// Return index of a G-vector shell for a given G-vector.
+        inline int gvec_shell(int ig__)
+        {
+            assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
+            return gvec_shell_[ig__];
+        }
+
+        /// Return length of a G-vector shell.
+        inline double gvec_shell_len(int igsh__)
+        {
+            assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
+            return gvec_shell_len_[igsh__];
+        }
+
+        inline int* index_map()
         {
             return &index_map_[0];
+        }
+
+        inline int index_map(int ig__)
+        {
+            assert(ig__ >= 0 && ig__ < (int)index_map_.size());
+            return index_map_[ig__];
         }
 
         inline int num_fft_threads()
         {
             return num_fft_threads_;
+        }
+
+        inline int gvec_index(vector3d<int> gvec__)
+        {
+            return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
         }
 };
 

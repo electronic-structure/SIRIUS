@@ -354,7 +354,7 @@ class Band
             : parameters_(parameters__),
               blacs_grid_(blacs_grid__)
         {
-            fft_ = parameters_.reciprocal_lattice()->fft();
+            fft_ = parameters_.fft();
 
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), 
                                                                   parameters_.lmax_pot(), 

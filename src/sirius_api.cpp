@@ -450,7 +450,7 @@ void FORTRAN(sirius_get_mt_points)(char* label, double* mt_points, int32_t label
 void sirius_get_num_fft_grid_points(int32_t* num_grid_points__)
 {
     log_function_enter(__func__);
-    *num_grid_points__ = global_parameters->reciprocal_lattice()->fft()->size();
+    *num_grid_points__ = global_parameters->fft()->size();
     log_function_exit(__func__);
 }
 
@@ -473,9 +473,9 @@ void sirius_get_num_gvec(int32_t* num_gvec__)
 void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
 {
     log_function_enter(__func__);
-    grid_size[0] = global_parameters->reciprocal_lattice()->fft()->size(0);
-    grid_size[1] = global_parameters->reciprocal_lattice()->fft()->size(1);
-    grid_size[2] = global_parameters->reciprocal_lattice()->fft()->size(2);
+    grid_size[0] = global_parameters->fft()->size(0);
+    grid_size[1] = global_parameters->fft()->size(1);
+    grid_size[2] = global_parameters->fft()->size(2);
     log_function_exit(__func__);
 }
 
@@ -495,8 +495,8 @@ void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lower, int32_t* up
 {
     log_function_enter(__func__);
     assert((*d >= 1) && (*d <= 3));
-    *lower = global_parameters->reciprocal_lattice()->fft()->grid_limits(*d - 1).first;
-    *upper = global_parameters->reciprocal_lattice()->fft()->grid_limits(*d - 1).second;
+    *lower = global_parameters->fft()->grid_limits(*d - 1).first;
+    *upper = global_parameters->fft()->grid_limits(*d - 1).second;
     log_function_exit(__func__);
 }
 
@@ -504,8 +504,8 @@ void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lower, int32_t* up
 void FORTRAN(sirius_get_fft_index)(int32_t* fft_index)
 {
     log_function_enter(__func__);
-    memcpy(fft_index, global_parameters->reciprocal_lattice()->fft_index(),  global_parameters->reciprocal_lattice()->fft()->size() * sizeof(int32_t));
-    for (int i = 0; i < global_parameters->reciprocal_lattice()->fft()->size(); i++) fft_index[i]++;
+    memcpy(fft_index, global_parameters->fft()->index_map(), global_parameters->fft()->size() * sizeof(int32_t));
+    for (int i = 0; i < global_parameters->fft()->size(); i++) fft_index[i]++;
     log_function_exit(__func__);
 }
 
@@ -513,10 +513,10 @@ void FORTRAN(sirius_get_fft_index)(int32_t* fft_index)
 void FORTRAN(sirius_get_gvec)(int32_t* gvec__)
 {
     log_function_enter(__func__);
-    mdarray<int, 2> gvec(gvec__, 3, global_parameters->reciprocal_lattice()->fft()->size());
-    for (int ig = 0; ig < global_parameters->reciprocal_lattice()->fft()->size(); ig++)
+    mdarray<int, 2> gvec(gvec__, 3, global_parameters->fft()->size());
+    for (int ig = 0; ig < global_parameters->fft()->size(); ig++)
     {
-        vector3d<int> gv = global_parameters->reciprocal_lattice()->gvec(ig);
+        vector3d<int> gv = global_parameters->fft()->gvec(ig);
         for (int x = 0; x < 3; x++) gvec(x, ig) = gv[x];
     }
     //memcpy(gvec, global_parameters->gvec(0), 3 * global_parameters->fft()->size() * sizeof(int32_t));
@@ -527,8 +527,8 @@ void FORTRAN(sirius_get_gvec)(int32_t* gvec__)
 void FORTRAN(sirius_get_gvec_cart)(double* gvec_cart__)
 {
     log_function_enter(__func__);
-    mdarray<double, 2> gvec_cart(gvec_cart__, 3,  global_parameters->reciprocal_lattice()->fft()->size());
-    for (int ig = 0; ig < global_parameters->reciprocal_lattice()->fft()->size(); ig++)
+    mdarray<double, 2> gvec_cart(gvec_cart__, 3, global_parameters->fft()->size());
+    for (int ig = 0; ig < global_parameters->fft()->size(); ig++)
     {
         vector3d<double> gvc = global_parameters->reciprocal_lattice()->gvec_cart(ig);
         for (int x = 0; x < 3; x++) gvec_cart(x, ig) = gvc[x];
@@ -540,14 +540,14 @@ void FORTRAN(sirius_get_gvec_cart)(double* gvec_cart__)
 void FORTRAN(sirius_get_gvec_len)(double* gvec_len)
 {
     log_function_enter(__func__);
-    for (int ig = 0; ig <  global_parameters->reciprocal_lattice()->fft()->size(); ig++) gvec_len[ig] = global_parameters->reciprocal_lattice()->gvec_len(ig);
+    for (int ig = 0; ig < global_parameters->fft()->size(); ig++) gvec_len[ig] = global_parameters->fft()->gvec_len(ig);
     log_function_exit(__func__);
 }
 
 void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
 {
     log_function_enter(__func__);
-    sirius::FFT3D<CPU>* fft = global_parameters->reciprocal_lattice()->fft();
+    sirius::FFT3D<CPU>* fft = global_parameters->fft();
     std::pair<int, int> d0 = fft->grid_limits(0);
     std::pair<int, int> d1 = fft->grid_limits(1);
     std::pair<int, int> d2 = fft->grid_limits(2);
@@ -563,7 +563,7 @@ void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
         {
             for (int i2 = d2.first; i2 <= d2.second; i2++)
             {
-                index_by_gvec(i0, i1, i2) = global_parameters->reciprocal_lattice()->index_by_gvec(i0, i1, i2) + 1;
+                index_by_gvec(i0, i1, i2) = fft->gvec_index(vector3d<int>(i0, i1, i2)) + 1;
             }
         }
     }
@@ -598,7 +598,7 @@ void FORTRAN(sirius_get_gvec_phase_factors)(double_complex* sfacg__)
 void FORTRAN(sirius_get_step_function)(double_complex* cfunig, double* cfunir)
 {
     log_function_enter(__func__);
-    for (int i = 0; i < global_parameters->reciprocal_lattice()->fft()->size(); i++)
+    for (int i = 0; i < global_parameters->fft()->size(); i++)
     {
         cfunig[i] = global_parameters->step_function()->theta_pw(i);
         cfunir[i] = global_parameters->step_function()->theta_it(i);
@@ -1518,23 +1518,23 @@ void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, do
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, double_complex* wf__)
-{
-    log_function_enter(__func__);
-    int thread_id = Platform::thread_id();
-
-    sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-    int num_gkvec = kp->num_gkvec();
-
-    global_parameters->reciprocal_lattice()->fft()->input(num_gkvec, kp->fft_index(), wf__, thread_id);
-    global_parameters->reciprocal_lattice()->fft()->transform(1, thread_id);
-    for (int ir = 0; ir < global_parameters->reciprocal_lattice()->fft()->size(); ir++)
-        global_parameters->reciprocal_lattice()->fft()->buffer(ir, thread_id) *= global_parameters->step_function()->theta_it(ir);
-
-    global_parameters->reciprocal_lattice()->fft()->transform(-1, thread_id);
-    global_parameters->reciprocal_lattice()->fft()->output(num_gkvec, kp->fft_index(), wf__, thread_id);
-    log_function_exit(__func__);
-}
+//== void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, double_complex* wf__)
+//== {
+//==     log_function_enter(__func__);
+//==     int thread_id = Platform::thread_id();
+//== 
+//==     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
+//==     int num_gkvec = kp->num_gkvec();
+//== 
+//==     global_parameters->reciprocal_lattice()->fft()->input(num_gkvec, kp->fft_index(), wf__, thread_id);
+//==     global_parameters->reciprocal_lattice()->fft()->transform(1, thread_id);
+//==     for (int ir = 0; ir < global_parameters->reciprocal_lattice()->fft()->size(); ir++)
+//==         global_parameters->reciprocal_lattice()->fft()->buffer(ir, thread_id) *= global_parameters->step_function()->theta_it(ir);
+//== 
+//==     global_parameters->reciprocal_lattice()->fft()->transform(-1, thread_id);
+//==     global_parameters->reciprocal_lattice()->fft()->output(num_gkvec, kp->fft_index(), wf__, thread_id);
+//==     log_function_exit(__func__);
+//== }
 
 /// Get Cartesian coordinates of G+k vectors
 void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec_cart__)
@@ -1622,7 +1622,7 @@ void FORTRAN(sirius_generate_xc_potential)(double* vxcmt__, double* vxcit__, dou
     /* set temporary array wrapper */
     mdarray<double,4> bxcmt(bxcmt__, global_parameters->lmmax_pot(), global_parameters->unit_cell()->max_num_mt_points(), 
                             global_parameters->unit_cell()->num_atoms(), global_parameters->num_mag_dims());
-    mdarray<double,2> bxcit(bxcit__, global_parameters->reciprocal_lattice()->fft()->size(), global_parameters->num_mag_dims());
+    mdarray<double,2> bxcit(bxcit__, global_parameters->fft()->size(), global_parameters->num_mag_dims());
 
     if (global_parameters->num_mag_dims() == 1)
     {
@@ -2092,9 +2092,9 @@ void sirius_get_rho_pw(double_complex* rho_pw__)
 void sirius_set_rho_pw(double_complex* rho_pw__)
 {
     auto rl = global_parameters->reciprocal_lattice();
-    auto fft = rl->fft();
+    auto fft = global_parameters->fft();
     memcpy(&density->rho()->f_pw(0), rho_pw__, rl->num_gvec() * sizeof(double_complex));
-    fft->input(rl->num_gvec(), rl->fft_index(), &density->rho()->f_pw(0));
+    fft->input(fft->num_gvec(), fft->index_map(), &density->rho()->f_pw(0));
     fft->transform(1);
     fft->output(&density->rho()->f_it<global>(0));
 }

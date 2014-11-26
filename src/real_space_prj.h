@@ -33,7 +33,7 @@ class Real_space_prj
 {
     private:
 
-        Reciprocal_lattice* reciprocal_lattice_;
+        Unit_cell* unit_cell_;
 
         FFT3D<CPU>* fft_;
 
@@ -61,7 +61,7 @@ class Real_space_prj
 
         int num_points_;
 
-        Real_space_prj(Reciprocal_lattice* reciprocal_lattice__, double gk_cutoff__, Communicator const& comm__);
+        Real_space_prj(Unit_cell* unit_cell__, FFT3D<CPU>* fft__, Communicator const& comm__);
 };
 
 };
