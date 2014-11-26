@@ -178,8 +178,6 @@ void Global::initialize()
     
     fft_->init_gvec(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors());
 
-    spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
-
     #ifdef _GPU_
     fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 2);
     #endif
@@ -193,8 +191,6 @@ void Global::initialize()
         
         fft_coarse_->init_gvec(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors());
 
-        spl_fft_coarse_size_ = splindex<block>(fft_coarse_->size(), comm_.size(), comm_.rank());
-            
         #ifdef _GPU_
         fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
         #endif

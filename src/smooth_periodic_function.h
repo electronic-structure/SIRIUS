@@ -115,22 +115,32 @@ Smooth_periodic_function<spectral> transform(Smooth_periodic_function<spatial, T
 }
 
 /// Transform function from plane-wace domain to real-space grid.
-template<typename T, index_domain_t index_domain>
+template<typename T>
 Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral>& f)
 {
     auto fft = f.fft();
 
-    STOP(); // TODO: need to implement this properlly; probalby without local_size() etc.
+    Smooth_periodic_function<spatial, T> g(fft);
 
-    //int size = (index_domain == global) ? rl->fft()->size() : rl->fft()->local_size();
-    //int offset = (index_domain == global) ? 0 : rl->fft()->global_offset();
+    fft->input(fft->num_gvec(), fft->index_map(), &f(0));
+    fft->transform(1);
+    fft->output(&g(0));
+    
+    return g; 
+}
 
-    Smooth_periodic_function<spatial, T> g(fft);//, size);
+template<typename T>
+Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral>& f, splindex<block>& spl_fft_size__)
+{
+    auto fft = f.fft();
 
-    //rl->fft()->input(rl->num_gvec(), rl->fft_index(), &f(0));
-    //rl->fft()->transform(1);
-    //for (int i = 0; i < size; i++) g(i) = type_wrapper<T>::sift(rl->fft()->buffer(offset + i));
-    //
+    Smooth_periodic_function<spatial, T> g(fft, spl_fft_size__.local_size());
+
+    fft->input(fft->num_gvec(), fft->index_map(), &f(0));
+    fft->transform(1);
+    for (int i = 0; i < (int)spl_fft_size__.local_size(); i++) 
+        g(i) = type_wrapper<T>::sift(fft->buffer((int)spl_fft_size__.global_offset() + i));
+
     return g; 
 }
 

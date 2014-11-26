@@ -130,10 +130,6 @@ class Global
         FFT3D<GPU>* fft_gpu_coarse_;
         #endif
 
-        splindex<block> spl_fft_size_;
-
-        splindex<block> spl_fft_coarse_size_;
-        
         /// Parse input data-structures.
         void parse_input();
 
@@ -456,16 +452,6 @@ class Global
             return fft_gpu_coarse_;
         }
         #endif
-        
-        inline splindex<block>& spl_fft_size()
-        {
-            return spl_fft_size_;
-        }
-
-        inline splindex<block>& spl_fft_coarse_size()
-        {
-            return spl_fft_coarse_size_;
-        }
 };
 
 };

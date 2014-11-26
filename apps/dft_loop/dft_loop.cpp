@@ -30,7 +30,7 @@ void write_json_output(Global* p, DFT_ground_state* gs)
         //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", p->mpi_grid_dims());
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = p->reciprocal_lattice()->fft()->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = p->fft()->size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", p->unit_cell()->chemical_formula());
         jw.single("num_atoms", p->unit_cell()->num_atoms());
