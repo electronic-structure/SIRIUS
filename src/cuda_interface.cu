@@ -458,53 +458,6 @@ extern "C" void cufft_set_work_area(cufftHandle plan, void* work_area)
     CALL_CUFFT(cufftSetWorkArea, (plan, work_area));
 }
 
-
-//= __global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
-//= {
-//=     int i = blockIdx.y;
-//=     int ir = blockDim.x * blockIdx.x + threadIdx.x;
-//=     if (ir < fft_size) 
-//=     {
-//=         fft_buffer[array2D_offset(ir, i, fft_size)] = 
-//=             cuCmul(fft_buffer[array2D_offset(ir, i, fft_size)], v_r[ir]);
-//=     }
-//= }
-
-//== __global__ void cufft_batch_unload_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* fft_buffer,
-//==                                           cuDoubleComplex* phi)
-//== {
-//==     int i = blockIdx.y;
-//==     int ig = blockDim.x * blockIdx.x + threadIdx.x;
-//== 
-//==     if (ig < num_gkvec) 
-//==     {
-//==         phi[array2D_offset(ig, i, num_gkvec)] = 
-//==             cuCdiv(fft_buffer[array2D_offset(map[ig], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
-//==     }
-//== }
-
-//== extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p)
-//== {
-//==     dim3 threadsPerBlock(64);
-//==     dim3 numBlocks(num_blocks(num_gkvec, 64), num_phi);
-//==     
-//==     cuda_memset(buffer, 0, fft_size * num_phi * sizeof(cuDoubleComplex));
-//== 
-//==     cufft_batch_load_kernel<<<numBlocks, threadsPerBlock>>>
-//==         (fft_size, num_gkvec, map, (cuDoubleComplex*)p, (cuDoubleComplex*)buffer);
-//==     
-//==     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
-//==     
-//==     //dim3 numBlocks_r(num_blocks(fft_size, 64), num_phi);
-//==     //cufft_batch_apply_v_kernel<<<numBlocks_r, threadsPerBlock>>>
-//==     //    (fft_size, (cuDoubleComplex*)v_r, (cuDoubleComplex*)buffer);
-//==     
-//==     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_FORWARD);
-//== 
-//==     cufft_batch_unload_kernel<<<numBlocks, threadsPerBlock>>>
-//==         (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
-//== }
-
 __global__ void cufft_batch_load_gpu_kernel
 (
     int fft_size, 

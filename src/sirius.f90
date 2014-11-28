@@ -198,6 +198,12 @@ interface
         complex(8),              intent(out) :: rho_pw
     end subroutine
 
+    subroutine sirius_get_gvec_index(gvec, ig)&
+       &bind(C, name="sirius_get_gvec_index")
+       integer,                  intent(in)  :: gvec(3)
+       integer,                  intent(out) :: ig
+    end subroutine
+
     subroutine sirius_print_timers()&
        &bind(C, name="sirius_print_timers")
     end subroutine

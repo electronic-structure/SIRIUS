@@ -2099,4 +2099,9 @@ void sirius_set_rho_pw(double_complex* rho_pw__)
     fft->output(&density->rho()->f_it<global>(0));
 }
 
+void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
+{
+    *ig__ = global_parameters->fft()->gvec_index(vector3d<int>(gvec__[0], gvec__[1], gvec__[2])) + 1;
+}
+
 } // extern "C"
