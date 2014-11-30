@@ -459,7 +459,8 @@ void Density::initial_density()
 
         memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
 
-        if (fabs(rho_->f_pw(0) * uc->omega() - uc->num_valence_electrons()) > 1e-6)
+        double charge = real(rho_->f_pw(0) * uc->omega());
+        if (std::abs(charge - uc->num_valence_electrons()) > 1e-6)
         {
             std::stringstream s;
             s << "wrong initial charge density" << std::endl
@@ -475,6 +476,7 @@ void Density::initial_density()
         /* remove possible negative noise */
         for (int ir = 0; ir < fft_->size(); ir++)
         {
+            rho_->f_it<global>(ir) = rho_->f_it<global>(ir) *  uc->num_valence_electrons() / charge;
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
         
