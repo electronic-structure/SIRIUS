@@ -37,10 +37,16 @@ Atom::Atom(Atom_type* type__, double* position__, double* vector_field__)
 {
     assert(type__);
         
-    for (int i = 0; i < 3; i++)
+    for (int x = 0; x < 3; x++)
     {
-        position_[i] = position__[i];
-        vector_field_[i] = vector_field__[i];
+        if (position__[x] < 0 || position__[x] >= 1)
+        {
+            std::stringstream s;
+            s << "Wrong atomic position for atom " << type__->label() << ": " << position__[0] << " " << position__[1] << " " << position__[2];
+            TERMINATE(s);
+        }
+        position_[x] = position__[x];
+        vector_field_[x] = vector_field__[x];
     }
 }
 
