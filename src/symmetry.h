@@ -112,6 +112,53 @@ class Symmetry
             return t;
         }
 
+        void check_gvec_symmetry(FFT3D<CPU>* fft__)
+        {
+            for (int isym = 0; isym < num_sym_op(); isym++)
+            {
+                auto sm = rot_mtrx(isym);
+
+                for (int ig = 0; ig < fft__->num_gvec(); ig++)
+                {
+                    auto gv = fft__->gvec(ig);
+                    /* apply symmetry operation to the G-vector */
+                    vector3d<int> gv_rot = sm * gv;
+                    for (int x = 0; x < 3; x++)
+                    {
+                        auto limits = fft__->grid_limits(x);
+                        /* check boundaries */
+                        if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
+                        {
+                            std::stringstream s;
+                            s << "rotated G-vector is outside grid limits" << std::endl
+                              << "original G-vector: " << gv << std::endl
+                              << "rotation matrix: " << std::endl
+                              << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
+                              << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
+                              << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
+                              << "rotated G-vector: " << gv_rot;
+                              TERMINATE(s);
+                        }
+                    }
+                    int ig_rot = fft__->gvec_index(gv_rot);
+                    if (ig_rot >= fft__->num_gvec())
+                    {
+                        std::stringstream s;
+                        s << "rotated G-vector indes is wrong" << std::endl
+                          << "original G-vector: " << gv << std::endl
+                          << "rotation matrix: " << std::endl
+                          << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
+                          << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
+                          << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
+                          << "rotated G-vector: " << gv_rot << std::endl
+                          << "rotated G-vector index: " << ig_rot << std::endl
+                          << "number of G-vectors: " << fft__->num_gvec();
+                          TERMINATE(s);
+                    }
+                }
+            }
+        }
+
         void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
         {
             mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
@@ -126,13 +173,13 @@ class Symmetry
                 {
                     /* apply symmetry operation to the G-vector */
                     vector3d<int> gv_rot = sm * fft__->gvec(ig);
-                    for (int x = 0; x < 3; x++)
-                    {
-                        auto limits = fft__->grid_limits(x);
-                        /* check boundaries */
-                        if (gv_rot[x] < limits.first) gv_rot[x] = limits.second + (gv_rot[x] - limits.first) + 1;
-                        if (gv_rot[x] > limits.second) gv_rot[x] = limits.first + (gv_rot[x] - limits.second) - 1;
-                    }
+                    //== for (int x = 0; x < 3; x++)
+                    //== {
+                    //==     auto limits = fft__->grid_limits(x);
+                    //==     /* check boundaries */
+                    //==     if (gv_rot[x] < limits.first) gv_rot[x] = limits.second + (gv_rot[x] - limits.first) + 1;
+                    //==     if (gv_rot[x] > limits.second) gv_rot[x] = limits.first + (gv_rot[x] - limits.second) - 1;
+                    //== }
 
                     /* index of a rotated G-vector */
                     int ig_rot = fft__->gvec_index(gv_rot);

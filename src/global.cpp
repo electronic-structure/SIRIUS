@@ -196,6 +196,8 @@ void Global::initialize()
         #endif
     }
 
+    unit_cell_->symmetry().check_gvec_symmetry(fft_);
+
     /* create a reciprocal lattice */
     int lmax = -1;
     switch (esm_type())
