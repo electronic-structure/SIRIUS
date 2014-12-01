@@ -69,7 +69,7 @@ def remove_ending_braces(string):
 def main():
     
     if len(sys.argv) != 2:
-        print "Usage: python ./cif_input2.py file.cif" 
+        print("Usage: python ./cif_input.py file.cif")
         sys.exit(0)
 
     cf = CifFile.ReadCif(sys.argv[1])
@@ -90,10 +90,10 @@ def main():
         initial_atoms_list[label].append({"x" : float(remove_ending_braces(atom._atom_site_fract_x)), \
                                           "y" : float(remove_ending_braces(atom._atom_site_fract_y)), \
                                           "z" : float(remove_ending_braces(atom._atom_site_fract_z))})
-    print "Initial list of atoms : "
+    print("Initial list of atoms")
     for label in initial_atoms_list:
         for atom in initial_atoms_list[label]:
-            print label, "at", atom["x"], atom["y"], atom["z"]
+            print(label + " at " + "%f %f %f\n"%(atom["x"], atom["y"], atom["z"]))
         
 
     sym_ops = cb.GetLoop("_symmetry_equiv_pos_as_xyz")
@@ -133,27 +133,28 @@ def main():
             [x3, y3, z3]] 
 
     
-    fout = open("elk.in", "w")
-    fout.write("avec\n")
-    for i in range(3):
-        fout.write("%18.10f %18.10f %18.10f\n"%(avec[i][0] / au2ang, avec[i][1] / au2ang, avec[i][2] / au2ang))
-    fout.write("\n")
-    fout.write("atoms\n")
-    fout.write("%i\n"%len(initial_atoms_list.keys()))
-    
+    ## fout = open("elk.in", "w")
+    ## fout.write("avec\n")
+    ## for i in range(3):
+    ##     fout.write("%18.10f %18.10f %18.10f\n"%(avec[i][0] / au2ang, avec[i][1] / au2ang, avec[i][2] / au2ang))
+    ## fout.write("\n")
+    ## fout.write("atoms\n")
+    ## fout.write("%i\n"%len(initial_atoms_list.keys()))
+    ## 
+
     atom_dict = {}
-    
+     
     natoms = 0
     for key in initial_atoms_list.keys():
         atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
         atom_dict[key] = atom_list
-        fout.write("'%s.in'\n"%key)
-        fout.write("%i\n"%len(atom_list))
+        ## fout.write("'%s.in'\n"%key)
+        ## fout.write("%i\n"%len(atom_list))
         for a in atom_list:
             natoms += 1
-            fout.write("%18.10f %18.10f %18.10f\n"%(a[0], a[1], a[2]))
+            ## fout.write("%18.10f %18.10f %18.10f\n"%(a[0], a[1], a[2]))
 
-    fout.close()
+    ## fout.close()
    
     atom_files = {}
     for label in initial_atoms_list:
@@ -172,52 +173,52 @@ def main():
     fout.close()
 
 
-    fout = open("pw.in", "w")
-    fout.write("""
-&control
-  calculation='scf',
-  restart_mode='from_scratch',
-  pseudo_dir = './',
-  outdir='./',
-  prefix = 'scf_'
-/""")
-    fout.write("""
-&system
-  ibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,
-  occupations = 'smearing', smearing = 'gauss', degauss = 0.002, nosym=.false.,\n""")
-    fout.write("  nat=" + str(natoms) + ", ntyp=" + str(len(initial_atoms_list.keys())))
-    fout.write("\n/")
-    fout.write("""
-&electrons
-  conv_thr =  1.0d-8,
-  mixing_beta = 0.7,
-  electron_maxstep = 10
-/""")
-    fout.write("\n")
-    fout.write("ATOMIC_SPECIES\n")
-    for key in initial_atoms_list.keys():
-        fout.write("  %s 0.0 %s.UPF\n"%(key, key))
+##    fout = open("pw.in", "w")
+##    fout.write("""
+##&control
+##  calculation='scf',
+##  restart_mode='from_scratch',
+##  pseudo_dir = './',
+##  outdir='./',
+##  prefix = 'scf_'
+##/""")
+##    fout.write("""
+##&system
+##  ibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,
+##  occupations = 'smearing', smearing = 'gauss', degauss = 0.002, nosym=.false.,\n""")
+##    fout.write("  nat=" + str(natoms) + ", ntyp=" + str(len(initial_atoms_list.keys())))
+##    fout.write("\n/")
+##    fout.write("""
+##&electrons
+##  conv_thr =  1.0d-8,
+##  mixing_beta = 0.7,
+##  electron_maxstep = 10
+##/""")
+##    fout.write("\n")
+##    fout.write("ATOMIC_SPECIES\n")
+##    for key in initial_atoms_list.keys():
+##        fout.write("  %s 0.0 %s.UPF\n"%(key, key))
+##
+##    fout.write("\n")
+##    fout.write("CELL_PARAMETERS\n")
+##    for i in range(3):
+##        fout.write("%18.10f %18.10f %18.10f\n"%(avec[i][0] / au2ang, avec[i][1] / au2ang, avec[i][2] / au2ang))
+##    
+##    fout.write("\n")
+##    fout.write("ATOMIC_POSITIONS (crystal)\n")
+##    for key in initial_atoms_list.keys():
+##        atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
+##        for a in atom_list:
+##            fout.write("%s  %18.10f %18.10f %18.10f\n"%(key, a[0], a[1], a[2]))
+##
+##    fout.write("\n")
+##    fout.write("K_POINTS (automatic)\n")
+##    fout.write("2 2 2  0 0 0\n")
+##
+##    fout.close()
 
-    fout.write("\n")
-    fout.write("CELL_PARAMETERS\n")
-    for i in range(3):
-        fout.write("%18.10f %18.10f %18.10f\n"%(avec[i][0] / au2ang, avec[i][1] / au2ang, avec[i][2] / au2ang))
-    
-    fout.write("\n")
-    fout.write("ATOMIC_POSITIONS (crystal)\n")
-    for key in initial_atoms_list.keys():
-        atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
-        for a in atom_list:
-            fout.write("%s  %18.10f %18.10f %18.10f\n"%(key, a[0], a[1], a[2]))
 
-    fout.write("\n")
-    fout.write("K_POINTS (automatic)\n")
-    fout.write("2 2 2  0 0 0\n")
-
-    fout.close()
-
-
-    print "Total number of atoms in the unit cell : ", natoms
+    print("Total number of atoms in the unit cell : %i\n"%(natoms))
 
     return
 

@@ -39,6 +39,9 @@ class matrix3d
         T mtrx_[3][3];
 
     public:
+    
+        template <typename U> 
+        friend class matrix3d;
         
         matrix3d()
         {
@@ -53,6 +56,15 @@ class matrix3d
         matrix3d(const matrix3d<T>& src)
         {
             memcpy(&mtrx_[0][0], &src.mtrx_[0][0], 9 * sizeof(T));
+        }
+        
+        template <typename U>
+        matrix3d(const matrix3d<U>& src)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++) mtrx_[i][j] = src.mtrx_[i][j];
+            }
         }
 
         matrix3d<T>& operator=(const matrix3d<T>& rhs)

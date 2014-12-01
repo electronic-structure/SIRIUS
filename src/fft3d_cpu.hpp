@@ -155,7 +155,7 @@ class FFT3D<CPU>
         /// Zero the input buffer for a given thread.
         inline void zero(int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
 
             memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
         }
@@ -163,7 +163,7 @@ class FFT3D<CPU>
         template<typename T>
         inline void input(int n, int* map, T* data, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
             
             zero(thread_id);
             for (int i = 0; i < n; i++) fftw_buffer_(map[i], thread_id) = data[i];
@@ -171,14 +171,14 @@ class FFT3D<CPU>
 
         inline void input(double* data, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
             
             for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) = data[i];
         }
         
         inline void input(double_complex* data, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
             
             memcpy(&fftw_buffer_(0, thread_id), data, size() * sizeof(double_complex));
         }
@@ -186,7 +186,7 @@ class FFT3D<CPU>
         /// Execute the transformation for a given thread.
         inline void transform(int direction, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
 
             switch(direction)
             {
@@ -209,28 +209,28 @@ class FFT3D<CPU>
 
         inline void output(double* data, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
 
             for (int i = 0; i < size(); i++) data[i] = real(fftw_buffer_(i, thread_id));
         }
         
         inline void output(double_complex* data, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
 
             memcpy(data, &fftw_buffer_(0, thread_id), size() * sizeof(double_complex));
         }
         
         inline void output(int n, int* map, double_complex* data, int thread_id = 0)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
 
             for (int i = 0; i < n; i++) data[i] = fftw_buffer_(map[i], thread_id);
         }
 
         inline void output(int n, int* map, double_complex* data, int thread_id, double alpha)
         {
-            assert(thread_id < Platform::num_fft_threads());
+            assert(thread_id < num_fft_threads());
 
             for (int i = 0; i < n; i++) data[i] += alpha * fftw_buffer_(map[i], thread_id);
         }
