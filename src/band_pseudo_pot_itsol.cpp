@@ -913,15 +913,14 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             /* exit the loop if the eigen-vectors are converged or it's a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
+                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+                {
+                    INFO << "exiting iterative solver with N = " << N << ", n = " << n << ", k = " << k << std::endl;
+                }
                 break;
             }
             else /* otherwise set Psi as a new trial basis */
             {
-                if (parameters_.processing_unit() == GPU)
-                {
-                    STOP(); // something has to be moved to GPU
-                }
-
                 hmlt_old.zero();
                 ovlp_old.zero();
                 for (int i = 0; i < num_bands; i++)
@@ -931,8 +930,21 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 }
  
                 /* set new basis functions */
-                memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
+                {
+                    memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                    memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                }
+                
+                #ifdef _GPU_
+                if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+                {
+                    cuda_copy_device_to_device(hphi.at<GPU>(), hpsi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                    cuda_copy_device_to_device(ophi.at<GPU>(), opsi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                    cuda_copy_device_to_device( phi.at<GPU>(),  psi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                }
+                #endif
+
                 memcpy( phi.at<CPU>(),  psi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 N = num_bands;
             }
