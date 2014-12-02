@@ -60,7 +60,7 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh)
     }
     
     int ld = uc->num_atom_types(); 
-    comm_.allgather(ffac.ptr(), static_cast<int>(ld * spl_num_gvec_shells.global_offset()), 
+    comm_.allgather(ffac.at<CPU>(), static_cast<int>(ld * spl_num_gvec_shells.global_offset()), 
                     static_cast<int>(ld * spl_num_gvec_shells.local_size()));
     return ffac;
 }

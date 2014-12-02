@@ -1009,12 +1009,12 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
         kp__->alm_coeffs_col()->generate(ia, alm_col);
 
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                          alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), complex_one, o__.ptr(), o__.ld()); 
+                          alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), complex_one, o__.at<CPU>(), o__.ld()); 
 
         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
 
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                          alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), complex_one, h__.ptr(), h__.ld());
+                          alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), complex_one, h__.at<CPU>(), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
@@ -1093,10 +1093,10 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     }
 
     cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 
-                      h__.ptr(), h__.ld());
+                      h__.at<CPU>(), h__.ld());
     
     cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<GPU>(0, 0), o__.ld(), 
-                      o__.ptr(), o__.ld());
+                      o__.at<CPU>(), o__.ld());
     
     /* add interstitial contributon */
     set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
@@ -1535,8 +1535,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
         gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
-                                parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
-                                &eval[0], kp->fv_eigen_vectors_panel().ptr(), kp->fv_eigen_vectors_panel().ld());
+                                parameters_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
+                                &eval[0], kp->fv_eigen_vectors_panel().at<CPU>(), kp->fv_eigen_vectors_panel().ld());
         kp->set_fv_eigen_values(&eval[0]);
     }
 
@@ -1775,9 +1775,9 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
         
             Timer t1("sirius::Band::solve_sv|stdevp");
-            std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
+            std_evp_solver()->solve(parameters_.num_fv_states(), h.at<CPU>(), h.ld(),
                                                 &band_energies[ispn * parameters_.num_fv_states()],
-                                                kp->sv_eigen_vectors(ispn).ptr(), kp->sv_eigen_vectors(ispn).ld());
+                                                kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
         }
     }
 

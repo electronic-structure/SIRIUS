@@ -85,7 +85,7 @@ class Mixer
             for (int i = 0; i < (int)spl_size_.local_size(); i++)
                 vectors_(i, offset(count_)) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, offset(count_ - 1));
 
-            comm_.allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), (int)spl_size_.global_offset(), 
+            comm_.allgather(&vectors_(0, offset(count_)), output_buffer_.at<CPU>(), (int)spl_size_.global_offset(), 
                             (int)spl_size_.local_size());
         }
 
@@ -121,7 +121,7 @@ class Mixer
 
         inline double* output_buffer()
         {
-            return output_buffer_.ptr();
+            return output_buffer_.at<CPU>();
         }
 
         inline void initialize()
@@ -224,7 +224,7 @@ class Broyden_mixer: public Mixer
                         S(j2, j1) = S(j1, j2);
                     }
                 }
-                comm_.allreduce(S.ptr(), (int)S.size());
+                comm_.allreduce(S.at<CPU>(), (int)S.size());
                 for (int j1 = 0; j1 < N; j1++)
                 { 
                     for (int j2 = 0; j2 < N; j2++) S(j1, j2) /= size_;

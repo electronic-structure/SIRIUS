@@ -301,8 +301,8 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     
     Timer t2("sirius::Band::diag_fv_pseudo_potential|gen_evp");
     gen_evp_solver()->solve(num_bands, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
-                            hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
-                            &eval[0], evec.ptr(), evec.ld());
+                            hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
+                            &eval[0], evec.at<CPU>(), evec.ld());
     t2.stop();
         
     if (kp__->comm().rank() == 0)
@@ -472,8 +472,8 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         eval_old = eval;
         
         gen_evp_solver()->solve(N, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
-                                hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
-                                &eval[0], evec.ptr(), evec.ld());
+                                hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
+                                &eval[0], evec.at<CPU>(), evec.ld());
         
         if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
@@ -635,8 +635,8 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     STOP(); // and crete packed matrices
     //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, ngk, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
         
-    gen_evp_solver()->solve(ngk, num_bands, num_bands, num_bands, hphi.ptr(), hphi.ld(), ophi.ptr(), ophi.ld(), 
-                            &eval[0], psi.ptr(), psi.ld());
+    gen_evp_solver()->solve(ngk, num_bands, num_bands, num_bands, hphi.at<CPU>(), hphi.ld(), ophi.at<CPU>(), ophi.ld(), 
+                            &eval[0], psi.at<CPU>(), psi.ld());
 
     kp__->set_fv_eigen_values(&eval[0]);
     kp__->fv_states_panel().scatter(psi);
@@ -794,8 +794,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
-        gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
-                                &eval[0], evec.ptr(), evec.ld());
+        gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
+                                &eval[0], evec.at<CPU>(), evec.ld());
         }
 
         #ifdef _GPU_
@@ -917,7 +917,11 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             }
             else /* otherwise set Psi as a new trial basis */
             {
-                STOP(); // something needs to be moved to GPU
+                if (parameters_.processing_unit() == GPU)
+                {
+                    STOP(); // something has to be moved to GPU
+                }
+
                 hmlt_old.zero();
                 ovlp_old.zero();
                 for (int i = 0; i < num_bands; i++)
@@ -927,9 +931,9 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 }
  
                 /* set new basis functions */
-                memcpy(hphi.ptr(), hpsi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                memcpy(ophi.ptr(), opsi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                memcpy(phi.ptr(), psi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                memcpy( phi.at<CPU>(),  psi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 N = num_bands;
             }
         }

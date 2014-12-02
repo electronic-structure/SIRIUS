@@ -290,8 +290,8 @@ void Atom_symmetry_class::check_lo_linear_independence()
     std::vector<double> loprod_eval(num_lo_descriptors());
     mdarray<double_complex, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
-    stdevp.solve(num_lo_descriptors(), loprod_tmp.ptr(), loprod_tmp.ld(), &loprod_eval[0], 
-                 loprod_evec.ptr(), loprod_evec.ld());
+    stdevp.solve(num_lo_descriptors(), loprod_tmp.at<CPU>(), loprod_tmp.ld(), &loprod_eval[0], 
+                 loprod_evec.at<CPU>(), loprod_evec.ld());
 
     if (fabs(loprod_eval[0]) < 0.001) 
     {
@@ -587,16 +587,16 @@ void Atom_symmetry_class::sync_radial_functions(Communicator const& comm__, int 
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    comm__.bcast(radial_functions_.ptr(), size, rank__);
-    comm__.bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank__);
+    comm__.bcast(radial_functions_.at<CPU>(), size, rank__);
+    comm__.bcast(aw_surface_derivatives_.at<CPU>(), (int)aw_surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 
 void Atom_symmetry_class::sync_radial_integrals(Communicator const& comm__, int const rank__)
 {
-    comm__.bcast(h_spherical_integrals_.ptr(), (int)h_spherical_integrals_.size(), rank__);
-    comm__.bcast(o_radial_integrals_.ptr(), (int)o_radial_integrals_.size(), rank__);
-    comm__.bcast(so_radial_integrals_.ptr(), (int)so_radial_integrals_.size(), rank__);
+    comm__.bcast(h_spherical_integrals_.at<CPU>(), (int)h_spherical_integrals_.size(), rank__);
+    comm__.bcast(o_radial_integrals_.at<CPU>(), (int)o_radial_integrals_.size(), rank__);
+    comm__.bcast(so_radial_integrals_.at<CPU>(), (int)so_radial_integrals_.size(), rank__);
 }
 
 void Atom_symmetry_class::sync_core_charge_density(Communicator const& comm__, int const rank__)

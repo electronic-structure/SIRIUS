@@ -305,7 +305,7 @@ void K_point::update()
         }
         else
         {
-            spinor_wave_functions_.set_ptr(fv_states_.ptr());
+            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
         }
     }
     else
@@ -494,14 +494,14 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
+                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
                                       &sv_eigen_vectors_[ispn](0, 0), sv_eigen_vectors_[ispn].ld(), 
                                       &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
                                       &sv_eigen_vectors_[0](ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
                                       &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
                 }
@@ -1366,7 +1366,7 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
             fv_evec(j, i) = fv_eigen_vectors_panel_(jloc, iloc);
         }
     }
-    comm_.allreduce(fv_evec.ptr(), (int)fv_evec.size());
+    comm_.allreduce(fv_evec.at<CPU>(), (int)fv_evec.size());
 }
 
 void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
@@ -1398,7 +1398,7 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
         }
     }
 
-    comm_.allreduce(sv_evec.ptr(), (int)sv_evec.size());
+    comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
 }
 
 }

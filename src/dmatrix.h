@@ -128,7 +128,7 @@ class dmatrix
               blacs_grid_(&blacs_grid__)
         {
             init();
-            matrix_local_.set_ptr(ptr__);
+            matrix_local_ = matrix<T>(ptr__, spl_row_.local_size(), spl_col_.local_size());
         }
 
         // forbid copy constructor

@@ -605,18 +605,6 @@ class mdarray_base
             }
         }
 
-        /// Set raw pointer.
-        inline void set_ptr(T* ptr__)
-        {
-            ptr_ = ptr__;
-        }
-        
-        /// Return raw pointer.
-        inline T* ptr()
-        {
-            return ptr_;
-        }
-        
         /// Compute hash of the array
         /** Example: printf("hash(h) : %16llX\n", h.hash()); */
         uint64_t hash() const
@@ -640,7 +628,7 @@ class mdarray_base
                     exit(-1);
                 }
             }
-            memcpy(dest__.ptr(), ptr_, size() * sizeof(T));
+            memcpy(dest__.ptr_, ptr_, size() * sizeof(T));
         }
 
         #ifdef _GPU_
@@ -763,33 +751,33 @@ class mdarray: public mdarray_base<T, N>
         mdarray(T* ptr__, mdarray_index_descriptor const& d0)
         {
             this->init_dimensions({d0});
-            this->set_ptr(ptr__);
+            this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
             this->init_dimensions({d0, d1});
-            this->set_ptr(ptr__);
+            this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
                 mdarray_index_descriptor const& d2)
         {
             this->init_dimensions({d0, d1, d2});
-            this->set_ptr(ptr__);
+            this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
                 mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
         {
             this->init_dimensions({d0, d1, d2, d3});
-            this->set_ptr(ptr__);
+            this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
             this->init_dimensions({d0, d1});
-            this->set_ptr(ptr__);
+            this->ptr_ = ptr__;
             #ifdef _GPU_
             this->set_ptr_device(ptr_device__);
             #endif

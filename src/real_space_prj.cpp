@@ -196,7 +196,7 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(Unit_cell* uc_
     }
 
     int ld = uc__->max_mt_radial_basis_size() * uc__->num_atom_types();
-    comm_.allgather(beta_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
+    comm_.allgather(beta_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gsh.global_offset()), 
                     static_cast<int>(ld * spl_gsh.local_size()));
     
     return beta_radial_integrals;

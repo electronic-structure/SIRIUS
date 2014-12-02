@@ -198,7 +198,7 @@ class sbessel_approx
                             }
                         }
                     }
-                    linalg<CPU>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
+                    linalg<CPU>::gesv(n, (int)q__.size(), A.at<CPU>(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
                 }
             }
         }
@@ -289,7 +289,7 @@ class sbessel_approx
                 mdarray<double_complex, 2> z(n, n);
 
                 standard_evp_lapack solver;
-                solver.solve(n, ovlp.ptr(), n, &eval[0], z.ptr(), n);
+                solver.solve(n, ovlp.at<CPU>(), n, &eval[0], z.at<CPU>(), n);
                 min_val = eval[0];
 
             } while (min_val > eps__);

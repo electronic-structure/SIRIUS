@@ -52,7 +52,7 @@ void K_set::sync_band_energies()
         int ik = (int)spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
-    comm_k_.allgather(band_energies.ptr(), 
+    comm_k_.allgather(band_energies.at<CPU>(), 
                       static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
                       static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()));
 

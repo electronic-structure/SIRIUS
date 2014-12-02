@@ -333,7 +333,7 @@ void Potential::poisson_sum_G(int lmmax__,
     //==                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
     //==             }
     //==         }
-    //==         blas<CPU>::gemv(0, lmmax__, ngv_loc, complex_one, zm.ptr(), zm.ld(), 
+    //==         blas<CPU>::gemv(0, lmmax__, ngv_loc, complex_one, zm.at<CPU>(), zm.ld(), 
     //==                         &fpw__[parameters_.reciprocal_lattice()->spl_num_gvec().global_offset()], 1, complex_zero, 
     //==                         &flm__(0, ia), 1);
     //==     }
@@ -480,7 +480,7 @@ template<> void Potential::add_mt_contribution_to_pw<CPU>()
             }
         }
     }
-    parameters_.comm().allreduce(fpw.ptr(), (int)fpw.size());
+    parameters_.comm().allreduce(fpw.at<CPU>(), (int)fpw.size());
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -635,7 +635,7 @@ template<> void Potential::add_mt_contribution_to_pw<CPU>()
 //==         }
 //==     }
 //== 
-//==     Platform::allreduce(fpw.ptr(), (int)fpw.size());
+//==     Platform::allreduce(fpw.at<CPU>(), (int)fpw.size());
 //==     for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
 //== 
 //==     l_by_lm_.deallocate_on_device();
@@ -817,7 +817,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             /* save electronic part of potential at point of origin */
             vh_el_(ia) = vh->f_mt<local>(0, 0, ialoc);
         }
-        parameters_.comm().allgather(vh_el_.ptr(), (int)parameters_.unit_cell()->spl_num_atoms().global_offset(),
+        parameters_.comm().allgather(vh_el_.at<CPU>(), (int)parameters_.unit_cell()->spl_num_atoms().global_offset(),
                                      (int)parameters_.unit_cell()->spl_num_atoms().local_size());
 
     }
@@ -1922,7 +1922,7 @@ void Potential::generate_d_mtrx()
 
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
+            parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().at<CPU>(),
                                          (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
             auto atom_type = parameters_.unit_cell()->atom(ia)->type();
@@ -2288,7 +2288,7 @@ void Potential::generate_local_potential()
     }
 
     int ld = uc->num_atom_types();
-    parameters_.comm().allgather(vloc_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
+    parameters_.comm().allgather(vloc_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
                                  static_cast<int>(ld * spl_gshells.local_size()));
 
     std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());

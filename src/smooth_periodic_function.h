@@ -51,8 +51,7 @@ class Smooth_periodic_function
         {
             if (domain_t == spatial)
             {
-                data_ = mdarray<T, 1>(nullptr, fft_->size());
-                data_.set_ptr(ptr__);
+                data_ = mdarray<T, 1>(ptr__, fft_->size());
             }
         }
 

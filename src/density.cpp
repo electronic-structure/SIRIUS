@@ -232,7 +232,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     }
 
     int ld = uc->num_atom_types();
-    parameters_.comm().allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
+    parameters_.comm().allgather(rho_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
                                  static_cast<int>(ld * spl_gshells.local_size()));
 
     return rho_radial_integrals;
@@ -345,7 +345,7 @@ void Density::initial_density()
                 }
             }
         }
-        parameters_.comm().allreduce(znulm.ptr(), (int)znulm.size());
+        parameters_.comm().allreduce(znulm.at<CPU>(), (int)znulm.size());
         t3.stop();
 
         Timer t4("sirius::Density::initial_density|rholm");
@@ -784,11 +784,11 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
     it_density_matrix.zero();
     
     #ifdef _GPU_
-    mdarray<double, 2> it_density_matrix_gpu(nullptr, fft_->size(), parameters_.num_mag_dims() + 1);
+    mdarray<double, 2> it_density_matrix_gpu;
     /* last thread is doing cuFFT */
     if (parameters_.processing_unit() == GPU && num_fft_threads > 1)
     {
-        it_density_matrix_gpu.set_ptr(&it_density_matrix(0, 0, num_fft_threads - 1));
+        it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, num_fft_threads - 1), fft_->size(), parameters_.num_mag_dims() + 1);
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
@@ -1030,7 +1030,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
         add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
-    parameters_.comm().allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
+    parameters_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
 
@@ -1166,7 +1166,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     pp_complex_density_matrix.copy_to_host();
     pp_complex_density_matrix.deallocate_on_device();
 
-    //parameters_.comm().allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
+    //parameters_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
     parameters_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(pp_complex_density_matrix.at<CPU>(), 
                                                                                  (int)pp_complex_density_matrix.size());
 

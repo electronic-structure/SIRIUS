@@ -177,8 +177,8 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
         }
     }
 
-    comm__.reduce(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), 0);
-    if (num_mag_dims_) comm__.reduce(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), 0);
+    comm__.reduce(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), 0);
+    if (num_mag_dims_) comm__.reduce(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), 0);
 }
 
 }

@@ -138,11 +138,11 @@ void Force::ibs_force(Global& parameters__,
 
         /* apw-apw block of the overlap matrix */
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
-                          alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), o.ptr(), o.ld());
+                          alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
             
         /* apw-apw block of the Hamiltonian matrix */
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
-                          alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), h.ptr(), h.ld());
+                          alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
         
         int iat = type->id();
 

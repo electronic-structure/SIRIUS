@@ -43,7 +43,7 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_->spl_num_atoms(ialoc);
-            f_mt_local_(ialoc) = Spheric_function<spectral, T>(NULL, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
+            f_mt_local_(ialoc) = Spheric_function<spectral, T>(nullptr, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
         }
     }
     
@@ -89,9 +89,9 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
 template <typename T>
 void Periodic_function<T>::zero()
 {
-    if (f_mt_.ptr()) f_mt_.zero();
-    if (f_it_.ptr()) f_it_.zero();
-    if (f_pw_.ptr()) f_pw_.zero();
+    if (f_mt_.template at<CPU>()) f_mt_.zero();
+    if (f_it_.template at<CPU>()) f_it_.zero();
+    if (f_pw_.template at<CPU>()) f_pw_.zero();
     if (unit_cell_->full_potential())
     {
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
@@ -120,7 +120,7 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 {
     Timer t("sirius::Periodic_function::sync");
 
-    if (f_it_.ptr() != NULL && sync_it)
+    if (f_it_.template at<CPU>() != NULL && sync_it)
     {
         splindex<block> spl_fft_size(fft_->size(), comm_.size(), comm_.rank());
         auto offsets = spl_fft_size.offsets();
@@ -128,7 +128,7 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
         comm_.allgather(&f_it_(0), &counts[0], &offsets[0]);
     }
     
-    if (f_mt_.ptr() != NULL && sync_mt)
+    if (f_mt_.template at<CPU>() != NULL && sync_mt)
     {
         comm_.allgather(&f_mt_(0, 0, 0), 
                         (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset()), 
@@ -139,7 +139,7 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 template <typename T>
 inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
 {
-    comm_.allgather(f_it_local_.ptr(), f_it__, (int)spl_fft_size_.global_offset(), (int)spl_fft_size_.local_size());
+    comm_.allgather(f_it_local_.template at<CPU>(), f_it__, (int)spl_fft_size_.global_offset(), (int)spl_fft_size_.local_size());
 
     if (unit_cell_->full_potential()) 
     {
