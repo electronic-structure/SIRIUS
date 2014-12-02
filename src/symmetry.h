@@ -122,7 +122,7 @@ class Symmetry
                 {
                     auto gv = fft__->gvec(ig);
                     /* apply symmetry operation to the G-vector */
-                    vector3d<int> gv_rot = sm * gv;
+                    vector3d<int> gv_rot = transpose(sm) * gv;
                     for (int x = 0; x < 3; x++)
                     {
                         auto limits = fft__->grid_limits(x);
@@ -144,7 +144,7 @@ class Symmetry
                     if (ig_rot >= fft__->num_gvec())
                     {
                         std::stringstream s;
-                        s << "rotated G-vector indes is wrong" << std::endl
+                        s << "rotated G-vector index is wrong" << std::endl
                           << "original G-vector: " << gv << std::endl
                           << "rotation matrix: " << std::endl
                           << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
@@ -172,21 +172,14 @@ class Symmetry
                 for (int ig = 0; ig < fft__->num_gvec(); ig++)
                 {
                     /* apply symmetry operation to the G-vector */
-                    vector3d<int> gv_rot = sm * fft__->gvec(ig);
-                    //== for (int x = 0; x < 3; x++)
-                    //== {
-                    //==     auto limits = fft__->grid_limits(x);
-                    //==     /* check boundaries */
-                    //==     if (gv_rot[x] < limits.first) gv_rot[x] = limits.second + (gv_rot[x] - limits.first) + 1;
-                    //==     if (gv_rot[x] > limits.second) gv_rot[x] = limits.first + (gv_rot[x] - limits.second) - 1;
-                    //== }
+                    vector3d<int> gv_rot = transpose(sm) * fft__->gvec(ig);
 
                     /* index of a rotated G-vector */
                     int ig_rot = fft__->gvec_index(gv_rot);
 
                     assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
 
-                    sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, -twopi * (gv_rot[0] * sv[0] + gv_rot[1] * sv[1] + gv_rot[2] * sv[2])));
+                    sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, -twopi * (gv_rot * sv)));
                 }
             }
 
