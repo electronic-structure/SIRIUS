@@ -626,14 +626,44 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     mdarray<double_complex, 2> phi(ngk, ngk);
     mdarray<double_complex, 2> hphi(ngk, ngk);
     mdarray<double_complex, 2> ophi(ngk, ngk);
+    matrix<double_complex> kappa(ngk, ngk);
     
     std::vector<double> eval(ngk);
 
     phi.zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
+
+    auto uc = parameters_.unit_cell();
+
+    /* offset in the packed array of on-site matrices */
+    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    int packed_mtrx_size = 0;
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {   
+        int nbf = uc->atom(ia)->mt_basis_size();
+        packed_mtrx_offset(ia) = packed_mtrx_size;
+        packed_mtrx_size += nbf * nbf;
+    }
     
-    STOP(); // and crete packed matrices
-    //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, ngk, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+    /* pack Q and D matrices */
+    mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
+    mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
+
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {
+        int nbf = uc->atom(ia)->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
+                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+            }
+        }
+    }
+    
+    apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, ngk, phi, hphi, ophi, kappa, packed_mtrx_offset,
+                         d_mtrx_packed, q_mtrx_packed);
         
     gen_evp_solver()->solve(ngk, num_bands, num_bands, num_bands, hphi.at<CPU>(), hphi.ld(), ophi.at<CPU>(), ophi.ld(), 
                             &eval[0], psi.at<CPU>(), psi.ld());
@@ -1141,8 +1171,12 @@ void Band::diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
 
     /* estimate low and upper bounds of the Chebyshev filter */
     double lambda0 = -1e10;
-    for (int i = 0; i < num_bands; i++) lambda0 = std::max(lambda0, e0[i]);
-    lambda0 -= 0.1;
+    //double emin = 1e100;
+    for (int i = 0; i < num_bands; i++)
+    {
+        lambda0 = std::max(lambda0, e0[i]);
+        //emin = std::min(emin, e0[i]);
+    }
     double lambda1 = 0.5 * std::pow(parameters_.gk_cutoff(), 2);
 
     double r = (lambda1 - lambda0) / 2.0;
