@@ -43,6 +43,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                                matrix<double_complex>& hphi__)
 {
     Timer t("sirius::Band::apply_h_local_slice");
+    log_function_enter(__func__);
 
     assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
     assert(phi__.size(1) >= (size_t)num_phi__ && hphi__.size(1) >= (size_t)num_phi__);
@@ -219,7 +220,8 @@ void Band::apply_h_local_slice(K_point* kp__,
         }
     }
     for (auto& thread: fft_threads) thread.join();
-
+    
+    log_function_exit(__func__);
     //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
 }
 
@@ -238,7 +240,7 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
                                                double_complex alpha)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::add_non_local_contribution_parallel", kp__->comm());
+    Timer t("sirius::Band::add_non_local_contribution_parallel");
 
     /* beginning of the band index */
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
@@ -348,7 +350,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                                   dmatrix<double_complex>& hphi__)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::apply_h_local_parallel", kp__->comm());
+    Timer t("sirius::Band::apply_h_local_parallel", kp__->comm_row());
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
@@ -382,7 +384,7 @@ void Band::apply_h_parallel(K_point* kp__,
                             mdarray<double_complex, 1>& d_mtrx_packed__)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::apply_h_parallel", kp__->comm());
+    Timer t("sirius::Band::apply_h_parallel", kp__->comm_row());
 
     /* beginning of the band index */
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
@@ -426,7 +428,7 @@ void Band::apply_h_o_parallel(K_point* kp__,
                               mdarray<double_complex, 1>& q_mtrx_packed__)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::apply_h_o_parallel", kp__->comm());
+    Timer t("sirius::Band::apply_h_o_parallel", kp__->comm_row());
 
     /* beginning of the band index */
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());

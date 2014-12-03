@@ -36,20 +36,8 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
       comm_(comm__)
 {
     spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
-    if (unit_cell_->full_potential())
-    {
-        f_mt_ = mdarray<T, 3>(nullptr, angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
-        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_->spl_num_atoms().local_size());
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
-        {
-            int ia = unit_cell_->spl_num_atoms(ialoc);
-            f_mt_local_(ialoc) = Spheric_function<spectral, T>(nullptr, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
-        }
-    }
     
     f_pw_ = mdarray<double_complex, 1>(num_gvec_);
-    f_it_ = mdarray<T, 1>(nullptr, fft_->size());
-    f_it_local_ = mdarray<T, 1>(nullptr, spl_fft_size_.local_size());
 }
 
 template <typename T>
@@ -63,7 +51,6 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
     if (allocate_global_it)
     {
         f_it_ = mdarray<T, 1>(fft_->size());
-        f_it_local_ = mdarray<T, 1>(nullptr, spl_fft_size_.local_size());
         set_local_it_ptr();
     }
     else
@@ -89,9 +76,9 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
 template <typename T>
 void Periodic_function<T>::zero()
 {
-    if (f_mt_.template at<CPU>()) f_mt_.zero();
-    if (f_it_.template at<CPU>()) f_it_.zero();
-    if (f_pw_.template at<CPU>()) f_pw_.zero();
+    f_mt_.zero();
+    f_it_.zero();
+    f_pw_.zero();
     if (unit_cell_->full_potential())
     {
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
@@ -120,7 +107,7 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 {
     Timer t("sirius::Periodic_function::sync");
 
-    if (f_it_.template at<CPU>() != NULL && sync_it)
+    if (f_it_.size () !=0 && sync_it)
     {
         splindex<block> spl_fft_size(fft_->size(), comm_.size(), comm_.rank());
         auto offsets = spl_fft_size.offsets();
@@ -128,7 +115,7 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
         comm_.allgather(&f_it_(0), &counts[0], &offsets[0]);
     }
     
-    if (f_mt_.template at<CPU>() != NULL && sync_mt)
+    if (f_mt_.size() != 0 && sync_mt)
     {
         comm_.allgather(&f_mt_(0, 0, 0), 
                         (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset()), 
