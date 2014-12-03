@@ -65,7 +65,7 @@ class BLACS_grid
 
             /* create context */
             blacs_context_ = blacs_handler_;
-            linalg_base::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
+            linalg_base::gridmap(&blacs_context_, &map_ranks(0, 0), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
 
             /* check the grid */
             int nrow1, ncol1, irow1, icol1;

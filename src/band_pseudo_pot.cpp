@@ -5,6 +5,33 @@
 
 namespace sirius {
 
+#ifdef _GPU_
+extern "C" void compute_residuals_gpu(int num_gkvec_row,
+                                      int num_res_local,
+                                      int* res_idx,
+                                      double* eval,
+                                      double_complex const* hpsi,
+                                      double_complex const* opsi,
+                                      double_complex* res,
+                                      double* res_norm);
+
+extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
+                                         int num_res_local,
+                                         int* res_idx,
+                                         double* eval,
+                                         double_complex const* h_diag,
+                                         double_complex const* o_diag,
+                                         double_complex* res,
+                                         double* res_norm);
+
+extern "C" void normalize_residuals_gpu(int num_gkvec_row,
+                                        int num_res_local,
+                                        int* res_idx,
+                                        double* norm2,
+                                        double_complex* res);
+#endif
+
+
 /** \param [in] phi Input wave-functions [storage: CPU].
  *  \param [out] hphi Result of application of operator to the wave-functions [storage: CPU].
  */
@@ -1330,6 +1357,186 @@ void Band::residuals_parallel(int N__,
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
+ */
+void Band::apply_h_serial(K_point* kp__, 
+                          std::vector<double> const& effective_potential__, 
+                          std::vector<double> const& pw_ekin__, 
+                          int N__,
+                          int n__,
+                          matrix<double_complex>& phi__,
+                          matrix<double_complex>& hphi__,
+                          matrix<double_complex>& kappa__,
+                          mdarray<int, 1>& packed_mtrx_offset__,
+                          mdarray<double_complex, 1>& d_mtrx_packed__)
+{
+    Timer t("sirius::Band::apply_h_serial");
+
+    auto uc = parameters_.unit_cell();
+
+    matrix<double_complex> phi, hphi;
+    
+    /* if temporary array is allocated, this would be the only big array on GPU */
+    bool economize_gpu_memory = (kappa__.size() != 0);
+
+    if (parameters_.processing_unit() == CPU)
+    {
+        phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+        hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+    }
+    if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+    {
+        phi  = matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+        hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+    }
+    if (parameters_.processing_unit() == GPU && economize_gpu_memory)
+    {
+        double_complex* gpu_ptr = kappa__.at<GPU>(0, parameters_.unit_cell()->mt_basis_size());
+        phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+        hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+    }
+    
+    /* apply local part of Hamiltonian */
+    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
+    
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+    {
+        /* copy hphi do device */
+        hphi.copy_to_device();
+    }
+    #endif
+
+    /* <\beta_{\xi}^{\alpha}|\phi_j> */
+    matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
+
+    /* D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+    matrix<double_complex> work(uc->mt_lo_basis_size(), n__);
+
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU)
+    {
+        beta_phi.allocate_on_device();
+        work.allocate_on_device();
+    }
+    #endif
+
+    if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
+    {
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+
+        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
+                                         kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         hphi, n__, 0, complex_one, work);
+    }
+    else
+    {
+        #ifdef _GPU_
+        kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, kappa__);
+        phi.copy_to_device();
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kappa__, beta_phi);
+        
+        hphi.copy_to_device();
+        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
+                                         kappa__, d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         hphi, n__, 0, complex_one, work);
+        hphi.copy_to_host();
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
+    #endif
+}
+
+/** \param [in] phi Input wave-functions [storage: CPU || GPU].
+ *  \param [out] op_phi Result of application of operator to the wave-functions [storage: CPU || GPU].
+ */
+void Band::add_non_local_contribution_serial(K_point* kp__,
+                                             int N__,
+                                             int n__,
+                                             matrix<double_complex>& phi__,
+                                             matrix<double_complex>& op_phi__, 
+                                             matrix<double_complex>& kappa__,
+                                             mdarray<int, 1> const& packed_mtrx_offset__,
+                                             mdarray<double_complex, 1>& op_mtrx_packed__,
+                                             double_complex alpha)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::add_non_local_contribution_serial");
+
+    auto uc = parameters_.unit_cell();
+
+    matrix<double_complex> phi, op_phi;
+    
+    /* if temporary array is allocated, this would be the only big array on GPU */
+    bool economize_gpu_memory = (kappa__.size() != 0);
+
+    if (parameters_.processing_unit() == CPU)
+    {
+        phi    = matrix<double_complex>(   phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+        op_phi = matrix<double_complex>(op_phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+    }
+    if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+    {
+        phi    = matrix<double_complex>(   phi__.at<CPU>(0, N__),    phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+        op_phi = matrix<double_complex>(op_phi__.at<CPU>(0, N__), op_phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+    }
+    if (parameters_.processing_unit() == GPU && economize_gpu_memory)
+    {
+        double_complex* gpu_ptr = kappa__.at<GPU>(0, parameters_.unit_cell()->mt_basis_size());
+        phi    = matrix<double_complex>(   phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+        op_phi = matrix<double_complex>(op_phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+    }
+    
+    /* <\beta_{\xi}^{\alpha}|\phi_j> */
+    matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
+
+    /* operator multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+    matrix<double_complex> work(uc->mt_lo_basis_size(), n__);
+
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU)
+    {
+        beta_phi.allocate_on_device();
+        work.allocate_on_device();
+    }
+    #endif
+
+    if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
+    {
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+
+        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
+                                         kp__->beta_pw_panel().panel(), op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         op_phi, n__, 0, alpha, work);
+    }
+    else
+    {
+        #ifdef _GPU_
+        kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, kappa__);
+        phi.copy_to_device();
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kappa__, beta_phi);
+        
+        op_phi.copy_to_device();
+        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
+                                         kappa__, op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         op_phi, n__, 0, alpha, work);
+        op_phi.copy_to_host();
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
+    #endif
+
+    log_function_exit(__func__);
+}
+
+
+/** \param [in] phi Input wave-functions [storage: CPU && GPU].
+ *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
 void Band::apply_h_o_serial(K_point* kp__, 
@@ -1345,7 +1552,7 @@ void Band::apply_h_o_serial(K_point* kp__,
                             mdarray<double_complex, 1>& d_mtrx_packed__,
                             mdarray<double_complex, 1>& q_mtrx_packed__)
 {
-    Timer t("sirius::Band::apply_h_o_serial", kp__->comm());
+    Timer t("sirius::Band::apply_h_o_serial");
 
     auto uc = parameters_.unit_cell();
 
@@ -1793,32 +2000,6 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));
     }
 }
-
-#ifdef _GPU_
-extern "C" void compute_residuals_gpu(int num_gkvec_row,
-                                      int num_res_local,
-                                      int* res_idx,
-                                      double* eval,
-                                      double_complex const* hpsi,
-                                      double_complex const* opsi,
-                                      double_complex* res,
-                                      double* res_norm);
-
-extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
-                                         int num_res_local,
-                                         int* res_idx,
-                                         double* eval,
-                                         double_complex const* h_diag,
-                                         double_complex const* o_diag,
-                                         double_complex* res,
-                                         double* res_norm);
-
-extern "C" void normalize_residuals_gpu(int num_gkvec_row,
-                                        int num_res_local,
-                                        int* res_idx,
-                                        double* norm2,
-                                        double_complex* res);
-#endif
 
 void Band::residuals_serial(K_point* kp__,
                             int N__,

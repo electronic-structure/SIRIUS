@@ -786,7 +786,7 @@ class mdarray: public mdarray_base<T, N>
                 mdarray_index_descriptor const& d2)
         {
             this->init_dimensions({d0, d1, d2});
-            this->set_ptr(ptr__);
+            this->ptr_ = ptr__;
             #ifdef _GPU_
             this->set_ptr_device(ptr_device__);
             #endif

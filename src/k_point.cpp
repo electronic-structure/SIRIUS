@@ -286,6 +286,7 @@ void K_point::update()
             fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
         
+        // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
         fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
 
         fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());

@@ -1929,7 +1929,7 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
     }
     else if (itso.type_ == "chebyshev")
     {
-        diag_fv_pseudo_potential_parallel_chebyshev(kp__, veff_it_coarse__);
+        diag_fv_pseudo_potential_chebyshev_parallel(kp__, veff_it_coarse__);
     }
     else
     {
@@ -1955,6 +1955,10 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
     else if (itso.type_ == "davidson")
     {
         diag_fv_pseudo_potential_serial_davidson(kp__, v0__, veff_it_coarse__);
+    }
+    else if (itso.type_ == "chebyshev")
+    {
+        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse__);
     }
     else
     {

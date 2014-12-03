@@ -140,6 +140,7 @@ class Band
                                     dmatrix<double_complex>& phi__,
                                     dmatrix<double_complex>& hphi__);
 
+        /// Apply full Hamiltonian (local + non-local parts, parallel version).
         void apply_h_parallel(K_point* kp__,
                               std::vector<double> const& effective_potential__,
                               std::vector<double> const& pw_ekin__,
@@ -226,6 +227,14 @@ class Band
         void diag_fv_pseudo_potential_parallel(K_point* kp__,
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
+                                                        double v0__,
+                                                        std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
+                                                         std::vector<double> const& veff_it_coarse__);
+    
         #endif
         
         /// Apply local part of Hamiltonian to a slice of wave-functions.
@@ -251,6 +260,27 @@ class Band
                           std::vector<double> const& pw_ekin__,
                           std::vector<double_complex>& h_diag__,
                           std::vector<double_complex>& o_diag__);
+
+        void apply_h_serial(K_point* kp__, 
+                            std::vector<double> const& effective_potential__, 
+                            std::vector<double> const& pw_ekin__, 
+                            int N__,
+                            int n__,
+                            matrix<double_complex>& phi__,
+                            matrix<double_complex>& hphi__,
+                            matrix<double_complex>& kappa__,
+                            mdarray<int, 1>& packed_mtrx_offset__,
+                            mdarray<double_complex, 1>& d_mtrx_packed__);
+
+        void add_non_local_contribution_serial(K_point* kp__,
+                                               int N__,
+                                               int n__,
+                                               matrix<double_complex>& phi__,
+                                               matrix<double_complex>& op_phi__, 
+                                               matrix<double_complex>& kappa__,
+                                               mdarray<int, 1> const& packed_mtrx_offset__,
+                                               mdarray<double_complex, 1>& op_mtrx_packed__,
+                                               double_complex alpha);
 
         void apply_h_o_serial(K_point* kp__, 
                               std::vector<double> const& effective_potential__, 
@@ -309,10 +339,6 @@ class Band
                               std::vector<double>& res_norm__,
                               matrix<double_complex>& kappa__);
 
-        void diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
-                                                        double v0__,
-                                                        std::vector<double>& veff_it_coarse__);
-
         //void apply_h_ncpp_parallel(K_point* kp__,
         //                           std::vector<double> const& effective_potential__,
         //                           std::vector<double> const& pw_ekin__,
@@ -339,14 +365,9 @@ class Band
                                    dmatrix<double_complex>& psi__,
                                    matrix<double_complex>& kappa__);
         
-        //void diag_fv_ncpp_parallel(K_point* kp__,
-        //                           double v0__,
-        //                           std::vector<double>& veff_it_coarse__);
+        void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
+                                                       std::vector<double> const& veff_it_coarse__);
 
-
-        void diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
-                                                         std::vector<double> const& veff_it_coarse__);
-    
     public:
         
         /// Constructor
