@@ -1262,6 +1262,22 @@ void Band::diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
                             hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                             &eval[0], evec.at<CPU>(), evec.ld());
     t2.stop();
+
+    if (true)
+    {
+        std::vector<double_complex> h_diag;
+        std::vector<double_complex> o_diag;
+        get_h_o_diag<true>(kp__, 0, pw_ekin, h_diag, o_diag);
+
+        mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
+        mdarray<double_complex, 2> opsi(kp__->num_gkvec(), num_bands);
+        mdarray<double_complex, 2> res(kp__->num_gkvec(), num_bands);
+        std::vector<double> res_norm(num_bands);
+        
+        residuals_serial(kp__, num_bands, num_bands, eval, evec, hphi, phi[0], hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
+
+        for (int i = 0; i < num_bands; i++) std::cout << "band : " << i << " residual : " << res_norm[i] << std::endl;
+    }
         
     Timer t3("sirius::Band::diag_fv_pseudo_potential|psi");
     /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
