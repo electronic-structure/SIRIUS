@@ -100,7 +100,9 @@ class initial_input_parameters
             std::string type_;
             int max_history_;
 
-            mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden"), max_history_(5)
+            bool exist_;
+
+            mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden"), max_history_(5), exist_(false)
             {
             }
 
@@ -108,6 +110,7 @@ class initial_input_parameters
             {
                 if (parser.exist("mixer"))
                 {
+                    exist_ = true;
                     JSON_tree section = parser["mixer"];
                     beta_ = section["beta"].get(beta_);
                     gamma_ = section["gamma"].get(gamma_);
@@ -237,6 +240,7 @@ class initial_input_parameters
             double extra_tolerance_;
             int version_;
             std::string type_;
+            int converge_by_energy_;
 
             iterative_solver_input_section() 
                 : num_steps_(4),
@@ -244,18 +248,20 @@ class initial_input_parameters
                   tolerance_(1e-4),
                   extra_tolerance_(1e-4),
                   version_(1),
-                  type_("davidson")
+                  type_("davidson"),
+                  converge_by_energy_(0)
             {
             }
 
             void read(JSON_tree const& parser)
             {
-                num_steps_ = parser["iterative_solver"]["num_steps"].get(num_steps_);
-                subspace_size_ = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
-                tolerance_ = parser["iterative_solver"]["tolerance"].get(tolerance_);
-                extra_tolerance_ = parser["iterative_solver"]["extra_tolerance"].get(extra_tolerance_);
-                version_ = parser["iterative_solver"]["version"].get(version_);
-                type_ = parser["iterative_solver"]["type"].get(type_);
+                num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
+                subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
+                tolerance_          = parser["iterative_solver"]["tolerance"].get(tolerance_);
+                extra_tolerance_    = parser["iterative_solver"]["extra_tolerance"].get(extra_tolerance_);
+                version_            = parser["iterative_solver"]["version"].get(version_);
+                type_               = parser["iterative_solver"]["type"].get(type_);
+                converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
             }
 
         } iterative_solver_input_section_;

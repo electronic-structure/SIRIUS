@@ -208,6 +208,11 @@ interface
        &bind(C, name="sirius_print_timers")
     end subroutine
 
+    subroutine sirius_use_internal_mixer(flag)&
+       &bind(C, name="sirius_use_internal_mixer")
+        integer,                 intent(out) :: flag
+    end subroutine
+
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
        &bind(C, name="sirius_density_initialize")
         use, intrinsic :: ISO_C_BINDING

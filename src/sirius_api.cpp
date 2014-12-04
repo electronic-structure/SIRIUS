@@ -2104,4 +2104,9 @@ void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
     *ig__ = global_parameters->fft()->gvec_index(vector3d<int>(gvec__[0], gvec__[1], gvec__[2])) + 1;
 }
 
+void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
+{
+    *use_internal_mixer__ = (global_parameters->mixer_input_section_.exist_) ? 1 : 0;
+}
+
 } // extern "C"

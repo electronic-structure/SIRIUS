@@ -360,43 +360,41 @@ class Density
         void mixer_input()
         {
             int k = 0;
-            //for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec_coarse(); ig++)
-            for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+            for (int ig = 0; ig < parameters_.fft_coarse()->num_gvec(); ig++)
             {
                 broyden_mixer_->input(k++, real(rho_->f_pw(ig)));
                 broyden_mixer_->input(k++, imag(rho_->f_pw(ig)));
             }
 
-            ///k = 0;
-            ///for (int ig = parameters_.reciprocal_lattice()->num_gvec_coarse(); ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
-            ///{
-            ///    linear_mixer_->input(k++, real(rho_->f_pw(ig)));
-            ///    linear_mixer_->input(k++, imag(rho_->f_pw(ig)));
-            ///}
+            k = 0;
+            for (int ig = parameters_.fft_coarse()->num_gvec(); ig < parameters_.fft()->num_gvec(); ig++)
+            {
+                linear_mixer_->input(k++, real(rho_->f_pw(ig)));
+                linear_mixer_->input(k++, imag(rho_->f_pw(ig)));
+            }
         }
 
         void mixer_output()
         {
-            int ngv = parameters_.reciprocal_lattice()->num_gvec();
-            //int ngvc = parameters_.reciprocal_lattice()->num_gvec_coarse();
+            int ngv = parameters_.fft()->num_gvec();
+            int ngvc = parameters_.fft_coarse()->num_gvec();
 
-            memcpy(&rho_->f_pw(0), broyden_mixer_->output_buffer(), ngv * sizeof(double_complex));
-            //memcpy(&rho_->f_pw(0), broyden_mixer_->output_buffer(), ngvc * sizeof(double_complex));
-            //memcpy(&rho_->f_pw(ngvc), linear_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+            memcpy(&rho_->f_pw(0), broyden_mixer_->output_buffer(), ngvc * sizeof(double_complex));
+            memcpy(&rho_->f_pw(ngvc), linear_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
         }
 
         void mixer_init()
         {
             mixer_input();
             broyden_mixer_->initialize();
-            //linear_mixer_->initialize();
+            linear_mixer_->initialize();
         }
 
         double mix()
         {
             mixer_input();
             double rms = broyden_mixer_->mix();
-            //rms += linear_mixer_->mix();
+            rms += linear_mixer_->mix();
             mixer_output();
 
             fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
