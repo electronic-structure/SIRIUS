@@ -2109,4 +2109,9 @@ void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
     *use_internal_mixer__ = (global_parameters->mixer_input_section_.exist_) ? 1 : 0;
 }
 
+void sirius_set_iterative_solver_tolerance(double* tol__)
+{
+    global_parameters->iterative_solver_input_section_.tolerance_ = *tol__;
+}
+
 } // extern "C"

@@ -213,6 +213,11 @@ interface
         integer,                 intent(out) :: flag
     end subroutine
 
+    subroutine sirius_set_iterative_solver_tolerance(tol)&
+       &bind(C, name="sirius_set_iterative_solver_tolerance")
+        real(8),                 intent(in) :: tol
+    end subroutine
+
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
        &bind(C, name="sirius_density_initialize")
         use, intrinsic :: ISO_C_BINDING

@@ -859,6 +859,12 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             #endif
 
             residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
+            //== printf("iterative step, tolerance: %i %18.12f\n", k, itso.tolerance_);
+            //== printf("residuals\n");
+            //== for (int i = 0; i < n; i++)
+            //== {
+            //==     printf("%i %12.6f\n", i, res_norm[i]);
+            //== } 
 
             #ifdef _GPU_
             if (parameters_.processing_unit() == GPU && economize_gpu_memory)
