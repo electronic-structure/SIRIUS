@@ -96,17 +96,17 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 {
     Timer t("sirius::DFT_ground_state::scf_loop");
     
-    Mixer* mx = NULL;
-    Mixer* mx_pot = NULL;
+    Mixer<double>* mx = NULL;
+    Mixer<double>* mx_pot = NULL;
     if (parameters_.mixer_input_section_.type_ == "broyden")
     {
-        mx = new Broyden_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
+        mx = new Broyden_mixer<double>(density_->size(), parameters_.mixer_input_section_.max_history_, 
                                parameters_.mixer_input_section_.beta_, parameters_.comm());
     }
     else if (parameters_.mixer_input_section_.type_ == "linear")
     {
-        mx = new Linear_mixer(density_->size(), parameters_.mixer_input_section_.beta_, parameters_.comm());
-        mx_pot = new Linear_mixer(potential_->size(), parameters_.mixer_input_section_.gamma_, parameters_.comm());
+        mx = new Linear_mixer<double>(density_->size(), parameters_.mixer_input_section_.beta_, parameters_.comm());
+        mx_pot = new Linear_mixer<double>(potential_->size(), parameters_.mixer_input_section_.gamma_, parameters_.comm());
     }
     //==else if (parameters_.mixer_input_section_.type_ == "adaptive")
     //=={

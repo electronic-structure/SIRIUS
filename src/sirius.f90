@@ -218,6 +218,11 @@ interface
         real(8),                 intent(in) :: tol
     end subroutine
 
+    subroutine sirius_get_density_dr2(dr2)&
+       &bind(C, name="sirius_get_density_dr2")
+        real(8),                 intent(out) :: dr2
+    end subroutine
+
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
        &bind(C, name="sirius_density_initialize")
         use, intrinsic :: ISO_C_BINDING

@@ -78,14 +78,19 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
 
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
 
-    linear_mixer_ = new Linear_mixer(2 * (parameters_.fft()->num_gvec() - parameters_.fft_coarse()->num_gvec()),
-                                     parameters_.iip_.mixer_input_section_.gamma_,
-                                     parameters_.comm());
+    linear_mixer_ = new Linear_mixer<double_complex>((parameters_.fft()->num_gvec() - parameters_.fft_coarse()->num_gvec()),
+                                                     parameters_.iip_.mixer_input_section_.beta_,
+                                                     parameters_.comm());
 
-    broyden_mixer_ = new Broyden_mixer(2 * parameters_.fft_coarse()->num_gvec(),
-                                       parameters_.iip_.mixer_input_section_.max_history_,
-                                       parameters_.iip_.mixer_input_section_.beta_,
-                                       parameters_.comm());
+    std::vector<double> weights(parameters_.fft_coarse()->num_gvec());
+    weights[0] = 0;
+    for (int ig = 1; ig < parameters_.fft_coarse()->num_gvec(); ig++) weights[ig] = fourpi * parameters_.unit_cell()->omega() / std::pow(parameters_.fft_coarse()->gvec_len(ig), 2);
+
+    broyden_mixer_ = new Broyden_modified_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
+                                                                parameters_.iip_.mixer_input_section_.max_history_,
+                                                                parameters_.iip_.mixer_input_section_.beta_,
+                                                                weights,
+                                                                parameters_.comm());
 }
 
 Density::~Density()

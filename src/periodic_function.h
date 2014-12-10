@@ -154,7 +154,7 @@ class Periodic_function
 
         size_t size();
 
-        size_t pack(size_t offset, Mixer* mixer);
+        size_t pack(size_t offset, Mixer<double>* mixer);
         
         size_t unpack(T* array);
        

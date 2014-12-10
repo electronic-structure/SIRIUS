@@ -40,10 +40,10 @@ std::vector<sirius::K_set*> kset_list;
 sirius::DFT_ground_state* dft_ground_state = nullptr;
 
 /// Charge density and magnetization mixer
-sirius::Mixer* mixer_rho = nullptr;
+sirius::Mixer<double>* mixer_rho = nullptr;
 
 /// Potential and magnetic field mixer
-sirius::Mixer* mixer_pot = nullptr;
+sirius::Mixer<double>* mixer_pot = nullptr;
 
 BLACS_grid* blacs_grid = nullptr;
 
@@ -1952,7 +1952,7 @@ void FORTRAN(sirius_potential_mixer_initialize)(void)
 {
     if (global_parameters->mixer_input_section_.type_ == "linear")
     {
-        mixer_pot = new sirius::Linear_mixer(potential->size(), global_parameters->mixer_input_section_.gamma_, global_parameters->comm());
+        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), global_parameters->mixer_input_section_.gamma_, global_parameters->comm());
 
         /* initialize potential mixer */
         potential->pack(mixer_pot);
@@ -2111,7 +2111,15 @@ void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
 
 void sirius_set_iterative_solver_tolerance(double* tol__)
 {
-    global_parameters->iterative_solver_input_section_.tolerance_ = *tol__;
+    if (global_parameters->iterative_solver_input_section_.converge_by_energy_ == 1)
+    {
+        global_parameters->iterative_solver_input_section_.tolerance_ = *tol__;
+    }
+}
+
+void sirius_get_density_dr2(double* dr2__)
+{
+    *dr2__ = density->dr2();
 }
 
 } // extern "C"

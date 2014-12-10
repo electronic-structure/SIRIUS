@@ -30,6 +30,7 @@ namespace sirius
 {
 
 /// Abstract mixer
+template <typename T>
 class Mixer
 {
     protected:
@@ -50,13 +51,13 @@ class Mixer
         int count_;
         
         /// Temporary storage for the input data.
-        mdarray<double, 1> input_buffer_;
+        mdarray<T, 1> input_buffer_;
         
         /// History of previous vectors.
-        mdarray<double, 2> vectors_;
+        mdarray<T, 2> vectors_;
 
         /// Output buffer for the whole vector.
-        mdarray<double, 1> output_buffer_;
+        mdarray<T, 1> output_buffer_;
         
         /// Base communicator.
         Communicator comm_;
@@ -71,12 +72,15 @@ class Mixer
         double rms_deviation()
         {
             double rms = 0.0;
-            for (int i = 0; i < (int)spl_size_.local_size(); i++)
+            if (size_ != 0)
             {
-                rms += std::pow(vectors_(i, offset(count_)) - input_buffer_(i), 2);
+                for (int i = 0; i < (int)spl_size_.local_size(); i++)
+                {
+                    rms += std::pow(std::abs(vectors_(i, offset(count_)) - input_buffer_(i)), 2);
+                }
+                comm_.allreduce(&rms, 1);
+                rms = sqrt(rms / double(size_));
             }
-            comm_.allreduce(&rms, 1);
-            rms = sqrt(rms / double(size_));
             return rms;
         }
 
@@ -85,7 +89,7 @@ class Mixer
             for (int i = 0; i < (int)spl_size_.local_size(); i++)
                 vectors_(i, offset(count_)) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, offset(count_ - 1));
 
-            comm_.allgather(&vectors_(0, offset(count_)), output_buffer_.at<CPU>(), (int)spl_size_.global_offset(), 
+            comm_.allgather(&vectors_(0, offset(count_)), output_buffer_.template at<CPU>(), (int)spl_size_.global_offset(), 
                             (int)spl_size_.local_size());
         }
 
@@ -100,18 +104,18 @@ class Mixer
         {
             spl_size_ = splindex<block>((int)size_, comm_.size(), comm_.rank());
             /* allocate input buffer (local size) */
-            input_buffer_ = mdarray<double, 1>(spl_size_.local_size());
+            input_buffer_ = mdarray<T, 1>(spl_size_.local_size());
             /* allocate output bffer (global size) */
-            output_buffer_ = mdarray<double, 1>(size_);
+            output_buffer_ = mdarray<T, 1>(size_);
             /* allocate storage for previous vectors (local size) */
-            vectors_ = mdarray<double, 2>(spl_size_.local_size(), max_history_);
+            vectors_ = mdarray<T, 2>(spl_size_.local_size(), max_history_);
         }
 
         virtual ~Mixer()
         {
         }
 
-        void input(size_t idx, double value)
+        void input(size_t idx, T value)
         {
             assert(idx < size_t(1 << 31));
 
@@ -119,14 +123,14 @@ class Mixer
             if (offs_and_rank.second == comm_.rank()) input_buffer_(offs_and_rank.first) = value;
         }
 
-        inline double* output_buffer()
+        inline T* output_buffer()
         {
-            return output_buffer_.at<CPU>();
+            return output_buffer_.template at<CPU>();
         }
 
         inline void initialize()
         {
-            memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(double));
+            memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(T));
         }
 
         inline double beta()
@@ -138,7 +142,8 @@ class Mixer
 };
 
 /// Primitive linear adaptive mixer
-class Linear_mixer: public Mixer
+template <typename T>
+class Linear_mixer: public Mixer<T>
 {
     private:
         
@@ -148,30 +153,25 @@ class Linear_mixer: public Mixer
         
         /// Constructor
         Linear_mixer(size_t size__, double beta0__, Communicator const& comm__) 
-            : Mixer(size__, 2, beta0__, comm__),
+            : Mixer<T>(size__, 2, beta0__, comm__),
               beta0_(beta0__)
         {
         }
 
         double mix()
         {
-            return mix(beta_);
+            return mix(this->beta_);
         }
 
         double mix(double beta__)
         {
-            double rms = rms_deviation();
+            double rms = this->rms_deviation();
 
-            count_++;
+            this->count_++;
 
-            mix_linear(beta_);
+            this->mix_linear(this->beta_);
 
             return rms;
-        }
-
-        void inc()
-        {
-            count_++;
         }
 };
 
@@ -179,18 +179,19 @@ class Linear_mixer: public Mixer
 /** Reference paper: "Robust acceleration of self consistent field calculations for 
  *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
  */
-class Broyden_mixer: public Mixer
+template <typename T>
+class Broyden_mixer: public Mixer<T>
 {
     private:
 
-        mdarray<double, 2> residuals_;
+        mdarray<T, 2> residuals_;
     
     public:
 
         Broyden_mixer(size_t size__, int max_history__, double beta__, Communicator const& comm__) 
-            : Mixer(size__, max_history__, beta__, comm__)
+            : Mixer<T>(size__, max_history__, beta__, comm__)
         {
-            residuals_ = mdarray<double, 2>(spl_size_.local_size(), max_history__);
+            residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
         }
 
         double mix()
@@ -198,15 +199,15 @@ class Broyden_mixer: public Mixer
             Timer t("sirius::Broyden_mixer::mix");
 
             /* curent residual f_k = x_k - g(x_k) */
-            for (int i = 0; i < (int)spl_size_.local_size(); i++) 
-                residuals_(i, offset(count_)) = vectors_(i, offset(count_)) - input_buffer_(i);
+            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                residuals_(i, this->offset(this->count_)) = this->vectors_(i, this->offset(this->count_)) - this->input_buffer_(i);
 
-            double rms = rms_deviation();
+            double rms = this->rms_deviation();
 
-            count_++;
+            this->count_++;
 
             /* at this point we have min(count_, max_history_) residuals and vectors from the previous iterations */
-            int N = std::min(count_, max_history_);
+            int N = std::min(this->count_, this->max_history_);
 
             if (N > 1)
             {
@@ -217,17 +218,17 @@ class Broyden_mixer: public Mixer
                 { 
                     for (int j2 = 0; j2 <= j1; j2++)
                     {
-                        for (int i = 0; i < (int)spl_size_.local_size(); i++) 
+                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                         {
-                            S(j1, j2) += residuals_(i, offset(count_ - N + j1)) * residuals_(i, offset(count_ - N + j2));
+                            S(j1, j2) += residuals_(i, this->offset(this->count_ - N + j1)) * residuals_(i, this->offset(this->count_ - N + j2));
                         }
                         S(j2, j1) = S(j1, j2);
                     }
                 }
-                comm_.allreduce(S.at<CPU>(), (int)S.size());
+                this->comm_.allreduce(S.at<CPU>(), (int)S.size());
                 for (int j1 = 0; j1 < N; j1++)
                 { 
-                    for (int j2 = 0; j2 < N; j2++) S(j1, j2) /= size_;
+                    for (int j2 = 0; j2 < N; j2++) S(j1, j2) /= this->size_;
                 }
                
                 mdarray<long double, 2> gamma_k(2 * N, N);
@@ -263,23 +264,144 @@ class Broyden_mixer: public Mixer
                 v2[2 * N - 1] += 1;
                 
                 /* use input_buffer as a temporary storage */
-                input_buffer_.zero();
+                this->input_buffer_.zero();
 
                 /* make linear combination of vectors and residuals; this is the update vector \tilda x */
                 for (int j = 0; j < N; j++)
                 {
-                    for (int i = 0; i < (int)spl_size_.local_size(); i++) 
+                    for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                     {
-                        input_buffer_(i) += ((double)v2[j] * residuals_(i, offset(count_ - N + j)) + 
-                                             (double)v2[j + N] * vectors_(i, offset(count_ - N + j)));
+                        this->input_buffer_(i) += ((double)v2[j] * residuals_(i, this->offset(this->count_ - N + j)) + 
+                                                   (double)v2[j + N] * this->vectors_(i, this->offset(this->count_ - N + j)));
                     }
                 }
             }
             
             /* mix last vector with the update vector \tilda x */
-            mix_linear(beta_);
+            this->mix_linear(this->beta_);
 
             return rms;
+        }
+};
+
+template <typename T>
+class Broyden_modified_mixer: public Mixer<T>
+{
+    private:
+
+        mdarray<T, 2> residuals_;
+
+        std::vector<double> weights_;
+
+        double dr2_; // TODO: good name for this
+    
+    public:
+
+        Broyden_modified_mixer(size_t size__, int max_history__, double beta__, std::vector<double>& weights__, Communicator const& comm__) 
+            : Mixer<T>(size__, max_history__, beta__, comm__)
+        {
+            residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
+            weights_ = weights__;
+        }
+
+        double mix()
+        {
+            Timer t("sirius::Broyden_modified_mixer::mix");
+            
+            dr2_ = 0;
+            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+            {
+                residuals_(i, this->offset(this->count_)) = this->input_buffer_(i) - this->vectors_(i, this->offset(this->count_));
+                dr2_ += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, this->offset(this->count_))) *  residuals_(i, this->offset(this->count_))) * 
+                        weights_[this->spl_size_[i]];
+            }
+            if (dr2_ < 1e-9)
+            {
+                for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
+                    this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, this->offset(this->count_));
+                return 0;
+            }
+
+            double rms = this->rms_deviation();
+
+            /* linear part */
+            for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
+                this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, this->offset(this->count_)) + this->beta_ * residuals_(i, this->offset(this->count_));
+
+            int N = std::min(this->count_, this->max_history_);
+
+            if (N > 0)
+            {
+                mdarray<double, 2> S(N, N);
+                S.zero();
+                for (int j1 = 0; j1 < N; j1++)
+                { 
+                    for (int j2 = 0; j2 <= j1; j2++)
+                    {
+                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                        {
+                            T dr1 = residuals_(i, this->offset(this->count_ - N + j1 + 1)) - residuals_(i, this->offset(this->count_ - N + j1));
+                            T dr2 = residuals_(i, this->offset(this->count_ - N + j2 + 1)) - residuals_(i, this->offset(this->count_ - N + j2));
+
+                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * weights_[this->spl_size_[i]];
+                        }
+                        S(j2, j1) = S(j1, j2);
+                    }
+                }
+                this->comm_.allreduce(S.at<CPU>(), (int)S.size());
+                
+                linalg<CPU>::geinv(N, S);
+
+                mdarray<double, 1> c(N);
+                c.zero();
+                for (int j = 0; j < N; j++)
+                {
+                    for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                    {
+                        T dr = residuals_(i, this->offset(this->count_ - N + j + 1)) - residuals_(i, this->offset(this->count_ - N + j));
+                        c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_))) * weights_[this->spl_size_[i]];
+                    }
+                }
+                this->comm_.allreduce(c.at<CPU>(), (int)c.size());
+
+                mdarray<double, 1> gamma(N);
+                gamma.zero();
+
+                for (int i = 0; i < N; i++)
+                {
+                    for (int j = 0; j < N; j++) gamma(i) += c(j) * S(j, i);
+                }
+
+                // use input_buffer as temporary storage
+                this->input_buffer_.zero();
+                for (int j = 0; j < N; j++)
+                {
+                    for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
+                    {
+                        T dr = residuals_(i, this->offset(this->count_ - N + j + 1)) - residuals_(i, this->offset(this->count_ - N + j));
+                        T dv = this->vectors_(i, this->offset(this->count_ - N + j + 1)) - this->vectors_(i, this->offset(this->count_ - N + j));
+
+                        T un = (dr * this->beta_ + dv);
+
+                        this->input_buffer_(i) -= gamma(j) * un;
+                    }
+                }
+
+                for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
+                    this->vectors_(i, this->offset(this->count_ + 1)) += this->input_buffer_(i);
+
+            }
+
+            this->comm_.allgather(&this->vectors_(0, this->offset(this->count_ + 1)), this->output_buffer_.template at<CPU>(), (int)this->spl_size_.global_offset(), 
+                                  (int)this->spl_size_.local_size());
+            this->count_++;
+
+            return rms;
+        }
+
+        inline double dr2()
+        {
+            return dr2_;
         }
 };
 

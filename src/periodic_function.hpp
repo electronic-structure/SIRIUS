@@ -243,7 +243,7 @@ size_t Periodic_function<T>::size()
 }
 
 template <typename T>
-size_t Periodic_function<T>::pack(size_t offset, Mixer* mixer)
+size_t Periodic_function<T>::pack(size_t offset, Mixer<double>* mixer)
 {
     size_t n = 0;
     

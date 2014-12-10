@@ -143,8 +143,8 @@ class Density
         /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
 
-        Linear_mixer* linear_mixer_;
-        Broyden_mixer* broyden_mixer_;
+        Linear_mixer<double_complex>* linear_mixer_;
+        Broyden_modified_mixer<double_complex>* broyden_mixer_;
 
         /// Get the local list of occupied bands
         /** Initially bands are distributed over k-points and columns of the MPI grid used 
@@ -314,7 +314,7 @@ class Density
             return s;
         }
 
-        inline void pack(Mixer* mixer)
+        inline void pack(Mixer<double>* mixer)
         {
             size_t n = rho_->pack(0, mixer);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer);
@@ -362,15 +362,13 @@ class Density
             int k = 0;
             for (int ig = 0; ig < parameters_.fft_coarse()->num_gvec(); ig++)
             {
-                broyden_mixer_->input(k++, real(rho_->f_pw(ig)));
-                broyden_mixer_->input(k++, imag(rho_->f_pw(ig)));
+                broyden_mixer_->input(k++, rho_->f_pw(ig));
             }
 
             k = 0;
             for (int ig = parameters_.fft_coarse()->num_gvec(); ig < parameters_.fft()->num_gvec(); ig++)
             {
-                linear_mixer_->input(k++, real(rho_->f_pw(ig)));
-                linear_mixer_->input(k++, imag(rho_->f_pw(ig)));
+                linear_mixer_->input(k++, rho_->f_pw(ig));
             }
         }
 
@@ -396,12 +394,17 @@ class Density
             double rms = broyden_mixer_->mix();
             rms += linear_mixer_->mix();
             mixer_output();
-
+            
             fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
             fft_->transform(1);
             fft_->output(&rho_->f_it<global>(0));
 
             return rms;
+        }
+
+        inline double dr2()
+        {
+            return broyden_mixer_->dr2();
         }
 };
 

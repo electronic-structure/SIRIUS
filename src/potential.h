@@ -388,7 +388,7 @@ class Potential
             return s;
         }
 
-        inline void pack(Mixer* mixer)
+        inline void pack(Mixer<double>* mixer)
         {
             size_t n = effective_potential_->pack(0, mixer);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);
