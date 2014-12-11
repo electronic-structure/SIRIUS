@@ -311,22 +311,23 @@ class Broyden_modified_mixer: public Mixer<T>
             dr2_ = 0;
             for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
             {
-                residuals_(i, this->offset(this->count_)) = this->input_buffer_(i) - this->vectors_(i, this->offset(this->count_));
-                dr2_ += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, this->offset(this->count_))) *  residuals_(i, this->offset(this->count_))) * 
-                        weights_[this->spl_size_[i]];
+                int ipos = this->offset(this->count_);
+                residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
+                dr2_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
             }
-            if (dr2_ < 1e-9)
-            {
-                for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
-                    this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, this->offset(this->count_));
-                return 0;
-            }
+
+            this->comm_.allreduce(&dr2_, 1);
+
+            if (dr2_ < 1e-9) return 0;
 
             double rms = this->rms_deviation();
 
             /* linear part */
             for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
-                this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, this->offset(this->count_)) + this->beta_ * residuals_(i, this->offset(this->count_));
+            {
+                int ipos = this->offset(this->count_);
+                this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos);
+            }
 
             int N = std::min(this->count_, this->max_history_);
 
@@ -364,32 +365,19 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
                 this->comm_.allreduce(c.at<CPU>(), (int)c.size());
 
-                mdarray<double, 1> gamma(N);
-                gamma.zero();
-
-                for (int i = 0; i < N; i++)
-                {
-                    for (int j = 0; j < N; j++) gamma(i) += c(j) * S(j, i);
-                }
-
-                // use input_buffer as temporary storage
-                this->input_buffer_.zero();
                 for (int j = 0; j < N; j++)
                 {
+                    double gamma = 0;
+                    for (int i = 0; i < N; i++) gamma += c(i) * S(i, j);
+
                     for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
                     {
                         T dr = residuals_(i, this->offset(this->count_ - N + j + 1)) - residuals_(i, this->offset(this->count_ - N + j));
                         T dv = this->vectors_(i, this->offset(this->count_ - N + j + 1)) - this->vectors_(i, this->offset(this->count_ - N + j));
 
-                        T un = (dr * this->beta_ + dv);
-
-                        this->input_buffer_(i) -= gamma(j) * un;
+                        this->vectors_(i, this->offset(this->count_ + 1)) -= gamma * (dr * this->beta_ + dv);
                     }
                 }
-
-                for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
-                    this->vectors_(i, this->offset(this->count_ + 1)) += this->input_buffer_(i);
-
             }
 
             this->comm_.allgather(&this->vectors_(0, this->offset(this->count_ + 1)), this->output_buffer_.template at<CPU>(), (int)this->spl_size_.global_offset(), 
