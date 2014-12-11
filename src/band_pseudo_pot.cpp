@@ -2091,9 +2091,11 @@ void Band::residuals_serial(K_point* kp__,
             {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
                 res__(igk, i) = hpsi__(igk, i) - eval__[i] * opsi__(igk, i);
-                r += real(conj(res__(igk, i)) * res__(igk, i));
+                //r += real(conj(res__(igk, i)) * res__(igk, i));
+                r = std::max(r, std::abs(res__(igk, i)));
             }
-            res_norm__[i] = std::sqrt(r);
+            //res_norm__[i] = std::sqrt(r);
+            res_norm__[i] = r;
             
             /* apply preconditioner */
             for (int igk = 0; igk < kp__->num_gkvec(); igk++)
