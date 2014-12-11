@@ -1,4 +1,5 @@
 // This file must be compiled with nvcc
+#include <execinfo.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -20,6 +21,16 @@ extern "C" void print_cuda_timers()
 //================
 // CUDA functions
 //================
+void stack_backtrace()
+{
+    void *array[10];
+    char **strings;
+    int size = backtrace(array, 10);
+    strings = backtrace_symbols(array, size);
+    printf ("Stack backtrace:\n");
+    for (size_t i = 0; i < size; i++) printf ("%s\n", strings[i]);
+    raise(SIGQUIT);
+}
 
 #ifdef NDEBUG
 #define CALL_CUDA(func__, args__)                                                                                  \
@@ -31,8 +42,7 @@ extern "C" void print_cuda_timers()
         gethostname(nm, 1024);                                                                                     \
         printf("hostname: %s\n", nm);                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        raise(SIGTERM);                                                                                            \
-        exit(-100);                                                                                                \
+        stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
 #else
@@ -48,8 +58,7 @@ extern "C" void print_cuda_timers()
         gethostname(nm, 1024);                                                                                     \
         printf("hostname: %s\n", nm);                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        raise(SIGTERM);                                                                                            \
-        exit(-100);                                                                                                \
+        stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
 #endif
