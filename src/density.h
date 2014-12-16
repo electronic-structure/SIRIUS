@@ -143,8 +143,8 @@ class Density
         /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
 
-        Linear_mixer<double_complex>* linear_mixer_;
-        Broyden_modified_mixer<double_complex>* broyden_mixer_;
+        Mixer<double_complex>* high_freq_mixer_;
+        Mixer<double_complex>* low_freq_mixer_;
 
         /// Get the local list of occupied bands
         /** Initially bands are distributed over k-points and columns of the MPI grid used 
@@ -362,13 +362,13 @@ class Density
             int k = 0;
             for (int ig = 0; ig < parameters_.fft_coarse()->num_gvec(); ig++)
             {
-                broyden_mixer_->input(k++, rho_->f_pw(ig));
+                low_freq_mixer_->input(k++, rho_->f_pw(ig));
             }
 
             k = 0;
             for (int ig = parameters_.fft_coarse()->num_gvec(); ig < parameters_.fft()->num_gvec(); ig++)
             {
-                linear_mixer_->input(k++, rho_->f_pw(ig));
+                high_freq_mixer_->input(k++, rho_->f_pw(ig));
             }
         }
 
@@ -377,22 +377,22 @@ class Density
             int ngv = parameters_.fft()->num_gvec();
             int ngvc = parameters_.fft_coarse()->num_gvec();
 
-            memcpy(&rho_->f_pw(0), broyden_mixer_->output_buffer(), ngvc * sizeof(double_complex));
-            memcpy(&rho_->f_pw(ngvc), linear_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+            memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
+            memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
         }
 
         void mixer_init()
         {
             mixer_input();
-            broyden_mixer_->initialize();
-            linear_mixer_->initialize();
+            low_freq_mixer_->initialize();
+            high_freq_mixer_->initialize();
         }
 
         double mix()
         {
             mixer_input();
-            double rms = broyden_mixer_->mix();
-            rms += linear_mixer_->mix();
+            double rms = low_freq_mixer_->mix();
+            rms += high_freq_mixer_->mix();
             mixer_output();
             
             fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
@@ -404,7 +404,7 @@ class Density
 
         inline double dr2()
         {
-            return broyden_mixer_->dr2();
+            return low_freq_mixer_->rss();
         }
 };
 

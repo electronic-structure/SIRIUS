@@ -62,6 +62,9 @@ class Mixer
         /// Base communicator.
         Communicator comm_;
 
+        /// Residual sum of squares.
+        double rss_;
+
         /// Return position in the list of mixed vectors for the given mixing step.
         inline int offset(int step__)
         {
@@ -100,7 +103,8 @@ class Mixer
               max_history_(max_history__), 
               beta_(beta__), 
               count_(0),
-              comm_(comm__)
+              comm_(comm__),
+              rss_(0)
         {
             spl_size_ = splindex<block>((int)size_, comm_.size(), comm_.rank());
             /* allocate input buffer (local size) */
@@ -136,6 +140,11 @@ class Mixer
         inline double beta()
         {
             return beta_;
+        }
+
+        inline double rss()
+        {
+            return rss_;
         }
             
         virtual double mix() = 0;
@@ -202,6 +211,17 @@ class Broyden_mixer: public Mixer<T>
             for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                 residuals_(i, this->offset(this->count_)) = this->vectors_(i, this->offset(this->count_)) - this->input_buffer_(i);
 
+            this->rss_ = 0;
+            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+            {
+                int ipos = this->offset(this->count_);
+                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
+            }
+
+            this->comm_.allreduce(&this->rss_, 1);
+
+            if (this->rss_ < 1e-9) return 0;
+
             double rms = this->rms_deviation();
 
             this->count_++;
@@ -220,7 +240,7 @@ class Broyden_mixer: public Mixer<T>
                     {
                         for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                         {
-                            S(j1, j2) += residuals_(i, this->offset(this->count_ - N + j1)) * residuals_(i, this->offset(this->count_ - N + j2));
+                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, this->offset(this->count_ - N + j1))) * residuals_(i, this->offset(this->count_ - N + j2)));
                         }
                         S(j2, j1) = S(j1, j2);
                     }
@@ -293,8 +313,6 @@ class Broyden_modified_mixer: public Mixer<T>
 
         std::vector<double> weights_;
 
-        double dr2_; // TODO: good name for this
-    
     public:
 
         Broyden_modified_mixer(size_t size__, int max_history__, double beta__, std::vector<double>& weights__, Communicator const& comm__) 
@@ -308,17 +326,17 @@ class Broyden_modified_mixer: public Mixer<T>
         {
             Timer t("sirius::Broyden_modified_mixer::mix");
             
-            dr2_ = 0;
+            this->rss_ = 0;
             for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
             {
                 int ipos = this->offset(this->count_);
                 residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
-                dr2_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
+                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
             }
 
-            this->comm_.allreduce(&dr2_, 1);
+            this->comm_.allreduce(&this->rss_, 1);
 
-            if (dr2_ < 1e-9) return 0;
+            //if (this->rss_ < 1e-9) return 0;
 
             double rms = this->rms_deviation();
 
@@ -385,11 +403,6 @@ class Broyden_modified_mixer: public Mixer<T>
             this->count_++;
 
             return rms;
-        }
-
-        inline double dr2()
-        {
-            return dr2_;
         }
 };
 

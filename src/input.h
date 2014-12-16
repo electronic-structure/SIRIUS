@@ -102,7 +102,7 @@ class initial_input_parameters
 
             bool exist_;
 
-            mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden"), max_history_(5), exist_(false)
+            mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden2"), max_history_(8), exist_(false)
             {
             }
 
