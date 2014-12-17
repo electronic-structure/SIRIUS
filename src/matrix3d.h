@@ -162,5 +162,5 @@ matrix3d<T> inverse(matrix3d<T> src)
 
     return mtrx;
 }
-    
+
 #endif // __MATRIX3D_H__

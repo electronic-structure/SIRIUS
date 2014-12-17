@@ -217,6 +217,8 @@ class K_point
 
     public:
 
+        initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+
         /// Constructor
         K_point(Global& parameters__, double* vk__, double weight__, BLACS_grid const& blacs_grid__) 
             : parameters_(parameters__), 
@@ -251,6 +253,8 @@ class K_point
             /* additionally split along rows */
             sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
             sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
+
+            iterative_solver_input_section_ = parameters_.iterative_solver_input_section_;
         }
 
         ~K_point()

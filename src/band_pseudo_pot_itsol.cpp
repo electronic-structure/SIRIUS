@@ -352,7 +352,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();
 
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = kp__->iterative_solver_input_section_;
 
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
@@ -702,7 +702,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         get_h_o_diag<false>(kp__, v0__, pw_ekin, h_diag, o_diag);
     }
 
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = kp__->iterative_solver_input_section_;
     
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
@@ -824,28 +824,36 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
+        /* stage 1: setup eigen-value problem.
+         * N is the number of previous basis functions
+         * n is the number of new basis functions
+         */
         set_fv_h_o_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old,
                           kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
  
         /* increase size of the variation space */
         N += n;
         
+        /* stage 2: solve generalized eigen-value problem with the size N */
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
-
+        
+        /* copy eigen-vectors to GPU */
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
             cublas_set_matrix(N, num_bands, sizeof(double_complex), evec.at<CPU>(), evec.ld(), evec.at<GPU>(), evec.ld());
         #endif
 
+        /* stage 3: compute residuals */
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1)
         {
             if (converge_by_energy)
             {
+                /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
@@ -862,12 +870,6 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 #endif
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
-                //== printf("iterative step, tolerance: %i %18.12f\n", k, itso.tolerance_);
-                //== printf("residuals\n");
-                //== for (int i = 0; i < n; i++)
-                //== {
-                //==     printf("%i %12.6f\n", i, res_norm[i]);
-                //== } 
 
                 #ifdef _GPU_
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)
@@ -898,12 +900,13 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 #endif
                 
                 Timer t1("sirius::Band::diag_fv_pseudo_potential|sort_res");
+
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
                     /* take the residual if it's norm is above the threshold */
                     if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
-                        (n != 0 && res_norm[i] > itso.extra_tolerance_))
+                        (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
                     {
                         /* shift unconverged residuals to the beginning of array */
                         if (n != i)
@@ -946,6 +949,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
         {   
             Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
+            /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             switch (parameters_.processing_unit())
             {
@@ -981,12 +985,19 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 }
             }
 
+            /* reduce the tolerance if residuals have converged before the last iteration */
+            if (n == 0 && (k < itso.num_steps_ - 1))
+            {
+                itso.tolerance_ /= 2;
+                itso.tolerance_ = std::max(itso.tolerance_, itso.extra_tolerance_);
+            }
+
             /* exit the loop if the eigen-vectors are converged or it's a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
                 if (verbosity_level >= 6 && kp__->comm().rank() == 0)
                 {
-                    INFO << "exiting iterative solver after " << k << " iteration(s)" << std::endl;
+                    INFO << "exiting iterative solver after " << k << " iteration(s)" << ", tolerance: " << itso.tolerance_ << std::endl;
                 }
                 break;
             }

@@ -336,18 +336,12 @@ class Broyden_modified_mixer: public Mixer<T>
 
             this->comm_.allreduce(&this->rss_, 1);
 
-            //if (this->rss_ < 1e-9) return 0;
-
             double rms = this->rms_deviation();
 
-            /* linear part */
-            for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
-            {
-                int ipos = this->offset(this->count_);
-                this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos);
-            }
-
             int N = std::min(this->count_, this->max_history_);
+            
+            /* use input_buffer as a temporary storage */
+            this->input_buffer_.zero();
 
             if (N > 0)
             {
@@ -368,6 +362,8 @@ class Broyden_modified_mixer: public Mixer<T>
                     }
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
+
+                //for (int j = 0; j < N; j++) S(j, j) += 1e-5;
                 
                 linalg<CPU>::geinv(N, S);
 
@@ -392,14 +388,23 @@ class Broyden_modified_mixer: public Mixer<T>
                     {
                         T dr = residuals_(i, this->offset(this->count_ - N + j + 1)) - residuals_(i, this->offset(this->count_ - N + j));
                         T dv = this->vectors_(i, this->offset(this->count_ - N + j + 1)) - this->vectors_(i, this->offset(this->count_ - N + j));
-
-                        this->vectors_(i, this->offset(this->count_ + 1)) -= gamma * (dr * this->beta_ + dv);
+                        
+                        this->input_buffer_(i) -= gamma * (dr * this->beta_ + dv);
                     }
                 }
             }
 
-            this->comm_.allgather(&this->vectors_(0, this->offset(this->count_ + 1)), this->output_buffer_.template at<CPU>(), (int)this->spl_size_.global_offset(), 
-                                  (int)this->spl_size_.local_size());
+            /* linear part */
+            for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
+            {
+                int ipos = this->offset(this->count_);
+                this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, ipos) +
+                                                                    this->beta_ * residuals_(i, ipos) +
+                                                                    this->input_buffer_(i);
+            }
+
+            this->comm_.allgather(&this->vectors_(0, this->offset(this->count_ + 1)), this->output_buffer_.template at<CPU>(),
+                                  (int)this->spl_size_.global_offset(), (int)this->spl_size_.local_size());
             this->count_++;
 
             return rms;
@@ -495,60 +500,6 @@ class Broyden_modified_mixer: public Mixer<T>
 //==         }
 //== };
 //== 
-//== class Adaptive_mixer: public Mixer
-//== {
-//==     private:
-//== 
-//==         //mdarray<double, 2> residuals_;
-//==     
-//==     public:
-//== 
-//==         Adaptive_mixer(size_t size__, int max_history__, double beta__) : Mixer(size__, max_history__, beta__)
-//==         {
-//==             // residuals_.set_dimensions(spl_size_.local_size(), max_history__);
-//==             // residuals_.allocate();
-//==         }
-//== 
-//==         double mix()
-//==         {
-//==             Timer t("sirius::Adaptive_mixer::mix");
-//== 
-//==             //== for (int i = 0; i < spl_size_.local_size(); i++) 
-//==             //==     residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
-//== 
-//==             count_++;
-//== 
-//==             int N = std::min(count_, max_history_);
-//== 
-//==             if (N > 1)
-//==             {
-//==                 for (int j = 0; j <= 10; j++)
-//==                 {
-//==                     //==double k0 = (1 - beta_) * double(j) / 10;
-//==                     //==double k1 = (1 - beta_) * double(10 - j) / 10;
-//==                     for (int i = 0; i < (int)spl_size_.local_size(); i++)
-//==                     {
-//==                         vectors_(i, offset(count_)) = 0.5 * (1 - beta_) * vectors_(i, offset(count_ - 2)) + 
-//==                                                       0.5 * (1 - beta_) * vectors_(i, offset(count_ - 1)) + 
-//==                                                       beta_ * input_buffer_(i); 
-//==                     }
-//==                     //==double rms = rms_deviation();
-//==                     //==if (Platform::mpi_rank() == 0) std::cout << " j = " << j << ", rms = " << rms << std::endl;
-//== 
-//==                     Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), (int)spl_size_.global_offset(), 
-//==                                         (int)spl_size_.local_size());
-//==                 }
-//==                
-//==             }
-//==             else
-//==             {
-//==                 mix_linear(beta_);
-//==             }
-//== 
-//==             return rms_deviation();
-//==         }
-//== };
-
 }
 
 #endif // __MIXER_H__
