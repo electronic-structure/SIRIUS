@@ -506,6 +506,29 @@ void Density::initial_density()
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
 
+        //== FILE* fout = fopen("unit_cell.xsf", "w");
+        //== fprintf(fout, "CRYSTAL\n");
+        //== fprintf(fout, "PRIMVEC\n");
+        //== auto& lv = uc->lattice_vectors();
+        //== for (int i = 0; i < 3; i++)
+        //== {
+        //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
+        //== }
+        //== fprintf(fout, "CONVVEC\n");
+        //== for (int i = 0; i < 3; i++)
+        //== {
+        //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
+        //== }
+        //== fprintf(fout, "PRIMCOORD\n");
+        //== fprintf(fout, "%i 1\n", uc->num_atoms());
+        //== for (int ia = 0; ia < uc->num_atoms(); ia++)
+        //== {
+        //==     auto pos = uc->get_cartesian_coordinates(uc->atom(ia)->position());
+        //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", uc->atom(ia)->zn(), pos[0], pos[1], pos[2]);
+        //== }
+        //== fclose(fout);
+
+
         //== /* initialize the magnetization */
         //== if (parameters_.num_mag_dims())
         //== {

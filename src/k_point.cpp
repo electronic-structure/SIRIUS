@@ -35,7 +35,7 @@ void K_point::initialize()
    
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
 
-    band_energies_.resize(parameters_.num_bands());
+    band_energies_ = std::vector<double>(parameters_.num_bands(), 0);
 
     if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 

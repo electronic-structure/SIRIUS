@@ -722,7 +722,9 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     mdarray<double_complex, 2> evec_tmp;
 
     std::vector<double> eval(num_bands);
-    std::vector<double> eval_old(num_bands, 1e100);
+    std::vector<double> eval_old(num_bands);
+    for (int i = 0; i < num_bands; i++) eval_old[i] = kp__->band_energy(i);
+
     std::vector<double> eval_tmp(num_bands);
     
     /* residuals */
@@ -1010,7 +1012,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             {
                 if (verbosity_level >= 6 && kp__->comm().rank() == 0)
                 {
-                    DUMP("N = %i, n = %i", N, n);
+                    DUMP("N = %i, n = %i, k = %i", N, n, k);
                 }
                 break;
             }
