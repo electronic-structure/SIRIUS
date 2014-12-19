@@ -161,6 +161,7 @@ class Symmetry
 
         void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
         {
+            Timer t("sirius::Symmetry::symmetrize_function");
             mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
             sym_f_pw.zero();
 
