@@ -859,7 +859,9 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
-                    if (kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_)
+                    if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_) ||
+                        (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+
                     {
                         memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
