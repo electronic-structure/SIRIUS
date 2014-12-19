@@ -742,6 +742,11 @@ void sirius_find_band_occupancies(int32_t* kset_id__)
     log_function_exit(__func__);
 }
 
+void sirius_get_energy_fermi(int32_t* kset_id__, double* efermi__)
+{
+    *efermi__ = kset_list[*kset_id__]->energy_fermi();
+}
+
 void sirius_set_band_occupancies(int32_t* kset_id__,
                                  int32_t* ik__,
                                  double* band_occupancies__)

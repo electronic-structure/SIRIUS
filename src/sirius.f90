@@ -178,7 +178,13 @@ interface
        &bind(C, name="sirius_get_band_energies")
         integer,                 intent(in) :: kset_id
         integer,                 intent(in) :: ik
-        real(8),                 intent(in) :: band_energies
+        real(8),                 intent(out) :: band_energies
+    end subroutine
+
+    subroutine sirius_get_energy_fermi(kset_id, efermi)&
+       &bind(C, name="sirius_get_energy_fermi")
+        integer,                 intent(in) :: kset_id
+        real(8),                 intent(out) :: efermi
     end subroutine
 
     subroutine sirius_set_band_occupancies(kset_id, ik, band_occupancies)&

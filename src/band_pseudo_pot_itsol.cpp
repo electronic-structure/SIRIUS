@@ -1012,7 +1012,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             {
                 if (verbosity_level >= 6 && kp__->comm().rank() == 0)
                 {
-                    DUMP("N = %i, n = %i, k = %i", N, n, k);
+                    DUMP("N = %i, n = %i, k = %i, tol = %18.14f", N, n, k, itso.tolerance_);
                 }
                 break;
             }
