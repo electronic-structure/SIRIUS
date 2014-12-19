@@ -940,6 +940,19 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                                       res.at<CPU>(), res.ld());
                 }
                 #endif
+
+                std::vector<int> nr(3, 0);
+                for (int i = 0; i < num_bands; i++)
+                {
+                    if (res_norm[i] < itso.extra_tolerance_) nr[0]++;
+                    if (res_norm[i] >= itso.extra_tolerance_ && res_norm[i] < itso.tolerance_) nr[1]++;
+                    if (res_norm[i] >= itso.tolerance_) nr[2]++;
+                }
+
+                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+                {
+                    DUMP("residual statistics: %4.2f %4.2f %4.2f", double(nr[0]) / num_bands, double(nr[1]) / num_bands, double(nr[2]) / num_bands);
+                }
             }
         }
 
@@ -997,7 +1010,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             {
                 if (verbosity_level >= 6 && kp__->comm().rank() == 0)
                 {
-                    INFO << "exiting iterative solver after " << k << " iteration(s)" << ", tolerance: " << itso.tolerance_ << std::endl;
+                    DUMP("N = %i, n = %i", N, n);
                 }
                 break;
             }
@@ -1014,21 +1027,13 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 /* set new basis functions */
                 if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
                 {
-                    //memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                    //memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                    memcpy(hphi.at<CPU>(), psi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                    memcpy(ophi.at<CPU>(), psi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
-                    for (int i = 0; i < num_bands; i++)
-                    {
-                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) *= eval[i];
-                    }
+                    memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                    memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 }
                 
                 #ifdef _GPU_
                 if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
                 {
-                    // TODO: fix update of hpsi and opsi
-                    STOP();
                     cuda_copy_device_to_device(hphi.at<GPU>(), hpsi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                     cuda_copy_device_to_device(ophi.at<GPU>(), opsi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                     cuda_copy_device_to_device( phi.at<GPU>(),  psi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));

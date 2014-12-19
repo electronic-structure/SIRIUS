@@ -505,6 +505,133 @@ void Density::initial_density()
             rho_->f_it<global>(ir) = rho_->f_it<global>(ir) *  uc->num_valence_electrons() / charge;
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
+
+        //== /* initialize the magnetization */
+        //== if (parameters_.num_mag_dims())
+        //== {
+        //==     for (int ia = 0; ia < uc->num_atoms(); ia++)
+        //==     {
+        //==         vector3d<double> v = uc->atom(ia)->vector_field();
+        //==         double len = v.length();
+
+        //==         for (int j0 = 0; j0 < fft_->size(0); j0++)
+        //==         {
+        //==             for (int j1 = 0; j1 < fft_->size(1); j1++)
+        //==             {
+        //==                 for (int j2 = 0; j2 < fft_->size(2); j2++)
+        //==                 {
+        //==                     /* get real space fractional coordinate */
+        //==                     vector3d<double> v0(double(j0) / fft_->size(0), double(j1) / fft_->size(1), double(j2) / fft_->size(2));
+        //==                     /* index of real space point */
+        //==                     int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+
+        //==                     for (int t0 = -1; t0 <= 1; t0++)
+        //==                     {
+        //==                         for (int t1 = -1; t1 <= 1; t1++)
+        //==                         {
+        //==                             for (int t2 = -1; t2 <= 1; t2++)
+        //==                             {
+        //==                                 vector3d<double> v1 = v0 - (uc->atom(ia)->position() + vector3d<double>(t0, t1, t2));
+        //==                                 auto r = uc->get_cartesian_coordinates(vector3d<double>(v1));
+        //==                                 if (r.length() <= 2.0)
+        //==                                 {
+        //==                                     magnetization_[0]->f_it<global>(ir) = 1.0;
+        //==                                 }
+        //==                             }
+        //==                         }
+        //==                     }
+        //==                 }
+        //==             }
+        //==         }
+        //==     }
+        //== }
+
+
+        //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
+        //== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+
+        //== mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+        //== mag_grid.zero();
+
+        //== // loop over 3D array (real space)
+        //== for (int j0 = 0; j0 < fft_->size(0); j0++)
+        //== {
+        //==     for (int j1 = 0; j1 < fft_->size(1); j1++)
+        //==     {
+        //==         for (int j2 = 0; j2 < fft_->size(2); j2++)
+        //==         {
+        //==             int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+        //==             // get real space fractional coordinate
+        //==             double frv[] = {double(j0) / fft_->size(0), 
+        //==                             double(j1) / fft_->size(1), 
+        //==                             double(j2) / fft_->size(2)};
+        //==             vector3d<double> rv = parameters_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
+        //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
+        //==             if (parameters_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
+        //==             if (parameters_.num_mag_dims() == 3) 
+        //==             {
+        //==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
+        //==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
+        //==             }
+        //==         }
+        //==     }
+        //== }
+
+        //== HDF5_tree h5_rho("rho.hdf5", true);
+        //== h5_rho.write("rho", rho_grid);
+        //== h5_rho.write("pos", pos_grid);
+        //== h5_rho.write("mag", mag_grid);
+
+        //== FILE* fout = fopen("rho.xdmf", "w");
+        //== //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
+        //== //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
+        //== //==               "<Xdmf>\n"
+        //== //==               "  <Domain Name=\"name1\">\n"
+        //== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
+        //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
+        //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
+        //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+        //== //==               "      </Geometry>\n"
+        //== //==               "      <Attribute\n"
+        //== //==               "           AttributeType=\"Scalar\"\n"
+        //== //==               "           Center=\"Node\"\n"
+        //== //==               "           Name=\"rho\">\n"
+        //== //==               "          <DataItem\n"
+        //== //==               "             NumberType=\"Float\"\n"
+        //== //==               "             Precision=\"8\"\n"
+        //== //==               "             Dimensions=\"%i %i %i\"\n"
+        //== //==               "             Format=\"HDF\">\n"
+        //== //==               "             rho.hdf5:/rho\n"
+        //== //==               "          </DataItem>\n"
+        //== //==               "        </Attribute>\n"
+        //== //==               "    </Grid>\n"
+        //== //==               "  </Domain>\n"
+        //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+        //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
+        //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
+        //==               "<Xdmf>\n"
+        //==               "  <Domain Name=\"name1\">\n"
+        //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
+        //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
+        //==               "      <Geometry GeometryType=\"XYZ\">\n"
+        //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+        //==               "      </Geometry>\n"
+        //==               "      <Attribute\n"
+        //==               "           AttributeType=\"Vector\"\n"
+        //==               "           Center=\"Node\"\n"
+        //==               "           Name=\"mag\">\n"
+        //==               "          <DataItem\n"
+        //==               "             NumberType=\"Float\"\n"
+        //==               "             Precision=\"8\"\n"
+        //==               "             Dimensions=\"%i %i %i 3\"\n"
+        //==               "             Format=\"HDF\">\n"
+        //==               "             rho.hdf5:/mag\n"
+        //==               "          </DataItem>\n"
+        //==               "        </Attribute>\n"
+        //==               "    </Grid>\n"
+        //==               "  </Domain>\n"
+        //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+        //== fclose(fout);
         
         fft_->input(&rho_->f_it<global>(0));
         fft_->transform(-1);

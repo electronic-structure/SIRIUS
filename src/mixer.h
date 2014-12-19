@@ -363,7 +363,7 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
 
-                //for (int j = 0; j < N; j++) S(j, j) += 1e-5;
+                for (int j = 0; j < N; j++) S(j, j) += 1e-4;
                 
                 linalg<CPU>::geinv(N, S);
 
