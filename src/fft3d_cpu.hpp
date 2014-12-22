@@ -135,10 +135,10 @@ class FFT3D<CPU>
             {
                 plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                      (fftw_complex*)&fftw_buffer_(0, i), 
-                                                     (fftw_complex*)&fftw_buffer_(0, i), 1, FFTW_MEASURE);
+                                                     (fftw_complex*)&fftw_buffer_(0, i), 1, FFTW_ESTIMATE);
                 plan_forward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                     (fftw_complex*)&fftw_buffer_(0, i), 
-                                                    (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_MEASURE);
+                                                    (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_ESTIMATE);
             }
             fftw_plan_with_nthreads(1);
         }
