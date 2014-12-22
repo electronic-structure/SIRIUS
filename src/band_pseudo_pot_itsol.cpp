@@ -822,6 +822,13 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
 
     int N = 0; // current eigen-value problem size
     int n = num_bands; // number of new basis functions
+    
+    #ifdef _WRITE_OBJECTS_HASH_
+    std::cout << "hash(beta_pw)       : " << kp__->beta_pw_panel().panel().hash() << std::endl;
+    std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
+    std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
+    std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
+    #endif
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
@@ -836,11 +843,28 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         /* increase size of the variation space */
         N += n;
         
+        for (int i = 0; i < N; i++)
+        {
+            if (imag(hmlt(i, i)) > 1e-10)
+            {
+                TERMINATE("wrong diagonal of H");
+            }
+            if (imag(ovlp(i, i)) > 1e-10)
+            {
+                TERMINATE("wrong diagonal of O");
+            }
+            hmlt(i, i) = real(hmlt(i, i));
+            ovlp(i, i) = real(ovlp(i, i));
+        }
+        
         /* stage 2: solve generalized eigen-value problem with the size N */
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
+        printf("step: %i\n", k);
+        for (int i = 0; i < 10; i++) printf("%22.18f\n", eval[i]);
+
         }
         
         /* copy eigen-vectors to GPU */
@@ -953,10 +977,10 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                     if (res_norm[i] >= itso.tolerance_) nr[2]++;
                 }
 
-                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                {
-                    DUMP("residual statistics: %4.2f %4.2f %4.2f", double(nr[0]) / num_bands, double(nr[1]) / num_bands, double(nr[2]) / num_bands);
-                }
+                //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+                //== {
+                //==     DUMP("residual statistics: %4.2f %4.2f %4.2f", double(nr[0]) / num_bands, double(nr[1]) / num_bands, double(nr[2]) / num_bands);
+                //== }
             }
         }
 
@@ -1012,10 +1036,10 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             /* exit the loop if the eigen-vectors are converged or it's a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
-                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                {
-                    DUMP("N = %i, n = %i, k = %i, tol = %18.14f", N, n, k, itso.tolerance_);
-                }
+                //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+                //== {
+                //==     DUMP("N = %i, n = %i, k = %i, tol = %18.14f", N, n, k, itso.tolerance_);
+                //== }
                 break;
             }
             else /* otherwise set Psi as a new trial basis */
