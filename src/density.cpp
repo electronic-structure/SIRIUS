@@ -480,8 +480,14 @@ void Density::initial_density()
         parameters_.esm_type() == norm_conserving_pseudopotential) 
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
+        #ifdef _WRITE_OBJECTS_HASH_
+        DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
+        #endif
 
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        #ifdef _WRITE_OBJECTS_HASH_
+        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], rl->num_gvec() * sizeof(double_complex)));
+        #endif
 
         memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
 
@@ -498,6 +504,10 @@ void Density::initial_density()
         fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
         fft_->transform(1);
         fft_->output(&rho_->f_it<global>(0));
+
+        #ifdef _WRITE_OBJECTS_HASH_
+        DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
+        #endif
         
         /* remove possible negative noise */
         for (int ir = 0; ir < fft_->size(); ir++)
@@ -505,6 +515,10 @@ void Density::initial_density()
             rho_->f_it<global>(ir) = rho_->f_it<global>(ir) *  uc->num_valence_electrons() / charge;
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
+
+        #ifdef _WRITE_OBJECTS_HASH_
+        DUMP("hash(rho) : %16llX", rho_->hash());
+        #endif
 
         //== FILE* fout = fopen("unit_cell.xsf", "w");
         //== fprintf(fout, "CRYSTAL\n");
