@@ -230,6 +230,13 @@ class Periodic_function
             }
         }
 
+        int64_t hash()
+        {
+            int64_t h = Utils::hash(&f_it_(0), fft_->size() * sizeof(T));
+            h +=  Utils::hash(&f_pw_(0), num_gvec_ * sizeof(double_complex), h);
+            return h;
+        }
+
 };
 
 #include "periodic_function.hpp"
