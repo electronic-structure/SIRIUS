@@ -338,7 +338,7 @@ class Broyden_modified_mixer: public Mixer<T>
 
             double rms = this->rms_deviation();
 
-            int N = std::min(this->count_, this->max_history_);
+            int N = std::min(this->count_, this->max_history_ - 1);
             
             /* use input_buffer as a temporary storage */
             this->input_buffer_.zero();
@@ -353,8 +353,8 @@ class Broyden_modified_mixer: public Mixer<T>
                     {
                         for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                         {
-                            T dr1 = residuals_(i, this->offset(this->count_ - N + j1 + 1)) - residuals_(i, this->offset(this->count_ - N + j1));
-                            T dr2 = residuals_(i, this->offset(this->count_ - N + j2 + 1)) - residuals_(i, this->offset(this->count_ - N + j2));
+                            T dr1 = residuals_(i, this->offset(this->count_ - j1)) - residuals_(i, this->offset(this->count_ - j1 - 1));
+                            T dr2 = residuals_(i, this->offset(this->count_ - j2)) - residuals_(i, this->offset(this->count_ - j2 - 1));
 
                             S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * weights_[this->spl_size_[i]];
                         }
@@ -363,7 +363,7 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
 
-                for (int j = 0; j < N; j++) S(j, j) += 1e-4;
+                //for (int j = 0; j < N; j++) S(j, j) += 1e-4;
                 
                 linalg<CPU>::geinv(N, S);
 
@@ -373,7 +373,7 @@ class Broyden_modified_mixer: public Mixer<T>
                 {
                     for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                     {
-                        T dr = residuals_(i, this->offset(this->count_ - N + j + 1)) - residuals_(i, this->offset(this->count_ - N + j));
+                        T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
                         c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_))) * weights_[this->spl_size_[i]];
                     }
                 }
@@ -386,8 +386,8 @@ class Broyden_modified_mixer: public Mixer<T>
 
                     for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
                     {
-                        T dr = residuals_(i, this->offset(this->count_ - N + j + 1)) - residuals_(i, this->offset(this->count_ - N + j));
-                        T dv = this->vectors_(i, this->offset(this->count_ - N + j + 1)) - this->vectors_(i, this->offset(this->count_ - N + j));
+                        T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
+                        T dv = this->vectors_(i, this->offset(this->count_ - j)) - this->vectors_(i, this->offset(this->count_ - j - 1));
                         
                         this->input_buffer_(i) -= gamma * (dr * this->beta_ + dv);
                     }
