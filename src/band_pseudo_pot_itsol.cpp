@@ -862,9 +862,6 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
-        printf("step: %i\n", k);
-        for (int i = 0; i < 10; i++) printf("%22.18f\n", eval[i]);
-
         }
         
         /* copy eigen-vectors to GPU */
