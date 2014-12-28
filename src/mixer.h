@@ -365,8 +365,6 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
 
-                //== for (int j = 0; j < N; j++) S(j, j) += 1e-4;
-                
                 linalg<CPU>::geinv(N, S);
 
                 mdarray<double, 1> c(N);
@@ -396,13 +394,12 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
             }
             
-            double b = (this->count_ == 0) ? 1 : this->beta_;
             /* linear part */
             for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
             {
                 int ipos = this->offset(this->count_);
                 this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, ipos) +
-                                                                    b * residuals_(i, ipos) +
+                                                                    this->beta_ * residuals_(i, ipos) +
                                                                     this->input_buffer_(i);
             }
 
