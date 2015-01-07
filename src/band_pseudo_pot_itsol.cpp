@@ -479,13 +479,6 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         gen_evp_solver()->solve(N, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
                                 hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
-        
-        //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-        //== {
-        //==     printf("subspace size : %i, eigen-values:\n", N);
-        //==     for (int i = 0; i < std::min(num_bands, 10); i++) printf("%18.12f ", eval[i]);
-        //==     printf("\n");
-        //== }
         }
 
         /* don't recompute residuals if we are going to exit on the last iteration */
@@ -506,9 +499,8 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
             for (int i = 0; i < num_bands; i++)
             {
                 /* take the residual if it's norm is above the threshold */
-                //if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
-                //    (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
-                if (res_norm[i] > itso.tolerance_)
+                if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
+                    (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
                 {
                     res_list.push_back(i);
                 }
@@ -942,9 +934,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 for (int i = 0; i < num_bands; i++)
                 {
                     /* take the residual if it's norm is above the threshold */
-                    //if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
-                    //    (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
-                    if (res_norm[i] > itso.tolerance_)
+                    if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
+                        (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
                     {
                         /* shift unconverged residuals to the beginning of array */
                         if (n != i)

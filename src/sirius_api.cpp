@@ -2116,10 +2116,7 @@ void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
 
 void sirius_set_iterative_solver_tolerance(double* tol__)
 {
-    if (global_parameters->iterative_solver_input_section_.converge_by_energy_ == 1)
-    {
-        global_parameters->iterative_solver_input_section_.tolerance_ = *tol__;
-    }
+    global_parameters->iterative_solver_input_section_.tolerance_ = *tol__;
 }
 
 void sirius_get_density_dr2(double* dr2__)

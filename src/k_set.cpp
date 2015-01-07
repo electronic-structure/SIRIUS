@@ -61,7 +61,7 @@ void K_set::sync_band_energies()
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::K_set::find_eigen_states");
+    Timer t("sirius::K_set::find_eigen_states", comm_k_);
     
     if (precompute && parameters_.unit_cell()->full_potential())
     {
@@ -153,7 +153,7 @@ double K_set::valence_eval_sum()
 
 void K_set::find_band_occupancies()
 {
-    Timer t("sirius::Density::find_band_occupancies");
+    Timer t("sirius::K_set::find_band_occupancies");
 
     double ef = 0.15;
 
@@ -403,7 +403,7 @@ int K_set::max_num_gkvec()
 
 //== void K_set::fixed_band_occupancies()
 //== {
-//==     Timer t("sirius::Density::fixed_band_occupancies");
+//==     Timer t("sirius::K_set::fixed_band_occupancies");
 //== 
 //==     if (parameters_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
 //== 

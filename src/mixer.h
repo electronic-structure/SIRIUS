@@ -336,7 +336,7 @@ class Broyden_modified_mixer: public Mixer<T>
 
             this->comm_.allreduce(&this->rss_, 1);
 
-            if (this->rss_ < 1e-10) return 0.0;
+            if (this->rss_ < 1e-11) return 0.0;
 
             double rms = this->rms_deviation();
 

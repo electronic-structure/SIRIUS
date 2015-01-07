@@ -1282,7 +1282,7 @@ void Band::residuals_parallel(int N__,
         }
         
         std::vector<double> norm2(num_bands__, 0);
-        /* Normalize new basis functions */
+        /* normalize new basis functions */
         #pragma omp parallel for
         for (int i = 0; i < res__.num_cols_local(); i++)
         {
