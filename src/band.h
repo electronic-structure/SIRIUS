@@ -176,7 +176,11 @@ class Band
                                         dmatrix<double_complex>& h__,
                                         dmatrix<double_complex>& o__,
                                         dmatrix<double_complex>& h_old__,
-                                        dmatrix<double_complex>& o_old__);
+                                        dmatrix<double_complex>& o_old__,
+                                        mdarray<double_complex, 2>& kappa__,
+                                        mdarray<int, 1>& packed_mtrx_offset__,
+                                        mdarray<double_complex, 1>& d_mtrx_packed__,
+                                        mdarray<double_complex, 1>& q_mtrx_packed__);
 
         void set_fv_h_o_parallel(int N__,
                                  int n__,

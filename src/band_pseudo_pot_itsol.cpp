@@ -466,8 +466,8 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
-                            hmlt_old, ovlp_old, kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+        set_fv_h_o_parallel_simple(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
+                                   hmlt_old, ovlp_old, kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
 
         /* increase size of the variation space */
         N += n;
@@ -487,13 +487,13 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         {
             if (with_overlap)
             {
-                residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
-                                   res_norm, kappa);
+                residuals_parallel_simple(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
+                                          res_norm);
             }
             else
             {
-                residuals_parallel(N, num_bands, kp__, eval, evec, hphi, phi, hpsi, psi, res, h_diag, o_diag, 
-                                   res_norm, kappa);
+                residuals_parallel_simple(N, num_bands, kp__, eval, evec, hphi, phi, hpsi, psi, res, h_diag, o_diag, 
+                                          res_norm);
             }
 
             for (int i = 0; i < num_bands; i++)

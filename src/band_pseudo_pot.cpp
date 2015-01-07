@@ -520,65 +520,69 @@ void Band::apply_h_o_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
-// TODO: fix the arguments
-//== void Band::set_fv_h_o_parallel_simple(int N__,
-//==                                       int n__,
-//==                                       K_point* kp__,
-//==                                       std::vector<double> const& veff_it_coarse__,
-//==                                       std::vector<double> const& pw_ekin__,
-//==                                       dmatrix<double_complex>& phi__,
-//==                                       dmatrix<double_complex>& hphi__,
-//==                                       dmatrix<double_complex>& ophi__,
-//==                                       dmatrix<double_complex>& h__,
-//==                                       dmatrix<double_complex>& o__,
-//==                                       dmatrix<double_complex>& h_old__,
-//==                                       dmatrix<double_complex>& o_old__)
-//== {
-//==     Timer t("sirius::Band::set_fv_h_o_parallel_simple", kp__->comm());
-//== 
-//==     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-//==     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-//==     splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
-//==     splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
-//== 
-//==     /* copy old Hamiltonian and overlap */
-//==     for (int i = 0; i < (int)s0_col.local_size(); i++)
-//==     {
-//==         memcpy(&h__(0, i), &h_old__(0, i), s0_row.local_size() * sizeof(double_complex));
-//==         memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
-//==     }
-//== 
-//==     /* apply Hamiltonian and overlap operators to the new basis functions */
-//==     apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
-//==     
-//==     Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_simple|zgemm", _global_timer_);
-//==     /* <{phi,res}|H|res> */
-//==     linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, hphi__, 0, N__, complex_zero, h__, 0, N__);
-//==     /* <{phi,res}|O|res> */
-//==     linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
-//==     double tval = t2.stop();
-//== 
-//==     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-//==     {
-//==         printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/node\n",
-//==                N__ + n__, n__, kp__->num_gkvec(), N__,
-//==                tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
-//==     }
-//==     
-//==     /* restore the bottom block of the matrix */
-//==     if (N__ != 0)
-//==     {
-//==         linalg<CPU>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
-//==         linalg<CPU>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
-//==     }
-//== 
-//==     /* save Hamiltonian and overlap */
-//==     for (int i = 0; i < (int)s1_col.local_size(); i++)
-//==     {
-//==         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
-//==         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
-//==     }
-//== }
+void Band::set_fv_h_o_parallel_simple(int N__,
+                                      int n__,
+                                      K_point* kp__,
+                                      std::vector<double> const& veff_it_coarse__,
+                                      std::vector<double> const& pw_ekin__,
+                                      dmatrix<double_complex>& phi__,
+                                      dmatrix<double_complex>& hphi__,
+                                      dmatrix<double_complex>& ophi__,
+                                      dmatrix<double_complex>& h__,
+                                      dmatrix<double_complex>& o__,
+                                      dmatrix<double_complex>& h_old__,
+                                      dmatrix<double_complex>& o_old__,
+                                      mdarray<double_complex, 2>& kappa__,
+                                      mdarray<int, 1>& packed_mtrx_offset__,
+                                      mdarray<double_complex, 1>& d_mtrx_packed__,
+                                      mdarray<double_complex, 1>& q_mtrx_packed__)
+{
+    Timer t("sirius::Band::set_fv_h_o_parallel_simple", kp__->comm());
+
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+
+    /* copy old Hamiltonian and overlap */
+    for (int i = 0; i < (int)s0_col.local_size(); i++)
+    {
+        memcpy(&h__(0, i), &h_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+        memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+    }
+
+    /* apply Hamiltonian and overlap operators to the new basis functions */
+    apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, kappa__, 
+                       packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__);
+    
+    Timer t2("sirius::Band::set_fv_h_o_parallel_simple|zgemm", kp__->comm());
+    /* <{phi,res}|H|res> */
+    linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, hphi__, 0, N__, complex_zero, h__, 0, N__);
+    /* <{phi,res}|O|res> */
+    linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
+    double tval = t2.stop();
+
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    {
+        printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/node\n",
+               N__ + n__, n__, kp__->num_gkvec(), N__,
+               tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
+    }
+    
+    /* restore the bottom block of the matrix */
+    if (N__ != 0)
+    {
+        linalg<CPU>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
+        linalg<CPU>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
+    }
+
+    /* save Hamiltonian and overlap */
+    for (int i = 0; i < (int)s1_col.local_size(); i++)
+    {
+        memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
+        memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
+    }
+}
 
 void Band::set_fv_h_o_parallel(int N__,
                                int n__,
