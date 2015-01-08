@@ -502,7 +502,7 @@ class dmatrix
                 }
             }
 
-            if (direction__ ==_slice_to_panel_)
+            if (direction__ == _slice_to_panel_)
             {
                 sdispls[0] = 0;
                 for (int rank = 0; rank < num_ranks_row_; rank++)
