@@ -673,21 +673,21 @@ class generalized_evp_elpa1: public generalized_evp
             mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
 
             FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &block_size_, 
-                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.ptr(), &num_rows_loc, (int32_t)1, 
+                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.at<CPU>(), &num_rows_loc, (int32_t)1, 
                                             (int32_t)1);
 
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, lda);
             
-            linalg_base::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
-                                 complex_zero, tmp2.ptr(), 1, 1, descc);
+            linalg_base::pztranc(matrix_size, matrix_size, complex_one, tmp1.at<CPU>(), 1, 1, descc, 
+                                 complex_zero, tmp2.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.ptr(), &num_rows_loc, 
+            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
                                             (int32_t)1);
 
             linalg_base::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
-                                 tmp1.ptr(), 1, 1, descc);
+                                 tmp1.at<CPU>(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc; i++)
             {
@@ -704,15 +704,15 @@ class generalized_evp_elpa1: public generalized_evp
             
             t = new sirius::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
-            FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.ptr(), &num_rows_loc, 
+            FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols);
             delete t;
 
             t = new sirius::Timer("elpa::bt");
             linalg_base::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
-                                 tmp2.ptr(), 1, 1, descc);
+                                 tmp2.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.ptr(), &num_rows_loc, tmp1.ptr(), 
+            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.at<CPU>(), &num_rows_loc, tmp1.at<CPU>(), 
                                             &num_rows_loc, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
                                             (int32_t)1, (int32_t)1);
             delete t;
@@ -786,20 +786,20 @@ class generalized_evp_elpa2: public generalized_evp
             mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
 
             FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &block_size_, 
-                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.ptr(), &num_rows_loc, (int32_t)1, 
+                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.at<CPU>(), &num_rows_loc, (int32_t)1, 
                                             (int32_t)1);
 
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, lda);
 
-            linalg_base::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, complex_zero, 
-                                 tmp2.ptr(), 1, 1, descc);
+            linalg_base::pztranc(matrix_size, matrix_size, complex_one, tmp1.at<CPU>(), 1, 1, descc, complex_zero, 
+                                 tmp2.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.ptr(), &num_rows_loc, 
+            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
                                             (int32_t)1);
 
-            linalg_base::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, tmp1.ptr(), 1, 1, descc);
+            linalg_base::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, tmp1.at<CPU>(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc; i++)
             {
@@ -816,15 +816,15 @@ class generalized_evp_elpa2: public generalized_evp
             
             t = new sirius::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
-            FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.ptr(), &num_rows_loc, 
+            FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                    &block_size_, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
             delete t;
 
             t = new sirius::Timer("elpa::bt");
             linalg_base::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
-                                 tmp2.ptr(), 1, 1, descc);
+                                 tmp2.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.ptr(), &num_rows_loc, tmp1.ptr(), 
+            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.at<CPU>(), &num_rows_loc, tmp1.at<CPU>(), 
                                             &num_rows_loc, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
                                             (int32_t)1, (int32_t)1);
             delete t;
