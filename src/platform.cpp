@@ -38,14 +38,16 @@ extern "C" void libsci_acc_init();
 void Platform::initialize(bool call_mpi_init)
 {
     //if (call_mpi_init) MPI_Init(NULL, NULL);
+    int provided;
     if (call_mpi_init) 
     {
-        int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
-        if (provided != MPI_THREAD_MULTIPLE)
-        {
-            printf("MPI_Init_thread() does not provide MPI_THREAD_MULTIPLE\n");
-        }
+    }
+
+    MPI_Query_thread(&provided);
+    if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
+    {
+        printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
     }
 
     #ifdef _GPU_
