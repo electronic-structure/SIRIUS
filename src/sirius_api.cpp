@@ -2124,4 +2124,47 @@ void sirius_get_density_dr2(double* dr2__)
     *dr2__ = density->dr2();
 }
 
+void sirius_real_gaunt_coeff_(int32_t* lm1__, int32_t* lm2__, int32_t* lm3__, double* coeff__)
+{
+    int l1, m1, l2, m2, l3, m3;
+
+    for (int l = 0; l < 10; l++)
+    {
+        for (int m = -l; m <= l; m++)
+        {
+            int lm = Utils::lm_by_l_m(l, m);
+            if (lm == *lm1__ - 1)
+            {
+                l1 = l;
+                m1 = m;
+            }
+            if (lm == *lm2__ - 1)
+            {
+                l2 = l;
+                m2 = m;
+            }
+            if (lm == *lm3__ - 1)
+            {
+                l3 = l;
+                m3 = m;
+            }
+        }
+    }
+    double d = 0;
+    for (int k1 = -l1; k1 <= l1; k1++)
+    {
+        for (int k2 = -l2; k2 <= l2; k2++)
+        {
+            for (int k3 = -l3; k3 <= l3; k3++)
+            {
+                d += real(conj(sirius::SHT::ylm_dot_rlm(l1, k1, m1)) *
+                          sirius::SHT::ylm_dot_rlm(l2, k2, m2) *
+                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt<double>(l1, l2, l3, k1, k2, k3);
+            }
+        }
+    }
+
+    *coeff__ = d;
+}
+
 } // extern "C"
