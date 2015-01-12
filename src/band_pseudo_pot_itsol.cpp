@@ -361,7 +361,9 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     hphi.allocate_ata_buffer((int)kp__->spl_fv_states().local_size(0));
 
     dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
+    dmatrix<double_complex> hmlt1(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid());
+    dmatrix<double_complex> ovlp1(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, kp__->blacs_grid());
 
@@ -466,8 +468,30 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
+        hmlt1.zero();
+        ovlp1.zero();
+        set_fv_h_o_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt1, ovlp1, 
                             hmlt_old, ovlp_old, kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+
+        hmlt.zero();
+        ovlp.zero();
+        set_fv_h_o_parallel_simple(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
+                            hmlt_old, ovlp_old, kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+
+        double d = 0;
+        double d1 = 0;
+        for (int i = 0; i < hmlt1.num_cols_local(); i++)
+        {
+            for (int j = 0; j < hmlt1.num_rows_local(); j++)
+            {
+                d += std::abs(hmlt1(j, i) - hmlt(j, i));
+                d1 += std::abs(ovlp1(j, i) - ovlp(j, i));
+            }
+        }
+        DUMP("diff=%18.12f %18.12f\n", d, d1);
+        //STOP();
+
+        
 
         /* increase size of the variation space */
         N += n;

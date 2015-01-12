@@ -816,30 +816,33 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
     mdarray<double_complex, 2> beta_psi_slice(uc->mt_basis_size(), sub_spl_col.local_size());
     beta_psi.gather(beta_psi_slice);
 
-    #pragma omp parallel
+    if (sub_spl_col.local_size())
     {
-        /* auxiliary arrays */
-        mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
-        mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
-        #pragma omp for
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
-        {   
-            /* number of beta functions for a given atom */
-            int nbf = uc->atom(ia)->mt_basis_size();
+        #pragma omp parallel
+        {
+            /* auxiliary arrays */
+            mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
+            mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
+            #pragma omp for
+            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            {   
+                /* number of beta functions for a given atom */
+                int nbf = uc->atom(ia)->mt_basis_size();
 
-            for (int i = 0; i < (int)sub_spl_col.local_size(); i++)
-            {
-                int j = beta_psi.icol((int)sub_spl_col[i]);
-                for (int xi = 0; xi < nbf; xi++)
+                for (int i = 0; i < (int)sub_spl_col.local_size(); i++)
                 {
-                    bp1(xi, i) = beta_psi_slice(uc->atom(ia)->offset_lo() + xi, i);
-                    bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+                    int j = beta_psi.icol((int)sub_spl_col[i]);
+                    for (int xi = 0; xi < nbf; xi++)
+                    {
+                        bp1(xi, i) = beta_psi_slice(uc->atom(ia)->offset_lo() + xi, i);
+                        bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+                    }
                 }
-            }
 
-            linalg<CPU>::gemm(0, 1, nbf, nbf, (int)sub_spl_col.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
-                              &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
-                              pp_complex_density_matrix__.ld());
+                linalg<CPU>::gemm(0, 1, nbf, nbf, (int)sub_spl_col.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
+                                  &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
+                                  pp_complex_density_matrix__.ld());
+            }
         }
     }
 }

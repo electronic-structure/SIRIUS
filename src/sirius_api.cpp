@@ -2126,27 +2126,46 @@ void sirius_get_density_dr2(double* dr2__)
 
 void sirius_real_gaunt_coeff_(int32_t* lm1__, int32_t* lm2__, int32_t* lm3__, double* coeff__)
 {
+    std::vector<int> idxlm(100);
+    std::vector<int> phase(100, 1);
+    int lm = 0;
+    for (int l = 0; l < 10; l++)
+    {
+        idxlm[lm++] = Utils::lm_by_l_m(l, 0);
+        for (int m = 1; m <= l; m++)
+        {
+            idxlm[lm++] = Utils::lm_by_l_m(l, m);
+            idxlm[lm] = Utils::lm_by_l_m(l, -m);
+            if (m % 2 == 0) phase[lm] = -1;
+            lm++;
+        }
+    }
+
     int l1, m1, l2, m2, l3, m3;
+    int s = 1;
 
     for (int l = 0; l < 10; l++)
     {
         for (int m = -l; m <= l; m++)
         {
             int lm = Utils::lm_by_l_m(l, m);
-            if (lm == *lm1__ - 1)
+            if (lm == idxlm[*lm1__ - 1])
             {
                 l1 = l;
                 m1 = m;
+                s *= phase[*lm1__ - 1];
             }
-            if (lm == *lm2__ - 1)
+            if (lm == idxlm[*lm2__ - 1])
             {
                 l2 = l;
                 m2 = m;
+                s *= phase[*lm2__ - 1];
             }
-            if (lm == *lm3__ - 1)
+            if (lm == idxlm[*lm3__ - 1])
             {
                 l3 = l;
                 m3 = m;
+                s *= phase[*lm3__ - 1];
             }
         }
     }
@@ -2163,8 +2182,40 @@ void sirius_real_gaunt_coeff_(int32_t* lm1__, int32_t* lm2__, int32_t* lm3__, do
             }
         }
     }
+    //double d = sirius::SHT::gaunt<double>(l1, l2, l3, m1, m2, m3);
 
-    *coeff__ = d;
+    *coeff__ = d * s;
+}
+
+void sirius_ylmr2_(int32_t* lmmax__, int32_t* nr__, double* vr__, double* rlm__)
+{
+    mdarray<double, 2> rlm(rlm__, *nr__, *lmmax__);
+    mdarray<double, 2> vr(vr__, 3, *nr__);
+    
+    int lmax = Utils::lmax_by_lmmax(*lmmax__);
+
+    std::vector<int> idxlm(*lmmax__);
+    std::vector<int> phase(*lmmax__, 1);
+    int lm = 0;
+    for (int l = 0; l <= lmax; l++)
+    {
+        idxlm[lm++] = Utils::lm_by_l_m(l, 0);
+        for (int m = 1; m <= l; m++)
+        {
+            idxlm[lm++] = Utils::lm_by_l_m(l, m);
+            idxlm[lm] = Utils::lm_by_l_m(l, -m);
+            if (m % 2 == 0) phase[lm] = -1;
+            lm++;
+        }
+    }
+
+    std::vector<double> rlm_tmp(*lmmax__);
+    for (int i = 0; i < *nr__; i++)
+    {
+        auto vs = sirius::SHT::spherical_coordinates(&vr(0, i));
+        sirius::SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm_tmp[0]);
+        for (int lm = 0; lm < *lmmax__; lm++) rlm(i, lm) = rlm_tmp[idxlm[lm]] * phase[lm];
+    }
 }
 
 } // extern "C"

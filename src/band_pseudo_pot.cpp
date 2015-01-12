@@ -465,11 +465,12 @@ void Band::apply_h_o_parallel(K_point* kp__,
     #endif
 
     /* allocate space for <beta|phi> array */
-    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
-    mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
+    int nbmax = 0;
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
+    mdarray<double_complex, 1> beta_phi_tmp(nbmax * nloc);
 
     /* work space (result of Q or D multiplied by <beta|phi>) */
-    matrix<double_complex> work(nbf_max, nloc);
+    matrix<double_complex> work(nbmax, nloc);
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
@@ -644,6 +645,8 @@ void Band::set_fv_h_o_parallel(int N__,
         max_num_phi_new = std::max(max_num_phi_new, (int)(s1_col.local_size(icol) - s0_col.local_size(icol)));
     
     int num_phi = (int)s1_col.local_size();
+
+    assert(max_num_phi_new * 4 <= (int)kappa__.size(1));
 
     mdarray<double_complex, 3> hphi_tmp, ophi_tmp;
     switch (parameters_.processing_unit())
