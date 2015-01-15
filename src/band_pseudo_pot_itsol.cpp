@@ -175,7 +175,6 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     /* estimate low and upper bounds of the Chebyshev filter */
     double lambda0 = -1e10;
     for (int i = 0; i < num_bands; i++) lambda0 = std::max(lambda0, e0[i]);
-    lambda0 -= 0.1;
     double lambda1 = 0.5 * std::pow(parameters_.gk_cutoff(), 2);
 
     double r = (lambda1 - lambda0) / 2.0;
