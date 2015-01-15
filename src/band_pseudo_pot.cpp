@@ -697,9 +697,24 @@ void Band::set_fv_h_o_parallel(int N__,
     Timer t1("sirius::Band::set_fv_h_o_parallel|zgemm_eff", kp__->comm());
 
     auto pu = parameters_.processing_unit();
-
+    
+    /* auxiliary function to broadcast vectors (|hphi> or |ophi>) from a column icol
+     *
+     *    column ranks 
+     *    0   1   2   3  ...
+     *  +---+---+---+---+---
+     *  |   | <-+-*-+-> |
+     *  +---+---+---+---+---
+     *  |   | <-+-*-+-> |
+     *  +---+---+---+---+---
+     *  |   | <-+-*-+-> |
+     *  .................
+     */
     auto bcast_column = [kp__, &s0_col, &s1_col, pu]
-                        (int icol, dmatrix<double_complex>& mtrx, mdarray<double_complex, 3>& mtrx_tmp) -> void
+                        (int icol,
+                         dmatrix<double_complex>& mtrx,
+                         mdarray<double_complex, 3>& mtrx_tmp,
+                         std::array<std::atomic_bool, 2>& lock_tmp) -> void
     {
         Timer t("sirius::Band::set_fv_h_o_parallel|bcast_column");
 
@@ -710,16 +725,33 @@ void Band::set_fv_h_o_parallel(int N__,
         bool gpu_direct = false;
         #endif
         #endif
- 
-        int nloc = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
-        size_t panel_size = kp__->num_gkvec_row() * nloc * sizeof(double_complex);
 
+        ///* check if the buffer is locked */
+        //if (lock_tmp[icol % 2].load())
+        //{
+        //    TERMINATE("buffer is locked");
+        //}
+
+        /* wait for unlocking of this buffer */
+        while (lock_tmp[icol % 2].load());
+        
+        /* number of vectors to broadcast */
+        int nloc = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
+
+        /* return if there is nothing to do */
         if (!nloc) return;
+        
+        /* total size of the panel to broadcast */
+        size_t panel_size = kp__->num_gkvec_row() * nloc * sizeof(double_complex);
         
         if (pu == CPU)
         {
             if (kp__->rank_col() == icol)
+            {
+                /* this rank copies content of the vectors into temporary buffer */
                 memcpy(mtrx_tmp.at<CPU>(0, 0, icol % 2), mtrx.at<CPU>(0, s0_col.local_size(icol)), panel_size);
+            }
+            /* buffer is broadcasted between columns */
             kp__->comm_col().bcast(mtrx_tmp.at<CPU>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
         }
         if (pu == GPU)
@@ -742,24 +774,33 @@ void Band::set_fv_h_o_parallel(int N__,
             TERMINATE_NO_GPU
             #endif
         }
+
+        /* lock temporary buffer; it can't be used for the next broadcast until <phi|tmp> is computed */
+        lock_tmp[icol % 2].store(true);
     };
 
-    bcast_column(0, hphi__, hphi_tmp);
+    /* broadcast |hphi> from the first column */
+    bcast_column(0, hphi__, hphi_tmp, lock_hphi);
+
+    /* same for |ophi> or |phi> */
     if (with_overlap)
     {
-        bcast_column(0, ophi__, ophi_tmp);
+        bcast_column(0, ophi__, ophi_tmp, lock_ophi);
     }
     else
     {
-        bcast_column(0, phi__, ophi_tmp);
+        bcast_column(0, phi__, ophi_tmp, lock_ophi);
     }
-    lock_hphi[0].store(true);
-    lock_ophi[0].store(true);
 
+    /* get maximum number of threads */
     int nthread = omp_get_max_threads();
+
+    /* one thread will be doing communication, others will do local zgemm */
     if (nthread > 1) omp_set_num_threads(nthread - 1);
 
-    /* crate communication thread */
+    // TODO: try two comm threads for h and o separately
+
+    /* create communication thread */
     std::thread comm_thread([kp__, &s0_col, &s1_col, &s0_row, &s1_row, &lock_hphi, &lock_ophi, &lock_h, &lock_o, 
                              &hphi__, &ophi__, &hphi_tmp, &ophi_tmp, &h_tmp, &o_tmp, &h__, &o__, bcast_column, 
                              with_overlap, &phi__]()
@@ -775,33 +816,40 @@ void Band::set_fv_h_o_parallel(int N__,
             /* broadcast next column */
             if (icol + 1 < kp__->num_ranks_col())
             {
-                while (lock_hphi[(icol + 1) % 2].load());
-                bcast_column(icol + 1, hphi__, hphi_tmp);
-                lock_hphi[(icol + 1) % 2].store(true);
+                //== while (lock_hphi[(icol + 1) % 2].load());
+                bcast_column(icol + 1, hphi__, hphi_tmp, lock_hphi);
+                //== lock_hphi[(icol + 1) % 2].store(true);
                 
-                while (lock_ophi[(icol + 1) % 2].load());
+                //== while (lock_ophi[(icol + 1) % 2].load());
                 if (with_overlap)
                 {
-                    bcast_column(icol + 1, ophi__, ophi_tmp);
+                    bcast_column(icol + 1, ophi__, ophi_tmp, lock_ophi);
                 }
                 else
                 {
-                    bcast_column(icol + 1, phi__, ophi_tmp);
+                    bcast_column(icol + 1, phi__, ophi_tmp, lock_ophi);
                 }
-                lock_ophi[(icol + 1) % 2].store(true);
+                //lock_ophi[(icol + 1) % 2].store(true);
             }
             t1.stop();
     
             Timer t2("sirius::Band::set_fv_h_o_parallel|comm_thread|2");
             if (nloc > 0)
             {
+                /* wait for locking of h-buffer which happens after a local zgemm;
+                 * when this is done the reduction between rows can be performed 
+                 */
                 while (!lock_h[icol % 2].load());
                 kp__->comm_row().allreduce(&h_tmp(0, 0, icol % 2), num_phi * nloc);
-    
+                
+                /* cycle through the local fraction of new basis functions */
                 for (int j = 0; j < nloc; j++)
                 {
+                    /* compute global index of hphi by local index and column rank */
                     int idx_hphi_glob = (int)s1_col.global_index(s0_col.local_size(icol) + j, icol);
+                    /* and now compute row rank and local index */
                     auto p = s1_row.location(idx_hphi_glob);
+                    /* check if this rank stores <hphi_tmp_j|phi_i> */ 
                     if (p.second == kp__->rank_row())
                     {
                         for (int i = 0; i < num_phi; i++)
@@ -810,9 +858,10 @@ void Band::set_fv_h_o_parallel(int N__,
                         }
                     }
                 }
-                /* remove lock from h buffer */
+                /* when the reduction is done and the result is saved in h__, h-buffer can be unlocked */
                 lock_h[icol % 2].store(false);
-    
+                
+                /* the same with o-buffer */
                 while (!lock_o[icol % 2].load());
                 kp__->comm_row().allreduce(&o_tmp(0, 0, icol % 2), num_phi * nloc);
     
@@ -839,13 +888,13 @@ void Band::set_fv_h_o_parallel(int N__,
     {
         int n = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
 
-        /* wait for broadcast of this column */
-        while (!lock_hphi[icol % 2].load());
-        /* wait for unlock of h buffer */
-        while (lock_h[icol % 2].load());
-
         if (n > 0)
         {
+            /* wait for broadcast of this column */
+            while (!lock_hphi[icol % 2].load());
+            /* wait for unlock of h buffer */
+            while (lock_h[icol % 2].load());
+
             Timer t2("sirius::Band::set_fv_h_o_parallel|zgemm_loc");
             if (pu == GPU)
             {
@@ -859,6 +908,7 @@ void Band::set_fv_h_o_parallel(int N__,
             }
             if (pu == CPU)
             {
+                /* compute <phi|hphi_tmp> */
                 linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<CPU>(), phi__.ld(),
                                   hphi_tmp.at<CPU>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.ld());
             }
@@ -866,10 +916,11 @@ void Band::set_fv_h_o_parallel(int N__,
             lock_hphi[icol % 2].store(false);
         }
             
-        while (!lock_ophi[icol % 2].load());
-        while (lock_o[icol % 2].load());
         if (n > 0)
         {
+            while (!lock_ophi[icol % 2].load());
+            while (lock_o[icol % 2].load());
+
             Timer t2("sirius::Band::set_fv_h_o_parallel|zgemm_loc");
             if (pu == GPU)
             {
@@ -905,6 +956,7 @@ void Band::set_fv_h_o_parallel(int N__,
     /* restore right block of the matrix */
     if (N__ != 0)
     {
+        Timer t1("sirius:::Band::set_fv_h_o_parallel|transpose");
         linalg<CPU>::tranc(N__, n__, h__, N__, 0, h__, 0, N__);
         linalg<CPU>::tranc(N__, n__, o__, N__, 0, o__, 0, N__);
     }
