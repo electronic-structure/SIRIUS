@@ -985,7 +985,7 @@ void Band::set_fv_h_o_parallel(int N__,
     /* restore right block of the matrix */
     if (N__ != 0)
     {
-        Timer t1("sirius:::Band::set_fv_h_o_parallel|transpose");
+        Timer t1("sirius::Band::set_fv_h_o_parallel|transpose");
         linalg<CPU>::tranc(N__, n__, h__, N__, 0, h__, 0, N__);
         linalg<CPU>::tranc(N__, n__, o__, N__, 0, o__, 0, N__);
     }
