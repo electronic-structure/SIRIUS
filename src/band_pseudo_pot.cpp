@@ -697,6 +697,47 @@ void Band::set_fv_h_o_parallel(int N__,
     Timer t1("sirius::Band::set_fv_h_o_parallel|zgemm_eff", kp__->comm());
 
     auto pu = parameters_.processing_unit();
+
+    //== struct col_to_row_scatter
+    //== {
+    //==     /* index (in h and o) of each vector for each row rank */
+    //==     std::vector< std::vector<int> > ivec_row;
+
+    //==     /* index in (|hphi> or |ophi>) of each vector for each row rank */
+    //==     std::vector< std::vector<int> > idx_col;
+
+    //==     /* offsets in the send buffer */
+    //==     std::vector<int> offset;
+    //== };
+
+    //== std::vector<col_to_row_scatter> scatter_desc(kp__->num_ranks_col());
+
+
+    //== for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
+    //== {
+    //==     scatter_desc[icol].ivec_row = std::vector< std::vector<int> >(kp__->num_ranks_row());
+    //==     scatter_desc[icol].idx_col = std::vector< std::vector<int> >(kp__->num_ranks_row());
+    //==     
+    //==     /* local number of new basis functions */
+    //==     int nloc = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
+
+    //==     for (int j = 0; j < nloc; j++)
+    //==     {
+    //==         int idx_hphi_glob = (int)s1_col.global_index(s0_col.local_size(icol) + j, icol);
+    //==         auto p = s1_row.location(idx_hphi_glob);
+
+    //==         scatter_desc[icol].ivec_row[p.second].push_back((int)p.first);
+    //==         scatter_desc[icol].idx_col[p.second].push_back((int)(s0_col.local_size(icol) + j));
+    //==     }
+    //==     scatter_desc[icol].offset = std::vector<int>(kp__->num_ranks_row());
+    //==     int i = 0;
+    //==     for (int j = 0; j < kp__->num_ranks_row(); j++)
+    //==     {
+    //==          scatter_desc[icol].offset[j] = i;
+    //==          i += (int)scatter_desc[icol].idx_col.size();
+    //==     }
+    //== }
+
     
     /* auxiliary function to broadcast vectors (|hphi> or |ophi>) from a column icol
      *
@@ -725,12 +766,6 @@ void Band::set_fv_h_o_parallel(int N__,
         bool gpu_direct = false;
         #endif
         #endif
-
-        ///* check if the buffer is locked */
-        //if (lock_tmp[icol % 2].load())
-        //{
-        //    TERMINATE("buffer is locked");
-        //}
 
         /* wait for unlocking of this buffer */
         while (lock_tmp[icol % 2].load());
@@ -798,8 +833,6 @@ void Band::set_fv_h_o_parallel(int N__,
     /* one thread will be doing communication, others will do local zgemm */
     if (nthread > 1) omp_set_num_threads(nthread - 1);
 
-    // TODO: try two comm threads for h and o separately
-
     /* create communication thread */
     std::thread comm_thread([kp__, &s0_col, &s1_col, &s0_row, &s1_row, &lock_hphi, &lock_ophi, &lock_h, &lock_o, 
                              &hphi__, &ophi__, &hphi_tmp, &ophi_tmp, &h_tmp, &o_tmp, &h__, &o__, bcast_column, 
@@ -816,11 +849,8 @@ void Band::set_fv_h_o_parallel(int N__,
             /* broadcast next column */
             if (icol + 1 < kp__->num_ranks_col())
             {
-                //== while (lock_hphi[(icol + 1) % 2].load());
                 bcast_column(icol + 1, hphi__, hphi_tmp, lock_hphi);
-                //== lock_hphi[(icol + 1) % 2].store(true);
                 
-                //== while (lock_ophi[(icol + 1) % 2].load());
                 if (with_overlap)
                 {
                     bcast_column(icol + 1, ophi__, ophi_tmp, lock_ophi);
@@ -829,7 +859,6 @@ void Band::set_fv_h_o_parallel(int N__,
                 {
                     bcast_column(icol + 1, phi__, ophi_tmp, lock_ophi);
                 }
-                //lock_ophi[(icol + 1) % 2].store(true);
             }
             t1.stop();
     
