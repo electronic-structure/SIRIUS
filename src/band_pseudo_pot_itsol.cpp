@@ -490,6 +490,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
                 eval_converged = false;
             }
         }
+        eval_converged = false;
 
         /* don't recompute residuals if we are going to exit on the last iteration */
         std::vector<int> res_list;
@@ -1395,7 +1396,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
                             &eval[0], evec.at<CPU>(), evec.ld());
     t2.stop();
 
-    if (true)
+    if (false)
     {
         std::vector<double_complex> h_diag;
         std::vector<double_complex> o_diag;
