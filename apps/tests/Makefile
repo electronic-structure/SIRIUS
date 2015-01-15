@@ -84,7 +84,10 @@ test_allreduce: test_allreduce.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_allreduce.cpp $(LIB_SIRIUS) $(LIBS) -o test_allreduce
 
 test_linalg: test_linalg.cpp $(LIB_SIRIUS)
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_linalg.cpp $(LIB_SIRIUS) $(LIBS) -o test_linalg
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_linalg.cpp $(LIB_SIRIUS) $(LIBS) -o $@
+
+test_bcast: test_bcast.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 clean:
 	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
