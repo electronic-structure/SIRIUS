@@ -1870,41 +1870,120 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     }
 }
 
+//== void Potential::generate_d_mtrx()
+//== {   
+//==     Timer t("sirius::Potential::generate_d_mtrx");
+//== 
+//==     if (parameters_.esm_type() == ultrasoft_pseudopotential)
+//==     {
+//==         auto rl = parameters_.reciprocal_lattice();
+//== 
+//==         /* get plane-wave coefficients of effective potential */
+//==         fft_->input(&effective_potential_->f_it<global>(0));
+//==         fft_->transform(-1);
+//==         fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
+//==     
+//==         Timer t1("sirius::Potential::generate_d_mtrx|kernel");
+//==         #pragma omp parallel
+//==         {
+//==             mdarray<double_complex, 1> veff_tmp(rl->spl_num_gvec().local_size());
+//==             mdarray<double_complex, 1> dm_packed(parameters_.unit_cell()->max_mt_basis_size() * 
+//==                                                  (parameters_.unit_cell()->max_mt_basis_size() + 1) / 2);
+//==             
+//==             #pragma omp for
+//==             for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==             {
+//==                 auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+//==                 int nbf = atom_type->mt_basis_size();
+//==                 
+//==                 for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+//==                 {
+//==                     int ig = rl->spl_num_gvec(igloc);
+//==                     veff_tmp(igloc) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
+//==                 }
+//== 
+//==                 linalg<CPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
+//==                                   &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),  
+//==                                   &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
+//== 
+//==                 for (int xi2 = 0; xi2 < nbf; xi2++)
+//==                 {
+//==                     for (int xi1 = 0; xi1 <= xi2; xi1++)
+//==                     {
+//==                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+//== 
+//==                         parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = dm_packed(idx12) * parameters_.unit_cell()->omega();
+//==                         parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(dm_packed(idx12)) * parameters_.unit_cell()->omega();
+//==                     }
+//==                 }
+//==             }
+//==         }
+//==         t1.stop();
+//== 
+//==         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==         {
+//==             parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().at<CPU>(),
+//==                                          (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
+//== 
+//==             auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+//==             int nbf = atom_type->mt_basis_size();
+//== 
+//==             for (int xi2 = 0; xi2 < nbf; xi2++)
+//==             {
+//==                 int lm2 = atom_type->indexb(xi2).lm;
+//==                 int idxrf2 = atom_type->indexb(xi2).idxrf;
+//==                 for (int xi1 = 0; xi1 < nbf; xi1++)
+//==                 {
+//==                     int lm1 = atom_type->indexb(xi1).lm;
+//==                     int idxrf1 = atom_type->indexb(xi1).idxrf;
+//==                     if (lm1 == lm2) parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+//==                 }
+//==             }
+//==         }
+//==     }
+//== }
+
 void Potential::generate_d_mtrx()
 {   
     Timer t("sirius::Potential::generate_d_mtrx");
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
+        auto uc = parameters_.unit_cell();
         auto rl = parameters_.reciprocal_lattice();
 
         /* get plane-wave coefficients of effective potential */
         fft_->input(&effective_potential_->f_it<global>(0));
         fft_->transform(-1);
         fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
-    
+
         Timer t1("sirius::Potential::generate_d_mtrx|kernel");
-        #pragma omp parallel
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
         {
-            mdarray<double_complex, 1> veff_tmp(rl->spl_num_gvec().local_size());
-            mdarray<double_complex, 1> dm_packed(parameters_.unit_cell()->max_mt_basis_size() * 
-                                                 (parameters_.unit_cell()->max_mt_basis_size() + 1) / 2);
-            
-            #pragma omp for
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            auto atom_type = uc->atom_type(iat);
+            int nbf = atom_type->mt_basis_size();
+            matrix<double_complex> veff_pw(rl->spl_num_gvec().local_size(), atom_type->num_atoms());
+            matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type->num_atoms()); 
+
+            for (int i = 0; i < atom_type->num_atoms(); i++)
             {
-                auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-                int nbf = atom_type->mt_basis_size();
-                
+                int ia = atom_type->atom_id(i);
+
                 for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
                 {
                     int ig = rl->spl_num_gvec(igloc);
-                    veff_tmp(igloc) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
+                    veff_pw(igloc, i) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
                 }
+            }
 
-                linalg<CPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
-                                  &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),  
-                                  &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
+            linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
+                              &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),
+                              &veff_pw(0, 0), (int)rl->spl_num_gvec().local_size(),
+                              &d_tmp(0, 0), d_tmp.ld());
+
+            for (int i = 0; i < atom_type->num_atoms(); i++)
+            {
+                int ia = atom_type->atom_id(i);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
@@ -1912,8 +1991,8 @@ void Potential::generate_d_mtrx()
                     {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-                        parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = dm_packed(idx12) * parameters_.unit_cell()->omega();
-                        parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(dm_packed(idx12)) * parameters_.unit_cell()->omega();
+                        parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * parameters_.unit_cell()->omega();
+                        parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * parameters_.unit_cell()->omega();
                     }
                 }
             }

@@ -1229,10 +1229,6 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     std::vector<double_complex> f_pw(rl->num_gvec(), complex_zero);
 
-    //== int max_num_atoms = 0;
-    //== for (int iat = 0; iat < uc->num_atom_types(); iat++)
-    //==     max_num_atoms = std::max(max_num_atoms, uc->atom_type(iat)->num_atoms());
-
     /* split local fraction of G-vectors between threads */
     splindex<block> spl_ngv_loc(rl->spl_num_gvec().local_size(), Platform::max_num_threads(), 0);
 
