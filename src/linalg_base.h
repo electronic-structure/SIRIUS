@@ -69,6 +69,12 @@ void FORTRAN(zgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ft
                     ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc, ftn_len transa_len,
                     ftn_len transb_len);
 
+void FORTRAN(dsytrf)(ftn_char uplo, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work,
+                     ftn_int* lwork, ftn_int* info, ftn_len uplo_len);
+
+void FORTRAN(dsytri)(ftn_char uplo, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work,
+                     ftn_int* info, ftn_len uplo_len);
+
 void FORTRAN(dgetrf)(ftn_int* m, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_int* info);
 
 void FORTRAN(dgetri)(ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work, ftn_int* lwork,

@@ -125,6 +125,15 @@ class linalg<CPU>: public linalg_base
         template <typename T>
         static void geinv(ftn_int n, dmatrix<T>& A);
 
+        template <typename T>
+        static ftn_int sytrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
+
+        template <typename T>
+        static ftn_int sytri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
+
+        template <typename T>
+        static void syinv(ftn_int n, matrix<T>& A);
+
         /// Invert a hermitian matrix.
         template <typename T>
         static void heinv(ftn_int n, matrix<T>& A);

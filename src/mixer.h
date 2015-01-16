@@ -365,7 +365,12 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
 
-                linalg<CPU>::geinv(N, S);
+                linalg<CPU>::syinv(N, S);
+                /* restore lower triangular part */
+                for (int j1 = 0; j1 < N; j1++)
+                {
+                    for (int j2 = 0; j2 < j1; j2++) S(j1, j2) = S(j2, j1);
+                }
 
                 mdarray<double, 1> c(N);
                 c.zero();

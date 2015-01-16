@@ -894,21 +894,57 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
-                    if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_) ||
-                        (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
-
+                    //if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_) ||
+                    //    (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+                    //if (kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_)
+                    if (kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > parameters_.iterative_solver_input_section_.tolerance_)
                     {
                         memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
                         n++;
                     }
                 }
+
                 #ifdef _GPU_
                 if (parameters_.processing_unit() == GPU)
                     cublas_set_matrix(N, n, sizeof(double_complex), evec_tmp.at<CPU>(), evec_tmp.ld(), evec_tmp.at<GPU>(), evec_tmp.ld());
                 #endif
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
+                
+                /* get rid of residuals with small norm */
+                int m = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    /* take the residual if it's norm is above the threshold */
+                    if (res_norm[i] > 1e-6)
+                    {
+                        /* shift unconverged residuals to the beginning of array */
+                        if (m != i)
+                        {
+                            switch (parameters_.processing_unit())
+                            {
+                                case CPU:
+                                {
+                                    memcpy(&res(0, m), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                                    break;
+                                }
+                                //case GPU:
+                                //{
+                                //    #ifdef _GPU_
+                                //    cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                                //    #else
+                                //    TERMINATE_NO_GPU
+                                //    #endif
+                                //    break;
+                                //}
+                            }
+                        }
+                        m++;
+                    }
+                }
+                /* final number of residuals */
+                n = m;
 
                 #ifdef _GPU_
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)
@@ -979,18 +1015,6 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                                       res.at<CPU>(), res.ld());
                 }
                 #endif
-
-                //== std::vector<int> nr(3, 0);
-                //== for (int i = 0; i < num_bands; i++)
-                //== {
-                //==     if (res_norm[i] < itso.extra_tolerance_) nr[0]++;
-                //==     if (res_norm[i] >= itso.extra_tolerance_ && res_norm[i] < itso.tolerance_) nr[1]++;
-                //==     if (res_norm[i] >= itso.tolerance_) nr[2]++;
-                //== }
-                //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                //== {
-                //==     DUMP("residual statistics: %4.2f %4.2f %4.2f", double(nr[0]) / num_bands, double(nr[1]) / num_bands, double(nr[2]) / num_bands);
-                //== }
             }
         }
 
@@ -1041,7 +1065,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 itso.tolerance_ = std::max(itso.tolerance_, itso.extra_tolerance_);
             }
 
-            /* exit the loop if the eigen-vectors are converged or it's a last iteration */
+            /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
                 if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -1051,12 +1075,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                     {
                          if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
                     }
-                    DUMP("exiting after %i iterations with maximum eigen-value error %18.12e\n", k + 1, demax);
+                    DUMP("exiting after %i iterations with maximum eigen-value error %18.12f", k + 1, demax);
                 }
-                //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                //== {
-                //==     DUMP("N = %i, n = %i, k = %i, tol = %18.14f", N, n, k, itso.tolerance_);
-                //== }
                 break;
             }
             else /* otherwise set Psi as a new trial basis */

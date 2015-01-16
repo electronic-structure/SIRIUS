@@ -278,6 +278,46 @@ void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex
 }
 
 template<> 
+ftn_int linalg<CPU>::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+{
+    ftn_int nb = ilaenv(1, "dsytrf", "U", n, -1, -1, -1);
+    ftn_int lwork = n * nb;
+    std::vector<ftn_double> work(lwork);
+
+    ftn_int info;
+    FORTRAN(dsytrf)("U", &n, A, &lda, ipiv, &work[0], &lwork, &info, (ftn_len)1);
+    return info;
+}
+
+template<> 
+ftn_int linalg<CPU>::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+{
+    std::vector<ftn_double> work(n);
+    ftn_int info;
+    FORTRAN(dsytri)("U", &n, A, &lda, ipiv, &work[0], &info, (ftn_len)1);
+    return info;
+}
+
+template <>
+void linalg<CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
+{
+    std::vector<int> ipiv(n);
+    int info = sytrf(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("sytrf returned %i\n", info);
+        exit(-1);
+    }
+
+    info = sytri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("sytri returned %i\n", info);
+        exit(-1);
+    }
+}
+
+template<> 
 ftn_int linalg<CPU>::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
 {
     ftn_int info;

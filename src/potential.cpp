@@ -1998,18 +1998,19 @@ void Potential::generate_d_mtrx()
                         int idxrf1 = atom_type->indexb(xi1).idxrf;
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-                        parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * parameters_.unit_cell()->omega();
-                        parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * parameters_.unit_cell()->omega();
-                        if (lm1 == lm2)
+                        if (xi1 == xi2)
                         {
-                            if (xi1 == xi2)
+                            uc->atom(ia)->d_mtrx(xi1, xi2) = real(d_tmp(idx12, i)) * uc->omega() +
+                                                             atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                        }
+                        else
+                        {
+                            uc->atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * uc->omega();
+                            uc->atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * uc->omega();
+                            if (lm1 == lm2)
                             {
-                                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                            }
-                            else
-                            {
-                                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                                parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) += atom_type->uspp().d_mtrx_ion(idxrf2, idxrf1);
+                                uc->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                                uc->atom(ia)->d_mtrx(xi2, xi1) += atom_type->uspp().d_mtrx_ion(idxrf2, idxrf1);
                             }
                         }
                     }
