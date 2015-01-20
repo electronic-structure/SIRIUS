@@ -19,8 +19,8 @@ extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
                                          int num_res_local,
                                          int* res_idx,
                                          double* eval,
-                                         double_complex const* h_diag,
-                                         double_complex const* o_diag,
+                                         double const* h_diag,
+                                         double const* o_diag,
                                          double_complex* res,
                                          double* res_norm);
 
@@ -1010,8 +1010,8 @@ void Band::residuals_parallel_simple(int N__,
                                      dmatrix<double_complex>& hpsi__,
                                      dmatrix<double_complex>& opsi__,
                                      dmatrix<double_complex>& res__,
-                                     std::vector<double_complex>& h_diag__,
-                                     std::vector<double_complex>& o_diag__,
+                                     std::vector<double>& h_diag__,
+                                     std::vector<double>& o_diag__,
                                      std::vector<double>& res_norm__)
 {
     Timer t("sirius::Band::residuals_parallel_simple");
@@ -1094,8 +1094,8 @@ void Band::residuals_parallel(int N__,
                               dmatrix<double_complex>& hpsi__,
                               dmatrix<double_complex>& opsi__,
                               dmatrix<double_complex>& res__,
-                              std::vector<double_complex>& h_diag__,
-                              std::vector<double_complex>& o_diag__,
+                              std::vector<double>& h_diag__,
+                              std::vector<double>& o_diag__,
                               std::vector<double>& res_norm__,
                               mdarray<double_complex, 2>& kappa__)
 {
@@ -1415,11 +1415,11 @@ void Band::residuals_parallel(int N__,
         /* compute norm */
         for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
 
-        mdarray<double_complex, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
+        mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
         hdiag_gpu.allocate_on_device();
         hdiag_gpu.copy_to_device();
 
-        mdarray<double_complex, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
+        mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
         odiag_gpu.allocate_on_device();
         odiag_gpu.copy_to_device();
 
@@ -2101,8 +2101,8 @@ void Band::residuals_serial(K_point* kp__,
                             matrix<double_complex>& hpsi__,
                             matrix<double_complex>& opsi__,
                             matrix<double_complex>& res__,
-                            std::vector<double_complex>& h_diag__,
-                            std::vector<double_complex>& o_diag__,
+                            std::vector<double>& h_diag__,
+                            std::vector<double>& o_diag__,
                             std::vector<double>& res_norm__,
                             matrix<double_complex>& kappa__)
 {
@@ -2186,9 +2186,9 @@ void Band::residuals_serial(K_point* kp__,
             /* apply preconditioner */
             for (int igk = 0; igk < kp__->num_gkvec(); igk++)
             {
-                double_complex z = h_diag__[igk] - eval__[i] * o_diag__[igk];
-                if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-                res__(igk, i) /= z;
+                double p = h_diag__[igk] - eval__[i] * o_diag__[igk];
+                if (std::abs(p) < 0.5e-5) p = copysign(0.5e-5, p);
+                res__(igk, i) /= p;
             }
         }
 
@@ -2243,11 +2243,11 @@ void Band::residuals_serial(K_point* kp__,
         /* compute norm */
         for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
 
-        mdarray<double_complex, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
+        mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
         hdiag_gpu.allocate_on_device();
         hdiag_gpu.copy_to_device();
 
-        mdarray<double_complex, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
+        mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
         odiag_gpu.allocate_on_device();
         odiag_gpu.copy_to_device();
 
