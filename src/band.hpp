@@ -357,8 +357,8 @@ template <bool need_o_diag>
 void Band::get_h_o_diag(K_point const* kp__,
                   double v0__,
                   std::vector<double> const& pw_ekin__,
-                  std::vector<double_complex>& h_diag__,
-                  std::vector<double_complex>& o_diag__)
+                  std::vector<double>& h_diag__,
+                  std::vector<double>& o_diag__)
 {
     Timer t("sirius::Band::get_h_o_diag");
 
@@ -428,8 +428,8 @@ void Band::get_h_o_diag(K_point const* kp__,
                 int xi2 = it.second;
                 double_complex z = beta_gk_tmp(xi1, igk_row) * conj(beta_gk_tmp(xi2, igk_row));
 
-                h_diag__[igk_row] += z * d_sum(xi1, xi2);
-                if (need_o_diag) o_diag__[igk_row] += z * q_sum(xi1, xi2);
+                h_diag__[igk_row] += real(z * d_sum(xi1, xi2));
+                if (need_o_diag) o_diag__[igk_row] += real(z * q_sum(xi1, xi2));
             }
         }
     }
