@@ -209,8 +209,8 @@ class Band
                                        dmatrix<double_complex>& hpsi__,
                                        dmatrix<double_complex>& opsi__,
                                        dmatrix<double_complex>& res__,
-                                       std::vector<double_complex>& h_diag__,
-                                       std::vector<double_complex>& o_diag__,
+                                       std::vector<double>& h_diag__,
+                                       std::vector<double>& o_diag__,
                                        std::vector<double>& res_norm__);
 
         void residuals_parallel(int N__,
@@ -223,8 +223,8 @@ class Band
                                 dmatrix<double_complex>& hpsi__,
                                 dmatrix<double_complex>& opsi__,
                                 dmatrix<double_complex>& res__,
-                                std::vector<double_complex>& h_diag__,
-                                std::vector<double_complex>& o_diag__,
+                                std::vector<double>& h_diag__,
+                                std::vector<double>& o_diag__,
                                 std::vector<double>& res_norm__,
                                 mdarray<double_complex, 2>& kappa__);
 
@@ -256,14 +256,6 @@ class Band
         void diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                                                       double v0__,
                                                       std::vector<double>& veff_it_coarse__);
-
-        /// Get diagonal elements of Hamiltonian and (if needed) overlap.
-        template <bool need_o_diag = true>
-        void get_h_o_diag(K_point const* kp__,
-                          double v0__,
-                          std::vector<double> const& pw_ekin__,
-                          std::vector<double_complex>& h_diag__,
-                          std::vector<double_complex>& o_diag__);
 
         void apply_h_serial(K_point* kp__, 
                             std::vector<double> const& effective_potential__, 
@@ -338,8 +330,8 @@ class Band
                               matrix<double_complex>& hpsi__,
                               matrix<double_complex>& opsi__,
                               matrix<double_complex>& res__,
-                              std::vector<double_complex>& h_diag__,
-                              std::vector<double_complex>& o_diag__,
+                              std::vector<double>& h_diag__,
+                              std::vector<double>& o_diag__,
                               std::vector<double>& res_norm__,
                               matrix<double_complex>& kappa__);
 
@@ -414,12 +406,12 @@ class Band
             {
                 case ev_lapack:
                 {
-                    gen_evp_solver_ = new generalized_evp_lapack(1e-15);
+                    gen_evp_solver_ = new generalized_evp_lapack(0.0);
                     break;
                 }
                 case ev_scalapack:
                 {
-                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 1e-15);
+                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 0.0);
                     break;
                 }
                 case ev_elpa1:
@@ -567,6 +559,15 @@ class Band
         {
             return gen_evp_solver_;
         }
+
+        /// Get diagonal elements of Hamiltonian and (if needed) overlap.
+        template <bool need_o_diag = true>
+        void get_h_o_diag(K_point const* kp__,
+                          double v0__,
+                          std::vector<double> const& pw_ekin__,
+                          std::vector<double>& h_diag__,
+                          std::vector<double>& o_diag__);
+
 };
 
 #include "band.hpp"
