@@ -290,7 +290,14 @@ class generalized_evp_lapack: public generalized_evp
                             &w[0], z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
                             (int32_t)1, (int32_t)1);
 
-            if (m != nevec) error_local(__FILE__, __LINE__, "Not all eigen-values are found.");
+            if (m != nevec)
+            {
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                TERMINATE(s);
+            }
 
             if (info)
             {
