@@ -337,8 +337,8 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
 
     /* get diagonal elements for preconditioning */
-    std::vector<double_complex> h_diag;
-    std::vector<double_complex> o_diag;
+    std::vector<double> h_diag;
+    std::vector<double> o_diag;
     if (with_overlap) 
     {
         get_h_o_diag<true>(kp__, v0__, pw_ekin, h_diag, o_diag);
@@ -704,8 +704,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
 
     /* get diagonal elements for preconditioning */
-    std::vector<double_complex> h_diag;
-    std::vector<double_complex> o_diag;
+    std::vector<double> h_diag;
+    std::vector<double> o_diag;
     if (with_overlap) 
     {
         get_h_o_diag<true>(kp__, v0__, pw_ekin, h_diag, o_diag);
@@ -877,7 +877,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
-        
+
         /* copy eigen-vectors to GPU */
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
@@ -899,7 +899,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                     //    (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
                     //if (kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_)
                     if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > tol) || 
-                        (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(tol * 5, 1e-5)))
+                        (kp__->band_occupancy(i) <= 1e-12 && std::abs(eval[i] - eval_old[i]) > std::max(tol * 5, 1e-5)))
                     {
                         memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
@@ -931,15 +931,15 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                                     memcpy(&res(0, m), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
                                     break;
                                 }
-                                //case GPU:
-                                //{
-                                //    #ifdef _GPU_
-                                //    cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
-                                //    #else
-                                //    TERMINATE_NO_GPU
-                                //    #endif
-                                //    break;
-                                //}
+                                case GPU:
+                                {
+                                    //#ifdef _GPU_
+                                    //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                                    //#else
+                                    //TERMINATE_NO_GPU
+                                    //#endif
+                                    break;
+                                }
                             }
                         }
                         m++;
@@ -1419,8 +1419,8 @@ void Band::diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
 
     if (false)
     {
-        std::vector<double_complex> h_diag;
-        std::vector<double_complex> o_diag;
+        std::vector<double> h_diag;
+        std::vector<double> o_diag;
         get_h_o_diag<true>(kp__, 0, pw_ekin, h_diag, o_diag);
 
         mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
