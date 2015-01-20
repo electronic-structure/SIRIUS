@@ -169,6 +169,21 @@ class Utils
         static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
 
         static vector3d<int> find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__);
+
+        static std::vector< std::pair<int, int> > l_m_by_lm(int lmax)
+        {
+            std::vector< std::pair<int, int> > l_m(lmmax(lmax));
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++)
+                {
+                    int lm = lm_by_l_m(l, m);
+                    l_m[lm].first = l;
+                    l_m[lm].second = m;
+                }
+            }
+            return l_m;
+        }
 };
 
 #endif
