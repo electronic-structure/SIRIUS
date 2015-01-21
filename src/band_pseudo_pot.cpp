@@ -1706,6 +1706,91 @@ void Band::apply_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
         kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+        
+        
+        //== {
+
+        //==     matrix<double_complex> beta_phi_QE(uc->mt_lo_basis_size(), n__);
+
+        //==     int lmax = 10;
+
+        //==     std::vector<int> idxlm(Utils::lmmax(lmax));
+        //==     std::vector<int> phase(Utils::lmmax(lmax), 1);
+        //==     int lm = 0;
+        //==     for (int l = 0; l <= lmax; l++)
+        //==     {
+        //==         idxlm[lm++] = Utils::lm_by_l_m(l, 0);
+        //==         for (int m = 1; m <= l; m++)
+        //==         {
+        //==             idxlm[lm++] = Utils::lm_by_l_m(l, m);
+        //==             idxlm[lm] = Utils::lm_by_l_m(l, -m);
+        //==             if (m % 2 == 0) phase[lm] = -1;
+        //==             lm++;
+        //==         }
+        //==     }
+
+        //==     auto l_m_by_lm = Utils::l_m_by_lm(10);
+
+        //==     for (int i = 0; i < n__; i++)
+        //==     {
+        //==         for (int ia = 0; ia < uc->num_atoms(); ia++)
+        //==         {
+        //==             auto atom = uc->atom(ia);
+        //==             int nbf = atom->mt_basis_size();
+        //==             /* cycle through QE beta projectors in R_lm */
+        //==             for (int xi = 0; xi < nbf; xi++)
+        //==             {
+        //==                 int lm = atom->type()->indexb(xi).lm;
+        //==                 int order = atom->type()->indexb(xi).order;
+        //==                 /* this is lm componet of R_lm in sirius order */
+        //==                 int lm1 = idxlm[lm];
+        //==                 int l = l_m_by_lm[lm1].first;
+        //==                 int m = l_m_by_lm[lm1].second;
+
+        //==                 double_complex z;
+        //==                 if (m == 0)
+        //==                 {
+        //==                     int xi1 = atom->type()->indexb_by_lm_order(lm1, order);
+        //==                     z = beta_phi(atom->offset_lo() + xi1, i);
+        //==                 }
+        //==                 else
+        //==                 {
+        //==                     int j1 = Utils::lm_by_l_m(l, m); 
+        //==                     int xi1 = atom->type()->indexb_by_lm_order(j1, order);
+        //==                     int j2 = Utils::lm_by_l_m(l, -m); 
+        //==                     int xi2 = atom->type()->indexb_by_lm_order(j2, order);
+
+        //==                     z = sirius::SHT::ylm_dot_rlm(l,  m, m) * beta_phi(atom->offset_lo() + xi1, i) + 
+        //==                         sirius::SHT::ylm_dot_rlm(l, -m, m) * beta_phi(atom->offset_lo() + xi2, i); 
+        //==                 }
+        //==                 z = z * double(phase[lm]);
+        //==                 
+        //==                 //== if (std::abs(beta_gk(igk, atom->offset_lo() + xi) - z) > 1e-4)
+        //==                 //== {
+        //==                 //==     printf("large diff for beta-projectors for ig: %i ia: %i xi: %i\n", igk, ia, xi);
+        //==                 //==     std::cout << beta_gk(igk, atom->offset_lo() + xi) << " " << z << std::endl;
+        //==                 //== }
+
+        //==                 beta_phi_QE(atom->offset_lo() + xi, i) = z;
+        //==             }
+        //==         }
+        //==     }
+
+        //== 
+        //==     printf("beta_phi\n");
+        //==     for (int i = 0; i < n__; i++)
+        //==     {
+        //==         for (int j = 0; j < uc->mt_lo_basis_size(); j++)
+        //==         {
+        //==             printf("%18.12f ", 2.0 * std::abs(beta_phi_QE(j, i)));
+        //==         }
+        //==         printf("\n");
+        //==     }
+        //== //printf("beta=%18.12f %18.12f %18.12f %18.12f\n", std::abs(beta_phi(0, 0)), std::abs(beta_phi(0, n__ - 1)),
+        //== //                                                 std::abs(beta_phi(uc->mt_lo_basis_size() - 1, 0)),
+        //== //                                                 std::abs(beta_phi(uc->mt_lo_basis_size() - 1, n__ - 1)));
+
+        //== }
 
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
                                          kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
@@ -2198,6 +2283,7 @@ void Band::residuals_serial(K_point* kp__,
         {
             double d = 0;
             for (int igk = 0; igk < kp__->num_gkvec(); igk++) d += real(conj(res__(igk, i)) * res__(igk, i));
+            //printf("res: %4i, norm: %18.12f\n", i, 2*std::sqrt(d));
             d = 1.0 / std::sqrt(d);
             for (int igk = 0; igk < kp__->num_gkvec(); igk++) res__(igk, i) *= d;
         }

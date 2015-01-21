@@ -297,6 +297,30 @@ void K_point::update()
             fv_states_panel_.zero();
             for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
 
+            //== fv_states_panel_.zero();
+            //== for (int i = 0; i < parameters_.num_fv_states(); i++)
+            //== {
+            //==     int n = 0;
+            //==     for (int i0 = -1; i0 <= 1; i0++)
+            //==     {
+            //==         for (int i1 = -1; i1 <= 1; i1++)
+            //==         {
+            //==             for (int i2 = -1; i2 <= 1; i2++)
+            //==             {
+            //==                 if (i == n)
+            //==                 {
+            //==                     int ig = parameters_.reciprocal_lattice()->gvec_index(vector3d<int>(i0, i1, i2));
+            //==                     for (int igk = 0; igk < num_gkvec(); igk++)
+            //==                     {
+            //==                         if (gklo_basis_descriptor_row(igk).ig == ig) fv_states_panel_.set(igk, i, complex_one);
+            //==                     }
+            //==                 }
+            //==                 n++;
+            //==             }
+            //==         }
+            //==     }
+            //== }
+
             fv_states_panel_.gather(fv_states_);
         }
         

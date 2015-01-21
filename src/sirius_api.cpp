@@ -1818,6 +1818,13 @@ void FORTRAN(sirius_generate_potential_pw_coefs)(void)
     log_function_exit(__func__);
 }
 
+void FORTRAN(sirius_generate_density_pw_coefs)(void)
+{
+    log_function_enter(__func__);
+    density->generate_pw_coefs();
+    log_function_exit(__func__);
+}
+
 /// Get first-variational eigen-vectors
 /** Assume that the Fortran side holds the whole array */
 void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id__, int32_t* ik__, double_complex* fv_evec__, int32_t* ld__, 
@@ -2491,16 +2498,14 @@ void sirius_get_h_o_diag_(int32_t* kset_id__, int32_t* ik__, double* h_diag__, d
     std::vector<double> h_diag, o_diag;
     kset->band()->get_h_o_diag<true>(kp, v0, pw_ekin, h_diag, o_diag);
 
-    std::cout << "checking h_diag" << std::endl;
-
     for (int igk = 0; igk < kp->num_gkvec(); igk++)
     {
-        //h_diag__[igk] = h_diag[igk_map[igk]] * 2; // convert to Ry
-        //o_diag__[igk] = o_diag[igk_map[igk]];
-        if (std::abs(h_diag__[igk] - h_diag[igk_map[igk]] * 2) > 1e-10)
-        {
-            TERMINATE("this is wrong");
-        }
+        h_diag__[igk] = h_diag[igk_map[igk]] * 2; // convert to Ry
+        o_diag__[igk] = o_diag[igk_map[igk]];
+        //if (std::abs(h_diag__[igk] - h_diag[igk_map[igk]] * 2) > 1e-10)
+        //{
+        //    TERMINATE("this is wrong");
+        //}
     }
 }
 

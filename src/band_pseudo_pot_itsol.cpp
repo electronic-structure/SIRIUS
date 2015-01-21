@@ -843,6 +843,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
     #endif
 
+    double evp_load = 0;
+
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
@@ -869,6 +871,20 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             hmlt(i, i) = real(hmlt(i, i));
             ovlp(i, i) = real(ovlp(i, i));
         }
+        //== {
+        //==     mdarray<double_complex, 2> o_tmp(N, N);
+        //==     for (int i = 0; i < N; i++)
+        //==     {
+        //==         for (int j = 0; j < N; j++) o_tmp(i, j) = ovlp(i, j);
+        //==     }
+        //==     mdarray<double_complex, 2> evec_o(N, N);
+        //==     mdarray<double, 1> eval_o(N);
+        //==     std_evp_solver_->solve(N, &o_tmp(0, 0), N, &eval_o(0), &evec_o(0, 0), N);
+        //==     for (int i = 0; i < N; i++)
+        //==     {
+        //==         std::cout << "i=" << i << " eval_o[i]=" << eval_o(i) << std::endl;
+        //==     }
+        //== }
         
         eval_old = eval;
         /* stage 2: solve generalized eigen-value problem with the size N */
@@ -876,6 +892,10 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
+        //printf("N=%i\n", N);
+        //printf("e=%18.12f %18.12f\n", eval[0]*2, eval[num_bands-1]*2);
+
+        evp_load += std::pow(double(N) / num_bands, 3);
         }
 
         /* copy eigen-vectors to GPU */
@@ -891,15 +911,18 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             if (converge_by_energy)
             {
                 /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-                double tol = parameters_.iterative_solver_input_section_.tolerance_;
+                double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
                     //if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_) ||
                     //    (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+                    if (std::abs(eval[i] - eval_old[i]) > tol && (kp__->band_occupancy(i) > 1e-12 || n != 0))
+                    //if (std::abs(eval[i] - eval_old[i]) > tol && kp__->band_occupancy(i) > 1e-12)
+                    //if (k == 0 || std::abs(eval[i] - eval_old[i]) > tol)
                     //if (kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_)
-                    if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > tol) || 
-                        (kp__->band_occupancy(i) <= 1e-12 && std::abs(eval[i] - eval_old[i]) > std::max(tol * 5, 1e-5)))
+                    //if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > tol) || 
+                    //    (kp__->band_occupancy(i) <= 1e-12 && std::abs(eval[i] - eval_old[i]) > std::max(tol * 5, 1e-5)))
                     {
                         memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
@@ -914,39 +937,39 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
                 
-                /* get rid of residuals with small norm */
-                int m = 0;
-                for (int i = 0; i < n; i++)
-                {
-                    /* take the residual if it's norm is above the threshold */
-                    if (res_norm[i] > 1e-6)
-                    {
-                        /* shift unconverged residuals to the beginning of array */
-                        if (m != i)
-                        {
-                            switch (parameters_.processing_unit())
-                            {
-                                case CPU:
-                                {
-                                    memcpy(&res(0, m), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
-                                    break;
-                                }
-                                case GPU:
-                                {
-                                    //#ifdef _GPU_
-                                    //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
-                                    //#else
-                                    //TERMINATE_NO_GPU
-                                    //#endif
-                                    break;
-                                }
-                            }
-                        }
-                        m++;
-                    }
-                }
-                /* final number of residuals */
-                n = m;
+                ///* get rid of residuals with small norm */
+                //int m = 0;
+                //for (int i = 0; i < n; i++)
+                //{
+                //    /* take the residual if it's norm is above the threshold */
+                //    if (res_norm[i] > 1e-6)
+                //    {
+                //        /* shift unconverged residuals to the beginning of array */
+                //        if (m != i)
+                //        {
+                //            switch (parameters_.processing_unit())
+                //            {
+                //                case CPU:
+                //                {
+                //                    memcpy(&res(0, m), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                //                    break;
+                //                }
+                //                case GPU:
+                //                {
+                //                    //#ifdef _GPU_
+                //                    //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                //                    //#else
+                //                    //TERMINATE_NO_GPU
+                //                    //#endif
+                //                    break;
+                //                }
+                //            }
+                //        }
+                //        m++;
+                //    }
+                //}
+                ///* final number of residuals */
+                //n = m;
 
                 #ifdef _GPU_
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)
@@ -1078,6 +1101,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                          if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
                     }
                     DUMP("exiting after %i iterations with maximum eigen-value error %18.12f", k + 1, demax);
+                    DUMP("evp_load: %f", evp_load);
                 }
                 break;
             }
@@ -1089,6 +1113,15 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 {
                     hmlt_old(i, i) = eval[i];
                     ovlp_old(i, i) = complex_one;
+                }
+
+                if (converge_by_energy)
+                {
+                    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
+                                      &hpsi(0, 0), hpsi.ld());
+                    
+                    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+                                      &opsi(0, 0), opsi.ld());
                 }
  
                 /* set new basis functions */

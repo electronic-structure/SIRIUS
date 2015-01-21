@@ -1985,7 +1985,6 @@ void Density::generate_pw_coefs()
 {
     fft_->input(&rho_->f_it<global>(0));
     fft_->transform(-1);
-
     fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
 }
 
