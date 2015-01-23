@@ -8,14 +8,14 @@ double test_gemm(int M, int N, int K)
 
     splindex<block> spl_M(M, comm.size(), comm.rank());
     
-    matrix<double_complex> a(spl_M.local_size(), N);
-    matrix<double_complex> b(N, K);
-    matrix<double_complex> c(spl_M.local_size(), K);
+    matrix<double_complex> a(spl_M.local_size(), K);
+    matrix<double_complex> b(K, N);
+    matrix<double_complex> c(spl_M.local_size(), N);
 
-    for (int j = 0; j < N; j++)
+    for (int j = 0; j < K; j++)
     {
         for (int i = 0; i < (int)spl_M.local_size(); i++) a(i, j) = type_wrapper<double_complex>::random();
-        for (int i = 0; i < K; i++) b(j, i) = type_wrapper<double_complex>::random();
+        for (int i = 0; i < N; i++) b(j, i) = type_wrapper<double_complex>::random();
     }
 
     c.zero();
