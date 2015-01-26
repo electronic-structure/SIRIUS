@@ -937,39 +937,39 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
                 
-                ///* get rid of residuals with small norm */
-                //int m = 0;
-                //for (int i = 0; i < n; i++)
-                //{
-                //    /* take the residual if it's norm is above the threshold */
-                //    if (res_norm[i] > 1e-6)
-                //    {
-                //        /* shift unconverged residuals to the beginning of array */
-                //        if (m != i)
-                //        {
-                //            switch (parameters_.processing_unit())
-                //            {
-                //                case CPU:
-                //                {
-                //                    memcpy(&res(0, m), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
-                //                    break;
-                //                }
-                //                case GPU:
-                //                {
-                //                    //#ifdef _GPU_
-                //                    //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
-                //                    //#else
-                //                    //TERMINATE_NO_GPU
-                //                    //#endif
-                //                    break;
-                //                }
-                //            }
-                //        }
-                //        m++;
-                //    }
-                //}
-                ///* final number of residuals */
-                //n = m;
+                /* get rid of residuals with small norm */
+                int m = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    /* take the residual if it's norm is above the threshold */
+                    if (res_norm[i] > 1e-6)
+                    {
+                        /* shift unconverged residuals to the beginning of array */
+                        if (m != i)
+                        {
+                            switch (parameters_.processing_unit())
+                            {
+                                case CPU:
+                                {
+                                    memcpy(&res(0, m), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                                    break;
+                                }
+                                case GPU:
+                                {
+                                    //#ifdef _GPU_
+                                    //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                                    //#else
+                                    //TERMINATE_NO_GPU
+                                    //#endif
+                                    break;
+                                }
+                            }
+                        }
+                        m++;
+                    }
+                }
+                /* final number of residuals */
+                n = m;
 
                 #ifdef _GPU_
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)
