@@ -275,6 +275,29 @@ class DFT_ground_state
                     break;
                 }
             }
+
+            if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+                parameters_.esm_type() == norm_conserving_pseudopotential)
+            {
+                switch (parameters_.processing_unit())
+                {
+                    case CPU:
+                    {
+                        potential_->generate_d_mtrx();
+                        break;
+                    }
+                    case GPU:
+                    {
+                        #ifdef _GPU_
+                        potential_->generate_d_mtrx_gpu();
+                        #else
+                        TERMINATE_NO_GPU
+                        #endif
+                        break;
+                    }
+                }
+            }
+
         }
 
         void symmetrize_density()

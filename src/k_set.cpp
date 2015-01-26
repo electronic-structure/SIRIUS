@@ -70,27 +70,6 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         parameters_.unit_cell()->generate_radial_functions();
         parameters_.unit_cell()->generate_radial_integrals();
     }
-    if (precompute && (parameters_.esm_type() == ultrasoft_pseudopotential ||
-                       parameters_.esm_type() == norm_conserving_pseudopotential))
-    {   
-        switch (parameters_.processing_unit())
-        {
-            case CPU:
-            {
-                potential->generate_d_mtrx();
-                break;
-            }
-            case GPU:
-            {
-                #ifdef _GPU_
-                potential->generate_d_mtrx_gpu();
-                #else 
-                TERMINATE_NO_GPU
-                #endif
-                break;
-            }
-        }
-    }
     
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
