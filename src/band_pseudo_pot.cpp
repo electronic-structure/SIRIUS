@@ -2272,7 +2272,11 @@ void Band::residuals_serial(K_point* kp__,
             for (int igk = 0; igk < kp__->num_gkvec(); igk++)
             {
                 double p = h_diag__[igk] - eval__[i] * o_diag__[igk];
-                if (std::abs(p) < 0.5e-5) p = copysign(0.5e-5, p);
+
+                //if (std::abs(p) < 0.5e-5) p = copysign(0.5e-5, p);
+
+                p *= 2; // QE formula is in Ry; here we convert to Ha
+                p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                 res__(igk, i) /= p;
             }
         }
@@ -2283,7 +2287,7 @@ void Band::residuals_serial(K_point* kp__,
         {
             double d = 0;
             for (int igk = 0; igk < kp__->num_gkvec(); igk++) d += real(conj(res__(igk, i)) * res__(igk, i));
-            //printf("res: %4i, norm: %18.12f\n", i, 2*std::sqrt(d));
+            //printf("res: %4i, norm: %18.12f\n", i, std::sqrt(d));
             d = 1.0 / std::sqrt(d);
             for (int igk = 0; igk < kp__->num_gkvec(); igk++) res__(igk, i) *= d;
         }
