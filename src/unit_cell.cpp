@@ -411,6 +411,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 
     if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
+        /* split beta-projectors into chunks */
         int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
         int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
         splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
@@ -418,6 +419,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
         
         for (int ib = 0; ib < num_beta_chunks; ib++)
         {
+            /* number of atoms in chunk */
             int na = (int)spl_beta_chunks.local_size(ib);
             beta_chunks_[ib].num_atoms_ = na;
             beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
