@@ -278,26 +278,16 @@ class linalg_base
         static void descinit(ftn_int* desc, ftn_int m, ftn_int n, ftn_int mb, ftn_int nb, ftn_int irsrc, ftn_int icsrc,
                              ftn_int ictxt, ftn_int lld)
         {
-            int32_t info;
-        
-            FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld, &info);
+            ftn_int info;
+            ftn_int lld1 = std::max(1, lld);
+
+            FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld1, &info);
         
             if (info)
             {
                 printf("error in descinit()\n");
+                printf("m=%i n=%i mb=%i nb=%i irsrc=%i icsrc=%i lld=%i\n", m, n, mb, nb, irsrc, icsrc, lld);
                 exit(-1);
-                //== std::stringstream s;
-                //== s << "error in descinit()" << std::endl
-                //==   << "m = " << m << std::endl
-                //==   << "n = " << n << std::endl
-                //==   << "mb = " << mb << std::endl
-                //==   << "nb = " << nb << std::endl
-                //==   << "irsrc = " << irsrc << std::endl
-                //==   << "icsrc = " << icsrc << std::endl
-                //==   << "ictxt = " << ictxt << std::endl
-                //==   << "lld = " << lld;
-
-                //== error_local(__FILE__, __LINE__, s);
             }
         }
 
