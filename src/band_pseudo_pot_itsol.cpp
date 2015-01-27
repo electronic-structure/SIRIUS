@@ -322,11 +322,11 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
-void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
+void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                                                       double v0__,
                                                       std::vector<double>& veff_it_coarse__)
 {
-    Timer t("sirius::Band::diag_fv_pseudo_potential_parallel_davidson", kp__->comm());
+    Timer t("sirius::Band::diag_fv_pseudo_potential_davidson_parallel", kp__->comm());
 
     log_function_enter(__func__);
     
@@ -351,30 +351,39 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();
 
+    /* maximum local size of bands */
+    int max_num_bands_local = (int)kp__->spl_fv_states().local_size(0);
+
     auto& itso = kp__->iterative_solver_input_section_;
 
+    /* short notation for target wave-functions */
+    dmatrix<double_complex>& psi = kp__->fv_states_panel();
+
+    bool converge_by_energy = (itso.converge_by_energy_ == 1);
+
+    /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
     dmatrix<double_complex> phi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
     dmatrix<double_complex> hphi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
-    hphi.allocate_ata_buffer((int)kp__->spl_fv_states().local_size(0));
+    hphi.allocate_ata_buffer(max_num_bands_local);
+
+    dmatrix<double_complex> ophi;
+    if (with_overlap) ophi = dmatrix<double_complex>(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
 
     dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, kp__->blacs_grid());
 
-    dmatrix<double_complex> ophi;
-    if (with_overlap) ophi = dmatrix<double_complex>(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
-    
     dmatrix<double_complex> evec(num_phi, num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> evec_tmp;
+    if (converge_by_energy) evec_tmp = dmatrix<double_complex>(num_phi, num_bands, kp__->blacs_grid());
 
     std::vector<double> eval(num_bands);
-    std::vector<double> eval_old(num_bands);
     for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
-
-    /* alias for wave-functions */
-    dmatrix<double_complex>& psi = kp__->fv_states_panel();
+    std::vector<double> eval_old(num_bands);
+    std::vector<double> eval_tmp(num_bands);
     
     dmatrix<double_complex> res(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
     dmatrix<double_complex> hpsi(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
@@ -386,15 +395,14 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
 
     std::vector<double> res_norm(num_bands);
-    std::vector<double> res_rms(num_bands);
 
     auto uc = parameters_.unit_cell();
 
-    int num_bands_local = (int)kp__->spl_fv_states().local_size(0);
+    /* find maximum number of beta-projectors across chunks */
     int nbmax = 0;
     for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
 
-    int kappa_size = std::max(nbmax, 4 * num_bands_local);
+    int kappa_size = std::max(nbmax, 4 * max_num_bands_local);
     /* large temporary array for <G+k|beta>, hphi_tmp, ophi_tmp, hpsi_tmp, opsi_tmp */
     matrix<double_complex> kappa(kp__->num_gkvec_row(), kappa_size);
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -455,7 +463,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         #endif
     }
 
-    /* current diagonalziation subspace size */
+    /* current subspace size */
     int N = 0;
 
     /* number of newly added basis functions */
@@ -472,6 +480,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         N += n;
     
         eval_old = eval;
+        /* solve generalized eigen-value problem */
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
 
@@ -495,34 +504,69 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         std::vector<int> res_list;
         if (k != itso.num_steps_ - 1 && !eval_converged)
         {
-            if (with_overlap)
+            if (converge_by_energy)
             {
-                residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
-                                   res_norm, kappa);
+                /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
+                double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+                n = 0;
+                for (int i = 0; i < num_bands; i++)
+                {
+                    if (std::abs(eval[i] - eval_old[i]) > tol && (kp__->band_occupancy(i) > 1e-12 || n != 0))
+                    {
+                        dmatrix<double_complex>::copy_col<CPU>(evec, i, evec_tmp, n);
+                        eval_tmp[n] = eval[i];
+                        n++;
+                    }
+                }
+
+                if (n != 0)
+                {
+                    residuals_parallel(N, n, kp__, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
+                                       res_norm, kappa);
+
+                    /* filter residuals by norm */
+                    for (int i = 0; i < n; i++)
+                    {
+                        /* take the residual if it's norm is above the threshold */
+                        if (res_norm[i] > 1e-6) res_list.push_back(i);
+                    }
+
+                    /* number of additional basis functions */
+                    n = (int)res_list.size();
+                }
             }
             else
             {
-                residuals_parallel(N, num_bands, kp__, eval, evec, hphi, phi, hpsi, psi, res, h_diag, o_diag, 
-                                   res_norm, kappa);
-            }
-
-            for (int i = 0; i < num_bands; i++)
-            {
-                /* take the residual if it's norm is above the threshold */
-                if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
-                    (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+                if (with_overlap)
                 {
-                    res_list.push_back(i);
+                    residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
+                                       res_norm, kappa);
                 }
-            }
+                else
+                {
+                    residuals_parallel(N, num_bands, kp__, eval, evec, hphi, phi, hpsi, psi, res, h_diag, o_diag, 
+                                       res_norm, kappa);
+                }
 
-            /* number of additional basis functions */
-            n = (int)res_list.size();
+                for (int i = 0; i < num_bands; i++)
+                {
+                    /* take the residual if it's norm is above the threshold */
+                    if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
+                        (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+                    {
+                        res_list.push_back(i);
+                    }
+                }
+
+                /* number of additional basis functions */
+                n = (int)res_list.size();
+            }
         }
+        kp__->comm().barrier();
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1) || eval_converged)
-        {   
+        {
             Timer t2("sirius::Band::diag_fv_pseudo_potential|update_phi");
 
             #ifdef _GPU_
@@ -554,8 +598,15 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
                 break;
             }
 
-            STOP();
             // something has to be copied to GPU/CPU here
+            if (parameters_.processing_unit() == GPU) STOP();
+
+            if (converge_by_energy)
+            {
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, hphi, evec, complex_zero, hpsi); 
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, ophi, evec, complex_zero, opsi); 
+            }
+
             for (int i = 0; i < psi.num_cols_local(); i++) 
             {
                 /* update \phi */
@@ -685,20 +736,14 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     kp__->fv_states_panel().scatter(psi);
 }
 
-void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
+void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                                     double v0__,
                                                     std::vector<double>& veff_it_coarse__)
 {
-    Timer t("sirius::Band::diag_fv_pseudo_potential_serial_davidson");
+    Timer t("sirius::Band::diag_fv_pseudo_potential_davidson_serial");
 
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
-
-    /* short notation for target wave-functions */
-    mdarray<double_complex, 2>& psi = kp__->fv_states();
-
-    /* short notation for number of target wave-functions */
-    int num_bands = parameters_.num_fv_states();     
 
     /* we need to apply overlap operator in case of ultrasoft pseudopotential */
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
@@ -715,29 +760,37 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         get_h_o_diag<false>(kp__, v0__, pw_ekin, h_diag, o_diag);
     }
 
+    /* short notation for number of target wave-functions */
+    int num_bands = parameters_.num_fv_states();     
+
     auto& itso = kp__->iterative_solver_input_section_;
-    
+
+    /* short notation for target wave-functions */
+    matrix<double_complex>& psi = kp__->fv_states();
+
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
-    
+
+    /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
-    mdarray<double_complex, 2> phi(kp__->num_gkvec(), num_phi);
-    mdarray<double_complex, 2> hphi(kp__->num_gkvec(), num_phi);
-    mdarray<double_complex, 2> ophi(kp__->num_gkvec(), num_phi);
-    mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
-    mdarray<double_complex, 2> opsi(kp__->num_gkvec(), num_bands);
+    matrix<double_complex> phi(kp__->num_gkvec(), num_phi);
+    matrix<double_complex> hphi(kp__->num_gkvec(), num_phi);
+    matrix<double_complex> ophi(kp__->num_gkvec(), num_phi);
+    matrix<double_complex> hpsi(kp__->num_gkvec(), num_bands);
+    matrix<double_complex> opsi(kp__->num_gkvec(), num_bands);
 
-    mdarray<double_complex, 2> hmlt(num_phi, num_phi);
-    mdarray<double_complex, 2> ovlp(num_phi, num_phi);
-    mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
-    mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
-    mdarray<double_complex, 2> evec(num_phi, num_bands);
-    mdarray<double_complex, 2> evec_tmp;
+    matrix<double_complex> hmlt(num_phi, num_phi);
+    matrix<double_complex> ovlp(num_phi, num_phi);
+    matrix<double_complex> hmlt_old(num_phi, num_phi);
+    matrix<double_complex> ovlp_old(num_phi, num_phi);
+
+    matrix<double_complex> evec(num_phi, num_bands);
+    matrix<double_complex> evec_tmp;
+    if (converge_by_energy) evec_tmp = matrix<double_complex>(num_phi, num_bands);
 
     std::vector<double> eval(num_bands);
-    std::vector<double> eval_old(num_bands);
     for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
-
+    std::vector<double> eval_old(num_bands);
     std::vector<double> eval_tmp(num_bands);
     
     /* residuals */
@@ -791,7 +844,6 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     assert(phi.size(0) == psi.size(0));
     memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec() * num_bands * sizeof(double_complex));
 
-    if (converge_by_energy) evec_tmp = mdarray<double_complex, 2>(num_phi, num_bands);
     
     if (parameters_.processing_unit() == GPU)
     {
@@ -833,8 +885,11 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         #endif
     }
 
-    int N = 0; // current eigen-value problem size
-    int n = num_bands; // number of new basis functions
+    /* current subspace size */
+    int N = 0;
+
+    /* number of newly added basis functions */
+    int n = num_bands;
     
     #ifdef _WRITE_OBJECTS_HASH_
     std::cout << "hash(beta_pw)       : " << kp__->beta_pw_panel().panel().hash() << std::endl;
@@ -871,20 +926,6 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             hmlt(i, i) = real(hmlt(i, i));
             ovlp(i, i) = real(ovlp(i, i));
         }
-        //== {
-        //==     mdarray<double_complex, 2> o_tmp(N, N);
-        //==     for (int i = 0; i < N; i++)
-        //==     {
-        //==         for (int j = 0; j < N; j++) o_tmp(i, j) = ovlp(i, j);
-        //==     }
-        //==     mdarray<double_complex, 2> evec_o(N, N);
-        //==     mdarray<double, 1> eval_o(N);
-        //==     std_evp_solver_->solve(N, &o_tmp(0, 0), N, &eval_o(0), &evec_o(0, 0), N);
-        //==     for (int i = 0; i < N; i++)
-        //==     {
-        //==         std::cout << "i=" << i << " eval_o[i]=" << eval_o(i) << std::endl;
-        //==     }
-        //== }
         
         eval_old = eval;
         /* stage 2: solve generalized eigen-value problem with the size N */
@@ -898,6 +939,17 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         evp_load += std::pow(double(N) / num_bands, 3);
         }
 
+        bool eval_converged = true;
+        for (int i = 0; i < num_bands; i++)
+        {
+            if (kp__->band_occupancy(i) > 1e-12 && 
+                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
+            {
+                eval_converged = false;
+            }
+        }
+        eval_converged = false;
+
         /* copy eigen-vectors to GPU */
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
@@ -906,7 +958,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
 
         /* stage 3: compute residuals */
         /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1)
+        if (k != itso.num_steps_ - 1 && !eval_converged)
         {
             if (converge_by_energy)
             {
@@ -915,14 +967,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
-                    //if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_) ||
-                    //    (n != 0 && std::abs(eval[i] - eval_old[i]) > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
                     if (std::abs(eval[i] - eval_old[i]) > tol && (kp__->band_occupancy(i) > 1e-12 || n != 0))
-                    //if (std::abs(eval[i] - eval_old[i]) > tol && kp__->band_occupancy(i) > 1e-12)
-                    //if (k == 0 || std::abs(eval[i] - eval_old[i]) > tol)
-                    //if (kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > itso.tolerance_)
-                    //if ((kp__->band_occupancy(i) > 1e-12 && std::abs(eval[i] - eval_old[i]) > tol) || 
-                    //    (kp__->band_occupancy(i) <= 1e-12 && std::abs(eval[i] - eval_old[i]) > std::max(tol * 5, 1e-5)))
                     {
                         memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
@@ -1044,7 +1089,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
+        if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1) || eval_converged)
         {   
             Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
             /* recompute wave-functions */
@@ -1091,7 +1136,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             }
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n == 0 || k == (itso.num_steps_ - 1))
+            if (n == 0 || k == (itso.num_steps_ - 1) || eval_converged)
             {
                 if (verbosity_level >= 6 && kp__->comm().rank() == 0)
                 {
