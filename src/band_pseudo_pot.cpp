@@ -1000,6 +1000,76 @@ void Band::set_fv_h_o_parallel(int N__,
     log_function_exit(__func__);
 }
 
+void Band::precondition_and_normalize_residuals_parallel(int num_bands__,
+                                                         K_point* kp__,
+                                                         std::vector<double>& eval__,
+                                                         dmatrix<double_complex>& hpsi__,
+                                                         dmatrix<double_complex>& opsi__,
+                                                         dmatrix<double_complex>& res__,
+                                                         std::vector<double>& h_diag__,
+                                                         std::vector<double>& o_diag__,
+                                                         std::vector<double>& res_norm__)
+
+{
+    splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
+                                             blacs_grid_.cyclic_block_size());
+
+    memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
+    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
+    #pragma omp parallel for
+    for (int i = 0; i < (int)spl_num_bands_col.local_size(); i++)
+    {
+        int ires = (int)spl_num_bands_col[i];
+        double norm2 = 0;
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+        {
+            res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
+            norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+        }
+        res_norm__[ires] = norm2;
+    }
+    kp__->comm().allreduce(res_norm__);
+    
+    /* compute norm */
+    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+    
+    /* apply preconditioner */
+    #pragma omp parallel for
+    for (int i = 0; i < (int)spl_num_bands_col.local_size(); i++)
+    {
+        int ires = (int)spl_num_bands_col[i];
+    
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        {
+            double p = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
+
+            p *= 2; // QE formula is in Ry; here we convert to Ha
+            p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+            res__(igk_row, i) /= p;
+        }
+    }
+    
+    std::vector<double> norm2(num_bands__, 0);
+    /* Normalize new basis functions */
+    #pragma omp parallel for
+    for (int i = 0; i < (int)spl_num_bands_col.local_size(); i++)
+    {
+        int ires = (int)spl_num_bands_col[i];
+        double d = 0;
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+            d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+        norm2[ires] = d;
+    }
+    kp__->comm().allreduce(norm2);
+    #pragma omp parallel for
+    for (int i = 0; i < (int)spl_num_bands_col.local_size(); i++)
+    {
+        int ires = (int)spl_num_bands_col[i];
+        double d = 1.0 / std::sqrt(norm2[ires]);
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
+    }
+}
+
 void Band::residuals_parallel_simple(int N__,
                                      int num_bands__,
                                      K_point* kp__,
@@ -1029,59 +1099,8 @@ void Band::residuals_parallel_simple(int N__,
                kp__->num_gkvec(), num_bands__, N__,
                tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
     }
-
-    memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
-    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        double norm2 = 0;
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-        {
-            res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
-            norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-        }
-        res_norm__[ires] = norm2;
-    }
-    kp__->comm().allreduce(res_norm__);
     
-    /* compute norm */
-    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
-    
-    /* apply preconditioner */
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-    
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-        {
-            double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
-            if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-            res__(igk_row, i) /= z;
-        }
-    }
-    
-    std::vector<double> norm2(num_bands__, 0);
-    /* Normalize new basis functions */
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        double d = 0;
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-            d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-        norm2[ires] = d;
-    }
-    kp__->comm().allreduce(norm2);
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        double d = 1.0 / std::sqrt(norm2[ires]);
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
-    }
+    precondition_and_normalize_residuals_parallel(num_bands__, kp__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm__);
 }
 
 void Band::residuals_parallel(int N__,
@@ -1111,7 +1130,9 @@ void Band::residuals_parallel(int N__,
     splindex<block_cyclic> spl_num_bands_row(num_bands__, kp__->num_ranks_row(), kp__->rank_row(),
                                              blacs_grid_.cyclic_block_size());
     
-    /* transpose matrix of eigen-vectors */
+    /* transpose matrix of eigen-vectors;
+     * row index of evec_t runs over bands, column index runs over basis functions 
+     */ 
     dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid());
     linalg<CPU>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
     
@@ -1130,6 +1151,7 @@ void Band::residuals_parallel(int N__,
     lock_hpsi_tmp.store(false);
     lock_opsi_tmp.store(false);
 
+    /* maximum local number of bands */
     int num_bnd_max = (int)spl_num_bands_col.local_size(0);
 
     matrix<double_complex> hpsi_tmp, opsi_tmp;
@@ -1151,22 +1173,36 @@ void Band::residuals_parallel(int N__,
             break;
         }
     }
-
+    
+    /* get eigen-vectors for a specific column */
     auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc, pu]
                     (int icol) -> void 
     {
+        /* number of bands for this column */
         int num_bands_of_col = (int)spl_num_bands_col.local_size(icol);
+        
+        /* zero temporary buffer */
         memset(&evec_tmp(0, 0, icol % 2), 0, num_phi_loc * num_bands_of_col * sizeof(double_complex));
+
+        /* loop over local fraction of bands */
         for (int i = 0; i < num_bands_of_col; i++)
         {
+            /* global index of band */
             int iglob = (int)spl_num_bands_col.global_index(i, icol);
+
+            /* location of the global band index in the row of evec_t */
             auto p = spl_num_bands_row.location(iglob); 
             
+            /* pick elements of evec_t from row ranks */
             if (p.second == kp__->rank_row())
             {
                 for (int j = 0; j < num_phi_loc; j++) evec_tmp(j, i, icol % 2) = evec_t(p.first, j);
             }
         }
+
+        /* reduce evec_tmp; now it contains fraction of the expansion coefficients of bands for the given column
+         * over the basis function local to this column 
+         */
         kp__->comm_row().allreduce(&evec_tmp(0, 0, icol % 2), num_phi_loc * num_bands_of_col);
         #ifdef _GPU_
         if (pu == GPU)
@@ -1333,113 +1369,115 @@ void Band::residuals_parallel(int N__,
                tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
     }
 
-    memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
+    precondition_and_normalize_residuals_parallel(num_bands__, kp__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm__);
 
-    if (pu == CPU)
-    {
-        /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
-        #pragma omp parallel for
-        for (int i = 0; i < res__.num_cols_local(); i++)
-        {
-            int ires = res__.icol(i);
-            double norm2 = 0;
-            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-            {
-                res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
-                norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-            }
-            res_norm__[ires] = norm2;
-        }
-        kp__->comm().allreduce(res_norm__);
-        
-        /* compute norm */
-        for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
-        
-        /* apply preconditioner */
-        #pragma omp parallel for
-        for (int i = 0; i < res__.num_cols_local(); i++)
-        {
-            int ires = res__.icol(i);
-        
-            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-            {
-                double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
-                if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-                res__(igk_row, i) /= z;
-            }
-        }
-        
-        std::vector<double> norm2(num_bands__, 0);
-        /* normalize new basis functions */
-        #pragma omp parallel for
-        for (int i = 0; i < res__.num_cols_local(); i++)
-        {
-            int ires = res__.icol(i);
-            double d = 0;
-            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-                d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-            norm2[ires] = d;
-        }
-        kp__->comm().allreduce(norm2);
-        #pragma omp parallel for
-        for (int i = 0; i < res__.num_cols_local(); i++)
-        {
-            int ires = res__.icol(i);
-            double d = 1.0 / std::sqrt(norm2[ires]);
-            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
-        }
-    }
+    //memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
 
-    if (pu == GPU)
-    {
-        #ifdef _GPU_
-        mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
-        res_norm_gpu.allocate_on_device();
-        res_norm_gpu.zero_on_device();
+    //if (pu == CPU)
+    //{
+    //    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
+    //    #pragma omp parallel for
+    //    for (int i = 0; i < res__.num_cols_local(); i++)
+    //    {
+    //        int ires = res__.icol(i);
+    //        double norm2 = 0;
+    //        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+    //        {
+    //            res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
+    //            norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+    //        }
+    //        res_norm__[ires] = norm2;
+    //    }
+    //    kp__->comm().allreduce(res_norm__);
+    //    
+    //    /* compute norm */
+    //    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+    //    
+    //    /* apply preconditioner */
+    //    #pragma omp parallel for
+    //    for (int i = 0; i < res__.num_cols_local(); i++)
+    //    {
+    //        int ires = res__.icol(i);
+    //    
+    //        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+    //        {
+    //            double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
+    //            if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+    //            res__(igk_row, i) /= z;
+    //        }
+    //    }
+    //    
+    //    std::vector<double> norm2(num_bands__, 0);
+    //    /* normalize new basis functions */
+    //    #pragma omp parallel for
+    //    for (int i = 0; i < res__.num_cols_local(); i++)
+    //    {
+    //        int ires = res__.icol(i);
+    //        double d = 0;
+    //        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+    //            d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+    //        norm2[ires] = d;
+    //    }
+    //    kp__->comm().allreduce(norm2);
+    //    #pragma omp parallel for
+    //    for (int i = 0; i < res__.num_cols_local(); i++)
+    //    {
+    //        int ires = res__.icol(i);
+    //        double d = 1.0 / std::sqrt(norm2[ires]);
+    //        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
+    //    }
+    //}
 
-        mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
-        eval_gpu.allocate_on_device();
-        eval_gpu.copy_to_device();
+    //if (pu == GPU)
+    //{
+    //    #ifdef _GPU_
+    //    mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
+    //    res_norm_gpu.allocate_on_device();
+    //    res_norm_gpu.zero_on_device();
 
-        mdarray<int, 1> res_idx_gpu(res__.num_cols_local());
-        for (int i = 0; i < res__.num_cols_local(); i++) res_idx_gpu(i) = res__.icol(i);
-        res_idx_gpu.allocate_on_device();
-        res_idx_gpu.copy_to_device();
+    //    mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
+    //    eval_gpu.allocate_on_device();
+    //    eval_gpu.copy_to_device();
 
-        compute_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
-                              hpsi__.at<GPU>(), opsi__.at<GPU>(), res__.at<GPU>(), res_norm_gpu.at<GPU>());
-        res_norm_gpu.copy_to_host();
+    //    mdarray<int, 1> res_idx_gpu(res__.num_cols_local());
+    //    for (int i = 0; i < res__.num_cols_local(); i++) res_idx_gpu(i) = res__.icol(i);
+    //    res_idx_gpu.allocate_on_device();
+    //    res_idx_gpu.copy_to_device();
 
-        kp__->comm().allreduce(res_norm__);
-        
-        /* compute norm */
-        for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+    //    compute_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
+    //                          hpsi__.at<GPU>(), opsi__.at<GPU>(), res__.at<GPU>(), res_norm_gpu.at<GPU>());
+    //    res_norm_gpu.copy_to_host();
 
-        mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
-        hdiag_gpu.allocate_on_device();
-        hdiag_gpu.copy_to_device();
+    //    kp__->comm().allreduce(res_norm__);
+    //    
+    //    /* compute norm */
+    //    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
 
-        mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
-        odiag_gpu.allocate_on_device();
-        odiag_gpu.copy_to_device();
+    //    mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
+    //    hdiag_gpu.allocate_on_device();
+    //    hdiag_gpu.copy_to_device();
 
-        mdarray<double, 1> norm2(num_bands__);
-        norm2.allocate_on_device();
-        norm2.zero_on_device();
+    //    mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
+    //    odiag_gpu.allocate_on_device();
+    //    odiag_gpu.copy_to_device();
 
-        apply_preconditioner_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
-                                 hdiag_gpu.at<GPU>(), odiag_gpu.at<GPU>(), res__.at<GPU>(), norm2.at<GPU>());
-        // TODO: test gpudirect here
-        norm2.copy_to_host();
-        kp__->comm().allreduce(norm2.at<CPU>(), num_bands__);
-        norm2.copy_to_device();
+    //    mdarray<double, 1> norm2(num_bands__);
+    //    norm2.allocate_on_device();
+    //    norm2.zero_on_device();
 
-        normalize_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<GPU>(),
-                                norm2.at<GPU>(), res__.at<GPU>());
-        #else
-        TERMINATE_NO_GPU
-        #endif
-    }
+    //    apply_preconditioner_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
+    //                             hdiag_gpu.at<GPU>(), odiag_gpu.at<GPU>(), res__.at<GPU>(), norm2.at<GPU>());
+    //    // TODO: test gpudirect here
+    //    norm2.copy_to_host();
+    //    kp__->comm().allreduce(norm2.at<CPU>(), num_bands__);
+    //    norm2.copy_to_device();
+
+    //    normalize_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<GPU>(),
+    //                            norm2.at<GPU>(), res__.at<GPU>());
+    //    #else
+    //    TERMINATE_NO_GPU
+    //    #endif
+    //}
 
     log_function_exit(__func__);
 }
@@ -1705,97 +1743,15 @@ void Band::apply_h_o_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
+        /* compute <beta|phi> */
         kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
-        
-        
-        //== {
-
-        //==     matrix<double_complex> beta_phi_QE(uc->mt_lo_basis_size(), n__);
-
-        //==     int lmax = 10;
-
-        //==     std::vector<int> idxlm(Utils::lmmax(lmax));
-        //==     std::vector<int> phase(Utils::lmmax(lmax), 1);
-        //==     int lm = 0;
-        //==     for (int l = 0; l <= lmax; l++)
-        //==     {
-        //==         idxlm[lm++] = Utils::lm_by_l_m(l, 0);
-        //==         for (int m = 1; m <= l; m++)
-        //==         {
-        //==             idxlm[lm++] = Utils::lm_by_l_m(l, m);
-        //==             idxlm[lm] = Utils::lm_by_l_m(l, -m);
-        //==             if (m % 2 == 0) phase[lm] = -1;
-        //==             lm++;
-        //==         }
-        //==     }
-
-        //==     auto l_m_by_lm = Utils::l_m_by_lm(10);
-
-        //==     for (int i = 0; i < n__; i++)
-        //==     {
-        //==         for (int ia = 0; ia < uc->num_atoms(); ia++)
-        //==         {
-        //==             auto atom = uc->atom(ia);
-        //==             int nbf = atom->mt_basis_size();
-        //==             /* cycle through QE beta projectors in R_lm */
-        //==             for (int xi = 0; xi < nbf; xi++)
-        //==             {
-        //==                 int lm = atom->type()->indexb(xi).lm;
-        //==                 int order = atom->type()->indexb(xi).order;
-        //==                 /* this is lm componet of R_lm in sirius order */
-        //==                 int lm1 = idxlm[lm];
-        //==                 int l = l_m_by_lm[lm1].first;
-        //==                 int m = l_m_by_lm[lm1].second;
-
-        //==                 double_complex z;
-        //==                 if (m == 0)
-        //==                 {
-        //==                     int xi1 = atom->type()->indexb_by_lm_order(lm1, order);
-        //==                     z = beta_phi(atom->offset_lo() + xi1, i);
-        //==                 }
-        //==                 else
-        //==                 {
-        //==                     int j1 = Utils::lm_by_l_m(l, m); 
-        //==                     int xi1 = atom->type()->indexb_by_lm_order(j1, order);
-        //==                     int j2 = Utils::lm_by_l_m(l, -m); 
-        //==                     int xi2 = atom->type()->indexb_by_lm_order(j2, order);
-
-        //==                     z = sirius::SHT::ylm_dot_rlm(l,  m, m) * beta_phi(atom->offset_lo() + xi1, i) + 
-        //==                         sirius::SHT::ylm_dot_rlm(l, -m, m) * beta_phi(atom->offset_lo() + xi2, i); 
-        //==                 }
-        //==                 z = z * double(phase[lm]);
-        //==                 
-        //==                 //== if (std::abs(beta_gk(igk, atom->offset_lo() + xi) - z) > 1e-4)
-        //==                 //== {
-        //==                 //==     printf("large diff for beta-projectors for ig: %i ia: %i xi: %i\n", igk, ia, xi);
-        //==                 //==     std::cout << beta_gk(igk, atom->offset_lo() + xi) << " " << z << std::endl;
-        //==                 //== }
-
-        //==                 beta_phi_QE(atom->offset_lo() + xi, i) = z;
-        //==             }
-        //==         }
-        //==     }
-
-        //== 
-        //==     printf("beta_phi\n");
-        //==     for (int i = 0; i < n__; i++)
-        //==     {
-        //==         for (int j = 0; j < uc->mt_lo_basis_size(); j++)
-        //==         {
-        //==             printf("%18.12f ", 2.0 * std::abs(beta_phi_QE(j, i)));
-        //==         }
-        //==         printf("\n");
-        //==     }
-        //== //printf("beta=%18.12f %18.12f %18.12f %18.12f\n", std::abs(beta_phi(0, 0)), std::abs(beta_phi(0, n__ - 1)),
-        //== //                                                 std::abs(beta_phi(uc->mt_lo_basis_size() - 1, 0)),
-        //== //                                                 std::abs(beta_phi(uc->mt_lo_basis_size() - 1, n__ - 1)));
-
-        //== }
-
+       
+        /* add |beta>D<beta|phi> to |hphi> */
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
                                          kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          hphi, n__, 0, complex_one, work);
             
+        /* add |beta>Q<beta|phi> to |ophi> */
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
                                          kp__->beta_pw_panel().panel(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          ophi, n__, 0, complex_one, work);
