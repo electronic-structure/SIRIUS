@@ -211,7 +211,13 @@ void Unit_cell::get_symmetry()
     if (spg_dataset_->spacegroup_number == 0)
         error_local(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
 
-    if (spg_dataset_->n_atoms != num_atoms()) error_local(__FILE__, __LINE__, "wrong number of atoms");
+    if (spg_dataset_->n_atoms != num_atoms())
+    {
+        std::stringstream s;
+        s << "spg_get_dataset() returned wrong number of atoms (" << spg_dataset_->n_atoms << ")" << std::endl
+          << "expected number of atoms: " <<  num_atoms();
+        TERMINATE(s);
+    }
 
     Atom_symmetry_class* atom_symmetry_class;
     
