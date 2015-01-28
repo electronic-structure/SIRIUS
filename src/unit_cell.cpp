@@ -643,21 +643,21 @@ void Unit_cell::print_info()
                                          spg_dataset_->origin_shift[1], 
                                          spg_dataset_->origin_shift[2]);
 
-        //== printf("symmetry operations  : \n");
-        //== for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
-        //== {
-        //==     printf("isym : %i\n", isym);
-        //==     printf("R : ");
-        //==     for (int i = 0; i < 3; i++)
-        //==     {
-        //==         if (i) printf("    ");
-        //==         for (int j = 0; j < 3; j++) printf("%3i ", spg_dataset_->rotations[isym][i][j]);
-        //==         printf("\n");
-        //==     }
-        //==     printf("T : ");
-        //==     for (int j = 0; j < 3; j++) printf("%f ", spg_dataset_->translations[isym][j]);
-        //==     printf("\n");
-        //== }
+        printf("symmetry operations  : \n");
+        for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+        {
+            printf("isym : %i\n", isym);
+            printf("R : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%3i ", spg_dataset_->rotations[isym][i][j]);
+                printf("\n");
+            }
+            printf("T : ");
+            for (int j = 0; j < 3; j++) printf("%f ", spg_dataset_->translations[isym][j]);
+            printf("\n");
+        }
     }
     
     printf("\n");
