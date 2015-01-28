@@ -184,7 +184,16 @@ class Symmetry
                 }
             }
 
-            for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
+            for (int ig = 0; ig < fft__->num_gvec(); ig++)
+            {
+                auto z1 = f_pw__[ig];
+                auto z2 = sym_f_pw(ig) / double(num_sym_op());
+                if (std::abs(z1 - z2) > 1e-3)
+                {
+                    std::cout << "ig=" <<ig << z1 << " " <<  z2 << std::endl;
+                }
+                f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
+            }
         }
 };
 
