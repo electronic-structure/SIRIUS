@@ -106,7 +106,7 @@ void Unit_cell::get_symmetry()
         for (int x = 0; x < 3; x++) positions(x, i) = atoms_[i]->position(x);
         types[i] = atoms_[i]->type_id();
     }
-    spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-5);
+    spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-4);
 
     symmetry_ = Symmetry(lattice_vectors_, spg_dataset_);
 
