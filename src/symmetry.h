@@ -130,7 +130,7 @@ class Symmetry
                         if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
                         {
                             std::stringstream s;
-                            s << "rotated G-vector is outside grid limits" << std::endl
+                            s << "rotated G-vector is outside of grid limits" << std::endl
                               << "original G-vector: " << gv << std::endl
                               << "rotation matrix: " << std::endl
                               << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
@@ -159,6 +159,23 @@ class Symmetry
             }
         }
 
+        /// Symmetrize scalar function.
+        /** The following operation is performed:
+         *  \f[
+         *    f({\bf x}) = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} f({\bf \hat P x})
+         *  \f]
+         *  For the function expanded in plane-waves we have:
+         *  \f[
+         *    f({\bf x}) = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G \hat P x}} f({\bf G}) 
+         *               = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G (Rx + t)}} f({\bf G})
+         *               = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G t}} e^{i{\bf G Rx}} f({\bf G})
+         *  \f]
+         *  Now we do a mapping \f$ {\bf GR} \rightarrow \tilde {\bf G} \f$ and find expansion coefficients of the
+         *  symmetry transformed function:
+         *  \f[
+         *    f(\tilde{\bf G}) = e^{i{\bf G t}} f({\bf G})
+         *  \f]
+         */
         void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
         {
             Timer t("sirius::Symmetry::symmetrize_function");
@@ -172,7 +189,13 @@ class Symmetry
 
                 for (int ig = 0; ig < fft__->num_gvec(); ig++)
                 {
-                    /* apply symmetry operation to the G-vector */
+                    /* apply symmetry operation to the G-vector;
+                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
+                     * now GR is a vector-matrix multiplication [G][.....]
+                     *                                             [..R..]
+                     *                                             [.....]
+                     * which can also be written as matrix^{T}-vector operation
+                     */
                     vector3d<int> gv_rot = transpose(R) * fft__->gvec(ig);
 
                     /* index of a rotated G-vector */
@@ -184,16 +207,7 @@ class Symmetry
                 }
             }
 
-            for (int ig = 0; ig < fft__->num_gvec(); ig++)
-            {
-                auto z1 = f_pw__[ig];
-                auto z2 = sym_f_pw(ig) / double(num_sym_op());
-                if (std::abs(z1 - z2) > 1e-3)
-                {
-                    std::cout << "ig=" <<ig << z1 << " " <<  z2 << std::endl;
-                }
-                f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
-            }
+            for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
         }
 };
 
