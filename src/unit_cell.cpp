@@ -80,8 +80,6 @@ void Unit_cell::get_symmetry()
     
     if (num_atoms() == 0) return;
     
-    if (spg_dataset_) spg_free_dataset(spg_dataset_);
-        
     if (atom_symmetry_classes_.size() != 0)
     {
         for (int ic = 0; ic < (int)atom_symmetry_classes_.size(); ic++) delete atom_symmetry_classes_[ic];
@@ -90,25 +88,24 @@ void Unit_cell::get_symmetry()
         for (int ia = 0; ia < num_atoms(); ia++) atom(ia)->set_symmetry_class(NULL);
     }
 
-    double lattice[3][3];
-
-    for (int i = 0; i < 3; i++)
+    if (symmetry_ != nullptr)
     {
-        for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_(i, j);
+        TERMINATE("Symmetry() object is already allocated");
     }
 
     mdarray<double, 2> positions(3, num_atoms());
-    
     std::vector<int> types(num_atoms());
-
-    for (int i = 0; i < num_atoms(); i++)
+    for (int ia = 0; ia < num_atoms(); ia++)
     {
-        for (int x = 0; x < 3; x++) positions(x, i) = atoms_[i]->position(x);
-        types[i] = atoms_[i]->type_id();
+        for (int x = 0; x < 3; x++) positions(x, ia) = atom(ia)->position(x);
+        types[ia] = atom(ia)->type_id();
     }
-    spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-4);
+    
+    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, types, 1e-4);
 
-    symmetry_ = Symmetry(lattice_vectors_, spg_dataset_);
+
+
+
 
     //== for (int isym = 0; isym < s.num_sym_op(); isym++)
     //== {
@@ -208,33 +205,24 @@ void Unit_cell::get_symmetry()
 
     //== }
 
-    if (spg_dataset_->spacegroup_number == 0)
-        error_local(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
-
-    if (spg_dataset_->n_atoms != num_atoms())
-    {
-        std::stringstream s;
-        s << "spg_get_dataset() returned wrong number of atoms (" << spg_dataset_->n_atoms << ")" << std::endl
-          << "expected number of atoms: " <<  num_atoms();
-        TERMINATE(s);
-    }
-
     Atom_symmetry_class* atom_symmetry_class;
     
     int atom_class_id = -1;
 
     for (int i = 0; i < num_atoms(); i++)
     {
-        if (!atoms_[i]->symmetry_class()) // if symmetry class is not assigned to this atom
+        /* if symmetry class is not assigned to this atom */
+        if (!atoms_[i]->symmetry_class())
         {
-            atom_class_id++; // take next id 
+            /* take next id */
+            atom_class_id++;
             atom_symmetry_class = new Atom_symmetry_class(atom_class_id, atoms_[i]->type());
             atom_symmetry_classes_.push_back(atom_symmetry_class);
 
             for (int j = 0; j < num_atoms(); j++) // scan all atoms
             {
                 bool is_equal = (equivalent_atoms_.size()) ? (equivalent_atoms_[j] == equivalent_atoms_[i]) :  
-                                (spg_dataset_->equivalent_atoms[j] == spg_dataset_->equivalent_atoms[i]);
+                                (symmetry_->atom_symmetry_class(j) == symmetry_->atom_symmetry_class(i));
                 
                 if (is_equal) // assign new class id for all equivalent atoms
                 {
@@ -550,22 +538,18 @@ void Unit_cell::update()
 
 void Unit_cell::clear()
 {
-    if (spg_dataset_)
-    {
-        spg_free_dataset(spg_dataset_);
-        spg_dataset_ = NULL;
-    }
-    
-    // delete atom types
+    delete symmetry_;
+
+    /* delete atom types */
     for (int i = 0; i < (int)atom_types_.size(); i++) delete atom_types_[i];
     atom_types_.clear();
     atom_type_id_map_.clear();
 
-    // delete atom classes
+    /* delete atom classes */
     for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++) delete atom_symmetry_classes_[i];
     atom_symmetry_classes_.clear();
 
-    // delete atoms
+    /* delete atoms */
     for (int i = 0; i < num_atoms(); i++) delete atoms_[i];
     atoms_.clear();
 
@@ -631,39 +615,39 @@ void Unit_cell::print_info()
         printf("\n");
     }
 
-    if (spg_dataset_)
+    printf("\n");
+    printf("space group number   : %i\n", symmetry_->spacegroup_number());
+    printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+    printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+    printf("number of operations : %i\n", symmetry_->num_sym_op());
+    printf("transformation matrix : \n");
+    auto tm = symmetry_->transformation_matrix();
+    for (int i = 0; i < 3; i++)
     {
+
+        for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
         printf("\n");
-        printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
-        printf("international symbol : %s\n", spg_dataset_->international_symbol);
-        printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
-        printf("number of operations : %i\n", spg_dataset_->n_operations);
-        printf("transformation matrix : \n");
+    }
+    printf("origin shift : \n");
+    auto t = symmetry_->origin_shift();
+    printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+
+    printf("symmetry operations  : \n");
+    for (int isym = 0; isym < symmetry_->num_sym_op(); isym++)
+    {
+        auto R = symmetry_->rot_mtrx(isym);
+        auto t = symmetry_->fractional_translation(isym);
+        printf("isym : %i\n", isym);
+        printf("R : ");
         for (int i = 0; i < 3; i++)
         {
-            for (int j = 0; j < 3; j++) printf("%12.6f ", spg_dataset_->transformation_matrix[i][j]);
+            if (i) printf("    ");
+            for (int j = 0; j < 3; j++) printf("%3i ", R(i, j));
             printf("\n");
         }
-        printf("origin shift : \n");
-        printf("%12.6f %12.6f %12.6f\n", spg_dataset_->origin_shift[0], 
-                                         spg_dataset_->origin_shift[1], 
-                                         spg_dataset_->origin_shift[2]);
-
-        printf("symmetry operations  : \n");
-        for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
-        {
-            printf("isym : %i\n", isym);
-            printf("R : ");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i) printf("    ");
-                for (int j = 0; j < 3; j++) printf("%3i ", spg_dataset_->rotations[isym][i][j]);
-                printf("\n");
-            }
-            printf("T : ");
-            for (int j = 0; j < 3; j++) printf("%f ", spg_dataset_->translations[isym][j]);
-            printf("\n");
-        }
+        printf("T : ");
+        for (int j = 0; j < 3; j++) printf("%f8.4 ", t[j]);
+        printf("\n");
     }
     
     printf("\n");

@@ -39,7 +39,7 @@ extern "C" {
 
 namespace sirius {
 
-class Unit_cell // TODO: clear arragement of lattice vectors
+class Unit_cell
 {
     private:
         
@@ -88,9 +88,6 @@ class Unit_cell // TODO: clear arragement of lattice vectors
         /// Volume of the interstitial region.
         double volume_it_;
 
-        /// Spglib structure with symmetry information.
-        SpglibDataset* spg_dataset_;
-        
         /// Total nuclear charge.
         int total_nuclear_charge_;
         
@@ -161,7 +158,7 @@ class Unit_cell // TODO: clear arragement of lattice vectors
 
         mdarray<double, 2> atom_pos_;
 
-        Symmetry symmetry_;
+        Symmetry* symmetry_;
 
         Communicator comm_;
 
@@ -194,7 +191,6 @@ class Unit_cell // TODO: clear arragement of lattice vectors
             : omega_(0),
               volume_mt_(0),
               volume_it_(0),
-              spg_dataset_(NULL), 
               total_nuclear_charge_(0),
               num_core_electrons_(0),
               num_valence_electrons_(0),
@@ -202,6 +198,7 @@ class Unit_cell // TODO: clear arragement of lattice vectors
               auto_rmt_(0), 
               lmax_beta_(-1),
               esm_type_(esm_type__),
+              symmetry_(nullptr),
               comm_(comm__),
               pu_(pu__)
         {
@@ -516,7 +513,7 @@ class Unit_cell // TODO: clear arragement of lattice vectors
             return mt_lo_basis_descriptors_[idx];
         }
 
-        inline Symmetry& symmetry()
+        inline Symmetry* symmetry()
         {
             return symmetry_;
         }

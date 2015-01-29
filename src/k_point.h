@@ -173,7 +173,7 @@ class K_point
         mdarray<double_complex, 2> beta_gk_t_;
 
         /// Plane-wave coefficients of |beta> functions for atoms.
-        dmatrix<double_complex> beta_pw_panel_;
+        dmatrix<double_complex> beta_gk_panel_;
 
         mdarray<double_complex, 3> p_mtrx_;
 
@@ -653,9 +653,9 @@ class K_point
             return beta_gk_t_;
         }
 
-        inline dmatrix<double_complex>& beta_pw_panel()
+        inline dmatrix<double_complex>& beta_gk_panel()
         {
-            return beta_pw_panel_;
+            return beta_gk_panel_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()

@@ -308,7 +308,7 @@ class DFT_ground_state
             //fft->transform(-1);
             //fft->output(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
 
-            parameters_.unit_cell()->symmetry().symmetrize_function(&density_->rho()->f_pw(0), fft);
+            parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft);
 
             //fft->input(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
             //fft->transform(1);

@@ -209,12 +209,12 @@ void K_point::update()
             }
         }
 
-        beta_pw_panel_ = dmatrix<double_complex>(nullptr, num_gkvec(), uc->mt_basis_size(), blacs_grid_);
-        beta_pw_panel_.allocate(); // TODO: allocate page locked if needed
+        beta_gk_panel_ = dmatrix<double_complex>(nullptr, num_gkvec(), uc->mt_basis_size(), blacs_grid_);
+        beta_gk_panel_.allocate(); // TODO: allocate page locked if needed
 
-        for (int i = 0; i < beta_pw_panel_.num_cols_local(); i++)
+        for (int i = 0; i < beta_gk_panel_.num_cols_local(); i++)
         {
-            int icol = beta_pw_panel_.icol(i);
+            int icol = beta_gk_panel_.icol(i);
 
             int ia = uc->mt_lo_basis_descriptor(icol).ia;
             int xi = uc->mt_lo_basis_descriptor(icol).xi;
@@ -223,7 +223,7 @@ void K_point::update()
 
             for (int igk = 0; igk < num_gkvec_row(); igk++)
             {
-                beta_pw_panel_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
+                beta_gk_panel_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
             }
         }
 

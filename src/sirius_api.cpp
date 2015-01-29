@@ -1207,21 +1207,9 @@ void sirius_create_kset(int32_t* num_kpoints__,
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) new_kset->initialize();
    
-    *kset_id__ = -1;
-    for (int i = 0; i < (int)kset_list.size(); i++)
-    {
-        if (kset_list[i] == nullptr) 
-        {
-            kset_list[i] = new_kset;
-            *kset_id__ = i;
-            break;
-        }
-    }
-    if (*kset_id__ == -1)
-    {
-        kset_list.push_back(new_kset);
-        *kset_id__ = (int)kset_list.size() - 1;
-    }
+    kset_list.push_back(new_kset);
+    *kset_id__ = (int)kset_list.size() - 1;
+
     log_function_exit(__func__);
 }
 
@@ -1236,94 +1224,18 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
             TERMINATE(s);
         }
     }
-    int nktot = mesh__[0] * mesh__[1] * mesh__[2];
 
-    std::vector<double> wk;
-    mdarray<double, 2> kp;
+    sirius::K_set* new_kset = new sirius::K_set(*global_parameters,
+                                                global_parameters->mpi_grid().communicator(1 << _dim_k_),
+                                                *blacs_grid,
+                                                mesh__,
+                                                is_shift__,
+                                                *use_sym__);
 
-    if (*use_sym__ != 0)
-    {
-        mdarray<int, 2> grid_address(3, nktot);
-        std::vector<int> map(nktot);
-
-        auto uc = global_parameters->unit_cell();
-
-        double lattice[3][3];
-        for (int i = 0; i < 3; i++)
-        {
-            for (int x = 0; x < 3; x++) lattice[x][i] = uc->lattice_vectors()(x, i);
-        }
-
-        mdarray<double, 2> positions(3, uc->num_atoms());
-        std::vector<int> types(uc->num_atoms());
-
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
-        {
-            for (int x = 0; x < 3; x++) positions(x, ia) = uc->atom(ia)->position(x);
-            types[ia] = uc->atom(ia)->type_id();
-        }
-
-        int nknr = spg_get_ir_reciprocal_mesh((int(*)[3])&grid_address(0, 0), &map[0], mesh__, is_shift__, 1, lattice, 
-                                              (double(*)[3])&positions(0, 0), &types[0], uc->num_atoms(), 1e-4);
-
-        std::map<int, int> wknr;
-
-        for (int ik = 0; ik < nktot; ik++)
-        {
-            if (wknr.count(map[ik]) == 0) wknr[map[ik]] = 0;
-            wknr[map[ik]] += 1;
-        }
-
-        wk = std::vector<double>(nknr);
-        kp = mdarray<double, 2>(3, nknr);
-
-        int n = 0;
-        for (auto it = wknr.begin(); it != wknr.end(); it++)
-        {
-            wk[n] = double(it->second) / nktot;
-            for (int x = 0; x < 3; x++) kp(x, n) = double(grid_address(x, it->first) + is_shift__[x] / 2.0) / mesh__[x];
-            n++;
-        }
-    }
-    else
-    {
-        wk = std::vector<double>(nktot, 1.0 / nktot);
-        kp = mdarray<double, 2>(3, nktot);
-        int ik = 0;
-        for (int i0 = 0; i0 < mesh__[0]; i0++)
-        {
-            for (int i1 = 0; i1 < mesh__[1]; i1++)
-            {
-                for (int i2 = 0; i2 < mesh__[2]; i2++)
-                {
-                    kp(0, ik) = double(i0 + is_shift__[0] / 2.0) / mesh__[0];
-                    kp(1, ik) = double(i1 + is_shift__[1] / 2.0) / mesh__[1];
-                    kp(2, ik) = double(i2 + is_shift__[2] / 2.0) / mesh__[2];
-                    ik++;
-                }
-            }
-        }
-    }
-   
-    sirius::K_set* new_kset = new sirius::K_set(*global_parameters, global_parameters->mpi_grid().communicator(1 << _dim_k_), *blacs_grid);
-    new_kset->add_kpoints(kp, &wk[0]);
     new_kset->initialize();
    
-    *kset_id__ = -1;
-    for (int i = 0; i < (int)kset_list.size(); i++)
-    {
-        if (kset_list[i] == nullptr) 
-        {
-            kset_list[i] = new_kset;
-            *kset_id__ = i;
-            break;
-        }
-    }
-    if (*kset_id__ == -1)
-    {
-        kset_list.push_back(new_kset);
-        *kset_id__ = (int)kset_list.size() - 1;
-    }
+    kset_list.push_back(new_kset);
+    *kset_id__ = (int)kset_list.size() - 1;
 }
 
 void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
@@ -2344,7 +2256,7 @@ void sirius_get_beta_projectors_(int32_t* kset_id__, int32_t* ik__, int32_t* ngk
     }
     mdarray<double_complex, 2> beta_gk(beta_gk__, *ld__, *nbeta__);
 
-    auto& beta_gk_sirius = (*kset)[*ik__ - 1]->beta_pw_panel();
+    auto& beta_gk_sirius = (*kset)[*ik__ - 1]->beta_gk_panel();
 
     int lmax = 10;
 

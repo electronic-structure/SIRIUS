@@ -45,19 +45,59 @@ class Symmetry
 
         matrix3d<double> inverse_lattice_vectors_;
 
+        int num_atoms_;
+
+        mdarray<double, 2> positions_;
+
+        std::vector<int> types_;
+
+        double tolerance_;
+
         SpglibDataset* spg_dataset_;
 
     public:
 
-        Symmetry()
-        {
-        }
+        Symmetry(matrix3d<double>& lattice_vectors__,
+                 int num_atoms__,
+                 mdarray<double, 2>& positions__,
+                 std::vector<int>& types__,
+                 double tolerance__);
 
-        Symmetry(matrix3d<double> lattice_vectors__, SpglibDataset* spg_dataset__);
-        
+        ~Symmetry();
+
         inline int num_sym_op()
         {
             return spg_dataset_->n_operations;
+        }
+
+        inline int atom_symmetry_class(int ia__)
+        {
+            return spg_dataset_->equivalent_atoms[ia__];
+        }
+
+        inline int spacegroup_number()
+        {
+            return spg_dataset_->spacegroup_number;
+        }
+
+        inline std::string international_symbol()
+        {
+            return spg_dataset_->international_symbol;
+        }
+
+        inline std::string hall_symbol()
+        {
+            return spg_dataset_->hall_symbol;
+        }
+
+        matrix3d<double> transformation_matrix()
+        {
+           return matrix3d<double>(spg_dataset_->transformation_matrix);
+        }
+
+        vector3d<double> origin_shift()
+        {
+            return vector3d<double>(spg_dataset_->origin_shift);
         }
 
         int proper_rotation(int isym);
@@ -112,52 +152,7 @@ class Symmetry
             return t;
         }
 
-        void check_gvec_symmetry(FFT3D<CPU>* fft__)
-        {
-            for (int isym = 0; isym < num_sym_op(); isym++)
-            {
-                auto sm = rot_mtrx(isym);
-
-                for (int ig = 0; ig < fft__->num_gvec(); ig++)
-                {
-                    auto gv = fft__->gvec(ig);
-                    /* apply symmetry operation to the G-vector */
-                    vector3d<int> gv_rot = transpose(sm) * gv;
-                    for (int x = 0; x < 3; x++)
-                    {
-                        auto limits = fft__->grid_limits(x);
-                        /* check boundaries */
-                        if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
-                        {
-                            std::stringstream s;
-                            s << "rotated G-vector is outside of grid limits" << std::endl
-                              << "original G-vector: " << gv << std::endl
-                              << "rotation matrix: " << std::endl
-                              << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
-                              << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
-                              << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
-                              << "rotated G-vector: " << gv_rot;
-                              TERMINATE(s);
-                        }
-                    }
-                    int ig_rot = fft__->gvec_index(gv_rot);
-                    if (ig_rot >= fft__->num_gvec())
-                    {
-                        std::stringstream s;
-                        s << "rotated G-vector index is wrong" << std::endl
-                          << "original G-vector: " << gv << std::endl
-                          << "rotation matrix: " << std::endl
-                          << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
-                          << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
-                          << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
-                          << "rotated G-vector: " << gv_rot << std::endl
-                          << "rotated G-vector index: " << ig_rot << std::endl
-                          << "number of G-vectors: " << fft__->num_gvec();
-                          TERMINATE(s);
-                    }
-                }
-            }
-        }
+        void check_gvec_symmetry(FFT3D<CPU>* fft__);
 
         /// Symmetrize scalar function.
         /** The following operation is performed:
@@ -176,39 +171,12 @@ class Symmetry
          *    f(\tilde{\bf G}) = e^{i{\bf G t}} f({\bf G})
          *  \f]
          */
-        void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
-        {
-            Timer t("sirius::Symmetry::symmetrize_function");
-            mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
-            sym_f_pw.zero();
+        void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__);
 
-            for (int isym = 0; isym < num_sym_op(); isym++)
-            {
-                auto R = rot_mtrx(isym);
-                auto t = fractional_translation(isym);
-
-                for (int ig = 0; ig < fft__->num_gvec(); ig++)
-                {
-                    /* apply symmetry operation to the G-vector;
-                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
-                     * now GR is a vector-matrix multiplication [G][.....]
-                     *                                             [..R..]
-                     *                                             [.....]
-                     * which can also be written as matrix^{T}-vector operation
-                     */
-                    vector3d<int> gv_rot = transpose(R) * fft__->gvec(ig);
-
-                    /* index of a rotated G-vector */
-                    int ig_rot = fft__->gvec_index(gv_rot);
-
-                    assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
-
-                    sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
-                }
-            }
-
-            for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
-        }
+        int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
+                                            vector3d<int> is_shift__,
+                                            mdarray<double, 2>& kp__,
+                                            std::vector<double>& wk__);
 };
 
 }

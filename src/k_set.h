@@ -30,6 +30,7 @@
 #include "potential.h"
 #include "k_point.h"
 #include "blacs_grid.h"
+#include "vector3d.h"
 
 namespace sirius 
 {
@@ -84,7 +85,8 @@ class K_set
         K_set(Global& parameters__,
               Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__,
-              std::vector<int> ngridk__,
+              vector3d<int> k_grid__,
+              vector3d<int> k_shift__,
               int use_symmetry__) 
             : parameters_(parameters__),
               comm_k_(comm_k__),
@@ -92,83 +94,97 @@ class K_set
         {
             init();
 
-            int nk = ngridk__[0] * ngridk__[1] * ngridk__[2];
-            mdarray<double, 2> vk(3, nk);
-            std::vector<double> wk(nk);
-
-            int ik = 0;
-            for (int i0 = 0; i0 < ngridk__[0]; i0++) 
-            {
-                for (int i1 = 0; i1 < ngridk__[1]; i1++) 
-                {
-                    for (int i2 = 0; i2 < ngridk__[2]; i2++)
-                    {
-                        vk(0, ik) = double(i0) / ngridk__[0];
-                        vk(1, ik) = double(i1) / ngridk__[1];
-                        vk(2, ik) = double(i2) / ngridk__[2];
-                        wk[ik] = 1.0 / nk;
-                        ik++;
-                    }
-                }
-            }
-
+            int nk;
+            mdarray<double, 2> kp;
+            std::vector<double> wk;
             if (use_symmetry__)
             {
-                mdarray<int, 2> kmap(parameters_.unit_cell()->symmetry().num_sym_op(), nk);
-                for (int ik = 0; ik < nk; ik++)
-                {
-                    for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
-                    {
-                        auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry().rot_mtrx(isym))) * 
-                                      vector3d<double>(vk(0, ik), vk(1, ik), vk(2, ik));
-                        for (int x = 0; x < 3; x++)
-                        {
-                            if (vk_rot[x] < 0) vk_rot[x] += 1;
-                            if (vk_rot[x] < 0 || vk_rot[x] >= 1) TERMINATE("wrong rotated k-point");
-                        }
-
-                        for (int jk = 0; jk < nk; jk++)
-                        {
-                            if (std::abs(vk_rot[0] - vk(0, jk)) < 1e-10 &&
-                                std::abs(vk_rot[1] - vk(1, jk)) < 1e-10 &&
-                                std::abs(vk_rot[2] - vk(2, jk)) < 1e-10)
-                            {
-                                kmap(isym, ik) = jk;
-                            }
-                        }
-                    }
-                }
-
-                //== std::cout << "sym.table" << std::endl;
-                //== for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
-                //== {
-                //==     printf("sym: %2i, ", isym); 
-                //==     for (int ik = 0; ik < nk; ik++) printf(" %2i", kmap(isym, ik));
-                //==     printf("\n");
-                //== }
-
-                std::vector<int> flag(nk, 1);
-                for (int ik = 0; ik < nk; ik++)
-                {
-                    if (flag[ik])
-                    {
-                        int ndeg = 0;
-                        for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
-                        {
-                            if (flag[kmap(isym, ik)])
-                            {
-                                flag[kmap(isym, ik)] = 0;
-                                ndeg++;
-                            }
-                        }
-                        add_kpoint(&vk(0, ik), double(ndeg) / nk);
-                    }
-                }
+                nk = parameters_.unit_cell()->symmetry()->get_irreducible_reciprocal_mesh(k_grid__,
+                                                                                          k_shift__,
+                                                                                          kp,
+                                                                                          wk);
             }
             else
             {
-                for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
+                nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
+                wk = std::vector<double>(nk, 1.0 / nk);
+                kp = mdarray<double, 2>(3, nk);
+
+                int ik = 0;
+                for (int i0 = 0; i0 < k_grid__[0]; i0++)
+                {
+                    for (int i1 = 0; i1 < k_grid__[1]; i1++)
+                    {
+                        for (int i2 = 0; i2 < k_grid__[2]; i2++)
+                        {
+                            kp(0, ik) = double(i0 + k_shift__[0] / 2.0) / k_grid__[0];
+                            kp(1, ik) = double(i1 + k_shift__[1] / 2.0) / k_grid__[1];
+                            kp(2, ik) = double(i2 + k_shift__[2] / 2.0) / k_grid__[2];
+                            ik++;
+                        }
+                    }
+                }
             }
+
+            //if (use_symmetry__)
+            //{
+            //    mdarray<int, 2> kmap(parameters_.unit_cell()->symmetry()->num_sym_op(), nk);
+            //    for (int ik = 0; ik < nk; ik++)
+            //    {
+            //        for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
+            //        {
+            //            auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry()->rot_mtrx(isym))) * 
+            //                          vector3d<double>(vk(0, ik), vk(1, ik), vk(2, ik));
+            //            for (int x = 0; x < 3; x++)
+            //            {
+            //                if (vk_rot[x] < 0) vk_rot[x] += 1;
+            //                if (vk_rot[x] < 0 || vk_rot[x] >= 1) TERMINATE("wrong rotated k-point");
+            //            }
+
+            //            for (int jk = 0; jk < nk; jk++)
+            //            {
+            //                if (std::abs(vk_rot[0] - vk(0, jk)) < 1e-10 &&
+            //                    std::abs(vk_rot[1] - vk(1, jk)) < 1e-10 &&
+            //                    std::abs(vk_rot[2] - vk(2, jk)) < 1e-10)
+            //                {
+            //                    kmap(isym, ik) = jk;
+            //                }
+            //            }
+            //        }
+            //    }
+
+            //    //== std::cout << "sym.table" << std::endl;
+            //    //== for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
+            //    //== {
+            //    //==     printf("sym: %2i, ", isym); 
+            //    //==     for (int ik = 0; ik < nk; ik++) printf(" %2i", kmap(isym, ik));
+            //    //==     printf("\n");
+            //    //== }
+
+            //    std::vector<int> flag(nk, 1);
+            //    for (int ik = 0; ik < nk; ik++)
+            //    {
+            //        if (flag[ik])
+            //        {
+            //            int ndeg = 0;
+            //            for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
+            //            {
+            //                if (flag[kmap(isym, ik)])
+            //                {
+            //                    flag[kmap(isym, ik)] = 0;
+            //                    ndeg++;
+            //                }
+            //            }
+            //            add_kpoint(&vk(0, ik), double(ndeg) / nk);
+            //        }
+            //    }
+            //}
+            //else
+            //{
+            //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
+            //}
+
+            for (int ik = 0; ik < nk; ik++) add_kpoint(&kp(0, ik), wk[ik]);
         }
 
         ~K_set()

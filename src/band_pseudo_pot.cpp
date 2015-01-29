@@ -327,14 +327,14 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
     dmatrix<double_complex> beta_phi(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
     /* compute <beta|phi> */
     linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), num_bands, kp__->num_gkvec(), complex_one, 
-                      kp__->beta_pw_panel(), phi__, complex_zero, beta_phi);
+                      kp__->beta_gk_panel(), phi__, complex_zero, beta_phi);
 
     dmatrix<double_complex> tmp(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
     linalg<CPU>::gemm(0, 0, uc->mt_basis_size(), num_bands, uc->mt_basis_size(), complex_one,
                       op__, beta_phi, complex_zero, tmp);
 
     linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, uc->mt_basis_size(), alpha,
-                      kp__->beta_pw_panel(), tmp, complex_one, op_phi__);
+                      kp__->beta_gk_panel(), tmp, complex_one, op_phi__);
 }
 
 
@@ -1550,10 +1550,10 @@ void Band::apply_h_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk_panel().panel(), beta_phi);
 
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          hphi, n__, 0, complex_one, work);
     }
     else
@@ -1633,10 +1633,10 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk_panel().panel(), beta_phi);
 
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_pw_panel().panel(), op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk_panel().panel(), op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          op_phi, n__, 0, alpha, work);
     }
     else
@@ -1744,16 +1744,16 @@ void Band::apply_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
         /* compute <beta|phi> */
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk_panel().panel(), beta_phi);
        
         /* add |beta>D<beta|phi> to |hphi> */
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          hphi, n__, 0, complex_one, work);
             
         /* add |beta>Q<beta|phi> to |ophi> */
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_pw_panel().panel(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk_panel().panel(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          ophi, n__, 0, complex_one, work);
     }
     else
@@ -2277,6 +2277,7 @@ void Band::residuals_serial(K_point* kp__,
         eval_gpu.allocate_on_device();
         eval_gpu.copy_to_device();
 
+        /* global index of residual */
         mdarray<int, 1> res_idx_gpu(num_bands__);
         for (int i = 0; i < num_bands__; i++) res_idx_gpu(i) = i;
         res_idx_gpu.allocate_on_device();
@@ -2306,11 +2307,11 @@ void Band::residuals_serial(K_point* kp__,
 
         normalize_residuals_gpu(kp__->num_gkvec_row(), num_bands__, res_idx_gpu.at<GPU>(), norm2.at<GPU>(), res_ptr);
 
-        if (economize_gpu_memory)
-        {
-            cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), res_ptr, kp__->num_gkvec(),
-                              res__.at<CPU>(), res__.ld());
-        }
+        //== if (economize_gpu_memory)
+        //== {
+        //==     cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), res_ptr, kp__->num_gkvec(),
+        //==                       res__.at<CPU>(), res__.ld());
+        //== }
         #else
         TERMINATE_NO_GPU
         #endif
