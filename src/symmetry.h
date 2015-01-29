@@ -167,20 +167,20 @@ class Symmetry
 
             for (int isym = 0; isym < num_sym_op(); isym++)
             {
-                auto sm = rot_mtrx(isym);
-                auto sv = fractional_translation(isym);
+                auto R = rot_mtrx(isym);
+                auto t = fractional_translation(isym);
 
                 for (int ig = 0; ig < fft__->num_gvec(); ig++)
                 {
                     /* apply symmetry operation to the G-vector */
-                    vector3d<int> gv_rot = transpose(sm) * fft__->gvec(ig);
+                    vector3d<int> gv_rot = transpose(R) * fft__->gvec(ig);
 
                     /* index of a rotated G-vector */
                     int ig_rot = fft__->gvec_index(gv_rot);
 
                     assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
 
-                    sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, -twopi * (gv_rot * sv)));
+                    sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
                 }
             }
 
