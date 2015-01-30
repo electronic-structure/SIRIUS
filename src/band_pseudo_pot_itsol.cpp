@@ -1072,9 +1072,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 for (int i = 0; i < num_bands; i++)
                 {
                     /* take the residual if it's norm is above the threshold */
-                    if (res_norm[i] > itso.tolerance_ && (kp__->band_occupancy(i) > 1e-12 || n != 0))
-                    //if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
-                    //    (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+                    if (res_norm[i] > itso.tolerance_ && kp__->band_occupancy(i) > 1e-10)
                     {
                         /* shift unconverged residuals to the beginning of array */
                         if (n != i)
