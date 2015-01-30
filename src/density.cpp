@@ -1237,24 +1237,24 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         auto atom_type = uc->atom_type(iat);
         int nbf = atom_type->mt_basis_size();
 
-        mdarray<double_complex, 2> d_mtrx_packed(atom_type->num_atoms(), nbf * (nbf + 1) / 2);
+        mdarray<double_complex, 2> d_mtrx_packed(atom_type->num_atoms(), nbf * nbf);
         for (int i = 0; i < atom_type->num_atoms(); i++)
         {
             int ia = atom_type->atom_id(i);
 
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    d_mtrx_packed(i, xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+                    d_mtrx_packed(i, xi2 * nbf + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
         }
         #pragma omp parallel
         {
             mdarray<double_complex, 2> phase_factors(spl_ngv_loc.local_size(), atom_type->num_atoms());
-
-            mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * (nbf + 1) / 2);
+            
+            mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * nbf);
     
             int thread_id = Platform::thread_id();
 
@@ -1269,10 +1269,11 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 }
             }
 
-            linalg<CPU>::gemm(0, 0, (int)spl_ngv_loc.local_size(thread_id), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
+            linalg<CPU>::gemm(0, 0, (int)spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type->num_atoms(),
                               &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
                               &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
 
+            /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
                 int idx12 = xi2 * (xi2 + 1) / 2;
@@ -1282,7 +1283,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 {
                     int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
                     /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                    f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, idx12 + xi2) * 
+                    f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
                                                      atom_type->uspp().q_pw(igloc, idx12 + xi2);
 
                 }
@@ -1292,9 +1293,12 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
                     {
                         int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                        
                         /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                        f_pw[rl->spl_num_gvec(igloc)] += 2 * real(d_mtrx_pw(igloc_t, idx12) * 
-                                                                  atom_type->uspp().q_pw(igloc, idx12));
+                        f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
+
+                        /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+                        f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * conj(atom_type->uspp().q_pw(igloc, idx12));
                     }
                 }
             }
@@ -1302,10 +1306,6 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     }
     
     parameters_.comm().allgather(&f_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
-
-    //fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
-    //fft_->transform(1);
-    //for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
 
     for (int ig = 0; ig < rl->num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
 }
@@ -1736,6 +1736,11 @@ void Density::generate_valence(K_set& ks__)
         {
             break;
         }
+    }
+
+    for (int ir = 0; ir < fft_->size(); ir++)
+    {
+        if (rho_->f_it<global>(ir) < 0) TERMINATE("density is wrong");
     }
     
     /* get rho(G) */
