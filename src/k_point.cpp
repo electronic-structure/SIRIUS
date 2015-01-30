@@ -230,40 +230,32 @@ void K_point::update()
         p_mtrx_ = mdarray<double_complex, 3>(uc->max_mt_basis_size(), uc->max_mt_basis_size(), uc->num_atom_types());
         p_mtrx_.zero();
 
-        //for (int iat = 0; iat < uc->num_atom_types(); iat++)
-        //{
-        //    auto atom_type = uc->atom_type(iat);
-        //    int nbf = atom_type->mt_basis_size();
-        //    int ofs = atom_type->offset_lo();
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            auto atom_type = uc->atom_type(iat);
+            int nbf = atom_type->mt_basis_size();
+            int ofs = atom_type->offset_lo();
 
-        //    matrix<double_complex> qinv(nbf, nbf);
-        //    atom_type->uspp().q_mtrx >> qinv;
-        //    //== for (int i = 0; i < nbf; i++)
-        //    //== {
-        //    //==     for (int j = 0; j < nbf; j++) 
-        //    //==     {
-        //    //==         printf("%8.4f ", std::abs(qinv(i, j)));
-        //    //==     }
-        //    //==     printf("\n");
-        //    //== }
-        //    linalg<CPU>::geinv(nbf, qinv);
-        //    
-        //    /* compute P^{+}*P */
-        //    linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
-        //                      &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
-        //    comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());
+            matrix<double_complex> qinv(nbf, nbf);
+            atom_type->uspp().q_mtrx >> qinv;
+            linalg<CPU>::geinv(nbf, qinv);
+            
+            /* compute P^{+}*P */
+            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
+                              &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+            comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());
 
-        //    for (int xi1 = 0; xi1 < nbf; xi1++)
-        //    {
-        //        for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
-        //    }
-        //    /* compute (Q^{-1} + P^{+}*P)^{-1} */
-        //    linalg<CPU>::geinv(nbf, qinv);
-        //    for (int xi1 = 0; xi1 < nbf; xi1++)
-        //    {
-        //        for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
-        //    }
-        //}
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+            }
+            /* compute (Q^{-1} + P^{+}*P)^{-1} */
+            linalg<CPU>::geinv(nbf, qinv);
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+            }
+        }
         
         if (parameters_.processing_unit() == GPU)
         {
