@@ -70,6 +70,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         parameters_.unit_cell()->generate_radial_functions();
         parameters_.unit_cell()->generate_radial_integrals();
     }
+
+    parameters_.work_load_ = 0;
     
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
@@ -88,6 +90,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         kpoints_[ik]->generate_spinor_wave_functions();
     }
     comm_k_.barrier();
+    comm_k_.allreduce(&parameters_.work_load_, 1);
+    if (Platform::rank() == 0) DUMP("work_load : %i", parameters_.work_load_);
 
     /* synchronize eigen-values */
     sync_band_energies();

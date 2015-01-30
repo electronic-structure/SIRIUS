@@ -594,7 +594,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                     {
                          if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
                     }
-                    DUMP("exiting after %i iterations with maximum eigen-value error %18.12e\n", k + 1, demax);
+                    DUMP("exiting after %i iterations with maximum eigen-value error %18.12e", k + 1, demax);
                 }
                 break;
             }
@@ -945,14 +945,14 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         double demax = 0;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i) > 1e-12 && 
+            if (kp__->band_occupancy(i) > 1e-2 && 
                 std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
             {
                 demax = std::abs(eval_old[i] - eval[i]);
                 occ_band_converged = false;
             }
         }
-        DUMP("step: %i, eval error: %18.12f", k, demax);
+        DUMP("step: %i, eval error: %18.14f", k, demax);
 
         /* copy eigen-vectors to GPU */
         #ifdef _GPU_
@@ -971,7 +971,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
-                    if (k == 0 || std::abs(eval[i] - eval_old[i]) > tol)
+                    if (kp__->band_occupancy(i) > 1e-10 && std::abs(eval[i] - eval_old[i]) > tol)
                     {
                         memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
@@ -985,6 +985,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 #endif
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
+
+                parameters_.work_load_ += n;
 
                 //== #ifdef _GPU_
                 //== matrix<double_complex> res_tmp;

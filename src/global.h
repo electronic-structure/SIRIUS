@@ -143,6 +143,8 @@ class Global
         initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
         initial_input_parameters::xc_functionals_input_section xc_functionals_input_section_;
         initial_input_parameters::mixer_input_section mixer_input_section_;
+
+        int work_load_;
     
         Global(initial_input_parameters iip__, Communicator const& comm__)
             : initialized_(false), 
