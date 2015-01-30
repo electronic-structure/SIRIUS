@@ -492,7 +492,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i) > 1e-12 && 
+            if (kp__->band_occupancy(i) > 1e-2 && 
                 std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
             {
                 occ_band_converged = false;
@@ -510,8 +510,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
-                    //if (std::abs(eval[i] - eval_old[i]) > tol && (kp__->band_occupancy(i) > 1e-12 || n != 0))
-                    if (std::abs(eval[i] - eval_old[i]) > tol)
+                    if (kp__->band_occupancy(i) > 1e-10 && std::abs(eval[i] - eval_old[i]) > tol)
                     {
                         dmatrix<double_complex>::copy_col<CPU>(evec, i, evec_tmp, n);
                         eval_tmp[n] = eval[i];
@@ -535,6 +534,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                     ///* number of additional basis functions */
                     //n = (int)res_list.size();
                 }
+                parameters_.work_load_ += n;
             }
             else
             {
