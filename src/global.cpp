@@ -324,6 +324,7 @@ void Global::print_info()
     printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
     printf("number of OMP threads for FFT   : %i\n", iip_.common_input_section_.num_fft_threads_); 
     printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
+    printf("cyclic block size               : %i\n", iip_.common_input_section_.cyclic_block_size_);
 
     unit_cell_->print_info();
 
