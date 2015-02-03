@@ -298,7 +298,7 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
 
         //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         //{
-        //    printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
+        //    printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/rank\n",
         //           nbeta, nloc, kp__->num_gkvec(),
         //           tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
         //}
@@ -565,7 +565,82 @@ void Band::set_fv_h_o_parallel_simple(int N__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/node\n",
+        printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/rank\n",
+               N__ + n__, n__, kp__->num_gkvec(), N__,
+               tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
+    }
+    
+    /* restore the bottom block of the matrix */
+    if (N__ != 0)
+    {
+        linalg<CPU>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
+        linalg<CPU>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
+    }
+
+    /* save Hamiltonian and overlap */
+    for (int i = 0; i < (int)s1_col.local_size(); i++)
+    {
+        memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
+        memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
+    }
+}
+
+void Band::set_fv_h_o_parallel_v2(int N__,
+                                  int n__,
+                                  K_point* kp__,
+                                  matrix<double_complex>& phi_slab__,
+                                  matrix<double_complex>& hphi_slab__,
+                                  matrix<double_complex>& ophi_slab__,
+                                  dmatrix<double_complex>& h__,
+                                  dmatrix<double_complex>& o__,
+                                  dmatrix<double_complex>& h_old__,
+                                  dmatrix<double_complex>& o_old__)
+{
+    Timer t("sirius::Band::set_fv_h_o_parallel_v2", kp__->comm());
+
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+
+    /* copy old Hamiltonian and overlap */
+    for (int i = 0; i < (int)s0_col.local_size(); i++)
+    {
+        memcpy(&h__(0, i), &h_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+        memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+    }
+
+    Timer t2("sirius::Band::set_fv_h_o_parallel_v2|zgemm_eff", kp__->comm());
+    matrix<double_complex> tmp(N__ + n__, n__);
+
+    linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(0, 0), phi_slab__.ld(), 
+                      hphi_slab__.at<CPU>(0, N__), hphi_slab__.ld(), tmp.at<CPU>(0, 0), tmp.ld());
+
+    kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
+    for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
+    {
+        for (int j = 0; j < (int)s1_row.local_size(); j++)
+        {
+            h__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+        }
+    }
+
+    linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(0, 0), phi_slab__.ld(), 
+                      ophi_slab__.at<CPU>(0, N__), ophi_slab__.ld(), tmp.at<CPU>(0, 0), tmp.ld());
+
+    kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
+    for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
+    {
+        for (int j = 0; j < (int)s1_row.local_size(); j++)
+        {
+            o__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+        }
+    }
+    double tval = t2.stop();
+
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    {
+        printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/rank\n",
                N__ + n__, n__, kp__->num_gkvec(), N__,
                tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
@@ -977,7 +1052,7 @@ void Band::set_fv_h_o_parallel(int N__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("effective zgemm #4&5 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+        printf("effective zgemm #4&5 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/rank\n",
                N__ + n__, n__, kp__->num_gkvec(),
                tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
@@ -1095,12 +1170,100 @@ void Band::residuals_parallel_simple(int N__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+        printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/rank\n",
                kp__->num_gkvec(), num_bands__, N__,
                tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
     }
     
     precondition_and_normalize_residuals_parallel(num_bands__, kp__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm__);
+}
+
+void Band::residuals_parallel_v2(int N__,
+                                 int num_bands__,
+                                 K_point* kp__,
+                                 std::vector<double>& eval__,
+                                 matrix<double_complex>& evec__,
+                                 matrix<double_complex>& hphi__,
+                                 matrix<double_complex>& ophi__,
+                                 matrix<double_complex>& hpsi__,
+                                 matrix<double_complex>& opsi__,
+                                 matrix<double_complex>& res__,
+                                 std::vector<double>& h_diag__,
+                                 std::vector<double>& o_diag__,
+                                 std::vector<double>& res_norm__)
+{
+    Timer t("sirius::Band::residuals_parallel_v2");
+
+    int num_gkvec = (int)hphi__.size(0);
+    
+    Timer t2("sirius::Band::residuals_parallel_v2|zgemm");
+    /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
+    linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, hphi__, evec__, hpsi__);
+    /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
+    linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, ophi__, evec__, opsi__);
+    double tval = t2.stop();
+
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    {
+        printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/rank\n",
+               kp__->num_gkvec(), num_bands__, N__,
+               tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
+    }
+    
+    memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
+    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
+    #pragma omp parallel for
+    for (int i = 0; i < num_bands__; i++)
+    {
+        double norm2 = 0;
+        for (int igk = 0; igk < num_gkvec; igk++) 
+        {
+            res__(igk, i) = hpsi__(igk, i) - eval__[i] * opsi__(igk, i);
+            norm2 += real(conj(res__(igk, i)) * res__(igk, i));
+        }
+        res_norm__[i] = norm2;
+    }
+    kp__->comm().allreduce(res_norm__);
+    
+    /* compute norm */
+    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+
+    splindex<dyadic> spl_num_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row(),
+                                   kp__->blacs_grid().cyclic_block_size(), kp__->num_ranks_col(), kp__->rank_col());
+    
+    /* apply preconditioner */
+    #pragma omp parallel for
+    for (int i = 0; i < num_bands__; i++)
+    {
+        for (int igk = 0; igk < num_gkvec; igk++)
+        {
+            int igk_row = (int)spl_num_gkvec[igk];
+
+            double p = h_diag__[igk_row] - eval__[i] * o_diag__[igk_row];
+
+            p *= 2; // QE formula is in Ry; here we convert to Ha
+            p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+            res__(igk, i) /= p;
+        }
+    }
+    
+    std::vector<double> norm2(num_bands__, 0);
+    /* Normalize new basis functions */
+    #pragma omp parallel for
+    for (int i = 0; i < num_bands__; i++)
+    {
+        double d = 0;
+        for (int igk = 0; igk < num_gkvec; igk++) 
+            d += real(conj(res__(igk, i)) * res__(igk, i));
+        norm2[i] = d;
+    }
+    kp__->comm().allreduce(norm2);
+    #pragma omp parallel for
+    for (int i = 0; i < num_bands__; i++)
+    {
+        double d = 1.0 / std::sqrt(norm2[i]);
+        for (int igk = 0; igk < num_gkvec; igk++) res__(igk, i) *= d;
+    }
 }
 
 void Band::residuals_parallel(int N__,
@@ -1364,7 +1527,7 @@ void Band::residuals_parallel(int N__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("effective zgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+        printf("effective zgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/rank\n",
                kp__->num_gkvec(), num_bands__, N__,
                tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
     }

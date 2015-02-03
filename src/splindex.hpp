@@ -276,15 +276,30 @@ class splindex<block_cyclic>: public splindex_base
 };
 
 template<> 
-class splindex<dyadic>: public splindex_base
+class splindex<dyadic>
 {
     private:
-        splindex<block_cyclic> spl_col_;
-        splindex<block> sub_spl_row_;
+        splindex<block_cyclic> spl1_;
+        splindex<block> spl2_;
     
     public:
         splindex()
         {
         }
-    
+
+        splindex(size_t global_index_size__, int num_ranks1__, int rank1__, int bs__, int num_ranks2__, int rank2__)
+        {
+            spl1_ = splindex<block_cyclic>(global_index_size__, num_ranks1__, rank1__, bs__);
+            spl2_ = splindex<block>(spl1_.local_size(), num_ranks2__, rank2__);
+        }
+
+        inline size_t local_size() const
+        {
+            return spl2_.local_size();
+        }
+
+        inline size_t operator[](size_t idxloc2__) const
+        {
+            return spl2_[idxloc2__];
+        }
 };
