@@ -513,18 +513,6 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
-        //for (int i = 0; i < N; i++)
-        //{
-        //    for (int j = 0; j < N; j++) printf("%10.5f ", std::abs(hmlt(j, i)));
-        //    printf("\n");
-        //}
-        //printf("----------\n");
-        //for (int i = 0; i < N; i++)
-        //{
-        //    for (int j = 0; j < N; j++) printf("%10.5f ", std::abs(ovlp(j, i)));
-        //    printf("\n");
-        //}
-    
         eval_old = eval;
         /* solve generalized eigen-value problem */
         {
@@ -534,10 +522,6 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                                 hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
-        //if (kp__->comm().rank() == 0)
-        //{
-        //    DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
-        //}
 
         evec_full.zero();
         for (int i = 0; i < evec.num_cols_local(); i++)
@@ -993,18 +977,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
 
         for (int i = 0; i < N; i++)
         {
-            for (int j = 0; j < N; j++) printf("%10.5f ", std::abs(hmlt(j, i)));
-            printf("\n");
-        }
-        printf("----------\n");
-        for (int i = 0; i < N; i++)
-        {
-            for (int j = 0; j < N; j++) printf("%10.5f ", std::abs(ovlp(j, i)));
-            printf("\n");
-        }
-        
-        for (int i = 0; i < N; i++)
-        {
             if (imag(hmlt(i, i)) > 1e-10)
             {
                 TERMINATE("wrong diagonal of H");
@@ -1028,12 +1000,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
 
         evp_load += std::pow(double(N) / num_bands, 3);
         }
-
-        if (kp__->comm().rank() == 0)
-        {
-            DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
-        }
-
 
         bool occ_band_converged = true;
         double demax = 0;
