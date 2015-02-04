@@ -260,19 +260,26 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
     }
 }
 
-void Symmetry::symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
+void Symmetry::symmetrize_function(double_complex* f_pw__,
+                                   FFT3D<CPU>* fft__,
+                                   splindex<block>& spl_num_gvec__,
+                                   Communicator& comm__)
 {
     Timer t("sirius::Symmetry::symmetrize_function");
     mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
     sym_f_pw.zero();
+    double* ptr = (double*)&sym_f_pw(0);
 
+    #pragma omp parallel for
     for (int isym = 0; isym < num_sym_op(); isym++)
     {
+        /* full symmetry operation is {R|t} */
         auto R = rot_mtrx(isym);
         auto t = fractional_translation(isym);
 
-        for (int ig = 0; ig < fft__->num_gvec(); ig++)
+        for (int igloc = 0; igloc < (int)spl_num_gvec__.local_size(); igloc++)
         {
+            int ig = (int)spl_num_gvec__[igloc];
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
              * GR is a vector-matrix multiplication [G][.....]
@@ -287,9 +294,18 @@ void Symmetry::symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__)
 
             assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
 
-            sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
+            //sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
+
+            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
+            
+            #pragma omp atomic update
+            ptr[2 * ig_rot] += real(z);
+
+            #pragma omp atomic update
+            ptr[2 * ig_rot + 1] += imag(z);
         }
     }
+    comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
 
     for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
 }

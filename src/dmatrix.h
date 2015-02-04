@@ -89,9 +89,9 @@ class dmatrix
         }
 
         template<int direction__>
-        void shuffle_vertical_ata(int offset__, int size__, matrix<T>& matrix_slice__)
+        void shuffle_vertical(int offset__, int size__, matrix<T>& matrix_slice__)
         {
-            sirius::Timer t("dmatrix::shuffle_ata");
+            sirius::Timer t("dmatrix::shuffle");
             log_function_enter(__func__);
 
             /* trivial case */
@@ -145,7 +145,7 @@ class dmatrix
                     if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
                 
-                sirius::Timer t1("dmatrix::shuffle_ata|comm");
+                sirius::Timer t1("dmatrix::shuffle|comm");
                 T* recv_ptr = (tmp.size() == 0) ? nullptr : &tmp(0);
                 blacs_grid_->comm_row().alltoall(ptr, &sendcounts[0], &sdispls[0], recv_ptr, &recvcounts[0], &rdispls[0]);
                 t1.stop();
@@ -203,7 +203,7 @@ class dmatrix
                 }
 
                 T* send_ptr = (tmp.size() == 0) ? nullptr : &tmp(0);
-                sirius::Timer t1("dmatrix::shuffle_ata|comm");
+                sirius::Timer t1("dmatrix::shuffle|comm");
                 blacs_grid_->comm_row().alltoall(send_ptr, &sendcounts[0], &sdispls[0], ptr, &recvcounts[0], &rdispls[0]);
                 t1.stop();
             }
@@ -212,21 +212,21 @@ class dmatrix
         }
 
         template<int direction__>
-        void shuffle_horizontal(int offset__, int size__, matrix<T>& matrix_slab__)
+        void shuffle_horizontal(int size__, int offs_in_panel__, matrix<T>& matrix_slab__, int offs_in_slab__)
         {
             sirius::Timer t("dmatrix::shuffle_horizontal");
 
-            /* trivial case */
-            if (num_ranks_row_ * num_ranks_col_ == 1 && offset__ == 0 && size__ == num_cols_)
-            {
-                if (direction__ == _slice_to_panel_) matrix_slab__ >> matrix_local_;
-                if (direction__ == _panel_to_slice_) matrix_local_ >> matrix_slab__;
-                return;
-            }
+            //== /* trivial case */
+            //== if (num_ranks_row_ * num_ranks_col_ == 1 && offset__ == 0 && size__ == num_cols_)
+            //== {
+            //==     if (direction__ == _slice_to_panel_) matrix_slab__ >> matrix_local_;
+            //==     if (direction__ == _panel_to_slice_) matrix_local_ >> matrix_slab__;
+            //==     return;
+            //== }
 
             /* get position in the distributed matrix */
-            splindex<block_cyclic> s0(offset__,          num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(offset__ + size__, num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s0(offs_in_panel__,          num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s1(offs_in_panel__ + size__, num_ranks_col_, rank_col_, bs_);
 
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             
@@ -274,7 +274,7 @@ class dmatrix
                     if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
                 
-                sirius::Timer t1("dmatrix::shuffle_ata|comm");
+                sirius::Timer t1("dmatrix::shuffle|comm");
                 blacs_grid_->comm_col().alltoall(ptr, &sendcounts[0], &sdispls[0], &buf(0), &recvcounts[0], &rdispls[0]);
                 t1.stop();
                 
@@ -284,14 +284,17 @@ class dmatrix
                     for (int rank = 0; rank < num_ranks_col_; rank++)
                     {
                         int n = (int)(s1.local_size(rank) - s0.local_size(rank));
+
                         matrix<T> buf_local((n == 0) ? nullptr : &buf(rdispls[rank]), n, sub_spl_row.local_size());
     
                         for (int j = 0; j < n; j++)
                         {
+                            int idx_in_slab = offs_in_slab__ + (int)spl_col_.global_index(s0.local_size(rank) + j, rank) - offs_in_panel__;
+
                             for (int i = 0; i < sub_spl_row.local_size(); i++)
                             {
                                 /* copy necessary parts of panel to the full vector */
-                                matrix_slab__(i, spl_col_.global_index(s0.local_size(rank) + j, rank)) = buf_local(j, i);
+                                matrix_slab__(i, idx_in_slab) = buf_local(j, i);
                             }
                         }
                     }
@@ -322,15 +325,16 @@ class dmatrix
 
                         for (int j = 0; j < n; j++)
                         {
+                            int idx_in_slab = offs_in_slab__ + (int)spl_col_.global_index(s0.local_size(rank) + j, rank) - offs_in_panel__;
                             for (int i = 0; i < sub_spl_row.local_size(); i++)
                             {
-                                buf_loc(j, i) = matrix_slab__(i, spl_col_.global_index(s0.local_size(rank) + j, rank));
+                                buf_loc(j, i) = matrix_slab__(i, idx_in_slab);
                             }
                         }
                     }
                 }
 
-                sirius::Timer t1("dmatrix::shuffle_ata|comm");
+                sirius::Timer t1("dmatrix::shuffle|comm");
                 blacs_grid_->comm_col().alltoall(&buf(0), &sendcounts[0], &sdispls[0], ptr, &recvcounts[0], &rdispls[0]);
                 t1.stop();
 
@@ -341,7 +345,6 @@ class dmatrix
                 }
             }
         }
-
 
     public:
         
@@ -528,7 +531,7 @@ class dmatrix
             if (nloc)
             {
                 cuda_copy_to_host(at<CPU>(0, s0.local_size()), at<GPU>(0, s0.local_size()),
-                                    num_rows_local() * nloc * sizeof(double_complex));
+                                  num_rows_local() * nloc * sizeof(double_complex));
             }
         }
         #endif
@@ -603,27 +606,28 @@ class dmatrix
          */
         void gather(matrix<T>& full_vectors__)
         {
-            shuffle_vertical_ata<_panel_to_slice_>(0, num_cols_, full_vectors__);
+            shuffle_vertical<_panel_to_slice_>(0, num_cols_, full_vectors__);
         }
 
         void gather(int n__, int offs__, matrix<T>& matrix_slice__)
         {
-            shuffle_vertical_ata<_panel_to_slice_>(offs__, n__, matrix_slice__);
+            shuffle_vertical<_panel_to_slice_>(offs__, n__, matrix_slice__);
         }
 
         void gather(int n__, int offs__)
         {
-            shuffle_vertical_ata<_panel_to_slice_>(offs__, n__, matrix_slice_);
+            shuffle_vertical<_panel_to_slice_>(offs__, n__, matrix_slice_);
         }
 
-        void gather_horizontal(int offs__, int n__, matrix<T>& matrix_slab__)
+        
+        void gather_horizontal(int size__, int offs_in_panel__, matrix<T>& matrix_slab__, int offs_in_slab__)
         {
-            shuffle_horizontal<_panel_to_slice_>(offs__, n__, matrix_slab__);
+            shuffle_horizontal<_panel_to_slice_>(size__, offs_in_panel__, matrix_slab__, offs_in_slab__);
         }
 
-        void scatter_horizontal(int offs__, int n__, matrix<T>& matrix_slab__)
+        void scatter_horizontal(int size__, int offs_in_panel__, matrix<T>& matrix_slab__, int offs_in_slab__)
         {
-            shuffle_horizontal<_slice_to_panel_>(offs__, n__, matrix_slab__);
+            shuffle_horizontal<_slice_to_panel_>(size__, offs_in_panel__, matrix_slab__, offs_in_slab__);
         }
 
         /// Scatter full vectors to the panels
@@ -632,17 +636,17 @@ class dmatrix
          */
         void scatter(mdarray<double_complex, 2>& full_vectors__)
         {
-            shuffle_vertical_ata<_slice_to_panel_>(0, num_cols_, full_vectors__);
+            shuffle_vertical<_slice_to_panel_>(0, num_cols_, full_vectors__);
         }
 
         void scatter(int n__, int offs__, mdarray<T, 2>& matrix_slice__)
         {
-            shuffle_vertical_ata<_slice_to_panel_>(offs__, n__, matrix_slice__);
+            shuffle_vertical<_slice_to_panel_>(offs__, n__, matrix_slice__);
         }
 
         void scatter(int n__, int offs__)
         {
-            shuffle_vertical_ata<_slice_to_panel_>(offs__, n__, matrix_slice_);
+            shuffle_vertical<_slice_to_panel_>(offs__, n__, matrix_slice_);
         }
 
         inline splindex<block_cyclic> const& spl_col() const

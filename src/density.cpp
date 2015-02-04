@@ -1386,7 +1386,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         auto type = uc->atom_type(iat);
         int nbf = type->mt_basis_size();
 
-        mdarray<double_complex, 2> d_mtrx_packed(type->num_atoms(), nbf * (nbf + 1) / 2);
+        mdarray<double_complex, 2> d_mtrx_packed(type->num_atoms(), nbf * nbf);
         mdarray<double, 2> atom_pos(type->num_atoms(), 3);
         for (int i = 0; i < type->num_atoms(); i++)
         {
@@ -1394,9 +1394,9 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    d_mtrx_packed(i, xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+                    d_mtrx_packed(i, xi2 * nbf + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
             for (int x = 0; x < 3; x++) atom_pos(i, x) = uc->atom(ia)->position(x);
@@ -1406,7 +1406,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         atom_pos.allocate_on_device();
         atom_pos.copy_to_device();
 
-        mdarray<double_complex, 2> d_mtrx_pw(nullptr, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
+        mdarray<double_complex, 2> d_mtrx_pw(nullptr, rl->spl_num_gvec().local_size(), nbf * nbf);
         d_mtrx_pw.allocate_on_device();
         d_mtrx_pw.zero_on_device();
 

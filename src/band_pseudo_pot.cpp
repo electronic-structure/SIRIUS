@@ -411,8 +411,8 @@ void Band::apply_h_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
-/** On input phi is both in host and device memory.
- *  On output hphi and ophi are in host or device memory depending on processing unit.
+/** \param [in] phi Input wave-function [storage: CPU && GPU].
+ *  \param [out] hphi Wave-function multiplied by local Hamiltonian [storage: CPU || GPU].
  */
 void Band::apply_h_o_parallel(K_point* kp__,
                               std::vector<double> const& effective_potential__,
@@ -563,7 +563,7 @@ void Band::set_fv_h_o_parallel_simple(int N__,
     linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
     double tval = t2.stop();
 
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    if (verbosity_level >= 10 && kp__->comm().rank() == 0)
     {
         printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/rank\n",
                N__ + n__, n__, kp__->num_gkvec(), N__,
@@ -585,18 +585,19 @@ void Band::set_fv_h_o_parallel_simple(int N__,
     }
 }
 
-void Band::set_fv_h_o_parallel_v2(int N__,
-                                  int n__,
-                                  K_point* kp__,
-                                  matrix<double_complex>& phi_slab__,
-                                  matrix<double_complex>& hphi_slab__,
-                                  matrix<double_complex>& ophi_slab__,
-                                  dmatrix<double_complex>& h__,
-                                  dmatrix<double_complex>& o__,
-                                  dmatrix<double_complex>& h_old__,
-                                  dmatrix<double_complex>& o_old__)
+void Band::set_fv_h_o_fast_parallel(int N__,
+                                    int n__,
+                                    K_point* kp__,
+                                    matrix<double_complex>& phi_slab__,
+                                    matrix<double_complex>& hphi_slab__,
+                                    matrix<double_complex>& ophi_slab__,
+                                    dmatrix<double_complex>& h__,
+                                    dmatrix<double_complex>& o__,
+                                    dmatrix<double_complex>& h_old__,
+                                    dmatrix<double_complex>& o_old__,
+                                    mdarray<double_complex, 1>& kappa__)
 {
-    Timer t("sirius::Band::set_fv_h_o_parallel_v2", kp__->comm());
+    Timer t("sirius::Band::set_fv_h_o_fast_parallel", kp__->comm());
 
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
@@ -610,39 +611,86 @@ void Band::set_fv_h_o_parallel_v2(int N__,
         memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
     }
 
-    Timer t2("sirius::Band::set_fv_h_o_parallel_v2|zgemm_eff", kp__->comm());
-    matrix<double_complex> tmp(N__ + n__, n__);
-
-    linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(0, 0), phi_slab__.ld(), 
-                      hphi_slab__.at<CPU>(0, N__), hphi_slab__.ld(), tmp.at<CPU>(0, 0), tmp.ld());
-
-    kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
-    for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
+    Timer t2("sirius::Band::set_fv_h_o_fast_parallel|zgemm_eff", kp__->comm());
+    if (parameters_.processing_unit() == CPU)
     {
-        for (int j = 0; j < (int)s1_row.local_size(); j++)
+        matrix<double_complex> tmp(kappa__.at<CPU>(), N__ + n__, n__);
+
+        linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(), phi_slab__.ld(), 
+                          hphi_slab__.at<CPU>(0, N__), hphi_slab__.ld(), tmp.at<CPU>(), tmp.ld());
+
+        kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
+        for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
         {
-            h__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+            for (int j = 0; j < (int)s1_row.local_size(); j++)
+            {
+                h__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+            }
+        }
+
+        linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(), phi_slab__.ld(), 
+                          ophi_slab__.at<CPU>(0, N__), ophi_slab__.ld(), tmp.at<CPU>(), tmp.ld());
+
+        kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
+        for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
+        {
+            for (int j = 0; j < (int)s1_row.local_size(); j++)
+            {
+                o__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+            }
         }
     }
-
-    linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(0, 0), phi_slab__.ld(), 
-                      ophi_slab__.at<CPU>(0, N__), ophi_slab__.ld(), tmp.at<CPU>(0, 0), tmp.ld());
-
-    kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
-    for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
+    if (parameters_.processing_unit() == GPU)
     {
-        for (int j = 0; j < (int)s1_row.local_size(); j++)
+        #ifdef _GPU_
+        int num_gkvec_loc = (int)phi_slab__.size(0);
+        matrix<double_complex> phi(phi_slab__.at<CPU>(), kappa__.at<GPU>(), num_gkvec_loc, N__ + n__);
+        phi.copy_to_device();
+
+        matrix<double_complex> hphi(hphi_slab__.at<CPU>(0, N__), kappa__.at<GPU>(num_gkvec_loc * (N__ + n__)), num_gkvec_loc, n__);
+        matrix<double_complex> ophi(ophi_slab__.at<CPU>(0, N__), kappa__.at<GPU>(num_gkvec_loc * (N__ + n__)), num_gkvec_loc, n__);
+
+        matrix<double_complex> tmp(kappa__.at<CPU>(), kappa__.at<GPU>(num_gkvec_loc * (N__ + n__ + n__)), N__ + n__, n__);
+
+        double_complex alpha(1, 0);
+        double_complex beta(0, 0);
+
+        hphi.copy_to_device();
+        linalg<GPU>::gemm(2, 0, N__ + n__, n__, num_gkvec_loc, &alpha, phi.at<GPU>(), phi.ld(), hphi.at<GPU>(), hphi.ld(),
+                          &beta, tmp.at<GPU>(), tmp.ld());
+        tmp.copy_to_host();
+        kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
+
+        for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
         {
-            o__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+            for (int j = 0; j < (int)s1_row.local_size(); j++)
+            {
+                h__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+            }
         }
+        
+        ophi.copy_to_device();
+        linalg<GPU>::gemm(2, 0, N__ + n__, n__, num_gkvec_loc, &alpha, phi.at<GPU>(), phi.ld(), ophi.at<GPU>(), ophi.ld(),
+                          &beta, tmp.at<GPU>(), tmp.ld());
+        tmp.copy_to_host();
+        kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
+        for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
+        {
+            for (int j = 0; j < (int)s1_row.local_size(); j++)
+            {
+                o__(j, s0_col.local_size() + i) = tmp(s1_row[j], s1_col[s0_col.local_size() + i] - N__);
+            }
+        }
+        #endif
     }
+
     double tval = t2.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/rank\n",
-               N__ + n__, n__, kp__->num_gkvec(), N__,
-               tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
+        printf("effective zgemm with M, N, K: %6i %6i %6i for H and O: %12.4f sec, %12.4f GFlops/rank\n",
+               N__ + n__, n__, kp__->num_gkvec(), tval,
+               2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
     
     /* restore the bottom block of the matrix */
@@ -1168,7 +1216,7 @@ void Band::residuals_parallel_simple(int N__,
     linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
     double tval = t2.stop();
 
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    if (verbosity_level >= 10 && kp__->comm().rank() == 0)
     {
         printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/rank\n",
                kp__->num_gkvec(), num_bands__, N__,
@@ -1178,36 +1226,64 @@ void Band::residuals_parallel_simple(int N__,
     precondition_and_normalize_residuals_parallel(num_bands__, kp__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm__);
 }
 
-void Band::residuals_parallel_v2(int N__,
-                                 int num_bands__,
-                                 K_point* kp__,
-                                 std::vector<double>& eval__,
-                                 matrix<double_complex>& evec__,
-                                 matrix<double_complex>& hphi__,
-                                 matrix<double_complex>& ophi__,
-                                 matrix<double_complex>& hpsi__,
-                                 matrix<double_complex>& opsi__,
-                                 matrix<double_complex>& res__,
-                                 std::vector<double>& h_diag__,
-                                 std::vector<double>& o_diag__,
-                                 std::vector<double>& res_norm__)
+void Band::residuals_fast_parallel(int N__,
+                                   int num_bands__,
+                                   K_point* kp__,
+                                   std::vector<double>& eval__,
+                                   matrix<double_complex>& evec__,
+                                   matrix<double_complex>& hphi__,
+                                   matrix<double_complex>& ophi__,
+                                   matrix<double_complex>& hpsi__,
+                                   matrix<double_complex>& opsi__,
+                                   matrix<double_complex>& res__,
+                                   std::vector<double>& h_diag__,
+                                   std::vector<double>& o_diag__,
+                                   std::vector<double>& res_norm__,
+                                   mdarray<double_complex, 1>& kappa__)
 {
-    Timer t("sirius::Band::residuals_parallel_v2");
+    Timer t("sirius::Band::residuals_fast_parallel");
 
     int num_gkvec = (int)hphi__.size(0);
     
-    Timer t2("sirius::Band::residuals_parallel_v2|zgemm");
-    /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
-    linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, hphi__, evec__, hpsi__);
-    /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-    linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, ophi__, evec__, opsi__);
+    Timer t2("sirius::Band::residuals_fast_parallel|zgemm");
+    if (parameters_.processing_unit() == CPU)
+    {
+        /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
+        linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, hphi__, evec__, hpsi__);
+        /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
+        linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, ophi__, evec__, opsi__);
+    }
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+
+        double_complex alpha(1, 0);
+        double_complex beta(0, 0);
+
+        matrix<double_complex> hphi(hphi__.at<CPU>(), kappa__.at<GPU>(), num_gkvec, N__);
+        matrix<double_complex> hpsi(hpsi__.at<CPU>(), kappa__.at<GPU>(num_gkvec * N__), num_gkvec, num_bands__);
+        hphi.copy_to_device();
+        
+        linalg<GPU>::gemm(0, 0, num_gkvec, num_bands__, N__, &alpha, hphi.at<GPU>(), hphi.ld(),
+                          evec__.at<GPU>(), evec__.ld(), &beta, hpsi.at<GPU>(), hpsi.ld());
+        hpsi.copy_to_host();
+
+        matrix<double_complex> ophi(ophi__.at<CPU>(), kappa__.at<GPU>(), num_gkvec, N__);
+        matrix<double_complex> opsi(opsi__.at<CPU>(), kappa__.at<GPU>(num_gkvec * N__), num_gkvec, num_bands__);
+        ophi.copy_to_device();
+        
+        linalg<GPU>::gemm(0, 0, num_gkvec, num_bands__, N__, &alpha, ophi.at<GPU>(), ophi.ld(),
+                          evec__.at<GPU>(), evec__.ld(), &beta, opsi.at<GPU>(), opsi.ld());
+        opsi.copy_to_host();
+        #endif
+    }
     double tval = t2.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/rank\n",
-               kp__->num_gkvec(), num_bands__, N__,
-               tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
+        printf("effective zgemm with M, N, K: %6i %6i %6i for hpsi and opsi: %12.4f sec, %12.4f GFlops/rank\n",
+               kp__->num_gkvec(), num_bands__, N__, tval,
+               2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
     }
     
     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));

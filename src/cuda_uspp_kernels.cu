@@ -672,7 +672,7 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
     cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
     cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
 
-    cublas_zgemm(0, 0, num_gvec_loc, num_beta * (num_beta + 1) / 2, num_atoms, &zone, 
+    cublas_zgemm(0, 0, num_gvec_loc, num_beta * num_beta, num_atoms, &zone, 
                  phase_factors, num_gvec_loc, d_mtrx_packed, num_atoms, &zzero,
                  d_mtrx_pw, num_gvec_loc, -1);
 
@@ -699,15 +699,18 @@ __global__ void sum_q_pw_d_mtrx_pw_gpu_kernel
             int idx12 = xi2 * (xi2 + 1) / 2;
 
             // add diagonal term
-            zval = cuCadd(zval, cuCmul(d_mtrx_pw[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)], 
+            zval = cuCadd(zval, cuCmul(d_mtrx_pw[array2D_offset(igloc, xi2 * num_beta + xi2, num_gvec_loc)], 
                                        q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]));
 
             // add non-diagonal terms
             for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
             {
                 cuDoubleComplex q = q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)];
-                cuDoubleComplex d = d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)];
-                zval.x += 2 * (d.x * q.x - d.y * q.y);
+                cuDoubleComplex d1 = d_mtrx_pw[array2D_offset(igloc, xi2 * num_beta + xi1, num_gvec_loc)];
+                cuDoubleComplex d2 = d_mtrx_pw[array2D_offset(igloc, xi1 * num_beta + xi2, num_gvec_loc)];
+
+                zval = cuCadd(zval, cuCmul(q, d1));
+                zval = cuCadd(zval, cuCmul(cuConj(q), d2));
             }
         }
         rho_pw[igloc] = cuCadd(rho_pw[igloc], zval);

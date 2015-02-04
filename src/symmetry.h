@@ -171,7 +171,10 @@ class Symmetry
          *    f(\tilde{\bf G}) = e^{i{\bf G t}} f({\bf G})
          *  \f]
          */
-        void symmetrize_function(double_complex* f_pw__, FFT3D<CPU>* fft__);
+        void symmetrize_function(double_complex* f_pw__,
+                                 FFT3D<CPU>* fft__,
+                                 splindex<block>& spl_num_gvec__,
+                                 Communicator& comm__);
 
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
