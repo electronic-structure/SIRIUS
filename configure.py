@@ -87,7 +87,7 @@ def configure_package(package_name, platform):
 
     if (package_name == "fftw"):
         retval = ["-I" + cwdlibs + package_dir + "/api", 
-                  cwdlibs + package_dir + "/.libs/libfftw3.a",
+                  cwdlibs + package_dir + "/.libs/libfftw3.a " + cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 
