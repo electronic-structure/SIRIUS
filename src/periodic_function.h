@@ -105,7 +105,7 @@ class Periodic_function
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
-            for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++)
             {
                 int ia = unit_cell_->spl_num_atoms(ialoc);
                 f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_->atom(ia)->radial_grid());

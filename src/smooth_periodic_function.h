@@ -222,7 +222,7 @@ Smooth_periodic_function<spatial, T> operator*(Smooth_periodic_function_gradient
 
     for (int x = 0; x < 3; x++)
     {
-        for (int ir = 0; ir < size; ir++)
+        for (int ir = 0; ir < (int)size; ir++)
         {
             result(ir) += f[x](ir) * g[x](ir);
         }

@@ -111,7 +111,7 @@ class Reciprocal_lattice
                     #ifdef _CACHE_GVEC_PHASE_FACTORS_
                     return gvec_phase_factors_(ig, ia);
                     #else
-                    return std::exp(double_complex(0.0, twopi * (gvec(spl_num_gvec_[ig]) * unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig]) * unit_cell_->atom(ia)->position())));
                     #endif
                     break;
                 }

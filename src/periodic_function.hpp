@@ -68,7 +68,7 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
         }
         else
         {
-            for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).allocate();
+            for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).allocate();
         }
     }
 }
@@ -81,7 +81,7 @@ void Periodic_function<T>::zero()
     f_pw_.zero();
     if (unit_cell_->full_potential())
     {
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
+        for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
     }
     f_it_local_.zero();
 }
@@ -131,7 +131,7 @@ inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
     if (unit_cell_->full_potential()) 
     {
         mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_->spl_num_atoms(ialoc);
             memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
@@ -157,12 +157,12 @@ template <typename T>
 inline void Periodic_function<T>::add(Periodic_function<T>* g)
 {
     Timer t("sirius::Periodic_function::add");
-    for (int irloc = 0; irloc < spl_fft_size_.local_size(); irloc++)
+    for (int irloc = 0; irloc < (int)spl_fft_size_.local_size(); irloc++)
         f_it_local_(irloc) += g->f_it<local>(irloc);
     
     if (unit_cell_->full_potential())
     {
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++)
             f_mt_local_(ialoc) += g->f_mt(ialoc);
     }
 }
@@ -174,11 +174,11 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
     
     if (step_function_ == NULL)
     {
-        for (int irloc = 0; irloc < spl_fft_size_.local_size(); irloc++) it_val += f_it_local_(irloc);
+        for (int irloc = 0; irloc < (int)spl_fft_size_.local_size(); irloc++) it_val += f_it_local_(irloc);
     }
     else
     {
-        for (int irloc = 0; irloc < spl_fft_size_.local_size(); irloc++)
+        for (int irloc = 0; irloc < (int)spl_fft_size_.local_size(); irloc++)
         {
             int ir = (int)spl_fft_size_[irloc];
             it_val += f_it_local_(irloc) * step_function_->theta_it(ir);
@@ -193,7 +193,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
         mt_val.resize(unit_cell_->num_atoms());
         memset(&mt_val[0], 0, unit_cell_->num_atoms() * sizeof(T));
 
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_->spl_num_atoms(ialoc);
             int nmtp = unit_cell_->atom(ia)->num_mt_points();
@@ -299,7 +299,7 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
     }
     else
     {
-        for (int irloc = 0; irloc < spl_fft_size.local_size(); irloc++)
+        for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
         {
             int ir = (int)spl_fft_size[irloc];
             result += type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc) * 
@@ -311,7 +311,7 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
     
     if (parameters_.unit_cell()->full_potential())
     {
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
             result += inner(f1->f_mt(ialoc), f2->f_mt(ialoc));
     }
 

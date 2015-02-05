@@ -564,7 +564,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         eval_old = eval;
         /* solve generalized eigen-value problem */
         {
-        Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
+        Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp", kp__->comm());
 
         gen_evp_solver()->solve(N, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
                                 hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
