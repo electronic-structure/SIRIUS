@@ -1215,6 +1215,7 @@ void sirius_create_kset(int32_t* num_kpoints__,
 
 void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32_t* use_sym__, int32_t* kset_id__)
 {
+    log_function_enter(__func__);
     for (int x = 0; x < 3; x++)
     {
         if (!(is_shift__[x] == 0 || is_shift__[x] == 1))
@@ -1236,6 +1237,7 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
    
     kset_list.push_back(new_kset);
     *kset_id__ = (int)kset_list.size() - 1;
+    log_function_exit(__func__);
 }
 
 void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
@@ -2256,7 +2258,7 @@ void sirius_get_beta_projectors_(int32_t* kset_id__, int32_t* ik__, int32_t* ngk
     }
     mdarray<double_complex, 2> beta_gk(beta_gk__, *ld__, *nbeta__);
 
-    auto& beta_gk_sirius = (*kset)[*ik__ - 1]->beta_gk_panel();
+    auto& beta_gk_sirius = (*kset)[*ik__ - 1]->beta_gk();
 
     int lmax = 10;
 

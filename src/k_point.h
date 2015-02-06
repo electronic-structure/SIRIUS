@@ -67,9 +67,9 @@ class K_point
         /// G+k vectors
         mdarray<double, 2> gkvec_;
 
-        mdarray<double, 2> gkvec_gpu_;
+        //== mdarray<double, 2> gkvec_gpu_;
 
-        /// global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
+        /// Global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
         std::vector<int> gvec_index_;
 
         /// first-variational eigen values
@@ -94,7 +94,9 @@ class K_point
         std::vector<int> fft_index_coarse_;
        
         /// first-variational states, distributed over all ranks of the 2D MPI grid
-        mdarray<double_complex, 2> fv_states_;
+        matrix<double_complex> fv_states_;
+
+        matrix<double_complex> fv_states_slab_;
         
         /// first-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
@@ -141,6 +143,10 @@ class K_point
         /// basis descriptors distributed along columns of the 2D MPI grid
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
+
+        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_local_;
+
+        splindex<block> spl_gkvec_;
             
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector< std::vector<int> > atom_lo_cols_;
@@ -170,10 +176,10 @@ class K_point
         int num_ranks_;
 
         /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
-        mdarray<double_complex, 2> beta_gk_t_;
+        matrix<double_complex> beta_gk_t_;
 
         /// Plane-wave coefficients of |beta> functions for atoms.
-        dmatrix<double_complex> beta_gk_panel_;
+        matrix<double_complex> beta_gk_;
 
         mdarray<double_complex, 3> p_mtrx_;
 
@@ -211,51 +217,16 @@ class K_point
         /// Test orthonormalization of first-variational states
         void test_fv_states(int use_fft);
 
-        void init_gkvec_ylm_and_len(int lmax__);
+        void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
-        void init_gkvec_phase_factors();
+        void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
 
     public:
 
         initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
 
         /// Constructor
-        K_point(Global& parameters__, double* vk__, double weight__, BLACS_grid const& blacs_grid__) 
-            : parameters_(parameters__), 
-              blacs_grid_(blacs_grid__),
-              weight_(weight__),
-              alm_coeffs_row_(nullptr),
-              alm_coeffs_col_(nullptr)
-        {
-            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
-
-            band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
-
-            comm_ = blacs_grid_.comm();
-            comm_row_ = blacs_grid_.comm_row();
-            comm_col_ = blacs_grid_.comm_col();
-            
-            num_ranks_ = comm_.size();
-            num_ranks_row_ = comm_row_.size();
-            num_ranks_col_ = comm_col_.size();
-
-            rank_row_ = comm_row_.rank();
-            rank_col_ = comm_col_.rank();
-
-            fft_ = parameters_.fft();
-
-            /* distribue first-variational states along columns */
-            spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
-
-            /* distribue spinor wave-functions along columns */
-            spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
-            
-            /* additionally split along rows */
-            sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
-            sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
-
-            iterative_solver_input_section_ = parameters_.iterative_solver_input_section_;
-        }
+        K_point(Global& parameters__, double* vk__, double weight__, BLACS_grid const& blacs_grid__);
 
         ~K_point()
         {
@@ -548,6 +519,12 @@ class K_point
             assert(idx >= 0 && idx < (int)gklo_basis_descriptors_row_.size());
             return gklo_basis_descriptors_row_[idx];
         }
+
+        inline gklo_basis_descriptor const& gklo_basis_descriptor_local(int idx) const
+        {
+            assert(idx >= 0 && idx < (int)gklo_basis_descriptors_local_.size());
+            return gklo_basis_descriptors_local_[idx];
+        }
         
         inline int num_ranks_row() const
         {
@@ -638,24 +615,24 @@ class K_point
             return pw_ekin; 
         }
 
-        inline mdarray<double, 2>& gkvec_gpu()
-        {
-            return gkvec_gpu_;
-        }
+        //== inline mdarray<double, 2>& gkvec_gpu()
+        //== {
+        //==     return gkvec_gpu_;
+        //== }
 
         inline mdarray<double, 2>& gkvec()
         {
             return gkvec_;
         }
 
-        inline mdarray<double_complex, 2> const& beta_gk_t() const
+        inline matrix<double_complex> const& beta_gk_t() const
         {
             return beta_gk_t_;
         }
 
-        inline dmatrix<double_complex>& beta_gk_panel()
+        inline matrix<double_complex>& beta_gk()
         {
-            return beta_gk_panel_;
+            return beta_gk_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()
@@ -718,6 +695,97 @@ class K_point
             return p_mtrx_(xi1, xi2, iat);
         }
 
+        inline splindex<block>& spl_gkvec()
+        {
+            return spl_gkvec_;
+        }
+
+        inline int num_gkvec_loc() const
+        {
+            return (int)spl_gkvec_.local_size();
+        }
+
+        inline matrix<double_complex>& fv_states_slab()
+        {
+            return fv_states_slab_;
+        }
+
+        void collect_all_gkvec(splindex<block>& spl_phi__, double_complex const* phi_slab__, double_complex* phi_slice__)
+        {
+            LOG_FUNC_BEGIN();
+            Timer t("sirius::K_point::collect_all_gkvec");
+
+            std::vector<int> sendcounts(comm_.size());
+            std::vector<int> sdispls(comm_.size());
+            std::vector<int> recvcounts(comm_.size());
+            std::vector<int> rdispls(comm_.size());
+
+            sdispls[0] = 0;
+            rdispls[0] = 0;
+            for (int rank = 0; rank < comm_.size(); rank++)
+            {
+                sendcounts[rank] = int(spl_gkvec_.local_size() * spl_phi__.local_size(rank));
+                if (rank) sdispls[rank] = sdispls[rank - 1] + sendcounts[rank - 1];
+
+                recvcounts[rank] = int(spl_gkvec_.local_size(rank) * spl_phi__.local_size());
+                if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
+            }
+
+            std::vector<double_complex> recvbuf(num_gkvec() * spl_phi__.local_size()); // TODO: preallocate buffer
+
+            comm_.alltoall(phi_slab__, &sendcounts[0], &sdispls[0], &recvbuf[0], &recvcounts[0], &rdispls[0]);
+            
+            for (int rank = 0; rank < comm_.size(); rank++)
+            {
+                matrix<double_complex> tmp(&recvbuf[rdispls[rank]], spl_gkvec_.local_size(rank), spl_phi__.local_size());
+                for (int i = 0; i < (int)spl_phi__.local_size(); i++)
+                {
+                    memcpy(&phi_slice__[i * num_gkvec() + spl_gkvec_.global_offset(rank)], &tmp(0, i),
+                           spl_gkvec_.local_size(rank) * sizeof(double_complex));
+               }
+            }
+            LOG_FUNC_END();
+        }
+
+        void collect_all_bands(splindex<block>& spl_phi__, double_complex const* phi_slice__, double_complex* phi_slab__)
+        {
+            LOG_FUNC_BEGIN();
+            Timer t("sirius::K_point::collect_all_bands");
+
+            std::vector<int> sendcounts(comm_.size());
+            std::vector<int> sdispls(comm_.size());
+            std::vector<int> recvcounts(comm_.size());
+            std::vector<int> rdispls(comm_.size());
+
+            sdispls[0] = 0;
+            rdispls[0] = 0;
+
+            for (int rank = 0; rank < comm_.size(); rank++)
+            {
+                sendcounts[rank] = int(spl_gkvec_.local_size(rank) * spl_phi__.local_size());
+                if (rank) sdispls[rank] = sdispls[rank - 1] + sendcounts[rank - 1];
+
+                recvcounts[rank] = int(spl_gkvec_.local_size() * spl_phi__.local_size(rank));
+                if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
+            }
+
+            std::vector<double_complex> sendbuf(num_gkvec() * spl_phi__.local_size()); // TODO: preallocate buffer
+
+            for (int rank = 0; rank < comm_.size(); rank++)
+            {
+                matrix<double_complex> tmp(&sendbuf[sdispls[rank]], spl_gkvec_.local_size(rank), spl_phi__.local_size());
+                for (int i = 0; i < (int)spl_phi__.local_size(); i++)
+                {
+                    memcpy(&tmp(0, i), &phi_slice__[i * num_gkvec() + spl_gkvec_.global_offset(rank)],
+                           spl_gkvec_.local_size(rank) * sizeof(double_complex));
+               }
+            }
+
+            comm_.alltoall(&sendbuf[0], &sendcounts[0], &sdispls[0], phi_slab__, &recvcounts[0], &rdispls[0]);
+            LOG_FUNC_END();
+        }
+
+
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,
                               mdarray<double, 2>& atom_pos__,
@@ -769,54 +837,54 @@ class K_point
                                matrix<double_complex>& beta_phi__)
         {
             Timer t("sirius::K_point::generate_beta_phi");
-            #ifdef _GPU_
-            #ifdef _GPU_DIRECT_
-            // allrecue with gpu-direct is broken at the moment
-            bool gpu_direct = false;
-            #else
-            bool gpu_direct = false;
-            #endif
-            #endif
+            //#ifdef _GPU_
+            //#ifdef _GPU_DIRECT_
+            //// allrecue with gpu-direct is broken at the moment
+            //bool gpu_direct = false;
+            //#else
+            //bool gpu_direct = false;
+            //#endif
+            //#endif
 
             if (parameters_.processing_unit() == CPU)
             {
                 /* compute <beta|phi> */
-                linalg<CPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_row(), 
+                linalg<CPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_loc(), 
                                   beta_gk__.at<CPU>(), beta_gk__.ld(), 
                                   phi__.at<CPU>(0, offs__), phi__.ld(), 
                                   beta_phi__.at<CPU>(), beta_phi__.ld());
 
-                if (comm_row().size() > 1) comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+                comm_.allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
             }
 
-            if (parameters_.processing_unit() == GPU)
-            {
-                #ifdef _GPU_
-                /* compute <beta|phi> */
-                linalg<GPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_row(), 
-                                  beta_gk__.at<GPU>(), beta_gk__.ld(), 
-                                  phi__.at<GPU>(0, offs__), phi__.ld(), 
-                                  beta_phi__.at<GPU>(), beta_phi__.ld());
-                
-                if (comm_row().size() > 1)
-                {
-                    if (gpu_direct)
-                    {
-                        comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
-                    }
-                    else
-                    {
-                        beta_phi__.copy_to_host();
-                        comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
-                        beta_phi__.copy_to_device();
-                    }
-                }
+            //if (parameters_.processing_unit() == GPU)
+            //{
+            //    #ifdef _GPU_
+            //    /* compute <beta|phi> */
+            //    linalg<GPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_row(), 
+            //                      beta_gk__.at<GPU>(), beta_gk__.ld(), 
+            //                      phi__.at<GPU>(0, offs__), phi__.ld(), 
+            //                      beta_phi__.at<GPU>(), beta_phi__.ld());
+            //    
+            //    if (comm_row().size() > 1)
+            //    {
+            //        if (gpu_direct)
+            //        {
+            //            comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
+            //        }
+            //        else
+            //        {
+            //            beta_phi__.copy_to_host();
+            //            comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+            //            beta_phi__.copy_to_device();
+            //        }
+            //    }
 
-                cuda_device_synchronize();
-                #else
-                TERMINATE_NO_GPU
-                #endif
-            }
+            //    cuda_device_synchronize();
+            //    #else
+            //    TERMINATE_NO_GPU
+            //    #endif
+            //}
         }
 
         void add_non_local_contribution(int num_atoms__,
@@ -826,7 +894,7 @@ class K_point
                                         mdarray<double_complex, 1>& op_mtrx_packed__,
                                         mdarray<int, 1> const& packed_mtrx_offset__,
                                         matrix<double_complex>& beta_phi__,
-                                        matrix<double_complex>& phi__,
+                                        matrix<double_complex>& op_phi__,
                                         int nphi__,
                                         int offs__,
                                         double_complex alpha,
@@ -852,9 +920,9 @@ class K_point
                 }
                 
                 /* compute <G+k|beta> * O * <beta|phi> and add to phi */
-                linalg<CPU>::gemm(0, 0, num_gkvec_row(), nphi__, num_beta__, alpha,
+                linalg<CPU>::gemm(0, 0, num_gkvec_loc(), nphi__, num_beta__, alpha,
                                   beta_gk__.at<CPU>(), beta_gk__.ld(), work__.at<CPU>(), work__.ld(), complex_one,
-                                  phi__.at<CPU>(0, offs__), phi__.ld());
+                                  op_phi__.at<CPU>(0, offs__), op_phi__.ld());
             }
 
             if (parameters_.processing_unit() == GPU)
@@ -880,7 +948,7 @@ class K_point
                 /* compute <G+k|beta> * D*<beta|phi> and add to phi */
                 linalg<GPU>::gemm(0, 0, num_gkvec_row(), nphi__, num_beta__, &alpha,
                                   beta_gk__.at<GPU>(), beta_gk__.ld(), work__.at<GPU>(), work__.ld(), &beta, 
-                                  phi__.at<GPU>(0, offs__), phi__.ld());
+                                  op_phi__.at<GPU>(0, offs__), op_phi__.ld());
                 
                 cuda_device_synchronize();
                 #else

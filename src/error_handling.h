@@ -105,5 +105,15 @@ void log_function_exit(const char* func_name);
     printf("%s\n", str__);                                                       \
 }
 
+#define LOG_FUNC_BEGIN()           \
+{                                  \
+    log_function_enter(__func__);  \
+}
+
+#define LOG_FUNC_END()             \
+{                                  \
+    log_function_exit(__func__);   \
+}
+
 #endif // __ERROR_HANDLING_H__
 

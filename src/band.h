@@ -165,6 +165,21 @@ class Band
                                 mdarray<double_complex, 1>& d_mtrx_packed__,
                                 mdarray<double_complex, 1>& q_mtrx_packed__);
 
+        void apply_h_o_fast_parallel(K_point* kp__,
+                                     std::vector<double> const& effective_potential__,
+                                     std::vector<double> const& pw_ekin__,
+                                     int N__,
+                                     int n__,
+                                     matrix<double_complex>& phi_slice__,
+                                     matrix<double_complex>& phi_slab__,
+                                     matrix<double_complex>& hphi_slab__,
+                                     matrix<double_complex>& ophi_slab__,
+                                     mdarray<int, 1>& packed_mtrx_offset__,
+                                     mdarray<double_complex, 1>& d_mtrx_packed__,
+                                     mdarray<double_complex, 1>& q_mtrx_packed__,
+                                     mdarray<double_complex, 1>& kappa__);
+
+        
         void set_fv_h_o_parallel_simple(int N__,
                                         int n__,
                                         K_point* kp__,

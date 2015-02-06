@@ -110,7 +110,7 @@ class dmatrix
             splindex<block> sub_spl_col(nloc, num_ranks_row_, rank_row_);
 
             assert(num_rows() == (int)matrix_slice__.size(0));
-            assert(sub_spl_col.local_size() <= (int)matrix_slice__.size(1));
+            assert(sub_spl_col.local_size() <= matrix_slice__.size(1));
 
             std::vector<int> sendcounts(num_ranks_row_);
             std::vector<int> recvcounts(num_ranks_row_);

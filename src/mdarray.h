@@ -269,7 +269,7 @@ class mdarray_base
         {
             assert(N == 1);
             assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            int64_t i = offsets_[0] + i0;
+            size_t i = offsets_[0] + i0;
             assert(i >= 0 && i < size());
             return i;
         }
@@ -279,7 +279,7 @@ class mdarray_base
             assert(N == 2);
             assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
             assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-            int64_t i = offsets_[0] + i0 + i1 * offsets_[1];
+            size_t i = offsets_[0] + i0 + i1 * offsets_[1];
             assert(i >= 0 && i < size());
             return i;
         }
@@ -290,7 +290,7 @@ class mdarray_base
             assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
             assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
             assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-            int64_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2];
+            size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2];
             assert(i >= 0 && i < size());
             return i;
         }
@@ -302,7 +302,7 @@ class mdarray_base
             assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
             assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
             assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
-            int64_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3];
+            size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3];
             assert(i >= 0 && i < size());
             return i;
         }

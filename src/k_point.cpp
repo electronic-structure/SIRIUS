@@ -26,16 +26,57 @@
 
 namespace sirius {
 
+K_point::K_point(Global& parameters__,
+                 double* vk__,
+                 double weight__,
+                 BLACS_grid const& blacs_grid__) 
+    : parameters_(parameters__), 
+      blacs_grid_(blacs_grid__),
+      weight_(weight__),
+      alm_coeffs_row_(nullptr),
+      alm_coeffs_col_(nullptr)
+{
+    for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+    
+    band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
+    band_energies_ = std::vector<double>(parameters_.num_bands(), 0);
+    
+    comm_ = blacs_grid_.comm();
+    comm_row_ = blacs_grid_.comm_row();
+    comm_col_ = blacs_grid_.comm_col();
+    
+    num_ranks_ = comm_.size();
+    num_ranks_row_ = comm_row_.size();
+    num_ranks_col_ = comm_col_.size();
+    
+    rank_row_ = comm_row_.rank();
+    rank_col_ = comm_col_.rank();
+    
+    fft_ = parameters_.fft();
+    
+    /* distribue first-variational states along columns */
+    spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+    
+    /* distribue spinor wave-functions along columns */
+    spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+    
+    /* additionally split along rows */
+    sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
+    sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
+    
+    iterative_solver_input_section_ = parameters_.iterative_solver_input_section_;
+}
+
 void K_point::initialize()
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::K_point::initialize");
     
     zil_.resize(parameters_.lmax_apw() + 1);
     for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = pow(double_complex(0, 1), l);
    
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
-
-    band_energies_ = std::vector<double>(parameters_.num_bands(), 0);
 
     if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 
@@ -56,10 +97,14 @@ void K_point::initialize()
     }
     
     update();
+
+    LOG_FUNC_END();
 }
 
 void K_point::update()
 {
+    LOG_FUNC_BEGIN();
+
     double gk_cutoff = 0;
     switch (parameters_.esm_type())
     {
@@ -80,6 +125,7 @@ void K_point::update()
         }
     }
 
+    /* Build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(gk_cutoff);
     
     build_apwlo_basis_descriptors();
@@ -136,19 +182,19 @@ void K_point::update()
         
         std::vector<std::pair<double, std::vector<int> > > gkvec_shells_;
         
-        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+        for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++)
         {
-            int igk = gklo_basis_descriptors_row_[igk_row].igk;
+            int igk = gklo_basis_descriptors_local_[igk_loc].igk;
             double gk_len = gkvec_cart(igk).length();
 
             if (gkvec_shells_.empty() || std::abs(gkvec_shells_.back().first - gk_len) > 1e-10) 
                 gkvec_shells_.push_back(std::pair<double, std::vector<int> >(gk_len, std::vector<int>()));
-            gkvec_shells_.back().second.push_back(igk_row);
+            gkvec_shells_.back().second.push_back(igk_loc);
         }
 
         auto uc = parameters_.unit_cell();
 
-        beta_gk_t_ = mdarray<double_complex, 2>(num_gkvec_row(), uc->num_beta_t()); 
+        beta_gk_t_ = matrix<double_complex>(num_gkvec_loc(), uc->num_beta_t()); 
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
@@ -169,12 +215,12 @@ void K_point::update()
             std::vector<double> beta_radial_integrals_(uc->max_mt_radial_basis_size());
             sbessel_pw<double> jl(uc, parameters_.lmax_beta());
             #pragma omp for
-            for (int ish = 0; ish < (int)gkvec_shells_.size(); ish++) // TODO: check the order of indeces. seems that radial integrals are comupted more than needed
+            for (int ish = 0; ish < (int)gkvec_shells_.size(); ish++)
             {
                 jl.interpolate(gkvec_shells_[ish].first);
                 for (int i = 0; i < (int)gkvec_shells_[ish].second.size(); i++)
                 {
-                    int igk_row = gkvec_shells_[ish].second[i];
+                    int igk_loc = gkvec_shells_[ish].second[i];
 
                     for (int iat = 0; iat < uc->num_atom_types(); iat++)
                     {
@@ -193,7 +239,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_gk_t_(igk_row, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
+                            beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_loc) * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -209,21 +255,18 @@ void K_point::update()
             }
         }
 
-        beta_gk_panel_ = dmatrix<double_complex>(nullptr, num_gkvec(), uc->mt_basis_size(), blacs_grid_);
-        beta_gk_panel_.allocate(); // TODO: allocate page locked if needed
+        beta_gk_ = matrix<double_complex>(num_gkvec_loc(), uc->mt_basis_size());
 
-        for (int i = 0; i < beta_gk_panel_.num_cols_local(); i++)
+        for (int i = 0; i < uc->mt_basis_size(); i++)
         {
-            int icol = beta_gk_panel_.icol(i);
-
-            int ia = uc->mt_lo_basis_descriptor(icol).ia;
-            int xi = uc->mt_lo_basis_descriptor(icol).xi;
+            int ia = uc->mt_lo_basis_descriptor(i).ia;
+            int xi = uc->mt_lo_basis_descriptor(i).xi;
 
             auto atom_type = parameters_.unit_cell()->atom(ia)->type();
 
-            for (int igk = 0; igk < num_gkvec_row(); igk++)
+            for (int igk = 0; igk < num_gkvec_loc(); igk++)
             {
-                beta_gk_panel_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
+                beta_gk_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
             }
         }
 
@@ -241,7 +284,7 @@ void K_point::update()
             linalg<CPU>::geinv(nbf, qinv);
             
             /* compute P^{+}*P */
-            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
+            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
                               &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
             comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());
 
@@ -285,17 +328,33 @@ void K_point::update()
             fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_);
             fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
-        
-        // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
-        fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
 
-        fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
+        if (parameters_.unit_cell()->full_potential())
+        {
+            // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
+            fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
+            fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
+        }
+        else
+        {
+            splindex<block> spl_bands(parameters_.num_fv_states(), comm_.size(), comm_.rank());
+            fv_states_slab_ = matrix<double_complex>(num_gkvec_loc(), parameters_.num_fv_states());
+            fv_states_ = matrix<double_complex>(num_gkvec(), spl_bands.local_size());
+        }
 
         if (parameters_.esm_type() == ultrasoft_pseudopotential ||
             parameters_.esm_type() == norm_conserving_pseudopotential)
         {
-            fv_states_panel_.zero();
-            for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
+            fv_states_slab_.zero();
+            
+            for (int i = 0; i < parameters_.num_fv_states(); i++)
+            {
+                auto location = spl_gkvec_.location(i);
+                if (location.second == comm_.rank()) fv_states_slab_(location.first, i) = complex_one;
+            }
+
+            //fv_states_panel_.zero();
+            //for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
 
             //== fv_states_panel_.zero();
             //== for (int i = 0; i < parameters_.num_fv_states(); i++)
@@ -321,7 +380,7 @@ void K_point::update()
             //==     }
             //== }
 
-            fv_states_panel_.gather(fv_states_);
+            //fv_states_panel_.gather(fv_states_);
         }
         
         if (parameters_.need_sv())
@@ -341,6 +400,8 @@ void K_point::update()
             spinor_wave_functions_.allocate();
         }
     }
+
+    LOG_FUNC_END();
 }
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
@@ -492,7 +553,7 @@ void K_point::generate_fv_states()
     }
     else
     {
-        fv_states_panel_.gather(fv_states_);
+        //fv_states_panel_.gather(fv_states_);
     }
 
     log_function_exit(__func__);
@@ -639,7 +700,7 @@ void K_point::generate_gkvec(double gk_cutoff)
 
     gkvec_ = mdarray<double, 2>(3, gkmap.size());
 
-    gkvec_gpu_ = mdarray<double, 2>(gkmap.size(), 3);
+    //== gkvec_gpu_ = mdarray<double, 2>(gkmap.size(), 3);
 
     gvec_index_.resize(gkmap.size());
 
@@ -649,7 +710,7 @@ void K_point::generate_gkvec(double gk_cutoff)
         for (int x = 0; x < 3; x++)
         {
             gkvec_(x, ig) = parameters_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
-            gkvec_gpu_(ig, x) = gkvec_(x, ig);
+            //= gkvec_gpu_(ig, x) = gkvec_(x, ig);
         }
     }
     
@@ -673,76 +734,68 @@ void K_point::generate_gkvec(double gk_cutoff)
     }
 }
 
-void K_point::init_gkvec_ylm_and_len(int lmax__)
+void K_point::init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__)
 {
-    gkvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax__), num_gkvec_row());
+    gkvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax__), num_gkvec__);
 
     //gkvec_len_.resize(num_gkvec_row());
 
     #pragma omp parallel for default(shared)
-    for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+    for (int i = 0; i < num_gkvec__; i++)
     {
-        int igk = gklo_basis_descriptor_row(igk_row).igk;
+        int igk = desc__[i].igk;
 
         /* vs = {r, theta, phi} */
         auto vs = SHT::spherical_coordinates(gkvec_cart(igk));
         
-        SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, igk_row));
+        SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, i));
         
         //gkvec_len_[igk_row] = vs[0];
     }
 }
 
-void K_point::init_gkvec_phase_factors()
+void K_point::init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__)
 {
-    gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec_row(), parameters_.unit_cell()->num_atoms());
+    gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec__, parameters_.unit_cell()->num_atoms());
 
     #pragma omp parallel for default(shared)
-    for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+    for (int i = 0; i < num_gkvec__; i++)
     {
-        int igk = gklo_basis_descriptor_row(igk_row).igk;
+        int igk = desc__[i].igk;
 
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
             double phase = twopi * (gkvec(igk) * parameters_.unit_cell()->atom(ia)->position());
 
-            gkvec_phase_factors_(igk_row, ia) = exp(double_complex(0.0, phase));
+            gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
         }
     }
 }
 
 void K_point::init_gkvec()
 {
-    int lmax = -1;
-    
     switch (parameters_.esm_type())
     {
         case full_potential_lapwlo:
         {
-            lmax = parameters_.lmax_apw();
+            init_gkvec_ylm_and_len(parameters_.lmax_apw(), num_gkvec_row(), gklo_basis_descriptors_row_);
+            init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
             break;
         }
         case full_potential_pwlo:
         {
-            lmax =  parameters_.lmax_pw();
+            init_gkvec_ylm_and_len(parameters_.lmax_pw(), num_gkvec_row(), gklo_basis_descriptors_row_);
+            init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
             break;
         }
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
-            lmax = parameters_.lmax_beta();
+            if (num_gkvec() != wf_size()) TERMINATE("wrong size of wave-functions");
+            init_gkvec_ylm_and_len(parameters_.lmax_beta(), num_gkvec_loc(), gklo_basis_descriptors_local_);
+            init_gkvec_phase_factors(num_gkvec_loc(), gklo_basis_descriptors_local_);
             break;
         }
-    }
-    
-    // Fortran codes need this
-    init_gkvec_phase_factors();
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
-        init_gkvec_ylm_and_len(lmax);
     }
 }
 
@@ -850,6 +903,11 @@ void K_point::distribute_block_cyclic()
     {
         if (gklo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
     }
+
+    spl_gkvec_ = splindex<block>(gklo_basis_size(), comm_.size(), comm_.rank());
+    gklo_basis_descriptors_local_.resize(spl_gkvec_.local_size());
+    for (int i = 0; i < (int)spl_gkvec_.local_size(); i++)
+        gklo_basis_descriptors_local_[i] = gklo_basis_descriptors_[spl_gkvec_[i]];
 }
 
 //Periodic_function<double_complex>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)

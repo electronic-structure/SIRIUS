@@ -42,8 +42,9 @@ void Band::apply_h_local_slice(K_point* kp__,
                                matrix<double_complex> const& phi__,
                                matrix<double_complex>& hphi__)
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Band::apply_h_local_slice");
-    log_function_enter(__func__);
 
     assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
     assert(phi__.size(1) >= (size_t)num_phi__ && hphi__.size(1) >= (size_t)num_phi__);
@@ -221,7 +222,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     }
     for (auto& thread: fft_threads) thread.join();
     
-    log_function_exit(__func__);
+    LOG_FUNC_END();
     //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
 }
 
@@ -320,21 +321,23 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
                                                dmatrix<double_complex>& op__,
                                                double_complex alpha)
 {
-    auto uc = parameters_.unit_cell();
-    int num_bands = parameters_.num_fv_states();
+    //auto uc = parameters_.unit_cell();
+    //int num_bands = parameters_.num_fv_states();
 
-    /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    dmatrix<double_complex> beta_phi(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
-    /* compute <beta|phi> */
-    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), num_bands, kp__->num_gkvec(), complex_one, 
-                      kp__->beta_gk_panel(), phi__, complex_zero, beta_phi);
+    STOP();
 
-    dmatrix<double_complex> tmp(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
-    linalg<CPU>::gemm(0, 0, uc->mt_basis_size(), num_bands, uc->mt_basis_size(), complex_one,
-                      op__, beta_phi, complex_zero, tmp);
+    ///* <\beta_{\xi}^{\alpha}|\phi_j> */
+    //dmatrix<double_complex> beta_phi(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
+    ///* compute <beta|phi> */
+    //linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), num_bands, kp__->num_gkvec(), complex_one, 
+    //                  kp__->beta_gk_panel(), phi__, complex_zero, beta_phi);
 
-    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, uc->mt_basis_size(), alpha,
-                      kp__->beta_gk_panel(), tmp, complex_one, op_phi__);
+    //dmatrix<double_complex> tmp(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
+    //linalg<CPU>::gemm(0, 0, uc->mt_basis_size(), num_bands, uc->mt_basis_size(), complex_one,
+    //                  op__, beta_phi, complex_zero, tmp);
+
+    //linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, uc->mt_basis_size(), alpha,
+    //                  kp__->beta_gk_panel(), tmp, complex_one, op_phi__);
 }
 
 
@@ -411,6 +414,114 @@ void Band::apply_h_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
+void Band::apply_h_o_fast_parallel(K_point* kp__,
+                                   std::vector<double> const& effective_potential__,
+                                   std::vector<double> const& pw_ekin__,
+                                   int N__,
+                                   int n__,
+                                   matrix<double_complex>& phi_slice__,
+                                   matrix<double_complex>& phi_slab__,
+                                   matrix<double_complex>& hphi_slab__,
+                                   matrix<double_complex>& ophi_slab__,
+                                   mdarray<int, 1>& packed_mtrx_offset__,
+                                   mdarray<double_complex, 1>& d_mtrx_packed__,
+                                   mdarray<double_complex, 1>& q_mtrx_packed__,
+                                   mdarray<double_complex, 1>& kappa__)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::apply_h_o_fast_parallel", kp__->comm());
+
+    splindex<block> spl_phi(n__, kp__->comm().size(), kp__->comm().rank());
+
+    kp__->collect_all_gkvec(spl_phi, &phi_slab__(0, N__), &phi_slice__(0, 0));
+    
+    if (spl_phi.local_size())
+        apply_h_local_slice(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_slice__, phi_slice__);
+
+    kp__->collect_all_bands(spl_phi, &phi_slice__(0, 0),  &hphi_slab__(0, N__));
+
+    auto uc = parameters_.unit_cell();
+
+    if (parameters_.processing_unit() == CPU)
+    {
+        /* set intial ophi */
+        memcpy(&ophi_slab__(0, N__), &phi_slab__(0, N__), kp__->num_gkvec_loc() * n__ * sizeof(double_complex));
+    }
+
+    //==#ifdef _GPU_
+    //==if (parameters_.processing_unit() == GPU)
+    //=={
+    //==    /* copy hphi do device */
+    //==    cuda_copy_to_device(hphi__.at<GPU>(0, s0.local_size()), hphi__.at<CPU>(0, s0.local_size()), 
+    //==                        kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+
+    //==    /* set intial ophi */
+    //==    cuda_copy_device_to_device(ophi__.at<GPU>(0, s0.local_size()), phi__.at<GPU>(0, s0.local_size()), 
+    //==                               kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+    //==}
+    //==#endif
+
+    /* allocate space for <beta|phi> array */
+    //int nbmax = 0;
+    //for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
+    //mdarray<double_complex, 1> beta_phi_tmp(nbmax * nloc);
+
+    //==/* work space (result of Q or D multiplied by <beta|phi>) */
+    //==matrix<double_complex> work(nbmax, nloc);
+
+    //==#ifdef _GPU_
+    //==if (parameters_.processing_unit() == GPU)
+    //=={
+    //==    beta_phi_tmp.allocate_on_device();
+    //==    work.allocate_on_device();
+    //==}
+    //==#endif
+
+    int offs = 0;
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    {
+        /* number of beta-projectors in the current chunk */
+        int nbeta =  uc->beta_chunk(ib).num_beta_;
+        int natoms = uc->beta_chunk(ib).num_atoms_;
+
+        /* wrapper for <beta|phi> with required dimensions */
+        matrix<double_complex> beta_gk;
+        matrix<double_complex> beta_phi;
+        matrix<double_complex> work;
+        switch (parameters_.processing_unit())
+        {
+            case CPU:
+            {
+                beta_gk = matrix<double_complex>(&kp__->beta_gk()(0, offs), kp__->num_gkvec_loc(), nbeta);
+                beta_phi = matrix<double_complex>(kappa__.at<CPU>(), nbeta, n__);
+                work = matrix<double_complex>(kappa__.at<CPU>(nbeta * n__), nbeta, n__);
+                break;
+            }
+            case GPU:
+            {
+                //beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), beta_phi_tmp.at<GPU>(), nbeta, nloc);
+                STOP();
+                break;
+            }
+        }
+
+        kp__->generate_beta_phi(nbeta, phi_slab__, n__, N__, beta_gk, beta_phi);
+
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk, d_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_phi, hphi_slab__, n__, N__, complex_one, work);
+        
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk, q_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_phi, ophi_slab__, n__, N__, complex_one, work);
+        
+        offs += nbeta;
+    }
+
+    //==#ifdef _GPU_
+    //==if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
+    //==#endif
+    log_function_exit(__func__);
+}
+
 /** \param [in] phi Input wave-function [storage: CPU && GPU].
  *  \param [out] hphi Wave-function multiplied by local Hamiltonian [storage: CPU || GPU].
  */
@@ -427,7 +538,7 @@ void Band::apply_h_o_parallel(K_point* kp__,
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__)
 {
-    log_function_enter(__func__);
+    LOG_FUNC_BEGIN();
     Timer t("sirius::Band::apply_h_o_parallel", kp__->comm_row());
 
     /* beginning of the band index */
@@ -518,7 +629,7 @@ void Band::apply_h_o_parallel(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
-    log_function_exit(__func__);
+    LOG_FUNC_END();
 }
 
 void Band::set_fv_h_o_parallel_simple(int N__,
@@ -597,6 +708,8 @@ void Band::set_fv_h_o_fast_parallel(int N__,
                                     dmatrix<double_complex>& o_old__,
                                     mdarray<double_complex, 1>& kappa__)
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Band::set_fv_h_o_fast_parallel", kp__->comm());
 
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
@@ -706,6 +819,8 @@ void Band::set_fv_h_o_fast_parallel(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
+
+    LOG_FUNC_END();
 }
 
 void Band::set_fv_h_o_parallel(int N__,
@@ -1241,17 +1356,18 @@ void Band::residuals_fast_parallel(int N__,
                                    std::vector<double>& res_norm__,
                                    mdarray<double_complex, 1>& kappa__)
 {
+    LOG_FUNC_BEGIN();
     Timer t("sirius::Band::residuals_fast_parallel");
 
-    int num_gkvec = (int)hphi__.size(0);
+    int num_gkvec_loc = kp__->num_gkvec_loc();
     
     Timer t2("sirius::Band::residuals_fast_parallel|zgemm");
     if (parameters_.processing_unit() == CPU)
     {
         /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
-        linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, hphi__, evec__, hpsi__);
+        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, hphi__, evec__, hpsi__);
         /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-        linalg<CPU>::gemm(0, 0, num_gkvec, num_bands__, N__, ophi__, evec__, opsi__);
+        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, ophi__, evec__, opsi__);
     }
     if (parameters_.processing_unit() == GPU)
     {
@@ -1260,19 +1376,19 @@ void Band::residuals_fast_parallel(int N__,
         double_complex alpha(1, 0);
         double_complex beta(0, 0);
 
-        matrix<double_complex> hphi(hphi__.at<CPU>(), kappa__.at<GPU>(), num_gkvec, N__);
-        matrix<double_complex> hpsi(hpsi__.at<CPU>(), kappa__.at<GPU>(num_gkvec * N__), num_gkvec, num_bands__);
+        matrix<double_complex> hphi(hphi__.at<CPU>(), kappa__.at<GPU>(), num_gkvec_loc, N__);
+        matrix<double_complex> hpsi(hpsi__.at<CPU>(), kappa__.at<GPU>(num_gkvec_loc * N__), num_gkvec_loc, num_bands__);
         hphi.copy_to_device();
         
-        linalg<GPU>::gemm(0, 0, num_gkvec, num_bands__, N__, &alpha, hphi.at<GPU>(), hphi.ld(),
+        linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, &alpha, hphi.at<GPU>(), hphi.ld(),
                           evec__.at<GPU>(), evec__.ld(), &beta, hpsi.at<GPU>(), hpsi.ld());
         hpsi.copy_to_host();
 
-        matrix<double_complex> ophi(ophi__.at<CPU>(), kappa__.at<GPU>(), num_gkvec, N__);
-        matrix<double_complex> opsi(opsi__.at<CPU>(), kappa__.at<GPU>(num_gkvec * N__), num_gkvec, num_bands__);
+        matrix<double_complex> ophi(ophi__.at<CPU>(), kappa__.at<GPU>(), num_gkvec_loc, N__);
+        matrix<double_complex> opsi(opsi__.at<CPU>(), kappa__.at<GPU>(num_gkvec_loc * N__), num_gkvec_loc, num_bands__);
         ophi.copy_to_device();
         
-        linalg<GPU>::gemm(0, 0, num_gkvec, num_bands__, N__, &alpha, ophi.at<GPU>(), ophi.ld(),
+        linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, &alpha, ophi.at<GPU>(), ophi.ld(),
                           evec__.at<GPU>(), evec__.ld(), &beta, opsi.at<GPU>(), opsi.ld());
         opsi.copy_to_host();
         #endif
@@ -1292,7 +1408,7 @@ void Band::residuals_fast_parallel(int N__,
     for (int i = 0; i < num_bands__; i++)
     {
         double norm2 = 0;
-        for (int igk = 0; igk < num_gkvec; igk++) 
+        for (int igk = 0; igk < num_gkvec_loc; igk++) 
         {
             res__(igk, i) = hpsi__(igk, i) - eval__[i] * opsi__(igk, i);
             norm2 += real(conj(res__(igk, i)) * res__(igk, i));
@@ -1304,18 +1420,13 @@ void Band::residuals_fast_parallel(int N__,
     /* compute norm */
     for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
 
-    splindex<dyadic> spl_num_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row(),
-                                   kp__->blacs_grid().cyclic_block_size(), kp__->num_ranks_col(), kp__->rank_col());
-    
     /* apply preconditioner */
     #pragma omp parallel for
     for (int i = 0; i < num_bands__; i++)
     {
-        for (int igk = 0; igk < num_gkvec; igk++)
+        for (int igk = 0; igk < num_gkvec_loc; igk++)
         {
-            int igk_row = (int)spl_num_gkvec[igk];
-
-            double p = h_diag__[igk_row] - eval__[i] * o_diag__[igk_row];
+            double p = h_diag__[igk] - eval__[i] * o_diag__[igk];
 
             p *= 2; // QE formula is in Ry; here we convert to Ha
             p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
@@ -1329,7 +1440,7 @@ void Band::residuals_fast_parallel(int N__,
     for (int i = 0; i < num_bands__; i++)
     {
         double d = 0;
-        for (int igk = 0; igk < num_gkvec; igk++) 
+        for (int igk = 0; igk < num_gkvec_loc; igk++) 
             d += real(conj(res__(igk, i)) * res__(igk, i));
         norm2[i] = d;
     }
@@ -1338,8 +1449,9 @@ void Band::residuals_fast_parallel(int N__,
     for (int i = 0; i < num_bands__; i++)
     {
         double d = 1.0 / std::sqrt(norm2[i]);
-        for (int igk = 0; igk < num_gkvec; igk++) res__(igk, i) *= d;
+        for (int igk = 0; igk < num_gkvec_loc; igk++) res__(igk, i) *= d;
     }
+    LOG_FUNC_END();
 }
 
 void Band::residuals_parallel(int N__,
@@ -1789,10 +1901,10 @@ void Band::apply_h_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk_panel().panel(), beta_phi);
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk(), beta_phi);
 
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          hphi, n__, 0, complex_one, work);
     }
     else
@@ -1872,10 +1984,10 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk_panel().panel(), beta_phi);
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk(), beta_phi);
 
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk_panel().panel(), op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk(), op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          op_phi, n__, 0, alpha, work);
     }
     else
@@ -1983,16 +2095,16 @@ void Band::apply_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
     {
         /* compute <beta|phi> */
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk_panel().panel(), beta_phi);
+        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk(), beta_phi);
        
         /* add |beta>D<beta|phi> to |hphi> */
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          hphi, n__, 0, complex_one, work);
             
         /* add |beta>Q<beta|phi> to |ophi> */
         kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk_panel().panel(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                         kp__->beta_gk(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          ophi, n__, 0, complex_one, work);
     }
     else

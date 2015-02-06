@@ -803,43 +803,40 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
 
-    dmatrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd, kp__->blacs_grid());
-
     /* compute <beta|Psi> */
     Timer t1("sirius::Density::add_kpoint_contribution_pp|beta_psi");
-    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec(), complex_one, 
-                      kp__->beta_gk_panel(), kp__->fv_states_panel(), complex_zero, beta_psi);
+    matrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd);
+    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
+                      kp__->beta_gk(), kp__->fv_states_slab(), complex_zero, beta_psi);
+    kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
     t1.stop();
 
-    splindex<block> sub_spl_col(beta_psi.num_cols_local(), kp__->num_ranks_row(), kp__->rank_row());
+    splindex<block> spl_bands(nbnd, kp__->comm().size(), kp__->comm().rank());
 
-    mdarray<double_complex, 2> beta_psi_slice(uc->mt_basis_size(), sub_spl_col.local_size());
-    beta_psi.gather(beta_psi_slice);
-
-    if (sub_spl_col.local_size())
+    if (spl_bands.local_size())
     {
         #pragma omp parallel
         {
             /* auxiliary arrays */
-            mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
-            mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
+            mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), spl_bands.local_size());
+            mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), spl_bands.local_size());
             #pragma omp for
             for (int ia = 0; ia < uc->num_atoms(); ia++)
             {   
                 /* number of beta functions for a given atom */
                 int nbf = uc->atom(ia)->mt_basis_size();
 
-                for (int i = 0; i < (int)sub_spl_col.local_size(); i++)
+                for (int i = 0; i < (int)spl_bands.local_size(); i++)
                 {
-                    int j = beta_psi.icol((int)sub_spl_col[i]);
+                    int j = (int)spl_bands[i];
                     for (int xi = 0; xi < nbf; xi++)
                     {
-                        bp1(xi, i) = beta_psi_slice(uc->atom(ia)->offset_lo() + xi, i);
+                        bp1(xi, i) = beta_psi(uc->atom(ia)->offset_lo() + xi, j);
                         bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
                     }
                 }
 
-                linalg<CPU>::gemm(0, 1, nbf, nbf, (int)sub_spl_col.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
+                linalg<CPU>::gemm(0, 1, nbf, nbf, (int)spl_bands.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
                                   &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
                                   pp_complex_density_matrix__.ld());
             }

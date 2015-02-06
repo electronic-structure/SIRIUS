@@ -362,22 +362,22 @@ void Band::get_h_o_diag(K_point const* kp__,
 {
     Timer t("sirius::Band::get_h_o_diag");
 
-    h_diag__.resize(kp__->num_gkvec_row());
-    o_diag__.resize(kp__->num_gkvec_row());
+    h_diag__.resize(kp__->num_gkvec_loc());
+    o_diag__.resize(kp__->num_gkvec_loc());
 
     auto uc = parameters_.unit_cell();
     
     /* local H contribution */
-    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
     {
-        int igk = kp__->gklo_basis_descriptor_row(igk_row).igk;
-        h_diag__[igk_row] = pw_ekin__[igk] + v0__;
-        o_diag__[igk_row] = 1.0;
+        int igk = kp__->gklo_basis_descriptor_local(igk_loc).igk;
+        h_diag__[igk_loc] = pw_ekin__[igk] + v0__;
+        o_diag__[igk_loc] = 1.0;
     }
 
     /* non-local H contribution */
     auto const& beta_gk_t = kp__->beta_gk_t();
-    mdarray<double_complex, 2> beta_gk_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
+    matrix<double_complex> beta_gk_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_loc());
 
     for (int iat = 0; iat < uc->num_atom_types(); iat++)
     {
@@ -408,9 +408,9 @@ void Band::get_h_o_diag(K_point const* kp__,
         }
 
         int ofs = uc->atom_type(iat)->offset_lo();
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
         {
-            for (int xi = 0; xi < nbf; xi++) beta_gk_tmp(xi, igk_row) = beta_gk_t(igk_row, ofs + xi);
+            for (int xi = 0; xi < nbf; xi++) beta_gk_tmp(xi, igk_loc) = beta_gk_t(igk_loc, ofs + xi);
         }
 
         std::vector< std::pair<int, int> > idx(nbf * nbf);
@@ -420,16 +420,16 @@ void Band::get_h_o_diag(K_point const* kp__,
         }
 
         #pragma omp parallel for
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
         {
             for (auto& it: idx)
             {
                 int xi1 = it.first;
                 int xi2 = it.second;
-                double_complex z = beta_gk_tmp(xi1, igk_row) * conj(beta_gk_tmp(xi2, igk_row));
+                double_complex z = beta_gk_tmp(xi1, igk_loc) * conj(beta_gk_tmp(xi2, igk_loc));
 
-                h_diag__[igk_row] += real(z * d_sum(xi1, xi2));
-                if (need_o_diag) o_diag__[igk_row] += real(z * q_sum(xi1, xi2));
+                h_diag__[igk_loc] += real(z * d_sum(xi1, xi2));
+                if (need_o_diag) o_diag__[igk_loc] += real(z * q_sum(xi1, xi2));
             }
         }
     }

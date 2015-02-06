@@ -351,35 +351,30 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();
 
-    /* maximum local size of bands */
-    int max_num_bands_local = (int)kp__->spl_fv_states().local_size(0);
-
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    dmatrix<double_complex>& psi = kp__->fv_states_panel();
+    auto& psi_slab = kp__->fv_states_slab();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
-    splindex<dyadic> spl_num_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row(),
-                                   kp__->blacs_grid().cyclic_block_size(), kp__->num_ranks_col(), kp__->rank_col());
-   
-    int num_gkvec_loc = (int)spl_num_gkvec.local_size();
+    splindex<block> spl_bands(num_bands, kp__->comm().size(), kp__->comm().rank());
 
-    dmatrix<double_complex> phi(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
-    dmatrix<double_complex> hphi(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
-    hphi.allocate_ata_buffer(max_num_bands_local);
-
-    dmatrix<double_complex> ophi;
-    if (with_overlap) ophi = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
+    int num_gkvec_loc = kp__->num_gkvec_loc();
+    
+    // TODO: all are not needed
+    matrix<double_complex> phi_slice(kp__->num_gkvec(), spl_bands.local_size());
+    matrix<double_complex> hphi_slice(kp__->num_gkvec(), spl_bands.local_size());
+    matrix<double_complex> ophi_slice;
+    if (with_overlap) ophi_slice = matrix<double_complex>(kp__->num_gkvec(), spl_bands.local_size());
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("total size of phi, hphi, ophi arrays: %f GB\n",
-               16 * double(phi.panel().size() + hphi.panel().size() + ophi.panel().size()) / (1 << 30)); 
+        printf("total size of phi, hphi, ophi slice arrays: %f GB\n",
+               16 * double(phi_slice.size() + hphi_slice.size() + ophi_slice.size()) / (1 << 30)); 
     }
 
     dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
@@ -399,8 +394,8 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     std::vector<double> eval_tmp(num_bands);
     
     /* trial basis functions */
-    assert(phi.num_rows_local() == psi.num_rows_local());
-    memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
+    //assert(phi.num_rows_local() == psi.num_rows_local());
+    //memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
 
     std::vector<double> res_norm(num_bands);
 
@@ -411,11 +406,11 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
 
     /* size of beta_gk array */
-    int beta_gk_size = nbmax * kp__->num_gkvec_row();
+    //int beta_gk_size = nbmax * kp__->num_gkvec_row();
     /* size of phi, hphi and <phi|hphi> */ 
     int h_setup_size = num_gkvec_loc * (num_phi + num_bands) + num_phi * num_bands;
 
-    int kappa_size = std::max(beta_gk_size, h_setup_size);
+    int kappa_size = std::max(2 * nbmax * num_bands, h_setup_size);
     /* large temporary array */
     mdarray<double_complex, 1> kappa(kappa_size);
 
@@ -427,22 +422,22 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         #endif
     }
 
-    matrix<double_complex> beta_gk;
-    switch (parameters_.processing_unit())
-    {
-        case CPU:
-        {
-            beta_gk = matrix<double_complex>(kappa.at<CPU>(), kp__->num_gkvec_row(), nbmax);
-            break;
-        }
-        case GPU:
-        {
-            #ifdef _GPU_
-            beta_gk = matrix<double_complex>(kappa.at<CPU>(), kappa.at<GPU>(), kp__->num_gkvec_row(), nbmax);
-            break;
-            #endif
-        }
-    }
+    //matrix<double_complex> beta_gk;
+    //switch (parameters_.processing_unit())
+    //{
+    //    case CPU:
+    //    {
+    //        beta_gk = matrix<double_complex>(kappa.at<CPU>(), kp__->num_gkvec_row(), nbmax);
+    //        break;
+    //    }
+    //    case GPU:
+    //    {
+    //        #ifdef _GPU_
+    //        beta_gk = matrix<double_complex>(kappa.at<CPU>(), kappa.at<GPU>(), kp__->num_gkvec_row(), nbmax);
+    //        break;
+    //        #endif
+    //    }
+    //}
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
@@ -481,7 +476,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     matrix<double_complex> hphi_slab(num_gkvec_loc, num_phi);
     matrix<double_complex> ophi_slab(num_gkvec_loc, num_phi);
 
-    matrix<double_complex> psi_slab(num_gkvec_loc, num_bands);
     matrix<double_complex> res_slab(num_gkvec_loc, num_bands);
     matrix<double_complex> hpsi_slab(num_gkvec_loc, num_bands);
     matrix<double_complex> opsi_slab(num_gkvec_loc, num_bands);
@@ -493,33 +487,34 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                            res_slab.size() + hpsi_slab.size() + opsi_slab.size()) / (1 << 30)); 
     }
 
-    phi.gather_horizontal(num_bands, 0, phi_slab, 0);
+    /* set initial basis functions */
+    memcpy(&phi_slab(0, 0), &psi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
 
-    if (parameters_.processing_unit() == GPU)
-    {
-        #ifdef _GPU_
-        phi.allocate_on_device();
-        hphi.allocate_on_device();
-        //kappa.allocate_on_device();
-        d_mtrx_packed.allocate_on_device();
-        d_mtrx_packed.copy_to_device();
-        if (with_overlap)
-        {
-            ophi.allocate_on_device();
-            q_mtrx_packed.allocate_on_device();
-            q_mtrx_packed.copy_to_device();
-        }
-        else
-        {
-            psi.allocate_on_device();
-        }
+    //if (parameters_.processing_unit() == GPU)
+    //{
+    //    #ifdef _GPU_
+    //    phi.allocate_on_device();
+    //    hphi.allocate_on_device();
+    //    //kappa.allocate_on_device();
+    //    d_mtrx_packed.allocate_on_device();
+    //    d_mtrx_packed.copy_to_device();
+    //    if (with_overlap)
+    //    {
+    //        ophi.allocate_on_device();
+    //        q_mtrx_packed.allocate_on_device();
+    //        q_mtrx_packed.copy_to_device();
+    //    }
+    //    else
+    //    {
+    //        psi.allocate_on_device();
+    //    }
 
-        /* copy initial phi to GPU */
-        phi.copy_cols_to_device(0, num_bands);
-        #else
-        TERMINATE_NO_GPU
-        #endif
-    }
+    //    /* copy initial phi to GPU */
+    //    phi.copy_cols_to_device(0, num_bands);
+    //    #else
+    //    TERMINATE_NO_GPU
+    //    #endif
+    //}
 
     /* current subspace size */
     int N = 0;
@@ -533,29 +528,29 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         if (with_overlap)
         {
-            apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin, 0, n, phi, hphi, ophi,
-                               beta_gk, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+            apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, phi_slice, phi_slab, hphi_slab, ophi_slab,
+                                    packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
         }
         else
         {
-            apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, n, phi, hphi, beta_gk,
-                             packed_mtrx_offset, d_mtrx_packed);
+           // apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, n, phi, hphi, beta_gk,
+           //                  packed_mtrx_offset, d_mtrx_packed);
         }
 
-        /* this is temporary implementation */
-        if (parameters_.processing_unit() == GPU)
-        {
-            #ifdef _GPU_
-            hphi.copy_cols_to_host(0, n);
-            ophi.copy_cols_to_host(0, n);
-            #else
-            TERMINATE_NO_GPU
-            #endif
-        }
+        //== ///* this is temporary implementation */
+        //== //if (parameters_.processing_unit() == GPU)
+        //== //{
+        //== //    #ifdef _GPU_
+        //== //    hphi.copy_cols_to_host(0, n);
+        //== //    ophi.copy_cols_to_host(0, n);
+        //== //    #else
+        //== //    TERMINATE_NO_GPU
+        //== //    #endif
+        //== //}
 
-        /* set H and O for the variational subspace */
-        hphi.gather_horizontal(n, 0, hphi_slab, N); // TODO: scatter and gather directly on GPU
-        ophi.gather_horizontal(n, 0, ophi_slab, N);
+        //== /* set H and O for the variational subspace */
+        //== hphi.gather_horizontal(n, 0, hphi_slab, N); // TODO: scatter and gather directly on GPU
+        //== ophi.gather_horizontal(n, 0, ophi_slab, N);
         set_fv_h_o_fast_parallel(N, n, kp__, phi_slab, hphi_slab, ophi_slab, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
 
         /* increase size of the variation space */
@@ -571,7 +566,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
         //if (kp__->comm().rank() == 0) DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
-        //STOP();
         
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|collect_evec");
@@ -668,7 +662,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
             if (with_overlap)
             {
                 linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab, evec_full, psi_slab); 
-                psi.scatter_horizontal(num_bands, 0, psi_slab, 0);
             }
 
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
@@ -720,13 +713,11 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         {
             memcpy(&phi_slab(0, N + i), &res_slab(0, res_list[i]), num_gkvec_loc * sizeof(double_complex));
         }
-        /* populate phi with new basis functions */
-        phi.scatter_horizontal(n, 0, phi_slab, N);
 
         if (parameters_.processing_unit() == GPU)
         {
             #ifdef _GPU_
-            phi.copy_cols_to_device(0, n);
+            //phi_slab.copy_cols_to_device(0, n);
             #endif
         }
     }
@@ -734,9 +725,11 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
-        if (!with_overlap) psi.deallocate_on_device();
+        //if (!with_overlap) psi.deallocate_on_device();
     }
     #endif
+
+    kp__->collect_all_gkvec(spl_bands, &psi_slab(0, 0), &kp__->fv_states()(0, 0)); 
 
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
@@ -1276,8 +1269,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             res.allocate_on_device();
             hphi.allocate_on_device();
             hpsi.allocate_on_device();
-            kp__->beta_gk_panel().panel().allocate_on_device();
-            kp__->beta_gk_panel().panel().copy_to_device();
+            kp__->beta_gk().allocate_on_device();
+            kp__->beta_gk().copy_to_device();
             /* initial phi on GPU */
             cuda_copy_to_device(phi.at<GPU>(), psi.at<CPU>(), kp__->num_gkvec_row() * num_bands * sizeof(double_complex));
             if (with_overlap)
@@ -1690,7 +1683,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         #ifdef _GPU_
         if (!economize_gpu_memory)
         {
-            kp__->beta_gk_panel().panel().deallocate_on_device();
+            kp__->beta_gk().deallocate_on_device();
             psi.deallocate_on_device();
         }
         #endif
