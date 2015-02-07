@@ -729,7 +729,7 @@ void Band::set_fv_h_o_fast_parallel(int N__,
     {
         matrix<double_complex> tmp(kappa__.at<CPU>(), N__ + n__, n__);
 
-        linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(), phi_slab__.ld(), 
+        linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec_loc(), phi_slab__.at<CPU>(), phi_slab__.ld(), 
                           hphi_slab__.at<CPU>(0, N__), hphi_slab__.ld(), tmp.at<CPU>(), tmp.ld());
 
         kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
@@ -741,7 +741,7 @@ void Band::set_fv_h_o_fast_parallel(int N__,
             }
         }
 
-        linalg<CPU>::gemm(2, 0, N__ + n__, n__, (int)phi_slab__.size(0), phi_slab__.at<CPU>(), phi_slab__.ld(), 
+        linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec_loc(), phi_slab__.at<CPU>(), phi_slab__.ld(), 
                           ophi_slab__.at<CPU>(0, N__), ophi_slab__.ld(), tmp.at<CPU>(), tmp.ld());
 
         kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());

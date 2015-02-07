@@ -356,6 +356,8 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     /* short notation for target wave-functions */
     auto& psi_slab = kp__->fv_states_slab();
 
+    auto& psi_slice = kp__->fv_states();
+
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
     /* number of auxiliary basis functions */
@@ -365,18 +367,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     int num_gkvec_loc = kp__->num_gkvec_loc();
     
-    // TODO: all are not needed
-    matrix<double_complex> phi_slice(kp__->num_gkvec(), spl_bands.local_size());
-    matrix<double_complex> hphi_slice(kp__->num_gkvec(), spl_bands.local_size());
-    matrix<double_complex> ophi_slice;
-    if (with_overlap) ophi_slice = matrix<double_complex>(kp__->num_gkvec(), spl_bands.local_size());
-
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-    {
-        printf("total size of phi, hphi, ophi slice arrays: %f GB\n",
-               16 * double(phi_slice.size() + hphi_slice.size() + ophi_slice.size()) / (1 << 30)); 
-    }
-
     dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid());
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid());
@@ -393,10 +383,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     std::vector<double> eval_old(num_bands);
     std::vector<double> eval_tmp(num_bands);
     
-    /* trial basis functions */
-    //assert(phi.num_rows_local() == psi.num_rows_local());
-    //memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
-
     std::vector<double> res_norm(num_bands);
 
     auto uc = parameters_.unit_cell();
@@ -528,7 +514,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         if (with_overlap)
         {
-            apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, phi_slice, phi_slab, hphi_slab, ophi_slab,
+            apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, psi_slice, phi_slab, hphi_slab, ophi_slab,
                                     packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
         }
         else
@@ -729,7 +715,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     }
     #endif
 
-    kp__->collect_all_gkvec(spl_bands, &psi_slab(0, 0), &kp__->fv_states()(0, 0)); 
+    kp__->collect_all_gkvec(spl_bands, &psi_slab(0, 0), &psi_slice(0, 0)); 
 
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);

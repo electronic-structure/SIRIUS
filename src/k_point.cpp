@@ -317,8 +317,17 @@ void K_point::update()
             #endif
         }
     }
-
-    spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+    
+    splindex<block> spl_bands(parameters_.num_fv_states(), comm_.size(), comm_.rank());
+    
+    if (parameters_.esm_type() == full_potential_lapwlo)
+    {
+        spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+    }
+    else
+    {
+        spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), spl_bands.local_size(), parameters_.num_spins());
+    }
 
     if (use_second_variation)
     {
@@ -337,7 +346,6 @@ void K_point::update()
         }
         else
         {
-            splindex<block> spl_bands(parameters_.num_fv_states(), comm_.size(), comm_.rank());
             fv_states_slab_ = matrix<double_complex>(num_gkvec_loc(), parameters_.num_fv_states());
             fv_states_ = matrix<double_complex>(num_gkvec(), spl_bands.local_size());
         }
@@ -389,7 +397,8 @@ void K_point::update()
         }
         else
         {
-            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+            //spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), spl_bands.local_size(), parameters_.num_spins());
         }
     }
     else

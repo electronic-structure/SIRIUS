@@ -782,11 +782,24 @@ void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<double_compl
 std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* band, K_point* kp)
 {
     std::vector< std::pair<int, double> > bands;
-    for (int jsub = 0; jsub < kp->num_sub_bands(); jsub++)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        int j = kp->idxbandglob(jsub);
-        double wo = kp->band_occupancy(j) * kp->weight();
-        if (wo > 1e-14) bands.push_back(std::pair<int, double>(jsub, wo));
+        for (int jsub = 0; jsub < kp->num_sub_bands(); jsub++)
+        {
+            int j = kp->idxbandglob(jsub);
+            double wo = kp->band_occupancy(j) * kp->weight();
+            if (wo > 1e-14) bands.push_back(std::pair<int, double>(jsub, wo));
+        }
+    }
+    else
+    {
+        splindex<block> spl_bands(parameters_.num_fv_states(), kp->comm().size(), kp->comm().rank());
+        for (int jsub = 0; jsub < (int)spl_bands.local_size(); jsub++)
+        {
+            int j = (int)spl_bands[jsub];
+            double wo = kp->band_occupancy(j) * kp->weight();
+            if (wo > 1e-14) bands.push_back(std::pair<int, double>(jsub, wo));
+        }
     }
     return bands;
 }
