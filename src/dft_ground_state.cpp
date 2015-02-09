@@ -100,8 +100,9 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     Mixer<double>* mx_pot = NULL;
     if (parameters_.mixer_input_section_.type_ == "broyden2")
     {
+        std::vector<double> weights(density_->size(), 1);
         mx = new Broyden_mixer<double>(density_->size(), parameters_.mixer_input_section_.max_history_, 
-                               parameters_.mixer_input_section_.beta_, parameters_.comm());
+                               parameters_.mixer_input_section_.beta_, weights, parameters_.comm());
     }
     else if (parameters_.mixer_input_section_.type_ == "linear")
     {

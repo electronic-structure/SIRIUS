@@ -82,6 +82,11 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
                                                         parameters_.iip_.mixer_input_section_.beta_,
                                                         parameters_.comm());
 
+    std::vector<double> weights(parameters_.fft_coarse()->num_gvec());
+    weights[0] = 0;
+    for (int ig = 1; ig < parameters_.fft_coarse()->num_gvec(); ig++)
+        weights[ig] = fourpi * parameters_.unit_cell()->omega() / std::pow(parameters_.fft_coarse()->gvec_len(ig), 2);
+
     if (parameters_.iip_.mixer_input_section_.type_ == "linear")
     {
         low_freq_mixer_ = new Linear_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
@@ -93,14 +98,11 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
         low_freq_mixer_ = new Broyden_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
                                                             parameters_.iip_.mixer_input_section_.max_history_,
                                                             parameters_.iip_.mixer_input_section_.beta_,
+                                                            weights,
                                                             parameters_.comm());
     } 
     else if (parameters_.iip_.mixer_input_section_.type_ == "broyden_modified")
     {
-        std::vector<double> weights(parameters_.fft_coarse()->num_gvec());
-        weights[0] = 0;
-        for (int ig = 1; ig < parameters_.fft_coarse()->num_gvec(); ig++)
-            weights[ig] = fourpi * parameters_.unit_cell()->omega() / std::pow(parameters_.fft_coarse()->gvec_len(ig), 2);
 
         low_freq_mixer_ = new Broyden_modified_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
                                                                      parameters_.iip_.mixer_input_section_.max_history_,

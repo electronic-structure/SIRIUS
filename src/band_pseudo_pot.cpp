@@ -733,7 +733,7 @@ void Band::set_fv_h_o_fast_parallel(int N__,
                           hphi_slab__.at<CPU>(0, N__), hphi_slab__.ld(), tmp.at<CPU>(), tmp.ld());
 
         kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
         {
             for (int j = 0; j < (int)s1_row.local_size(); j++)
@@ -746,7 +746,7 @@ void Band::set_fv_h_o_fast_parallel(int N__,
                           ophi_slab__.at<CPU>(0, N__), ophi_slab__.ld(), tmp.at<CPU>(), tmp.ld());
 
         kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < (int)(s1_col.local_size() - s0_col.local_size()); i++)
         {
             for (int j = 0; j < (int)s1_row.local_size(); j++)

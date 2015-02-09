@@ -193,13 +193,20 @@ class Broyden_mixer: public Mixer<T>
 {
     private:
 
+        std::vector<double> weights_;
+
         mdarray<T, 2> residuals_;
     
     public:
 
-        Broyden_mixer(size_t size__, int max_history__, double beta__, Communicator const& comm__) 
+        Broyden_mixer(size_t size__,
+                      int max_history__,
+                      double beta__,
+                      std::vector<double>& weights__,
+                      Communicator const& comm__) 
             : Mixer<T>(size__, max_history__, beta__, comm__)
         {
+            weights_ = weights__;
             residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
         }
 
@@ -215,12 +222,12 @@ class Broyden_mixer: public Mixer<T>
             for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
             {
                 int ipos = this->offset(this->count_);
-                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
+                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
             }
 
             this->comm_.allreduce(&this->rss_, 1);
 
-            if (this->rss_ < 1e-9) return 0;
+            if (this->rss_ < 1e-11) return 0;
 
             double rms = this->rms_deviation();
 
@@ -315,7 +322,11 @@ class Broyden_modified_mixer: public Mixer<T>
 
     public:
 
-        Broyden_modified_mixer(size_t size__, int max_history__, double beta__, std::vector<double>& weights__, Communicator const& comm__) 
+        Broyden_modified_mixer(size_t size__,
+                               int max_history__,
+                               double beta__,
+                               std::vector<double>& weights__,
+                               Communicator const& comm__) 
             : Mixer<T>(size__, max_history__, beta__, comm__)
         {
             residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
