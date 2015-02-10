@@ -854,7 +854,7 @@ class K_point
                                   phi__.at<CPU>(0, offs__), phi__.ld(), 
                                   beta_phi__.at<CPU>(), beta_phi__.ld());
 
-                comm_.allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+                comm().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
             }
 
             if (parameters_.processing_unit() == GPU)
@@ -870,12 +870,12 @@ class K_point
                 {
                     if (gpu_direct)
                     {
-                        comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
+                        comm().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
                     }
                     else
                     {
                         beta_phi__.copy_to_host();
-                        comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+                        comm().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
                         beta_phi__.copy_to_device();
                     }
                 }
