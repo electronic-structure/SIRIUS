@@ -1943,6 +1943,15 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 //==     }
 //== }
 
+#ifdef _GPU_
+extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
+                                                int num_gvec_loc__,
+                                                double_complex const* veff__,
+                                                int const* gvec__,
+                                                double const* atom_pos__,
+                                                double_complex* veff_a__);
+#endif
+
 void Potential::generate_d_mtrx()
 {   
     Timer t("sirius::Potential::generate_d_mtrx");
@@ -1957,152 +1966,94 @@ void Potential::generate_d_mtrx()
         fft_->transform(-1);
         fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
 
-        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        #ifdef _GPU_
+        mdarray<double_complex, 1> veff;
+        mdarray<int, 2> gvec;
+
+        if (parameters_.processing_unit() == GPU)
         {
-            auto atom_type = uc->atom_type(iat);
-            int nbf = atom_type->mt_basis_size();
-            matrix<double_complex> veff_pw(rl->spl_num_gvec().local_size(), atom_type->num_atoms());
-            matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type->num_atoms()); 
+            veff = mdarray<double_complex, 1> (&effective_potential_->f_pw((int)rl->spl_num_gvec().global_offset()), 
+                                               rl->spl_num_gvec().local_size());
+            veff.allocate_on_device();
+            veff.copy_to_device();
 
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < atom_type->num_atoms(); i++)
+            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
             {
-                int ia = atom_type->atom_id(i);
-
-                for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
-                {
-                    int ig = rl->spl_num_gvec(igloc);
-                    veff_pw(igloc, i) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
-                }
+                 auto type = parameters_.unit_cell()->atom_type(iat);
+                 type->uspp().q_pw.allocate_on_device();
+                 type->uspp().q_pw.copy_to_device();
             }
-
-            linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
-                              &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),
-                              &veff_pw(0, 0), (int)rl->spl_num_gvec().local_size(),
-                              &d_tmp(0, 0), d_tmp.ld());
-
-            parameters_.comm().allreduce(d_tmp.at<CPU>(), (int)d_tmp.size());
-
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < atom_type->num_atoms(); i++)
-            {
-                int ia = atom_type->atom_id(i);
-
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    int lm2 = atom_type->indexb(xi2).lm;
-                    int idxrf2 = atom_type->indexb(xi2).idxrf;
-                    for (int xi1 = 0; xi1 <= xi2; xi1++)
-                    {
-                        int lm1 = atom_type->indexb(xi1).lm;
-                        int idxrf1 = atom_type->indexb(xi1).idxrf;
-                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-
-                        if (xi1 == xi2)
-                        {
-                            uc->atom(ia)->d_mtrx(xi1, xi2) = real(d_tmp(idx12, i)) * uc->omega() +
-                                                             atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                        }
-                        else
-                        {
-                            uc->atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * uc->omega();
-                            uc->atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * uc->omega();
-                            if (lm1 == lm2)
-                            {
-                                uc->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                                uc->atom(ia)->d_mtrx(xi2, xi1) += atom_type->uspp().d_mtrx_ion(idxrf2, idxrf1);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#ifdef _GPU_
-
-extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
-                                                int num_gvec_loc__,
-                                                double_complex const* veff__,
-                                                int const* gvec__,
-                                                double const* atom_pos__,
-                                                double_complex* veff_a__);
-
-void Potential::generate_d_mtrx_gpu()
-{   
-    Timer t("sirius::Potential::generate_d_mtrx_gpu");
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        auto rl = parameters_.reciprocal_lattice();
-        auto uc = parameters_.unit_cell();
-
-        /* get plane-wave coefficients of effective potential */
-        fft_->input(&effective_potential_->f_it<global>(0));
-        fft_->transform(-1);
-        fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
-
-        mdarray<double_complex, 1> veff(&effective_potential_->f_pw((int)rl->spl_num_gvec().global_offset()), 
-                                        rl->spl_num_gvec().local_size());
-        veff.allocate_on_device();
-        veff.copy_to_device();
-
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-        {
-             auto type = parameters_.unit_cell()->atom_type(iat);
-             type->uspp().q_pw.allocate_on_device();
-             type->uspp().q_pw.copy_to_device();
-        }
         
-        mdarray<int, 2> gvec(3, rl->spl_num_gvec().local_size());
-        for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
-        {
-            for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
+            gvec = mdarray<int, 2>(3, rl->spl_num_gvec().local_size());
+            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+            {
+                for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
+            }
+            gvec.allocate_on_device();
+            gvec.copy_to_device();
         }
-        gvec.allocate_on_device();
-        gvec.copy_to_device();
+        #endif
 
-        mdarray<double_complex, 2> vtmp(nullptr, rl->spl_num_gvec().local_size(), Platform::max_num_threads());
-        vtmp.allocate_on_device();
-
-        double_complex alpha(1, 0);
-        double_complex beta(0, 0);
-
-        Timer t1("sirius::Potential::generate_d_mtrx_gpu|kernel");
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
         {
             auto atom_type = uc->atom_type(iat);
             int nbf = atom_type->mt_basis_size();
-
-            matrix<double_complex> veff_a(nullptr, rl->spl_num_gvec().local_size(), atom_type->num_atoms());
-            veff_a.allocate_on_device();
-            
             matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type->num_atoms()); 
-            d_tmp.allocate_on_device();
 
-            mdarray<double, 2> atom_pos(3, atom_type->num_atoms());
-            for (int i = 0; i < atom_type->num_atoms(); i++)
+            if (parameters_.processing_unit() == CPU)
             {
-                int ia = atom_type->atom_id(i);
-                for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
+                matrix<double_complex> veff_a(rl->spl_num_gvec().local_size(), atom_type->num_atoms());
+
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < atom_type->num_atoms(); i++)
+                {
+                    int ia = atom_type->atom_id(i);
+
+                    for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+                    {
+                        int ig = rl->spl_num_gvec(igloc);
+                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
+                    }
+                }
+
+                linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
+                                  &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),
+                                  &veff_a(0, 0), (int)rl->spl_num_gvec().local_size(),
+                                  &d_tmp(0, 0), d_tmp.ld());
             }
-            atom_pos.allocate_on_device();
-            atom_pos.copy_to_device();
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef _GPU_
+                matrix<double_complex> veff_a(nullptr, rl->spl_num_gvec().local_size(), atom_type->num_atoms());
+                veff_a.allocate_on_device();
+                
+                d_tmp.allocate_on_device();
 
-            mul_veff_with_phase_factors_gpu(atom_type->num_atoms(),
-                                            (int)rl->spl_num_gvec().local_size(),
-                                            veff.at<GPU>(),
-                                            gvec.at<GPU>(),
-                                            atom_pos.at<GPU>(),
-                                            veff_a.at<GPU>());
+                mdarray<double, 2> atom_pos(3, atom_type->num_atoms());
+                for (int i = 0; i < atom_type->num_atoms(); i++)
+                {
+                    int ia = atom_type->atom_id(i);
+                    for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
+                }
+                atom_pos.allocate_on_device();
+                atom_pos.copy_to_device();
 
-            linalg<GPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
-                              &alpha, atom_type->uspp().q_pw.at<GPU>(), (int)rl->spl_num_gvec().local_size(),
-                              veff_a.at<GPU>(), (int)rl->spl_num_gvec().local_size(),
-                              &beta, d_tmp.at<GPU>(), d_tmp.ld());
+                mul_veff_with_phase_factors_gpu(atom_type->num_atoms(),
+                                                (int)rl->spl_num_gvec().local_size(),
+                                                veff.at<GPU>(),
+                                                gvec.at<GPU>(),
+                                                atom_pos.at<GPU>(),
+                                                veff_a.at<GPU>());
 
-            d_tmp.copy_to_host();
+                linalg<GPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
+                                  atom_type->uspp().q_pw.at<GPU>(), (int)rl->spl_num_gvec().local_size(),
+                                  veff_a.at<GPU>(), (int)rl->spl_num_gvec().local_size(), d_tmp.at<GPU>(), d_tmp.ld());
+
+                d_tmp.copy_to_host();
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
 
             parameters_.comm().allreduce(d_tmp.at<CPU>(), (int)d_tmp.size());
 
@@ -2140,16 +2091,19 @@ void Potential::generate_d_mtrx_gpu()
                 }
             }
         }
-        t1.stop();
 
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == GPU)
         {
-             auto type = uc->atom_type(iat);
-             type->uspp().q_pw.deallocate_on_device();
+            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+            {
+                 auto type = uc->atom_type(iat);
+                 type->uspp().q_pw.deallocate_on_device();
+            }
         }
+        #endif
     }
 }
-#endif
 
 void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)
 {

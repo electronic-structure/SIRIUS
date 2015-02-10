@@ -875,78 +875,157 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
 {
     Timer t("sirius::Density::add_kpoint_contribution_pp_gpu", kp__->comm());
 
-    auto& psi = kp__->fv_states_panel();
-    
-    mdarray<double, 1> wo(psi.num_cols_local());
-    int nloc = 0;
-    for (int jloc = 0; jloc < psi.num_cols_local(); jloc++)
-    {
-        int j = psi.icol(jloc);
-        double d = kp__->band_occupancy(j) * kp__->weight();
-        if (d > 1e-14) wo(nloc++) = d;
-    }
-    if (!nloc) return;
+    int nbnd = num_occupied_bands(kp__);
 
-    wo.allocate_on_device();
-    wo.copy_to_device();
+    if (nbnd == 0) return;
 
     auto uc = parameters_.unit_cell();
+
+    /* compute <beta|Psi> */
+    Timer t1("sirius::Density::add_kpoint_contribution_pp|beta_psi");
     
-    /* allocate space for <beta|psi> array */
-    int nbf_max = 0;
-    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
-        nbf_max  = std::max(nbf_max, uc->beta_chunk(ib).num_beta_);
+    matrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd);
+    beta_psi.allocate_on_device();
 
-    mdarray<double_complex, 1> beta_psi_tmp(nbf_max * nloc);
-    beta_psi_tmp.allocate_on_device();
+    kp__->beta_gk().allocate_on_device();
+    kp__->beta_gk().copy_to_device();
 
-    matrix<double_complex> beta_gk(nullptr, kp__->num_gkvec_row(), nbf_max);
-    beta_gk.allocate_on_device();
+    kp__->fv_states_slab().allocate_on_device();
+    kp__->fv_states_slab().copy_to_device();
 
-    matrix<double_complex> psi_occ(&psi(0, 0), kp__->num_gkvec_row(), nloc);
-    psi_occ.allocate_on_device();
-    psi_occ.copy_to_device();
+    linalg<GPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec_loc(),
+                      kp__->beta_gk().at<GPU>(), kp__->beta_gk().ld(),
+                      kp__->fv_states_slab().at<GPU>(), kp__->fv_states_slab().ld(),
+                      beta_psi.at<GPU>(), beta_psi.ld()); 
 
-    mdarray<double_complex, 3> tmp(nullptr, uc->max_mt_basis_size(), nloc, Platform::max_num_threads());
-    tmp.allocate_on_device();
+    beta_psi.copy_to_host();
+    kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
+    t1.stop();
+    
+    kp__->beta_gk().deallocate_on_device();
+    kp__->fv_states_slab().deallocate_on_device();
 
-    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    splindex<block> spl_bands(nbnd, kp__->comm().size(), kp__->comm().rank());
+
+    if (spl_bands.local_size())
     {
-        /* wrapper for <beta|psi> with required dimensions */
-        matrix<double_complex> beta_psi(beta_psi_tmp.at<CPU>(), beta_psi_tmp.at<GPU>(), uc->beta_chunk(ib).num_beta_, nloc);
-
-        kp__->generate_beta_gk(uc->beta_chunk(ib).num_atoms_, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk);
-        kp__->generate_beta_phi(uc->beta_chunk(ib).num_beta_, psi_occ, nloc, 0, beta_gk, beta_psi);
-
-        double_complex alpha(1, 0);
-
-        #pragma omp parallel for
-        for (int i = 0; i < uc->beta_chunk(ib).num_atoms_; i++)
+        #pragma omp parallel
         {
-            /* number of beta functions for a given atom */
-            int nbf = uc->beta_chunk(ib).desc_(0, i);
-            int ofs = uc->beta_chunk(ib).desc_(1, i);
-            int ia = uc->beta_chunk(ib).desc_(3, i);
-            int thread_id = Platform::thread_id();
-            
-            copy_beta_psi_gpu(nbf,
-                              nloc,
-                              beta_psi.at<GPU>(ofs, 0),
-                              beta_psi.ld(),
-                              wo.at<GPU>(),
-                              tmp.at<GPU>(0, 0, thread_id),
-                              tmp.ld(),
-                              thread_id);
-            
-            linalg<GPU>::gemm(0, 1, nbf, nbf, nloc, &alpha, beta_psi.at<GPU>(ofs, 0), beta_psi.ld(),
-                              tmp.at<GPU>(0, 0, thread_id), tmp.ld(), &alpha, 
-                              pp_complex_density_matrix__.at<GPU>(0, 0, 0, ia), pp_complex_density_matrix__.ld(), thread_id);
+            /* auxiliary arrays */
+            mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), spl_bands.local_size());
+            mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), spl_bands.local_size());
+            #pragma omp for
+            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            {   
+                /* number of beta functions for a given atom */
+                int nbf = uc->atom(ia)->mt_basis_size();
+
+                for (int i = 0; i < (int)spl_bands.local_size(); i++)
+                {
+                    int j = (int)spl_bands[i];
+                    for (int xi = 0; xi < nbf; xi++)
+                    {
+                        bp1(xi, i) = beta_psi(uc->atom(ia)->offset_lo() + xi, j);
+                        bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+                    }
+                }
+
+                linalg<CPU>::gemm(0, 1, nbf, nbf, (int)spl_bands.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
+                                  &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
+                                  pp_complex_density_matrix__.ld());
+            }
         }
-        cuda_device_synchronize();
     }
 
-    tmp.deallocate_on_device();
-    psi_occ.deallocate_on_device();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //== auto& psi = kp__->fv_states_panel();
+    //== 
+    //== mdarray<double, 1> wo(psi.num_cols_local());
+    //== int nloc = 0;
+    //== for (int jloc = 0; jloc < psi.num_cols_local(); jloc++)
+    //== {
+    //==     int j = psi.icol(jloc);
+    //==     double d = kp__->band_occupancy(j) * kp__->weight();
+    //==     if (d > 1e-14) wo(nloc++) = d;
+    //== }
+    //== if (!nloc) return;
+
+    //== wo.allocate_on_device();
+    //== wo.copy_to_device();
+
+    //== auto uc = parameters_.unit_cell();
+    //== 
+    //== /* allocate space for <beta|psi> array */
+    //== int nbf_max = 0;
+    //== for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    //==     nbf_max  = std::max(nbf_max, uc->beta_chunk(ib).num_beta_);
+
+    //== mdarray<double_complex, 1> beta_psi_tmp(nbf_max * nloc);
+    //== beta_psi_tmp.allocate_on_device();
+
+    //== matrix<double_complex> beta_gk(nullptr, kp__->num_gkvec_row(), nbf_max);
+    //== beta_gk.allocate_on_device();
+
+    //== matrix<double_complex> psi_occ(&psi(0, 0), kp__->num_gkvec_row(), nloc);
+    //== psi_occ.allocate_on_device();
+    //== psi_occ.copy_to_device();
+
+    //== mdarray<double_complex, 3> tmp(nullptr, uc->max_mt_basis_size(), nloc, Platform::max_num_threads());
+    //== tmp.allocate_on_device();
+
+    //== for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    //== {
+    //==     /* wrapper for <beta|psi> with required dimensions */
+    //==     matrix<double_complex> beta_psi(beta_psi_tmp.at<CPU>(), beta_psi_tmp.at<GPU>(), uc->beta_chunk(ib).num_beta_, nloc);
+
+    //==     kp__->generate_beta_gk(uc->beta_chunk(ib).num_atoms_, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk);
+    //==     kp__->generate_beta_phi(uc->beta_chunk(ib).num_beta_, psi_occ, nloc, 0, beta_gk, beta_psi);
+
+    //==     double_complex alpha(1, 0);
+
+    //==     #pragma omp parallel for
+    //==     for (int i = 0; i < uc->beta_chunk(ib).num_atoms_; i++)
+    //==     {
+    //==         /* number of beta functions for a given atom */
+    //==         int nbf = uc->beta_chunk(ib).desc_(0, i);
+    //==         int ofs = uc->beta_chunk(ib).desc_(1, i);
+    //==         int ia = uc->beta_chunk(ib).desc_(3, i);
+    //==         int thread_id = Platform::thread_id();
+    //==         
+    //==         copy_beta_psi_gpu(nbf,
+    //==                           nloc,
+    //==                           beta_psi.at<GPU>(ofs, 0),
+    //==                           beta_psi.ld(),
+    //==                           wo.at<GPU>(),
+    //==                           tmp.at<GPU>(0, 0, thread_id),
+    //==                           tmp.ld(),
+    //==                           thread_id);
+    //==         
+    //==         linalg<GPU>::gemm(0, 1, nbf, nbf, nloc, &alpha, beta_psi.at<GPU>(ofs, 0), beta_psi.ld(),
+    //==                           tmp.at<GPU>(0, 0, thread_id), tmp.ld(), &alpha, 
+    //==                           pp_complex_density_matrix__.at<GPU>(0, 0, 0, ia), pp_complex_density_matrix__.ld(), thread_id);
+    //==     }
+    //==     cuda_device_synchronize();
+    //== }
+
+    //== tmp.deallocate_on_device();
+    //== psi_occ.deallocate_on_device();
 }
 #endif
 
@@ -1353,8 +1432,9 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     mdarray<double_complex, 4> pp_complex_density_matrix(uc->max_mt_basis_size(), 
                                                          uc->max_mt_basis_size(),
                                                          num_zdmat, uc->num_atoms());
-    pp_complex_density_matrix.allocate_on_device();
-    pp_complex_density_matrix.zero_on_device();
+    pp_complex_density_matrix.zero();
+    //pp_complex_density_matrix.allocate_on_device();
+    //pp_complex_density_matrix.zero_on_device();
     
     /* add k-point contribution */
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
@@ -1364,12 +1444,14 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
         add_kpoint_contribution_pp_gpu(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
-    pp_complex_density_matrix.copy_to_host();
-    pp_complex_density_matrix.deallocate_on_device();
+    //pp_complex_density_matrix.copy_to_host();
+    //pp_complex_density_matrix.deallocate_on_device();
 
     //parameters_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
-    parameters_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(pp_complex_density_matrix.at<CPU>(), 
-                                                                                 (int)pp_complex_density_matrix.size());
+    //parameters_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(pp_complex_density_matrix.at<CPU>(), 
+    //                                                                             (int)pp_complex_density_matrix.size());
+
+    parameters_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
 
@@ -1803,93 +1885,10 @@ void Density::augment(K_set& ks__)
 
 void Density::generate(K_set& ks__)
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Density::generate");
     
-    //== double wt = 0.0;
-    //== double ot = 0.0;
-    //== for (int ik = 0; ik < ks__.num_kpoints(); ik++)
-    //== {
-    //==     wt += ks__[ik]->weight();
-    //==     for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
-    //== }
-
-    //== if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
-
-    //== if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
-    //== {
-    //==     std::stringstream s;
-    //==     s << "wrong occupancies" << std::endl
-    //==       << "  computed : " << ot << std::endl
-    //==       << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
-    //==       << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
-    //==     warning_local(__FILE__, __LINE__, s);
-    //== }
-
-    //== /* zero density and magnetization */
-    //== zero();
-
-    //== /* interstitial part is independent of basis type */
-    //== generate_valence_density_it(ks__);
-
-    //== switch (parameters_.esm_type())
-    //== {
-    //==     case full_potential_lapwlo:
-    //==     {
-    //==         /* muffin-tin part */
-    //==         generate_valence_density_mt(ks__);
-    //==         break;
-    //==     }
-    //==     case full_potential_pwlo:
-    //==     {
-    //==         switch (parameters_.processing_unit())
-    //==         {
-    //==             STOP();
-    //==             case CPU:
-    //==             {
-    //==                 break;
-    //==             }
-    //==             #ifdef _GPU_
-    //==             case GPU:
-    //==             {
-    //==                 break;
-    //==             }
-    //==             #endif
-    //==             default:
-    //==             {
-    //==                 error_local(__FILE__, __LINE__, "wrong processing unit");
-    //==             }
-    //==         }
-    //==         break;
-    //==     }
-    //==     case ultrasoft_pseudopotential:
-    //==     {
-    //==         switch (parameters_.processing_unit())
-    //==         {
-    //==             case CPU:
-    //==             {
-    //==                 add_q_contribution_to_valence_density(ks__);
-    //==                 break;
-    //==             }
-    //==             #ifdef _GPU_
-    //==             case GPU:
-    //==             {
-    //==                 add_q_contribution_to_valence_density_gpu(ks__);
-    //==                 break;
-    //==             }
-    //==             #endif
-    //==             default:
-    //==             {
-    //==                 error_local(__FILE__, __LINE__, "wrong processing unit");
-    //==             }
-    //==         }
-    //==         break;
-    //==     }
-    //==     case norm_conserving_pseudopotential:
-    //==     {
-    //==         break;
-    //==     }
-    //== }
-
     generate_valence(ks__);
 
     if (parameters_.unit_cell()->full_potential())
@@ -1940,6 +1939,7 @@ void Density::generate(K_set& ks__)
     }
 
     //if (debug_level > 1) check_density_continuity_at_mt();
+    LOG_FUNC_END();
 }
 
 //void Density::check_density_continuity_at_mt()

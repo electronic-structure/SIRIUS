@@ -834,17 +834,17 @@ class K_point
                                int nphi__,
                                int offs__,
                                matrix<double_complex>& beta_gk__,
-                               matrix<double_complex>& beta_phi__)
+                               matrix<double_complex>& beta_phi__) // TODO: pass num_gkvec_loc or num_gkvec_row
         {
             Timer t("sirius::K_point::generate_beta_phi");
-            //#ifdef _GPU_
-            //#ifdef _GPU_DIRECT_
-            //// allrecue with gpu-direct is broken at the moment
-            //bool gpu_direct = false;
-            //#else
-            //bool gpu_direct = false;
-            //#endif
-            //#endif
+            #ifdef _GPU_
+            #ifdef _GPU_DIRECT_
+            // allrecue with gpu-direct is broken at the moment
+            bool gpu_direct = false;
+            #else
+            bool gpu_direct = false;
+            #endif
+            #endif
 
             if (parameters_.processing_unit() == CPU)
             {
@@ -857,34 +857,34 @@ class K_point
                 comm_.allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
             }
 
-            //if (parameters_.processing_unit() == GPU)
-            //{
-            //    #ifdef _GPU_
-            //    /* compute <beta|phi> */
-            //    linalg<GPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_row(), 
-            //                      beta_gk__.at<GPU>(), beta_gk__.ld(), 
-            //                      phi__.at<GPU>(0, offs__), phi__.ld(), 
-            //                      beta_phi__.at<GPU>(), beta_phi__.ld());
-            //    
-            //    if (comm_row().size() > 1)
-            //    {
-            //        if (gpu_direct)
-            //        {
-            //            comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
-            //        }
-            //        else
-            //        {
-            //            beta_phi__.copy_to_host();
-            //            comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
-            //            beta_phi__.copy_to_device();
-            //        }
-            //    }
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef _GPU_
+                /* compute <beta|phi> */
+                linalg<GPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_loc(), 
+                                  beta_gk__.at<GPU>(), beta_gk__.ld(), 
+                                  phi__.at<GPU>(0, offs__), phi__.ld(), 
+                                  beta_phi__.at<GPU>(), beta_phi__.ld());
+                
+                if (comm().size() > 1)
+                {
+                    if (gpu_direct)
+                    {
+                        comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
+                    }
+                    else
+                    {
+                        beta_phi__.copy_to_host();
+                        comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+                        beta_phi__.copy_to_device();
+                    }
+                }
 
-            //    cuda_device_synchronize();
-            //    #else
-            //    TERMINATE_NO_GPU
-            //    #endif
-            //}
+                cuda_device_synchronize();
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
         }
 
         void add_non_local_contribution(int num_atoms__,
@@ -902,6 +902,8 @@ class K_point
         {
             Timer t("sirius::K_point::add_non_local_contribution");
 
+            double_complex beta = complex_one;
+
             if (parameters_.processing_unit() == CPU)
             {
                 #pragma omp parallel for
@@ -910,7 +912,7 @@ class K_point
                     /* number of beta functions for a given atom */
                     int nbf = beta_desc__(0, i);
                     int ofs = beta_desc__(1, i);
-                    int ia = beta_desc__(3, i);
+                    int ia  = beta_desc__(3, i);
 
                     /* compute O * <beta|phi> */
                     linalg<CPU>::gemm(0, 0, nbf, nphi__, nbf,
@@ -919,9 +921,9 @@ class K_point
                                       work__.at<CPU>(ofs, 0), work__.ld());
                 }
                 
-                /* compute <G+k|beta> * O * <beta|phi> and add to phi */
+                /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
                 linalg<CPU>::gemm(0, 0, num_gkvec_loc(), nphi__, num_beta__, alpha,
-                                  beta_gk__.at<CPU>(), beta_gk__.ld(), work__.at<CPU>(), work__.ld(), complex_one,
+                                  beta_gk__.at<CPU>(), beta_gk__.ld(), work__.at<CPU>(), work__.ld(), beta,
                                   op_phi__.at<CPU>(0, offs__), op_phi__.ld());
             }
 
@@ -934,19 +936,20 @@ class K_point
                     /* number of beta functions for a given atom */
                     int nbf = beta_desc__(0, i);
                     int ofs = beta_desc__(1, i);
-                    int ia = beta_desc__(3, i);
+                    int ia  = beta_desc__(3, i);
 
-                    /* compute D*<beta|phi> */
-                    linalg<GPU>::gemm(0, 0, nbf, nphi__, nbf, op_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                      beta_phi__.at<GPU>(ofs, 0), beta_phi__.ld(), work__.at<GPU>(ofs, 0), work__.ld(), 
+                    /* compute O * <beta|phi> */
+                    linalg<GPU>::gemm(0, 0, nbf, nphi__, nbf,
+                                      op_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
+                                      beta_phi__.at<GPU>(ofs, 0), beta_phi__.ld(),
+                                      work__.at<GPU>(ofs, 0), work__.ld(), 
                                       Platform::thread_id());
 
                 }
                 cuda_device_synchronize();
                 
-                double_complex beta = complex_one;
-                /* compute <G+k|beta> * D*<beta|phi> and add to phi */
-                linalg<GPU>::gemm(0, 0, num_gkvec_row(), nphi__, num_beta__, &alpha,
+                /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+                linalg<GPU>::gemm(0, 0, num_gkvec_loc(), nphi__, num_beta__, &alpha,
                                   beta_gk__.at<GPU>(), beta_gk__.ld(), work__.at<GPU>(), work__.ld(), &beta, 
                                   op_phi__.at<GPU>(0, offs__), op_phi__.ld());
                 

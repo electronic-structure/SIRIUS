@@ -373,10 +373,6 @@ class Potential
 
         void generate_d_mtrx();
 
-        #ifdef _GPU_
-        void generate_d_mtrx_gpu();
-        #endif
-
         void check_potential_continuity_at_mt();
 
         //void copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src);

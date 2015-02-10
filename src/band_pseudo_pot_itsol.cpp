@@ -390,40 +390,17 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     /* find maximum number of beta-projectors across chunks */
     int nbmax = 0;
     for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
-
-    /* size of beta_gk array */
-    //int beta_gk_size = nbmax * kp__->num_gkvec_row();
+    
+    /* size of <beta|phi>, D*<beta|phi> and <Gk|beta> */
+    int h_app_size = 2 * nbmax * num_bands + num_gkvec_loc * nbmax;
     /* size of phi, hphi and <phi|hphi> */ 
-    int h_setup_size = num_gkvec_loc * (num_phi + num_bands) + num_phi * num_bands;
+    //int h_setup_size = num_gkvec_loc * (num_phi + num_bands) + num_phi * num_bands;
+    /* sizf of <phi|hphi> */ 
+    int h_setup_size = num_phi * num_bands;
 
-    int kappa_size = std::max(2 * nbmax * num_bands, h_setup_size);
     /* large temporary array */
+    int kappa_size = std::max(h_app_size, h_setup_size);
     mdarray<double_complex, 1> kappa(kappa_size);
-
-    if (parameters_.processing_unit() == GPU)
-    {
-        #ifdef _GPU_
-        kappa.allocate_on_device();
-        evec_full_tmp.allocate_on_device();
-        #endif
-    }
-
-    //matrix<double_complex> beta_gk;
-    //switch (parameters_.processing_unit())
-    //{
-    //    case CPU:
-    //    {
-    //        beta_gk = matrix<double_complex>(kappa.at<CPU>(), kp__->num_gkvec_row(), nbmax);
-    //        break;
-    //    }
-    //    case GPU:
-    //    {
-    //        #ifdef _GPU_
-    //        beta_gk = matrix<double_complex>(kappa.at<CPU>(), kappa.at<GPU>(), kp__->num_gkvec_row(), nbmax);
-    //        break;
-    //        #endif
-    //    }
-    //}
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
@@ -476,31 +453,32 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     /* set initial basis functions */
     memcpy(&phi_slab(0, 0), &psi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
 
-    //if (parameters_.processing_unit() == GPU)
-    //{
-    //    #ifdef _GPU_
-    //    phi.allocate_on_device();
-    //    hphi.allocate_on_device();
-    //    //kappa.allocate_on_device();
-    //    d_mtrx_packed.allocate_on_device();
-    //    d_mtrx_packed.copy_to_device();
-    //    if (with_overlap)
-    //    {
-    //        ophi.allocate_on_device();
-    //        q_mtrx_packed.allocate_on_device();
-    //        q_mtrx_packed.copy_to_device();
-    //    }
-    //    else
-    //    {
-    //        psi.allocate_on_device();
-    //    }
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        phi_slab.allocate_on_device();
+        hphi_slab.allocate_on_device();
+        d_mtrx_packed.allocate_on_device();
+        d_mtrx_packed.copy_to_device();
+        kappa.allocate_on_device();
+        evec_full.allocate_on_device();
+        evec_full_tmp.allocate_on_device();
+        hpsi_slab.allocate_on_device();
+        opsi_slab.allocate_on_device();
+        if (with_overlap)
+        {
+            ophi_slab.allocate_on_device();
+            q_mtrx_packed.allocate_on_device();
+            q_mtrx_packed.copy_to_device();
+        }
+        psi_slab.allocate_on_device();
 
-    //    /* copy initial phi to GPU */
-    //    phi.copy_cols_to_device(0, num_bands);
-    //    #else
-    //    TERMINATE_NO_GPU
-    //    #endif
-    //}
+        /* copy initial phi to GPU */
+        cuda_copy_to_device(phi_slab.at<GPU>(), phi_slab.at<CPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
 
     /* current subspace size */
     int N = 0;
@@ -523,20 +501,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
            //                  packed_mtrx_offset, d_mtrx_packed);
         }
 
-        //== ///* this is temporary implementation */
-        //== //if (parameters_.processing_unit() == GPU)
-        //== //{
-        //== //    #ifdef _GPU_
-        //== //    hphi.copy_cols_to_host(0, n);
-        //== //    ophi.copy_cols_to_host(0, n);
-        //== //    #else
-        //== //    TERMINATE_NO_GPU
-        //== //    #endif
-        //== //}
-
-        //== /* set H and O for the variational subspace */
-        //== hphi.gather_horizontal(n, 0, hphi_slab, N); // TODO: scatter and gather directly on GPU
-        //== ophi.gather_horizontal(n, 0, ophi_slab, N);
+        /* set H and O for the variational subspace */
         set_fv_h_o_fast_parallel(N, n, kp__, phi_slab, hphi_slab, ophi_slab, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
 
         /* increase size of the variation space */
@@ -551,7 +516,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                                 hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
-        //if (kp__->comm().rank() == 0) DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
+        if (kp__->comm().rank() == 0) DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
         
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|collect_evec");
@@ -565,7 +530,15 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         }
         kp__->comm().allreduce(evec_full.at<CPU>(), (int)evec_full.size());
         }
-    
+
+        if (parameters_.processing_unit() == GPU)
+        {
+            #ifdef _GPU_
+            cublas_set_matrix(N, num_bands, sizeof(double_complex), evec_full.at<CPU>(), evec_full.ld(),
+                              evec_full.at<GPU>(), evec_full.ld());
+            #endif
+        }
+
         /* check for converged occupied bands */
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
@@ -647,7 +620,22 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             if (with_overlap)
             {
-                linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab, evec_full, psi_slab); 
+                switch (parameters_.processing_unit())
+                {
+                    case CPU:
+                    {
+                        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab, evec_full, psi_slab); 
+                        break;
+                    }
+                    case GPU:
+                    {
+                        #ifdef _GPU_
+                        linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab.at<GPU>(), phi_slab.ld(),
+                                          evec_full.at<GPU>(), evec_full.ld(), psi_slab.at<GPU>(), psi_slab.ld()); 
+                        #endif
+                        break;
+                    }
+                }
             }
 
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
@@ -665,21 +653,54 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                 break;
             }
 
-            if (converge_by_energy) // TODO: zgemm on GPU
+            if (converge_by_energy)
             {
                 /* hpsi and opsi were computed only for part of the wave-functions,
                  * but we need all of them to update hphi and ophi
                  */
-                linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, hphi_slab, evec_full, hpsi_slab); 
-                linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, ophi_slab, evec_full, opsi_slab); 
+                switch (parameters_.processing_unit())
+                {
+                    case CPU:
+                    {
+                        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, hphi_slab, evec_full, hpsi_slab);
+                        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, ophi_slab, evec_full, opsi_slab);
+                        break;
+                    }
+                    case GPU:
+                    {
+                        #ifdef _GPU_
+                        linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, hphi_slab.at<GPU>(), hphi_slab.ld(),
+                                          evec_full.at<GPU>(), evec_full.ld(), hpsi_slab.at<GPU>(), hpsi_slab.ld()); 
+                        linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, ophi_slab.at<GPU>(), ophi_slab.ld(),
+                                          evec_full.at<GPU>(), evec_full.ld(), opsi_slab.at<GPU>(), opsi_slab.ld()); 
+                        #endif
+                        break;
+                    }
+                }
             }
-        
-            /* update \phi */
-            memcpy(&phi_slab(0, 0), &psi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
-            /* update H\phi */
-            memcpy(&hphi_slab(0, 0), &hpsi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
-            /* update O\phi */
-            memcpy(&ophi_slab(0, 0), &opsi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
+
+            switch (parameters_.processing_unit())
+            {
+                case CPU:
+                {
+                    /* update \phi */
+                    memcpy(&phi_slab(0, 0),  &psi_slab(0, 0),  num_gkvec_loc * num_bands * sizeof(double_complex));
+                    /* update H\phi */
+                    memcpy(&hphi_slab(0, 0), &hpsi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
+                    /* update O\phi */
+                    memcpy(&ophi_slab(0, 0), &opsi_slab(0, 0), num_gkvec_loc * num_bands * sizeof(double_complex));
+                    break;
+                }
+                case GPU:
+                {
+                    #ifdef _GPU_
+                    cuda_copy_device_to_device(phi_slab.at<GPU>(),  psi_slab.at<GPU>(),  num_gkvec_loc * num_bands * sizeof(double_complex));
+                    cuda_copy_device_to_device(hphi_slab.at<GPU>(), hpsi_slab.at<GPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
+                    cuda_copy_device_to_device(ophi_slab.at<GPU>(), opsi_slab.at<GPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
+                    #endif
+                    break;
+                }
+            }
 
             /* update H and O matrices. */
             hmlt_old.zero();
@@ -703,7 +724,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         if (parameters_.processing_unit() == GPU)
         {
             #ifdef _GPU_
-            //phi_slab.copy_cols_to_device(0, n);
+            cuda_copy_to_device(phi_slab.at<GPU>(0, N), phi_slab.at<CPU>(0, N), n * num_gkvec_loc * sizeof(double_complex));
             #endif
         }
     }
@@ -712,6 +733,8 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     if (parameters_.processing_unit() == GPU)
     {
         //if (!with_overlap) psi.deallocate_on_device();
+        psi_slab.copy_to_host();
+        psi_slab.deallocate_on_device();
     }
     #endif
 
