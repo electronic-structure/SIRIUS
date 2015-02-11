@@ -92,10 +92,11 @@ void Band::apply_h_local_slice(K_point* kp__,
         if (thread_id == num_fft_threads - 1 && num_fft_threads > 1 && pu == GPU)
         {
             #ifdef _GPU_
-            fft_threads.push_back(std::thread([num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
-                                               &hphi__, &effective_potential__, &pw_ekin__, &count_fft_gpu]()
+            fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
+                                               &hphi__, &effective_potential__, &pw_ekin__, &count_fft_gpu, &timers]()
             {
                 Timer t("sirius::Band::apply_h_local_slice|gpu");
+                timers(thread_id) = -omp_get_wtime();
                 
                 /* move fft index to GPU */
                 mdarray<int, 1> fft_index(kp__->fft_index_coarse(), kp__->num_gkvec());
@@ -171,6 +172,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                         cuda_copy_to_host(hphi__.at<CPU>(0, i), pw_buf.at<GPU>(), size_of_panel);
                     }
                 }
+                timers(thread_id) += omp_get_wtime();
             }));
             #else
             TERMINATE_NO_GPU
