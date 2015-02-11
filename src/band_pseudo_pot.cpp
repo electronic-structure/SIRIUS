@@ -429,7 +429,8 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
                                    mdarray<double_complex, 1>& q_mtrx_packed__,
                                    mdarray<double_complex, 1>& kappa__)
 {
-    log_function_enter(__func__);
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Band::apply_h_o_fast_parallel", kp__->comm());
 
     splindex<block> spl_phi(n__, kp__->comm().size(), kp__->comm().rank());
@@ -508,7 +509,8 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
-    log_function_exit(__func__);
+
+    LOG_FUNC_END();
 }
 
 /** \param [in] phi Input wave-function [storage: CPU && GPU].
