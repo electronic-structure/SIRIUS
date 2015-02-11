@@ -83,6 +83,9 @@ void Band::apply_h_local_slice(K_point* kp__,
     #ifdef _GPU_
     int count_fft_gpu = 0;
     #endif
+
+    mdarray<double, 1> timers(Platform::max_num_threads());
+    timers.zero();
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
@@ -176,8 +179,9 @@ void Band::apply_h_local_slice(K_point* kp__,
         else
         {
             fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft, kp__, &phi__, 
-                                               &hphi__, &effective_potential__, &pw_ekin__, &count_fft_cpu, in_place]()
+                                               &hphi__, &effective_potential__, &pw_ekin__, &count_fft_cpu, in_place, &timers]()
             {
+                timers(thread_id) = -omp_get_wtime();
                 bool done = false;
                 while (!done)
                 {
@@ -217,10 +221,23 @@ void Band::apply_h_local_slice(K_point* kp__,
                         }
                     }
                 }
+                timers(thread_id) += omp_get_wtime();
             }));
         }
     }
     for (auto& thread: fft_threads) thread.join();
+
+    if (kp__->comm().rank() == 0)
+    {
+        std::cout << "---------------------" << std::endl;
+        std::cout << "thread_id  | fft     " << std::endl;
+        std::cout << "---------------------" << std::endl;
+        for (int i = 0; i < num_fft_threads; i++)
+        {
+            printf("   %2i      | %8.4f  \n", i, timers(i));
+        }
+        std::cout << "---------------------" << std::endl;
+    }
     
     LOG_FUNC_END();
     //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;

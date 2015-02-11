@@ -1292,7 +1292,7 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
 
 void Density::add_q_contribution_to_valence_density(K_set& ks)
 {
-    Timer t("sirius::Density::add_q_contribution_to_valence_density");
+    Timer t("sirius::Density::add_q_contribution_to_valence_density", parameters_.comm());
 
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric.
@@ -1419,7 +1419,7 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
 
 void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 {
-    Timer t("sirius::Density::add_q_contribution_to_valence_density_gpu");
+    Timer t("sirius::Density::add_q_contribution_to_valence_density_gpu", parameters_.comm());
 
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric.
@@ -1447,7 +1447,6 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     //pp_complex_density_matrix.copy_to_host();
     //pp_complex_density_matrix.deallocate_on_device();
 
-    //parameters_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
     //parameters_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(pp_complex_density_matrix.at<CPU>(), 
     //                                                                             (int)pp_complex_density_matrix.size());
 
@@ -1482,6 +1481,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
         mdarray<double_complex, 2> d_mtrx_packed(type->num_atoms(), nbf * nbf);
         mdarray<double, 2> atom_pos(type->num_atoms(), 3);
+        #pragma omp parallel for
         for (int i = 0; i < type->num_atoms(); i++)
         {
             int ia = type->atom_id(i);
@@ -1721,7 +1721,7 @@ void Density::generate_valence_density_mt(K_set& ks)
 
 void Density::generate_valence_density_it(K_set& ks)
 {
-    Timer t("sirius::Density::generate_valence_density_it");
+    Timer t("sirius::Density::generate_valence_density_it", parameters_.comm());
 
     /* add k-point contribution */
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
