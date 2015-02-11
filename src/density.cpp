@@ -795,7 +795,7 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
     }
     else
     {
-        splindex<block> spl_bands(parameters_.num_fv_states(), kp->comm().size(), kp->comm().rank());
+        splindex<block> spl_bands(num_occupied_bands(kp), kp->comm().size(), kp->comm().rank());
         for (int jsub = 0; jsub < (int)spl_bands.local_size(); jsub++)
         {
             int j = (int)spl_bands[jsub];
@@ -1786,7 +1786,7 @@ void Density::generate_pseudo_core_charge_density()
 
 void Density::generate_valence(K_set& ks__)
 {
-    Timer t("sirius::Density::generate_valence");
+    Timer t("sirius::Density::generate_valence", parameters_.comm());
     
     double wt = 0.0;
     double ot = 0.0;
@@ -1796,9 +1796,9 @@ void Density::generate_valence(K_set& ks__)
         for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
     }
 
-    if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
+    if (std::abs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
 
-    if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
+    if (std::abs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
     {
         std::stringstream s;
         s << "wrong occupancies" << std::endl
@@ -1806,6 +1806,16 @@ void Density::generate_valence(K_set& ks__)
           << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
           << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
         warning_local(__FILE__, __LINE__, s);
+    }
+    
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    {
+        for (int ikloc = 0; ikloc < (int)ks__.spl_num_kpoints().local_size(); ikloc++)
+        {
+            int ik = ks__.spl_num_kpoints(ikloc);
+            splindex<block> spl_bands(num_occupied_bands(ks__[ik]), ks__[ik]->comm().size(), ks__[ik]->comm().rank());
+            ks__[ik]->collect_all_gkvec(spl_bands, ks__[ik]->fv_states_slab().at<CPU>(), ks__[ik]->fv_states().at<CPU>()); 
+        }
     }
 
     /* zero density and magnetization */
@@ -1887,7 +1897,7 @@ void Density::generate(K_set& ks__)
 {
     LOG_FUNC_BEGIN();
 
-    Timer t("sirius::Density::generate");
+    Timer t("sirius::Density::generate", parameters_.comm());
     
     generate_valence(ks__);
 
@@ -1917,7 +1927,7 @@ void Density::generate(K_set& ks__)
         nel = rho_->integrate(nel_mt, nel_it);
     }
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-         parameters_.esm_type() == norm_conserving_pseudopotential)
+        parameters_.esm_type() == norm_conserving_pseudopotential)
     {
         nel = real(rho_->f_pw(0)) * parameters_.unit_cell()->omega();
     }

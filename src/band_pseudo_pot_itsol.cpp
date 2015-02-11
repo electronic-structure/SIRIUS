@@ -738,7 +738,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     }
     #endif
 
-    kp__->collect_all_gkvec(spl_bands, &psi_slab(0, 0), &psi_slice(0, 0)); 
+    //kp__->collect_all_gkvec(spl_bands, &psi_slab(0, 0), &psi_slice(0, 0)); 
 
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
