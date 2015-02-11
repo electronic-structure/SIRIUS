@@ -731,7 +731,6 @@ void Band::set_fv_h_o_fast_parallel(int N__,
     
     int col_offs = (int)s0_col.local_size();
     Timer t2("sirius::Band::set_fv_h_o_fast_parallel|zgemm_eff", kp__->comm());
-    Timer t3("sirius::Band::set_fv_h_o_fast_parallel|zgemm_only");
     switch (parameters_.processing_unit())
     {
         case CPU:
@@ -751,7 +750,6 @@ void Band::set_fv_h_o_fast_parallel(int N__,
         }
     }
     kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
-    t3.stop();
 
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < (int)(s1_col.local_size() - col_offs); i++)
@@ -762,7 +760,6 @@ void Band::set_fv_h_o_fast_parallel(int N__,
         }
     }
 
-    t3.start();
     switch (parameters_.processing_unit())
     {
         case CPU:
@@ -782,7 +779,6 @@ void Band::set_fv_h_o_fast_parallel(int N__,
         }
     }
     kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
-    double tval2 = t3.stop();
 
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < (int)(s1_col.local_size() - col_offs); i++)
@@ -799,9 +795,6 @@ void Band::set_fv_h_o_fast_parallel(int N__,
         printf("effective zgemm with M, N, K: %6i %6i %6i for H and O: %12.4f sec, %12.4f GFlops/rank\n",
                N__ + n__, n__, kp__->num_gkvec(), tval,
                2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
-        printf("effective zgemm only with M, N, K: %6i %6i %6i for H and O: %12.4f sec, %12.4f GFlops/rank\n",
-               N__ + n__, n__, kp__->num_gkvec(), tval2,
-               2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval2 / kp__->num_ranks());
     }
     
     /* restore the bottom block of the matrix */
@@ -1356,7 +1349,7 @@ void Band::residuals_fast_parallel(int N__,
 {
     LOG_FUNC_BEGIN();
 
-    Timer t("sirius::Band::residuals_fast_parallel");
+    Timer t("sirius::Band::residuals_fast_parallel", kp__->comm());
 
     int num_gkvec_loc = kp__->num_gkvec_loc();
     
@@ -1369,16 +1362,20 @@ void Band::residuals_fast_parallel(int N__,
         linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, ophi__, evec__, opsi__);
     }
 
-    if (parameters_.processing_unit() == GPU) // TODO: copy only num_bands
+    if (parameters_.processing_unit() == GPU)
     {
         #ifdef _GPU_
         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, hphi__.at<GPU>(), hphi__.ld(),
                           evec__.at<GPU>(), evec__.ld(), hpsi__.at<GPU>(), hpsi__.ld());
-        hpsi__.copy_to_host();
+
+        cublas_get_matrix(num_gkvec_loc, num_bands__, sizeof(double_complex), hpsi__.at<GPU>(), hpsi__.ld(),
+                          hpsi__.at<CPU>(), hpsi__.ld());
 
         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, ophi__.at<GPU>(), ophi__.ld(),
                           evec__.at<GPU>(), evec__.ld(), opsi__.at<GPU>(), opsi__.ld());
-        opsi__.copy_to_host();
+
+        cublas_get_matrix(num_gkvec_loc, num_bands__, sizeof(double_complex), opsi__.at<GPU>(), opsi__.ld(),
+                          opsi__.at<CPU>(), opsi__.ld());
         #endif
     }
     double tval = t2.stop();
