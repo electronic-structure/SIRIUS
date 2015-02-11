@@ -668,8 +668,8 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
     cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
     cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
 
-    cublas_zgemm(0, 0, num_gvec_loc, num_beta * num_beta, num_atoms, &zone, 
-                 phase_factors, num_gvec_loc, d_mtrx_packed, num_atoms, &zzero,
+    cublas_zgemm(0, 1, num_gvec_loc, num_beta * num_beta, num_atoms, &zone, 
+                 phase_factors, num_gvec_loc, d_mtrx_packed, num_beta * num_beta, &zzero,
                  d_mtrx_pw, num_gvec_loc, -1);
 
     cuda_free(phase_factors);

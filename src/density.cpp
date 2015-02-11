@@ -1479,7 +1479,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         auto type = uc->atom_type(iat);
         int nbf = type->mt_basis_size();
 
-        mdarray<double_complex, 2> d_mtrx_packed(type->num_atoms(), nbf * nbf);
+        mdarray<double_complex, 2> d_mtrx_packed(nbf * nbf, type->num_atoms());
         mdarray<double, 2> atom_pos(type->num_atoms(), 3);
         #pragma omp parallel for
         for (int i = 0; i < type->num_atoms(); i++)
@@ -1490,7 +1490,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
             {
                 for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    d_mtrx_packed(i, xi2 * nbf + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+                    d_mtrx_packed(xi2 * nbf + xi1, i) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
             for (int x = 0; x < 3; x++) atom_pos(i, x) = uc->atom(ia)->position(x);
