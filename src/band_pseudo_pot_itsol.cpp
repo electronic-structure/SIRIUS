@@ -486,7 +486,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     /* number of newly added basis functions */
     int n = num_bands;
 
-    double wtime = -omp_get_wtime();
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
@@ -729,10 +728,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
             #endif
         }
     }
-    wtime += omp_get_wtime();
 
-    DUMP("time in iterative solver loop: %12.8f", wtime);
-    
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
