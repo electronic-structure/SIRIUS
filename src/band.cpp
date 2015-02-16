@@ -1956,6 +1956,10 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
     {
         diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
     }
+    else if (itso.type_ == "rmm-diis")
+    {
+        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0__, veff_it_coarse__);
+    }
     else if (itso.type_ == "chebyshev")
     {
         diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse__);

@@ -362,6 +362,12 @@ void K_point::update()
                 if (location.second == comm_.rank()) fv_states_slab_(location.first, i) = complex_one;
             }
 
+            fv_states_.zero();
+            for (int i = 0; i < (int)spl_bands.local_size(); i++)
+            {
+                fv_states_(spl_bands[i], i) = complex_one;
+            }
+
             //fv_states_panel_.zero();
             //for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
 

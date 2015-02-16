@@ -239,11 +239,12 @@ class generalized_evp
         {
         }
 
-        virtual void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                           double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                           double_complex* z, int32_t ldz)
+        virtual int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                          double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                          double_complex* z, int32_t ldz)
         {
             error_local(__FILE__, __LINE__, "generalized eigen-value solver is not configured");
+            return 0;
         }
 
         virtual bool parallel() = 0;
@@ -264,9 +265,9 @@ class generalized_evp_lapack: public generalized_evp
         {
         }
 
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
             assert(nevec <= matrix_size);
 
@@ -292,11 +293,12 @@ class generalized_evp_lapack: public generalized_evp
 
             if (m != nevec)
             {
-                std::stringstream s;
-                s << "not all eigen-values are found" << std::endl
-                  << "target number of eign-values: " << nevec << std::endl
-                  << "number of eign-values found: " << m;
-                TERMINATE(s);
+                //== std::stringstream s;
+                //== s << "not all eigen-values are found" << std::endl
+                //==   << "target number of eign-values: " << nevec << std::endl
+                //==   << "number of eign-values found: " << m;
+                //== TERMINATE(s);
+                return 1;
             }
 
             if (info)
@@ -307,6 +309,8 @@ class generalized_evp_lapack: public generalized_evp
             }
 
             memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
         }
 
         bool parallel()
@@ -382,9 +386,9 @@ class generalized_evp_scalapack: public generalized_evp
         }
 
         #ifdef _SCALAPACK_
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
             assert(nevec <= matrix_size);
             
@@ -454,6 +458,8 @@ class generalized_evp_scalapack: public generalized_evp
                 error_local(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.");
 
             memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
         }
         #endif
 
@@ -504,9 +510,9 @@ class generalized_evp_rs_gpu: public generalized_evp
         }
 
         #ifdef _RS_GEN_EIG_
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
         
             assert(nevec <= matrix_size);
@@ -540,6 +546,8 @@ class generalized_evp_rs_gpu: public generalized_evp
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
 
             memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
+
+            return 0;
         }
         #endif
 
@@ -580,9 +588,9 @@ class generalized_evp_rs_cpu: public generalized_evp
         }
 
         #ifdef _RS_GEN_EIG_
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
         
             assert(nevec <= matrix_size);
@@ -615,6 +623,8 @@ class generalized_evp_rs_cpu: public generalized_evp
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
 
             memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
+
+            return 0;
         }
         #endif
 
@@ -660,9 +670,9 @@ class generalized_evp_elpa1: public generalized_evp
         }
         
         #ifdef _ELPA_
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
 
             assert(nevec <= matrix_size);
@@ -725,6 +735,8 @@ class generalized_evp_elpa1: public generalized_evp
             delete t;
 
             memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
         }
         #endif
 
@@ -772,9 +784,9 @@ class generalized_evp_elpa2: public generalized_evp
         }
         
         #ifdef _ELPA_
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
 
             assert(nevec <= matrix_size);
@@ -837,6 +849,8 @@ class generalized_evp_elpa2: public generalized_evp
             delete t;
 
             memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
         }
         #endif
 
@@ -862,15 +876,17 @@ class generalized_evp_magma: public generalized_evp
         }
 
         #ifdef _MAGMA_
-        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
-                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
-                   double_complex* z, int32_t ldz)
+        int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                  double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                  double_complex* z, int32_t ldz)
         {
             assert(nevec <= matrix_size);
             
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
             
             for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(double_complex));
+
+            return 0;
         }
         #endif
 

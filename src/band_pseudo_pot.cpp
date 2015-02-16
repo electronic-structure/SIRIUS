@@ -229,17 +229,17 @@ void Band::apply_h_local_slice(K_point* kp__,
     }
     for (auto& thread: fft_threads) thread.join();
 
-    if (kp__->comm().rank() == 0)
-    {
-        std::cout << "---------------------" << std::endl;
-        std::cout << "thread_id  | fft     " << std::endl;
-        std::cout << "---------------------" << std::endl;
-        for (int i = 0; i < num_fft_threads; i++)
-        {
-            printf("   %2i      | %8.4f  \n", i, timers(i));
-        }
-        std::cout << "---------------------" << std::endl;
-    }
+    //== if (kp__->comm().rank() == 0)
+    //== {
+    //==     std::cout << "---------------------" << std::endl;
+    //==     std::cout << "thread_id  | fft     " << std::endl;
+    //==     std::cout << "---------------------" << std::endl;
+    //==     for (int i = 0; i < num_fft_threads; i++)
+    //==     {
+    //==         printf("   %2i      | %8.4f  \n", i, timers(i));
+    //==     }
+    //==     std::cout << "---------------------" << std::endl;
+    //== }
     
     LOG_FUNC_END();
     //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
@@ -2396,8 +2396,6 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
 void Band::set_fv_h_o_serial(K_point* kp__,
-                             std::vector<double> const& effective_potential__,
-                             std::vector<double> const& pw_ekin__,
                              int N__,
                              int n__,
                              matrix<double_complex>& phi__,
@@ -2407,10 +2405,7 @@ void Band::set_fv_h_o_serial(K_point* kp__,
                              matrix<double_complex>& o__,
                              matrix<double_complex>& h_old__,
                              matrix<double_complex>& o_old__,
-                             matrix<double_complex>& kappa__,
-                             mdarray<int, 1>& packed_mtrx_offset__,
-                             mdarray<double_complex, 1>& d_mtrx_packed__,
-                             mdarray<double_complex, 1>& q_mtrx_packed__)
+                             matrix<double_complex>& kappa__)
 {
     Timer t("sirius::Band::set_fv_h_o_serial");
 
@@ -2421,17 +2416,17 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double_complex));
     }
 
-    /* apply Hamiltonian and overlap operators to the new basis functions */
-    if (true)
-    {
-        apply_h_o_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, kappa__, packed_mtrx_offset__,
-                         d_mtrx_packed__, q_mtrx_packed__);
-    }
-    else
-    {
-        apply_h_o_real_space_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
-                                    d_mtrx_packed__, q_mtrx_packed__);
-    }
+    //== /* apply Hamiltonian and overlap operators to the new basis functions */
+    //== if (true)
+    //== {
+    //==     apply_h_o_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, kappa__, packed_mtrx_offset__,
+    //==                      d_mtrx_packed__, q_mtrx_packed__);
+    //== }
+    //== else
+    //== {
+    //==     apply_h_o_real_space_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
+    //==                                 d_mtrx_packed__, q_mtrx_packed__);
+    //== }
     
     if (parameters_.processing_unit() == CPU)
     {
