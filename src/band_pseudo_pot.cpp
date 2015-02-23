@@ -241,8 +241,9 @@ void Band::apply_h_local_slice(K_point* kp__,
     //==     std::cout << "---------------------" << std::endl;
     //== }
     
+    if (kp__->comm().rank() == 0) DUMP("CPU / GPU fft count : %i %i", count_fft_cpu, count_fft_gpu);
+
     LOG_FUNC_END();
-    //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
 }
 
 #ifdef _SCALAPACK_
