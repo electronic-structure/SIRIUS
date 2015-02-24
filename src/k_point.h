@@ -67,8 +67,6 @@ class K_point
         /// G+k vectors
         mdarray<double, 2> gkvec_;
 
-        //== mdarray<double, 2> gkvec_gpu_;
-
         /// Global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
         std::vector<int> gvec_index_;
 
