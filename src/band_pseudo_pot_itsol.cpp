@@ -1875,24 +1875,78 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     //== std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
     //== #endif
 
-    auto calc_res = [kp__, num_bands, &eval]
-                    (matrix<double_complex>& hpsi__,
-                     matrix<double_complex>& opsi__,
-                     matrix<double_complex>& res__) -> void
+    std::vector<int> last(num_bands, 0);
+    std::vector<bool> conv_band(num_bands, false);
+    std::vector<double> res_norm(num_bands);
+    std::vector<double> res_norm_start(num_bands);
+    std::vector<double> lambda(num_bands, 0);
+    
+    auto update_res = [kp__, num_bands, &phi, &res, &hphi, &ophi, &last, &conv_band, &eval]
+                      (std::vector<double>& res_norm__) -> void
     {
         Timer t("sirius::Band::diag_fv_pseudo_potential_rmm_diis_serial|res");
-        #pragma omp parallel for
         for (int i = 0; i < num_bands; i++)
         {
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            if (!conv_band[i])
             {
-                /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-                res__(igk, i) = hpsi__(igk, i) - eval[i] * opsi__(igk, i);
+                double e = 0;
+                double d = 0;
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    e += real(conj(phi[last[i]](igk, i)) * hphi[last[i]](igk, i));
+                    d += real(conj(phi[last[i]](igk, i)) * ophi[last[i]](igk, i));
+                }
+                eval[i] = e / d;
+
+                /* compute residual r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    res[last[i]](igk, i) = hphi[last[i]](igk, i) - eval[i] * ophi[last[i]](igk, i);
+                }
+
+                double r = 0;
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    r += real(conj(res[last[i]](igk, i)) * res[last[i]](igk, i));
+                }
+                res_norm__[i] = r; //std::sqrt(r);
             }
         }
     };
 
-    auto apply_preconditioner = [kp__, num_bands, &h_diag, &o_diag, &eval]
+    auto apply_h_o = [this, kp__, num_bands, &phi, &phi_tmp, &hphi, &hphi_tmp, &ophi, &ophi_tmp, &conv_band, &last,
+                      &veff_it_coarse__, &pw_ekin, &kappa, &packed_mtrx_offset, &d_mtrx_packed, &q_mtrx_packed]() -> int
+    {
+        Timer t("sirius::Band::diag_fv_pseudo_potential_rmm_diis_serial|h_o");
+        int n = 0;
+        for (int i = 0; i < num_bands; i++)
+        {
+            if (!conv_band[i])
+            {
+                memcpy(&phi_tmp(0, n), &phi[last[i]](0, i), kp__->num_gkvec() * sizeof(double_complex));
+                n++;
+            }
+        }
+
+        if (n == 0) return 0;
+
+        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, n, phi_tmp, hphi_tmp, ophi_tmp, kappa, packed_mtrx_offset,
+                         d_mtrx_packed, q_mtrx_packed);
+
+        n = 0;
+        for (int i = 0; i < num_bands; i++)
+        {
+            if (!conv_band[i])
+            {
+                memcpy(&hphi[last[i]](0, i), &hphi_tmp(0, n), kp__->num_gkvec() * sizeof(double_complex));
+                memcpy(&ophi[last[i]](0, i), &ophi_tmp(0, n), kp__->num_gkvec() * sizeof(double_complex));
+                n++;
+            }
+        }
+        return n;
+    };
+
+    auto apply_preconditioner = [kp__, num_bands, &h_diag, &o_diag, &eval, &conv_band]
                                 (std::vector<double> lambda,
                                  matrix<double_complex>& res__,
                                  double alpha,
@@ -1902,13 +1956,16 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         #pragma omp parallel for
         for (int i = 0; i < num_bands; i++)
         {
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            if (!conv_band[i])
             {
-                double p = h_diag[igk] - eval[i] * o_diag[igk];
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    double p = h_diag[igk] - eval[i] * o_diag[igk];
 
-                p *= 2; // QE formula is in Ry; here we convert to Ha
-                p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                kres__(igk, i) = alpha * kres__(igk, i) + lambda[i] * res__(igk, i) / p;
+                    p *= 2; // QE formula is in Ry; here we convert to Ha
+                    p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                    kres__(igk, i) = alpha * kres__(igk, i) + lambda[i] * res__(igk, i) / p;
+                }
             }
 
             //== double Ekin = 0;
@@ -1928,119 +1985,64 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         }
     };
 
-    std::vector<int> last(num_bands, 0);
-
-    auto calc_e = [kp__, num_bands, &last, &eval]
-                  (std::vector< matrix<double_complex> >& phi__,
-                   std::vector< matrix<double_complex> >& hphi__,
-                   std::vector< matrix<double_complex> >& ophi__) -> void
-    {
-        Timer t("sirius::Band::diag_fv_pseudo_potential_rmm_diis_serial|eval");
-        for (int i = 0; i < num_bands; i++)
-        {
-            double e = 0;
-            double d = 0;
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-            {
-                e += real(conj(phi__[last[i]](igk, i)) * hphi__[last[i]](igk, i));
-                d += real(conj(phi__[last[i]](igk, i)) * ophi__[last[i]](igk, i));
-            }
-            eval[i] = e / d;
-        }
-    };
-
-    auto calc_res_norm = [kp__, num_bands, &last]
-                         (std::vector< matrix<double_complex> >& res__,
-                          std::vector<double>& res_norm__) -> void
-    {
-        Timer t("sirius::Band::diag_fv_pseudo_potential_rmm_diis_serial|norm");
-        for (int i = 0; i < num_bands; i++)
-        {
-            double r = 0;
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-            {
-                r += real(conj(res__[last[i]](igk, i)) * res__[last[i]](igk, i));
-            }
-            res_norm__[i] = r; //std::sqrt(r);
-        }
-    };
-          
-
-    std::vector<double> res_norm(num_bands);
-    std::vector<double> res_norm_start(num_bands);
-
-    
-
 
     apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
                      d_mtrx_packed, q_mtrx_packed);
-    
     parameters_.work_load_ += num_bands;
 
-    std::vector<double> lambda(num_bands, 0);
-    std::vector<bool> conv_band(num_bands, false);
-    
-    calc_e(phi, hphi, ophi);
+    update_res(res_norm_start);
 
-    calc_res(hphi[0], ophi[0], res[0]);
-
-    calc_res_norm(res, res_norm);
-
-    int k = 0;
+    bool conv = true;
     for (int i = 0; i < num_bands; i++)
     {
-        if (res_norm[i] < 1e-10) k++;
+        if (kp__->band_occupancy(i) > 1e-10 && res_norm_start[i] > 1e-10) conv = false;
+        if (res_norm_start[i] < 1e-12)
+        {
+            conv_band[i] = true;
+        }
+        else
+        {
+            last[i] = 1;
+        }
     }
-    std::cout << "number of converged residuals : " << k << std::endl;
-
+    if (conv) return;
     
     apply_preconditioner(std::vector<double>(num_bands, 1), res[0], 0.0, phi[1]);
-
-    apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[1], hphi[1], ophi[1], kappa, packed_mtrx_offset,
-                     d_mtrx_packed, q_mtrx_packed);
-
-    parameters_.work_load_ += num_bands;
+    
+    parameters_.work_load_ += apply_h_o();
 
     /* estimate lambda */
     for (int i = 0; i < num_bands; i++)
     {
-        double f1(0), f2(0), f3(0), f4(0);
-        for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+        if (!conv_band[i])
         {
-            f1 += real(conj(phi[1](igk, i)) * ophi[1](igk, i));        //  <KR_i | OKR_i>
-            f2 += 2.0 * real(conj(phi[0](igk, i)) * ophi[1](igk, i));  // <phi_i | OKR_i> 
-            f3 += real(conj(phi[1](igk, i)) * hphi[1](igk, i));        //  <KR_i | HKR_i>
-            f4 += 2.0 * real(conj(phi[0](igk, i)) * hphi[1](igk, i));  // <phi_i | HKR_i>
-        }
-        
-        double a = f1 * f4 - f2 * f3;
-        double b = f3 - eval[i] * f1;
-        double c = eval[i] * f2 - f4;
+            double f1(0), f2(0), f3(0), f4(0);
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            {
+                f1 += real(conj(phi[1](igk, i)) * ophi[1](igk, i));        //  <KR_i | OKR_i>
+                f2 += 2.0 * real(conj(phi[0](igk, i)) * ophi[1](igk, i));  // <phi_i | OKR_i> 
+                f3 += real(conj(phi[1](igk, i)) * hphi[1](igk, i));        //  <KR_i | HKR_i>
+                f4 += 2.0 * real(conj(phi[0](igk, i)) * hphi[1](igk, i));  // <phi_i | HKR_i>
+            }
+            
+            double a = f1 * f4 - f2 * f3;
+            double b = f3 - eval[i] * f1;
+            double c = eval[i] * f2 - f4;
 
-        lambda[i] = (b - std::sqrt(b * b - 4.0 * a * c)) / 2.0 / a;
-        if (std::abs(lambda[i]) > 2.0) lambda[i] = 2.0 * lambda[i] / std::abs(lambda[i]);
-        if (std::abs(lambda[i]) < 0.5) lambda[i] = 0.5 * lambda[i] / std::abs(lambda[i]);
+            lambda[i] = (b - std::sqrt(b * b - 4.0 * a * c)) / 2.0 / a;
+            if (std::abs(lambda[i]) > 2.0) lambda[i] = 2.0 * lambda[i] / std::abs(lambda[i]);
+            if (std::abs(lambda[i]) < 0.5) lambda[i] = 0.5 * lambda[i] / std::abs(lambda[i]);
+            
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            {
+                phi[1](igk, i) = phi[0](igk, i) + lambda[i] * phi[1](igk, i);
+                hphi[1](igk, i) = hphi[0](igk, i) + lambda[i] * hphi[1](igk, i);
+                ophi[1](igk, i) = ophi[0](igk, i) + lambda[i] * ophi[1](igk, i);
+            }
+        }
     }
 
-    for (int i = 0; i < num_bands; i++)
-    {
-        for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-        {
-            phi[1](igk, i) = phi[0](igk, i) + lambda[i] * phi[1](igk, i);
-            hphi[1](igk, i) = hphi[0](igk, i) + lambda[i] * hphi[1](igk, i);
-            ophi[1](igk, i) = ophi[0](igk, i) + lambda[i] * ophi[1](igk, i);
-        }
-    }
-
-    last = std::vector<int>(num_bands, 1);
-    
-    calc_e(phi, hphi, ophi);
-
-    calc_res(hphi[1], ophi[1], res[1]);
-
-    calc_res_norm(res, res_norm_start);
-
-
+    update_res(res_norm);
 
     mdarray<double_complex, 3> A(niter, niter, num_bands);
     mdarray<double_complex, 3> B(niter, niter, num_bands);
@@ -2049,6 +2051,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
     for (int iter = 2; iter < niter; iter++)
     {
+        Timer t1("sirius::Band::diag_fv_pseudo_potential_rmm_diis_serial|AB");
         A.zero();
         B.zero();
         for (int i = 0; i < num_bands; i++)
@@ -2068,7 +2071,9 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                 }
             }
         }
+        t1.stop();
 
+        Timer t2("sirius::Band::diag_fv_pseudo_potential_rmm_diis_serial|phi");
         for (int i = 0; i < num_bands; i++)
         {
             if (!conv_band[i])
@@ -2090,47 +2095,20 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                 else
                 {
                     conv_band[i] = true;
-                    lambda[i] = 0.0;
                 }
             }
         }
+        t2.stop();
         
         apply_preconditioner(lambda, res[iter], 1.0, phi[iter]);
 
-        int n = 0;
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
-                memcpy(&phi_tmp(0, n), &phi[last[i]](0, i), kp__->num_gkvec() * sizeof(double_complex));
-                n++;
-            }
-        }
-
-        std::cout << "step: " << iter << " number of residuals: " << n << std::endl;
-
+        int n = apply_h_o();
         if (n == 0) break;
-
-        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, n, phi_tmp, hphi_tmp, ophi_tmp, kappa, packed_mtrx_offset,
-                         d_mtrx_packed, q_mtrx_packed);
-
         parameters_.work_load_ += n;
 
-        n = 0;
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
-                memcpy(&hphi[last[i]](0, i), &hphi_tmp(0, n), kp__->num_gkvec() * sizeof(double_complex));
-                memcpy(&ophi[last[i]](0, i), &ophi_tmp(0, n), kp__->num_gkvec() * sizeof(double_complex));
-                n++;
-            }
-        }
         eval_old = eval;
-        calc_e(phi, hphi, ophi);
-        calc_res(hphi[iter], ophi[iter], res[iter]);
 
-        calc_res_norm(res, res_norm);
+        update_res(res_norm);
 
         double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
         
@@ -2143,7 +2121,6 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                     (std::abs(eval[i] - eval_old[i]) < tol))
                 {
                     conv_band[i] = true;
-                    lambda[i] = 0.0;
                 }
             }
         }
@@ -2158,11 +2135,13 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
     set_fv_h_o_serial(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
  
+    Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp", kp__->comm());
     if (gen_evp_solver()->solve(num_bands, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld()))
     {
         TERMINATE("error in gen_evp_solver");
     }
+    t1.stop();
 
     linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, num_bands, &phi_tmp(0, 0), phi_tmp.ld(), &evec(0, 0), evec.ld(), 
                       &psi(0, 0), psi.ld());
