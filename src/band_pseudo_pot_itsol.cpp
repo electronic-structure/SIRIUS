@@ -1995,17 +1995,19 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     bool conv = true;
     for (int i = 0; i < num_bands; i++)
     {
-        if (kp__->band_occupancy(i) > 1e-10 && res_norm_start[i] > 1e-10) conv = false;
-        if (res_norm_start[i] < 1e-12)
-        {
-            conv_band[i] = true;
-        }
-        else
-        {
-            last[i] = 1;
-        }
+        if (kp__->band_occupancy(i) > 1e-10 && res_norm_start[i] > 1e-12) conv = false;
+        //if (res_norm_start[i] < 1e-12)
+        //{
+        //    conv_band[i] = true;
+        //}
+        //else
+        //{
+        //    last[i] = 1;
+        //}
     }
     if (conv) return;
+
+    last = std::vector<int>(num_bands, 1);
     
     apply_preconditioner(std::vector<double>(num_bands, 1), res[0], 0.0, phi[1]);
     
