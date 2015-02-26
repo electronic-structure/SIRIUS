@@ -238,10 +238,30 @@ class SHT // TODO: better name
         */
         static double_complex ylm_dot_rlm(int l, int m1, int m2);
         
-        /// Return real or complex Gaunt coefficent.
-        template <typename T>
-        static T gaunt(int l1, int l2, int l3, int m1, int m2, int m3);
-        
+        /// Gaunt coefficent of three complex spherical harmonics.
+        /** 
+         *  \f[
+         *    \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
+         *  \f]
+         */
+        static double gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3);
+
+        /// Gaunt coefficent of three real spherical harmonics.
+        /** 
+         *  \f[
+         *    \langle R_{\ell_1 m_1} | R_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
+         *  \f]
+         */
+        static double gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3);
+
+        /// Gaunt coefficent of two complex and one real spherical harmonics.
+        /** 
+         *  \f[
+         *    \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
+         *  \f]
+         */
+        static double_complex gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3);
+
         void uniform_coverage();
 
         /// Return Clebsch-Gordan coefficient.

@@ -2200,7 +2200,7 @@ void sirius_real_gaunt_coeff_(int32_t* lm1__, int32_t* lm2__, int32_t* lm3__, do
             {
                 d += real(conj(sirius::SHT::ylm_dot_rlm(l1, k1, m1)) *
                           sirius::SHT::ylm_dot_rlm(l2, k2, m2) *
-                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt<double>(l1, l2, l3, k1, k2, k3);
+                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
             }
         }
     }

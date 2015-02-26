@@ -146,7 +146,7 @@ matrix3d<T> inverse(matrix3d<T> src)
     
     T t1 = src.det();
     
-    if (type_wrapper<T>::abs(t1) < 1e-10) error_local(__FILE__, __LINE__, "matix is degenerate");
+    if (std::abs(t1) < 1e-10) error_local(__FILE__, __LINE__, "matix is degenerate");
     
     t1 = 1.0 / t1;
 

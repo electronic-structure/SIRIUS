@@ -79,55 +79,13 @@ class Gaunt_coefficients
         /// list of non-zero Gaunt coefficients for each combination of lm1, lm2
         mdarray<std::vector<gaunt_L3<T> >, 2> gaunt_packed_L3_;
 
+        /// Wrapper for Gaunt coefficients function.
+        T get(int l1, int l2, int l3, int m1, int m2, int m3);
+
     public:
         
         /// Class constructor.
-        Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__) : lmax1_(lmax1__), lmax3_(lmax3__), lmax2_(lmax2__)
-        {
-            lmmax1_ = Utils::lmmax(lmax1_);
-            lmmax3_ = Utils::lmmax(lmax3_);
-            lmmax2_ = Utils::lmmax(lmax2_);
-
-            gaunt_packed_L1_L2_.resize(lmmax3_);
-            gaunt_L1_L2<T> g12;
-            
-            gaunt_packed_L3_ = mdarray<std::vector<gaunt_L3<T> >, 2>(lmmax1_, lmmax2_);
-            gaunt_L3<T> g3;
-
-            for (int l1 = 0; l1 <= lmax1_; l1++) 
-            {
-            for (int m1 = -l1; m1 <= l1; m1++)
-            {
-                int lm1 = Utils::lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= lmax2_; l2++)
-                {
-                for (int m2 = -l2; m2 <= l2; m2++)
-                {
-                    int lm2 = Utils::lm_by_l_m(l2, m2);
-                    for (int l3 = 0; l3 <= lmax3_; l3++)
-                    {
-                    for (int m3 = -l3; m3 <= l3; m3++)
-                    {
-                        int lm3 = Utils::lm_by_l_m(l3, m3);
-                        T gc = SHT::gaunt<T>(l1, l3, l2, m1, m3, m2);
-                        if (type_wrapper<T>::abs(gc) > 1e-12) 
-                        {
-                            g12.lm1 = lm1;
-                            g12.lm2 = lm2;
-                            g12.coef = gc;
-                            gaunt_packed_L1_L2_[lm3].push_back(g12);
-
-                            g3.lm3 = lm3;
-                            g3.coef = gc;
-                            gaunt_packed_L3_(lm1, lm2).push_back(g3);
-                        }
-                    }
-                    }
-                }
-                }
-            }
-            }
-        }
+        Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__);
 
         /// Return number of non-zero Gaunt coefficients for a given lm3.
         inline int num_gaunt(int lm3)
@@ -207,6 +165,69 @@ class Gaunt_coefficients
             return gaunt_packed_L3_(lm1, lm2);
         }
 };
+
+template<>
+inline double Gaunt_coefficients<double>::get(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    return SHT::gaunt_ylm(l1, l2, l3, m1, m2, m3);
+}
+
+template<>
+inline double_complex Gaunt_coefficients<double_complex>::get(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    return SHT::gaunt_hybrid(l1, l2, l3, m1, m2, m3);
+}
+
+template <typename T>
+Gaunt_coefficients<T>::Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__) 
+    : lmax1_(lmax1__),
+      lmax3_(lmax3__),
+      lmax2_(lmax2__)
+{
+    lmmax1_ = Utils::lmmax(lmax1_);
+    lmmax3_ = Utils::lmmax(lmax3_);
+    lmmax2_ = Utils::lmmax(lmax2_);
+
+    gaunt_packed_L1_L2_.resize(lmmax3_);
+    gaunt_L1_L2<T> g12;
+    
+    gaunt_packed_L3_ = mdarray<std::vector<gaunt_L3<T> >, 2>(lmmax1_, lmmax2_);
+    gaunt_L3<T> g3;
+
+    for (int l1 = 0; l1 <= lmax1_; l1++) 
+    {
+    for (int m1 = -l1; m1 <= l1; m1++)
+    {
+        int lm1 = Utils::lm_by_l_m(l1, m1);
+        for (int l2 = 0; l2 <= lmax2_; l2++)
+        {
+        for (int m2 = -l2; m2 <= l2; m2++)
+        {
+            int lm2 = Utils::lm_by_l_m(l2, m2);
+            for (int l3 = 0; l3 <= lmax3_; l3++)
+            {
+            for (int m3 = -l3; m3 <= l3; m3++)
+            {
+                int lm3 = Utils::lm_by_l_m(l3, m3);
+                T gc = get(l1, l3, l2, m1, m3, m2);
+                if (std::abs(gc) > 1e-12) 
+                {
+                    g12.lm1 = lm1;
+                    g12.lm2 = lm2;
+                    g12.coef = gc;
+                    gaunt_packed_L1_L2_[lm3].push_back(g12);
+
+                    g3.lm3 = lm3;
+                    g3.coef = gc;
+                    gaunt_packed_L3_(lm1, lm2).push_back(g3);
+                }
+            }
+            }
+        }
+        }
+    }
+    }
+}
 
 };
 
