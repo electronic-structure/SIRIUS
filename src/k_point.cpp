@@ -212,6 +212,7 @@ void K_point::update()
 
         #pragma omp parallel
         {
+            std::vector<double> gkvec_rlm(Utils::lmmax(parameters_.lmax_beta()));
             std::vector<double> beta_radial_integrals_(uc->max_mt_radial_basis_size());
             sbessel_pw<double> jl(uc, parameters_.lmax_beta());
             #pragma omp for
@@ -221,6 +222,10 @@ void K_point::update()
                 for (int i = 0; i < (int)gkvec_shells_[ish].second.size(); i++)
                 {
                     int igk_loc = gkvec_shells_[ish].second[i];
+                    int igk = gklo_basis_descriptors_local_[igk_loc].igk;
+                    /* vs = {r, theta, phi} */
+                    auto vs = SHT::spherical_coordinates(gkvec_cart(igk));
+                    SHT::spherical_harmonics(parameters_.lmax_beta(), vs[1], vs[2], &gkvec_rlm[0]);
 
                     for (int iat = 0; iat < uc->num_atom_types(); iat++)
                     {
@@ -239,7 +244,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_loc) * beta_radial_integrals_[idxrf];
+                            beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_[idxrf];
                         }
                     }
                 }

@@ -79,13 +79,13 @@ class Gaunt_coefficients
         /// list of non-zero Gaunt coefficients for each combination of lm1, lm2
         mdarray<std::vector<gaunt_L3<T> >, 2> gaunt_packed_L3_;
 
-        /// Wrapper for Gaunt coefficients function.
-        T get(int l1, int l2, int l3, int m1, int m2, int m3);
+        /// Callback function to generate Gaunt coefficients.
+        T (*get_)(int l1, int l2, int l3, int m1, int m2, int m3);
 
     public:
         
         /// Class constructor.
-        Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__);
+        Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__, T (*get__)(int l1, int l2, int l3, int m1, int m2, int m3));
 
         /// Return number of non-zero Gaunt coefficients for a given lm3.
         inline int num_gaunt(int lm3)
@@ -97,18 +97,18 @@ class Gaunt_coefficients
         /// Return a structure containing {lm1, lm2, coef} for a given lm3 and index.
         /** Example:
          *  \code{.cpp}
-            for (int lm3 = 0; lm3 < lmmax3; lm3++)
-            {
-                for (int i = 0; i < gaunt_coefs.num_gaunt(); i++)
-                {
-                    int lm1 = gaunt_coefs.gaunt(lm3, i).lm1;
-                    int lm2 = gaunt_coefs.gaunt(lm3, i).lm2;
-                    double coef = gaunt_coefs.gaunt(lm3, i).coef;
-                    
-                    // do something with lm1,lm2,lm3 and coef
-                }
-            }
-            \endcode
+         *  for (int lm3 = 0; lm3 < lmmax3; lm3++)
+         *  {
+         *      for (int i = 0; i < gaunt_coefs.num_gaunt(); i++)
+         *      {
+         *          int lm1 = gaunt_coefs.gaunt(lm3, i).lm1;
+         *          int lm2 = gaunt_coefs.gaunt(lm3, i).lm2;
+         *          double coef = gaunt_coefs.gaunt(lm3, i).coef;
+         *          
+         *          // do something with lm1,lm2,lm3 and coef
+         *      }
+         *  }
+         *  \endcode
          */
         inline gaunt_L1_L2<T>& gaunt(int lm3, int idx)
         {
@@ -166,23 +166,12 @@ class Gaunt_coefficients
         }
 };
 
-template<>
-inline double Gaunt_coefficients<double>::get(int l1, int l2, int l3, int m1, int m2, int m3)
-{
-    return SHT::gaunt_ylm(l1, l2, l3, m1, m2, m3);
-}
-
-template<>
-inline double_complex Gaunt_coefficients<double_complex>::get(int l1, int l2, int l3, int m1, int m2, int m3)
-{
-    return SHT::gaunt_hybrid(l1, l2, l3, m1, m2, m3);
-}
-
 template <typename T>
-Gaunt_coefficients<T>::Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__) 
+Gaunt_coefficients<T>::Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__, T (*get__)(int l1, int l2, int l3, int m1, int m2, int m3))
     : lmax1_(lmax1__),
       lmax3_(lmax3__),
-      lmax2_(lmax2__)
+      lmax2_(lmax2__),
+      get_(get__)
 {
     lmmax1_ = Utils::lmmax(lmax1_);
     lmmax3_ = Utils::lmmax(lmax3_);
@@ -209,7 +198,7 @@ Gaunt_coefficients<T>::Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__)
             for (int m3 = -l3; m3 <= l3; m3++)
             {
                 int lm3 = Utils::lm_by_l_m(l3, m3);
-                T gc = get(l1, l3, l2, m1, m3, m2);
+                T gc = get_(l1, l3, l2, m1, m3, m2);
                 if (std::abs(gc) > 1e-12) 
                 {
                     g12.lm1 = lm1;

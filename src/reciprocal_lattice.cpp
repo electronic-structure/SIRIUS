@@ -221,13 +221,21 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(double_complex(0, 1), l);
     }
 
+    mdarray<double, 2> gvec_rlm(Utils::lmmax(lmax), spl_num_gvec_.local_size());
+    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+    {
+        int ig = (int)spl_num_gvec_[igloc];
+        auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
+        SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_rlm(0, igloc));
+    }
+
     for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
     {
         auto atom_type = unit_cell_->atom_type(iat);
         int nbf = atom_type->mt_basis_size();
         int lmax_beta = atom_type->indexr().lmax();
         int lmmax = Utils::lmmax(lmax_beta * 2);
-        Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta);
+        Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rlm);
 
         atom_type->uspp().q_mtrx.zero();
         
@@ -255,7 +263,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                         int igloc = (int)it.idx_local();
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {
-                            v[lm3] = conj(zilm[lm3]) * gvec_ylm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
+                            v[lm3] = conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
                         }
 
                         atom_type->uspp().q_pw(igloc, idx12) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
