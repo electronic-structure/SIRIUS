@@ -1750,7 +1750,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     /* short notation for target wave-functions */
     matrix<double_complex>& psi = kp__->fv_states_slab();
 
-    int niter = 5; //itso.num_steps_;
+    int niter = 4; //itso.num_steps_;
 
     generalized_evp_lapack evp_solver(0.0);
 
