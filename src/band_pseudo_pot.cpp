@@ -2229,9 +2229,13 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
     mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
 
-    mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
+    //mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double, 3> phi_tmp_re(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double, 3> phi_tmp_im(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
     mdarray<double_complex, 3> beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double, 3> beta_phi_re(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double, 3> beta_phi_im(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
     mdarray<double_complex, 3> d_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
     mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
@@ -2288,18 +2292,34 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                     {
                         int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        phi_tmp(j, i, thread_id) = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+                        double_complex z = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+
+                        phi_tmp_re(j, i, thread_id) = real(z);
+                        phi_tmp_im(j, i, thread_id) = imag(z);
                     }
                 }
                 timers(0, thread_id) += (omp_get_wtime() - t0);
                 
                 t0 = omp_get_wtime();
                 ///* compute <beta|phi> */
-                //linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
-                //                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
-                //                  phi_tmp.at<CPU>(0, 0, thread_id), phi_tmp.ld(), 
-                //                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld());
-                //    
+                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
+                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+                                  phi_tmp_re.at<CPU>(0, 0, thread_id), phi_tmp_re.ld(), 
+                                  beta_phi_re.at<CPU>(0, 0, thread_id), beta_phi_re.ld());
+
+                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
+                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+                                  phi_tmp_im.at<CPU>(0, 0, thread_id), phi_tmp_im.ld(), 
+                                  beta_phi_im.at<CPU>(0, 0, thread_id), beta_phi_im.ld());
+
+                for (int i = 0; i < nbnd; i++)
+                {
+                    for (int j = 0; j < nbf; j++)
+                    {
+                        beta_phi(j, i, thread_id) = double_complex(beta_phi_re(j, i, thread_id), beta_phi_im(j, i, thread_id));
+                    }
+                }
+                    
                 /* compute D * <beta|phi> */
                 linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
                                   d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
