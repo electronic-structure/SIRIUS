@@ -2294,12 +2294,12 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 timers(0, thread_id) += (omp_get_wtime() - t0);
                 
                 t0 = omp_get_wtime();
-                /* compute <beta|phi> */
-                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
-                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
-                                  phi_tmp.at<CPU>(0, 0, thread_id), phi_tmp.ld(), 
-                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld());
-                    
+                ///* compute <beta|phi> */
+                //linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
+                //                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+                //                  phi_tmp.at<CPU>(0, 0, thread_id), phi_tmp.ld(), 
+                //                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld());
+                //    
                 /* compute D * <beta|phi> */
                 linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
                                   d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,

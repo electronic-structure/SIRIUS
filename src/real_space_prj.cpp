@@ -94,7 +94,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
         auto atom_type = unit_cell_->atom_type(iat);
         double Rmask = R_beta[iat] * 1.2;
         
-        beta_projectors_[ia].beta_ = mdarray<double_complex, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
+        beta_projectors_[ia].beta_ = mdarray<double, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
 
         for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
         {
@@ -114,7 +114,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             {
                 int ir = beta_projectors_[ia].ir_[i];
                 double dist = beta_projectors_[ia].dist_[i];
-                beta_projectors_[ia].beta_(i, xi) = fft_->buffer(ir) * mask(dist, Rmask);
+                beta_projectors_[ia].beta_(i, xi) = real(fft_->buffer(ir) * mask(dist, Rmask));
             }
         }
     }
@@ -211,14 +211,14 @@ mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(Unit_cell* uc__,
     
     #pragma omp parallel
     {
-        std::vector<double_complex> gvec_ylm(Utils::lmmax(uc__->lmax_beta()));
+        std::vector<double> gvec_rlm(Utils::lmmax(uc__->lmax_beta()));
         #pragma omp for
         for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
         {
             int ig = (int)spl_num_gvec_[ig_loc];
 
             auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
-            SHT::spherical_harmonics(uc__->lmax_beta(), rtp[1], rtp[2], &gvec_ylm[0]);
+            SHT::spherical_harmonics(uc__->lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
 
             int igsh = fft_->gvec_shell(ig);
             for (int iat = 0; iat < uc__->num_atom_types(); iat++)
@@ -232,7 +232,7 @@ mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(Unit_cell* uc__,
                     int idxrf = atom_type->indexb(xi).idxrf;
 
                     double_complex z = std::pow(double_complex(0, -1), l) * fourpi / uc__->omega();
-                    beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_ylm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
+                    beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_rlm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
                 }
             }
         }
