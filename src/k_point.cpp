@@ -363,7 +363,7 @@ void K_point::update()
             }
 
             fv_states_.zero();
-            for (int i = 0; i < (int)spl_bands.local_size(); i++)
+            for (size_t i = 0; i < spl_bands.local_size(); i++)
             {
                 fv_states_(spl_bands[i], i) = complex_one;
             }
