@@ -56,6 +56,24 @@ void linalg<CPU>::gemv<ftn_double_complex>(int trans,
     FORTRAN(zgemv)(trans_c[trans], &m, &n, &alpha, A, &lda, x, &incx, &beta, y, &incy, 1);
 }
 
+template<>
+void linalg<CPU>::gemv<ftn_double>(int trans,
+                                   ftn_int m,
+                                   ftn_int n,
+                                   ftn_double alpha,
+                                   ftn_double* A,
+                                   ftn_int lda,
+                                   ftn_double* x,
+                                   ftn_int incx,
+                                   ftn_double beta,
+                                   ftn_double* y,
+                                   ftn_int incy)
+{
+    const char *trans_c[] = {"N", "T", "C"};
+
+    FORTRAN(dgemv)(trans_c[trans], &m, &n, &alpha, A, &lda, x, &incx, &beta, y, &incy, 1);
+}
+
 template<> 
 void linalg<CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m, ftn_int n, ftn_double_complex alpha, 
                                            ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb, 

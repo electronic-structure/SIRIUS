@@ -109,8 +109,6 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
         double Rmask = R_beta[iat] * 1.5;
         
         beta_projectors_[ia].beta_ = mdarray<double, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
-        beta_projectors_[ia].ir_beta_ = std::vector< std::vector<int> >(atom_type->mt_basis_size());
-        beta_projectors_[ia].T_beta_ = std::vector< std::vector< vector3d<int> > >(atom_type->mt_basis_size());
 
         for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
         {
@@ -126,23 +124,12 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             fft_->input(fft_->num_gvec(), fft_->index_map(), &beta_pw[0]);
             fft_->transform(1);
             
-            int n = 0;
             for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
             {
                 int ir = beta_projectors_[ia].ir_[i];
                 double dist = beta_projectors_[ia].dist_[i];
                 double b = real(fft_->buffer(ir) * mask(dist, Rmask));
-
-                if (std::abs(b) > 1e-4)
-                {
-                    beta_projectors_[ia].ir_beta_[xi].push_back(ir);
-                    beta_projectors_[ia].T_beta_[xi].push_back(beta_projectors_[ia].T_[i]);
-                    beta_projectors_[ia].beta_(n++, xi) = b;
-                }
-            }
-            if (comm_.rank() == 0)
-            {
-                std::cout << "ia, xi = " << ia << ", " << xi << "   num_non_zero = " << n << std::endl;
+                beta_projectors_[ia].beta_(i, xi) = b;
             }
         }
     }
