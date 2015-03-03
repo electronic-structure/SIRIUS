@@ -133,12 +133,16 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
                 double dist = beta_projectors_[ia].dist_[i];
                 double b = real(fft_->buffer(ir) * mask(dist, Rmask));
 
-                if (std::abs(b) > 1e-6)
+                if (std::abs(b) > 1e-4)
                 {
                     beta_projectors_[ia].ir_beta_[xi].push_back(ir);
                     beta_projectors_[ia].T_beta_[xi].push_back(beta_projectors_[ia].T_[i]);
                     beta_projectors_[ia].beta_(n++, xi) = b;
                 }
+            }
+            if (comm_.rank() == 0)
+            {
+                std::cout << "ia, xi = " << ia << ", " << xi << "   num_non_zero = " << n << std::endl;
             }
         }
     }
