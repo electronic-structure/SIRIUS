@@ -20,7 +20,16 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     {
         for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
         {
-            int nr = unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf];
+            int nr = 0;
+            for (int ir = unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf] - 1; ir >= 0; ir--)
+            {
+                 if (std::abs(unit_cell_->atom_type(iat)->uspp().beta_radial_functions(ir, idxrf)) > 1e-10)
+                 {
+                    nr = ir + 1;
+                    break;
+                 }
+            }
+
             R_beta[iat] = std::max(R_beta[iat], unit_cell_->atom_type(iat)->radial_grid(nr - 1));
             nmt_beta[iat] = std::max(nmt_beta[iat], nr);
 
