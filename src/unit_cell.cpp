@@ -483,7 +483,7 @@ void Unit_cell::update()
     vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
 
     //== find_nearest_neighbours(v0.length() + v1.length() + v2.length());
-    double r = std::min(v0.length(), std::min(v1.length(), v2.length()));
+    double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
     find_nearest_neighbours(r);
 
     if (full_potential())

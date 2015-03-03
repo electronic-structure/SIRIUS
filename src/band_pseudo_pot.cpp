@@ -2143,6 +2143,275 @@ void Band::apply_h_o_serial(K_point* kp__,
     #endif
 }
 
+//void Band::apply_h_o_real_space_serial(K_point* kp__, 
+//                                       std::vector<double> const& effective_potential__, 
+//                                       std::vector<double> const& pw_ekin__, 
+//                                       int N__,
+//                                       int n__,
+//                                       matrix<double_complex>& phi__,
+//                                       matrix<double_complex>& hphi__,
+//                                       matrix<double_complex>& ophi__,
+//                                       mdarray<int, 1>& packed_mtrx_offset__,
+//                                       mdarray<double_complex, 1>& d_mtrx_packed__,
+//                                       mdarray<double_complex, 1>& q_mtrx_packed__)
+//{
+//    Timer t("sirius::Band::apply_h_o_real_space_serial", kp__->comm());
+//
+//    auto uc = parameters_.unit_cell();
+//
+//    matrix<double_complex> phi, hphi, ophi;
+//
+//    switch (parameters_.processing_unit())
+//    {
+//        case CPU:
+//        {
+//            phi =  matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+//            hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+//            ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+//            break;
+//        }
+//        case GPU:
+//        {
+//            phi =  matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+//            hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+//            ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), ophi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+//            break;
+//        }
+//    }
+//
+//    auto fft = parameters_.fft_coarse();
+//    
+//    Timer t4("sirius::Band::apply_h_o_real_space_serial|phase_fac");
+//    std::vector<double_complex> k_phase_fac(fft->size());
+//    /* loop over 3D array (real space) */
+//    for (int j0 = 0; j0 < fft->size(0); j0++)
+//    {
+//        for (int j1 = 0; j1 < fft->size(1); j1++)
+//        {
+//            for (int j2 = 0; j2 < fft->size(2); j2++)
+//            {
+//                /* get real space fractional coordinate */
+//                vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
+//                int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
+//                k_phase_fac[ir] = std::exp(double_complex(0.0, twopi * (kp__->vk() * v0)));
+//            }
+//        }
+//    }
+//
+//    mdarray<double_complex, 3> T_phase_fac(mdarray_index_descriptor(-1, 1),
+//                                           mdarray_index_descriptor(-1, 1),
+//                                           mdarray_index_descriptor(-1, 1));
+//    for (int t0 = -1; t0 <= 1; t0++)
+//    {
+//        for (int t1 = -1; t1 <= 1; t1++)
+//        {
+//            for (int t2 = -1; t2 <= 1; t2++)
+//            {
+//                vector3d<int> T(t0, t1, t2);
+//                T_phase_fac(t0, t1, t2) = std::exp(double_complex(0.0, twopi * (kp__->vk() * T)));
+//            }
+//        }
+//    }
+//    t4.stop();
+//
+//    int max_num_bands_per_block = std::min(100, n__);
+//    int num_band_blocks = n__ / max_num_bands_per_block + std::min(1, n__ % max_num_bands_per_block);
+//    
+//    splindex<block> spl_bands(n__, num_band_blocks, 0);
+//
+//    mdarray<double_complex, 2>  phi_r(fft->size(), spl_bands.local_size(0));
+//    mdarray<double_complex, 2> hphi_r(fft->size(), spl_bands.local_size(0));
+//    mdarray<double_complex, 2> ophi_r(fft->size(), spl_bands.local_size(0));
+//    
+//    mdarray<double, 2> timers(4, Platform::max_num_threads());
+//    timers.zero();
+//
+//    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
+//    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
+//
+//    //mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
+//    mdarray<double, 3> phi_tmp_re(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
+//    mdarray<double, 3> phi_tmp_im(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
+//    /* <\beta_{\xi}^{\alpha}|\phi_j> */
+//    mdarray<double_complex, 3> beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+//    mdarray<double, 3> beta_phi_re(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+//    mdarray<double, 3> beta_phi_im(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+//    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+//    mdarray<double_complex, 3> d_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+//    mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+//    
+//    mdarray<double_complex, 3> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size(), Platform::max_num_threads());
+//
+//    for (int iblk = 0; iblk < num_band_blocks; iblk++)
+//    {
+//        int nbnd = (int)spl_bands.local_size(iblk);
+//
+//        Timer t0("sirius::Band::apply_h_o_real_space|fft", kp__->comm());
+//        #pragma omp parallel
+//        {
+//            int thread_id = Platform::thread_id();
+//            #pragma omp for
+//            for (int ib = 0; ib < nbnd; ib++)
+//            {
+//                int i = (int)spl_bands.global_index(ib, iblk);
+//                fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i), thread_id);
+//                /* phi(G) -> phi(r) */
+//                fft->transform(1, thread_id);
+//                fft->output(&phi_r(0, ib), thread_id);
+//
+//                for (int ir = 0; ir < fft->size(); ir++)
+//                {
+//                    /* multiply phi by effective potential */
+//                    hphi_r(ir, ib) = phi_r(ir, ib) * effective_potential__[ir];
+//                    /* set intial ophi */
+//                    ophi_r(ir, ib) = phi_r(ir, ib);
+//                }
+//            }
+//        }
+//        t0.stop();
+//
+//        Timer t2("sirius::Band::apply_h_o_real_space|nonloc", kp__->comm());
+//        #pragma omp parallel
+//        {
+//            int thread_id = Platform::thread_id();
+//
+//            double w1 = std::sqrt(uc->omega()) / fft->size();
+//            double w2 = std::sqrt(uc->omega());
+//            #pragma omp for schedule(static, 1)
+//            for (int ia = 0; ia < uc->num_atoms(); ia++)
+//            {
+//                auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
+//                int ofs = beta_prj.offset_;
+//                int npt = beta_prj.num_points_;
+//                auto type = parameters_.unit_cell()->atom(ia)->type();
+//                int nbf = type->mt_basis_size();
+//                double t0 = omp_get_wtime();
+//                for (int i = 0; i < nbnd; i++)
+//                {
+//                    for (int j = 0; j < npt; j++)
+//                    {
+//                        int ir = beta_prj.ir_[j];
+//                        auto T = beta_prj.T_[j];
+//                        double_complex z = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+//
+//                        phi_tmp_re(j, i, thread_id) = real(z);
+//                        phi_tmp_im(j, i, thread_id) = imag(z);
+//                    }
+//                }
+//                timers(0, thread_id) += (omp_get_wtime() - t0);
+//                
+//                t0 = omp_get_wtime();
+//                ///* compute <beta|phi> */
+//                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
+//                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+//                                  phi_tmp_re.at<CPU>(0, 0, thread_id), phi_tmp_re.ld(), 
+//                                  beta_phi_re.at<CPU>(0, 0, thread_id), beta_phi_re.ld());
+//
+//                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
+//                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+//                                  phi_tmp_im.at<CPU>(0, 0, thread_id), phi_tmp_im.ld(), 
+//                                  beta_phi_im.at<CPU>(0, 0, thread_id), beta_phi_im.ld());
+//
+//                for (int i = 0; i < nbnd; i++)
+//                {
+//                    for (int j = 0; j < nbf; j++)
+//                    {
+//                        beta_phi(j, i, thread_id) = double_complex(beta_phi_re(j, i, thread_id), beta_phi_im(j, i, thread_id));
+//                    }
+//                }
+//                    
+//                /* compute D * <beta|phi> */
+//                linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
+//                                  d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+//                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld(),
+//                                  d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld());
+//                
+//                /* compute Q * <beta|phi> */
+//                linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
+//                                  q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+//                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld(),
+//                                  q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld());
+//                timers(1, thread_id) += (omp_get_wtime() - t0);
+//                
+//                t0 = omp_get_wtime();
+//                for (int xi = 0; xi < nbf; xi++)
+//                {
+//                    for (int j = 0; j < npt; j++)
+//                    {
+//                        int ir = beta_prj.ir_[j];
+//                        auto T = beta_prj.T_[j];
+//                        beta_tmp(j, xi, thread_id) = beta_prj.beta_(j, xi) * w2 * conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]);
+//                    }
+//                }
+//                timers(2, thread_id) += (omp_get_wtime() - t0);
+//                
+//                t0 = omp_get_wtime();
+//                linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
+//                                  beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
+//                                  d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld(),
+//                                  hphi_tmp.at<CPU>(ofs, 0), hphi_tmp.ld());
+//
+//                linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
+//                                  beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
+//                                  q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld(),
+//                                  ophi_tmp.at<CPU>(ofs, 0), ophi_tmp.ld());
+//                timers(3, thread_id) += (omp_get_wtime() - t0);
+//            }
+//        }
+//        t2.stop();
+//        
+//        Timer t1("sirius::Band::apply_h_o_real_space|add_nonloc", kp__->comm());
+//        #pragma omp parallel for
+//        for (int ib = 0; ib < nbnd; ib++)
+//        {
+//            for (int ia = 0; ia < uc->num_atoms(); ia++)
+//            {
+//                int ofs = parameters_.real_space_prj_->beta_projectors_[ia].offset_;
+//                for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
+//                {
+//                    int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
+//                    hphi_r(ir, ib) += hphi_tmp(ofs + j, ib);
+//                    ophi_r(ir, ib) += ophi_tmp(ofs + j, ib);
+//                }
+//            }
+//        }
+//        t1.stop();
+//        
+//        t0.start();
+//        #pragma omp parallel
+//        {
+//            int thread_id = Platform::thread_id();
+//            #pragma omp for
+//            for (int ib = 0; ib < nbnd; ib++)
+//            {
+//                int i = (int)spl_bands.global_index(ib, iblk);
+//
+//                fft->input(&hphi_r(0, ib), thread_id);
+//                fft->transform(-1, thread_id);
+//                fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i), thread_id);
+//                for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
+//
+//                fft->input(&ophi_r(0, ib), thread_id);
+//                fft->transform(-1, thread_id);
+//                fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i), thread_id);
+//            }
+//        }
+//        t0.stop();
+//    }
+//
+//    if (kp__->comm().rank() == 0)
+//    {
+//        std::cout << "------------------------------------------------------------" << std::endl;
+//        std::cout << "thread_id  | load phi  | 1st zgemms | load beta | 2nd zgemms" << std::endl;
+//        std::cout << "------------------------------------------------------------" << std::endl;
+//        for (int i = 0; i < Platform::max_num_threads(); i++)
+//        {
+//            printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
+//        }
+//        std::cout << "------------------------------------------------------------" << std::endl;
+//    }
+//}
+
 void Band::apply_h_o_real_space_serial(K_point* kp__, 
                                        std::vector<double> const& effective_potential__, 
                                        std::vector<double> const& pw_ekin__, 
@@ -2214,200 +2483,130 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     }
     t4.stop();
 
-    int max_num_bands_per_block = std::min(100, n__);
-    int num_band_blocks = n__ / max_num_bands_per_block + std::min(1, n__ % max_num_bands_per_block);
-    
-    splindex<block> spl_bands(n__, num_band_blocks, 0);
-
-    mdarray<double_complex, 2>  phi_r(fft->size(), spl_bands.local_size(0));
-    mdarray<double_complex, 2> hphi_r(fft->size(), spl_bands.local_size(0));
-    mdarray<double_complex, 2> ophi_r(fft->size(), spl_bands.local_size(0));
+    mdarray<double_complex, 2> hphi_r(fft->size(), Platform::max_num_threads());
+    mdarray<double_complex, 2> ophi_r(fft->size(), Platform::max_num_threads());
     
     mdarray<double, 2> timers(4, Platform::max_num_threads());
     timers.zero();
 
-    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
-    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
-
-    //mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
-    mdarray<double, 3> phi_tmp_re(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
-    mdarray<double, 3> phi_tmp_im(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double_complex, 3> beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
-    mdarray<double, 3> beta_phi_re(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
-    mdarray<double, 3> beta_phi_im(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double_complex, 2> beta_phi(uc->max_mt_basis_size(), Platform::max_num_threads());
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double_complex, 3> d_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
-    mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double_complex, 2> d_beta_phi(uc->max_mt_basis_size(), Platform::max_num_threads());
+    mdarray<double_complex, 2> q_beta_phi(uc->max_mt_basis_size(), Platform::max_num_threads());
     
-    mdarray<double_complex, 3> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size(), Platform::max_num_threads());
+    double w1 = std::sqrt(uc->omega()) / fft->size();
+    double w2 = std::sqrt(uc->omega());
 
-    for (int iblk = 0; iblk < num_band_blocks; iblk++)
+    Timer t5("sirius::Band::apply_h_o_real_space_serial|kernel");
+    #pragma omp parallel
     {
-        int nbnd = (int)spl_bands.local_size(iblk);
+        int thread_id = Platform::thread_id();
 
-        Timer t0("sirius::Band::apply_h_o_real_space|fft", kp__->comm());
-        #pragma omp parallel
+        #pragma omp for
+        for (int ib = 0; ib < n__; ib++)
         {
-            int thread_id = Platform::thread_id();
-            #pragma omp for
-            for (int ib = 0; ib < nbnd; ib++)
+            double t0 = omp_get_wtime();
+            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, ib), thread_id);
+            /* phi(G) -> phi(r) */
+            fft->transform(1, thread_id);
+            fft->output(&ophi_r(0, thread_id), thread_id);
+            
+            for (int ir = 0; ir < fft->size(); ir++)
             {
-                int i = (int)spl_bands.global_index(ib, iblk);
-                fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i), thread_id);
-                /* phi(G) -> phi(r) */
-                fft->transform(1, thread_id);
-                fft->output(&phi_r(0, ib), thread_id);
-
-                for (int ir = 0; ir < fft->size(); ir++)
-                {
-                    /* multiply phi by effective potential */
-                    hphi_r(ir, ib) = phi_r(ir, ib) * effective_potential__[ir];
-                    /* set intial ophi */
-                    ophi_r(ir, ib) = phi_r(ir, ib);
-                }
+                /* multiply phi by effective potential */
+                hphi_r(ir, thread_id) = ophi_r(ir, thread_id) * effective_potential__[ir];
             }
-        }
-        t0.stop();
+            timers(0, thread_id) += omp_get_wtime() - t0;
 
-        Timer t2("sirius::Band::apply_h_o_real_space|nonloc", kp__->comm());
-        #pragma omp parallel
-        {
-            int thread_id = Platform::thread_id();
-
-            double w1 = std::sqrt(uc->omega()) / fft->size();
-            double w2 = std::sqrt(uc->omega());
-            #pragma omp for schedule(static, 1)
             for (int ia = 0; ia < uc->num_atoms(); ia++)
             {
-                auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
-                int ofs = beta_prj.offset_;
-                int npt = beta_prj.num_points_;
                 auto type = parameters_.unit_cell()->atom(ia)->type();
+                auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
                 int nbf = type->mt_basis_size();
+
                 double t0 = omp_get_wtime();
-                for (int i = 0; i < nbnd; i++)
+                for (int xi = 0; xi < nbf; xi++)
                 {
-                    for (int j = 0; j < npt; j++)
+                    double_complex z(0, 0);
+                    for (int j = 0; j < (int)beta_prj.ir_beta_[xi].size(); j++)
                     {
-                        int ir = beta_prj.ir_[j];
-                        auto T = beta_prj.T_[j];
-                        double_complex z = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
-
-                        phi_tmp_re(j, i, thread_id) = real(z);
-                        phi_tmp_im(j, i, thread_id) = imag(z);
+                        int ir = beta_prj.ir_beta_[xi][j];
+                        auto T = beta_prj.T_beta_[xi][j];
+                        z += fft->buffer(ir, thread_id) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir] * beta_prj.beta_(j, xi);
                     }
+                    beta_phi(xi, thread_id) = z;
                 }
-                timers(0, thread_id) += (omp_get_wtime() - t0);
-                
+                timers(1, thread_id) += omp_get_wtime() - t0;
+
                 t0 = omp_get_wtime();
-                ///* compute <beta|phi> */
-                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
-                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
-                                  phi_tmp_re.at<CPU>(0, 0, thread_id), phi_tmp_re.ld(), 
-                                  beta_phi_re.at<CPU>(0, 0, thread_id), beta_phi_re.ld());
-
-                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
-                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
-                                  phi_tmp_im.at<CPU>(0, 0, thread_id), phi_tmp_im.ld(), 
-                                  beta_phi_im.at<CPU>(0, 0, thread_id), beta_phi_im.ld());
-
-                for (int i = 0; i < nbnd; i++)
+                for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    for (int j = 0; j < nbf; j++)
+                    double_complex z1(0, 0);
+                    double_complex z2(0, 0);
+                    for (int xi2 = 0; xi2 < nbf; xi2++)
                     {
-                        beta_phi(j, i, thread_id) = double_complex(beta_phi_re(j, i, thread_id), beta_phi_im(j, i, thread_id));
+                        z1 += d_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) * beta_phi(xi2, thread_id);
+                        z2 += q_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) * beta_phi(xi2, thread_id);
                     }
+                    d_beta_phi(xi1, thread_id) = z1;
+                    q_beta_phi(xi1, thread_id) = z2;
                 }
-                    
-                /* compute D * <beta|phi> */
-                linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
-                                  d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld(),
-                                  d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld());
-                
-                /* compute Q * <beta|phi> */
-                linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
-                                  q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld(),
-                                  q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld());
-                timers(1, thread_id) += (omp_get_wtime() - t0);
-                
+                timers(2, thread_id) += omp_get_wtime() - t0;
+
                 t0 = omp_get_wtime();
                 for (int xi = 0; xi < nbf; xi++)
                 {
-                    for (int j = 0; j < npt; j++)
+                    for (int j = 0; j < (int)beta_prj.ir_beta_[xi].size(); j++)
                     {
-                        int ir = beta_prj.ir_[j];
-                        auto T = beta_prj.T_[j];
-                        beta_tmp(j, xi, thread_id) = beta_prj.beta_(j, xi) * w2 * conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]);
+                        int ir = beta_prj.ir_beta_[xi][j];
+                        auto T = beta_prj.T_beta_[xi][j];
+                        double_complex z = conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]) * beta_prj.beta_(j, xi) * w2;
+                        hphi_r(ir, thread_id) += z * d_beta_phi(xi, thread_id);
+                        ophi_r(ir, thread_id) += z * q_beta_phi(xi, thread_id);
                     }
                 }
-                timers(2, thread_id) += (omp_get_wtime() - t0);
-                
-                t0 = omp_get_wtime();
-                linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
-                                  beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
-                                  d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld(),
-                                  hphi_tmp.at<CPU>(ofs, 0), hphi_tmp.ld());
-
-                linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
-                                  beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
-                                  q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld(),
-                                  ophi_tmp.at<CPU>(ofs, 0), ophi_tmp.ld());
-                timers(3, thread_id) += (omp_get_wtime() - t0);
+                timers(3, thread_id) += omp_get_wtime() - t0;
             }
-        }
-        t2.stop();
-        
-        Timer t1("sirius::Band::apply_h_o_real_space|add_nonloc", kp__->comm());
-        #pragma omp parallel for
-        for (int ib = 0; ib < nbnd; ib++)
-        {
-            for (int ia = 0; ia < uc->num_atoms(); ia++)
-            {
-                int ofs = parameters_.real_space_prj_->beta_projectors_[ia].offset_;
-                for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
-                {
-                    int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
-                    hphi_r(ir, ib) += hphi_tmp(ofs + j, ib);
-                    ophi_r(ir, ib) += ophi_tmp(ofs + j, ib);
-                }
-            }
-        }
-        t1.stop();
-        
-        t0.start();
-        #pragma omp parallel
-        {
-            int thread_id = Platform::thread_id();
-            #pragma omp for
-            for (int ib = 0; ib < nbnd; ib++)
-            {
-                int i = (int)spl_bands.global_index(ib, iblk);
 
-                fft->input(&hphi_r(0, ib), thread_id);
-                fft->transform(-1, thread_id);
-                fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i), thread_id);
-                for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
+            t0 = omp_get_wtime();
+            fft->input(&hphi_r(0, thread_id), thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, ib), thread_id);
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, ib) += phi(igk, ib) * pw_ekin__[igk];
 
-                fft->input(&ophi_r(0, ib), thread_id);
-                fft->transform(-1, thread_id);
-                fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i), thread_id);
-            }
+            fft->input(&ophi_r(0, thread_id), thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, ib), thread_id);
+
+            timers(0, thread_id) += omp_get_wtime() - t0;
         }
-        t0.stop();
     }
-
+    double tval = t5.stop();
+    
     if (kp__->comm().rank() == 0)
     {
         std::cout << "------------------------------------------------------------" << std::endl;
-        std::cout << "thread_id  | load phi  | 1st zgemms | load beta | 2nd zgemms" << std::endl;
-        std::cout << "------------------------------------------------------------" << std::endl;
+        //std::cout << "thread_id  |    fft    |  beta_phi  | apply_d_q |   add_nl  " << std::endl;
+        //std::cout << "------------------------------------------------------------" << std::endl;
+        //for (int i = 0; i < Platform::max_num_threads(); i++)
+        //{
+        //    printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
+        //}
+        double tot[] = {0, 0, 0, 0};
         for (int i = 0; i < Platform::max_num_threads(); i++)
         {
-            printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
+            tot[0] += timers(0, i);
+            tot[1] += timers(1, i);
+            tot[2] += timers(2, i);
+            tot[3] += timers(3, i);
         }
+        printf("fft       : %8.4f\n", tot[0]);
+        printf("beta_phi  : %8.4f\n", tot[1]);
+        printf("apply_d_q : %8.4f\n", tot[2]);
+        printf("add_nl    : %8.4f\n", tot[3]);
+        printf("total     : %8.4f\n", tval);
+
         std::cout << "------------------------------------------------------------" << std::endl;
     }
 }

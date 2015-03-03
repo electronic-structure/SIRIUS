@@ -27,6 +27,10 @@ struct beta_real_space_prj_descriptor
 
     /* beta projectors on a real-space grid */
     mdarray<double, 2> beta_;
+
+    std::vector< std::vector<int> > ir_beta_;
+
+    std::vector< std::vector< vector3d<int> > > T_beta_;
 };
 
 class Real_space_prj

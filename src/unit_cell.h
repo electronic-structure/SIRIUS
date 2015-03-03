@@ -538,6 +538,11 @@ class Unit_cell
             return reciprocal_lattice_vectors_;
         }
 
+        inline vector3d<double> lattice_vector(int idx__)
+        {
+            return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
+        }
+
         inline int num_beta_t()
         {
             return num_beta_t_;

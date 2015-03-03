@@ -23,6 +23,9 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             int nr = unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf];
             R_beta[iat] = std::max(R_beta[iat], unit_cell_->atom_type(iat)->radial_grid(nr - 1));
             nmt_beta[iat] = std::max(nmt_beta[iat], nr);
+
+            std::cout << "iat, idxrf = " << iat << ", " << idxrf 
+                      << "   R_beta, N_beta = " << unit_cell_->atom_type(iat)->radial_grid(nr - 1) << ", " << nr << std::endl;
         }
     }
 
@@ -36,7 +39,16 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
     {
         int iat = unit_cell_->atom(ia)->type_id();
-        double Rmask = R_beta[iat] * 1.2;
+        double Rmask = R_beta[iat] * 1.5;
+
+        auto v0 = unit_cell_->lattice_vector(0);
+        auto v1 = unit_cell_->lattice_vector(1);
+        auto v2 = unit_cell_->lattice_vector(2);
+
+        if (2 * Rmask > v0.length() || 2 * Rmask > v1.length() || 2 * Rmask > v2.length())
+        {
+            TERMINATE("unit cell is too smal for real-space projection (beta-sphere overlaps with itself)");
+        }
 
         beta_projectors_[ia].offset_ = num_points_;
 
@@ -82,7 +94,9 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
         {
             int iat = unit_cell_->atom(ia)->type_id();
-            printf("atom: %3i,  R_beta: %8.4f, num_points: %5i\n", ia, R_beta[iat], beta_projectors_[ia].num_points_);
+            printf("atom: %3i,  R_beta: %8.4f, num_points: %5i, estimated num_points: %5i\n", ia, R_beta[iat],
+                   beta_projectors_[ia].num_points_,
+                   static_cast<int>(fft_->size() * fourpi * std::pow(1.5 * R_beta[iat], 3) / 3.0 / unit_cell_->omega()));
         }
         printf("sum(num_points): %i\n", num_points_);
     }
@@ -92,9 +106,11 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     {
         int iat = unit_cell_->atom(ia)->type_id();
         auto atom_type = unit_cell_->atom_type(iat);
-        double Rmask = R_beta[iat] * 1.2;
+        double Rmask = R_beta[iat] * 1.5;
         
         beta_projectors_[ia].beta_ = mdarray<double, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
+        beta_projectors_[ia].ir_beta_ = std::vector< std::vector<int> >(atom_type->mt_basis_size());
+        beta_projectors_[ia].T_beta_ = std::vector< std::vector< vector3d<int> > >(atom_type->mt_basis_size());
 
         for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
         {
@@ -109,12 +125,20 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
             fft_->input(fft_->num_gvec(), fft_->index_map(), &beta_pw[0]);
             fft_->transform(1);
-
+            
+            int n = 0;
             for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
             {
                 int ir = beta_projectors_[ia].ir_[i];
                 double dist = beta_projectors_[ia].dist_[i];
-                beta_projectors_[ia].beta_(i, xi) = real(fft_->buffer(ir) * mask(dist, Rmask));
+                double b = real(fft_->buffer(ir) * mask(dist, Rmask));
+
+                if (std::abs(b) > 1e-6)
+                {
+                    beta_projectors_[ia].ir_beta_[xi].push_back(ir);
+                    beta_projectors_[ia].T_beta_[xi].push_back(beta_projectors_[ia].T_[i]);
+                    beta_projectors_[ia].beta_(n++, xi) = b;
+                }
             }
         }
     }

@@ -1356,7 +1356,9 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             }
             if (imag(ovlp(i, i)) > 1e-10)
             {
-                TERMINATE("wrong diagonal of O");
+                std::stringstream s;
+                s << "wrong diagonal of O: " << ovlp(i, i);
+                TERMINATE(s);
             }
             hmlt(i, i) = real(hmlt(i, i));
             ovlp(i, i) = real(ovlp(i, i));
