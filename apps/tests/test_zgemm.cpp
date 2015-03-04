@@ -40,7 +40,7 @@ void test_gemm(int M, int N, int K, int transa)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     sirius::Timer t1("gemm_only"); 
-    blas<cpu>::gemm(transa, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
+    linalg<CPU>::gemm(transa, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
     t1.stop();
     printf("execution time (sec) : %12.6f\n", t1.value());
     printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value());
@@ -53,14 +53,14 @@ typedef double_complex gemm_type;
 #endif
 
 #ifdef _SCALAPACK_
-double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
+double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, int bs)
 {
     //== #ifdef _GPU_
     //== sirius::pstdout pout;
     //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
     //== pout.flush(0);
     //== #endif
-    BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol);
+    BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol, bs);
 
     dmatrix<gemm_type> a, b, c;
     if (transa == 0)
@@ -92,13 +92,13 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     if (Platform::comm_world().rank() == 0)
     {
         printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
-        printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, linalg<scalapack>::cyclic_block_size());
+        printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
     Platform::comm_world().barrier();
     sirius::Timer t1("gemm_only"); 
     gemm_type one = 1;
     gemm_type zero = 0;
-    blas<cpu>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
+    linalg<CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
@@ -159,9 +159,8 @@ int main(int argn, char **argv)
     {
         #ifdef _SCALAPACK_
         int bs = args.value<int>("bs");
-        linalg<scalapack>::set_cyclic_block_size(bs);
         double perf = 0;
-        for (int i = 0; i < repeat; i++) perf += test_pgemm(M, N, K, nrow, ncol, transa, n);
+        for (int i = 0; i < repeat; i++) perf += test_pgemm(M, N, K, nrow, ncol, transa, n, bs);
         if (Platform::comm_world().rank() == 0)
         {
             printf("\n");
