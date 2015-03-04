@@ -4,12 +4,31 @@ namespace sirius {
 
 Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
                                FFT3D<CPU>* fft__,
-                               Communicator const& comm__)
+                               Communicator const& comm__,
+                               double R_mask_scale__)
     : unit_cell_(unit_cell__),
       fft_(fft__),
-      comm_(comm__)
+      comm_(comm__),
+      R_mask_scale_(R_mask_scale__)
 {
     Timer t("sirius::Real_space_prj::Real_space_prj");
+
+    //== for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    //== {
+    //==     std::stringstream s;
+    //==     s << "beta_rf_" << iat << ".dat";
+    //==     FILE* fout = fopen(s.str().c_str(), "w");
+    //==     for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+    //==     {
+    //==         for (int ir = 0; ir < unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf]; ir++)
+    //==         {
+    //==             fprintf(fout, "%18.12f %18.12f\n", unit_cell_->atom_type(iat)->radial_grid(ir), 
+    //==                                                unit_cell_->atom_type(iat)->uspp().beta_radial_functions(ir, idxrf));
+    //==         }
+    //==         fprintf(fout, "\n");
+    //==     }
+    //==     fclose(fout);
+    //== }
 
     spl_num_gvec_ = splindex<block>(fft_->num_gvec(), comm_.size(), comm_.rank());
 
@@ -33,8 +52,11 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             R_beta[iat] = std::max(R_beta[iat], unit_cell_->atom_type(iat)->radial_grid(nr - 1));
             nmt_beta[iat] = std::max(nmt_beta[iat], nr);
 
-            std::cout << "iat, idxrf = " << iat << ", " << idxrf 
-                      << "   R_beta, N_beta = " << unit_cell_->atom_type(iat)->radial_grid(nr - 1) << ", " << nr << std::endl;
+            if (comm_.rank() == 0)
+            {
+                std::cout << "iat, idxrf = " << iat << ", " << idxrf 
+                          << "   R_beta, N_beta = " << unit_cell_->atom_type(iat)->radial_grid(nr - 1) << ", " << nr << std::endl;
+            }
         }
     }
 
@@ -48,7 +70,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
     {
         int iat = unit_cell_->atom(ia)->type_id();
-        double Rmask = R_beta[iat] * 1.5;
+        double Rmask = R_beta[iat] * R_mask_scale_;
 
         auto v0 = unit_cell_->lattice_vector(0);
         auto v1 = unit_cell_->lattice_vector(1);
@@ -105,7 +127,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             int iat = unit_cell_->atom(ia)->type_id();
             printf("atom: %3i,  R_beta: %8.4f, num_points: %5i, estimated num_points: %5i\n", ia, R_beta[iat],
                    beta_projectors_[ia].num_points_,
-                   static_cast<int>(fft_->size() * fourpi * std::pow(1.5 * R_beta[iat], 3) / 3.0 / unit_cell_->omega()));
+                   static_cast<int>(fft_->size() * fourpi * std::pow(R_mask_scale_ * R_beta[iat], 3) / 3.0 / unit_cell_->omega()));
         }
         printf("sum(num_points): %i\n", num_points_);
     }
@@ -115,7 +137,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     {
         int iat = unit_cell_->atom(ia)->type_id();
         auto atom_type = unit_cell_->atom_type(iat);
-        double Rmask = R_beta[iat] * 1.5;
+        double Rmask = R_beta[iat] * R_mask_scale_;
         
         beta_projectors_[ia].beta_ = mdarray<double, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
 
@@ -163,7 +185,7 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(Unit_cell* uc_
         std::vector<double> radial_grid_points(nmt_beta__[iat]);
         for (int ir = 0; ir < nmt_beta__[iat]; ir++) radial_grid_points[ir] = uc__->atom_type(iat)->radial_grid(ir);
         beta_radial_grid[iat] = Radial_grid(nmt_beta__[iat], &radial_grid_points[0]);
-        double Rmask = R_beta__[iat] * 1.5;
+        double Rmask = R_beta__[iat] * R_mask_scale_;
 
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
         {

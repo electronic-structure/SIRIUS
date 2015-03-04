@@ -41,6 +41,8 @@ class Real_space_prj
 
         Communicator const& comm_;
 
+        double R_mask_scale_;
+
         double mask(double x__, double R__)
         {
             return std::pow(x__ / R__, 2) - 2 * (x__ / R__) + 1;
@@ -61,7 +63,7 @@ class Real_space_prj
 
         int num_points_;
 
-        Real_space_prj(Unit_cell* unit_cell__, FFT3D<CPU>* fft__, Communicator const& comm__);
+        Real_space_prj(Unit_cell* unit_cell__, FFT3D<CPU>* fft__, Communicator const& comm__, double R_mask_scale__);
 };
 
 };

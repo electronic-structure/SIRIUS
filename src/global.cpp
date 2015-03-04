@@ -222,7 +222,8 @@ void Global::initialize()
 
     if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, fft_, comm_);
 
-    if (iip_.iterative_solver_input_section_.real_space_prj_) real_space_prj_ = new Real_space_prj(unit_cell_, fft_coarse_, comm_);
+    if (iip_.iterative_solver_input_section_.real_space_prj_) 
+        real_space_prj_ = new Real_space_prj(unit_cell_, fft_coarse_, comm_, iip_.iterative_solver_input_section_.R_mask_scale_);
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 

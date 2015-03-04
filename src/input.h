@@ -242,6 +242,7 @@ class initial_input_parameters
             std::string type_;
             int converge_by_energy_;
             int real_space_prj_;
+            double R_mask_scale_;
 
             iterative_solver_input_section() 
                 : num_steps_(4),
@@ -251,7 +252,8 @@ class initial_input_parameters
                   version_(1),
                   type_("davidson"),
                   converge_by_energy_(0),
-                  real_space_prj_(0)
+                  real_space_prj_(0),
+                  R_mask_scale_(1.5)
             {
             }
 
@@ -265,6 +267,7 @@ class initial_input_parameters
                 type_               = parser["iterative_solver"]["type"].get(type_);
                 converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
                 real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
+                R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
             }
 
         } iterative_solver_input_section_;

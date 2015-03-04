@@ -2501,6 +2501,8 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
 
     mdarray<double, 2> phi_tmp_re(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
     mdarray<double, 2> phi_tmp_im(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
+
+    mdarray<double_complex, 2> phase(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
     
     double w1 = std::sqrt(uc->omega()) / fft->size();
     double w2 = std::sqrt(uc->omega());
@@ -2539,7 +2541,8 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 {
                     int ir = beta_prj.ir_[j];
                     auto T = beta_prj.T_[j];
-                    double_complex z = fft->buffer(ir, thread_id) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+                    phase(j, thread_id) = conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+                    double_complex z = fft->buffer(ir, thread_id) * w1 * phase(j, thread_id);
                     phi_tmp_re(j, thread_id) = real(z);
                     phi_tmp_im(j, thread_id) = imag(z);
                 }
@@ -2581,9 +2584,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 for (int j = 0; j < npt; j++)
                 {
                     int ir = beta_prj.ir_[j];
-                    auto T = beta_prj.T_[j];
-                    hphi_r(ir, thread_id) += T_phase_fac(T[0], T[1], T[2]) * conj(k_phase_fac[ir]) * 
-                                             double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
+                    hphi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
                 }
 
                 linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
@@ -2594,9 +2595,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 for (int j = 0; j < npt; j++)
                 {
                     int ir = beta_prj.ir_[j];
-                    auto T = beta_prj.T_[j];
-                    ophi_r(ir, thread_id) += T_phase_fac(T[0], T[1], T[2]) * conj(k_phase_fac[ir]) * 
-                                             double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
+                    ophi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
                 }
                 
                 timers(3, thread_id) += omp_get_wtime() - t0;
