@@ -98,6 +98,9 @@ test_alltoall: test_alltoall.cpp $(LIB_SIRIUS)
 test_transpose: test_transpose.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
+test_fft: test_fft.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
+
 clean:
 	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
 	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
