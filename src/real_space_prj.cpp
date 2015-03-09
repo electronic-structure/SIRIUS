@@ -3,11 +3,12 @@
 namespace sirius {
 
 Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
-                               FFT3D<CPU>* fft__,
                                Communicator const& comm__,
-                               double R_mask_scale__)
+                               double R_mask_scale__,
+                               double pw_cutoff__,
+                               int num_fft_threads__,
+                               int num_fft_workers__)
     : unit_cell_(unit_cell__),
-      fft_(fft__),
       comm_(comm__),
       R_mask_scale_(R_mask_scale__)
 {
@@ -29,6 +30,11 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     //==     }
     //==     fclose(fout);
     //== }
+
+    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff__, unit_cell_->reciprocal_lattice_vectors()),
+                          num_fft_threads__, num_fft_workers__);
+
+    fft_->init_gvec(pw_cutoff__, unit_cell_->reciprocal_lattice_vectors());
 
     spl_num_gvec_ = splindex<block>(fft_->num_gvec(), comm_.size(), comm_.rank());
 
@@ -161,6 +167,48 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
                 double dist = beta_projectors_[ia].dist_[i];
                 double b = real(fft_->buffer(ir) * mask(dist, Rmask));
                 beta_projectors_[ia].beta_(i, xi) = b;
+            }
+        }
+
+        if (true)
+        {
+            std::vector<double> radial_grid_points(nmt_beta[iat]);
+            for (int ir = 0; ir < nmt_beta[iat]; ir++) radial_grid_points[ir] = atom_type->radial_grid(ir);
+            Radial_grid beta_radial_grid(nmt_beta[iat], &radial_grid_points[0]);
+
+            Spline<double> s(beta_radial_grid);
+            
+            double err = 0;
+            for (int xi1 = 0; xi1 < atom_type->mt_basis_size(); xi1++)
+            {
+                int lm1 = atom_type->indexb(xi1).lm;
+                int idxrf1 = atom_type->indexb(xi1).idxrf;
+                for (int xi2 = 0; xi2 < atom_type->mt_basis_size(); xi2++)
+                {
+                    int lm2 = atom_type->indexb(xi2).lm;
+                    int idxrf2 = atom_type->indexb(xi2).idxrf;
+                    double prod = 0;
+                    for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
+                    {
+                        prod += beta_projectors_[ia].beta_(i, xi1) * beta_projectors_[ia].beta_(i, xi2);
+                    }
+                    prod *= (unit_cell_->omega() / fft_->size());
+                    
+                    double exact_prod = 0;
+                    if (lm1 == lm2)
+                    {
+                        for (int ir = 0; ir < nmt_beta[iat]; ir++) 
+                        {
+                            s[ir] = atom_type->uspp().beta_radial_functions(ir, idxrf1) * atom_type->uspp().beta_radial_functions(ir, idxrf2);
+                        }
+                        exact_prod = s.interpolate().integrate(0);
+                    }
+                    err += std::abs(prod - exact_prod);
+                }
+            }
+            if (comm_.rank() == 0)
+            {
+                printf("atom: %i, projector errror: %12.6f\n", ia, err);
             }
         }
     }

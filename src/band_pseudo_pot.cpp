@@ -2448,7 +2448,21 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         }
     }
 
-    auto fft = parameters_.fft_coarse();
+    /* apply local part of Hamiltonian */
+    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
+    
+    /* set intial ophi */
+    phi >> ophi;
+
+    auto fft = parameters_.real_space_prj_->fft();
+
+    std::vector<int> fft_index(kp__->num_gkvec());
+    for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+    {
+        vector3d<int> gvec = kp__->gvec(igk);
+        /* linear index inside coarse FFT buffer */
+        fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
+    }
     
     Timer t4("sirius::Band::apply_h_o_real_space_serial|phase_fac");
     std::vector<double_complex> k_phase_fac(fft->size());
@@ -2515,17 +2529,13 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         #pragma omp for
         for (int ib = 0; ib < n__; ib++)
         {
+            memset(&hphi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
+            memset(&ophi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
+
             double t0 = omp_get_wtime();
-            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, ib), thread_id);
+            fft->input(kp__->num_gkvec(), &fft_index[0], &phi(0, ib), thread_id);
             /* phi(G) -> phi(r) */
             fft->transform(1, thread_id);
-            fft->output(&ophi_r(0, thread_id), thread_id);
-            
-            for (int ir = 0; ir < fft->size(); ir++)
-            {
-                /* multiply phi by effective potential */
-                hphi_r(ir, thread_id) = ophi_r(ir, thread_id) * effective_potential__[ir];
-            }
             timers(0, thread_id) += omp_get_wtime() - t0;
 
             for (int ia = 0; ia < uc->num_atoms(); ia++)
@@ -2604,12 +2614,11 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
             t0 = omp_get_wtime();
             fft->input(&hphi_r(0, thread_id), thread_id);
             fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, ib), thread_id);
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, ib) += phi(igk, ib) * pw_ekin__[igk];
+            fft->output(kp__->num_gkvec(), &fft_index[0], &hphi(0, ib), thread_id, 1.0);
 
             fft->input(&ophi_r(0, thread_id), thread_id);
             fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, ib), thread_id);
+            fft->output(kp__->num_gkvec(), &fft_index[0], &ophi(0, ib), thread_id, 1.0);
 
             timers(0, thread_id) += omp_get_wtime() - t0;
         }

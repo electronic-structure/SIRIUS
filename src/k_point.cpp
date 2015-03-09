@@ -721,8 +721,6 @@ void K_point::generate_gkvec(double gk_cutoff)
 
     gkvec_ = mdarray<double, 2>(3, gkmap.size());
 
-    //== gkvec_gpu_ = mdarray<double, 2>(gkmap.size(), 3);
-
     gvec_index_.resize(gkmap.size());
 
     for (int ig = 0; ig < (int)gkmap.size(); ig++)
@@ -731,7 +729,6 @@ void K_point::generate_gkvec(double gk_cutoff)
         for (int x = 0; x < 3; x++)
         {
             gkvec_(x, ig) = parameters_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
-            //= gkvec_gpu_(ig, x) = gkvec_(x, ig);
         }
     }
     

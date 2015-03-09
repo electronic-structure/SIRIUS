@@ -271,6 +271,11 @@ class K_point
         
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
+
+        vector3d<int> gvec(int igk__)
+        {
+            return parameters_.reciprocal_lattice()->gvec(gvec_index(igk__));
+        }
         
         /// Global index of G-vector by the index of G+k vector
         inline int gvec_index(int igk) 

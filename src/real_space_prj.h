@@ -63,7 +63,22 @@ class Real_space_prj
 
         int num_points_;
 
-        Real_space_prj(Unit_cell* unit_cell__, FFT3D<CPU>* fft__, Communicator const& comm__, double R_mask_scale__);
+        Real_space_prj(Unit_cell* unit_cell__,
+                       Communicator const& comm__,
+                       double R_mask_scale__,
+                       double pw_cutoff__,
+                       int num_fft_threads__,
+                       int num_fft_workers__);
+
+        ~Real_space_prj()
+        {
+            delete fft_;
+        }
+
+        FFT3D<CPU>* fft()
+        {
+            return fft_;
+        }
 };
 
 };
