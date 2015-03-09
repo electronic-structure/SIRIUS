@@ -1853,13 +1853,13 @@ void Band::apply_h_serial(K_point* kp__,
                           int n__,
                           matrix<double_complex>& phi__,
                           matrix<double_complex>& hphi__,
-                          matrix<double_complex>& kappa__,
+                          mdarray<double_complex, 1>& kappa__,
                           mdarray<int, 1>& packed_mtrx_offset__,
                           mdarray<double_complex, 1>& d_mtrx_packed__)
 {
     Timer t("sirius::Band::apply_h_serial");
 
-    auto uc = parameters_.unit_cell();
+    //auto uc = parameters_.unit_cell();
 
     matrix<double_complex> phi, hphi;
     
@@ -1878,14 +1878,14 @@ void Band::apply_h_serial(K_point* kp__,
     }
     if (parameters_.processing_unit() == GPU && economize_gpu_memory)
     {
-        double_complex* gpu_ptr = kappa__.at<GPU>(0, parameters_.unit_cell()->mt_basis_size());
+        double_complex* gpu_ptr = kappa__.at<GPU>(kp__->num_gkvec() * parameters_.unit_cell()->mt_basis_size());
         phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
     }
     
     /* apply local part of Hamiltonian */
     apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
-    
+
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
     {
@@ -1894,47 +1894,7 @@ void Band::apply_h_serial(K_point* kp__,
     }
     #endif
 
-    /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
-
-    /* D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    matrix<double_complex> work(uc->mt_lo_basis_size(), n__);
-
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU)
-    {
-        beta_phi.allocate_on_device();
-        work.allocate_on_device();
-    }
-    #endif
-
-    if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
-    {
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk(), beta_phi);
-
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
-                                         hphi, n__, 0, complex_one, work);
-    }
-    else
-    {
-        #ifdef _GPU_
-        kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, kappa__);
-        phi.copy_to_device();
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kappa__, beta_phi);
-        
-        hphi.copy_to_device();
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kappa__, d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
-                                         hphi, n__, 0, complex_one, work);
-        hphi.copy_to_host();
-        #else
-        TERMINATE_NO_GPU
-        #endif
-    }
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
-    #endif
+    add_non_local_contribution_serial(kp__, N__, n__, phi__, hphi__, kappa__, packed_mtrx_offset__, d_mtrx_packed__, complex_one);
 }
 
 /** \param [in] phi Input wave-functions [storage: CPU || GPU].
@@ -1945,7 +1905,7 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
                                              int n__,
                                              matrix<double_complex>& phi__,
                                              matrix<double_complex>& op_phi__, 
-                                             matrix<double_complex>& kappa__,
+                                             mdarray<double_complex, 1>& kappa__,
                                              mdarray<int, 1> const& packed_mtrx_offset__,
                                              mdarray<double_complex, 1>& op_mtrx_packed__,
                                              double_complex alpha)
@@ -1955,7 +1915,7 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
 
-    matrix<double_complex> phi, op_phi;
+    matrix<double_complex> phi, op_phi, beta_gk;
     
     /* if temporary array is allocated, this would be the only big array on GPU */
     bool economize_gpu_memory = (kappa__.size() != 0);
@@ -1972,9 +1932,10 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
     }
     if (parameters_.processing_unit() == GPU && economize_gpu_memory)
     {
-        double_complex* gpu_ptr = kappa__.at<GPU>(0, parameters_.unit_cell()->mt_basis_size());
+        double_complex* gpu_ptr = kappa__.at<GPU>(kp__->num_gkvec() * uc->mt_basis_size());
         phi    = matrix<double_complex>(   phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
         op_phi = matrix<double_complex>(op_phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+        beta_gk = matrix<double_complex>(nullptr, kappa__.at<GPU>(), kp__->num_gkvec(), uc->mt_basis_size());
     }
     
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
@@ -2002,13 +1963,13 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
     else
     {
         #ifdef _GPU_
-        kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, kappa__);
+        kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, beta_gk);
         phi.copy_to_device();
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kappa__, beta_phi);
+        kp__->generate_beta_phi(uc->mt_basis_size(), phi, n__, 0, beta_gk, beta_phi);
         
         op_phi.copy_to_device();
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kappa__, op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_basis_size(), uc->beta_chunk(0).desc_,
+                                         beta_gk, op_mtrx_packed__, packed_mtrx_offset__, beta_phi,
                                          op_phi, n__, 0, alpha, work);
         op_phi.copy_to_host();
         #else
@@ -2035,7 +1996,7 @@ void Band::apply_h_o_serial(K_point* kp__,
                             matrix<double_complex>& phi__,
                             matrix<double_complex>& hphi__,
                             matrix<double_complex>& ophi__,
-                            matrix<double_complex>& kappa__,
+                            mdarray<double_complex, 1>& kappa__,
                             mdarray<int, 1>& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__,
                             mdarray<double_complex, 1>& q_mtrx_packed__)
@@ -2044,29 +2005,30 @@ void Band::apply_h_o_serial(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
 
-    matrix<double_complex> phi, hphi, ophi;
+    matrix<double_complex> phi, hphi, ophi, beta_gk;
     
     /* if temporary array is allocated, this would be the only big array on GPU */
     bool economize_gpu_memory = (kappa__.size() != 0);
 
     if (parameters_.processing_unit() == CPU)
     {
-        phi =  matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+        phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
         ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
     }
     if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
     {
-        phi =  matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+        phi  = matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
         ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), ophi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
     }
     if (parameters_.processing_unit() == GPU && economize_gpu_memory)
     {
-        double_complex* gpu_ptr = kappa__.at<GPU>(0, parameters_.unit_cell()->mt_basis_size());
-        phi =  matrix<double_complex>( phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+        double_complex* gpu_ptr = kappa__.at<GPU>(kp__->num_gkvec() * uc->mt_basis_size());
+        phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
         ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
+        beta_gk = matrix<double_complex>(nullptr, kappa__.at<GPU>(), kp__->num_gkvec(), uc->mt_basis_size());
     }
     
     /* apply local part of Hamiltonian */
@@ -2076,71 +2038,273 @@ void Band::apply_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory)) 
         phi >> ophi;
 
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+    if (!kp__->iterative_solver_input_section_.real_space_prj_)
     {
-        /* copy hphi do device */
-        hphi.copy_to_device();
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+        {
+            /* copy hphi do device */
+            hphi.copy_to_device();
 
-        /* set intial ophi */
-        cuda_copy_device_to_device(ophi.at<GPU>(), phi.at<GPU>(), kp__->num_gkvec_row() * n__ * sizeof(double_complex));
-    }
-    #endif
+            /* set intial ophi */
+            cuda_copy_device_to_device(ophi.at<GPU>(), phi.at<GPU>(), kp__->num_gkvec() * n__ * sizeof(double_complex));
+        }
+        #endif
 
-    /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
+        /* <\beta_{\xi}^{\alpha}|\phi_j> */
+        matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
 
-    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    matrix<double_complex> work(uc->mt_lo_basis_size(), n__);
+        /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+        matrix<double_complex> work(uc->mt_lo_basis_size(), n__);
 
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU)
-    {
-        beta_phi.allocate_on_device();
-        work.allocate_on_device();
-    }
-    #endif
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == GPU)
+        {
+            beta_phi.allocate_on_device();
+            work.allocate_on_device();
+        }
+        #endif
 
-    if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
-    {
-        /* compute <beta|phi> */
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk(), beta_phi);
-       
-        /* add |beta>D<beta|phi> to |hphi> */
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
-                                         hphi, n__, 0, complex_one, work);
+        if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && !economize_gpu_memory))
+        {
+            /* compute <beta|phi> */
+            kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_gk(), beta_phi);
+           
+            /* add |beta>D<beta|phi> to |hphi> */
+            kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_basis_size(), uc->beta_chunk(0).desc_,
+                                             kp__->beta_gk(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                             hphi, n__, 0, complex_one, work);
+                
+            /* add |beta>Q<beta|phi> to |ophi> */
+            kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_basis_size(), uc->beta_chunk(0).desc_,
+                                             kp__->beta_gk(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                             ophi, n__, 0, complex_one, work);
+        }
+        else
+        {
+            #ifdef _GPU_
+            kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, beta_gk);
+            phi.copy_to_device();
+            kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, beta_gk, beta_phi);
             
-        /* add |beta>Q<beta|phi> to |ophi> */
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kp__->beta_gk(), q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
-                                         ophi, n__, 0, complex_one, work);
+            hphi.copy_to_device();
+            kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_basis_size(), uc->beta_chunk(0).desc_,
+                                             beta_gk, d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                             hphi, n__, 0, complex_one, work);
+            hphi.copy_to_host();
+            
+            ophi.copy_to_device();    
+            kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_basis_size(), uc->beta_chunk(0).desc_,
+                                             beta_gk, q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
+                                             ophi, n__, 0, complex_one, work);
+            ophi.copy_to_host();
+            #else
+            TERMINATE_NO_GPU
+            #endif
+        }
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
+        #endif
     }
     else
     {
-        #ifdef _GPU_
-        kp__->generate_beta_gk(uc->num_atoms(), uc->beta_chunk(0).atom_pos_, uc->beta_chunk(0).desc_, kappa__);
-        phi.copy_to_device();
-        kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kappa__, beta_phi);
+        auto rsp = parameters_.real_space_prj_;
+        auto fft = parameters_.real_space_prj_->fft();
+
+        std::vector<int> fft_index(kp__->num_gkvec());
+        for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+        {
+            vector3d<int> gvec = kp__->gvec(igk);
+            /* linear index inside coarse FFT buffer */
+            fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
+        }
         
-        hphi.copy_to_device();
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kappa__, d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
-                                         hphi, n__, 0, complex_one, work);
-        hphi.copy_to_host();
+        std::vector<double_complex> k_phase_fac(fft->size());
+        /* loop over 3D array (real space) */
+        for (int j0 = 0; j0 < fft->size(0); j0++)
+        {
+            for (int j1 = 0; j1 < fft->size(1); j1++)
+            {
+                for (int j2 = 0; j2 < fft->size(2); j2++)
+                {
+                    /* get real space fractional coordinate */
+                    vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
+                    int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
+                    k_phase_fac[ir] = std::exp(double_complex(0.0, twopi * (kp__->vk() * v0)));
+                }
+            }
+        }
+
+        mdarray<double_complex, 3> T_phase_fac(mdarray_index_descriptor(-1, 1),
+                                               mdarray_index_descriptor(-1, 1),
+                                               mdarray_index_descriptor(-1, 1));
+        for (int t0 = -1; t0 <= 1; t0++)
+        {
+            for (int t1 = -1; t1 <= 1; t1++)
+            {
+                for (int t2 = -1; t2 <= 1; t2++)
+                {
+                    vector3d<int> T(t0, t1, t2);
+                    T_phase_fac(t0, t1, t2) = std::exp(double_complex(0.0, twopi * (kp__->vk() * T)));
+                }
+            }
+        }
+
+        mdarray<double_complex, 2> hphi_r(kappa__.at<CPU>(),              fft->size(), fft->num_fft_threads());
+        mdarray<double_complex, 2> ophi_r(kappa__.at<CPU>(hphi_r.size()), fft->size(), fft->num_fft_threads());
         
-        ophi.copy_to_device();    
-        kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
-                                         kappa__, q_mtrx_packed__, packed_mtrx_offset__, beta_phi,
-                                         ophi, n__, 0, complex_one, work);
-        ophi.copy_to_host();
-        #else
-        TERMINATE_NO_GPU
-        #endif
+        mdarray<double, 2> timers(4, Platform::max_num_threads());
+        timers.zero();
+
+        /* <\beta_{\xi}^{\alpha}|\phi_j> */
+        mdarray<double, 2> beta_phi_re(uc->max_mt_basis_size(), fft->num_fft_threads());
+        mdarray<double, 2> beta_phi_im(uc->max_mt_basis_size(), fft->num_fft_threads());
+
+        /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+        mdarray<double, 2> d_beta_phi_re(uc->max_mt_basis_size(), fft->num_fft_threads());
+        mdarray<double, 2> d_beta_phi_im(uc->max_mt_basis_size(), fft->num_fft_threads());
+        mdarray<double, 2> q_beta_phi_re(uc->max_mt_basis_size(), fft->num_fft_threads());
+        mdarray<double, 2> q_beta_phi_im(uc->max_mt_basis_size(), fft->num_fft_threads());
+        
+        double* ptr = (double*)kappa__.at<CPU>(2 * hphi_r.size());
+        mdarray<double, 2> phi_tmp_re(ptr,                     rsp->max_num_points_, fft->num_fft_threads());
+        mdarray<double, 2> phi_tmp_im(&ptr[phi_tmp_re.size()], rsp->max_num_points_, fft->num_fft_threads());
+
+        mdarray<double_complex, 2> phase(rsp->max_num_points_, fft->num_fft_threads());
+        
+        double w1 = std::sqrt(uc->omega()) / fft->size();
+        double w2 = std::sqrt(uc->omega());
+
+        Timer t5("sirius::Band::apply_h_o_serial|real_space_kernel");
+        #pragma omp parallel num_threads(fft->num_fft_threads())
+        {
+            int thread_id = Platform::thread_id();
+
+            #pragma omp for
+            for (int ib = 0; ib < n__; ib++)
+            {
+                memset(&hphi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
+                memset(&ophi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
+
+                double t0 = omp_get_wtime();
+                fft->input(kp__->num_gkvec(), &fft_index[0], &phi(0, ib), thread_id);
+                /* phi(G) -> phi(r) */
+                fft->transform(1, thread_id);
+                timers(0, thread_id) += omp_get_wtime() - t0;
+
+                for (int ia = 0; ia < uc->num_atoms(); ia++)
+                {
+                    auto type = parameters_.unit_cell()->atom(ia)->type();
+                    auto& beta_prj = rsp->beta_projectors_[ia];
+                    int nbf = type->mt_basis_size();
+                    int npt = beta_prj.num_points_;
+
+                    double t0 = omp_get_wtime();
+
+                    for (int j = 0; j < npt; j++)
+                    {
+                        int ir = beta_prj.ir_[j];
+                        auto T = beta_prj.T_[j];
+                        phase(j, thread_id) = conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+                        double_complex z = fft->buffer(ir, thread_id) * w1 * phase(j, thread_id);
+                        phi_tmp_re(j, thread_id) = real(z);
+                        phi_tmp_im(j, thread_id) = imag(z);
+                    }
+
+                    linalg<CPU>::gemv(1, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+                                      &phi_tmp_re(0, thread_id), 1, 0.0, &beta_phi_re(0, thread_id), 1);
+
+                    linalg<CPU>::gemv(1, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+                                      &phi_tmp_im(0, thread_id), 1, 0.0, &beta_phi_im(0, thread_id), 1);
+
+                    timers(1, thread_id) += omp_get_wtime() - t0;
+
+                    t0 = omp_get_wtime();
+                    for (int xi1 = 0; xi1 < nbf; xi1++)
+                    {
+                        double_complex z1(0, 0);
+                        double_complex z2(0, 0);
+                        for (int xi2 = 0; xi2 < nbf; xi2++)
+                        {
+                            z1 += d_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) *
+                                  double_complex(beta_phi_re(xi2, thread_id), beta_phi_im(xi2, thread_id));
+                            z2 += q_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) *
+                                  double_complex(beta_phi_re(xi2, thread_id), beta_phi_im(xi2, thread_id));
+                        }
+                        d_beta_phi_re(xi1, thread_id) = real(z1);
+                        d_beta_phi_im(xi1, thread_id) = imag(z1);
+                        q_beta_phi_re(xi1, thread_id) = real(z2);
+                        q_beta_phi_im(xi1, thread_id) = imag(z2);
+                    }
+                    timers(2, thread_id) += omp_get_wtime() - t0;
+
+                    t0 = omp_get_wtime();
+                    
+                    linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+                                      &d_beta_phi_re(0, thread_id), 1, 0.0, &phi_tmp_re(0, thread_id), 1);
+                    linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+                                      &d_beta_phi_im(0, thread_id), 1, 0.0, &phi_tmp_im(0, thread_id), 1);
+
+                    for (int j = 0; j < npt; j++)
+                    {
+                        int ir = beta_prj.ir_[j];
+                        hphi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
+                    }
+
+                    linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+                                      &q_beta_phi_re(0, thread_id), 1, 0.0, &phi_tmp_re(0, thread_id), 1);
+                    linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+                                      &q_beta_phi_im(0, thread_id), 1, 0.0, &phi_tmp_im(0, thread_id), 1);
+
+                    for (int j = 0; j < npt; j++)
+                    {
+                        int ir = beta_prj.ir_[j];
+                        ophi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
+                    }
+                    
+                    timers(3, thread_id) += omp_get_wtime() - t0;
+                }
+
+                t0 = omp_get_wtime();
+                fft->input(&hphi_r(0, thread_id), thread_id);
+                fft->transform(-1, thread_id);
+                fft->output(kp__->num_gkvec(), &fft_index[0], &hphi(0, ib), thread_id, 1.0);
+
+                fft->input(&ophi_r(0, thread_id), thread_id);
+                fft->transform(-1, thread_id);
+                fft->output(kp__->num_gkvec(), &fft_index[0], &ophi(0, ib), thread_id, 1.0);
+
+                timers(0, thread_id) += omp_get_wtime() - t0;
+            }
+        }
+        double tval = t5.stop();
+        
+        if (kp__->comm().rank() == 0)
+        {
+            std::cout << "------------------------------------------------------------" << std::endl;
+            //std::cout << "thread_id  |    fft    |  beta_phi  | apply_d_q |   add_nl  " << std::endl;
+            //std::cout << "------------------------------------------------------------" << std::endl;
+            //for (int i = 0; i < Platform::max_num_threads(); i++)
+            //{
+            //    printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
+            //}
+            double tot[] = {0, 0, 0, 0};
+            for (int i = 0; i < Platform::max_num_threads(); i++)
+            {
+                tot[0] += timers(0, i);
+                tot[1] += timers(1, i);
+                tot[2] += timers(2, i);
+                tot[3] += timers(3, i);
+            }
+            printf("fft       : %8.4f\n", tot[0]);
+            printf("beta_phi  : %8.4f\n", tot[1]);
+            printf("apply_d_q : %8.4f\n", tot[2]);
+            printf("add_nl    : %8.4f\n", tot[3]);
+            printf("total     : %8.4f\n", tval);
+
+            std::cout << "------------------------------------------------------------" << std::endl;
+        }
     }
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
-    #endif
 }
 
 //== void Band::apply_h_o_real_space_serial(K_point* kp__, 
@@ -2412,249 +2576,249 @@ void Band::apply_h_o_serial(K_point* kp__,
 //==     }
 //== }
 
-void Band::apply_h_o_real_space_serial(K_point* kp__, 
-                                       std::vector<double> const& effective_potential__, 
-                                       std::vector<double> const& pw_ekin__, 
-                                       int N__,
-                                       int n__,
-                                       matrix<double_complex>& phi__,
-                                       matrix<double_complex>& hphi__,
-                                       matrix<double_complex>& ophi__,
-                                       mdarray<int, 1>& packed_mtrx_offset__,
-                                       mdarray<double_complex, 1>& d_mtrx_packed__,
-                                       mdarray<double_complex, 1>& q_mtrx_packed__)
-{
-    Timer t("sirius::Band::apply_h_o_real_space_serial", kp__->comm());
-
-    auto uc = parameters_.unit_cell();
-
-    matrix<double_complex> phi, hphi, ophi;
-
-    switch (parameters_.processing_unit())
-    {
-        case CPU:
-        {
-            phi =  matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
-            hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
-            ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
-            break;
-        }
-        case GPU:
-        {
-            phi =  matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
-            hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
-            ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), ophi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
-            break;
-        }
-    }
-
-    /* apply local part of Hamiltonian */
-    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
-    
-    /* set intial ophi */
-    phi >> ophi;
-
-    auto fft = parameters_.real_space_prj_->fft();
-
-    std::vector<int> fft_index(kp__->num_gkvec());
-    for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-    {
-        vector3d<int> gvec = kp__->gvec(igk);
-        /* linear index inside coarse FFT buffer */
-        fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
-    }
-    
-    Timer t4("sirius::Band::apply_h_o_real_space_serial|phase_fac");
-    std::vector<double_complex> k_phase_fac(fft->size());
-    /* loop over 3D array (real space) */
-    for (int j0 = 0; j0 < fft->size(0); j0++)
-    {
-        for (int j1 = 0; j1 < fft->size(1); j1++)
-        {
-            for (int j2 = 0; j2 < fft->size(2); j2++)
-            {
-                /* get real space fractional coordinate */
-                vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
-                int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
-                k_phase_fac[ir] = std::exp(double_complex(0.0, twopi * (kp__->vk() * v0)));
-            }
-        }
-    }
-
-    mdarray<double_complex, 3> T_phase_fac(mdarray_index_descriptor(-1, 1),
-                                           mdarray_index_descriptor(-1, 1),
-                                           mdarray_index_descriptor(-1, 1));
-    for (int t0 = -1; t0 <= 1; t0++)
-    {
-        for (int t1 = -1; t1 <= 1; t1++)
-        {
-            for (int t2 = -1; t2 <= 1; t2++)
-            {
-                vector3d<int> T(t0, t1, t2);
-                T_phase_fac(t0, t1, t2) = std::exp(double_complex(0.0, twopi * (kp__->vk() * T)));
-            }
-        }
-    }
-    t4.stop();
-
-    mdarray<double_complex, 2> hphi_r(fft->size(), Platform::max_num_threads());
-    mdarray<double_complex, 2> ophi_r(fft->size(), Platform::max_num_threads());
-    
-    mdarray<double, 2> timers(4, Platform::max_num_threads());
-    timers.zero();
-
-    /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> beta_phi_re(uc->max_mt_basis_size(), Platform::max_num_threads());
-    mdarray<double, 2> beta_phi_im(uc->max_mt_basis_size(), Platform::max_num_threads());
-
-    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> d_beta_phi_re(uc->max_mt_basis_size(), Platform::max_num_threads());
-    mdarray<double, 2> d_beta_phi_im(uc->max_mt_basis_size(), Platform::max_num_threads());
-    mdarray<double, 2> q_beta_phi_re(uc->max_mt_basis_size(), Platform::max_num_threads());
-    mdarray<double, 2> q_beta_phi_im(uc->max_mt_basis_size(), Platform::max_num_threads());
-
-    mdarray<double, 2> phi_tmp_re(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
-    mdarray<double, 2> phi_tmp_im(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
-
-    mdarray<double_complex, 2> phase(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
-    
-    double w1 = std::sqrt(uc->omega()) / fft->size();
-    double w2 = std::sqrt(uc->omega());
-
-    Timer t5("sirius::Band::apply_h_o_real_space_serial|kernel");
-    #pragma omp parallel
-    {
-        int thread_id = Platform::thread_id();
-
-        #pragma omp for
-        for (int ib = 0; ib < n__; ib++)
-        {
-            memset(&hphi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
-            memset(&ophi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
-
-            double t0 = omp_get_wtime();
-            fft->input(kp__->num_gkvec(), &fft_index[0], &phi(0, ib), thread_id);
-            /* phi(G) -> phi(r) */
-            fft->transform(1, thread_id);
-            timers(0, thread_id) += omp_get_wtime() - t0;
-
-            for (int ia = 0; ia < uc->num_atoms(); ia++)
-            {
-                auto type = parameters_.unit_cell()->atom(ia)->type();
-                auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
-                int nbf = type->mt_basis_size();
-                int npt = beta_prj.num_points_;
-
-                double t0 = omp_get_wtime();
-
-                for (int j = 0; j < npt; j++)
-                {
-                    int ir = beta_prj.ir_[j];
-                    auto T = beta_prj.T_[j];
-                    phase(j, thread_id) = conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
-                    double_complex z = fft->buffer(ir, thread_id) * w1 * phase(j, thread_id);
-                    phi_tmp_re(j, thread_id) = real(z);
-                    phi_tmp_im(j, thread_id) = imag(z);
-                }
-
-                linalg<CPU>::gemv(1, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
-                                  &phi_tmp_re(0, thread_id), 1, 0.0, &beta_phi_re(0, thread_id), 1);
-
-                linalg<CPU>::gemv(1, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
-                                  &phi_tmp_im(0, thread_id), 1, 0.0, &beta_phi_im(0, thread_id), 1);
-
-                timers(1, thread_id) += omp_get_wtime() - t0;
-
-                t0 = omp_get_wtime();
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
-                    double_complex z1(0, 0);
-                    double_complex z2(0, 0);
-                    for (int xi2 = 0; xi2 < nbf; xi2++)
-                    {
-                        z1 += d_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) *
-                              double_complex(beta_phi_re(xi2, thread_id), beta_phi_im(xi2, thread_id));
-                        z2 += q_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) *
-                              double_complex(beta_phi_re(xi2, thread_id), beta_phi_im(xi2, thread_id));
-                    }
-                    d_beta_phi_re(xi1, thread_id) = real(z1);
-                    d_beta_phi_im(xi1, thread_id) = imag(z1);
-                    q_beta_phi_re(xi1, thread_id) = real(z2);
-                    q_beta_phi_im(xi1, thread_id) = imag(z2);
-                }
-                timers(2, thread_id) += omp_get_wtime() - t0;
-
-                t0 = omp_get_wtime();
-                
-                linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
-                                  &d_beta_phi_re(0, thread_id), 1, 0.0, &phi_tmp_re(0, thread_id), 1);
-                linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
-                                  &d_beta_phi_im(0, thread_id), 1, 0.0, &phi_tmp_im(0, thread_id), 1);
-
-                for (int j = 0; j < npt; j++)
-                {
-                    int ir = beta_prj.ir_[j];
-                    hphi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
-                }
-
-                linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
-                                  &q_beta_phi_re(0, thread_id), 1, 0.0, &phi_tmp_re(0, thread_id), 1);
-                linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
-                                  &q_beta_phi_im(0, thread_id), 1, 0.0, &phi_tmp_im(0, thread_id), 1);
-
-                for (int j = 0; j < npt; j++)
-                {
-                    int ir = beta_prj.ir_[j];
-                    ophi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
-                }
-                
-                timers(3, thread_id) += omp_get_wtime() - t0;
-            }
-
-            t0 = omp_get_wtime();
-            fft->input(&hphi_r(0, thread_id), thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), &fft_index[0], &hphi(0, ib), thread_id, 1.0);
-
-            fft->input(&ophi_r(0, thread_id), thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), &fft_index[0], &ophi(0, ib), thread_id, 1.0);
-
-            timers(0, thread_id) += omp_get_wtime() - t0;
-        }
-    }
-    double tval = t5.stop();
-    
-    if (kp__->comm().rank() == 0)
-    {
-        std::cout << "------------------------------------------------------------" << std::endl;
-        //std::cout << "thread_id  |    fft    |  beta_phi  | apply_d_q |   add_nl  " << std::endl;
-        //std::cout << "------------------------------------------------------------" << std::endl;
-        //for (int i = 0; i < Platform::max_num_threads(); i++)
-        //{
-        //    printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
-        //}
-        double tot[] = {0, 0, 0, 0};
-        for (int i = 0; i < Platform::max_num_threads(); i++)
-        {
-            tot[0] += timers(0, i);
-            tot[1] += timers(1, i);
-            tot[2] += timers(2, i);
-            tot[3] += timers(3, i);
-        }
-        printf("fft       : %8.4f\n", tot[0]);
-        printf("beta_phi  : %8.4f\n", tot[1]);
-        printf("apply_d_q : %8.4f\n", tot[2]);
-        printf("add_nl    : %8.4f\n", tot[3]);
-        printf("total     : %8.4f\n", tval);
-
-        std::cout << "------------------------------------------------------------" << std::endl;
-    }
-}
+//== void Band::apply_h_o_real_space_serial(K_point* kp__, 
+//==                                        std::vector<double> const& effective_potential__, 
+//==                                        std::vector<double> const& pw_ekin__, 
+//==                                        int N__,
+//==                                        int n__,
+//==                                        matrix<double_complex>& phi__,
+//==                                        matrix<double_complex>& hphi__,
+//==                                        matrix<double_complex>& ophi__,
+//==                                        mdarray<int, 1>& packed_mtrx_offset__,
+//==                                        mdarray<double_complex, 1>& d_mtrx_packed__,
+//==                                        mdarray<double_complex, 1>& q_mtrx_packed__)
+//== {
+//==     Timer t("sirius::Band::apply_h_o_real_space_serial", kp__->comm());
+//== 
+//==     auto uc = parameters_.unit_cell();
+//== 
+//==     matrix<double_complex> phi, hphi, ophi;
+//== 
+//==     switch (parameters_.processing_unit())
+//==     {
+//==         case CPU:
+//==         {
+//==             phi =  matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+//==             hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+//==             ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+//==             break;
+//==         }
+//==         case GPU:
+//==         {
+//==             phi =  matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+//==             hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+//==             ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), ophi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+//==             break;
+//==         }
+//==     }
+//== 
+//==     /* apply local part of Hamiltonian */
+//==     apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
+//==     
+//==     /* set intial ophi */
+//==     phi >> ophi;
+//== 
+//==     auto fft = parameters_.real_space_prj_->fft();
+//== 
+//==     std::vector<int> fft_index(kp__->num_gkvec());
+//==     for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+//==     {
+//==         vector3d<int> gvec = kp__->gvec(igk);
+//==         /* linear index inside coarse FFT buffer */
+//==         fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
+//==     }
+//==     
+//==     Timer t4("sirius::Band::apply_h_o_real_space_serial|phase_fac");
+//==     std::vector<double_complex> k_phase_fac(fft->size());
+//==     /* loop over 3D array (real space) */
+//==     for (int j0 = 0; j0 < fft->size(0); j0++)
+//==     {
+//==         for (int j1 = 0; j1 < fft->size(1); j1++)
+//==         {
+//==             for (int j2 = 0; j2 < fft->size(2); j2++)
+//==             {
+//==                 /* get real space fractional coordinate */
+//==                 vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
+//==                 int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
+//==                 k_phase_fac[ir] = std::exp(double_complex(0.0, twopi * (kp__->vk() * v0)));
+//==             }
+//==         }
+//==     }
+//== 
+//==     mdarray<double_complex, 3> T_phase_fac(mdarray_index_descriptor(-1, 1),
+//==                                            mdarray_index_descriptor(-1, 1),
+//==                                            mdarray_index_descriptor(-1, 1));
+//==     for (int t0 = -1; t0 <= 1; t0++)
+//==     {
+//==         for (int t1 = -1; t1 <= 1; t1++)
+//==         {
+//==             for (int t2 = -1; t2 <= 1; t2++)
+//==             {
+//==                 vector3d<int> T(t0, t1, t2);
+//==                 T_phase_fac(t0, t1, t2) = std::exp(double_complex(0.0, twopi * (kp__->vk() * T)));
+//==             }
+//==         }
+//==     }
+//==     t4.stop();
+//== 
+//==     mdarray<double_complex, 2> hphi_r(fft->size(), Platform::max_num_threads());
+//==     mdarray<double_complex, 2> ophi_r(fft->size(), Platform::max_num_threads());
+//==     
+//==     mdarray<double, 2> timers(4, Platform::max_num_threads());
+//==     timers.zero();
+//== 
+//==     /* <\beta_{\xi}^{\alpha}|\phi_j> */
+//==     mdarray<double, 2> beta_phi_re(uc->max_mt_basis_size(), Platform::max_num_threads());
+//==     mdarray<double, 2> beta_phi_im(uc->max_mt_basis_size(), Platform::max_num_threads());
+//== 
+//==     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+//==     mdarray<double, 2> d_beta_phi_re(uc->max_mt_basis_size(), Platform::max_num_threads());
+//==     mdarray<double, 2> d_beta_phi_im(uc->max_mt_basis_size(), Platform::max_num_threads());
+//==     mdarray<double, 2> q_beta_phi_re(uc->max_mt_basis_size(), Platform::max_num_threads());
+//==     mdarray<double, 2> q_beta_phi_im(uc->max_mt_basis_size(), Platform::max_num_threads());
+//== 
+//==     mdarray<double, 2> phi_tmp_re(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
+//==     mdarray<double, 2> phi_tmp_im(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
+//== 
+//==     mdarray<double_complex, 2> phase(parameters_.real_space_prj_->max_num_points_, Platform::max_num_threads());
+//==     
+//==     double w1 = std::sqrt(uc->omega()) / fft->size();
+//==     double w2 = std::sqrt(uc->omega());
+//== 
+//==     Timer t5("sirius::Band::apply_h_o_real_space_serial|kernel");
+//==     #pragma omp parallel
+//==     {
+//==         int thread_id = Platform::thread_id();
+//== 
+//==         #pragma omp for
+//==         for (int ib = 0; ib < n__; ib++)
+//==         {
+//==             memset(&hphi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
+//==             memset(&ophi_r(0, thread_id), 0, fft->size() * sizeof(double_complex));
+//== 
+//==             double t0 = omp_get_wtime();
+//==             fft->input(kp__->num_gkvec(), &fft_index[0], &phi(0, ib), thread_id);
+//==             /* phi(G) -> phi(r) */
+//==             fft->transform(1, thread_id);
+//==             timers(0, thread_id) += omp_get_wtime() - t0;
+//== 
+//==             for (int ia = 0; ia < uc->num_atoms(); ia++)
+//==             {
+//==                 auto type = parameters_.unit_cell()->atom(ia)->type();
+//==                 auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
+//==                 int nbf = type->mt_basis_size();
+//==                 int npt = beta_prj.num_points_;
+//== 
+//==                 double t0 = omp_get_wtime();
+//== 
+//==                 for (int j = 0; j < npt; j++)
+//==                 {
+//==                     int ir = beta_prj.ir_[j];
+//==                     auto T = beta_prj.T_[j];
+//==                     phase(j, thread_id) = conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+//==                     double_complex z = fft->buffer(ir, thread_id) * w1 * phase(j, thread_id);
+//==                     phi_tmp_re(j, thread_id) = real(z);
+//==                     phi_tmp_im(j, thread_id) = imag(z);
+//==                 }
+//== 
+//==                 linalg<CPU>::gemv(1, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+//==                                   &phi_tmp_re(0, thread_id), 1, 0.0, &beta_phi_re(0, thread_id), 1);
+//== 
+//==                 linalg<CPU>::gemv(1, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+//==                                   &phi_tmp_im(0, thread_id), 1, 0.0, &beta_phi_im(0, thread_id), 1);
+//== 
+//==                 timers(1, thread_id) += omp_get_wtime() - t0;
+//== 
+//==                 t0 = omp_get_wtime();
+//==                 for (int xi1 = 0; xi1 < nbf; xi1++)
+//==                 {
+//==                     double_complex z1(0, 0);
+//==                     double_complex z2(0, 0);
+//==                     for (int xi2 = 0; xi2 < nbf; xi2++)
+//==                     {
+//==                         z1 += d_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) *
+//==                               double_complex(beta_phi_re(xi2, thread_id), beta_phi_im(xi2, thread_id));
+//==                         z2 += q_mtrx_packed__(packed_mtrx_offset__(ia) + xi2 * nbf + xi1) *
+//==                               double_complex(beta_phi_re(xi2, thread_id), beta_phi_im(xi2, thread_id));
+//==                     }
+//==                     d_beta_phi_re(xi1, thread_id) = real(z1);
+//==                     d_beta_phi_im(xi1, thread_id) = imag(z1);
+//==                     q_beta_phi_re(xi1, thread_id) = real(z2);
+//==                     q_beta_phi_im(xi1, thread_id) = imag(z2);
+//==                 }
+//==                 timers(2, thread_id) += omp_get_wtime() - t0;
+//== 
+//==                 t0 = omp_get_wtime();
+//==                 
+//==                 linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+//==                                   &d_beta_phi_re(0, thread_id), 1, 0.0, &phi_tmp_re(0, thread_id), 1);
+//==                 linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+//==                                   &d_beta_phi_im(0, thread_id), 1, 0.0, &phi_tmp_im(0, thread_id), 1);
+//== 
+//==                 for (int j = 0; j < npt; j++)
+//==                 {
+//==                     int ir = beta_prj.ir_[j];
+//==                     hphi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
+//==                 }
+//== 
+//==                 linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+//==                                   &q_beta_phi_re(0, thread_id), 1, 0.0, &phi_tmp_re(0, thread_id), 1);
+//==                 linalg<CPU>::gemv(0, npt, nbf, 1.0, &beta_prj.beta_(0, 0), beta_prj.beta_.ld(), 
+//==                                   &q_beta_phi_im(0, thread_id), 1, 0.0, &phi_tmp_im(0, thread_id), 1);
+//== 
+//==                 for (int j = 0; j < npt; j++)
+//==                 {
+//==                     int ir = beta_prj.ir_[j];
+//==                     ophi_r(ir, thread_id) += conj(phase(j, thread_id)) * double_complex(phi_tmp_re(j, thread_id), phi_tmp_im(j, thread_id)) * w2;
+//==                 }
+//==                 
+//==                 timers(3, thread_id) += omp_get_wtime() - t0;
+//==             }
+//== 
+//==             t0 = omp_get_wtime();
+//==             fft->input(&hphi_r(0, thread_id), thread_id);
+//==             fft->transform(-1, thread_id);
+//==             fft->output(kp__->num_gkvec(), &fft_index[0], &hphi(0, ib), thread_id, 1.0);
+//== 
+//==             fft->input(&ophi_r(0, thread_id), thread_id);
+//==             fft->transform(-1, thread_id);
+//==             fft->output(kp__->num_gkvec(), &fft_index[0], &ophi(0, ib), thread_id, 1.0);
+//== 
+//==             timers(0, thread_id) += omp_get_wtime() - t0;
+//==         }
+//==     }
+//==     double tval = t5.stop();
+//==     
+//==     if (kp__->comm().rank() == 0)
+//==     {
+//==         std::cout << "------------------------------------------------------------" << std::endl;
+//==         //std::cout << "thread_id  |    fft    |  beta_phi  | apply_d_q |   add_nl  " << std::endl;
+//==         //std::cout << "------------------------------------------------------------" << std::endl;
+//==         //for (int i = 0; i < Platform::max_num_threads(); i++)
+//==         //{
+//==         //    printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
+//==         //}
+//==         double tot[] = {0, 0, 0, 0};
+//==         for (int i = 0; i < Platform::max_num_threads(); i++)
+//==         {
+//==             tot[0] += timers(0, i);
+//==             tot[1] += timers(1, i);
+//==             tot[2] += timers(2, i);
+//==             tot[3] += timers(3, i);
+//==         }
+//==         printf("fft       : %8.4f\n", tot[0]);
+//==         printf("beta_phi  : %8.4f\n", tot[1]);
+//==         printf("apply_d_q : %8.4f\n", tot[2]);
+//==         printf("add_nl    : %8.4f\n", tot[3]);
+//==         printf("total     : %8.4f\n", tval);
+//== 
+//==         std::cout << "------------------------------------------------------------" << std::endl;
+//==     }
+//== }
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
- *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
- *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
+ *  \param [in] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
+ *  \param [in] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
 void Band::set_fv_h_o_serial(K_point* kp__,
                              int N__,
@@ -2666,7 +2830,7 @@ void Band::set_fv_h_o_serial(K_point* kp__,
                              matrix<double_complex>& o__,
                              matrix<double_complex>& h_old__,
                              matrix<double_complex>& o_old__,
-                             matrix<double_complex>& kappa__)
+                             mdarray<double_complex, 1>& kappa__)
 {
     Timer t("sirius::Band::set_fv_h_o_serial");
 
@@ -2677,18 +2841,6 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double_complex));
     }
 
-    //== /* apply Hamiltonian and overlap operators to the new basis functions */
-    //== if (true)
-    //== {
-    //==     apply_h_o_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, kappa__, packed_mtrx_offset__,
-    //==                      d_mtrx_packed__, q_mtrx_packed__);
-    //== }
-    //== else
-    //== {
-    //==     apply_h_o_real_space_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
-    //==                                 d_mtrx_packed__, q_mtrx_packed__);
-    //== }
-    
     if (parameters_.processing_unit() == CPU)
     {
         /* <{phi,res}|H|res> */
@@ -2715,21 +2867,22 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         else
         {
             /* copy phi to device */
-            cublas_set_matrix(kp__->num_gkvec(), N__ + n__, sizeof(double_complex), phi__.at<CPU>(), phi__.ld(),
-                              kappa__.at<GPU>(0, 0), kappa__.ld());
+            matrix<double_complex> phi(phi__.at<CPU>(), kappa__.at<GPU>(), kp__->num_gkvec(), N__ + n__);
+            phi.copy_to_device();
+
             /* copy hphi to device */
-            cublas_set_matrix(kp__->num_gkvec(), n__, sizeof(double_complex), hphi__.at<CPU>(0, N__), hphi__.ld(),
-                              kappa__.at<GPU>(0, N__ + n__), kappa__.ld());
-            
-            linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), kappa__.at<GPU>(0, 0), kappa__.ld(),
-                              kappa__.at<GPU>(0, N__ + n__), kappa__.ld(), h__.at<GPU>(0, N__), h__.ld());
+            matrix<double_complex> hphi(hphi__.at<CPU>(0, N__), kappa__.at<GPU>(phi.size()), kp__->num_gkvec(), n__);
+            hphi.copy_to_device();
+
+            linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi.at<GPU>(), phi.ld(),
+                              hphi.at<GPU>(), hphi.ld(), h__.at<GPU>(0, N__), h__.ld());
             
             /* copy ophi to device */
-            cublas_set_matrix(kp__->num_gkvec(), n__, sizeof(double_complex), ophi__.at<CPU>(0, N__), ophi__.ld(),
-                              kappa__.at<GPU>(0, N__ + n__), kappa__.ld());
+            matrix<double_complex> ophi(ophi__.at<CPU>(0, N__), kappa__.at<GPU>(phi.size()), kp__->num_gkvec(), n__);
+            ophi.copy_to_device();
 
-            linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), kappa__.at<GPU>(0, 0), kappa__.ld(),
-                              kappa__.at<GPU>(0, N__ + n__), kappa__.ld(), o__.at<GPU>(0, N__), o__.ld());
+            linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi.at<GPU>(), phi.ld(),
+                              ophi.at<GPU>(), ophi.ld(), o__.at<GPU>(0, N__), o__.ld());
 
         }
         cublas_get_matrix(N__ + n__, n__, sizeof(double_complex), h__.at<GPU>(0, N__), h__.ld(), h__.at<CPU>(0, N__), h__.ld());
@@ -2760,7 +2913,7 @@ void Band::residuals_serial(K_point* kp__,
                             std::vector<double>& h_diag__,
                             std::vector<double>& o_diag__,
                             std::vector<double>& res_norm__,
-                            matrix<double_complex>& kappa__)
+                            mdarray<double_complex, 1>& kappa__)
 {
     Timer t("sirius::Band::residuals_serial");
 
@@ -2794,30 +2947,32 @@ void Band::residuals_serial(K_point* kp__,
         else
         {
             /* copy hphi to device */
-            cublas_set_matrix(kp__->num_gkvec(), N__, sizeof(double_complex), hphi__.at<CPU>(), hphi__.ld(),
-                              kappa__.at<GPU>(), kappa__.ld());
-            
+            matrix<double_complex> hphi(hphi__.at<CPU>(), kappa__.at<GPU>(), kp__->num_gkvec(), N__);
+            hphi.copy_to_device();
+
+            matrix<double_complex> hpsi(hpsi__.at<CPU>(), kappa__.at<GPU>(hphi.size()), kp__->num_gkvec(), num_bands__);
+
             /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, kappa__.at<GPU>(), kappa__.ld(),
-                              evec__.at<GPU>(), evec__.ld(), kappa__.at<GPU>(0, N__), kappa__.ld());
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, hphi.at<GPU>(), hphi.ld(),
+                              evec__.at<GPU>(), evec__.ld(), hpsi.at<GPU>(), hpsi.ld());
 
-            cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), kappa__.at<GPU>(0, N__), kappa__.ld(),
-                              hpsi__.at<CPU>(), hpsi__.ld());
-            
+            hpsi.copy_to_host();
+
             /* copy ophi to device */
-            cublas_set_matrix(kp__->num_gkvec(), N__, sizeof(double_complex), ophi__.at<CPU>(), ophi__.ld(),
-                              kappa__.at<GPU>(0, num_bands__), kappa__.ld());
-            
-            /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, kappa__.at<GPU>(0, num_bands__), kappa__.ld(),
-                              evec__.at<GPU>(), evec__.ld(), kappa__.at<GPU>(0, 0), kappa__.ld());
+            matrix<double_complex> ophi(ophi__.at<CPU>(), kappa__.at<GPU>(kp__->num_gkvec() * num_bands__), kp__->num_gkvec(), N__);
+            ophi.copy_to_device();
 
+            matrix<double_complex> opsi(opsi__.at<CPU>(), kappa__.at<GPU>(), kp__->num_gkvec(), num_bands__);
+            /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, ophi.at<GPU>(), ophi.ld(),
+                              evec__.at<GPU>(), evec__.ld(), opsi.at<GPU>(), opsi.ld());
+            
             /* kappa(0, 0) contains opsi */
-            cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), kappa__.at<GPU>(0, 0), kappa__.ld(),
-                              opsi__.at<CPU>(), opsi__.ld());
+            opsi.copy_to_host();
+
             /* kappa(0, num_bands) contains hpsi */
-            cublas_set_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), hpsi__.at<CPU>(), hpsi__.ld(),
-                              kappa__.at<GPU>(0, num_bands__), kappa__.ld());
+            hpsi = matrix<double_complex>(hpsi__.at<CPU>(), kappa__.at<GPU>(kp__->num_gkvec() * num_bands__), kp__->num_gkvec(), num_bands__);
+            hpsi.copy_to_device();
         }
         #else
         TERMINATE_NO_GPU
@@ -2873,9 +3028,9 @@ void Band::residuals_serial(K_point* kp__,
 
         if (economize_gpu_memory)
         {
-            hpsi_ptr = kappa__.at<GPU>(0, num_bands__);
-            opsi_ptr = kappa__.at<GPU>(0, 0);
-            res_ptr = kappa__.at<GPU>(0, 2 * num_bands__);
+            hpsi_ptr = kappa__.at<GPU>(kp__->num_gkvec() * num_bands__);
+            opsi_ptr = kappa__.at<GPU>();
+            res_ptr = kappa__.at<GPU>(kp__->num_gkvec() * 2 * num_bands__);
         }
         else
         {

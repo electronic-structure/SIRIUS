@@ -1113,7 +1113,7 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     mdarray<double_complex, 2> phi(ngk, ngk);
     mdarray<double_complex, 2> hphi(ngk, ngk);
     mdarray<double_complex, 2> ophi(ngk, ngk);
-    matrix<double_complex> kappa(ngk, ngk);
+    mdarray<double_complex, 1> kappa(ngk * ngk);
     
     std::vector<double> eval(ngk);
 
@@ -1253,8 +1253,22 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     }
 
     bool economize_gpu_memory = true;
-    matrix<double_complex> kappa;
-    if (economize_gpu_memory) kappa = matrix<double_complex>(nullptr, kp__->num_gkvec(), std::max(uc->mt_basis_size(), num_phi) + num_bands);
+    
+    mdarray<double_complex, 1> kappa;
+
+    if (parameters_.processing_unit() == GPU && economize_gpu_memory)
+    {
+        size_t size = kp__->num_gkvec() * (std::max(uc->mt_basis_size(), num_phi) + num_bands);
+        kappa = mdarray<double_complex, 1>(nullptr, size);
+    }
+    if (parameters_.processing_unit() == CPU && itso.real_space_prj_) 
+    {
+        auto rsp = parameters_.real_space_prj_;
+        size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
+        size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
+
+        kappa = mdarray<double_complex, 1>(size);
+    }
     
     #ifdef _GPU_
     if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
@@ -1327,16 +1341,9 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        if (!itso.real_space_prj_)
-        {
-            apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, kappa, packed_mtrx_offset,
-                             d_mtrx_packed, q_mtrx_packed);
-        }
-        else
-        {
-            apply_h_o_real_space_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, packed_mtrx_offset,
-                                        d_mtrx_packed, q_mtrx_packed);
-        }
+        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, kappa, packed_mtrx_offset,
+                         d_mtrx_packed, q_mtrx_packed);
+        
         parameters_.work_load_ += n;
 
         /* setup eigen-value problem.
@@ -1814,8 +1821,8 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     }
 
     bool economize_gpu_memory = true;
-    matrix<double_complex> kappa;
-    if (economize_gpu_memory) kappa = matrix<double_complex>(nullptr, kp__->num_gkvec(), std::max(uc->mt_basis_size(), num_bands) + num_bands);
+    mdarray<double_complex, 1> kappa;
+    if (economize_gpu_memory) kappa = mdarray<double_complex, 1>(nullptr, kp__->num_gkvec() * (std::max(uc->mt_basis_size(), num_bands) + num_bands));
     
     //== #ifdef _GPU_
     //== if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
@@ -2214,7 +2221,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
 
     int kappa_size = std::max(uc->mt_basis_size(), 4 * num_bands);
     /* temporary array for <G+k|beta> */
-    matrix<double_complex> kappa(kp__->num_gkvec(), kappa_size);
+    mdarray<double_complex, 1> kappa(kp__->num_gkvec() * kappa_size);
     if (verbosity_level >= 6)
     {
         printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);

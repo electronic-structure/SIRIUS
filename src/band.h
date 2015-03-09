@@ -179,7 +179,6 @@ class Band
                                      mdarray<double_complex, 1>& q_mtrx_packed__,
                                      mdarray<double_complex, 1>& kappa__);
 
-        
         void set_fv_h_o_parallel_simple(int N__,
                                         int n__,
                                         K_point* kp__,
@@ -324,7 +323,7 @@ class Band
                             int n__,
                             matrix<double_complex>& phi__,
                             matrix<double_complex>& hphi__,
-                            matrix<double_complex>& kappa__,
+                            mdarray<double_complex, 1>& kappa__,
                             mdarray<int, 1>& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__);
 
@@ -333,7 +332,7 @@ class Band
                                                int n__,
                                                matrix<double_complex>& phi__,
                                                matrix<double_complex>& op_phi__, 
-                                               matrix<double_complex>& kappa__,
+                                               mdarray<double_complex, 1>& kappa__,
                                                mdarray<int, 1> const& packed_mtrx_offset__,
                                                mdarray<double_complex, 1>& op_mtrx_packed__,
                                                double_complex alpha);
@@ -346,7 +345,7 @@ class Band
                               matrix<double_complex>& phi__,
                               matrix<double_complex>& hphi__,
                               matrix<double_complex>& ophi__,
-                              matrix<double_complex>& kappa__,
+                              mdarray<double_complex, 1>& kappa__,
                               mdarray<int, 1>& packed_mtrx_offset__,
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__);
@@ -373,7 +372,7 @@ class Band
                                matrix<double_complex>& o__,
                                matrix<double_complex>& h_old__,
                                matrix<double_complex>& o_old__,
-                               matrix<double_complex>& kappa__);
+                               mdarray<double_complex, 1>& kappa__);
 
         void residuals_serial(K_point* kp__,
                               int N__,
@@ -388,7 +387,7 @@ class Band
                               std::vector<double>& h_diag__,
                               std::vector<double>& o_diag__,
                               std::vector<double>& res_norm__,
-                              matrix<double_complex>& kappa__);
+                              mdarray<double_complex, 1>& kappa__);
 
         //void apply_h_ncpp_parallel(K_point* kp__,
         //                           std::vector<double> const& effective_potential__,
