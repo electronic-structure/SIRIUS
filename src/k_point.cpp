@@ -185,7 +185,7 @@ void K_point::update()
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++)
         {
             int igk = gklo_basis_descriptors_local_[igk_loc].igk;
-            double gk_len = gkvec_cart(igk).length();
+            double gk_len = gkvec<cartesian>(igk).length();
 
             if (gkvec_shells_.empty() || std::abs(gkvec_shells_.back().first - gk_len) > 1e-10) 
                 gkvec_shells_.push_back(std::pair<double, std::vector<int> >(gk_len, std::vector<int>()));
@@ -224,7 +224,7 @@ void K_point::update()
                     int igk_loc = gkvec_shells_[ish].second[i];
                     int igk = gklo_basis_descriptors_local_[igk_loc].igk;
                     /* vs = {r, theta, phi} */
-                    auto vs = SHT::spherical_coordinates(gkvec_cart(igk));
+                    auto vs = SHT::spherical_coordinates(gkvec<cartesian>(igk));
                     SHT::spherical_harmonics(parameters_.lmax_beta(), vs[1], vs[2], &gkvec_rlm[0]);
 
                     for (int iat = 0; iat < uc->num_atom_types(); iat++)
@@ -764,7 +764,7 @@ void K_point::init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gk
         int igk = desc__[i].igk;
 
         /* vs = {r, theta, phi} */
-        auto vs = SHT::spherical_coordinates(gkvec_cart(igk));
+        auto vs = SHT::spherical_coordinates(gkvec<cartesian>(igk));
         
         SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, i));
         
@@ -783,7 +783,7 @@ void K_point::init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_d
 
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            double phase = twopi * (gkvec(igk) * parameters_.unit_cell()->atom(ia)->position());
+            double phase = twopi * (gkvec<fractional>(igk) * parameters_.unit_cell()->atom(ia)->position());
 
             gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
         }
@@ -828,8 +828,8 @@ void K_point::build_apwlo_basis_descriptors()
     {
         gklo.id = (int)gklo_basis_descriptors_.size();
         gklo.igk = igk;
-        gklo.gkvec = gkvec(igk);
-        gklo.gkvec_cart = gkvec_cart(igk);
+        gklo.gkvec = gkvec<fractional>(igk);
+        gklo.gkvec_cart = gkvec<cartesian>(igk);
         gklo.ig = gvec_index(igk);
         gklo.ia = -1;
         gklo.l = -1;

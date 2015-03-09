@@ -285,21 +285,32 @@ class K_point
             
             return gvec_index_[igk];
         }
+
+        ///// Return G+k vector in fractional or Cartesian coordinates
+        template <coordinates_t coord__>
+        vector3d<double> gkvec(int igk__)
+        {
+            assert(igk__ >= 0 && igk__ < (int)gkvec_.size(1));
+            switch (coord__)
+            {
+                case cartesian:
+                {
+                    return parameters_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
+                    break;
+                }
+                case fractional:
+                {
+                    return vector3d<double>(&gkvec_(0, igk__));
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong type of coordinates");
+                    return vector3d<double>(); // make compiler happy
+                }
+            }
+        }
         
-        /// Return G+k vector in fractional coordinates
-        inline vector3d<double> gkvec(int igk)
-        {
-            assert(igk >= 0 && igk < (int)gkvec_.size(1));
-
-            return vector3d<double>(gkvec_(0, igk), gkvec_(1, igk), gkvec_(2, igk));
-        }
-
-        /// Return G+k vector in Cartesian coordinates
-        inline vector3d<double> gkvec_cart(int igk)
-        {
-            return parameters_.reciprocal_lattice()->get_cartesian_coordinates(gkvec(igk));
-        }
-
         inline double_complex gkvec_phase_factor(int igk, int ia)
         {
             return gkvec_phase_factors_(igk, ia);
@@ -616,14 +627,9 @@ class K_point
         std::vector<double> get_pw_ekin()
         {
             std::vector<double> pw_ekin(num_gkvec());
-            for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * std::pow(gkvec_cart(igk).length(), 2);
+            for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * std::pow(gkvec<cartesian>(igk).length(), 2);
             return pw_ekin; 
         }
-
-        //== inline mdarray<double, 2>& gkvec_gpu()
-        //== {
-        //==     return gkvec_gpu_;
-        //== }
 
         inline mdarray<double, 2>& gkvec()
         {
