@@ -271,7 +271,8 @@ class K_point
         
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
-
+        
+        /// Return G-vector (in fractional coordinates) of the current G+k vector.
         vector3d<int> gvec(int igk__)
         {
             return parameters_.reciprocal_lattice()->gvec(gvec_index(igk__));
@@ -293,6 +294,7 @@ class K_point
             return vector3d<double>(gkvec_(0, igk), gkvec_(1, igk), gkvec_(2, igk));
         }
 
+        /// Return G+k vector in Cartesian coordinates
         inline vector3d<double> gkvec_cart(int igk)
         {
             return parameters_.reciprocal_lattice()->get_cartesian_coordinates(gkvec(igk));
