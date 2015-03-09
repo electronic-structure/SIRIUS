@@ -430,7 +430,8 @@ class Band
 
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), 
                                                                   parameters_.lmax_pot(), 
-                                                                  parameters_.lmax_apw());
+                                                                  parameters_.lmax_apw(),
+                                                                  SHT::gaunt_hybrid);
 
             /* create standard eigen-value solver */
             switch (parameters_.std_evp_solver_type())

@@ -60,13 +60,13 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
         case full_potential_lapwlo:
         {
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
-                                                                  parameters_.lmax_apw());
+                                                                  parameters_.lmax_apw(), SHT::gaunt_hybrid);
             break;
         }
         case full_potential_pwlo:
         {
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
-                                                                  parameters_.lmax_pw());
+                                                                  parameters_.lmax_pw(), SHT::gaunt_hybrid);
             break;
         }
         case ultrasoft_pseudopotential:

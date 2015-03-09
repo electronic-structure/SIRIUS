@@ -52,6 +52,10 @@ void FORTRAN(zgemv)(ftn_char trans, ftn_int* m, ftn_int* n, ftn_double_complex* 
                     ftn_double_complex* A, ftn_int* lda, ftn_double_complex* X, ftn_int* incx,
                     ftn_double_complex* beta, ftn_double_complex* Y, ftn_int* incy, ftn_len trans_len);
 
+void FORTRAN(dgemv)(ftn_char trans, ftn_int* m, ftn_int* n, ftn_double* alpha, 
+                    ftn_double* A, ftn_int* lda, ftn_double* X, ftn_int* incx,
+                    ftn_double* beta, ftn_double* Y, ftn_int* incy, ftn_len trans_len);
+
 /*
  *  matrix-matrix operations
  */

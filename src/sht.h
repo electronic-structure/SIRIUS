@@ -197,51 +197,71 @@ class SHT // TODO: better name
         /// Generate real spherical harmonics Rlm
         /** Mathematica code:
          *  \verbatim
-            R[l_, m_, th_, ph_] := 
-             If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
-             If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
-             If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
-            \endverbatim
+         *  R[l_, m_, th_, ph_] := 
+         *   If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
+         *   If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+         *   If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
+         *  \endverbatim
          */
         static void spherical_harmonics(int lmax, double theta, double phi, double* rlm);
                         
         /// Compute element of the transformation matrix from complex to real spherical harmonics. 
         /** Real spherical harmonic can be written as a linear combination of complex harmonics:
-
-            \f[
-                R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
-            \f]
-            where 
-            \f[
-                a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
-            \f]
-        
-            Transformation from real to complex spherical harmonics is conjugate transpose:
-            
-            \f[
-                Y_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell*}_{m m'}R_{\ell m'}(\theta, \phi)
-            \f]
-        
-            Mathematica code:
-            \verbatim
-            b[m1_, m2_] := 
-             If[m1 == 0, 1, 
-             If[m1 < 0 && m2 < 0, -I/Sqrt[2], 
-             If[m1 > 0 && m2 < 0, (-1)^m1*I/Sqrt[2], 
-             If[m1 < 0 && m2 > 0, (-1)^m2/Sqrt[2], 
-             If[m1 > 0 && m2 > 0, 1/Sqrt[2]]]]]]
-            
-            a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
-            
-            R[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
-            \endverbatim
-        */
+         *
+         *    \f[
+         *        R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
+         *    \f]
+         *    where 
+         *    \f[
+         *        a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
+         *    \f]
+         *
+         *    Transformation from real to complex spherical harmonics is conjugate transpose:
+         *    
+         *    \f[
+         *        Y_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell*}_{m m'}R_{\ell m'}(\theta, \phi)
+         *    \f]
+         *
+         *    Mathematica code:
+         *    \verbatim
+         *    b[m1_, m2_] := 
+         *     If[m1 == 0, 1, 
+         *     If[m1 < 0 && m2 < 0, -I/Sqrt[2], 
+         *     If[m1 > 0 && m2 < 0, (-1)^m1*I/Sqrt[2], 
+         *     If[m1 < 0 && m2 > 0, (-1)^m2/Sqrt[2], 
+         *     If[m1 > 0 && m2 > 0, 1/Sqrt[2]]]]]]
+         *    
+         *    a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
+         *    
+         *    R[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
+         *    \endverbatim
+         */
         static double_complex ylm_dot_rlm(int l, int m1, int m2);
         
-        /// Return real or complex Gaunt coefficent.
-        template <typename T>
-        static T gaunt(int l1, int l2, int l3, int m1, int m2, int m3);
-        
+        /// Gaunt coefficent of three complex spherical harmonics.
+        /** 
+         *  \f[
+         *    \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
+         *  \f]
+         */
+        static double gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3);
+
+        /// Gaunt coefficent of three real spherical harmonics.
+        /** 
+         *  \f[
+         *    \langle R_{\ell_1 m_1} | R_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
+         *  \f]
+         */
+        static double gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3);
+
+        /// Gaunt coefficent of two complex and one real spherical harmonics.
+        /** 
+         *  \f[
+         *    \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
+         *  \f]
+         */
+        static double_complex gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3);
+
         void uniform_coverage();
 
         /// Return Clebsch-Gordan coefficient.

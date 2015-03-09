@@ -18,7 +18,7 @@ void test1()
     
     global.initialize();
     
-    auto fft = global.reciprocal_lattice()->fft();
+    auto fft = global.fft();
     std::vector<double_complex> fft1(fft->size());
     std::vector<double_complex> fft2(fft->size());
     
@@ -69,7 +69,7 @@ void test2()
     
     global.initialize();
     
-    auto fft = global.reciprocal_lattice()->fft();
+    auto fft = global.fft();
 
     std::vector<double_complex> fft1(fft->size());
 
@@ -141,7 +141,7 @@ void test3()
     global.initialize();
 
     Timer t("fft::transform");
-    global.reciprocal_lattice()->fft()->transform(1);
+    global.fft()->transform(1);
     t.stop();
     
     Timer::print();
@@ -164,17 +164,17 @@ void test4()
     }
     matrix3d<double> reciprocal_lattice_vectors;
     for (int i = 0; i < 3; i++) reciprocal_lattice_vectors(i, i) = 1.0;
-    vector3d<int> dims(100, 100, 100);
+    vector3d<int> dims(45, 45, 45);
 
     for (int k = 0; k < (int)threads_conf.size(); k++)
     {
         printf("\n");
         printf("number of fft threads: %i, number of fft workers: %i\n", threads_conf[k].first, threads_conf[k].second);
 
-        FFT3D<CPU> fft(dims, MPI_COMM_WORLD, threads_conf[k].first, threads_conf[k].second);
+        FFT3D<CPU> fft(dims, threads_conf[k].first, threads_conf[k].second);
         fft.init_gvec(20.0, reciprocal_lattice_vectors);
 
-        int num_phi = 400;
+        int num_phi = 25;
         mdarray<double_complex, 2> phi(fft.num_gvec(), num_phi);
         for (int i = 0; i < num_phi; i++)
         {
@@ -189,13 +189,13 @@ void test4()
             #pragma omp for
             for (int i = 0; i < num_phi; i++)
             {
-                fft.input(fft.num_gvec(), fft.map(), &phi(0, i), thread_id);
+                fft.input(fft.num_gvec(), fft.index_map(), &phi(0, i), thread_id);
                 fft.transform(1, thread_id);
 
                 for (int ir = 0; ir < fft.size(); ir++) fft.buffer(ir, thread_id) += 1.0;
 
                 fft.transform(-1, thread_id);
-                fft.output(fft.num_gvec(), fft.map(), &phi(0, i), thread_id);
+                fft.output(fft.num_gvec(), fft.index_map(), &phi(0, i), thread_id);
             }
         }
         double tval = t.stop();
@@ -206,7 +206,6 @@ void test4()
 
 int main(int argn, char **argv)
 {
-    Platform::set_num_fft_threads(1);
     Platform::initialize(1);
     test4();
     STOP();

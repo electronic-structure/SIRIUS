@@ -26,7 +26,7 @@ struct beta_real_space_prj_descriptor
     std::vector<double> dist_;
 
     /* beta projectors on a real-space grid */
-    mdarray<double_complex, 2> beta_;
+    mdarray<double, 2> beta_;
 };
 
 class Real_space_prj
@@ -40,6 +40,8 @@ class Real_space_prj
         splindex<block> spl_num_gvec_;
 
         Communicator const& comm_;
+
+        double R_mask_scale_;
 
         double mask(double x__, double R__)
         {
@@ -61,7 +63,22 @@ class Real_space_prj
 
         int num_points_;
 
-        Real_space_prj(Unit_cell* unit_cell__, FFT3D<CPU>* fft__, Communicator const& comm__);
+        Real_space_prj(Unit_cell* unit_cell__,
+                       Communicator const& comm__,
+                       double R_mask_scale__,
+                       double pw_cutoff__,
+                       int num_fft_threads__,
+                       int num_fft_workers__);
+
+        ~Real_space_prj()
+        {
+            delete fft_;
+        }
+
+        FFT3D<CPU>* fft()
+        {
+            return fft_;
+        }
 };
 
 };

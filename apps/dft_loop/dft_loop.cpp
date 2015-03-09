@@ -129,7 +129,8 @@ void dft_loop(cmd_args args)
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
     
-    K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid, ngridk, parser["use_symmetry"].get(0));
+    K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
+             vector3d<int>(&ngridk[0]), vector3d<int>(0), parser["use_symmetry"].get(0));
 
     ks.initialize();
     

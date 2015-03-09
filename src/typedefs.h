@@ -116,15 +116,7 @@ enum local_orbital_t {lo_rs, lo_cp};
 
 /// Wrapper for data types
 template <typename T> 
-class type_wrapper
-{
-    public:
-
-        static bool is_primitive()
-        {
-            return false;
-        }
-};
+class type_wrapper;
 
 template<> 
 class type_wrapper<double>
@@ -163,16 +155,6 @@ class type_wrapper<double>
             return true;
         }
 
-        static inline double abs(double val)
-        {
-            return fabs(val);
-        }
-
-        static bool is_primitive()
-        {
-            return true;
-        }
-
         static inline double random()
         {
             return double(rand()) / RAND_MAX;
@@ -200,12 +182,6 @@ class type_wrapper<long double>
         {
             return true;
         }
-
-        static bool is_primitive()
-        {
-            return true;
-        }
-
 };
 
 template<> 
@@ -253,28 +229,11 @@ class type_wrapper< std::complex<double> >
             return false;
         }
         
-        static inline double abs(std::complex<double> val)
-        {
-            return std::abs(val);
-        }
-
-        static bool is_primitive()
-        {
-            return true;
-        }
-
         static inline std::complex<double> random()
         {
             return std::complex<double>(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
         }
 };
-
-/*template<> class type_wrapper< std::complex<float> >
-{
-    public:
-        typedef std::complex<float> complex_t;
-        typedef float real_t;
-};*/
 
 template<> 
 class type_wrapper<int>
@@ -289,45 +248,16 @@ class type_wrapper<int>
         {
             return MPI_INT;
         }
-
-        static bool is_primitive()
-        {
-            return true;
-        }
-
-        static int abs(int val)
-        {
-            return abs(val);
-        }
-
-        /*static bool is_complex()
-        {
-            return false;
-        }*/
 };
 
 template<> 
 class type_wrapper<char>
 {
     public:
-        /*static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_INT;
-        }*/
 
         static MPI_Datatype mpi_type_id()
         {
             return MPI_CHAR;
-        }
-
-        /*static bool is_complex()
-        {
-            return false;
-        }*/
-
-        static bool is_primitive()
-        {
-            return true;
         }
 
         static inline char random()

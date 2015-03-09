@@ -112,11 +112,11 @@ vector3d<double> Symmetry::euler_angles(int isym)
 
     auto rm = rot_mtrx(isym) * p;
 
-    if (type_wrapper<double>::abs(rm(2, 2) - 1.0) < eps) // cos(beta) == 1, beta = 0
+    if (std::abs(rm(2, 2) - 1.0) < eps) // cos(beta) == 1, beta = 0
     {
         angles[0] = Utils::phi_by_sin_cos(rm(1, 0), rm(0, 0));
     }
-    else if (type_wrapper<double>::abs(rm(2, 2) + 1.0) < eps) // cos(beta) == -1, beta = Pi
+    else if (std::abs(rm(2, 2) + 1.0) < eps) // cos(beta) == -1, beta = Pi
     {
         angles[0] = Utils::phi_by_sin_cos(-rm(0, 1), rm(1, 1));
         angles[1] = pi;
@@ -135,7 +135,7 @@ vector3d<double> Symmetry::euler_angles(int isym)
     {
         for (int j = 0; j < 3; j++)
         {
-            if (type_wrapper<double>::abs(rm(i, j) - rm1(i, j)) > eps)
+            if (std::abs(rm(i, j) - rm1(i, j)) > eps)
             {
                 std::stringstream s;
                 s << "matrices don't match for symmetry operation " << isym << std::endl

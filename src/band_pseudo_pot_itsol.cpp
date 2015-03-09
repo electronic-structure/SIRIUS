@@ -1266,7 +1266,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     /* trial basis functions */
     assert(phi.size(0) == psi.size(0));
     memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec() * num_bands * sizeof(double_complex));
-
     
     if (parameters_.processing_unit() == GPU)
     {
@@ -1328,17 +1327,17 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        if (true)
+        if (!itso.real_space_prj_)
         {
             apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, kappa, packed_mtrx_offset,
                              d_mtrx_packed, q_mtrx_packed);
-            parameters_.work_load_ += n;
         }
         else
         {
-            //apply_h_o_real_space_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
-            //                            d_mtrx_packed__, q_mtrx_packed__);
+            apply_h_o_real_space_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, packed_mtrx_offset,
+                                        d_mtrx_packed, q_mtrx_packed);
         }
+        parameters_.work_load_ += n;
 
         /* setup eigen-value problem.
          * N is the number of previous basis functions
@@ -1357,7 +1356,9 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             }
             if (imag(ovlp(i, i)) > 1e-10)
             {
-                TERMINATE("wrong diagonal of O");
+                std::stringstream s;
+                s << "wrong diagonal of O: " << ovlp(i, i);
+                TERMINATE(s);
             }
             hmlt(i, i) = real(hmlt(i, i));
             ovlp(i, i) = real(ovlp(i, i));

@@ -213,6 +213,23 @@ inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string ke
     return v;
 }
 
+template <>
+inline vector3d<int> cmd_args::value< vector3d<int> >(const std::string key__)
+{
+    vector3d<int> v;
+
+    if (!exist(key__))
+    {
+        std::stringstream s;
+        s << "command line parameter --" << key__ << " was not specified";
+        TERMINATE(s);
+    }
+
+    std::istringstream iss(keys_[key__]);
+    for (int x = 0; x < 3; x++) iss >> v[x];
+    return v;
+}
+
 template<>
 inline std::vector<int> cmd_args::value< std::vector<int> >(std::string const key__, std::vector<int> const default_val__)
 {

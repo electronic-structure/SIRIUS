@@ -59,13 +59,7 @@ void SHT::forward_transform<double_complex>(double_complex* ftp, int nr, int lmm
     linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
-/** Specialization for real Gaunt coefficients between three complex spherical harmonics
- *  \f[ 
- *      \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
- *  \f]
- */
-template<> 
-double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
+double SHT::gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3)
 {
     assert(l1 >= 0);
     assert(l2 >= 0);
@@ -79,12 +73,32 @@ double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
 }
 
-/** Specialization for complex Gaunt coefficients between two complex and one real spherical harmonics
- *  \f[ 
- *      \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
- *  \f]
- */
-template<> double_complex SHT::gaunt<double_complex>(int l1, int l2, int l3, int m1, int m2, int m3)
+double SHT::gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    assert(l1 >= 0);
+    assert(l2 >= 0);
+    assert(l3 >= 0);
+    assert(m1 >= -l1 && m1 <= l1);
+    assert(m2 >= -l2 && m2 <= l2);
+    assert(m3 >= -l3 && m3 <= l3);
+    
+    double d = 0;
+    for (int k1 = -l1; k1 <= l1; k1++)
+    {
+        for (int k2 = -l2; k2 <= l2; k2++)
+        {
+            for (int k3 = -l3; k3 <= l3; k3++)
+            {
+                d += real(conj(sirius::SHT::ylm_dot_rlm(l1, k1, m1)) *
+                          sirius::SHT::ylm_dot_rlm(l2, k2, m2) *
+                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
+            }
+        }
+    }
+    return d;
+}
+
+double_complex SHT::gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
 {
     assert(l1 >= 0);
     assert(l2 >= 0);
@@ -95,15 +109,14 @@ template<> double_complex SHT::gaunt<double_complex>(int l1, int l2, int l3, int
 
     if (m2 == 0) 
     {
-        return double_complex(gaunt<double>(l1, l2, l3, m1, m2, m3), 0.0);
+        return double_complex(gaunt_ylm(l1, l2, l3, m1, m2, m3), 0.0);
     }
     else 
     {
-        return (ylm_dot_rlm(l2, m2, m2) * gaunt<double>(l1, l2, l3, m1, m2, m3) +  
-                ylm_dot_rlm(l2, -m2, m2) * gaunt<double>(l1, l2, l3, m1, -m2, m3));
+        return (ylm_dot_rlm(l2, m2, m2) * gaunt_ylm(l1, l2, l3, m1, m2, m3) +  
+                ylm_dot_rlm(l2, -m2, m2) * gaunt_ylm(l1, l2, l3, m1, -m2, m3));
     }
 }
-
 
 SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
 {

@@ -110,9 +110,9 @@ int main(int argn, char** argv)
 
         FILE* fout = fopen("pw.in", "w");
         fprintf(fout, "&control\ncalculation=\'scf\',\nrestart_mode=\'from_scratch\',\npseudo_dir = \'./\',\noutdir=\'./\',\nprefix = \'scf_\'\n/\n");
-        fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.002, nosym=.false.,\n");
+        fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
         fprintf(fout, "nat=%i ntyp=%i\n/\n", nat, (int)iip.unit_cell_input_section_.labels_.size());
-        fprintf(fout, "&electrons\nconv_thr =  1.0d-8,\nmixing_beta = 0.7,\nelectron_maxstep = 10\n/\n");
+        fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
         fprintf(fout, "ATOMIC_SPECIES\n");
         for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
             fprintf(fout, "%s 0.0 pp.UPF\n", iip.unit_cell_input_section_.labels_[iat].c_str());
