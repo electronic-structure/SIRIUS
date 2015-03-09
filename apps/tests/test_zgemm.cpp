@@ -40,7 +40,7 @@ void test_gemm(int M, int N, int K, int transa)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     sirius::Timer t1("gemm_only"); 
-    linalg<CPU>::gemm(transa, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
+    linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
     t1.stop();
     printf("execution time (sec) : %12.6f\n", t1.value());
     printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value());
@@ -89,23 +89,22 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 
     c.zero();
 
-    if (Platform::comm_world().rank() == 0)
+    if (Platform::rank() == 0)
     {
         printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
-    Platform::comm_world().barrier();
-    sirius::Timer t1("gemm_only"); 
+    Communicator comm(MPI_COMM_WORLD);
+    sirius::Timer t1("gemm_only", comm); 
     gemm_type one = 1;
     gemm_type zero = 0;
     linalg<CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
-    Platform::comm_world().barrier();
     double tval = t1.stop();
     double perf = 8e-9 * M * (N - n) * K / tval / nrow / ncol;
-    if (Platform::comm_world().rank() == 0)
+    if (Platform::rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", tval);
         printf("performance    : %12.6f GFlops / node\n", perf);
