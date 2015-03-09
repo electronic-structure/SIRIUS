@@ -615,39 +615,42 @@ void Unit_cell::print_info()
         printf("\n");
     }
 
-    printf("\n");
-    printf("space group number   : %i\n", symmetry_->spacegroup_number());
-    printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
-    printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-    printf("number of operations : %i\n", symmetry_->num_sym_op());
-    printf("transformation matrix : \n");
-    auto tm = symmetry_->transformation_matrix();
-    for (int i = 0; i < 3; i++)
+    if (symmetry_ != nullptr)
     {
-
-        for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
         printf("\n");
-    }
-    printf("origin shift : \n");
-    auto t = symmetry_->origin_shift();
-    printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
-
-    printf("symmetry operations  : \n");
-    for (int isym = 0; isym < symmetry_->num_sym_op(); isym++)
-    {
-        auto R = symmetry_->rot_mtrx(isym);
-        auto t = symmetry_->fractional_translation(isym);
-        printf("isym : %i\n", isym);
-        printf("R : ");
+        printf("space group number   : %i\n", symmetry_->spacegroup_number());
+        printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+        printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+        printf("number of operations : %i\n", symmetry_->num_sym_op());
+        printf("transformation matrix : \n");
+        auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++)
         {
-            if (i) printf("    ");
-            for (int j = 0; j < 3; j++) printf("%3i ", R(i, j));
+
+            for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
             printf("\n");
         }
-        printf("T : ");
-        for (int j = 0; j < 3; j++) printf("%f8.4 ", t[j]);
-        printf("\n");
+        printf("origin shift : \n");
+        auto t = symmetry_->origin_shift();
+        printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+
+        printf("symmetry operations  : \n");
+        for (int isym = 0; isym < symmetry_->num_sym_op(); isym++)
+        {
+            auto R = symmetry_->rot_mtrx(isym);
+            auto t = symmetry_->fractional_translation(isym);
+            printf("isym : %i\n", isym);
+            printf("R : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%3i ", R(i, j));
+                printf("\n");
+            }
+            printf("T : ");
+            for (int j = 0; j < 3; j++) printf("%f8.4 ", t[j]);
+            printf("\n");
+        }
     }
     
     printf("\n");

@@ -195,8 +195,8 @@ void Global::initialize()
         fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
         #endif
     }
-
-    unit_cell_->symmetry()->check_gvec_symmetry(fft_);
+    
+    if (unit_cell_->num_atoms() != 0) unit_cell_->symmetry()->check_gvec_symmetry(fft_);
 
     /* create a reciprocal lattice */
     int lmax = -1;

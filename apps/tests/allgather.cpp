@@ -2,14 +2,12 @@
 
 using namespace sirius;
 
-int main(int argn, char** argv)
-{   
-    Platform::initialize(true);
-
+void test_allgather()
+{
     int N = 11;
     std::vector<double> vec(N, 0.0);
 
-    auto& comm = Platform::comm_world();
+    Communicator comm(MPI_COMM_WORLD);
     
     splindex<block> spl(N, comm.size(), comm.rank());
 
@@ -41,6 +39,13 @@ int main(int argn, char** argv)
         pout.flush();
     }
     comm.barrier();
+}
+
+int main(int argn, char** argv)
+{   
+    Platform::initialize(true);
+
+    test_allgather();
     
     Platform::finalize();
 

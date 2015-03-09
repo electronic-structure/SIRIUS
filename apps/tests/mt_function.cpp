@@ -24,7 +24,7 @@ void test1_radial_angular()
     double d = 0;
     for (int lm = 0; lm < lmmax; lm++)
     {
-        for (int ir = 0; ir < r.num_points(); ir++) d += type_wrapper<T>::abs(f1(ir, lm) - f3(ir, lm));
+        for (int ir = 0; ir < r.num_points(); ir++) d += std::abs(f1(ir, lm) - f3(ir, lm));
     }
     
     if (d < 1e-10)
@@ -59,7 +59,7 @@ void test1_angular_radial()
     double d = 0;
     for (int ir = 0; ir < r.num_points(); ir++) 
     {
-        for (int lm = 0; lm < lmmax; lm++) d += type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
+        for (int lm = 0; lm < lmmax; lm++) d += std::abs(f1(lm, ir) - f3(lm, ir));
     }
 
     std::cout << "diff : " << d << std::endl;
@@ -86,7 +86,7 @@ void test2(int lmax, int nr)
     {
         for (int lm = 0; lm < lmmax; lm++)
         {
-            d += type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
+            d += std::abs(f1(lm, ir) - f3(lm, ir));
         }
     }
 
@@ -120,7 +120,7 @@ void test3(int lmax, int nr)
     {
         for (int lm = 0; lm < lmmax; lm++)
         {
-            d += type_wrapper<double>::abs(f1(lm, ir) - f5(lm, ir));
+            d += std::abs(f1(lm, ir) - f5(lm, ir));
         }
     }
 
