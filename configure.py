@@ -19,7 +19,7 @@ packages = {
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.7/spglib-1.7.1.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.7/spglib-1.7.2.tar.gz",
               []
              ]
 }
@@ -147,6 +147,8 @@ def main():
     
     make_packages = []
     clean_packages = []
+
+    makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/src\n")
 
     if "install" in platform:
         for name in platform["install"]:
