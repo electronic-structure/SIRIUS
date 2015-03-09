@@ -53,14 +53,13 @@ typedef double_complex gemm_type;
 #endif
 
 #ifdef _SCALAPACK_
-double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
+double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, int bs)
 {
     //== #ifdef _GPU_
     //== sirius::pstdout pout;
     //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
     //== pout.flush(0);
     //== #endif
-    int bs = 32;
     BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol, bs);
 
     dmatrix<gemm_type> a, b, c;
@@ -93,7 +92,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     if (Platform::rank() == 0)
     {
         printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
-        printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, 32);
+        printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
     Communicator comm(MPI_COMM_WORLD);
     sirius::Timer t1("gemm_only", comm); 
@@ -160,8 +159,8 @@ int main(int argn, char **argv)
         #ifdef _SCALAPACK_
         int bs = args.value<int>("bs");
         double perf = 0;
-        for (int i = 0; i < repeat; i++) perf += test_pgemm(M, N, K, nrow, ncol, transa, n);
-        if (Platform::rank() == 0)
+        for (int i = 0; i < repeat; i++) perf += test_pgemm(M, N, K, nrow, ncol, transa, n, bs);
+        if (Platform::comm_world().rank() == 0)
         {
             printf("\n");
             printf("average performance    : %12.6f GFlops / node\n", perf / repeat);
