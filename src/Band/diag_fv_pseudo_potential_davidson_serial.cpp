@@ -432,13 +432,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 }
             }
 
-            /* reduce the tolerance if residuals have converged before the last iteration */
-            if (n == 0 && (k < itso.num_steps_ - 1))
-            {
-                itso.tolerance_ /= 2;
-                itso.tolerance_ = std::max(itso.tolerance_, itso.extra_tolerance_);
-            }
-
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
             {

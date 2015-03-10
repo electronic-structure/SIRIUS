@@ -233,8 +233,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                 for (int i = 0; i < num_bands; i++)
                 {
                     /* take the residual if it's norm is above the threshold */
-                    if ((kp__->band_occupancy(i) > 1e-12 && res_norm[i] > itso.tolerance_) ||
-                        (n != 0 &&  res_norm[i] > std::max(itso.tolerance_ / 2, itso.extra_tolerance_)))
+                    if (res_norm[i] > itso.tolerance_ && kp__->band_occupancy(i) > 1e-10)
                     {
                         res_list.push_back(i);
                     }
@@ -258,13 +257,6 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             if (with_overlap) linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
 
-            /* reduce the tolerance if residuals have converged before the last iteration */
-            if (n == 0 && (k < itso.num_steps_ - 1))
-            {
-                itso.tolerance_ /= 2;
-                itso.tolerance_ = std::max(itso.tolerance_, itso.extra_tolerance_);
-            }
-            
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
             {

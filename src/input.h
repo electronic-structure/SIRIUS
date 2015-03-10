@@ -237,8 +237,6 @@ class initial_input_parameters
             int num_steps_;
             int subspace_size_;
             double tolerance_;
-            double extra_tolerance_;
-            int version_;
             std::string type_;
             int converge_by_energy_;
             int real_space_prj_;
@@ -247,9 +245,7 @@ class initial_input_parameters
             iterative_solver_input_section() 
                 : num_steps_(4),
                   subspace_size_(4),
-                  tolerance_(1e-4),
-                  extra_tolerance_(1e-4),
-                  version_(1),
+                  tolerance_(1e-5),
                   type_("davidson"),
                   converge_by_energy_(0),
                   real_space_prj_(0),
@@ -262,8 +258,6 @@ class initial_input_parameters
                 num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
                 subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
                 tolerance_          = parser["iterative_solver"]["tolerance"].get(tolerance_);
-                extra_tolerance_    = parser["iterative_solver"]["extra_tolerance"].get(extra_tolerance_);
-                version_            = parser["iterative_solver"]["version"].get(version_);
                 type_               = parser["iterative_solver"]["type"].get(type_);
                 converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
                 real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
