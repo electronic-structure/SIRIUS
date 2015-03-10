@@ -16,6 +16,11 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     auto rsp = parameters_.real_space_prj_;
     auto fft = parameters_.real_space_prj_->fft();
 
+    if (kappa__.size() < (2 * fft->size() + rsp->max_num_points_) * fft->num_fft_threads())
+    {
+        TERMINATE("wrong size of work array");
+    }
+
     std::vector<int> fft_index(kp__->num_gkvec());
     for (int igk = 0; igk < kp__->num_gkvec(); igk++)
     {

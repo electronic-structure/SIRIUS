@@ -73,14 +73,28 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
     
     /* size of <beta|phi>, D*<beta|phi> and <Gk|beta> */
-    int h_app_size = 2 * nbmax * num_bands + num_gkvec_loc * nbmax;
-    /* size of phi, hphi and <phi|hphi> */ 
-    //int h_setup_size = num_gkvec_loc * (num_phi + num_bands) + num_phi * num_bands;
-    /* sizf of <phi|hphi> */ 
-    int h_setup_size = num_phi * num_bands;
+    size_t kappa_size = 2 * nbmax * num_bands + num_gkvec_loc * nbmax;
+
+    /* size of <phi|hphi> */ 
+    kappa_size = std::max(kappa_size, size_t(num_phi * num_bands));
+
+    if (parameters_.processing_unit() == CPU && itso.real_space_prj_)
+    {
+        auto rsp = parameters_.real_space_prj_;
+        size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
+        size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
+
+        kappa_size = std::max(kappa_size, size);
+    }
+
+    matrix<double_complex> hphi_slice, ophi_slice;
+    if (itso.real_space_prj_)
+    {
+        hphi_slice = matrix<double_complex>(kp__->num_gkvec(), spl_bands.local_size());
+        ophi_slice = matrix<double_complex>(kp__->num_gkvec(), spl_bands.local_size());
+    }
 
     /* large temporary array */
-    int kappa_size = std::max(h_app_size, h_setup_size);
     mdarray<double_complex, 1> kappa(kappa_size);
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -173,8 +187,16 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         if (with_overlap)
         {
-            apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, psi_slice, phi_slab, hphi_slab, ophi_slab,
-                                    packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
+            if (!itso.real_space_prj_)
+            {
+                apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, psi_slice, phi_slab, hphi_slab, ophi_slab,
+                                        packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
+            }
+            else
+            {
+                apply_h_o_fast_parallel_rs(kp__, veff_it_coarse__, pw_ekin, N, n, psi_slice, hphi_slice, ophi_slice, 
+                                           phi_slab, hphi_slab, ophi_slab, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
+            }
         }
         else
         {

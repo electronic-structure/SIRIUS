@@ -16,7 +16,9 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/diag_fv_pseudo_potential_chebyshev_serial.cpp \
        Band/diag_fv_pseudo_potential_davidson_serial.cpp \
        Band/diag_fv_pseudo_potential_davidson_parallel.cpp \
-       Band/diag_fv_pseudo_potential_davidson_fast_parallel.cpp
+       Band/diag_fv_pseudo_potential_davidson_fast_parallel.cpp \
+       Band/apply_h_o_fast_parallel.cpp \
+       Band/apply_h_o_fast_parallel_rs.cpp
        
 OBJ = $(SRC:.cpp=.o) 
       
