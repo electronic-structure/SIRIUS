@@ -178,8 +178,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
     #endif
 
-    double evp_load = 0;
-
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
@@ -222,22 +220,20 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                 &eval[0], evec.at<CPU>(), evec.ld());
         //printf("N=%i\n", N);
         //printf("e=%18.12f %18.12f\n", eval[0]*2, eval[num_bands-1]*2);
-
-        evp_load += std::pow(double(N) / num_bands, 3);
         }
 
         bool occ_band_converged = true;
-        double demax = 0;
+        //double demax = 0;
         for (int i = 0; i < num_bands; i++)
         {
             if (kp__->band_occupancy(i) > 1e-2 && 
                 std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
             {
-                demax = std::abs(eval_old[i] - eval[i]);
+                //demax = std::abs(eval_old[i] - eval[i]);
                 occ_band_converged = false;
             }
         }
-        DUMP("step: %i, eval error: %18.14f", k, demax);
+        //DUMP("step: %i, eval error: %18.14f", k, demax);
 
         /* copy eigen-vectors to GPU */
         #ifdef _GPU_
@@ -435,16 +431,15 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
             {
-                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                {
-                    double demax = 0;
-                    for (int i = 0; i < num_bands; i++)
-                    {
-                         if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
-                    }
-                    DUMP("exiting after %i iterations with maximum eigen-value error %18.12f", k + 1, demax);
-                    DUMP("evp_load: %f", evp_load);
-                }
+                //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+                //{
+                //    double demax = 0;
+                //    for (int i = 0; i < num_bands; i++)
+                //    {
+                //         if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
+                //    }
+                //    DUMP("exiting after %i iterations with maximum eigen-value error %18.12f", k + 1, demax);
+                //}
                 break;
             }
             else /* otherwise set Psi as a new trial basis */

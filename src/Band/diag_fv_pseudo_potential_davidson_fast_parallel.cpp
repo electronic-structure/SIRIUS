@@ -219,7 +219,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                                 hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
-        if (kp__->comm().rank() == 0) DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
+        //if (kp__->comm().rank() == 0) DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
         
         {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|collect_evec");
@@ -344,15 +344,15 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
             {
-                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                {
-                    double demax = 0;
-                    for (int i = 0; i < num_bands; i++)
-                    {
-                         if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
-                    }
-                    DUMP("exiting after %i iterations with maximum eigen-value error %18.12e", k + 1, demax);
-                }
+                //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+                //{
+                //    double demax = 0;
+                //    for (int i = 0; i < num_bands; i++)
+                //    {
+                //         if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
+                //    }
+                //    DUMP("exiting after %i iterations with maximum eigen-value error %18.12e", k + 1, demax);
+                //}
                 break;
             }
 

@@ -24,6 +24,19 @@
 
 #include "error_handling.h"
 
+std::string timestamp()
+{
+    timeval t;
+    gettimeofday(&t, NULL);
+
+    char buf[100]; 
+
+    tm* ptm = localtime(&t.tv_sec); 
+    //strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm); 
+    strftime(buf, sizeof(buf), "%H:%M:%S", ptm); 
+    return std::string(buf);
+}
+
 void terminate(const char* file_name, int line_number, const std::string& message)
 {
     printf("\n=== Fatal error at line %i of file %s ===\n", line_number, file_name);
@@ -133,11 +146,11 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
 
 void log_function_enter(const char* func_name)
 {
-    if (verbosity_level >= 10) printf("rank%i => %s\n", Platform::rank(), func_name);
+    if (verbosity_level >= 10) printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), func_name);
 }
 
 void log_function_exit(const char* func_name)
 {
-    if (verbosity_level >= 10) printf("rank%i <= %s\n", Platform::rank(), func_name);
+    if (verbosity_level >= 10) printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), func_name);
 }
 
