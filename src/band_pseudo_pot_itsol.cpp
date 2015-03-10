@@ -1252,7 +1252,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         }
     }
 
-    bool economize_gpu_memory = true;
+    bool economize_gpu_memory = true; // TODO: move to user-controlled input
     
     mdarray<double_complex, 1> kappa;
 

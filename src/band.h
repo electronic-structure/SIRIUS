@@ -408,6 +408,26 @@ class Band
         //                              dmatrix<double_complex>& o__,
         //                              mdarray<double_complex, 2>& kappa__);
 
+        void add_nl_h_o_pw(K_point* kp__,
+                           int n__,
+                           matrix<double_complex>& phi__,
+                           matrix<double_complex>& hphi__,
+                           matrix<double_complex>& ophi__,
+                           matrix<double_complex>& beta_gk__,
+                           mdarray<int, 1>& packed_mtrx_offset__,
+                           mdarray<double_complex, 1>& d_mtrx_packed__,
+                           mdarray<double_complex, 1>& q_mtrx_packed__);
+
+        void add_nl_h_o_rs(K_point* kp__,
+                           int n__,
+                           matrix<double_complex>& phi__,
+                           matrix<double_complex>& hphi__,
+                           matrix<double_complex>& ophi__,
+                           mdarray<int, 1>& packed_mtrx_offset__,
+                           mdarray<double_complex, 1>& d_mtrx_packed__,
+                           mdarray<double_complex, 1>& q_mtrx_packed__,
+                           mdarray<double_complex, 1>& kappa__);
+
         void generate_fv_states_pp(K_point* kp__,
                                    int num_phi__,
                                    dmatrix<double_complex>& evec__,
