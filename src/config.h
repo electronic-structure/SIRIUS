@@ -80,7 +80,7 @@ const int debug_level = 0;
 #ifdef _VERBOSITY_
 const int verbosity_level = _VERBOSITY_;
 #else
-const int verbosity_level = 10;
+const int verbosity_level = 6;
 #endif
 
 const bool fix_apwlo_linear_dependence = false;

@@ -117,7 +117,6 @@ class Spline
             return *this;
         }
 
-        // TODO: check spline iterpolation between different grids. Can it be done analytically?
         inline T operator()(double x)
         {
             int np = num_points();

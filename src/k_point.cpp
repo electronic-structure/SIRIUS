@@ -275,6 +275,27 @@ void K_point::update()
             }
         }
 
+        //for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        //{
+        //    printf("atom type: %i\n", iat);
+
+        //    auto atom_type = uc->atom_type(iat);
+
+        //    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+        //    {
+        //        for (int xi1 = 0; xi1 < atom_type->mt_basis_size(); xi1++)
+        //        {
+        //            double_complex z(0, 0);
+        //            for (int igk = 0; igk < num_gkvec(); igk++)
+        //            {
+        //                z += conj(beta_gk_t_(igk, atom_type->offset_lo() + xi)) * beta_gk_t_(igk, atom_type->offset_lo() + xi1);
+        //            }
+        //            printf("xi,xi1=%2i,%2i,  prod=%18.12f %18.12f\n", xi, xi1, real(z), imag(z));
+        //        }
+        //    }
+        //}
+
+
         p_mtrx_ = mdarray<double_complex, 3>(uc->max_mt_basis_size(), uc->max_mt_basis_size(), uc->num_atom_types());
         p_mtrx_.zero();
 

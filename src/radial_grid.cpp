@@ -121,7 +121,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
     }
    
     /* trivial check */
-    if (fabs(rmax - grid_points[num_points - 1]) > 1e-10)
+    if (std::abs(rmax - grid_points[num_points - 1]) > 1e-10)
     {
         std::stringstream s;
         s << "Wrong radial grid" << std::endl
@@ -136,10 +136,10 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
 
 void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, double rmax)
 {
-    assert(rmin > 0);
+    assert(rmin >= 0);
     assert(rmax > 0);
 
-    std::vector<double> grid_points = create_radial_grid_points(grid_type, num_points, rmin, rmax);
+    auto grid_points = create_radial_grid_points(grid_type, num_points, rmin, rmax);
     set_radial_points((int)grid_points.size(), &grid_points[0]);
 
     switch (grid_type)

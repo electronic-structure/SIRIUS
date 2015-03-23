@@ -132,6 +132,36 @@ void test5()
 //    std::cout << s[4999] << " " << s.deriv(0, 4999) << " " << s.deriv(1, 4999) << " " << s.deriv(2, 4999) << std::endl;
 //}
 
+void test6()
+{
+    printf("4 points interpolation\n");
+    std::vector<double> x = {0, 1, 2, 3};
+    Radial_grid r(x);
+    Spline<double> s(r);
+    s[0] = 0;
+    s[1] = 1;
+    s[2] = 0;
+    s[3] = 0;
+    double val = s.interpolate().integrate(0);
+    if (std::abs(val - 1.125) > 1e-13)
+    {
+        printf("wrong result: %18.12f\n", val);
+    }
+    else
+    {
+        printf("OK\n");
+    }
+    
+    int N = 4000;
+    FILE* fout = fopen("spline_test.dat", "w");
+    for (int i = 0; i < N; i++)
+    {
+        double t = 3.0 * i / (N - 1);
+        fprintf(fout, "%18.12f %18.12f\n", t, s(t));
+    }
+    fclose(fout);
+}
+
 int main(int argn, char **argv)
 {
     Platform::initialize(1);
@@ -160,6 +190,8 @@ int main(int argn, char **argv)
     test4(0.0001, 2.0, 0.7029943796175838);
 
     test5();
+
+    test6();
 
     //test4(0.0001, 1.892184);
 }

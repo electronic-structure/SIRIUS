@@ -225,6 +225,7 @@ void Global::initialize()
     if (iip_.iterative_solver_input_section_.real_space_prj_) 
     {
         real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iip_.iterative_solver_input_section_.R_mask_scale_,
+                                             iip_.iterative_solver_input_section_.mask_alpha_,
                                              gk_cutoff_, iip_.common_input_section_.num_fft_threads_,
                                              iip_.common_input_section_.num_fft_workers_);
     }

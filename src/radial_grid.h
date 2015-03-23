@@ -133,6 +133,22 @@ class Radial_grid
             h += Utils::hash(&x_inv_[0], x_inv_.size() * sizeof(double), h);
             return h;
         }
+
+        Radial_grid segment(int num_points__)
+        {
+            assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
+            Radial_grid r;
+            r.grid_type_name_ = grid_type_name_ + " (segment)";
+            r.x_ = std::vector<double>(num_points__);
+            r.x_inv_ = std::vector<double>(num_points__);
+            r.dx_ = std::vector<double>(num_points__ - 1);
+
+            memcpy(&r.x_[0], &x_[0], num_points__ * sizeof(double));
+            memcpy(&r.x_inv_[0], &x_inv_[0], num_points__ * sizeof(double));
+            memcpy(&r.dx_[0], &dx_[0], (num_points__ - 1) * sizeof(double));
+
+            return r;
+        }
 };
 
 };
