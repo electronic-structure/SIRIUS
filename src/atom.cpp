@@ -117,9 +117,10 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
     if (num_mag_dims_) b_radial_integrals_.zero();
 
     /* interpolate radial functions */
-    std::vector< Spline<double> > rf_spline(type()->indexr().size(), Spline<double>(type()->radial_grid()));
+    std::vector< Spline<double> > rf_spline(type()->indexr().size());
     for (int i = 0; i < type()->indexr().size(); i++)
     {
+        rf_spline[i] = Spline<double>(type()->radial_grid());
         for (int ir = 0; ir < nmtp; ir++) rf_spline[i][ir] = symmetry_class()->radial_function(ir, i);
         rf_spline[i].interpolate();
     }
@@ -127,7 +128,8 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
     #pragma omp parallel default(shared)
     {
         /* potential or magnetic field times a radial function */
-        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_, Spline<double>(type()->radial_grid()));
+        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_);
+        for (int i = 0; i < 1 + num_mag_dims_; i++) vrf_spline[i] = Spline<double>(type()->radial_grid());
 
         for (int lm_loc = 0; lm_loc < (int)spl_lm.local_size(); lm_loc++)
         {

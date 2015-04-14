@@ -33,7 +33,7 @@ int Radial_solver::integrate(int l,
                              std::vector<double>& p, 
                              std::vector<double>& dpdr, 
                              std::vector<double>& q, 
-                             std::vector<double>& dqdr)
+                             std::vector<double>& dqdr) const
 {
     /* number of mesh points */
     int nr = radial_grid_.num_points();
@@ -289,7 +289,7 @@ double Radial_solver::bound_state(int n__,
                                   int l__, 
                                   double enu__, 
                                   const std::vector<double>& v__, 
-                                  std::vector<double>& p__)
+                                  std::vector<double>& p__) const
 {
     int np = radial_grid_.num_points();
 
@@ -375,6 +375,112 @@ double Radial_solver::bound_state(int n__,
           << "wrong number of nodes : " << nn << " instead of " << (n__ - l__ - 1);
         error_local(__FILE__, __LINE__, s);
     }
+
+    return enu__;
+}
+
+double Radial_solver::bound_state(int n__, 
+                                  int l__, 
+                                  double enu__, 
+                                  const std::vector<double>& v__, 
+                                  std::vector<double>& p__,
+                                  std::vector<double>& rdudr__) const
+{
+    int np = radial_grid_.num_points();
+
+    Spline<double> vs(radial_grid_);
+    for (int i = 0; i < np; i++) vs[i] = v__[i] - zn_ / radial_grid_[i];
+    vs.interpolate();
+
+    Spline<double> mp(radial_grid_, 0);
+    mp.interpolate();
+    
+    std::vector<double> q(np);
+    std::vector<double> dpdr(np);
+    std::vector<double> dqdr(np);
+    
+    int s = 1;
+    int sp;
+    double denu = enu_tolerance_;
+
+    for (int iter = 0; iter < 1000; iter++)
+    {
+        int nn = integrate(l__, enu__, vs, mp, p__, dpdr, q, dqdr);
+        
+        sp = s;
+        s = (nn > (n__ - l__ - 1)) ? -1 : 1;
+        denu = s * std::abs(denu);
+        denu = (s != sp) ? denu * 0.5 : denu * 1.25;
+        enu__ += denu;
+        
+        if (std::abs(denu) < enu_tolerance_ && iter > 4) break;
+    }
+    
+    if (std::abs(denu) >= enu_tolerance_) 
+    {
+        std::stringstream s;
+        s << "enu is not converged for n = " << n__ << " and l = " << l__; 
+        error_local(__FILE__, __LINE__, s);
+    }
+
+    /* compute r * u'(r) */
+    rdudr__.resize(radial_grid_.num_points());
+    for (int i = 0; i < radial_grid_.num_points(); i++) rdudr__[i] = dpdr[i] - p__[i] * radial_grid_.x_inv(i);
+
+    /* search for the turning point */
+    int idxtp = np - 1;
+    for (int i = 0; i < np; i++)
+    {
+        if (v__[i] > enu__)
+        {
+            idxtp = i;
+            break;
+        }
+    }
+
+    /* zero the tail of the wave-function */
+    double t1 = 1e100;
+    for (int i = idxtp; i < np; i++)
+    {
+        if (std::abs(p__[i]) < t1 && p__[i - 1] * p__[i] > 0)
+        {
+            t1 = std::abs(p__[i]);
+        }
+        else
+        {
+            t1 = 0.0;
+            p__[i] = 0.0;
+            rdudr__[i] = 0.0;
+        }
+    }
+
+
+    Spline<double> rho(radial_grid_);
+    for (int i = 0; i < np; i++) rho[i] = p__[i] * p__[i];
+
+    /* p is not divided by r, so we integrate with r^0 prefactor */
+    double norm = 1.0 / std::sqrt(rho.interpolate().integrate(0));
+    
+    for (int i = 0; i < np; i++)
+    {
+        p__[i] *= norm;
+        rdudr__[i] *= norm;
+    }
+
+    /* count number of nodes of the function */
+    int nn = 0;
+    for (int i = 0; i < np - 1; i++) if (p__[i] * p__[i + 1] < 0.0) nn++;
+
+    if (nn != (n__ - l__ - 1))
+    {
+        std::stringstream s;
+        s << "n = " << n__ << std::endl 
+          << "l = " << l__ << std::endl
+          << "enu = " << enu__ << std::endl
+          << "wrong number of nodes : " << nn << " instead of " << (n__ - l__ - 1);
+        error_local(__FILE__, __LINE__, s);
+    }
+
 
     return enu__;
 }

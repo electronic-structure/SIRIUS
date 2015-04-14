@@ -55,7 +55,7 @@ class Utils
 
         static inline int lmax_by_lmmax(int lmmax__)
         {
-            int lmax = int(sqrt(double(lmmax__)) + 1e-8) - 1;
+            int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
             if (lmmax(lmax) != lmmax__) error_local(__FILE__, __LINE__, "wrong lmmax");
             return lmax;
         }
@@ -146,9 +146,9 @@ class Utils
             return result;
         }
         
-        static uint64_t hash(void* buff, size_t size, uint64_t h = 5381)
+        static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
         {
-            unsigned char* p = static_cast<unsigned char*>(buff);
+            unsigned char const* p = static_cast<unsigned char const*>(buff);
             for(size_t i = 0; i < size; i++) h = ((h << 5) + h) + p[i];
             return h;
         }

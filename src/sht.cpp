@@ -371,21 +371,21 @@ void SHT::uniform_coverage()
     tp_(1, num_points_ - 1) = 0;
 }
 
-Spheric_function<spectral, double> SHT::convert(Spheric_function<spectral, double_complex>& f)
+Spheric_function<spectral, double> SHT::convert(Spheric_function<spectral, double_complex>& f__)
 {
     Spheric_function<spectral, double> g;
 
-    /* radial index is first */
-    if (f.radial_domain_idx() == 0)
-    {
-        g = Spheric_function<spectral, double>(f.radial_grid(), f.angular_domain_size());
-    }
-    else
-    {
-        g = Spheric_function<spectral, double>(f.angular_domain_size(), f.radial_grid());
-    }
+    ///* radial index is first */
+    //if (f.radial_domain_idx() == 0)
+    //{
+    //    //g = Spheric_function<spectral, double>(f.radial_grid(), f.angular_domain_size());
+    //}
+    //else
+    //{
+        g = Spheric_function<spectral, double>(f__.angular_domain_size(), f__.radial_grid());
+    //}
 
-    convert(f, g);
+    convert(f__, g);
 
     return g;
 }
@@ -409,32 +409,32 @@ Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectra
         }
     }
 
-    /* radial index is first */
-    if (f.radial_domain_idx() == 0)
-    {
-        g = Spheric_function<spectral, double_complex>(f.radial_grid(), f.angular_domain_size());
+    ///* radial index is first */
+    //if (f.radial_domain_idx() == 0)
+    //{
+    //    //g = Spheric_function<spectral, double_complex>(f.radial_grid(), f.angular_domain_size());
 
-        int lm = 0;
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int m = -l; m <= l; m++)
-            {
-                if (m == 0)
-                {
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) g(ir, lm) = f(ir, lm);
-                }
-                else 
-                {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                        g(ir, lm) = tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1);
-                }
-                lm++;
-            }
-        }
-    }
-    else
-    {
+    //    int lm = 0;
+    //    for (int l = 0; l <= lmax; l++)
+    //    {
+    //        for (int m = -l; m <= l; m++)
+    //        {
+    //            if (m == 0)
+    //            {
+    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++) g(ir, lm) = f(ir, lm);
+    //            }
+    //            else 
+    //            {
+    //                int lm1 = Utils::lm_by_l_m(l, -m);
+    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+    //                    g(ir, lm) = tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1);
+    //            }
+    //            lm++;
+    //        }
+    //    }
+    //}
+    //else
+    //{
         g = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
         {
@@ -456,15 +456,15 @@ Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectra
                 }
             }
         }
-    }
+    //}
 
     return g;
 }
 
 void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g)
 {
-    if (f.radial_domain_idx() != g.radial_domain_idx())
-        error_local(__FILE__, __LINE__, "wrong radial domain index");
+    //if (f.radial_domain_idx() != g.radial_domain_idx())
+    //    error_local(__FILE__, __LINE__, "wrong radial domain index");
     
     if (f.radial_grid().hash() != g.radial_grid().hash())
         error_local(__FILE__, __LINE__, "radial grids don't match");
@@ -485,31 +485,31 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
         }
     }
 
-    /* radial index is first */
-    if (f.radial_domain_idx() == 0)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int m = -l; m <= l; m++)
-            {
-                if (m == 0)
-                {
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
-                        g(ir, lm) = real(f(ir, lm));
-                }
-                else 
-                {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                        g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
-                }
-                lm++;
-            }
-        }
-    }
-    else
-    {
+    ///* radial index is first */
+    //if (f.radial_domain_idx() == 0)
+    //{
+    //    int lm = 0;
+    //    for (int l = 0; l <= lmax; l++)
+    //    {
+    //        for (int m = -l; m <= l; m++)
+    //        {
+    //            if (m == 0)
+    //            {
+    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
+    //                    g(ir, lm) = real(f(ir, lm));
+    //            }
+    //            else 
+    //            {
+    //                int lm1 = Utils::lm_by_l_m(l, -m);
+    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+    //                    g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
+    //            }
+    //            lm++;
+    //        }
+    //    }
+    //}
+    //else
+    //{
         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
         {
             int lm = 0;
@@ -530,7 +530,7 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
                 }
             }
         }
-    }
+    //}
 }
 
 }

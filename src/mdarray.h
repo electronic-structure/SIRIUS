@@ -782,6 +782,7 @@ class mdarray: public mdarray_base<T, N>
             this->set_ptr_device(ptr_device__);
             #endif
         }
+
         mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
                 mdarray_index_descriptor const& d2)
         {

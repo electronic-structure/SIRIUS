@@ -84,41 +84,41 @@ class Radial_grid
         }
         
         /// Return \f$ x_{i} \f$.
-        inline double operator [](const int i)
+        inline double operator[](const int i) const
         {
             assert(i < (int)x_.size());
             return x_[i];
         }
         
         /// Return \f$ dx_{i} \f$.
-        inline double dx(const int i)
+        inline double dx(const int i) const
         {
             assert(i < (int)dx_.size());
             return dx_[i];
         }
         
         /// Return \f$ x_{i}^{-1} \f$.
-        inline double x_inv(const int i)
+        inline double x_inv(const int i) const
         {
             assert(i < (int)x_inv_.size());
             return x_inv_[i];
         }
        
         /// Number of grid points.
-        inline int num_points()
+        inline int num_points() const
         {
             return (int)x_.size();
         }
                
         /// Get radial points and deltas.
-        inline void get_x_dx(double* array, int ld)
+        inline void get_x_dx(double* array, int ld) const
         {
             memcpy(&array[0], &x_[0], x_.size() * sizeof(double));
             memcpy(&array[ld], &dx_[0], dx_.size() * sizeof(double));
         }
         
         /// Return name of the grid type.
-        inline std::string grid_type_name()
+        inline std::string grid_type_name() const
         {
             return grid_type_name_;
         }
@@ -126,7 +126,7 @@ class Radial_grid
         /// Set new radial points.
         void set_radial_points(int num_points__, double* points__);
 
-        uint64_t hash()
+        uint64_t hash() const
         {
             uint64_t h = Utils::hash(&x_[0], x_.size() * sizeof(double));
             h += Utils::hash(&dx_[0], dx_.size() * sizeof(double), h);
@@ -134,7 +134,7 @@ class Radial_grid
             return h;
         }
 
-        Radial_grid segment(int num_points__)
+        Radial_grid segment(int num_points__) const
         {
             assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
             Radial_grid r;

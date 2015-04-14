@@ -88,15 +88,17 @@ class Real_space_prj
             }
         }
 
-        template <int use_mask>
-        mdarray<double, 3> generate_beta_radial_integrals(Unit_cell* uc__,
-                                                          std::vector<int>& nmt_beta__,
-                                                          std::vector<double>& R_beta__);
+        mdarray<double, 3> generate_beta_radial_integrals(mdarray<Spline<double>, 2>& beta_rf__, int m__);
 
         mdarray<double_complex, 2> generate_beta_pw_t(Unit_cell* uc__,
                                                       mdarray<double, 3>& beta_radial_integrals__);
 
         void filter_radial_functions(double pw_cutoff__);
+        void filter_radial_functions_v2(double pw_cutoff__);
+
+        void get_beta_R();
+
+        void get_beta_grid();
 
     public:
         

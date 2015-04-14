@@ -118,7 +118,7 @@ class Gaunt_coefficients
         }
 
         /// Return number of non-zero Gaunt coefficients for a combination of lm1 and lm2.
-        inline int num_gaunt(int lm1, int lm2)
+        inline int num_gaunt(int lm1, int lm2) const
         {
             return (int)gaunt_packed_L3_(lm1, lm2).size();
         }
@@ -136,7 +136,7 @@ class Gaunt_coefficients
          *  \f]
          *  Result is assumed to be complex.
          */
-        inline double_complex sum_L3_gaunt(int lm1, int lm2, double_complex* v)
+        inline double_complex sum_L3_gaunt(int lm1, int lm2, double_complex const* v) const
         {
             double_complex zsum(0, 0);
             for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++)
@@ -151,7 +151,7 @@ class Gaunt_coefficients
          *  \f]
          *  Result is assumed to be of the same type as Gaunt coefficients.
          */
-        inline T sum_L3_gaunt(int lm1, int lm2, double* v)
+        inline T sum_L3_gaunt(int lm1, int lm2, double const* v) const
         {
             T sum = 0;
             for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++)

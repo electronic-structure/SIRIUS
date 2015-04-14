@@ -67,7 +67,7 @@ class Radial_solver
                       std::vector<double>& p, 
                       std::vector<double>& dpdr, 
                       std::vector<double>& q, 
-                      std::vector<double>& dqdr);
+                      std::vector<double>& dqdr) const;
 
     public:
 
@@ -126,7 +126,14 @@ class Radial_solver
                            int l__,
                            double enu__,
                            const std::vector<double>& v__,
-                           std::vector<double>& p__);
+                           std::vector<double>& p__) const;
+
+        double bound_state(int n__,
+                           int l__,
+                           double enu__,
+                           const std::vector<double>& v__,
+                           std::vector<double>& p__,
+                           std::vector<double>& rdudr__) const;
 };
 
 };

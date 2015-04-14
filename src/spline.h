@@ -54,14 +54,44 @@ class Spline
         /// Spline "d" coefficients.
         std::vector<T> d;
 
+        mdarray<T, 2> packed_spline_data_;
+
         // TODO: maybe add x-coordinate as an oprator. we know the radial grid and we can return x here
 
     public:
+
+        Spline(Spline<T> const& src__) = delete;
+
+        Spline(Spline<T>&& src__)
+        {
+            radial_grid_ = std::move(src__.radial_grid_);
+            a = std::move(src__.a);
+            b = std::move(src__.b);
+            c = std::move(src__.c);
+            d = std::move(src__.d);
+            packed_spline_data_ = std::move(src__.packed_spline_data_);
+        }
+
+        Spline<T>& operator=(Spline<T> const& src__) = delete;
+
+        Spline<T>& operator=(Spline<T>&& src__)
+        {
+            if (this != &src__)
+            {
+                radial_grid_ = std::move(src__.radial_grid_);
+                a = std::move(src__.a);
+                b = std::move(src__.b);
+                c = std::move(src__.c);
+                d = std::move(src__.d);
+                packed_spline_data_ = std::move(src__.packed_spline_data_);
+            }
+            return *this;
+        }
     
         template <typename U> 
         friend class Spline;
 
-        /// Constructor of an empty spline.
+        /// Default constructor.
         Spline()
         {
         }
@@ -219,6 +249,16 @@ class Spline
             }
         }
 
+        inline Radial_grid radial_grid() const
+        {
+            return radial_grid_;
+        }
+
+        inline double radial_grid(int ir__)
+        {
+            return radial_grid_[ir__];
+        }
+
         Spline<T>& interpolate();
 
         void get_coefs(T* array, int lda);
@@ -249,7 +289,56 @@ class Spline
             }
             return v.hash();
         }
+
+        void pack()
+        {
+            packed_spline_data_ = mdarray<T, 2>(num_points(), 6);
+            for (int i = 0; i < num_points(); i++)
+            {
+                packed_spline_data_(i, 0) = radial_grid_[i];
+                packed_spline_data_(i, 2) = a[i];
+            }
+            for (int i = 0; i < num_points() - 1; i++)
+            {
+                packed_spline_data_(i, 1) = radial_grid_.dx(i);
+                packed_spline_data_(i, 3) = b[i];
+                packed_spline_data_(i, 4) = c[i];
+                packed_spline_data_(i, 5) = d[i];
+            }
+        }
+
+        #ifdef _GPU_
+        void copy_to_device()
+        {
+            packed_spline_data_.allocate_on_device();
+            packed_spline_data_.copy_to_device();
+        }
+        #endif
+
+        template<processing_unit_t pu>
+        T* at()
+        {
+            return packed_spline_data_.at<pu>();
+        }
 };
+
+extern "C" double spline_inner_product_gpu_v2(int size__, double* x_dx__, double* f__, double* g__);
+
+template<processing_unit_t pu, typename T>
+T inner(Spline<T>& f__, Spline<T>& g__, int m__)
+{
+    if (pu == GPU)
+    {
+        T* x_dx = f__.template at<GPU>();
+        T* f = &x_dx[2 * f__.num_points()];
+        T* g = &(g__.template at<GPU>()[2 * f__.num_points()]);
+        return spline_inner_product_gpu_v2(f__.num_points(), x_dx, f, g);
+    }
+    else
+    {
+        STOP();
+    }
+}
 
 #include "spline.hpp"
 

@@ -6,8 +6,13 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: 
-	$(CXX) $(CXX_OPT) $(INCLUDE) atom.cpp $(LIB_SIRIUS) $(LIBS) -o atom
+all: atom fpatom
+
+atom: atom.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
+
+fpatom: fpatom.cpp
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 clean:
 	rm -f *.o atom [A-Z]*.json run.x

@@ -158,6 +158,45 @@ class XC_functional
             }
         }
 
+        void add_lda(const int size,
+                     const double* rho_up,
+                     const double* rho_dn,
+                     double* v_up,
+                     double* v_dn,
+                     double* e)
+        {
+            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+
+            std::vector<double> rho_ud(size * 2);
+            /* check and rearrange density */
+            for (int i = 0; i < size; i++)
+            {
+                if (rho_up[i] < 0 || rho_dn[i] < 0)
+                {
+                    std::stringstream s;
+                    s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
+                      << " " << Utils::double_to_string(rho_dn[i]);
+                    error_local(__FILE__, __LINE__, s);
+                }
+                
+                rho_ud[2 * i] = rho_up[i];
+                rho_ud[2 * i + 1] = rho_dn[i];
+            }
+            
+            std::vector<double> v_ud(size * 2);
+            std::vector<double> e_tmp(size);
+
+            xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e_tmp[0], &v_ud[0]);
+            
+            /* extract potential */
+            for (int i = 0; i < size; i++)
+            {
+                v_up[i] += v_ud[2 * i];
+                v_dn[i] += v_ud[2 * i + 1];
+                e[i] += e_tmp[i];
+            }
+        }
+
         /// Get GGA contribution.
         void get_gga(const int size,
                      const double* rho,

@@ -293,11 +293,11 @@ class generalized_evp_lapack: public generalized_evp
 
             if (m != nevec)
             {
-                //== std::stringstream s;
-                //== s << "not all eigen-values are found" << std::endl
-                //==   << "target number of eign-values: " << nevec << std::endl
-                //==   << "number of eign-values found: " << m;
-                //== TERMINATE(s);
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                //TERMINATE(s);
                 return 1;
             }
 
