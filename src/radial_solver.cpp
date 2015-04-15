@@ -451,7 +451,6 @@ double Radial_solver::bound_state(int n__,
         }
     }
 
-
     Spline<double> rho(radial_grid_);
     for (int i = 0; i < np; i++) rho[i] = p__[i] * p__[i];
 

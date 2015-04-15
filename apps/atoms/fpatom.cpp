@@ -258,14 +258,14 @@ void generate_radial_integrals(int lmax__,
                         int l2 = radial_functions_desc__[i2].l;
                         if ((l + l1 + l2) % 2 == 0)
                         {
-                            h_radial_integrals__(lm, i1, i2, ispn) += sirius::inner<CPU>(svrf, srf[i2], 2);
+                            //h_radial_integrals__(lm, i1, i2, ispn) += sirius::inner<CPU>(svrf, srf[i2], 2);
                             //h_radial_integrals__(lm, i1, i2, ispn) += sirius::Spline<double>::integrate(&svrf, &srf[i2], 2);
 
-                            //double r = sirius::spline_inner_product_gpu_v2(rgrid__.num_points(), rgrid__.x().template at<GPU>(), rgrid__.dx().template at<GPU>(), 
-                            //                   svrf.coefs().template at<GPU>(), srf[i2].coefs().template at<GPU>(), 
-                            //                   buf.at<GPU>(0, thread_id), buf.at<CPU>(0, thread_id), thread_id);
-                            //
-                            //h_radial_integrals__(lm, i1, i2, ispn) += r; //sirius::inner<GPU>(svrf, srf[i2], 2);
+                            double r = sirius::spline_inner_product_gpu_v2(rgrid__.num_points(), rgrid__.x().template at<GPU>(), rgrid__.dx().template at<GPU>(), 
+                                               svrf.coefs().template at<GPU>(), srf[i2].coefs().template at<GPU>(), 
+                                               buf.at<GPU>(0, thread_id), buf.at<CPU>(0, thread_id), thread_id);
+                            
+                            h_radial_integrals__(lm, i1, i2, ispn) += r; //sirius::inner<GPU>(svrf, srf[i2], 2);
                         }
                         h_radial_integrals__(lm, i2, i1, ispn) = h_radial_integrals__(lm, i1, i2, ispn);
                     }
@@ -415,7 +415,8 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
     //    printf("%i: %i %i %i\n", i, basis_functions_desc[i].n, basis_functions_desc[i].l, basis_functions_desc[i].m);
     //}
 
-    sirius::Radial_grid rgrid(pow2_grid, 25000, 1e-7, 100.0);
+    //sirius::Radial_grid rgrid(pow2_grid, 25000, 1e-7, 100.0);
+    sirius::Radial_grid rgrid(scaled_pow_grid, 10000, 1e-7, 50.0);
     rgrid.copy_to_device();
     sirius::Radial_solver rsolver(false, zn, rgrid);
     rsolver.set_tolerance(1e-12);

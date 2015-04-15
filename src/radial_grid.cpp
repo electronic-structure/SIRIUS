@@ -65,22 +65,22 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         case scaled_pow_grid:
         {   
             ///* ratio of last and first dx */
-            //double S = rmax * 500;
-            //double alpha = pow(S, 1.0 / (num_points - 2));
-            //double x = rmin;
-            //for (int i = 0; i < num_points; i++)
-            //{
-            //    grid_points[i] = x;
-            //    x += (rmax - rmin) * (alpha - 1) * std::pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
-            //}
-            //break;
-            
-            double dx0 = 1e-7;
-            double alpha = -std::log(dx0 / (rmax - rmin)) / std::log(double(num_points - 1));
+            double S = rmax * 500;
+            double alpha = pow(S, 1.0 / (num_points - 2));
+            double x = rmin;
             for (int i = 0; i < num_points; i++)
             {
-                grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), alpha);
+                grid_points[i] = x;
+                x += (rmax - rmin) * (alpha - 1) * std::pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
             }
+            break;
+            
+            //double dx0 = 1e-7;
+            //double alpha = -std::log(dx0 / (rmax - rmin)) / std::log(double(num_points - 1));
+            //for (int i = 0; i < num_points; i++)
+            //{
+            //    grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), alpha);
+            //}
             break;
         }
         default:
