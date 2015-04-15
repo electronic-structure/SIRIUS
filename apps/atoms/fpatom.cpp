@@ -218,6 +218,9 @@ void generate_radial_integrals(int lmax__,
     }
     t1.stop();
 
+    mdarray<double, 2> timers(3, Platform::max_num_threads());
+    timers.zero();
+
     sirius::Timer t2("generate_radial_integrals|2");
     mdarray<double, 2> buf(196, Platform::max_num_threads());
     buf.allocate_on_device();
@@ -227,11 +230,16 @@ void generate_radial_integrals(int lmax__,
         #pragma omp parallel for
         for (int i = 0; i < (int)radial_functions_desc__.size(); i++)
         {
+            int thread_id = Platform::thread_id();
+            double ts = omp_get_wtime();
+
             srf[i] = sirius::Spline<double>(rgrid__);
             for (int ir = 0; ir < rgrid__.num_points(); ir++)
                 srf[i][ir] = radial_functions__(ir, i, 0, ispn);
             srf[i].interpolate();
             srf[i].copy_to_device();
+            
+            timers(0, thread_id) += (omp_get_wtime() - ts);
         }
 
         #pragma omp parallel
@@ -247,12 +255,17 @@ void generate_radial_integrals(int lmax__,
 
                 for (int i1 = 0; i1 < (int)radial_functions_desc__.size(); i1++)
                 {
+                    double ts = omp_get_wtime();
+
                     int l1 = radial_functions_desc__[i1].l;
                     for (int ir = 0; ir < rgrid__.num_points(); ir++)
                         svrf[ir] = radial_functions__(ir, i1, 0, ispn) * vtmp[ir];
                     svrf.interpolate();
                     svrf.async_copy_to_device(thread_id);
+
+                    timers(1, thread_id) += (omp_get_wtime() - ts);
  
+                    ts = omp_get_wtime();
                     for (int i2 = 0; i2 <= i1; i2++)
                     {
                         int l2 = radial_functions_desc__[i2].l;
@@ -269,9 +282,14 @@ void generate_radial_integrals(int lmax__,
                         }
                         h_radial_integrals__(lm, i2, i1, ispn) = h_radial_integrals__(lm, i1, i2, ispn);
                     }
+                    timers(2, thread_id) += (omp_get_wtime() - ts);
                 }
             }
         }
+    }
+    for (int i = 0; i < Platform::max_num_threads(); i++)
+    {
+        printf("thread: %i, timers: %12.6f %12.6f %12.6f\n", i, timers(0, i), timers(1, i), timers(2, i));
     }
     t2.stop();
 }

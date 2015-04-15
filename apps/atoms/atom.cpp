@@ -196,9 +196,9 @@ class Free_atom : public sirius::Atom_type
                 error_local(__FILE__, __LINE__, s);
             }
             
-            free_atom_density_ = rho.values();
+            free_atom_density_ = sirius::Spline<double>(radial_grid_, rho.values());
             
-            free_atom_potential_ = veff;
+            free_atom_potential_ = sirius::Spline<double>(radial_grid_, veff);
 
             printf("\n");
             printf("Radial gird\n");

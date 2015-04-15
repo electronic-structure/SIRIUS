@@ -71,7 +71,13 @@ class Radial_grid
 
         Radial_grid& operator=(Radial_grid&& src__)
         {
-            STOP();
+            if (this != &src__)
+            {
+                x_ = std::move(src__.x_);
+                dx_ = std::move(src__.dx_);
+                x_inv_ = std::move(src__.x_inv_);
+                grid_type_name_ = src__.grid_type_name_;
+            }
             return *this;
         }
         
