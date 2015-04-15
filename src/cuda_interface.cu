@@ -563,7 +563,7 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
 }
 
 
-__global__ void spline_inner_product_gpu_kernel_v2(int size__, double* x_dx__, double* f__, double* g__, double* result__)
+__global__ void spline_inner_product_gpu_kernel_v2(int size__, double const* x__, double const* dx__, double const* f__, double const* g__, double* result__)
 {
     //int nb = num_blocks(size__, blockDim.x);
     int ib = blockIdx.x;
@@ -583,8 +583,8 @@ __global__ void spline_inner_product_gpu_kernel_v2(int size__, double* x_dx__, d
         int i = ib * blockDim.x + threadIdx.x;
         if (i < size__ - 1)
         {
-            double xi = x_dx__[i];
-            double dxi = x_dx__[size__ + i];
+            double xi = x__[i];
+            double dxi = dx__[i];
 
             double a1 = f__[a_offs + i];
             double b1 = f__[b_offs + i];
@@ -631,30 +631,37 @@ __global__ void spline_inner_product_gpu_kernel_v2(int size__, double* x_dx__, d
     result__[ib] = sdata[0];
 }
 
-extern "C" double spline_inner_product_gpu_v2(int size__, double* x_dx__, double* f__, double* g__)
+extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
+                                              double const* g__, double* d_buf__, double* h_buf__, int stream_id__)
 {
-    dim3 grid_t(128);
+    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+
+    dim3 grid_t(256);
     dim3 grid_b(num_blocks(size__, grid_t.x));
 
-    double* d_result;
-    cudaMalloc(&d_result, grid_b.x * sizeof(double));
+    //double* d_result;
+    //CALL_CUDA(cudaMalloc, (&d_result, grid_b.x * sizeof(double)));
 
-    spline_inner_product_gpu_kernel_v2 <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
+    spline_inner_product_gpu_kernel_v2 <<<grid_b, grid_t, grid_t.x * sizeof(double), stream>>>
     (
         size__,
-        x_dx__,
+        x__,
+        dx__,
         f__,
         g__,
-        d_result
+        d_buf__
     );
 
-    double* h_result = (double*)malloc(grid_b.x * sizeof(double));
-    cudaMemcpy(h_result, d_result, grid_b.x * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaFree(d_result);
+    //double* h_result = (double*)malloc(grid_b.x * sizeof(double));
+    CALL_CUDA(cudaMemcpyAsync, (h_buf__, d_buf__, grid_b.x * sizeof(double), cudaMemcpyDeviceToHost, stream));
+    CALL_CUDA(cudaStreamSynchronize, (stream));
+    
+    //cudaMemcpy(h_result, d_result, grid_b.x * sizeof(double), cudaMemcpyDeviceToHost);
+    //CALL_CUDA(cudaFree, (d_result));
 
     double result = 0;
-    for (int ib = 0; ib < grid_b.x; ib++) result += h_result[ib];
-    free(h_result);
+    for (int ib = 0; ib < grid_b.x; ib++) result += h_buf__[ib];
+    //free(h_result);
     
     return result;
 }

@@ -351,7 +351,7 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
             {
                 for (int ir = 0; ir < beta_rf__(0, iat).num_points(); ir++)
                 {
-                    double x = beta_rf__(0, iat).radial_grid(ir) * G;
+                    double x = beta_rf__(0, iat).x(ir) * G;
                     gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), x, &v[0]);
                     for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat)[ir] = v[l];
                 }
@@ -655,7 +655,7 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
             {
                 for (int ir = 0; ir < nr_beta_[iat]; ir++)
                 {
-                    double qx = beta_rf(0, iat).radial_grid(ir) * q;
+                    double qx = beta_rf(0, iat).x(ir) * q;
                     gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
                     for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat)[ir] = v[l];
                 }
@@ -811,7 +811,7 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         {
             for (int ir = 0; ir < N; ir++)
             {
-                double qx = beta_rf_filtered_(0, iat).radial_grid(ir) * q;
+                double qx = beta_rf_filtered_(0, iat).x(ir) * q;
                 gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
                 for (int l = 0; l <= unit_cell_->lmax_beta(); l++) sf_bessel_jl(l, iat)[ir] = v[l];
             }
@@ -865,7 +865,7 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         {
             for (int ir = 0; ir < N; ir++)
             {
-                fprintf(fout, "%18.12f %18.12f\n", beta_rf_filtered_(idxrf, iat).radial_grid(ir), beta_rf_filtered_(idxrf, iat)[ir]);
+                fprintf(fout, "%18.12f %18.12f\n", beta_rf_filtered_(idxrf, iat).x(ir), beta_rf_filtered_(idxrf, iat)[ir]);
             }
             fprintf(fout, "\n");
         }
