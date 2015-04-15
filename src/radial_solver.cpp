@@ -164,8 +164,7 @@ int Radial_solver::solve(int l,
     for (int i = 0; i < radial_grid_.num_points(); i++) vs[i] = v[i] - zn_ / radial_grid_[i];
     vs.interpolate();
     
-    Spline<double> mp(radial_grid_, 0);
-    mp.interpolate();
+    Spline<double> mp(radial_grid_);
 
     int nn = 0;
     
@@ -297,8 +296,7 @@ double Radial_solver::bound_state(int n__,
     for (int i = 0; i < np; i++) vs[i] = v__[i] - zn_ / radial_grid_[i];
     vs.interpolate();
 
-    Spline<double> mp(radial_grid_, 0);
-    mp.interpolate();
+    Spline<double> mp(radial_grid_);
     
     std::vector<double> q(np);
     std::vector<double> dpdr(np);
@@ -392,8 +390,7 @@ double Radial_solver::bound_state(int n__,
     for (int i = 0; i < np; i++) vs[i] = v__[i] - zn_ / radial_grid_[i];
     vs.interpolate();
 
-    Spline<double> mp(radial_grid_, 0);
-    mp.interpolate();
+    Spline<double> mp(radial_grid_);
     
     std::vector<double> q(np);
     std::vector<double> dpdr(np);

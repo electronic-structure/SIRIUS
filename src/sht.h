@@ -125,7 +125,7 @@ class SHT // TODO: better name
             
             forward_transform(&f(0, 0), f.radial_grid().num_points(), lmmax(), lmmax(), &g(0, 0));
 
-            return g;
+            return std::move(g);
         }
         
         template <typename T>
@@ -138,7 +138,7 @@ class SHT // TODO: better name
             backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(), 
                                std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
 
-            return g;
+            return std::move(g);
         }
         
         template <typename T>

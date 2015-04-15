@@ -55,19 +55,20 @@ class Spline
         {
         }
         
-        /// Constructor of a new uninitialized spline.
+        /// Constructor of a new empty spline.
         Spline(Radial_grid const& radial_grid__) : radial_grid_(&radial_grid__)
         {
             coefs_ = mdarray<T, 2>(radial_grid_->num_points(), 4);
+            coefs_.zero();
         }
 
-        /// Constructor of a constant value spline.
-        Spline(Radial_grid const& radial_grid__, T val__) : radial_grid_(&radial_grid__)
-        {
-            int np = num_points();
-            coefs_ = mdarray<T, 2>(np, 4);
-            for (int i = 0; i < np; i++) coefs_(i, 0) = val__;
-        }
+        //== /// Constructor of a constant value spline.
+        //== Spline(Radial_grid const& radial_grid__, T val__) : radial_grid_(&radial_grid__)
+        //== {
+        //==     int np = num_points();
+        //==     coefs_ = mdarray<T, 2>(np, 4);
+        //==     for (int i = 0; i < np; i++) coefs_(i, 0) = val__;
+        //== }
         
         /// Constructor of a spline from a list of values.
         Spline(Radial_grid const& radial_grid__, std::vector<T>& y__) : radial_grid_(&radial_grid__)
@@ -255,17 +256,6 @@ class Spline
             return *radial_grid_;
         }
 
-        //== inline double radial_grid(int ir__)
-        //== {
-        //==     return (*radial_grid_)[ir__];
-        //== }
-
-        Spline<T>& interpolate()
-        {
-            return this->template interpolate<CPU>();
-        }
-
-        template <processing_unit_t pu>
         Spline<T>& interpolate()
         {
             int np = num_points();
@@ -374,12 +364,6 @@ class Spline
             coefs_.async_copy_to_device(thread_id__);
         }
         #endif
-
-        //template<processing_unit_t pu>
-        //T* at()
-        //{
-        //    return coefs_.at<pu>();
-        //}
 };
 
 //extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double* f__, double* g__, int stream_id__);

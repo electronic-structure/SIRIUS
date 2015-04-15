@@ -56,7 +56,9 @@ class Spheric_function
 
         Spheric_function(Spheric_function<domain_t, T>&& src__)
         {
-            STOP();
+            data_ = std::move(src__.data_);
+            radial_grid_ = src__.radial_grid_;
+            angular_domain_size_ = src__.angular_domain_size_;
         }
 
         Spheric_function<domain_t, T>& operator=(Spheric_function<domain_t, T>&& src__)

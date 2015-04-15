@@ -517,7 +517,7 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
 
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
         {
-            beta_rf_filtered_(idxrf, iat) = Spline<double>(beta_radial_grid[iat], 0);
+            beta_rf_filtered_(idxrf, iat) = Spline<double>(beta_radial_grid[iat]);
         }
     }
     
@@ -788,7 +788,7 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
 
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
         {
-            beta_rf_filtered_(idxrf, iat) = Spline<double>(beta_radial_grid, 0);
+            beta_rf_filtered_(idxrf, iat) = Spline<double>(beta_radial_grid);
         }
     }
     

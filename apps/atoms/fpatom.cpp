@@ -258,14 +258,14 @@ void generate_radial_integrals(int lmax__,
                         int l2 = radial_functions_desc__[i2].l;
                         if ((l + l1 + l2) % 2 == 0)
                         {
-                            //h_radial_integrals__(lm, i1, i2, ispn) += sirius::inner<CPU>(svrf, srf[i2], 2);
+                            h_radial_integrals__(lm, i1, i2, ispn) += sirius::inner<CPU>(svrf, srf[i2], 2);
                             //h_radial_integrals__(lm, i1, i2, ispn) += sirius::Spline<double>::integrate(&svrf, &srf[i2], 2);
 
-                            double r = sirius::spline_inner_product_gpu_v2(rgrid__.num_points(), rgrid__.x().template at<GPU>(), rgrid__.dx().template at<GPU>(), 
-                                               svrf.coefs().template at<GPU>(), srf[i2].coefs().template at<GPU>(), 
-                                               buf.at<GPU>(0, thread_id), buf.at<CPU>(0, thread_id), thread_id);
-                            
-                            h_radial_integrals__(lm, i1, i2, ispn) += r; //sirius::inner<GPU>(svrf, srf[i2], 2);
+                            //double r = sirius::spline_inner_product_gpu_v2(rgrid__.num_points(), rgrid__.x().template at<GPU>(), rgrid__.dx().template at<GPU>(), 
+                            //                   svrf.coefs().template at<GPU>(), srf[i2].coefs().template at<GPU>(), 
+                            //                   buf.at<GPU>(0, thread_id), buf.at<CPU>(0, thread_id), thread_id);
+                            //
+                            //h_radial_integrals__(lm, i1, i2, ispn) += r; //sirius::inner<GPU>(svrf, srf[i2], 2);
                         }
                         h_radial_integrals__(lm, i2, i1, ispn) = h_radial_integrals__(lm, i1, i2, ispn);
                     }
@@ -378,11 +378,9 @@ void generate_density(int lmmax__,
     }
 }
 
-void scf(int zn, int mag_mom, int niter, double alpha)
+void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
 {
-    int lmax = 6;
-    int nmax = 6;
-    int lmax_pot = 10;
+    int lmax_pot = lmax;
     int lmmax_pot(Utils::lmmax(lmax_pot));
     
     int occ[2];
@@ -566,6 +564,8 @@ int main(int argn, char **argv)
     args.register_key("--mag_mom=", "{int} magnetic moment");
     args.register_key("--niter=", "{int} number of iterations");
     args.register_key("--alpha=", "{double} mixing parameter");
+    args.register_key("--nmax=", "{int} maximum principal quantum number");
+    args.register_key("--lmax=", "{int} maximum orbital quantum number");
     args.parse_args(argn, argv);
     
     if (argn == 1)
@@ -582,11 +582,13 @@ int main(int argn, char **argv)
     int mag_mom = args.value<int>("mag_mom");
     int niter = args.value<int>("niter", 10);
     double alpha = args.value<double>("alpha", 0.5);
+    int nmax = args.value<int>("nmax", 6);
+    int lmax = args.value<int>("lmax", 6);
 
     Platform::initialize(true);
     cuda_device_info();
 
-    scf(zn, mag_mom, niter, alpha);
+    scf(zn, mag_mom, niter, alpha, nmax, lmax);
 
     sirius::Timer::print();
     Platform::finalize();
