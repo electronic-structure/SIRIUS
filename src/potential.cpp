@@ -413,81 +413,81 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
 }
 
-template<> void Potential::add_mt_contribution_to_pw<CPU>()
-{
-    Timer t("sirius::Potential::add_mt_contribution_to_pw");
-
-    mdarray<double_complex, 1> fpw(parameters_.reciprocal_lattice()->num_gvec());
-    fpw.zero();
-
-    mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
-        {
-            svlm(lm, ia) = new Spline<double>(parameters_.unit_cell()->atom(ia)->type()->radial_grid());
-            
-            for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
-                (*svlm(lm, ia))[ir] = effective_potential_->f_mt<global>(lm, ir, ia);
-            
-            svlm(lm, ia)->interpolate();
-        }
-    }
-   
-    #pragma omp parallel default(shared)
-    {
-        mdarray<double, 1> vjlm(parameters_.lmmax_pot());
-
-        sbessel_pw<double> jl(parameters_.unit_cell(), parameters_.lmax_pot());
-        
-        #pragma omp for
-        for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
-        {
-            int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-
-            jl.interpolate(parameters_.reciprocal_lattice()->gvec_len(ig));
-
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-            {
-                int iat = parameters_.unit_cell()->atom(ia)->type_id();
-
-                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
-                {
-                    int l = l_by_lm_[lm];
-                    vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia), 2);
-                }
-
-                double_complex zt(0, 0);
-                for (int l = 0; l <= parameters_.lmax_pot(); l++)
-                {
-                    for (int m = -l; m <= l; m++)
-                    {
-                        if (m == 0)
-                        {
-                            zt += conj(zil_[l]) * parameters_.reciprocal_lattice()->gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                                  vjlm(Utils::lm_by_l_m(l, m));
-
-                        }
-                        else
-                        {
-                            zt += conj(zil_[l]) * parameters_.reciprocal_lattice()->gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                                  (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
-                                   SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
-                        }
-                    }
-                }
-                fpw(ig) += zt * fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / parameters_.unit_cell()->omega();
-            }
-        }
-    }
-    parameters_.comm().allreduce(fpw.at<CPU>(), (int)fpw.size());
-    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
-    
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
-    }
-}
+//template<> void Potential::add_mt_contribution_to_pw<CPU>()
+//{
+//    Timer t("sirius::Potential::add_mt_contribution_to_pw");
+//
+//    mdarray<double_complex, 1> fpw(parameters_.reciprocal_lattice()->num_gvec());
+//    fpw.zero();
+//
+//    mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
+//    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//    {
+//        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+//        {
+//            svlm(lm, ia) = new Spline<double>(parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+//            
+//            for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
+//                (*svlm(lm, ia))[ir] = effective_potential_->f_mt<global>(lm, ir, ia);
+//            
+//            svlm(lm, ia)->interpolate();
+//        }
+//    }
+//   
+//    #pragma omp parallel default(shared)
+//    {
+//        mdarray<double, 1> vjlm(parameters_.lmmax_pot());
+//
+//        sbessel_pw<double> jl(parameters_.unit_cell(), parameters_.lmax_pot());
+//        
+//        #pragma omp for
+//        for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+//        {
+//            int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+//
+//            jl.interpolate(parameters_.reciprocal_lattice()->gvec_len(ig));
+//
+//            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//            {
+//                int iat = parameters_.unit_cell()->atom(ia)->type_id();
+//
+//                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+//                {
+//                    int l = l_by_lm_[lm];
+//                    vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia), 2);
+//                }
+//
+//                double_complex zt(0, 0);
+//                for (int l = 0; l <= parameters_.lmax_pot(); l++)
+//                {
+//                    for (int m = -l; m <= l; m++)
+//                    {
+//                        if (m == 0)
+//                        {
+//                            zt += conj(zil_[l]) * parameters_.reciprocal_lattice()->gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+//                                  vjlm(Utils::lm_by_l_m(l, m));
+//
+//                        }
+//                        else
+//                        {
+//                            zt += conj(zil_[l]) * parameters_.reciprocal_lattice()->gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+//                                  (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
+//                                   SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
+//                        }
+//                    }
+//                }
+//                fpw(ig) += zt * fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / parameters_.unit_cell()->omega();
+//            }
+//        }
+//    }
+//    parameters_.comm().allreduce(fpw.at<CPU>(), (int)fpw.size());
+//    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+//    
+//    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//    {
+//        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
+//    }
+//}
 
 //== #ifdef _GPU_
 //== template <> void Potential::add_mt_contribution_to_pw<GPU>()

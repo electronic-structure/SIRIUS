@@ -62,18 +62,10 @@ class Spline
             coefs_.zero();
         }
 
-        //== /// Constructor of a constant value spline.
-        //== Spline(Radial_grid const& radial_grid__, T val__) : radial_grid_(&radial_grid__)
-        //== {
-        //==     int np = num_points();
-        //==     coefs_ = mdarray<T, 2>(np, 4);
-        //==     for (int i = 0; i < np; i++) coefs_(i, 0) = val__;
-        //== }
-        
         /// Constructor of a spline from a list of values.
         Spline(Radial_grid const& radial_grid__, std::vector<T> y__) : radial_grid_(&radial_grid__)
         {
-            assert(radial_grid_.num_points() == (int)y__.size());
+            assert(radial_grid_->num_points() == (int)y__.size());
             int np = num_points();
             coefs_ = mdarray<T, 2>(np, 4);
             for (int i = 0; i < np; i++) coefs_(i, 0) = y__[i];
@@ -95,9 +87,6 @@ class Spline
             }
             return *this;
         }
-    
-        template <typename U> 
-        friend class Spline;
         
         /// Integrate with r^m weight.
         T integrate(int m__)
@@ -114,27 +103,27 @@ class Spline
         }
         
         /// Return number of spline points.
-        inline int num_points()
+        inline int num_points() const
         {
             return radial_grid_->num_points();
         }
 
-        inline std::array<T, 4> coefs(int i__)
+        inline std::array<T, 4> coefs(int i__) const
         {
             return {coefs_(i__, 0), coefs_(i__, 1), coefs_(i__, 2), coefs_(i__, 3)};
         }
 
-        inline mdarray<T, 2>& coefs()
+        inline mdarray<T, 2> const& coefs() const
         {
             return coefs_;
         }
 
-        inline double x(int i__)
+        inline double x(int i__) const
         {
             return (*radial_grid_)[i__];
         }
 
-        inline double dx(int i__)
+        inline double dx(int i__) const
         {
             return radial_grid_->dx(i__);
         }
@@ -150,11 +139,11 @@ class Spline
 
 
 
-        inline T operator()(double x)
+        inline T operator()(double x) const
         {
             int np = num_points();
 
-            assert(x <= radial_grid_[np - 1]);
+            assert(x <= (*radial_grid_)[np - 1]);
             
             if (x >= (*radial_grid_)[0])
             {
@@ -187,26 +176,25 @@ class Spline
         /// Return value at \f$ x_i \f$.
         inline T& operator[](const int i)
         {
-            assert(i >= 0 && i < (int)a.size());
             return coefs_(i, 0);
         }
 
-        inline T operator()(const int i, double dx)
+        inline T operator[](const int i) const
+        {
+            return coefs_(i, 0);
+        }
+
+        inline T operator()(const int i, double dx) const
         {
             assert(i >= 0);
-            assert(i < (int)a.size() - 1);
-            assert(i < (int)b.size());
-            assert(i < (int)c.size());
-            assert(i < (int)d.size());
+            assert(i < num_points() - 1);
             return coefs_(i, 0) + dx * (coefs_(i, 1) + dx * (coefs_(i, 2) + dx * coefs_(i, 3)));
         }
         
         inline T deriv(const int dm, const int i, const double dx)
         {
-            assert(i < (int)a.size() - 1);
-            assert(i < (int)b.size());
-            assert(i < (int)c.size());
-            assert(i < (int)d.size());
+            assert(i >= 0);
+            assert(i < num_points() - 1);
 
             switch (dm)
             {
@@ -332,15 +320,18 @@ class Spline
             return *this;
         }
 
+        inline void scale(double a__)
+        {
+            for (int i = 0; i < num_points(); i++)
+            {
+                coefs_(i, 0) *= a__;
+                coefs_(i, 1) *= a__;
+                coefs_(i, 2) *= a__;
+                coefs_(i, 3) *= a__;
+            }
+        }
+
         T integrate(std::vector<T>& g__, int m__);
-
-        /// Integrate two splines with r^1 or r^2 weight
-        template <typename U>
-        static T integrate(Spline<T>* f, Spline<U>* g, int m);
-
-        /// Integrate two splines with r^1 or r^2 weight up to a given number of points
-        template <typename U>
-        static T integrate(Spline<T>* f, Spline<U>* g, int m, int num_points);
 
         uint64_t hash()
         {
@@ -372,123 +363,116 @@ class Spline
 extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
                                               double const* g__, double* d_buf__, double* h_buf__, int stream_id__);
 
-
-template<processing_unit_t pu, typename T>
-T inner(Spline<T>& f__, Spline<T>& g__, int m__)
+template<typename T>
+T inner(Spline<T>& f__, Spline<T>& g__, int m__, int num_points__)
 {
-    assert(f__.radial_grid_hash() == g__.radial_grid_hash());
+    assert(f__.radial_grid().hash() == g__.radial_grid().hash());
     
     T result = 0;
 
-    int thread_id = Platform::thread_id();
-
-    switch (pu)
+    switch (m__)
     {
-        case GPU:
+        case 0:
         {
-            //return spline_inner_product_gpu_v2(f__.num_points(), f__.radial_grid().x().template at<GPU>(), f__.radial_grid().dx().template at<GPU>(), 
-            //                                   f__.coefs().template at<GPU>(), g__.coefs().template at<GPU>(), thread_id);
+            for (int i = 0; i < num_points__ - 1; i++)
+            {
+                double dx = f__.dx(i);
+                
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
+
+                T faga = f[0] * g[0];
+                T fdgd = f[3] * g[3];
+
+                T k1 = f[0] * g[1] + f[1] * g[0];
+                T k2 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k3 = f[0] * g[3] + f[1] * g[2] + f[2] * g[1] + f[3] * g[0];
+                T k4 = f[1] * g[3] + f[2] * g[2] + f[3] * g[1];
+                T k5 = f[2] * g[3] + f[3] * g[2];
+
+                result += dx * (faga + 
+                          dx * (k1 / 2.0 + 
+                          dx * (k2 / 3.0 + 
+                          dx * (k3 / 4.0 + 
+                          dx * (k4 / 5.0 + 
+                          dx * (k5 / 6.0 + 
+                          dx * fdgd / 7.0))))));
+            }
             break;
         }
-        case CPU:
+        case 1:
         {
-            switch (m__)
+            for (int i = 0; i < num_points__ - 1; i++)
             {
-                //case 0:
-                //{
-                //    for (int i = 0; i < num_points - 1; i++)
-                //    {
-                //        double dx = f->radial_grid_.dx(i);
-                //        
-                //        T faga = f->a[i] * g->a[i];
-                //        T fdgd = f->d[i] * g->d[i];
+                double x0 = f__.x(i);
+                double dx = f__.dx(i);
+                
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
 
-                //        T k1 = f->a[i] * g->b[i] + f->b[i] * g->a[i];
-                //        T k2 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
-                //        T k3 = f->a[i] * g->d[i] + f->b[i] * g->c[i] + f->c[i] * g->b[i] + f->d[i] * g->a[i];
-                //        T k4 = f->b[i] * g->d[i] + f->c[i] * g->c[i] + f->d[i] * g->b[i];
-                //        T k5 = f->c[i] * g->d[i] + f->d[i] * g->c[i];
+                T faga = f[0] * g[0];
+                T fdgd = f[3] * g[3];
 
-                //        result += dx * (faga + 
-                //                  dx * (k1 / 2.0 + 
-                //                  dx * (k2 / 3.0 + 
-                //                  dx * (k3 / 4.0 + 
-                //                  dx * (k4 / 5.0 + 
-                //                  dx * (k5 / 6.0 + 
-                //                  dx * fdgd / 7.0))))));
-                //    }
-                //    break;
+                T k1 = f[0] * g[1] + f[1] * g[0];
+                T k2 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k3 = f[0] * g[3] + f[1] * g[2] + f[2] * g[1] + f[3] * g[0];
+                T k4 = f[1] * g[3] + f[2] * g[2] + f[3] * g[1];
+                T k5 = f[2] * g[3] + f[3] * g[2];
 
-                //}
-                case 1:
-                {
-                    for (int i = 0; i < f__.num_points() - 1; i++)
-                    {
-                        double x0 = f__.x(i);
-                        double dx = f__.dx(i);
-                        
-                        auto f = f__.coefs(i);
-                        auto g = g__.coefs(i);
-
-                        T faga = f[0] * g[0];
-                        T fdgd = f[3] * g[3];
-
-                        T k1 = f[0] * g[1] + f[1] * g[0];
-                        T k2 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
-                        T k3 = f[0] * g[3] + f[1] * g[2] + f[2] * g[1] + f[3] * g[0];
-                        T k4 = f[1] * g[3] + f[2] * g[2] + f[3] * g[1];
-                        T k5 = f[2] * g[3] + f[3] * g[2];
-
-                        result += dx * ((faga * x0) + 
-                                  dx * ((faga + k1 * x0) / 2.0 + 
-                                  dx * ((k1 + k2 * x0) / 3.0 + 
-                                  dx * ((k2 + k3 * x0) / 4.0 + 
-                                  dx * ((k3 + k4 * x0) / 5.0 + 
-                                  dx * ((k4 + k5 * x0) / 6.0 + 
-                                  dx * ((k5 + fdgd * x0) / 7.0 +
-                                  dx * fdgd / 8.0)))))));
-                    }
-                    break;
-                }
-                case 2:
-                {
-                    for (int i = 0; i < f__.num_points() - 1; i++)
-                    {
-                        double x0 = f__.x(i);
-                        double dx = f__.dx(i);
-
-                        auto f = f__.coefs(i);
-                        auto g = g__.coefs(i);
-
-                        T faga = f[0] * g[0];
-                        T fdgd = f[3] * g[3];
-                        
-                        T k1 = f[3] * g[1] + f[2] * g[2] + f[1] * g[3];
-                        T k2 = f[3] * g[0] + f[2] * g[1] + f[1] * g[2] + f[0] * g[3];
-                        T k3 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
-                        T k4 = f[3] * g[2] + f[2] * g[3];
-                        T k5 = f[1] * g[0] + f[0] * g[1];
-
-                        result += dx * ((faga * x0 * x0) + 
-                                  dx * ((x0 * (2.0 * faga + x0 * k5)) / 2.0 +
-                                  dx * ((faga + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
-                                  dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
-                                  dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
-                                  dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
-                                  dx * ((k1 + x0 * (2.0 * k4 + fdgd * x0)) / 7.0 + 
-                                  dx * ((k4 + 2.0 * fdgd * x0) / 8.0 + 
-                                  dx * fdgd / 9.0)))))))); 
-                    }
-                    break;
-                }
-                default:
-                {
-                    TERMINATE("wrong r^m prefactor");
-                }
+                result += dx * ((faga * x0) + 
+                          dx * ((faga + k1 * x0) / 2.0 + 
+                          dx * ((k1 + k2 * x0) / 3.0 + 
+                          dx * ((k2 + k3 * x0) / 4.0 + 
+                          dx * ((k3 + k4 * x0) / 5.0 + 
+                          dx * ((k4 + k5 * x0) / 6.0 + 
+                          dx * ((k5 + fdgd * x0) / 7.0 +
+                          dx * fdgd / 8.0)))))));
             }
+            break;
+        }
+        case 2:
+        {
+            for (int i = 0; i < num_points__ - 1; i++)
+            {
+                double x0 = f__.x(i);
+                double dx = f__.dx(i);
+
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
+
+                T faga = f[0] * g[0];
+                T fdgd = f[3] * g[3];
+                
+                T k1 = f[3] * g[1] + f[2] * g[2] + f[1] * g[3];
+                T k2 = f[3] * g[0] + f[2] * g[1] + f[1] * g[2] + f[0] * g[3];
+                T k3 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k4 = f[3] * g[2] + f[2] * g[3];
+                T k5 = f[1] * g[0] + f[0] * g[1];
+
+                result += dx * ((faga * x0 * x0) + 
+                          dx * ((x0 * (2.0 * faga + x0 * k5)) / 2.0 +
+                          dx * ((faga + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
+                          dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
+                          dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
+                          dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
+                          dx * ((k1 + x0 * (2.0 * k4 + fdgd * x0)) / 7.0 + 
+                          dx * ((k4 + 2.0 * fdgd * x0) / 8.0 + 
+                          dx * fdgd / 9.0)))))))); 
+            }
+            break;
+        }
+        default:
+        {
+            TERMINATE("wrong r^m prefactor");
         }
     }
     return result;
+}
+
+template<typename T>
+T inner(Spline<T>& f__, Spline<T>& g__, int m__)
+{
+    return inner(f__, g__, m__, f__.num_points());
 }
 
 #include "spline.hpp"

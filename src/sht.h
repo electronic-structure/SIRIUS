@@ -119,8 +119,6 @@ class SHT // TODO: better name
         template <typename T>
         Spheric_function<spectral, T> transform(Spheric_function<spatial, T>& f)
         {
-            assert(f.angular_domain_idx() == 0);
-
             Spheric_function<spectral, T> g(lmmax(), f.radial_grid());
             
             forward_transform(&f(0, 0), f.radial_grid().num_points(), lmmax(), lmmax(), &g(0, 0));
@@ -131,8 +129,6 @@ class SHT // TODO: better name
         template <typename T>
         Spheric_function<spatial, T> transform(Spheric_function<spectral, T>& f)
         {
-            assert(f.angular_domain_idx() == 0);
-
             Spheric_function<spatial, T> g(num_points(), f.radial_grid());
             
             backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(), 
@@ -144,8 +140,6 @@ class SHT // TODO: better name
         template <typename T>
         void transform(Spheric_function<spatial, T>& f, Spheric_function<spectral, T>&g)
         {
-            assert(f.angular_domain_idx() == 0);
-            assert(g.angular_domain_idx() == 0);
             assert(f.radial_grid().hash() == g.radial_grid().hash());
 
             forward_transform(&f(0, 0), f.radial_grid().num_points(), std::min(g.angular_domain_size(), lmmax()), 

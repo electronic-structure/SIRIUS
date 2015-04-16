@@ -477,7 +477,6 @@ double Radial_solver::bound_state(int n__,
         error_local(__FILE__, __LINE__, s);
     }
 
-
     return enu__;
 }
 

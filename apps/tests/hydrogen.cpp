@@ -62,31 +62,41 @@ int main(int argn, char** argv)
 
     std::vector<double> err(levels.size());
     
-    #pragma omp parallel for
+    #pragma omp parallel default(none) shared(levels, rmin, num_points, grid_type, err)
+    {
+    #pragma omp for
     for (int j = 0; j < (int)levels.size(); j++)
     {
         int n = levels[j].n;
         int l = levels[j].l;
         int z = levels[j].z;
-        
+
         Radial_grid radial_grid(grid_type, num_points, rmin, 200.0 + z * 3.0);
-        Radial_solver solver(false, -double(z), radial_grid);
 
         std::vector<double> v(radial_grid.num_points());
-        std::vector<double> p(radial_grid.num_points());
-
-        solver.set_tolerance(1e-12);
-
         for (int i = 0; i < radial_grid.num_points(); i++) v[i] = -z / radial_grid[i];
-        
+
         double enu_exact = -0.5 * pow(double(z) / n, 2);
-        double enu = solver.bound_state(n, l, enu_exact, v, p);
-        double rel_err =  fabs(enu  - enu_exact) / fabs(enu_exact); 
+        
+        Radial_solver solver(false, -double(z), radial_grid);
+        Bound_state bound_state(z, n, l, radial_grid, v, enu_exact);
+
+        //std::vector<double> p(radial_grid.num_points());
+
+        //solver.set_tolerance(1e-12);
+
+      
+        //double enu1 = solver.bound_state(n, l, enu_exact, v, p);
+        double enu = bound_state.enu();
+        //printf("enu diff for z = %i n = %i l = %i: %12.6e\n", z, n, l, std::abs(enu - enu1));
+        
+        double rel_err = std::abs(1 - enu / enu_exact);
         if (rel_err > 1e-10) 
         {
-            printf("Fail! z = %i n = %i l = %i, relative error = %12.6e\n", z, n, l, rel_err);
+            printf("Fail! z = %2i n = %2i l = %i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e\n", z, n, l, enu, enu_exact, rel_err);
         }
         err[j] = rel_err;
+    }
     }
 
     FILE* fout = fopen("err.dat", "w");

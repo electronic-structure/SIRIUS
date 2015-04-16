@@ -366,7 +366,7 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
                 {
                     int l = atom_type->indexr(idxrf).l;
                     int nr = beta_rf__(idxrf, iat).num_points();
-                    beta_radial_integrals(idxrf, iat, igsh) = Spline<double>::integrate(&jl(l, iat), &beta_rf__(idxrf, iat), m__, nr);
+                    beta_radial_integrals(idxrf, iat, igsh) = inner(jl(l, iat), beta_rf__(idxrf, iat), m__, nr);
                 }
             }
         }
@@ -490,7 +490,7 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
                 {
                     int l = atom_type->indexr(idxrf).l;
                     int nr = nr_beta_[iat];
-                    beta_radial_integrals(idxrf, iat, iq) = Spline<double>::integrate(&jl(l, iat), &beta_rf(idxrf, iat), 1, nr);
+                    beta_radial_integrals(idxrf, iat, iq) = inner(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
                 }
             }
         }
@@ -670,7 +670,7 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
                 {
                     int l = atom_type->indexr(idxrf).l;
                     int nr = nr_beta_[iat];
-                    beta_radial_integrals(idxrf, iat, iq) = Spline<double>::integrate(&jl(l, iat), &beta_rf(idxrf, iat), 1, nr);
+                    beta_radial_integrals(idxrf, iat, iq) = inner(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
                 }
             }
         }
@@ -726,14 +726,14 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
             {
                 for (int iq = 0; iq < nq0; iq++)
                 {
-                    M01(iq, jq, l) = (Spline<double>::integrate(&jl(l, iq), &jl(l, nq0 + jq), 0) -
-                                      Spline<double>::integrate(&jl(l, iq), &jl(l, nq0 + jq), 0, nr)) * 
+                    M01(iq, jq, l) = (inner(jl(l, iq), jl(l, nq0 + jq), 0) -
+                                      inner(jl(l, iq), jl(l, nq0 + jq), 0, nr)) * 
                                       std::pow(dq * iq, 2) * std::pow(dq * (jq + nq0), 2) * dq * dq * std::pow(2.0 / pi, 2);
                 }
                 for (int iq = 0; iq < nq1; iq++)
                 {
-                    M11(iq, jq, l) = (Spline<double>::integrate(&jl(l, nq0 + iq), &jl(l, nq0 + jq), 0) -
-                                      Spline<double>::integrate(&jl(l, nq0 + iq), &jl(l, nq0 + jq), 0, nr)) * 
+                    M11(iq, jq, l) = (inner(jl(l, nq0 + iq), jl(l, nq0 + jq), 0) -
+                                      inner(jl(l, nq0 + iq), jl(l, nq0 + jq), 0, nr)) * 
                                       std::pow(dq * (iq + nq0), 2) * std::pow(dq * (jq + nq0), 2) * dq * dq * std::pow(2.0 / pi, 2);
                     std::cout << "M11=" << M11(iq,jq,l) << std::endl;
                 }

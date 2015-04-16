@@ -234,7 +234,7 @@ void K_point::update()
                         {
                             int l = atom_type->indexr(idxrf).l;
                             int nr = atom_type->uspp().num_beta_radial_points[idxrf];
-                            beta_radial_integrals_[idxrf] = Spline<double>::integrate(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
+                            beta_radial_integrals_[idxrf] = inner(*jl(l, iat), *beta_rf(idxrf, iat), 1, nr);
                         }
 
                         for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)

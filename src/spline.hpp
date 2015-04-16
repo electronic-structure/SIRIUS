@@ -22,118 +22,118 @@
  *  \brief Contains remaining implementaiton of sirius::Spline class.
  */
 
-template <typename T> 
-template <typename U>
-T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
-{
-    STOP();
-
-    //if (f->radial_grid_.num_points() != g->radial_grid_.num_points()) 
-    //    error_local(__FILE__, __LINE__, "radial grids don't match");
- 
-    T result = 0;
-
-    //switch (m)
-    //{
-    //    case 0:
-    //    {
-    //        for (int i = 0; i < num_points - 1; i++)
-    //        {
-    //            double dx = f->radial_grid_.dx(i);
-    //            
-    //            T faga = f->a[i] * g->a[i];
-    //            T fdgd = f->d[i] * g->d[i];
-
-    //            T k1 = f->a[i] * g->b[i] + f->b[i] * g->a[i];
-    //            T k2 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
-    //            T k3 = f->a[i] * g->d[i] + f->b[i] * g->c[i] + f->c[i] * g->b[i] + f->d[i] * g->a[i];
-    //            T k4 = f->b[i] * g->d[i] + f->c[i] * g->c[i] + f->d[i] * g->b[i];
-    //            T k5 = f->c[i] * g->d[i] + f->d[i] * g->c[i];
-
-    //            result += dx * (faga + 
-    //                      dx * (k1 / 2.0 + 
-    //                      dx * (k2 / 3.0 + 
-    //                      dx * (k3 / 4.0 + 
-    //                      dx * (k4 / 5.0 + 
-    //                      dx * (k5 / 6.0 + 
-    //                      dx * fdgd / 7.0))))));
-    //        }
-    //        break;
-
-    //    }
-    //    case 1:
-    //    {
-    //        for (int i = 0; i < num_points - 1; i++)
-    //        {
-    //            double x0 = f->radial_grid_[i];
-    //            double dx = f->radial_grid_.dx(i);
-    //            
-    //            T faga = f->a[i] * g->a[i];
-    //            T fdgd = f->d[i] * g->d[i];
-
-    //            T k1 = f->a[i] * g->b[i] + f->b[i] * g->a[i];
-    //            T k2 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
-    //            T k3 = f->a[i] * g->d[i] + f->b[i] * g->c[i] + f->c[i] * g->b[i] + f->d[i] * g->a[i];
-    //            T k4 = f->b[i] * g->d[i] + f->c[i] * g->c[i] + f->d[i] * g->b[i];
-    //            T k5 = f->c[i] * g->d[i] + f->d[i] * g->c[i];
-
-    //            result += dx * ((faga * x0) + 
-    //                      dx * ((faga + k1 * x0) / 2.0 + 
-    //                      dx * ((k1 + k2 * x0) / 3.0 + 
-    //                      dx * ((k2 + k3 * x0) / 4.0 + 
-    //                      dx * ((k3 + k4 * x0) / 5.0 + 
-    //                      dx * ((k4 + k5 * x0) / 6.0 + 
-    //                      dx * ((k5 + fdgd * x0) / 7.0 +
-    //                      dx * fdgd / 8.0)))))));
-
-    //        }
-    //        break;
-    //    }
-    //    case 2:
-    //    {
-    //        for (int i = 0; i < num_points - 1; i++)
-    //        {
-    //            double x0 = f->radial_grid_[i];
-    //            double dx = f->radial_grid_.dx(i);
-    //            
-    //            T a0b0 = f->a[i] * g->a[i];
-    //            T a3b3 = f->d[i] * g->d[i];
-    //            
-    //            T k1 = f->d[i] * g->b[i] + f->c[i] * g->c[i] + f->b[i] * g->d[i];
-    //            T k2 = f->d[i] * g->a[i] + f->c[i] * g->b[i] + f->b[i] * g->c[i] + f->a[i] * g->d[i];
-    //            T k3 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
-    //            T k4 = f->d[i] * g->c[i] + f->c[i] * g->d[i];
-    //            T k5 = f->b[i] * g->a[i] + f->a[i] * g->b[i];
-
-    //            result += dx * ((a0b0 * x0 * x0) + 
-    //                      dx * ((x0 * (2.0 * a0b0 + x0 * k5)) / 2.0 +
-    //                      dx * ((a0b0 + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
-    //                      dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
-    //                      dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
-    //                      dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
-    //                      dx * ((k1 + x0 * (2.0 * k4 + a3b3 * x0)) / 7.0 + 
-    //                      dx * ((k4 + 2.0 * a3b3 * x0) / 8.0 + 
-    //                      dx * a3b3 / 9.0)))))))); 
-    //        }
-    //        break;
-    //    }
-    //    default:
-    //    {
-    //        error_local(__FILE__, __LINE__, "wrong m for r^m prefactor"); 
-    //    }
-    //}
-
-    return result;
-}
-
-template <typename T> 
-template <typename U>
-T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
-{
-    if (f->num_points() != g->num_points()) error_local(__FILE__, __LINE__, "number of points doesn't match");
-
-    return Spline<T>::integrate(f, g, m, f->num_points()); 
-}
+//template <typename T> 
+//template <typename U>
+//T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
+//{
+//    STOP();
+//
+//    //if (f->radial_grid_.num_points() != g->radial_grid_.num_points()) 
+//    //    error_local(__FILE__, __LINE__, "radial grids don't match");
+// 
+//    T result = 0;
+//
+//    //switch (m)
+//    //{
+//    //    case 0:
+//    //    {
+//    //        for (int i = 0; i < num_points - 1; i++)
+//    //        {
+//    //            double dx = f->radial_grid_.dx(i);
+//    //            
+//    //            T faga = f->a[i] * g->a[i];
+//    //            T fdgd = f->d[i] * g->d[i];
+//
+//    //            T k1 = f->a[i] * g->b[i] + f->b[i] * g->a[i];
+//    //            T k2 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
+//    //            T k3 = f->a[i] * g->d[i] + f->b[i] * g->c[i] + f->c[i] * g->b[i] + f->d[i] * g->a[i];
+//    //            T k4 = f->b[i] * g->d[i] + f->c[i] * g->c[i] + f->d[i] * g->b[i];
+//    //            T k5 = f->c[i] * g->d[i] + f->d[i] * g->c[i];
+//
+//    //            result += dx * (faga + 
+//    //                      dx * (k1 / 2.0 + 
+//    //                      dx * (k2 / 3.0 + 
+//    //                      dx * (k3 / 4.0 + 
+//    //                      dx * (k4 / 5.0 + 
+//    //                      dx * (k5 / 6.0 + 
+//    //                      dx * fdgd / 7.0))))));
+//    //        }
+//    //        break;
+//
+//    //    }
+//    //    case 1:
+//    //    {
+//    //        for (int i = 0; i < num_points - 1; i++)
+//    //        {
+//    //            double x0 = f->radial_grid_[i];
+//    //            double dx = f->radial_grid_.dx(i);
+//    //            
+//    //            T faga = f->a[i] * g->a[i];
+//    //            T fdgd = f->d[i] * g->d[i];
+//
+//    //            T k1 = f->a[i] * g->b[i] + f->b[i] * g->a[i];
+//    //            T k2 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
+//    //            T k3 = f->a[i] * g->d[i] + f->b[i] * g->c[i] + f->c[i] * g->b[i] + f->d[i] * g->a[i];
+//    //            T k4 = f->b[i] * g->d[i] + f->c[i] * g->c[i] + f->d[i] * g->b[i];
+//    //            T k5 = f->c[i] * g->d[i] + f->d[i] * g->c[i];
+//
+//    //            result += dx * ((faga * x0) + 
+//    //                      dx * ((faga + k1 * x0) / 2.0 + 
+//    //                      dx * ((k1 + k2 * x0) / 3.0 + 
+//    //                      dx * ((k2 + k3 * x0) / 4.0 + 
+//    //                      dx * ((k3 + k4 * x0) / 5.0 + 
+//    //                      dx * ((k4 + k5 * x0) / 6.0 + 
+//    //                      dx * ((k5 + fdgd * x0) / 7.0 +
+//    //                      dx * fdgd / 8.0)))))));
+//
+//    //        }
+//    //        break;
+//    //    }
+//    //    case 2:
+//    //    {
+//    //        for (int i = 0; i < num_points - 1; i++)
+//    //        {
+//    //            double x0 = f->radial_grid_[i];
+//    //            double dx = f->radial_grid_.dx(i);
+//    //            
+//    //            T a0b0 = f->a[i] * g->a[i];
+//    //            T a3b3 = f->d[i] * g->d[i];
+//    //            
+//    //            T k1 = f->d[i] * g->b[i] + f->c[i] * g->c[i] + f->b[i] * g->d[i];
+//    //            T k2 = f->d[i] * g->a[i] + f->c[i] * g->b[i] + f->b[i] * g->c[i] + f->a[i] * g->d[i];
+//    //            T k3 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
+//    //            T k4 = f->d[i] * g->c[i] + f->c[i] * g->d[i];
+//    //            T k5 = f->b[i] * g->a[i] + f->a[i] * g->b[i];
+//
+//    //            result += dx * ((a0b0 * x0 * x0) + 
+//    //                      dx * ((x0 * (2.0 * a0b0 + x0 * k5)) / 2.0 +
+//    //                      dx * ((a0b0 + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
+//    //                      dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
+//    //                      dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
+//    //                      dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
+//    //                      dx * ((k1 + x0 * (2.0 * k4 + a3b3 * x0)) / 7.0 + 
+//    //                      dx * ((k4 + 2.0 * a3b3 * x0) / 8.0 + 
+//    //                      dx * a3b3 / 9.0)))))))); 
+//    //        }
+//    //        break;
+//    //    }
+//    //    default:
+//    //    {
+//    //        error_local(__FILE__, __LINE__, "wrong m for r^m prefactor"); 
+//    //    }
+//    //}
+//
+//    return result;
+//}
+//
+//template <typename T> 
+//template <typename U>
+//T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
+//{
+//    if (f->num_points() != g->num_points()) error_local(__FILE__, __LINE__, "number of points doesn't match");
+//
+//    return Spline<T>::integrate(f, g, m, f->num_points()); 
+//}
 
 template <typename T>
 T Spline<T>::integrate(std::vector<T>& g__, int m__)

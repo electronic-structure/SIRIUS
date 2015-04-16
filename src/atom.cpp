@@ -161,7 +161,7 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
                         if (lm)
                         {
                             h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = 
-                                Spline<double>::integrate(&rf_spline[i1], &vrf_spline[0], 2);
+                                inner(rf_spline[i1], vrf_spline[0], 2);
                         }
                         else
                         {
@@ -171,7 +171,7 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
                         for (int j = 0; j < num_mag_dims_; j++)
                         {
                             b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = 
-                                Spline<double>::integrate(&rf_spline[i1], &vrf_spline[1 + j], 2);
+                                inner(rf_spline[i1], vrf_spline[1 + j], 2);
                         }
                     }
                 }
