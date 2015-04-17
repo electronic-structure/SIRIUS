@@ -65,7 +65,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         case scaled_pow_grid:
         {   
             ///* ratio of last and first dx */
-            double S = rmax * 500;
+            double S = rmax * 1000;
             double alpha = pow(S, 1.0 / (num_points - 2));
             double x = rmin;
             for (int i = 0; i < num_points; i++)

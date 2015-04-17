@@ -74,7 +74,7 @@ class Spline
 
         Spline(Spline<T>&& src__)
         {
-            radial_grid_ = std::move(src__.radial_grid_);
+            radial_grid_ = src__.radial_grid_;
             coefs_ = std::move(src__.coefs_);
         }
 
@@ -82,7 +82,7 @@ class Spline
         {
             if (this != &src__)
             {
-                radial_grid_ = std::move(src__.radial_grid_);
+                radial_grid_ = src__.radial_grid_;
                 coefs_ = std::move(src__.coefs_);
             }
             return *this;
@@ -317,6 +317,10 @@ class Spline
                 coefs_(i, 1) = dy[i] - (coefs_(i, 2) + t) * radial_grid_->dx(i);
                 coefs_(i, 3) = t / radial_grid_->dx(i);
             }
+            coefs_(np - 1, 1) = 0;
+            coefs_(np - 1, 2) = 0;
+            coefs_(np - 1, 3) = 0;
+
             return *this;
         }
 
@@ -333,12 +337,8 @@ class Spline
 
         T integrate(std::vector<T>& g__, int m__);
 
-        uint64_t hash()
+        uint64_t hash() const
         {
-            int np = num_points();
-            coefs_(np - 1, 1) = 0;
-            coefs_(np - 1, 2) = 0;
-            coefs_(np - 1, 3) = 0;
             return coefs_.hash();
         }
 

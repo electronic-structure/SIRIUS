@@ -146,6 +146,8 @@ class Utils
             return result;
         }
         
+        /// Simple hash function.
+        /** Example: printf("hash: %16llX\n", hash()); */
         static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
         {
             unsigned char const* p = static_cast<unsigned char const*>(buff);

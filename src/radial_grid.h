@@ -131,13 +131,6 @@ class Radial_grid
             return (int)x_.size();
         }
                
-        //== /// Get radial points and deltas.
-        //== inline void get_x_dx(double* array, int ld) const
-        //== {
-        //==     memcpy(&array[0], &x_[0], x_.size() * sizeof(double));
-        //==     memcpy(&array[ld], &dx_[0], dx_.size() * sizeof(double));
-        //== }
-        
         /// Return name of the grid type.
         inline std::string grid_type_name() const
         {
