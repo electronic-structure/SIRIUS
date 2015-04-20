@@ -60,7 +60,7 @@ class vector3d
         }
 
         /// Construct vector from pointer
-        vector3d(T* ptr)
+        vector3d(T const* ptr)
         {
             for (int i = 0; i < 3; i++) vec_[i] = ptr[i];
         }
@@ -79,7 +79,7 @@ class vector3d
         }
 
         /// Return vector length
-        inline double length()
+        inline double length() const
         {
             return std::sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
         }

@@ -61,7 +61,7 @@ class Band
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int* fft_index, 
+        void apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int const* fft_index, 
                                   Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi);
 
         /// Apply SO correction to the first-variational states.

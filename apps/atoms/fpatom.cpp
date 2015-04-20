@@ -130,6 +130,7 @@ void generate_radial_functions(std::vector<fpatom::radial_function_index_descrip
                                sirius::Radial_solver const& rsolver__,
                                sirius::Radial_grid const& rgrid__,
                                std::array<std::vector<double>, 2> const& veff_spherical__,
+                               int zn__,
                                mdarray<double, 2>& enu__,
                                mdarray<double, 4>& radial_functions__)
 {
@@ -143,13 +144,19 @@ void generate_radial_functions(std::vector<fpatom::radial_function_index_descrip
         {
             for (int ispn: {0, 1})
             {
-                enu__(i, ispn) = rsolver__.bound_state(radial_functions_desc__[i].n, radial_functions_desc__[i].l,
-                                                       enu__(i, ispn), veff_spherical__[ispn], p, rdudr);
+                sirius::Bound_state bound_state(zn__, radial_functions_desc__[i].n, radial_functions_desc__[i].l, 
+                                                rgrid__, veff_spherical__[ispn], enu__(i, ispn));
+                enu__(i, ispn) = bound_state.enu();
+                auto& u = bound_state.u();
+                auto& rdudr = bound_state.rdudr();
+
+                //enu__(i, ispn) = rsolver__.bound_state(radial_functions_desc__[i].n, radial_functions_desc__[i].l,
+                //                                       enu__(i, ispn), veff_spherical__[ispn], p, rdudr);
 
                 for (int ir = 0; ir < rgrid__.num_points(); ir++)
                 {
-                    radial_functions__(ir, i, 0, ispn) = p[ir] / rgrid__[ir];
-                    radial_functions__(ir, i, 1, ispn) = rdudr[ir];
+                    radial_functions__(ir, i, 0, ispn) = u[ir]; //p[ir] / rgrid__[ir];
+                    radial_functions__(ir, i, 1, ispn) = rdudr[ir]; //rdudr[ir];
                 }
             }
         }
@@ -434,7 +441,7 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
     //}
 
     //sirius::Radial_grid rgrid(pow2_grid, 25000, 1e-7, 100.0);
-    sirius::Radial_grid rgrid(scaled_pow_grid, 10000, 1e-7, 50.0);
+    sirius::Radial_grid rgrid(exponential_grid, 20000, 1e-7, 150.0);
     rgrid.copy_to_device();
     sirius::Radial_solver rsolver(false, zn, rgrid);
     rsolver.set_tolerance(1e-12);
@@ -504,7 +511,7 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
                 veff_spherical[ispn][ir] = vefflm[ispn](0, ir) * y00;
         }
         
-        generate_radial_functions(radial_functions_desc, rsolver, rgrid, veff_spherical, enu, radial_functions);
+        generate_radial_functions(radial_functions_desc, rsolver, rgrid, veff_spherical, zn, enu, radial_functions);
 
         generate_radial_integrals(lmax_pot, rgrid, radial_functions_desc, radial_functions, vefflm,
                                   h_radial_integrals, o_radial_integrals);

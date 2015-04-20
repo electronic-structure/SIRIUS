@@ -95,6 +95,8 @@ void log_function_exit(const char* func_name);
 
 #define TERMINATE_NO_SCALAPACK terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
 
+#define TERMINATE_NOT_IMPLEMENTED terminate(__FILE__, __LINE__, "feature is not implemented");
+
 #define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
 
 #define DUMP(...)                                                                \

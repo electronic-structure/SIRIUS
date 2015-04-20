@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int* fft_index, 
+void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int const* fft_index, 
                                 Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi)
 {
     assert(hpsi.size(2) >= 2);
@@ -985,6 +985,8 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Band::set_fv_h_o", kp__->comm());
     
     h__.zero();
@@ -1025,6 +1027,8 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
+
+    LOG_FUNC_END();
 }
 
 //=====================================================================================================================
@@ -1323,7 +1327,7 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::diag_fv_full_potential");
+    Timer t("sirius::Band::diag_fv_full_potential", kp->comm());
 
     if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");

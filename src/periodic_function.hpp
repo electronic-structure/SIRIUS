@@ -61,14 +61,19 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
 
     if (unit_cell_->full_potential())
     {
+        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>((int)unit_cell_->spl_num_atoms().local_size());
         if (allocate_global_mt)
         {
-            f_mt_.allocate();
+            f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
             set_local_mt_ptr();
         }
         else
         {
-            for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).allocate();
+            for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++) 
+            {
+                int ia = unit_cell_->spl_num_atoms(ialoc);
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
+            }
         }
     }
 }
@@ -229,7 +234,7 @@ void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 template <typename T>
 size_t Periodic_function<T>::size()
 {
-    size_t size = f_it_.size();
+    size_t size = fft_->size();
     if (unit_cell_->full_potential())
     {
         for (int ic = 0; ic < unit_cell_->num_atom_symmetry_classes(); ic++)
@@ -238,7 +243,6 @@ size_t Periodic_function<T>::size()
                     unit_cell_->atom_symmetry_class(ic)->num_atoms();
         }
     }
-    
     return size;
 }
 

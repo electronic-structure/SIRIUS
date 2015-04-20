@@ -206,11 +206,11 @@ class K_point
         /// Initialize G+k related data
         void init_gkvec();
         
-        /// Build APW+lo basis descriptors 
-        void build_apwlo_basis_descriptors();
+        /// Build G+k and lo basis descriptors.
+        void build_gklo_basis_descriptors();
 
-        /// Block-cyclic distribution of relevant arrays 
-        void distribute_block_cyclic();
+        /// Distribute basis function index between rows and columns of MPI grid.
+        void distribute_basis_index();
         
         /// Test orthonormalization of first-variational states
         void test_fv_states(int use_fft);
@@ -273,22 +273,22 @@ class K_point
         void test_spinor_wave_functions(int use_fft);
         
         /// Return G-vector (in fractional coordinates) of the current G+k vector.
-        vector3d<int> gvec(int igk__)
+        inline vector3d<int> gvec(int igk__) const
         {
             return parameters_.reciprocal_lattice()->gvec(gvec_index(igk__));
         }
         
         /// Global index of G-vector by the index of G+k vector
-        inline int gvec_index(int igk) 
+        inline int gvec_index(int igk__) const
         {
-            assert(igk >= 0 && igk < (int)gvec_index_.size());
+            assert(igk__ >= 0 && igk__ < (int)gvec_index_.size());
             
-            return gvec_index_[igk];
+            return gvec_index_[igk__];
         }
 
         ///// Return G+k vector in fractional or Cartesian coordinates
         template <coordinates_t coord__>
-        vector3d<double> gkvec(int igk__)
+        inline vector3d<double> gkvec(int igk__) const
         {
             assert(igk__ >= 0 && igk__ < (int)gkvec_.size(1));
             switch (coord__)
@@ -311,7 +311,7 @@ class K_point
             }
         }
         
-        inline double_complex gkvec_phase_factor(int igk, int ia)
+        inline double_complex gkvec_phase_factor(int igk, int ia) const
         {
             return gkvec_phase_factors_(igk, ia);
         }
@@ -352,7 +352,7 @@ class K_point
          *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
          *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
          */ 
-        inline int wf_size() // TODO: better name for this
+        inline int wf_size() const // TODO: better name for this
         {
             switch (parameters_.esm_type())
             {
@@ -372,7 +372,7 @@ class K_point
             return -1; // make compiler happy
         }
 
-        inline int wf_pw_offset()
+        inline int wf_pw_offset() const
         {
             switch (parameters_.esm_type())
             {
@@ -396,7 +396,7 @@ class K_point
             }
         }
 
-        inline void get_band_occupancies(double* band_occupancies)
+        inline void get_band_occupancies(double* band_occupancies) const
         {
             assert((int)band_occupancies_.size() == parameters_.num_bands());
             
@@ -409,7 +409,7 @@ class K_point
             memcpy(&band_occupancies_[0], band_occupancies, parameters_.num_bands() * sizeof(double));
         }
 
-        inline void get_band_energies(double* band_energies)
+        inline void get_band_energies(double* band_energies) const
         {
             assert((int)band_energies_.size() == parameters_.num_bands());
             
@@ -422,17 +422,17 @@ class K_point
             memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
         }
 
-        inline double band_occupancy(int j)
+        inline double band_occupancy(int j) const
         {
             return band_occupancies_[j];
         }
         
-        inline double band_energy(int j)
+        inline double band_energy(int j) const
         {
             return band_energies_[j];
         }
 
-        inline double fv_eigen_value(int i)
+        inline double fv_eigen_value(int i) const
         {
             return fv_eigen_values_[i];
         }
@@ -442,7 +442,7 @@ class K_point
             memcpy(&fv_eigen_values_[0], eval, parameters_.num_fv_states() * sizeof(double));
         }
         
-        inline double weight()
+        inline double weight() const
         {
             return weight_;
         }
@@ -457,25 +457,25 @@ class K_point
             return spinor_wave_functions_;
         }
 
-        inline int* fft_index()
+        inline int const* fft_index() const
         {
             return &fft_index_[0];
         }
 
-        inline int* fft_index_coarse()
+        inline int const* fft_index_coarse() const
         {
             return &fft_index_coarse_[0];
         }
 
-        inline vector3d<double> vk()
+        inline vector3d<double> vk() const
         {
             return vk_;
         }
 
-        inline double vk(int x)
-        {
-            return vk_[x];
-        }
+        //== inline double vk(int x) const
+        //== {
+        //==     return vk_[x];
+        //== }
 
         /// Basis size of our electronic structure method.
         /** In case of full-potential LAPW+lo or PW+lo method the total number of 
@@ -624,7 +624,7 @@ class K_point
             //== for (int i = 0; i < parameters_.num_fv_states(); i++) sv_eigen_vectors_[0].set(i, i, complex_one);
         }
 
-        std::vector<double> get_pw_ekin()
+        std::vector<double> get_pw_ekin() const
         {
             std::vector<double> pw_ekin(num_gkvec());
             for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * std::pow(gkvec<cartesian>(igk).length(), 2);

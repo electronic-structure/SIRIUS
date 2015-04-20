@@ -498,17 +498,17 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double>& vs__)
 
     spherical_potential_ = vs__;
 
-    //== /* write spherical potential */
-    //== std::stringstream sstr;
-    //== sstr << "mt_spheric_potential_" << id_ << ".dat";
-    //== FILE* fout = fopen(sstr.str().c_str(), "w");
+    /* write spherical potential */
+    std::stringstream sstr;
+    sstr << "mt_spheric_potential_" << id_ << ".dat";
+    FILE* fout = fopen(sstr.str().c_str(), "w");
 
-    //== for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
-    //== {
-    //==     double r = atom_type_->radial_grid(ir);
-    //==     fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_->zn() / r);
-    //== }
-    //== fclose(fout);
+    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
+    {
+        double r = atom_type_->radial_grid(ir);
+        fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_->zn() / r);
+    }
+    fclose(fout);
 }
 
 void Atom_symmetry_class::find_enu()
@@ -543,12 +543,14 @@ void Atom_symmetry_class::find_enu()
         }
     }
 
-    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    //Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     #pragma omp parallel for
     for (int i = 0; i < (int)rs_with_auto_enu.size(); i++)
     {
         radial_solution_descriptor* rsd = rs_with_auto_enu[i];
-        rsd->enu = solver.find_enu(rsd->n, rsd->l, spherical_potential_, rsd->enu);
+        rsd->enu = Enu_finder(atom_type_->zn(), rsd->n, rsd->l, atom_type_->radial_grid(), spherical_potential_, rsd->enu).enu();
+
+        //rsd->enu = solver.find_enu(rsd->n, rsd->l, spherical_potential_, rsd->enu);
     }
 }
 

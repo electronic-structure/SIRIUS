@@ -122,6 +122,7 @@ class Mixer
         void input(size_t idx, T value)
         {
             assert(idx < size_t(1 << 31));
+            assert(idx >= 0 && idx < size_);
 
             auto offs_and_rank = spl_size_.location((int)idx);
             if (offs_and_rank.second == comm_.rank()) input_buffer_(offs_and_rank.first) = value;
@@ -219,10 +220,21 @@ class Broyden_mixer: public Mixer<T>
                 residuals_(i, this->offset(this->count_)) = this->vectors_(i, this->offset(this->count_)) - this->input_buffer_(i);
 
             this->rss_ = 0;
-            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+            if (weights_.size())
             {
-                int ipos = this->offset(this->count_);
-                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
+                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                {
+                    int ipos = this->offset(this->count_);
+                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
+                }
+            }
+            else
+            {
+                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                {
+                    int ipos = this->offset(this->count_);
+                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
+                }
             }
 
             this->comm_.allreduce(&this->rss_, 1);
@@ -338,11 +350,24 @@ class Broyden_modified_mixer: public Mixer<T>
             Timer t("sirius::Broyden_modified_mixer::mix");
             
             this->rss_ = 0;
-            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+
+            if (weights_.size())
             {
-                int ipos = this->offset(this->count_);
-                residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
-                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
+                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                {
+                    int ipos = this->offset(this->count_);
+                    residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
+                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
+                }
+            }
+            else
+            {
+                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                {
+                    int ipos = this->offset(this->count_);
+                    residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
+                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
+                }
             }
 
             this->comm_.allreduce(&this->rss_, 1);
@@ -360,18 +385,38 @@ class Broyden_modified_mixer: public Mixer<T>
             {
                 mdarray<double, 2> S(N, N);
                 S.zero();
-                for (int j1 = 0; j1 < N; j1++)
-                { 
-                    for (int j2 = 0; j2 <= j1; j2++)
-                    {
-                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                if (weights_.size())
+                {
+                    for (int j1 = 0; j1 < N; j1++)
+                    { 
+                        for (int j2 = 0; j2 <= j1; j2++)
                         {
-                            T dr1 = residuals_(i, this->offset(this->count_ - j1)) - residuals_(i, this->offset(this->count_ - j1 - 1));
-                            T dr2 = residuals_(i, this->offset(this->count_ - j2)) - residuals_(i, this->offset(this->count_ - j2 - 1));
+                            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                            {
+                                T dr1 = residuals_(i, this->offset(this->count_ - j1)) - residuals_(i, this->offset(this->count_ - j1 - 1));
+                                T dr2 = residuals_(i, this->offset(this->count_ - j2)) - residuals_(i, this->offset(this->count_ - j2 - 1));
 
-                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * weights_[this->spl_size_[i]];
+                                S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * weights_[this->spl_size_[i]];
+                            }
+                            S(j2, j1) = S(j1, j2);
                         }
-                        S(j2, j1) = S(j1, j2);
+                    }
+                }
+                else
+                {
+                    for (int j1 = 0; j1 < N; j1++)
+                    { 
+                        for (int j2 = 0; j2 <= j1; j2++)
+                        {
+                            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                            {
+                                T dr1 = residuals_(i, this->offset(this->count_ - j1)) - residuals_(i, this->offset(this->count_ - j1 - 1));
+                                T dr2 = residuals_(i, this->offset(this->count_ - j2)) - residuals_(i, this->offset(this->count_ - j2 - 1));
+
+                                S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2);
+                            }
+                            S(j2, j1) = S(j1, j2);
+                        }
                     }
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
@@ -385,12 +430,26 @@ class Broyden_modified_mixer: public Mixer<T>
 
                 mdarray<double, 1> c(N);
                 c.zero();
-                for (int j = 0; j < N; j++)
+                if (weights_.size())
                 {
-                    for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                    for (int j = 0; j < N; j++)
                     {
-                        T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
-                        c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_))) * weights_[this->spl_size_[i]];
+                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                        {
+                            T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
+                            c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_))) * weights_[this->spl_size_[i]];
+                        }
+                    }
+                }
+                else
+                {
+                    for (int j = 0; j < N; j++)
+                    {
+                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                        {
+                            T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
+                            c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_)));
+                        }
                     }
                 }
                 this->comm_.allreduce(c.at<CPU>(), (int)c.size());

@@ -125,16 +125,6 @@ class Spheric_function
             data_.zero();
         }
 
-        void allocate()
-        {
-            data_.allocate();
-        }
-
-        void set_ptr(T* ptr__)
-        {
-            data_.set_ptr(ptr__);
-        }
-
         inline int size() const
         {
             return angular_domain_size_ * radial_grid_->num_points();

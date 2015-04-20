@@ -72,7 +72,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 timers(thread_id) = -omp_get_wtime();
                 
                 /* move fft index to GPU */
-                mdarray<int, 1> fft_index(kp__->fft_index_coarse(), kp__->num_gkvec());
+                mdarray<int, 1> fft_index(const_cast<int*>(kp__->fft_index_coarse()), kp__->num_gkvec());
                 fft_index.allocate_on_device();
                 fft_index.copy_to_device();
 

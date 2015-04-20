@@ -668,7 +668,8 @@ void Potential::generate_pw_coefs()
         {
             case CPU:
             {
-                add_mt_contribution_to_pw<CPU>();
+                STOP();
+                //add_mt_contribution_to_pw<CPU>();
                 break;
             }
             #ifdef _GPU_

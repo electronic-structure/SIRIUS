@@ -254,7 +254,7 @@ class Radial_soultion
                 q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
 
                 /* don't allow overflow */
-                if (check_overflow && std::abs(p2) > 1e5)
+                if (check_overflow && std::abs(p2) > 1e10)
                 {
                     last = i;
                     break;
@@ -276,7 +276,9 @@ class Radial_soultion
                     }
                     else
                     {
-                        last = j;
+                        /* we may go through zero here and miss one node,
+                         * so stay on the safe side with one extra point */
+                        last = j + 1;
                         break;
                     }
                 }
@@ -376,7 +378,7 @@ class Bound_state: public Radial_soultion
             int s = 1;
             int sp;
             enu_ = enu_start__;
-            double denu = enu_tolerance_;
+            double denu = 0.1;
             
             /* search for the bound state */
             for (int iter = 0; iter < 1000; iter++)
@@ -388,14 +390,18 @@ class Bound_state: public Radial_soultion
                 denu = s * std::abs(denu);
                 denu = (s != sp) ? denu * 0.5 : denu * 1.25;
                 enu_ += denu;
-                
+
+                //std::cout <<"iter="<<iter<<" nn="<<nn<<" denu="<<denu<<" enu="<<enu_<<std::endl;
+
                 if (std::abs(denu) < enu_tolerance_ && iter > 4) break;
             }
 
             if (std::abs(denu) >= enu_tolerance_) 
             {
                 std::stringstream s;
-                s << "enu is not converged for n = " << n_ << " and l = " << l_;
+                s << "enu is not converged for n = " << n_ << " and l = " << l_ << std::endl
+                  << "enu = " << enu_ << ", denu = " << denu;
+                
                 TERMINATE(s);
             }
 
@@ -451,6 +457,14 @@ class Bound_state: public Radial_soultion
 
             if (nn != (n_ - l_ - 1))
             {
+                FILE* fout = fopen("p.dat", "w");
+                for (int ir = 0; ir < np; ir++) 
+                {
+                    double x = radial_grid(ir);
+                    fprintf(fout, "%12.6f %16.8f\n", x, p_[ir]);
+                }
+                fclose(fout);
+
                 std::stringstream s;
                 s << "n = " << n_ << std::endl 
                   << "l = " << l_ << std::endl
@@ -482,6 +496,11 @@ class Bound_state: public Radial_soultion
         Spline<double> const& u() const
         {
             return u_;
+        }
+
+        Spline<double> const& rdudr() const
+        {
+            return rdudr_;
         }
 };
 
@@ -538,8 +557,15 @@ class Enu_finder: public Radial_soultion
                     break;
                 }
             }
-            if (!found) TERMINATE("top of the band is not found");
-            etop_ = enu;
+            etop_ = (!found) ? enu_start__ : enu;
+
+            //FILE* fout = fopen("p_top.dat", "w");
+            //for (int ir = 0; ir < np; ir++) 
+            //{
+            //    double x = radial_grid(ir);
+            //    fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
+            //}
+            //fclose(fout);
 
             // TODO: try u'(R) == 0 instead of p'(R) == 0
             
@@ -547,16 +573,19 @@ class Enu_finder: public Radial_soultion
              * at the muffin-tin boundary. This will be the bottom of the band. */
             de = -0.001;
             found = false;
-            double p1p = 0;
+            double b;
             for (int i = 0; i < 1000; i++)
             {
                 int nn = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
 
+                //double a = dpdr[np - 1];
+                double a = dpdr[np - 1] / radial_grid(np - 1) - p[np - 1] / std::pow(radial_grid(np - 1), 2);
+
                 if (i > 0)
                 {
-                    de = (dpdr[np - 1] * p1p < 0) ? -de * 0.5 : de * 1.25;
+                    de = (a * b < 0) ? -de * 0.5 : de * 1.25;
                 }
-                p1p = dpdr[np - 1];
+                b = a;
                 enu += de;
                 if (std::abs(de) < 1e-10)
                 {
@@ -565,8 +594,16 @@ class Enu_finder: public Radial_soultion
                     break;
                 }
             }
-            if (!found) TERMINATE("bottom of the band is not found");
-            ebot_ = enu;
+            ebot_ = (!found) ? enu_start__ : enu;
+
+            //fout = fopen("p_bot.dat", "w");
+            //for (int ir = 0; ir < np; ir++) 
+            //{
+            //    double x = radial_grid(ir);
+            //    fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
+            //}
+            //fclose(fout);
+
             enu_ = (ebot_ + etop_) / 2.0;
         }
 
@@ -583,6 +620,16 @@ class Enu_finder: public Radial_soultion
         inline double enu() const
         {
             return enu_;
+        }
+
+        inline double ebot() const
+        {
+            return ebot_;
+        }
+
+        inline double etop() const
+        {
+            return etop_;
         }
 };
 

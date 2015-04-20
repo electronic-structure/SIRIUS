@@ -161,7 +161,7 @@ class FFT3D<CPU>
         }
 
         template<typename T>
-        inline void input(int n, int* map, T* data, int thread_id = 0)
+        inline void input(int n, int const* map, T* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads());
             
@@ -221,14 +221,14 @@ class FFT3D<CPU>
             memcpy(data, &fftw_buffer_(0, thread_id), size() * sizeof(double_complex));
         }
         
-        inline void output(int n, int* map, double_complex* data, int thread_id = 0)
+        inline void output(int n, int const* map, double_complex* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads());
 
             for (int i = 0; i < n; i++) data[i] = fftw_buffer_(map[i], thread_id);
         }
 
-        inline void output(int n, int* map, double_complex* data, int thread_id, double alpha)
+        inline void output(int n, int const* map, double_complex* data, int thread_id, double alpha)
         {
             assert(thread_id < num_fft_threads());
 

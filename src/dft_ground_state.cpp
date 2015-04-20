@@ -96,35 +96,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 {
     Timer t("sirius::DFT_ground_state::scf_loop");
     
-    Mixer<double>* mx = NULL;
-    Mixer<double>* mx_pot = NULL;
-    if (parameters_.mixer_input_section_.type_ == "broyden2")
-    {
-        std::vector<double> weights(density_->size(), 1);
-        mx = new Broyden_mixer<double>(density_->size(), parameters_.mixer_input_section_.max_history_, 
-                               parameters_.mixer_input_section_.beta_, weights, parameters_.comm());
-    }
-    else if (parameters_.mixer_input_section_.type_ == "linear")
-    {
-        mx = new Linear_mixer<double>(density_->size(), parameters_.mixer_input_section_.beta_, parameters_.comm());
-        mx_pot = new Linear_mixer<double>(potential_->size(), parameters_.mixer_input_section_.gamma_, parameters_.comm());
-    }
-    else
-    {
-        error_global(__FILE__, __LINE__, "Wrong mixer type");
-    }
-    
-    //== /* initialize density mixer with starting density */
-    //== density_->pack(mx);
-    //== mx->initialize();
-
-    //== /* initialize potential mixer if potential is also mixed */
-    //== if (mx_pot)
-    //== {
-    //==     potential_->pack(mx_pot);
-    //==     mx_pot->initialize();
-    //== }
-
     density_->mixer_init();
 
     double eold = 0.0;
@@ -137,14 +108,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* compute new potential */
         generate_effective_potential();
         
-        //== /* if potential is also mixed */
-        //== if (mx_pot)
-        //== {
-        //==     potential_->pack(mx_pot);
-        //==     mx_pot->mix();
-        //==     potential_->unpack(mx_pot->output_buffer());
-        //== }
-
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
@@ -154,10 +117,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         
         symmetrize_density();
         
-        ///* mix density */
-        //density_->pack(mx);
-        //rms = mx->mix();
-        //density_->unpack(mx->output_buffer());
         rms = density_->mix();
 
         parameters_.comm().bcast(&rms, 1, 0);
@@ -181,9 +140,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     parameters_.create_storage_file();
     potential_->save();
     density_->save();
-
-    delete mx;
-    delete mx_pot;
 }
 
 void DFT_ground_state::relax_atom_positions()

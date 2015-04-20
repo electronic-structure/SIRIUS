@@ -364,7 +364,7 @@ extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, dou
                                               double const* g__, double* d_buf__, double* h_buf__, int stream_id__);
 
 template<typename T>
-T inner(Spline<T>& f__, Spline<T>& g__, int m__, int num_points__)
+T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
 {
     assert(f__.radial_grid().hash() == g__.radial_grid().hash());
     
@@ -470,7 +470,7 @@ T inner(Spline<T>& f__, Spline<T>& g__, int m__, int num_points__)
 }
 
 template<typename T>
-T inner(Spline<T>& f__, Spline<T>& g__, int m__)
+T inner(Spline<T> const& f__, Spline<T> const& g__, int m__)
 {
     return inner(f__, g__, m__, f__.num_points());
 }

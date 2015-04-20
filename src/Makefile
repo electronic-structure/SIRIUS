@@ -7,6 +7,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        reciprocal_lattice.cpp step_function.cpp global.cpp k_point.cpp band.cpp potential.cpp \
        k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
        band_uspp_gpu_parallel.cpp band_pseudo_pot.cpp band_pseudo_pot_itsol.cpp real_space_prj.cpp \
+       Density/initial_density.cpp \
        Band/apply_h_local_slice.cpp \
        Band/set_fv_h_o_serial.cpp \
        Band/add_nl_h_o_pw.cpp \

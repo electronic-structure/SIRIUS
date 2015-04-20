@@ -86,6 +86,15 @@ enum electronic_structure_method_t
     norm_conserving_pseudopotential
 };
 
+enum wave_function_distribution_t
+{
+    block_cyclic_2d,
+
+    slab,
+
+    slice
+};
+
 enum index_domain_t {global, local};
 
 enum function_domain_t {spatial, spectral};
