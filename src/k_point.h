@@ -142,7 +142,7 @@ class K_point
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_local_;
+        //std::vector<gklo_basis_descriptor> gklo_basis_descriptors_local_;
 
         splindex<block> spl_gkvec_;
             
@@ -472,11 +472,6 @@ class K_point
             return vk_;
         }
 
-        //== inline double vk(int x) const
-        //== {
-        //==     return vk_[x];
-        //== }
-
         /// Basis size of our electronic structure method.
         /** In case of full-potential LAPW+lo or PW+lo method the total number of 
          *  basis functions is equal to the number of (augmented) plane-waves plus the number 
@@ -536,11 +531,11 @@ class K_point
             return gklo_basis_descriptors_row_[idx];
         }
 
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_local(int idx) const
-        {
-            assert(idx >= 0 && idx < (int)gklo_basis_descriptors_local_.size());
-            return gklo_basis_descriptors_local_[idx];
-        }
+        //inline gklo_basis_descriptor const& gklo_basis_descriptor_local(int idx) const
+        //{
+        //    assert(idx >= 0 && idx < (int)gklo_basis_descriptors_local_.size());
+        //    return gklo_basis_descriptors_local_[idx];
+        //}
         
         inline int num_ranks_row() const
         {
@@ -587,7 +582,7 @@ class K_point
         }
 
         /// Return local index (for the current MPI rank) of a row for a given atom and row index within an atom
-        inline int lo_row(int ia, int i)
+        inline int lo_row(int ia, int i) const
         {
             return atom_lo_rows_[ia][i];
         }

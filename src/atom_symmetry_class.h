@@ -114,7 +114,7 @@ class Atom_symmetry_class
 
         /// Set the spherical component of the potential
         /** Atoms belonging to the same symmetry class have the same spherical potential. */
-        void set_spherical_potential(std::vector<double>& vs__);
+        void set_spherical_potential(std::vector<double> const& vs__);
 
         void generate_radial_functions();
 
@@ -242,7 +242,7 @@ class Atom_symmetry_class
             aw_descriptors_[l][order].enu = enu;
         }
         
-        inline double get_aw_enu(int l, int order)
+        inline double get_aw_enu(int l, int order) const
         {
             return aw_descriptors_[l][order].enu;
         }
@@ -252,7 +252,7 @@ class Atom_symmetry_class
             lo_descriptors_[idxlo].rsd_set[order].enu = enu;
         }
         
-        inline double get_lo_enu(int idxlo, int order)
+        inline double get_lo_enu(int idxlo, int order) const
         {
             return lo_descriptors_[idxlo].rsd_set[order].enu;
         }

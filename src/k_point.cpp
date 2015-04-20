@@ -187,7 +187,7 @@ void K_point::update()
         
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++)
         {
-            int igk = gklo_basis_descriptors_local_[igk_loc].igk;
+            int igk = gklo_basis_descriptors_row_[igk_loc].igk;
             double gk_len = gkvec<cartesian>(igk).length();
 
             if (gkvec_shells_.empty() || std::abs(gkvec_shells_.back().first - gk_len) > 1e-10) 
@@ -225,7 +225,7 @@ void K_point::update()
                 for (int i = 0; i < (int)gkvec_shells_[ish].second.size(); i++)
                 {
                     int igk_loc = gkvec_shells_[ish].second[i];
-                    int igk = gklo_basis_descriptors_local_[igk_loc].igk;
+                    int igk = gklo_basis_descriptors_row_[igk_loc].igk;
                     /* vs = {r, theta, phi} */
                     auto vs = SHT::spherical_coordinates(gkvec<cartesian>(igk));
                     SHT::spherical_harmonics(parameters_.lmax_beta(), vs[1], vs[2], &gkvec_rlm[0]);
@@ -277,27 +277,6 @@ void K_point::update()
                 beta_gk_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
             }
         }
-
-        //for (int iat = 0; iat < uc->num_atom_types(); iat++)
-        //{
-        //    printf("atom type: %i\n", iat);
-
-        //    auto atom_type = uc->atom_type(iat);
-
-        //    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-        //    {
-        //        for (int xi1 = 0; xi1 < atom_type->mt_basis_size(); xi1++)
-        //        {
-        //            double_complex z(0, 0);
-        //            for (int igk = 0; igk < num_gkvec(); igk++)
-        //            {
-        //                z += conj(beta_gk_t_(igk, atom_type->offset_lo() + xi)) * beta_gk_t_(igk, atom_type->offset_lo() + xi1);
-        //            }
-        //            printf("xi,xi1=%2i,%2i,  prod=%18.12f %18.12f\n", xi, xi1, real(z), imag(z));
-        //        }
-        //    }
-        //}
-
 
         p_mtrx_ = mdarray<double_complex, 3>(uc->max_mt_basis_size(), uc->max_mt_basis_size(), uc->num_atom_types());
         p_mtrx_.zero();
@@ -437,7 +416,7 @@ void K_point::update()
             spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), spl_bands.local_size(), parameters_.num_spins());
         }
     }
-    else
+    else  /* use full diagonalziation */
     {
         if (parameters_.unit_cell()->full_potential())
         {
@@ -816,29 +795,39 @@ void K_point::init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_d
 
 void K_point::init_gkvec()
 {
+    int lmax = - 1;
     switch (parameters_.esm_type())
     {
         case full_potential_lapwlo:
         {
-            init_gkvec_ylm_and_len(parameters_.lmax_apw(), num_gkvec_row(), gklo_basis_descriptors_row_);
-            init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
+            lmax = parameters_.lmax_apw();
             break;
+            //init_gkvec_ylm_and_len(parameters_.lmax_apw(), num_gkvec_row(), gklo_basis_descriptors_row_);
+            //init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
+            //break;
         }
         case full_potential_pwlo:
         {
-            init_gkvec_ylm_and_len(parameters_.lmax_pw(), num_gkvec_row(), gklo_basis_descriptors_row_);
-            init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
+            lmax = parameters_.lmax_pw();
             break;
+
+            //init_gkvec_ylm_and_len(parameters_.lmax_pw(), num_gkvec_row(), gklo_basis_descriptors_row_);
+            //init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
+            //break;
         }
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
             if (num_gkvec() != wf_size()) TERMINATE("wrong size of wave-functions");
-            init_gkvec_ylm_and_len(parameters_.lmax_beta(), num_gkvec_loc(), gklo_basis_descriptors_local_);
-            init_gkvec_phase_factors(num_gkvec_loc(), gklo_basis_descriptors_local_);
+            lmax = parameters_.lmax_beta();
+            //init_gkvec_ylm_and_len(parameters_.lmax_beta(), num_gkvec_loc(), gklo_basis_descriptors_local_);
+            //init_gkvec_phase_factors(num_gkvec_loc(), gklo_basis_descriptors_local_);
             break;
         }
     }
+    
+    init_gkvec_ylm_and_len(lmax, num_gkvec_row(), gklo_basis_descriptors_row_);
+    init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
 }
 
 void K_point::build_gklo_basis_descriptors()
