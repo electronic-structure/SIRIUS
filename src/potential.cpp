@@ -1230,7 +1230,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                     /* compute magnitude of the magnetization vector */
                     double mag = 0.0;
                     for (int j = 0; j < parameters_.num_mag_dims(); j++) mag += pow(vecmagtp[j](itp, ir), 2);
-                    mag = sqrt(mag);
+                    mag = std::sqrt(mag);
 
                     /* in magnetic case fix both density and magnetization */
                     for (int itp = 0; itp < sht_->num_points(); itp++) 
@@ -1480,7 +1480,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     {
         double mag = 0.0;
         for (int j = 0; j < parameters_.num_mag_dims(); j++) mag += pow(magnetization[j]->f_it<global>(ir), 2);
-        mag = sqrt(mag);
+        mag = std::sqrt(mag);
 
         /* remove numerical noise at high values of magnetization */
         mag = std::min(mag, rho->f_it<global>(ir));
