@@ -110,6 +110,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     get_beta_R();
     get_beta_grid();
 
+    std::vector<Radial_grid> beta_radial_grid(unit_cell_->num_atom_types());
     
     /* radial beta functions */
     mdarray<Spline<double>, 2> beta_rf(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
@@ -119,27 +120,21 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
         auto atom_type = unit_cell_->atom_type(iat);
 
         /* create radial grid for all beta-projectors */
-        auto beta_radial_grid = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
+        beta_radial_grid[iat] = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
 
         double Rmask = R_beta_[iat] * R_mask_scale_;
 
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
         {
-            beta_rf(idxrf, iat) = Spline<double>(beta_radial_grid);
+            beta_rf(idxrf, iat) = Spline<double>(beta_radial_grid[iat]);
             for (int ir = 0; ir < nr_beta_[iat]; ir++) 
             {
-                double x = beta_radial_grid[ir];
+                double x = beta_radial_grid[iat][ir];
                 beta_rf(idxrf, iat)[ir] = atom_type->uspp().beta_radial_functions(ir, idxrf) / mask(x, Rmask);
             }
             beta_rf(idxrf, iat).interpolate();
         }
     }
-
-
-
-
-
-
 
     auto beta_radial_integrals = generate_beta_radial_integrals(beta_rf, 1);
 
@@ -614,6 +609,8 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
 
     mdarray<double, 3> beta_radial_integrals_optimized(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types(), nqmax);
 
+    std::vector<Radial_grid> beta_radial_grid(unit_cell_->num_atom_types());
+
     /* interpolate beta radial functions */
     mdarray<Spline<double>, 2> beta_rf(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
     for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
@@ -621,11 +618,11 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         auto atom_type = unit_cell_->atom_type(iat);
 
         /* create radial grid for all beta-projectors */
-        auto beta_radial_grid = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
+        beta_radial_grid[iat] = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
 
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
         {
-            beta_rf(idxrf, iat) = Spline<double>(beta_radial_grid);
+            beta_rf(idxrf, iat) = Spline<double>(beta_radial_grid[iat]);
             for (int ir = 0; ir < nr_beta_[iat]; ir++) 
             {
                 beta_rf(idxrf, iat)[ir] = atom_type->uspp().beta_radial_functions(ir, idxrf);

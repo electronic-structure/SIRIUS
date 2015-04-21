@@ -89,13 +89,13 @@ class Spline
         }
         
         /// Integrate with r^m weight.
-        T integrate(int m__)
+        T integrate(int m__) const
         {
             std::vector<T> g(num_points());
             return integrate(g, m__);
         }
         
-        inline std::vector<T> values()
+        inline std::vector<T> values() const
         {
             std::vector<T> a(num_points());
             for (int i = 0; i < num_points(); i++) a[i] = coefs_(i, 0);
@@ -335,7 +335,7 @@ class Spline
             }
         }
 
-        T integrate(std::vector<T>& g__, int m__);
+        T integrate(std::vector<T>& g__, int m__) const;
 
         uint64_t hash() const
         {

@@ -163,7 +163,7 @@ class Density
          *  \f]
          */
         template <int num_mag_dims> 
-        void reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
+        void reduce_density_matrix(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
         
         /// Add k-point contribution to the auxiliary muffin-tin density matrix
         /** Complex density matrix has the following expression:

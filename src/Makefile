@@ -10,6 +10,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Density/initial_density.cpp \
        Density/add_kpoint_contribution_mt.cpp \
        Density/generate_rho_radial_integrals.cpp \
+       Density/reduce_density_matrix.cpp \
        Band/apply_h_local_slice.cpp \
        Band/set_fv_h_o_serial.cpp \
        Band/add_nl_h_o_pw.cpp \

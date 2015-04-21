@@ -136,7 +136,7 @@
 //}
 
 template <typename T>
-T Spline<T>::integrate(std::vector<T>& g__, int m__)
+T Spline<T>::integrate(std::vector<T>& g__, int m__) const
 {
     g__ = std::vector<T>(num_points());
 
