@@ -26,6 +26,7 @@
 #define __MATRIX3D_H__
 
 #include <string.h>
+#include "vector3d.h"
 #include "typedefs.h"
 #include "error_handling.h"
 
@@ -38,6 +39,9 @@ class matrix3d
         T mtrx_[3][3];
 
     public:
+    
+        template <typename U> 
+        friend class matrix3d;
         
         matrix3d()
         {
@@ -52,6 +56,15 @@ class matrix3d
         matrix3d(const matrix3d<T>& src)
         {
             memcpy(&mtrx_[0][0], &src.mtrx_[0][0], 9 * sizeof(T));
+        }
+        
+        template <typename U>
+        matrix3d(const matrix3d<U>& src)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++) mtrx_[i][j] = src.mtrx_[i][j];
+            }
         }
 
         matrix3d<T>& operator=(const matrix3d<T>& rhs)
@@ -79,8 +92,21 @@ class matrix3d
             return c;
         }
 
+        /// Matrix-vector multiplication.
+        template <typename U>
+        inline vector3d<T> operator*(vector3d<U> const& b)
+        {
+            vector3d<T> a;
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++) a[i] += (*this)(i, j) * b[j];
+            }
+            return a;
+        }
+
         /// Multiply matrix by an integer number.
-        inline matrix3d<T> operator*(int p)
+        template <typename U>
+        inline matrix3d<T> operator*(U p)
         {
             matrix3d<T> c;
             for (int i = 0; i < 3; i++)
@@ -120,7 +146,7 @@ matrix3d<T> inverse(matrix3d<T> src)
     
     T t1 = src.det();
     
-    if (type_wrapper<T>::abs(t1) < 1e-10) error_local(__FILE__, __LINE__, "matix is degenerate");
+    if (std::abs(t1) < 1e-10) error_local(__FILE__, __LINE__, "matix is degenerate");
     
     t1 = 1.0 / t1;
 
@@ -136,5 +162,5 @@ matrix3d<T> inverse(matrix3d<T> src)
 
     return mtrx;
 }
-    
+
 #endif // __MATRIX3D_H__

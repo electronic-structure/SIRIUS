@@ -80,8 +80,6 @@ void Unit_cell::get_symmetry()
     
     if (num_atoms() == 0) return;
     
-    if (spg_dataset_) spg_free_dataset(spg_dataset_);
-        
     if (atom_symmetry_classes_.size() != 0)
     {
         for (int ic = 0; ic < (int)atom_symmetry_classes_.size(); ic++) delete atom_symmetry_classes_[ic];
@@ -90,25 +88,24 @@ void Unit_cell::get_symmetry()
         for (int ia = 0; ia < num_atoms(); ia++) atom(ia)->set_symmetry_class(NULL);
     }
 
-    double lattice[3][3];
-
-    for (int i = 0; i < 3; i++)
+    if (symmetry_ != nullptr)
     {
-        for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_[j][i];
+        TERMINATE("Symmetry() object is already allocated");
     }
 
     mdarray<double, 2> positions(3, num_atoms());
-    
     std::vector<int> types(num_atoms());
-
-    for (int i = 0; i < num_atoms(); i++)
+    for (int ia = 0; ia < num_atoms(); ia++)
     {
-        for (int x = 0; x < 3; x++) positions(x, i) = atoms_[i]->position(x);
-        types[i] = atoms_[i]->type_id();
+        for (int x = 0; x < 3; x++) positions(x, ia) = atom(ia)->position(x);
+        types[ia] = atom(ia)->type_id();
     }
-    spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-5);
+    
+    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, types, 1e-4);
 
-    symmetry_ = Symmetry(lattice_vectors_, spg_dataset_);
+
+
+
 
     //== for (int isym = 0; isym < s.num_sym_op(); isym++)
     //== {
@@ -208,27 +205,24 @@ void Unit_cell::get_symmetry()
 
     //== }
 
-    if (spg_dataset_->spacegroup_number == 0)
-        error_local(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
-
-    if (spg_dataset_->n_atoms != num_atoms()) error_local(__FILE__, __LINE__, "wrong number of atoms");
-
     Atom_symmetry_class* atom_symmetry_class;
     
     int atom_class_id = -1;
 
     for (int i = 0; i < num_atoms(); i++)
     {
-        if (!atoms_[i]->symmetry_class()) // if symmetry class is not assigned to this atom
+        /* if symmetry class is not assigned to this atom */
+        if (!atoms_[i]->symmetry_class())
         {
-            atom_class_id++; // take next id 
+            /* take next id */
+            atom_class_id++;
             atom_symmetry_class = new Atom_symmetry_class(atom_class_id, atoms_[i]->type());
             atom_symmetry_classes_.push_back(atom_symmetry_class);
 
             for (int j = 0; j < num_atoms(); j++) // scan all atoms
             {
                 bool is_equal = (equivalent_atoms_.size()) ? (equivalent_atoms_[j] == equivalent_atoms_[i]) :  
-                                (spg_dataset_->equivalent_atoms[j] == spg_dataset_->equivalent_atoms[i]);
+                                (symmetry_->atom_symmetry_class(j) == symmetry_->atom_symmetry_class(i));
                 
                 if (is_equal) // assign new class id for all equivalent atoms
                 {
@@ -408,36 +402,59 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
 
     update();
+
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        /* split beta-projectors into chunks */
+        int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
+        int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
+        splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
+        beta_chunks_.resize(num_beta_chunks);
+        
+        for (int ib = 0; ib < num_beta_chunks; ib++)
+        {
+            /* number of atoms in chunk */
+            int na = (int)spl_beta_chunks.local_size(ib);
+            beta_chunks_[ib].num_atoms_ = na;
+            beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
+            beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
+
+            int num_beta = 0;
+    
+            for (int i = 0; i < na; i++)
+            {
+                int ia = (int)spl_beta_chunks.global_index(i, ib);
+                auto type = atom(ia)->type();
+                /* atom fractional coordinates */
+                for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
+                /* number of beta functions for atom */
+                beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
+                /* offset in beta_gk*/
+                beta_chunks_[ib].desc_(1, i) = num_beta;
+                /* offset in beta_gk_t */
+                beta_chunks_[ib].desc_(2, i) = type->offset_lo();
+                beta_chunks_[ib].desc_(3, i) = ia;
+    
+                num_beta += type->mt_basis_size();
+            }
+            beta_chunks_[ib].num_beta_ = num_beta;
+
+            if (pu_ == GPU)
+            {
+                #ifdef _GPU_
+                beta_chunks_[ib].desc_.allocate_on_device();
+                beta_chunks_[ib].desc_.copy_to_device();
+
+                beta_chunks_[ib].atom_pos_.allocate_on_device();
+                beta_chunks_[ib].atom_pos_.copy_to_device();
+                #endif
+            }
+        }
+
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
+    }
             
-    //== if (esm_type_ == ultrasoft_pseudopotential)
-    //== {
-    //==     assert(mt_basis_size_ == mt_lo_basis_size_); // in uspp those are identical because there are no APWs
-
-    //==     num_beta_t_ = 0;
-    //==     for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
-
-    //==     atom_pos_.set_dimensions(3, num_atoms());
-    //==     atom_pos_.allocate();
-    //==     for (int ia = 0; ia < num_atoms(); ia++)
-    //==     {
-    //==         for (int x = 0; x < 3; x++) atom_pos_(x, ia) = atom(ia)->position(x);
-    //==     }
-
-    //==     beta_t_idx_.set_dimensions(2, mt_lo_basis_size());
-    //==     beta_t_idx_.allocate();
-
-    //==     int n = 0;
-    //==     for (int ia = 0; ia < num_atoms(); ia++)
-    //==     {
-    //==         int iat = atom(ia)->type_id();
-    //==         for (int xi = 0; xi < atom_type(iat)->mt_lo_basis_size(); xi++, n++)
-    //==         {
-    //==             beta_t_idx_(0, n) = ia;
-    //==             beta_t_idx_(1, n) = atom_type(iat)->offset_lo() + xi;
-    //==         }
-    //==     }
-    //== }
-
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
     for (int ia = 0, n = 0; ia < num_atoms(); ia++)
     {
@@ -461,12 +478,12 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 
 void Unit_cell::update()
 {
-    vector3d<double> v0(lattice_vectors_[0]);
-    vector3d<double> v1(lattice_vectors_[1]);
-    vector3d<double> v2(lattice_vectors_[2]);
+    vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
+    vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
+    vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
 
     //== find_nearest_neighbours(v0.length() + v1.length() + v2.length());
-    double r = std::min(v0.length(), std::min(v1.length(), v2.length()));
+    double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
     find_nearest_neighbours(r);
 
     if (full_potential())
@@ -521,22 +538,18 @@ void Unit_cell::update()
 
 void Unit_cell::clear()
 {
-    if (spg_dataset_)
-    {
-        spg_free_dataset(spg_dataset_);
-        spg_dataset_ = NULL;
-    }
-    
-    // delete atom types
+    delete symmetry_;
+
+    /* delete atom types */
     for (int i = 0; i < (int)atom_types_.size(); i++) delete atom_types_[i];
     atom_types_.clear();
     atom_type_id_map_.clear();
 
-    // delete atom classes
+    /* delete atom classes */
     for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++) delete atom_symmetry_classes_[i];
     atom_symmetry_classes_.clear();
 
-    // delete atoms
+    /* delete atoms */
     for (int i = 0; i < num_atoms(); i++) delete atoms_[i];
     atoms_.clear();
 
@@ -553,16 +566,16 @@ void Unit_cell::print_info()
     printf("lattice vectors\n");
     for (int i = 0; i < 3; i++)
     {
-        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors(i, 0), 
-                                                             lattice_vectors(i, 1), 
-                                                             lattice_vectors(i, 2)); 
+        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), 
+                                                             lattice_vectors_(1, i), 
+                                                             lattice_vectors_(2, i)); 
     }
     printf("reciprocal lattice vectors\n");
     for (int i = 0; i < 3; i++)
     {
-        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
-                                                             reciprocal_lattice_vectors(i, 1), 
-                                                             reciprocal_lattice_vectors(i, 2));
+        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i), 
+                                                             reciprocal_lattice_vectors_(1, i), 
+                                                             reciprocal_lattice_vectors_(2, i));
     }
     printf("\n");
     printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
@@ -602,39 +615,42 @@ void Unit_cell::print_info()
         printf("\n");
     }
 
-    if (spg_dataset_)
+    if (symmetry_ != nullptr)
     {
         printf("\n");
-        printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
-        printf("international symbol : %s\n", spg_dataset_->international_symbol);
-        printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
-        printf("number of operations : %i\n", spg_dataset_->n_operations);
+        printf("space group number   : %i\n", symmetry_->spacegroup_number());
+        printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+        printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+        printf("number of operations : %i\n", symmetry_->num_sym_op());
         printf("transformation matrix : \n");
+        auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++)
         {
-            for (int j = 0; j < 3; j++) printf("%12.6f ", spg_dataset_->transformation_matrix[i][j]);
+
+            for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
             printf("\n");
         }
         printf("origin shift : \n");
-        printf("%12.6f %12.6f %12.6f\n", spg_dataset_->origin_shift[0], 
-                                         spg_dataset_->origin_shift[1], 
-                                         spg_dataset_->origin_shift[2]);
+        auto t = symmetry_->origin_shift();
+        printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
 
-        //== printf("symmetry operations  : \n");
-        //== for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
-        //== {
-        //==     printf("isym : %i\n", isym);
-        //==     printf("R : ");
-        //==     for (int i = 0; i < 3; i++)
-        //==     {
-        //==         if (i) printf("    ");
-        //==         for (int j = 0; j < 3; j++) printf("%3i ", spg_dataset_->rotations[isym][i][j]);
-        //==         printf("\n");
-        //==     }
-        //==     printf("T : ");
-        //==     for (int j = 0; j < 3; j++) printf("%f ", spg_dataset_->translations[isym][j]);
-        //==     printf("\n");
-        //== }
+        printf("symmetry operations  : \n");
+        for (int isym = 0; isym < symmetry_->num_sym_op(); isym++)
+        {
+            auto R = symmetry_->rot_mtrx(isym);
+            auto t = symmetry_->fractional_translation(isym);
+            printf("isym : %i\n", isym);
+            printf("R : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%3i ", R(i, j));
+                printf("\n");
+            }
+            printf("T : ");
+            for (int j = 0; j < 3; j++) printf("%f8.4 ", t[j]);
+            printf("\n");
+        }
     }
     
     printf("\n");
@@ -648,17 +664,17 @@ unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
 {
     unit_cell_parameters_descriptor d;
 
-    vector3d<double> v0(lattice_vectors_[0]);
-    vector3d<double> v1(lattice_vectors_[1]);
-    vector3d<double> v2(lattice_vectors_[2]);
+    vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
+    vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
+    vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
 
     d.a = v0.length();
     d.b = v1.length();
     d.c = v2.length();
 
-    d.alpha = acos(Utils::scalar_product(v1, v2) / d.b / d.c) * 180 / pi;
-    d.beta = acos(Utils::scalar_product(v0, v2) / d.a / d.c) * 180 / pi;
-    d.gamma = acos(Utils::scalar_product(v0, v1) / d.a / d.b) * 180 / pi;
+    d.alpha = acos((v1 * v2) / d.b / d.c) * 180 / pi;
+    d.beta  = acos((v0 * v2) / d.a / d.c) * 180 / pi;
+    d.gamma = acos((v0 * v1) / d.a / d.b) * 180 / pi;
 
     return d;
 }
@@ -709,7 +725,7 @@ void Unit_cell::write_json()
         for (int i = 0; i < 3; i++)
         {
             std::vector<double> v(3);
-            for (int x = 0; x < 3; x++) v[x] = lattice_vectors(i, x);
+            for (int x = 0; x < 3; x++) v[x] = lattice_vectors_(x, i);
             out.write(v);
         }
         out.end_array();
@@ -738,45 +754,17 @@ void Unit_cell::write_json()
     }
 }
 
-void Unit_cell::set_lattice_vectors(double* a1, double* a2, double* a3)
+void Unit_cell::set_lattice_vectors(double* a0__, double* a1__, double* a2__)
 {
     for (int x = 0; x < 3; x++)
     {
-        lattice_vectors_[0][x] = a1[x];
-        lattice_vectors_[1][x] = a2[x];
-        lattice_vectors_[2][x] = a3[x];
+        lattice_vectors_(x, 0) = a0__[x];
+        lattice_vectors_(x, 1) = a1__[x];
+        lattice_vectors_(x, 2) = a2__[x];
     }
-    double a[3][3];
-    memcpy(&a[0][0], &lattice_vectors_[0][0], 9 * sizeof(double));
-    
-    double t1 = a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]) + 
-                a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2]) + 
-                a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
-    
-    omega_ = fabs(t1);
-    
-    if (omega_ < 1e-10) error_local(__FILE__, __LINE__, "lattice vectors are linearly dependent");
-    
-    t1 = 1.0 / t1;
-
-    double b[3][3];
-    b[0][0] = t1 * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
-    b[0][1] = t1 * (a[0][2] * a[2][1] - a[0][1] * a[2][2]);
-    b[0][2] = t1 * (a[0][1] * a[1][2] - a[0][2] * a[1][1]);
-    b[1][0] = t1 * (a[1][2] * a[2][0] - a[1][0] * a[2][2]);
-    b[1][1] = t1 * (a[0][0] * a[2][2] - a[0][2] * a[2][0]);
-    b[1][2] = t1 * (a[0][2] * a[1][0] - a[0][0] * a[1][2]);
-    b[2][0] = t1 * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
-    b[2][1] = t1 * (a[0][1] * a[2][0] - a[0][0] * a[2][1]);
-    b[2][2] = t1 * (a[0][0] * a[1][1] - a[0][1] * a[1][0]);
-
-    memcpy(&inverse_lattice_vectors_[0][0], &b[0][0], 9 * sizeof(double));
-
-    for (int l = 0; l < 3; l++)
-    {
-        for (int x = 0; x < 3; x++) 
-            reciprocal_lattice_vectors_[l][x] = twopi * inverse_lattice_vectors_[x][l];
-    }
+    inverse_lattice_vectors_ = inverse(lattice_vectors_);
+    omega_ = std::abs(lattice_vectors_.det());
+    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
 }
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)
@@ -837,7 +825,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
         for (int i = 0; i < (int)nn.size(); i++) nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
     }
 
-    //== if (Platform::mpi_rank() == 0)
+    //== if (Platform::mpi_rank() == 0) // TODO: move to a separate task
     //== {
     //==     FILE* fout = fopen("nghbr.txt", "w");
     //==     for (int ia = 0; ia < num_atoms(); ia++)
@@ -864,7 +852,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 {
     vector3d<int> ntr;
     
-    // reduce coordinates to the primitive unit cell
+    /* reduce coordinates to the primitive unit cell */
     auto vr = Utils::reduce_coordinates(get_fractional_coordinates(vc));
 
     for (int ia = 0; ia < num_atoms(); ia++)
@@ -875,14 +863,11 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
             {
                 for (int i2 = -1; i2 <= 1; i2++)
                 {
-                    // atom position
-                    vector3d<double> posf(i0, i1, i2); 
+                    /* atom position */
+                    vector3d<double> posf = vector3d<double>(i0, i1, i2) + atom(ia)->position();
 
-                    for (int x = 0; x < 3; x++) posf[x] += atom(ia)->position(x);
-                    
-                    // vector connecting center of atom and reduced point
-                    vector3d<double> vf;
-                    for (int x = 0; x < 3; x++) vf[x] = vr.first[x] - posf[x];
+                    /* vector connecting center of atom and reduced point */
+                    vector3d<double> vf = vr.first - posf;
                     
                     /* convert to spherical coordinates */
                     auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));

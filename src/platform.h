@@ -52,16 +52,11 @@ class Platform
 
         static void abort();
 
-        static Communicator const& comm_world()
+        static int rank()
         {
-            static bool initialized = false;
-            static Communicator comm;
-            if (!initialized)
-            {
-                comm = Communicator(MPI_COMM_WORLD);
-                initialized = true;
-            }
-            return comm;
+            int r;
+            CALL_MPI(MPI_Comm_rank, (MPI_COMM_WORLD, &r));
+            return r;
         }
 
         /// Returm maximum number of OMP threads.
@@ -81,67 +76,6 @@ class Platform
         static inline int thread_id()
         {
             return omp_get_thread_num();
-        }
-        
-        /// Return number of threads for independent FFT transformations.
-        static inline int num_fft_threads()
-        {
-            return num_fft_threads_;
-        }
-        
-        /// Set the number of FFT threads
-        static inline void set_num_fft_threads(int num_fft_threads__)
-        {
-            num_fft_threads_ = num_fft_threads__;
-        }
-        
-        static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
-        {
-            *VmHWM = 0;
-            *VmRSS = 0;
-
-            std::stringstream fname;
-            fname << "/proc/" << getpid() << "/status";
-            
-            std::ifstream ifs(fname.str().c_str());
-            if (ifs.is_open())
-            {
-                size_t tmp;
-                std::string str; 
-                std::string units;
-                while (std::getline(ifs, str))
-                {
-                    auto p = str.find("VmHWM:");
-                    if (p != std::string::npos)
-                    {
-                        std::stringstream s(str.substr(p + 7));
-                        s >> tmp;
-                        s >> units;
-        
-                        if (units != "kB")
-                        {
-                            printf("Platform::get_proc_status(): wrong units");
-                            abort();
-                        }
-                        *VmHWM = tmp * 1024;
-                    }
-        
-                    p = str.find("VmRSS:");
-                    if (p != std::string::npos)
-                    {
-                        std::stringstream s(str.substr(p + 7));
-                        s >> tmp;
-                        s >> units;
-        
-                        if (units != "kB")
-                        {
-                            printf("Platform::get_proc_status(): wrong units");
-                            abort();
-                        }
-                        *VmRSS = tmp * 1024;
-                    }
-                } 
-            }
         }
 };
 

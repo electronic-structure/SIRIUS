@@ -26,6 +26,8 @@
 #define __VECTOR3D_H__
 
 #include <assert.h>
+#include <cmath>
+#include <ostream>
 
 /// Simple implementation of 3d vector.
 template <typename T> 
@@ -58,7 +60,7 @@ class vector3d
         }
 
         /// Construct vector from pointer
-        vector3d(T* ptr)
+        vector3d(T const* ptr)
         {
             for (int i = 0; i < 3; i++) vec_[i] = ptr[i];
         }
@@ -70,10 +72,16 @@ class vector3d
             return vec_[i];
         }
 
-        /// Return vector length
-        inline double length()
+        inline T const& operator[](const int i) const
         {
-            return sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
+            assert(i >= 0 && i <= 2);
+            return vec_[i];
+        }
+
+        /// Return vector length
+        inline double length() const
+        {
+            return std::sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
         }
 
         inline vector3d<T> operator+(const vector3d<T>& b)
@@ -89,7 +97,28 @@ class vector3d
             for (int x = 0; x < 3; x++) a[x] -= b.vec_[x];
             return a;
         }
+        
+        template <typename U>
+        inline vector3d<T> operator*(U p)
+        {
+            vector3d<T> a = *this;
+            for (int x = 0; x < 3; x++) a[x] *= p;
+            return a;
+        }
 };
+
+template <typename T, typename U>
+inline auto operator*(vector3d<T> const a, vector3d<U> const b) -> decltype(a[0] * b[0])
+{
+    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream &out, vector3d<T>& v)
+{
+    out << v[0] << " " << v[1] << " " << v[2];
+    return out;
+}
 
 #endif // __VECTOR3D_H__
 

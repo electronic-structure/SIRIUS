@@ -137,7 +137,7 @@ void Utils::write_matrix(std::string const& fname, bool write_all, matrix<double
     fclose(fout);
 }
 
-void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx)
+void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx, int n)
 {
     assert(mtrx.size(0) == mtrx.size(1));
 
@@ -145,9 +145,11 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
     int i0 = -1;
     int j0 = -1;
 
-    for (int i = 0; i < (int)mtrx.size(0); i++)
+    if (n == -1) n = (int)mtrx.size(0);
+
+    for (int i = 0; i < n; i++)
     {
-        for (int j = 0; j < (int)mtrx.size(1); j++)
+        for (int j = 0; j < n; j++)
         {
             double diff = abs(mtrx(i, j) - conj(mtrx(j, i)));
             if (diff > maxdiff)
@@ -232,7 +234,7 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     return v;
 }
 
-vector3d<int> Utils::find_translation_limits(double radius, double lattice_vectors[3][3])
+vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__)
 {
     sirius::Timer t("sirius::Utils::find_translation_limits");
 
@@ -250,19 +252,13 @@ vector3d<int> Utils::find_translation_limits(double radius, double lattice_vecto
                 {
                     if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
                     {
-                        vector3d<int> vf(i0, i1, i2);
-                        vector3d<double> vc;
-                        for (int x = 0; x < 3; x++)
-                        {
-                            vc[x] += (vf[0] * lattice_vectors[0][x] + 
-                                      vf[1] * lattice_vectors[1][x] + 
-                                      vf[2] * lattice_vectors[2][x]);
-                        }
-                        double len = vc.length();
-                        if (len <= radius)
+                        vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
+                        if (vc.length() <= radius__)
                         {
                             found = true;
-                            for (int j = 0; j < 3; j++) limits[j] = std::max(2 * abs(vf[j]) + 1, limits[j]);
+                            limits[0] = std::max(2 * abs(i0) + 1, limits[0]);
+                            limits[1] = std::max(2 * abs(i1) + 1, limits[1]);
+                            limits[2] = std::max(2 * abs(i2) + 1, limits[2]);
                         }
                     }
                 }

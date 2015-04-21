@@ -92,7 +92,7 @@ class Atom
 
         /// D_{ij} matrix of the pseudo-potential method.
         mdarray<double_complex, 2> d_mtrx_;
-    
+
     public:
     
         /// Constructor.
@@ -181,20 +181,20 @@ class Atom
         /// Set muffin-tin potential and magnetic field.
         void set_nonspherical_potential(double* veff__, double* beff__[3])
         {
-            veff_.set_ptr(veff__);
-            
-            for (int j = 0; j < 3; j++) beff_[j].set_ptr(beff__[j]);
+            veff_ = mdarray<double, 2>(veff__, Utils::lmmax(lmax_pot_), type()->num_mt_points());
+            for (int j = 0; j < 3; j++) 
+                beff_[j] = mdarray<double, 2>(beff__[j], Utils::lmmax(lmax_pot_), type()->num_mt_points());
         }
 
         void sync_radial_integrals(Communicator const& comm__, int const rank__)
         {
-            comm__.bcast(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), rank__);
-            if (num_mag_dims_) comm__.bcast(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), rank__);
+            comm__.bcast(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), rank__);
+            if (num_mag_dims_) comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
         }
 
         void sync_occupation_matrix(Communicator const& comm__, int const rank__)
         {
-            comm__.bcast(occupation_matrix_.ptr(), (int)occupation_matrix_.size(), rank__);
+            comm__.bcast(occupation_matrix_.at<CPU>(), (int)occupation_matrix_.size(), rank__);
         }
 
         inline int offset_aw()
@@ -296,19 +296,19 @@ class Atom
 
         inline void set_occupation_matrix(const double_complex* source)
         {
-            memcpy(occupation_matrix_.ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+            memcpy(occupation_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = false;
         }
         
         inline void get_occupation_matrix(double_complex* destination)
         {
-            memcpy(destination, occupation_matrix_.ptr(), 16 * 16 * 2 * 2 * sizeof(double_complex));
+            memcpy(destination, occupation_matrix_.at<CPU>(), 16 * 16 * 2 * 2 * sizeof(double_complex));
         }
 
         inline void set_uj_correction_matrix(const int l, const double_complex* source)
         {
             uj_correction_l_ = l;
-            memcpy(uj_correction_matrix_.ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+            memcpy(uj_correction_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = true;
         }
 

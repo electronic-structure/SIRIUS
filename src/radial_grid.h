@@ -40,14 +40,14 @@ class Radial_grid
     private:
         
         /// Radial grid points.
-        std::vector<double> x_;
+        mdarray<double, 1> x_;
         
         /// Inverse values of radial grid points.
-        std::vector<double> x_inv_;
+        mdarray<double, 1> x_inv_;
         
         /// Radial grid points difference.
         /** \f$ dx_{i} = x_{i+1} - x_{i} \f$ */
-        std::vector<double> dx_;
+        mdarray<double, 1> dx_;
         
         /// Name of the grid type.
         std::string grid_type_name_;
@@ -58,7 +58,31 @@ class Radial_grid
         /// Create the predefined grid.
         void create(radial_grid_t grid_type, int num_points, double rmin, double rmax);
 
+        Radial_grid(Radial_grid const& src__) = delete;
+
+        Radial_grid& operator=(Radial_grid const& src__) = delete;
+
     public:
+
+        Radial_grid(Radial_grid&& src__)
+        {
+            x_ = std::move(src__.x_);
+            dx_ = std::move(src__.dx_);
+            x_inv_ = std::move(src__.x_inv_);
+            grid_type_name_ = src__.grid_type_name_;
+        }
+
+        Radial_grid& operator=(Radial_grid&& src__)
+        {
+            if (this != &src__)
+            {
+                x_ = std::move(src__.x_);
+                dx_ = std::move(src__.dx_);
+                x_inv_ = std::move(src__.x_inv_);
+                grid_type_name_ = src__.grid_type_name_;
+            }
+            return *this;
+        }
         
         /// Constructor for an empty grid.
         Radial_grid()
@@ -84,41 +108,34 @@ class Radial_grid
         }
         
         /// Return \f$ x_{i} \f$.
-        inline double operator [](const int i)
+        inline double operator[](const int i) const
         {
             assert(i < (int)x_.size());
-            return x_[i];
+            return x_(i);
         }
         
         /// Return \f$ dx_{i} \f$.
-        inline double dx(const int i)
+        inline double dx(const int i) const
         {
             assert(i < (int)dx_.size());
-            return dx_[i];
+            return dx_(i);
         }
         
         /// Return \f$ x_{i}^{-1} \f$.
-        inline double x_inv(const int i)
+        inline double x_inv(const int i) const
         {
             assert(i < (int)x_inv_.size());
-            return x_inv_[i];
+            return x_inv_(i);
         }
        
         /// Number of grid points.
-        inline int num_points()
+        inline int num_points() const
         {
             return (int)x_.size();
         }
                
-        /// Get radial points and deltas.
-        inline void get_x_dx(double* array, int ld)
-        {
-            memcpy(&array[0], &x_[0], x_.size() * sizeof(double));
-            memcpy(&array[ld], &dx_[0], dx_.size() * sizeof(double));
-        }
-        
         /// Return name of the grid type.
-        inline std::string grid_type_name()
+        inline std::string grid_type_name() const
         {
             return grid_type_name_;
         }
@@ -126,12 +143,48 @@ class Radial_grid
         /// Set new radial points.
         void set_radial_points(int num_points__, double* points__);
 
-        uint64_t hash()
+        uint64_t hash() const
         {
-            uint64_t h = Utils::hash(&x_[0], x_.size() * sizeof(double));
-            h = Utils::hash(&dx_[0], dx_.size() * sizeof(double), h);
-            h = Utils::hash(&x_inv_[0], x_inv_.size() * sizeof(double), h);
+            uint64_t h = Utils::hash(&x_(0), x_.size() * sizeof(double));
+            h += Utils::hash(&dx_(0), dx_.size() * sizeof(double), h);
+            h += Utils::hash(&x_inv_(0), x_inv_.size() * sizeof(double), h);
             return h;
+        }
+
+        Radial_grid segment(int num_points__) const
+        {
+            assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
+            Radial_grid r;
+            r.grid_type_name_ = grid_type_name_ + " (segment)";
+            r.x_ = mdarray<double, 1>(num_points__);
+            r.dx_ = mdarray<double, 1>(num_points__ - 1);
+            r.x_inv_ = mdarray<double, 1>(num_points__);
+
+            memcpy(&r.x_(0), &x_(0), num_points__ * sizeof(double));
+            memcpy(&r.dx_(0), &dx_(0), (num_points__ - 1) * sizeof(double));
+            memcpy(&r.x_inv_(0), &x_inv_(0), num_points__ * sizeof(double));
+
+            return std::move(r);
+        }
+
+        #ifdef _GPU_
+        void copy_to_device()
+        {
+            x_.allocate_on_device();
+            x_.copy_to_device();
+            dx_.allocate_on_device();
+            dx_.copy_to_device();
+        }
+        #endif
+
+        mdarray<double, 1> const& x() const
+        {
+            return x_;
+        }
+
+        mdarray<double, 1> const& dx() const
+        {
+            return dx_;
         }
 };
 

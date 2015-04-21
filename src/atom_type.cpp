@@ -136,6 +136,17 @@ void Atom_type::init(int lmax__, int offset_lo__)
 
         if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
     }
+
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        local_orbital_descriptor lod;
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
+        {
+            /* think of |beta> functions as of local orbitals */
+            lod.l = uspp_.beta_l[i];
+            lo_descriptors_.push_back(lod);
+        }
+    }
     
     /* initialize index of radial functions */
     indexr_.init(aw_descriptors_, lo_descriptors_);
@@ -325,7 +336,7 @@ void Atom_type::init_free_atom(bool smooth)
         b(0) = free_atom_density_[irmt];
         b(1) = free_atom_density_.deriv(1, irmt);
 
-        linalg<lapack>::gesv<double>(2, 1, A.ptr(), 2, b.ptr(), 2);
+        linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
        
         //== /* write initial density */
         //== std::stringstream sstr;
@@ -723,12 +734,12 @@ void Atom_type::read_input(const std::string& fname)
  
             parser["uspp"]["non_local"]["beta"][i]["lll"] >> uspp_.beta_l[i];
             
-            // think of |beta> functions as of local orbitals
-            lod.l = uspp_.beta_l[i];
-            lo_descriptors_.push_back(lod);
+            ///* think of |beta> functions as of local orbitals */
+            //lod.l = uspp_.beta_l[i];
+            //lo_descriptors_.push_back(lod);
         }
 
-        uspp_.d_mtrx_ion = mdarray<double_complex, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
+        uspp_.d_mtrx_ion = mdarray<double, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
         uspp_.d_mtrx_ion.zero();
 
         for (int k = 0; k < parser["uspp"]["non_local"]["D"].size(); k++)

@@ -23,146 +23,116 @@
  */
 
 #include "global.h"
+#include "real_space_prj.h"
 
 namespace sirius {
 
-void Global::read_input()
+void Global::parse_input()
 {
-    std::string fname("sirius.json");
+    mpi_grid_dims_ = iip_.common_input_section_.mpi_grid_dims_;
+    num_fv_states_ = iip_.common_input_section_.num_fv_states_;
+    smearing_width_ = iip_.common_input_section_.smearing_width_;
     
-    int num_fft_threads = Platform::num_fft_threads();
-    if (num_fft_threads == -1) num_fft_threads = Platform::max_num_threads();
+    std::string evsn[] = {iip_.common_input_section_.std_evp_solver_type_, iip_.common_input_section_.gen_evp_solver_type_};
+    ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
-    if (Utils::file_exists(fname))
+    for (int i = 0; i < 2; i++)
     {
-        JSON_tree parser(fname);
-        mpi_grid_dims_ = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
-        cyclic_block_size_ = parser["cyclic_block_size"].get(cyclic_block_size_);
-        num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
-        num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
-        smearing_width_ = parser["smearing_width"].get(smearing_width_);
-
-        std::string evsn[] = {"std_evp_solver_type", "gen_evp_solver_type"};
-        ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
-
-        for (int i = 0; i < 2; i++)
+        std::string name = evsn[i];
+        if (name == "lapack") 
         {
-            if (parser.exist(evsn[i]))
-            {
-                std::string name;
-                parser[evsn[i]] >> name;
-                if (name == "lapack") 
-                {
-                    *evst[i] = ev_lapack;
-                }
-                else if (name == "scalapack") 
-                {
-                    *evst[i] = ev_scalapack;
-                }
-                else if (name == "elpa1") 
-                {
-                    *evst[i] = ev_elpa1;
-                }
-                else if (name == "elpa2") 
-                {
-                    *evst[i] = ev_elpa2;
-                }
-                else if (name == "magma") 
-                {
-                    *evst[i] = ev_magma;
-                }
-                else if (name == "plasma")
-                {
-                    *evst[i] = ev_plasma;
-                }
-                else if (name == "rs_gpu")
-                {
-                    *evst[i] = ev_rs_gpu;
-                }
-                else if (name == "rs_cpu")
-                {
-                    *evst[i] = ev_rs_cpu;
-                }
-                else
-                {
-                    TERMINATE("wrong eigen value solver");
-                }
-            }
+            *evst[i] = ev_lapack;
         }
-
-        if (parser.exist("processing_unit"))
+        else if (name == "scalapack") 
         {
-            std::string pu;
-            parser["processing_unit"] >> pu;
-            if (pu == "cpu")
-            {
-                processing_unit_ = cpu;
-            }
-            else if (pu == "gpu")
-            {
-                processing_unit_ = gpu;
-            }
-            else
-            {
-                TERMINATE("wrong processing unit");
-            }
+            *evst[i] = ev_scalapack;
         }
-
-        if (parser.exist("electronic_structure_method"))
+        else if (name == "elpa1") 
         {
-            std::string str;
-            parser["electronic_structure_method"] >> str;
-            if (str == "full_potential_lapwlo")
-            {
-                esm_type_ = full_potential_lapwlo;
-            }
-            else if (str == "full_potential_pwlo")
-            {
-                esm_type_ = full_potential_pwlo;
-            }
-            else if (str == "ultrasoft_pseudopotential")
-            {
-                esm_type_ = ultrasoft_pseudopotential;
-            } 
-            else if (str == "norm_conserving_pseudopotential")
-            {
-                esm_type_ = norm_conserving_pseudopotential;
-            }
-            else
-            {
-                error_local(__FILE__, __LINE__, "wrong type of electronic structure method");
-            }
+            *evst[i] = ev_elpa1;
         }
-
-        mixer_input_section_.read(parser);
-        xc_functionals_input_section_.read(parser);
-        iterative_solver_input_section_.read(parser);
+        else if (name == "elpa2") 
+        {
+            *evst[i] = ev_elpa2;
+        }
+        else if (name == "magma") 
+        {
+            *evst[i] = ev_magma;
+        }
+        else if (name == "plasma")
+        {
+            *evst[i] = ev_plasma;
+        }
+        else if (name == "rs_gpu")
+        {
+            *evst[i] = ev_rs_gpu;
+        }
+        else if (name == "rs_cpu")
+        {
+            *evst[i] = ev_rs_cpu;
+        }
+        else
+        {
+            TERMINATE("wrong eigen value solver");
+        }
     }
 
-    Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
+    std::string pu = iip_.common_input_section_.processing_unit_;
+    if (pu == "cpu" || pu == "CPU")
+    {
+        processing_unit_ = CPU;
+    }
+    else if (pu == "gpu" || pu == "GPU")
+    {
+        processing_unit_ = GPU;
+    }
+    else
+    {
+        TERMINATE("wrong processing unit");
+    }
+
+    std::string esm = iip_.common_input_section_.electronic_structure_method_;
+    if (esm == "full_potential_lapwlo")
+    {
+        esm_type_ = full_potential_lapwlo;
+    }
+    else if (esm == "full_potential_pwlo")
+    {
+        esm_type_ = full_potential_pwlo;
+    }
+    else if (esm == "ultrasoft_pseudopotential")
+    {
+        esm_type_ = ultrasoft_pseudopotential;
+    } 
+    else if (esm == "norm_conserving_pseudopotential")
+    {
+        esm_type_ = norm_conserving_pseudopotential;
+    }
+    else
+    {
+        TERMINATE("wrong type of electronic structure method");
+    }
 }
 
 void Global::read_unit_cell_input()
 {
-    std::string fname("sirius.json");
-    JSON_tree parser(fname);
-    unit_cell_input_section_.read(parser);
-        
-    for (int iat = 0; iat < (int)unit_cell_input_section_.labels_.size(); iat++)
+    auto unit_cell_input_section = iip_.unit_cell_input_section_;
+
+    for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
     {
-        std::string label = unit_cell_input_section_.labels_[iat];
-        std::string fname = unit_cell_input_section_.atom_files_[label];
+        std::string label = unit_cell_input_section.labels_[iat];
+        std::string fname = unit_cell_input_section.atom_files_[label];
         unit_cell()->add_atom_type(label, fname, esm_type());
-        for (int ia = 0; ia < (int)unit_cell_input_section_.coordinates_[iat].size(); ia++)
+        for (int ia = 0; ia < (int)unit_cell_input_section.coordinates_[iat].size(); ia++)
         {
-            std::vector<double> v = unit_cell_input_section_.coordinates_[iat][ia];
+            std::vector<double> v = unit_cell_input_section.coordinates_[iat][ia];
             unit_cell()->add_atom(label, &v[0], &v[3]);
         }
     }
 
-    unit_cell()->set_lattice_vectors(unit_cell_input_section_.lattice_vectors_[0], 
-                                     unit_cell_input_section_.lattice_vectors_[1], 
-                                     unit_cell_input_section_.lattice_vectors_[2]);
+    unit_cell()->set_lattice_vectors(unit_cell_input_section.lattice_vectors_[0], 
+                                     unit_cell_input_section.lattice_vectors_[1], 
+                                     unit_cell_input_section.lattice_vectors_[2]);
 }
 
 std::string Global::start_time(const char* fmt)
@@ -200,6 +170,33 @@ void Global::initialize()
 
     /* initialize variables, related to the unit cell */
     unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
+    
+    /* create FFT interface */
+    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors()),
+                          iip_.common_input_section_.num_fft_threads_,
+                          iip_.common_input_section_.num_fft_workers_);
+    
+    fft_->init_gvec(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors());
+
+    #ifdef _GPU_
+    fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 2);
+    #endif
+    
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        /* create FFT interface for coarse grid */
+        fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors()),
+                                     iip_.common_input_section_.num_fft_threads_,
+                                     iip_.common_input_section_.num_fft_workers_);
+        
+        fft_coarse_->init_gvec(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors());
+
+        #ifdef _GPU_
+        fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
+        #endif
+    }
+    
+    if (unit_cell_->num_atoms() != 0) unit_cell_->symmetry()->check_gvec_symmetry(fft_);
 
     /* create a reciprocal lattice */
     int lmax = -1;
@@ -221,9 +218,17 @@ void Global::initialize()
             break;
         }
     }
-    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax, comm_);
+    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), fft_, lmax, comm_);
 
-    if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, comm_);
+    if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, fft_, comm_);
+
+    if (iip_.iterative_solver_input_section_.real_space_prj_) 
+    {
+        real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iip_.iterative_solver_input_section_.R_mask_scale_,
+                                             iip_.iterative_solver_input_section_.mask_alpha_,
+                                             gk_cutoff_, iip_.common_input_section_.num_fft_threads_,
+                                             iip_.common_input_section_.num_fft_workers_);
+    }
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 
@@ -322,11 +327,30 @@ void Global::print_info()
     printf("MPI grid                      :");
     for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
     printf("\n");
-    printf("maximum number of OMP threads : %i\n", Platform::max_num_threads()); 
-    printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
+    printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
+    printf("number of OMP threads for FFT   : %i\n", iip_.common_input_section_.num_fft_threads_); 
+    printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
+    printf("cyclic block size               : %i\n", iip_.common_input_section_.cyclic_block_size_);
 
     unit_cell_->print_info();
-    reciprocal_lattice_->print_info();
+
+    printf("\n");
+    printf("plane wave cutoff : %f\n", pw_cutoff_);
+    printf("number of G-vectors within the cutoff : %i\n", fft_->num_gvec());
+    printf("number of G-shells : %i\n", fft_->num_gvec_shells_inner());
+    printf("FFT grid size : %i %i %i   total : %i\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size());
+    printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_->grid_limits(0).first, fft_->grid_limits(0).second,
+                                                        fft_->grid_limits(1).first, fft_->grid_limits(1).second,
+                                                        fft_->grid_limits(2).first, fft_->grid_limits(2).second);
+    
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        printf("number of G-vectors on the coarse grid within the cutoff : %i\n", fft_coarse_->num_gvec());
+        printf("FFT coarse grid size : %i %i %i   total : %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2), fft_coarse_->size());
+        printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_coarse_->grid_limits(0).first, fft_coarse_->grid_limits(0).second,
+                                                                   fft_coarse_->grid_limits(1).first, fft_coarse_->grid_limits(1).second,
+                                                                   fft_coarse_->grid_limits(2).first, fft_coarse_->grid_limits(2).second);
+    }
 
     for (int i = 0; i < unit_cell_->num_atom_types(); i++) unit_cell_->atom_type(i)->print_info();
 
@@ -404,12 +428,12 @@ void Global::print_info()
     printf("processing unit : ");
     switch (processing_unit())
     {
-        case cpu:
+        case CPU:
         {
             printf("CPU\n");
             break;
         }
-        case gpu:
+        case GPU:
         {
             printf("GPU\n");
             break;
@@ -418,9 +442,9 @@ void Global::print_info()
     
     printf("\n");
     printf("XC functionals : \n");
-    for (int i = 0; i < (int)xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    for (int i = 0; i < (int)iip_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
     {
-        std::string xc_label = xc_functionals_input_section_.xc_functional_names_[i];
+        std::string xc_label = iip_.xc_functionals_input_section_.xc_functional_names_[i];
         XC_functional xc(xc_label, num_spins());
         printf("\n");
         printf("%s\n", xc_label.c_str());
@@ -441,11 +465,10 @@ void Global::write_json_output()
         jw.single("build_date", build_date);
         jw.single("num_ranks", comm_.size());
         jw.single("max_num_threads", Platform::max_num_threads());
-        jw.single("num_fft_threads", Platform::num_fft_threads());
-        jw.single("cyclic_block_size", cyclic_block_size_);
+        jw.single("cyclic_block_size", iip_.common_input_section_.cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = reciprocal_lattice_->fft()->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = fft_->size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", unit_cell()->chemical_formula());
         jw.single("num_atoms", unit_cell()->num_atoms());

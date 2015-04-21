@@ -252,9 +252,54 @@ class DFT_ground_state
                 }
                 default:
                 {
-                    return 0; // make compiler happy
+                    STOP();
                 }
             }
+            return 0; // make compiler happy
+        }
+
+        void generate_effective_potential()
+        {
+            switch(parameters_.esm_type())
+            {
+                case full_potential_lapwlo:
+                case full_potential_pwlo:
+                {
+                    potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+                    break;
+                }
+                case ultrasoft_pseudopotential:
+                case norm_conserving_pseudopotential:
+                {
+                    potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
+                    break;
+                }
+            }
+
+            if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+                parameters_.esm_type() == norm_conserving_pseudopotential)
+            {
+                potential_->generate_d_mtrx();
+            }
+
+        }
+
+        void symmetrize_density()
+        {
+            auto fft = parameters_.fft();
+            
+            //fft->input(&density_->rho()->f_it<global>(0));
+            //fft->transform(-1);
+            //fft->output(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
+
+            auto& spl_num_gvec = parameters_.reciprocal_lattice()->spl_num_gvec();
+            auto& comm = parameters_.comm();
+
+            parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
+
+            //fft->input(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
+            //fft->transform(1);
+            //fft->output(&density_->rho()->f_it<global>(0));
         }
 };
 

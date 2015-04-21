@@ -1,4 +1,5 @@
 // This file must be compiled with nvcc
+#include <execinfo.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -20,6 +21,16 @@ extern "C" void print_cuda_timers()
 //================
 // CUDA functions
 //================
+void stack_backtrace()
+{
+    void *array[10];
+    char **strings;
+    int size = backtrace(array, 10);
+    strings = backtrace_symbols(array, size);
+    printf ("Stack backtrace:\n");
+    for (size_t i = 0; i < size; i++) printf ("%s\n", strings[i]);
+    raise(SIGQUIT);
+}
 
 #ifdef NDEBUG
 #define CALL_CUDA(func__, args__)                                                                                  \
@@ -31,8 +42,7 @@ extern "C" void print_cuda_timers()
         gethostname(nm, 1024);                                                                                     \
         printf("hostname: %s\n", nm);                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        raise(SIGTERM);                                                                                            \
-        exit(-100);                                                                                                \
+        stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
 #else
@@ -48,8 +58,7 @@ extern "C" void print_cuda_timers()
         gethostname(nm, 1024);                                                                                     \
         printf("hostname: %s\n", nm);                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        raise(SIGTERM);                                                                                            \
-        exit(-100);                                                                                                \
+        stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
 #endif
@@ -458,53 +467,6 @@ extern "C" void cufft_set_work_area(cufftHandle plan, void* work_area)
     CALL_CUFFT(cufftSetWorkArea, (plan, work_area));
 }
 
-
-//= __global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
-//= {
-//=     int i = blockIdx.y;
-//=     int ir = blockDim.x * blockIdx.x + threadIdx.x;
-//=     if (ir < fft_size) 
-//=     {
-//=         fft_buffer[array2D_offset(ir, i, fft_size)] = 
-//=             cuCmul(fft_buffer[array2D_offset(ir, i, fft_size)], v_r[ir]);
-//=     }
-//= }
-
-//== __global__ void cufft_batch_unload_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* fft_buffer,
-//==                                           cuDoubleComplex* phi)
-//== {
-//==     int i = blockIdx.y;
-//==     int ig = blockDim.x * blockIdx.x + threadIdx.x;
-//== 
-//==     if (ig < num_gkvec) 
-//==     {
-//==         phi[array2D_offset(ig, i, num_gkvec)] = 
-//==             cuCdiv(fft_buffer[array2D_offset(map[ig], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
-//==     }
-//== }
-
-//== extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p)
-//== {
-//==     dim3 threadsPerBlock(64);
-//==     dim3 numBlocks(num_blocks(num_gkvec, 64), num_phi);
-//==     
-//==     cuda_memset(buffer, 0, fft_size * num_phi * sizeof(cuDoubleComplex));
-//== 
-//==     cufft_batch_load_kernel<<<numBlocks, threadsPerBlock>>>
-//==         (fft_size, num_gkvec, map, (cuDoubleComplex*)p, (cuDoubleComplex*)buffer);
-//==     
-//==     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
-//==     
-//==     //dim3 numBlocks_r(num_blocks(fft_size, 64), num_phi);
-//==     //cufft_batch_apply_v_kernel<<<numBlocks_r, threadsPerBlock>>>
-//==     //    (fft_size, (cuDoubleComplex*)v_r, (cuDoubleComplex*)buffer);
-//==     
-//==     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_FORWARD);
-//== 
-//==     cufft_batch_unload_kernel<<<numBlocks, threadsPerBlock>>>
-//==         (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
-//== }
-
 __global__ void cufft_batch_load_gpu_kernel
 (
     int fft_size, 
@@ -599,6 +561,112 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
     CUDA_timer t("cufft_backward_transform");
     CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_INVERSE));
 }
+
+
+__global__ void spline_inner_product_gpu_kernel_v2(int size__, double const* x__, double const* dx__, double const* f__, double const* g__, double* result__)
+{
+    //int nb = num_blocks(size__, blockDim.x);
+    int ib = blockIdx.x;
+
+    extern __shared__ char sdata_ptr[];
+    double* sdata = (double*)&sdata_ptr[0];
+
+    int a_offs = 0 * size__;
+    int b_offs = 1 * size__;
+    int c_offs = 2 * size__;
+    int d_offs = 3 * size__;
+
+    sdata[threadIdx.x] = 0;
+
+    //for (int ib = 0; ib < nb; ib++)
+    //{
+        int i = ib * blockDim.x + threadIdx.x;
+        if (i < size__ - 1)
+        {
+            double xi = x__[i];
+            double dxi = dx__[i];
+
+            double a1 = f__[a_offs + i];
+            double b1 = f__[b_offs + i];
+            double c1 = f__[c_offs + i];
+            double d1 = f__[d_offs + i];
+            
+            double a2 = g__[a_offs + i];
+            double b2 = g__[b_offs + i];
+            double c2 = g__[c_offs + i];
+            double d2 = g__[d_offs + i];
+                
+            double a1a2 = a1 * a2;
+            double d1d2 = d1 * d2;
+                
+            double k1 = d1 * b2 + c1 * c2 + b1 * d2;
+
+            double k2 = d1 * a2 + c1 * b2 + b1 * c2 + a1 * d2;
+
+            double k3 = c1 * a2 + b1 * b2 + a1 * c2;
+
+            double k4 = d1 * c2 + c1 * d2;
+            
+            double k5 = b1 * a2 + a1 * b2;
+
+            sdata[threadIdx.x] += dxi * ((a1a2 * xi * xi) + 
+                                  dxi * ((xi * (2.0 * a1a2 + xi * k5)) / 2.0 +
+                                  dxi * ((a1a2 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + 
+                                  dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) / 4.0 +
+                                  dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) / 5.0 + 
+                                  dxi * ((k2 + xi * (2.0 * k1 + k4 * xi)) / 6.0 + 
+                                  dxi * ((k1 + xi * (2.0 * k4 + d1d2 * xi)) / 7.0 + 
+                                  dxi * ((k4 + 2.0 * d1d2 * xi) / 8.0 + 
+                                  dxi * d1d2 / 9.0)))))))); 
+        }
+    //}
+    __syncthreads();
+
+    for (int s = 1; s < blockDim.x; s *= 2) 
+    {
+        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] += sdata[threadIdx.x + s];
+        __syncthreads();
+    }
+
+    result__[ib] = sdata[0];
+}
+
+extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
+                                              double const* g__, double* d_buf__, double* h_buf__, int stream_id__)
+{
+    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+
+    dim3 grid_t(256);
+    dim3 grid_b(num_blocks(size__, grid_t.x));
+
+    //double* d_result;
+    //CALL_CUDA(cudaMalloc, (&d_result, grid_b.x * sizeof(double)));
+
+    spline_inner_product_gpu_kernel_v2 <<<grid_b, grid_t, grid_t.x * sizeof(double), stream>>>
+    (
+        size__,
+        x__,
+        dx__,
+        f__,
+        g__,
+        d_buf__
+    );
+
+    //double* h_result = (double*)malloc(grid_b.x * sizeof(double));
+    CALL_CUDA(cudaMemcpyAsync, (h_buf__, d_buf__, grid_b.x * sizeof(double), cudaMemcpyDeviceToHost, stream));
+    CALL_CUDA(cudaStreamSynchronize, (stream));
+    
+    //cudaMemcpy(h_result, d_result, grid_b.x * sizeof(double), cudaMemcpyDeviceToHost);
+    //CALL_CUDA(cudaFree, (d_result));
+
+    double result = 0;
+    for (int ib = 0; ib < grid_b.x; ib++) result += h_buf__[ib];
+    //free(h_result);
+    
+    return result;
+}
+
+
 
 //==================================
 // High-level functions and kernels

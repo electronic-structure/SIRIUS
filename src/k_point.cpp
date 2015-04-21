@@ -26,16 +26,57 @@
 
 namespace sirius {
 
+K_point::K_point(Global& parameters__,
+                 double* vk__,
+                 double weight__,
+                 BLACS_grid const& blacs_grid__) 
+    : parameters_(parameters__), 
+      blacs_grid_(blacs_grid__),
+      weight_(weight__),
+      alm_coeffs_row_(nullptr),
+      alm_coeffs_col_(nullptr)
+{
+    for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+    
+    band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
+    band_energies_ = std::vector<double>(parameters_.num_bands(), 0);
+    
+    comm_ = blacs_grid_.comm();
+    comm_row_ = blacs_grid_.comm_row();
+    comm_col_ = blacs_grid_.comm_col();
+    
+    num_ranks_ = comm_.size();
+    num_ranks_row_ = comm_row_.size();
+    num_ranks_col_ = comm_col_.size();
+    
+    rank_row_ = comm_row_.rank();
+    rank_col_ = comm_col_.rank();
+    
+    fft_ = parameters_.fft();
+    
+    /* distribue first-variational states along columns */
+    spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+    
+    /* distribue spinor wave-functions along columns */
+    spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+    
+    /* additionally split along rows */
+    sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
+    sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
+    
+    iterative_solver_input_section_ = parameters_.iterative_solver_input_section_;
+}
+
 void K_point::initialize()
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::K_point::initialize");
     
     zil_.resize(parameters_.lmax_apw() + 1);
     for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = pow(double_complex(0, 1), l);
    
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
-
-    band_energies_.resize(parameters_.num_bands());
 
     if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 
@@ -56,10 +97,14 @@ void K_point::initialize()
     }
     
     update();
+
+    LOG_FUNC_END();
 }
 
 void K_point::update()
 {
+    LOG_FUNC_BEGIN();
+
     double gk_cutoff = 0;
     switch (parameters_.esm_type())
     {
@@ -80,10 +125,14 @@ void K_point::update()
         }
     }
 
+    /* Build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(gk_cutoff);
     
-    build_apwlo_basis_descriptors();
-    distribute_block_cyclic();
+    /* build a list of basis functions */
+    build_gklo_basis_descriptors();
+
+    /* distribute basis functions */
+    distribute_basis_index();
     
     if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
     {
@@ -136,22 +185,19 @@ void K_point::update()
         
         std::vector<std::pair<double, std::vector<int> > > gkvec_shells_;
         
-        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+        for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++)
         {
-            int igk = gklo_basis_descriptors_row_[igk_row].igk;
-            double gk_len = gkvec_cart(igk).length();
+            int igk = gklo_basis_descriptors_row_[igk_loc].igk;
+            double gk_len = gkvec<cartesian>(igk).length();
 
             if (gkvec_shells_.empty() || std::abs(gkvec_shells_.back().first - gk_len) > 1e-10) 
                 gkvec_shells_.push_back(std::pair<double, std::vector<int> >(gk_len, std::vector<int>()));
-            gkvec_shells_.back().second.push_back(igk_row);
+            gkvec_shells_.back().second.push_back(igk_loc);
         }
 
         auto uc = parameters_.unit_cell();
 
-        int num_beta_t = 0;
-        for (int iat = 0; iat < uc->num_atom_types(); iat++) num_beta_t += uc->atom_type(iat)->mt_lo_basis_size();
-
-        beta_pw_t_ = mdarray<double_complex, 2>(num_gkvec_row(), num_beta_t); 
+        beta_gk_t_ = matrix<double_complex>(num_gkvec_loc(), uc->num_beta_t()); 
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
@@ -169,6 +215,7 @@ void K_point::update()
 
         #pragma omp parallel
         {
+            std::vector<double> gkvec_rlm(Utils::lmmax(parameters_.lmax_beta()));
             std::vector<double> beta_radial_integrals_(uc->max_mt_radial_basis_size());
             sbessel_pw<double> jl(uc, parameters_.lmax_beta());
             #pragma omp for
@@ -177,7 +224,11 @@ void K_point::update()
                 jl.interpolate(gkvec_shells_[ish].first);
                 for (int i = 0; i < (int)gkvec_shells_[ish].second.size(); i++)
                 {
-                    int igk_row = gkvec_shells_[ish].second[i];
+                    int igk_loc = gkvec_shells_[ish].second[i];
+                    int igk = gklo_basis_descriptors_row_[igk_loc].igk;
+                    /* vs = {r, theta, phi} */
+                    auto vs = SHT::spherical_coordinates(gkvec<cartesian>(igk));
+                    SHT::spherical_harmonics(parameters_.lmax_beta(), vs[1], vs[2], &gkvec_rlm[0]);
 
                     for (int iat = 0; iat < uc->num_atom_types(); iat++)
                     {
@@ -186,7 +237,7 @@ void K_point::update()
                         {
                             int l = atom_type->indexr(idxrf).l;
                             int nr = atom_type->uspp().num_beta_radial_points[idxrf];
-                            beta_radial_integrals_[idxrf] = Spline<double>::integrate(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
+                            beta_radial_integrals_[idxrf] = inner(*jl(l, iat), *beta_rf(idxrf, iat), 1, nr);
                         }
 
                         for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
@@ -196,7 +247,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_pw_t_(igk_row, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
+                            beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -212,26 +263,80 @@ void K_point::update()
             }
         }
 
-        beta_pw_panel_ = dmatrix<double_complex>(nullptr, num_gkvec(), uc->mt_basis_size(), blacs_grid_);
-        beta_pw_panel_.allocate(); // TODO: allocate page locked if needed
+        beta_gk_ = matrix<double_complex>(num_gkvec_loc(), uc->mt_basis_size());
 
-        for (int i = 0; i < beta_pw_panel_.num_cols_local(); i++)
+        for (int i = 0; i < uc->mt_basis_size(); i++)
         {
-            int icol = beta_pw_panel_.icol(i);
-
-            int ia = uc->mt_lo_basis_descriptor(icol).ia;
-            int xi = uc->mt_lo_basis_descriptor(icol).xi;
+            int ia = uc->mt_lo_basis_descriptor(i).ia;
+            int xi = uc->mt_lo_basis_descriptor(i).xi;
 
             auto atom_type = parameters_.unit_cell()->atom(ia)->type();
 
-            for (int igk = 0; igk < num_gkvec_row(); igk++)
+            for (int igk = 0; igk < num_gkvec_loc(); igk++)
             {
-                beta_pw_panel_(igk, i) = beta_pw_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
+                beta_gk_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
             }
         }
-    }
 
-    spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+        p_mtrx_ = mdarray<double_complex, 3>(uc->max_mt_basis_size(), uc->max_mt_basis_size(), uc->num_atom_types());
+        p_mtrx_.zero();
+
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            auto atom_type = uc->atom_type(iat);
+            int nbf = atom_type->mt_basis_size();
+            int ofs = atom_type->offset_lo();
+
+            matrix<double_complex> qinv(nbf, nbf);
+            atom_type->uspp().q_mtrx >> qinv;
+            linalg<CPU>::geinv(nbf, qinv);
+            
+            /* compute P^{+}*P */
+            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
+                              &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+            comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());
+
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+            }
+            /* compute (Q^{-1} + P^{+}*P)^{-1} */
+            linalg<CPU>::geinv(nbf, qinv);
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+            }
+        }
+        
+        if (parameters_.processing_unit() == GPU)
+        {
+            //== STOP();
+            //== #ifdef _GPU_
+            //== gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
+            //== /* copy G+k vectors */
+            //== for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+            //== {
+            //==     for (int x = 0; x < 3; x++) gkvec_row_(x, igk_row) = gklo_basis_descriptor_row(igk_row).gkvec[x];
+            //== }
+            //== gkvec_row_.allocate_on_device();
+            //== gkvec_row_.copy_to_device();
+
+            //== beta_gk_t_.allocate_on_device();
+            //== beta_gk_t_.copy_to_device();
+            //== #endif
+        }
+    }
+    
+    splindex<block> spl_bands(parameters_.num_fv_states(), comm_.size(), comm_.rank());
+    
+    if (parameters_.esm_type() == full_potential_lapwlo)
+    {
+        spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+    }
+    else
+    {
+        spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), spl_bands.local_size(), parameters_.num_spins());
+    }
 
     if (use_second_variation)
     {
@@ -241,18 +346,64 @@ void K_point::update()
             fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_);
             fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
-        
-        fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
 
-        fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
+        if (parameters_.unit_cell()->full_potential())
+        {
+            // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
+            fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
+            fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
+        }
+        else
+        {
+            fv_states_slab_ = matrix<double_complex>(num_gkvec_loc(), parameters_.num_fv_states());
+            fv_states_ = matrix<double_complex>(num_gkvec(), spl_bands.local_size());
+        }
 
         if (parameters_.esm_type() == ultrasoft_pseudopotential ||
             parameters_.esm_type() == norm_conserving_pseudopotential)
         {
-            fv_states_panel_.zero();
-            for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
+            fv_states_slab_.zero();
+            
+            for (int i = 0; i < parameters_.num_fv_states(); i++)
+            {
+                auto location = spl_gkvec_.location(i);
+                if (location.second == comm_.rank()) fv_states_slab_(location.first, i) = complex_one;
+            }
 
-            fv_states_panel_.gather(fv_states_);
+            fv_states_.zero();
+            for (size_t i = 0; i < spl_bands.local_size(); i++)
+            {
+                fv_states_(spl_bands[i], i) = complex_one;
+            }
+
+            //fv_states_panel_.zero();
+            //for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
+
+            //== fv_states_panel_.zero();
+            //== for (int i = 0; i < parameters_.num_fv_states(); i++)
+            //== {
+            //==     int n = 0;
+            //==     for (int i0 = -1; i0 <= 1; i0++)
+            //==     {
+            //==         for (int i1 = -1; i1 <= 1; i1++)
+            //==         {
+            //==             for (int i2 = -1; i2 <= 1; i2++)
+            //==             {
+            //==                 if (i == n)
+            //==                 {
+            //==                     int ig = parameters_.reciprocal_lattice()->gvec_index(vector3d<int>(i0, i1, i2));
+            //==                     for (int igk = 0; igk < num_gkvec(); igk++)
+            //==                     {
+            //==                         if (gklo_basis_descriptor_row(igk).ig == ig) fv_states_panel_.set(igk, i, complex_one);
+            //==                     }
+            //==                 }
+            //==                 n++;
+            //==             }
+            //==         }
+            //==     }
+            //== }
+
+            //fv_states_panel_.gather(fv_states_);
         }
         
         if (parameters_.need_sv())
@@ -261,10 +412,11 @@ void K_point::update()
         }
         else
         {
-            spinor_wave_functions_.set_ptr(fv_states_.ptr());
+            //spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
+            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), spl_bands.local_size(), parameters_.num_spins());
         }
     }
-    else
+    else  /* use full diagonalziation */
     {
         if (parameters_.unit_cell()->full_potential())
         {
@@ -272,6 +424,8 @@ void K_point::update()
             spinor_wave_functions_.allocate();
         }
     }
+
+    LOG_FUNC_END();
 }
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
@@ -295,7 +449,7 @@ void K_point::update()
 //==     }
 //== 
 //==     mdarray<double_complex, 2> z2(sht->num_points(), num_gkvec_loc);
-//==     blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.ptr(), z1.ld(),
+//==     blas<CPU>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.ptr(), z1.ld(),
 //==                     alm.ptr(), alm.ld(), z2.ptr(), z2.ld());
 //== 
 //==     vector3d<double> vc = parameters_.unit_cell()->get_cartesian_coordinates(parameters_.unit_cell()->atom(ia)->position());
@@ -345,7 +499,7 @@ void K_point::update()
 //==         generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
 //==         alm.copy_to_device(); // TODO: copy only necessary fraction of the data
 //== 
-//==         blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
+//==         blas<GPU>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
 //==                         alm.ptr_device(), alm.ld(), 
 //==                         fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
 //==                         fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
@@ -380,8 +534,8 @@ void K_point::generate_fv_states()
 
         dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), blacs_grid_);
         /* gnerate aw expansion coefficients */
-        blas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
-                        fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
+        linalg<CPU>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
+                          fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
         alm_panel.deallocate(); // we don't need alm any more
 
         /* We have a panel of aw coefficients and a panel of 
@@ -423,7 +577,7 @@ void K_point::generate_fv_states()
     }
     else
     {
-        fv_states_panel_.gather(fv_states_);
+        //fv_states_panel_.gather(fv_states_);
     }
 
     log_function_exit(__func__);
@@ -450,16 +604,16 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
-                                    &sv_eigen_vectors_[ispn](0, 0), sv_eigen_vectors_[ispn].ld(), 
-                                    &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
+                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
+                                      &sv_eigen_vectors_[ispn](0, 0), sv_eigen_vectors_[ispn].ld(), 
+                                      &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
-                                    &sv_eigen_vectors_[0](ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
-                                    &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
+                                      &sv_eigen_vectors_[0](ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
+                                      &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
                 }
             }
         }
@@ -476,15 +630,15 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
-                                    sv_eigen_vectors_[ispn], 0, 0, complex_zero, spin_component_panel_, 0, ispn * nfv);
+                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
+                                      sv_eigen_vectors_[ispn], 0, 0, complex_zero, spin_component_panel_, 0, ispn * nfv);
                     
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_panel_, 0, 0, 
-                                    sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel_, 0, 0);
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_panel_, 0, 0, 
+                                      sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel_, 0, 0);
 
                 }
                 auto sm = spinor_wave_functions_.submatrix(ispn); 
@@ -509,7 +663,7 @@ void K_point::generate_spinor_wave_functions()
     //==             /** \todo generate unconjugated coefficients for better readability */
     //==             generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
 
-    //==             blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), ncol, num_gkvec_row(), &alm(0, 0), alm.ld(), 
+    //==             blas<CPU>::gemm(2, 0, type->mt_aw_basis_size(), ncol, num_gkvec_row(), &alm(0, 0), alm.ld(), 
     //==                             &fd_eigen_vectors_(0, ispn * ncol), fd_eigen_vectors_.ld(), 
     //==                             &spinor_wave_functions_(atom->offset_wf(), ispn, ispn * ncol), wfld); 
     //==         }
@@ -570,8 +724,6 @@ void K_point::generate_gkvec(double gk_cutoff)
 
     gkvec_ = mdarray<double, 2>(3, gkmap.size());
 
-    gkvec_gpu_ = mdarray<double, 2>(gkmap.size(), 3);
-
     gvec_index_.resize(gkmap.size());
 
     for (int ig = 0; ig < (int)gkmap.size(); ig++)
@@ -580,12 +732,11 @@ void K_point::generate_gkvec(double gk_cutoff)
         for (int x = 0; x < 3; x++)
         {
             gkvec_(x, ig) = parameters_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
-            gkvec_gpu_(ig, x) = gkvec_(x, ig);
         }
     }
     
     fft_index_.resize(num_gkvec());
-    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.reciprocal_lattice()->fft_index(gvec_index_[igk]);
+    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.fft()->index_map(gvec_index_[igk]);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
@@ -599,85 +750,87 @@ void K_point::generate_gkvec(double gk_cutoff)
             vector3d<int> gvec = parameters_.reciprocal_lattice()->gvec(ig);
 
             /* linear index inside coarse FFT buffer */
-            fft_index_coarse_[igk] = parameters_.reciprocal_lattice()->fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
+            fft_index_coarse_[igk] = parameters_.fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
         }
     }
 }
 
-void K_point::init_gkvec_ylm_and_len(int lmax__)
+void K_point::init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__)
 {
-    gkvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax__), num_gkvec_row());
+    gkvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax__), num_gkvec__);
 
     //gkvec_len_.resize(num_gkvec_row());
 
     #pragma omp parallel for default(shared)
-    for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+    for (int i = 0; i < num_gkvec__; i++)
     {
-        int igk = gklo_basis_descriptor_row(igk_row).igk;
+        int igk = desc__[i].igk;
 
         /* vs = {r, theta, phi} */
-        auto vs = SHT::spherical_coordinates(gkvec_cart(igk));
+        auto vs = SHT::spherical_coordinates(gkvec<cartesian>(igk));
         
-        SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, igk_row));
+        SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, i));
         
         //gkvec_len_[igk_row] = vs[0];
     }
 }
 
-void K_point::init_gkvec_phase_factors()
+void K_point::init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__)
 {
-    gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec_row(), parameters_.unit_cell()->num_atoms());
+    gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec__, parameters_.unit_cell()->num_atoms());
 
     #pragma omp parallel for default(shared)
-    for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+    for (int i = 0; i < num_gkvec__; i++)
     {
-        int igk = gklo_basis_descriptor_row(igk_row).igk;
+        int igk = desc__[i].igk;
 
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
+            double phase = twopi * (gkvec<fractional>(igk) * parameters_.unit_cell()->atom(ia)->position());
 
-            gkvec_phase_factors_(igk_row, ia) = exp(double_complex(0.0, phase));
+            gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
         }
     }
 }
 
 void K_point::init_gkvec()
 {
-    int lmax = -1;
-    
+    int lmax = - 1;
     switch (parameters_.esm_type())
     {
         case full_potential_lapwlo:
         {
             lmax = parameters_.lmax_apw();
             break;
+            //init_gkvec_ylm_and_len(parameters_.lmax_apw(), num_gkvec_row(), gklo_basis_descriptors_row_);
+            //init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
+            //break;
         }
         case full_potential_pwlo:
         {
-            lmax =  parameters_.lmax_pw();
+            lmax = parameters_.lmax_pw();
             break;
+
+            //init_gkvec_ylm_and_len(parameters_.lmax_pw(), num_gkvec_row(), gklo_basis_descriptors_row_);
+            //init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
+            //break;
         }
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
+            if (num_gkvec() != wf_size()) TERMINATE("wrong size of wave-functions");
             lmax = parameters_.lmax_beta();
+            //init_gkvec_ylm_and_len(parameters_.lmax_beta(), num_gkvec_loc(), gklo_basis_descriptors_local_);
+            //init_gkvec_phase_factors(num_gkvec_loc(), gklo_basis_descriptors_local_);
             break;
         }
     }
     
-    // Fortran codes need this
-    init_gkvec_phase_factors();
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
-        init_gkvec_ylm_and_len(lmax);
-    }
+    init_gkvec_ylm_and_len(lmax, num_gkvec_row(), gklo_basis_descriptors_row_);
+    init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
 }
 
-void K_point::build_apwlo_basis_descriptors()
+void K_point::build_gklo_basis_descriptors()
 {
     gklo_basis_descriptors_.clear();
 
@@ -688,8 +841,8 @@ void K_point::build_apwlo_basis_descriptors()
     {
         gklo.id = (int)gklo_basis_descriptors_.size();
         gklo.igk = igk;
-        gklo.gkvec = gkvec(igk);
-        gklo.gkvec_cart = gkvec_cart(igk);
+        gklo.gkvec = gkvec<fractional>(igk);
+        gklo.gkvec_cart = gkvec<cartesian>(igk);
         gklo.ig = gvec_index(igk);
         gklo.ia = -1;
         gklo.l = -1;
@@ -744,43 +897,62 @@ void K_point::build_apwlo_basis_descriptors()
     }
 }
 
-void K_point::distribute_block_cyclic()
+void K_point::distribute_basis_index()
 {
-    /* distribute Gk+lo basis between rows */
-    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
-    gklo_basis_descriptors_row_.resize(spl_row.local_size());
-    for (int i = 0; i < (int)spl_row.local_size(); i++)
-        gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
+    if (parameters_.wave_function_distribution() == block_cyclic_2d)
+    {
+        /* distribute Gk+lo basis between rows */
+        splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, blacs_grid_.cyclic_block_size());
+        gklo_basis_descriptors_row_.resize(spl_row.local_size());
+        for (int i = 0; i < (int)spl_row.local_size(); i++)
+            gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
-    /* distribute Gk+lo basis between columns */
-    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
-    gklo_basis_descriptors_col_.resize(spl_col.local_size());
-    for (int i = 0; i < (int)spl_col.local_size(); i++)
-        gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
-    
-    #ifdef _SCALAPACK_
-    int bs = linalg<scalapack>::cyclic_block_size();
-    int nr = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
-    
-    if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
+        /* distribute Gk+lo basis between columns */
+        splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+        gklo_basis_descriptors_col_.resize(spl_col.local_size());
+        for (int i = 0; i < (int)spl_col.local_size(); i++)
+            gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
 
-    int nc = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
-    
-    if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
-    #endif
+        #ifdef _SCALAPACK_
+        int bs = blacs_grid_.cyclic_block_size();
+        int nr = linalg_base::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
+        
+        if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
-    /* get the number of row- and column- G+k-vectors */
+        int nc = linalg_base::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
+        
+        if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
+        #endif
+
+        /* get number of column G+k vectors */
+        num_gkvec_col_ = 0;
+        for (int i = 0; i < gklo_basis_size_col(); i++)
+        {
+            if (gklo_basis_descriptor_col(i).igk != -1) num_gkvec_col_++;
+        }
+    }
+
+    if (parameters_.wave_function_distribution() == slab)
+    {
+        /* split G+k vectors between all available ranks and keep the split index */
+        spl_gkvec_ = splindex<block>(gklo_basis_size(), comm_.size(), comm_.rank());
+        gklo_basis_descriptors_row_.resize(spl_gkvec_.local_size());
+        for (int i = 0; i < (int)spl_gkvec_.local_size(); i++)
+            gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_gkvec_[i]];
+
+    }
+
+    /* get the number of row G+k-vectors */
     num_gkvec_row_ = 0;
     for (int i = 0; i < gklo_basis_size_row(); i++)
     {
-        if (gklo_basis_descriptors_row_[i].igk != -1) num_gkvec_row_++;
+        if (gklo_basis_descriptor_row(i).igk != -1) num_gkvec_row_++;
     }
     
-    num_gkvec_col_ = 0;
-    for (int i = 0; i < gklo_basis_size_col(); i++)
-    {
-        if (gklo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
-    }
+    //== spl_gkvec_ = splindex<block>(gklo_basis_size(), comm_.size(), comm_.rank());
+    //== gklo_basis_descriptors_local_.resize(spl_gkvec_.local_size());
+    //== for (int i = 0; i < (int)spl_gkvec_.local_size(); i++)
+    //==     gklo_basis_descriptors_local_[i] = gklo_basis_descriptors_[spl_gkvec_[i]];
 }
 
 //Periodic_function<double_complex>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
@@ -902,7 +1074,7 @@ void K_point::distribute_block_cyclic()
 //==     //                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //==     //                    zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
 //==     //            }
-//==     //            blas<cpu>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
+//==     //            blas<CPU>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
 //==     //                            &zm(0, 0), zm.ld(), &gkvec_ylm_(Utils::lm_by_l_m(l, -l), 0), gkvec_ylm_.ld(), 
 //==     //                            &fylm(0, Utils::lm_by_l_m(l, -l), ia), fylm.ld());
 //==     //        }
@@ -1322,7 +1494,7 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
             fv_evec(j, i) = fv_eigen_vectors_panel_(jloc, iloc);
         }
     }
-    comm_.allreduce(fv_evec.ptr(), (int)fv_evec.size());
+    comm_.allreduce(fv_evec.at<CPU>(), (int)fv_evec.size());
 }
 
 void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
@@ -1354,7 +1526,7 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
         }
     }
 
-    comm_.allreduce(sv_evec.ptr(), (int)sv_evec.size());
+    comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
 }
 
 }

@@ -42,8 +42,7 @@ class CifLoopBlock(StarFile.LoopBlock):
         self.loopclass = CifLoopBlock
         if dimension > 1: 
             raise CifError( 'Attempt to nest loops, loop level %d' % dimension)
-        StarFile.LoopBlock.__init__(self,data,dimension=dimension,**kwargs)
-        # self.__iter__ = self.recursive_iter
+        super(CifLoopBlock,self).__init__(data,dimension=dimension,**kwargs)
 
     def __iter__(self):
         return self.recursive_iter()
@@ -70,7 +69,7 @@ class CifLoopBlock(StarFile.LoopBlock):
 class CifBlock(CifLoopBlock):
     def __init__(self,data = (), strict = 1, maxoutlength=2048,wraplength=80,overwrite=True,dimension=0):
         self.strict = strict
-        CifLoopBlock.__init__(self,data=data,dimension=0,maxoutlength=maxoutlength,wraplength=wraplength,overwrite=overwrite)
+        super(CifBlock,self).__init__(data=data,dimension=0,maxoutlength=maxoutlength,wraplength=wraplength,overwrite=overwrite)
         if isinstance(data,(StarFile.StarBlock,CifBlock)):
             self.saves = StarFile.BlockCollection(datasource=data["saves"],element_class=CifBlock,type_tag="save")
         else:
@@ -139,7 +138,7 @@ class CifBlock(CifLoopBlock):
 
     def AddCifItem(self,data):
         # we accept only tuples, strings and lists!!
-        if not (isinstance(data[0],(StringType,TupleType,ListType))):
+        if not (isinstance(data[0],(basestring,TupleType,ListType))):
                   raise TypeError, 'Cif datanames are either a string, tuple or list'
         # single items passed straight through to underlying routine
         # we catch single item loops as well...
@@ -203,7 +202,7 @@ class CifBlock(CifLoopBlock):
                if attribute in match_att: continue      #ignore this one
                new_value = new_block[attribute]
                #non-looped items
-               if isinstance(new_value,StringType):
+               if isinstance(new_value,basestring):
                   self[attribute] = new_value 
            these_atts = self.keys()
            for newloop in new_block.loops:              
@@ -257,8 +256,8 @@ class CifBlock(CifLoopBlock):
                               
 
 class CifFile(StarFile.StarFile):
-    def __init__(self,datasource=None,strict=1,maxinlength=2048,maxoutlength=0,**kwargs):
-        StarFile.StarFile.__init__(self,datasource=datasource,maxinlength=maxinlength,maxoutlength=maxoutlength,blocktype=CifBlock,**kwargs)
+    def __init__(self,datasource=None,strict=1,**kwargs):
+        super(CifFile,self).__init__(datasource=datasource, blocktype=CifBlock,**kwargs)
         self.strict = strict
         self.header_comment = \
 """#\\#CIF1.1
@@ -303,7 +302,7 @@ class CifDic(StarFile.BlockCollection):
         if isinstance(dic,StringType):
             self.dic_as_cif = CifFile(dic,grammar=grammar)
         (self.dicname,self.diclang,self.defdata) = self.dic_determine(self.dic_as_cif)
-        StarFile.BlockCollection.__init__(self,element_class=CifBlock,datasource=self.defdata) 
+        super(CifDic,self).__init__(element_class=CifBlock,datasource=self.defdata) 
         self.scopes_mandatory = {"dictionary":[],"category":[],"item":[]}
         self.scopes_naughty = {"dictionary":[],"category":[],"item":[]}
         # rename and expand out definitions using "_name" in DDL dictionaries
@@ -476,9 +475,9 @@ class CifDic(StarFile.BlockCollection):
     def create_pcloop(self,definition):
         old_children = self[definition].get('_item_linked.child_name',[])
         old_parents = self[definition].get('_item_linked.parent_name',[])
-        if isinstance(old_children,StringType): 
+        if isinstance(old_children,basestring): 
              old_children = [old_children]
-        if isinstance(old_parents,StringType): 
+        if isinstance(old_parents,basestring): 
              old_parents = [old_parents]
         if (len(old_children)==0 and len(old_parents)==0) or \
            (len(old_children) > 1 and len(old_parents)>1):
@@ -542,14 +541,14 @@ class CifDic(StarFile.BlockCollection):
              while len(notmychildren):
                 # get all children of first entry
                 mychildren = filter(lambda a:a[0]==notmychildren[0][0],family)
-                print "Parent %s: %d children" % (notmychildren[0][0],len(mychildren))
+                # print "Parent %s: %d children" % (notmychildren[0][0],len(mychildren))
                 for parent,child in mychildren:   #parent is the same for all
                          # Make sure that we simply add in the new entry for the child, not replace it,
                          # otherwise we might spoil the child entry loop structure
                          try:
                              childloop = self[child].GetLoop('_item_linked.parent_name')
                          except KeyError:
-                             print 'Creating new parent entry %s for definition %s' % (parent,child)
+                             # print 'Creating new parent entry %s for definition %s' % (parent,child)
                              self[child]['_item_linked.parent_name'] = [parent]
                              childloop = self[child].GetLoop('_item_linked.parent_name')
                              childloop.AddLoopItem(('_item_linked.child_name',[child]))
@@ -560,9 +559,9 @@ class CifDic(StarFile.BlockCollection):
                              pars = [a for a in childloop if getattr(a,'_item_linked.child_name','')==child]
                              goodpars = [a for a in pars if getattr(a,'_item_linked.parent_name','')==parent]
                              if len(goodpars)>0:   #no need to add it
-                                 print 'Skipping duplicated parent - child entry in %s: %s - %s' % (child,parent,child)
+                                 #print 'Skipping duplicated parent - child entry in %s: %s - %s' % (child,parent,child)
                                  continue
-                             print 'Adding %s to %s entry' % (parent,child)
+                             # print 'Adding %s to %s entry' % (parent,child)
                              newpacket = childloop.GetPacket(0)   #essentially a copy, I hope
                              setattr(newpacket,'_item_linked.child_name',child)
                              setattr(newpacket,'_item_linked.parent_name',parent)
@@ -577,11 +576,11 @@ class CifDic(StarFile.BlockCollection):
                 old_parents = self[parent_name].get('_item_linked.parent_name',[])
                 oldfamily = zip(old_parents,old_children)
                 newfamily = []
-                print 'Old parents -> %s' % `old_parents`
+                # print 'Old parents -> %s' % `old_parents`
                 for jj, childname in mychildren:
                     alreadythere = filter(lambda a:a[0]==parent_name and a[1] ==childname,oldfamily)
                     if len(alreadythere)>0: continue
-                    'Adding new child %s to parent definition at %s' % (childname,parent_name)
+                    # 'Adding new child %s to parent definition at %s' % (childname,parent_name)
                     old_children.append(childname)
                     old_parents.append(parent_name)
                 # Now output the loop, blowing away previous definitions.  If there is something
@@ -592,7 +591,7 @@ class CifDic(StarFile.BlockCollection):
                 del self[parent_name]['_item_linked.parent_name']
                 del self[parent_name]['_item_linked.child_name']
                 self[parent_name].insert_loop(newloop)
-                print 'New parents -> %s' % `self[parent_name]['_item_linked.parent_name']`
+                # print 'New parents -> %s' % `self[parent_name]['_item_linked.parent_name']`
                 # now make a new,smaller list
                 notmychildren = filter(lambda a:a[0]!=mychildren[0][0],notmychildren)
 
@@ -1048,7 +1047,7 @@ class CifDic(StarFile.BlockCollection):
             return StarFile.StarTuple(map(self.recursive_numerify,valarray))
         if isinstance(valarray,StarFile.StarList):
             return StarFile.StarList(map(self.recursive_numerify,valarray))
-        if isinstance(valarray,(StringType,IntType,LongType)):
+        if isinstance(valarray,(basestring,IntType,LongType)):
             return float_with_esd(valarray)
         else:
             return valarray    #assume is OK
@@ -1136,9 +1135,9 @@ class CifDic(StarFile.BlockCollection):
             must_loop = self[item_name][self.must_loop_spec]
         except KeyError:
             return {"result":None}
-        if must_loop == 'yes' and isinstance(item_value,StringType): # not looped
+        if must_loop == 'yes' and isinstance(item_value,basestring): # not looped
             return {"result":False}      #this could be triggered
-        if must_loop == 'no' and not isinstance(item_value,StringType): 
+        if must_loop == 'no' and not isinstance(item_value,basestring): 
             return {"result":False}
         return {"result":True}
 
@@ -1159,7 +1158,7 @@ class CifDic(StarFile.BlockCollection):
         entry_name = self.cat_map[category]
         key_spec = self[entry_name].get("_category_mandatory.name",[])
         for names_to_check in key_spec:
-            if isinstance(names_to_check,StringType):   #only one
+            if isinstance(names_to_check,basestring):   #only one
                 names_to_check = [names_to_check]
             for loop_key in names_to_check:
                 if loop_key not in loop_names: 
@@ -1181,7 +1180,7 @@ class CifDic(StarFile.BlockCollection):
         # build a flat list.  For efficiency we don't remove duplicates,as
         # we expect no more than the order of 10 or 20 looped names.
         def flat_func(a,b): 
-            if isinstance(b,StringType): 
+            if isinstance(b,basestring): 
                a.append(b)       #single name
             else:
                a.extend(b)       #list of names
@@ -1216,7 +1215,7 @@ class CifDic(StarFile.BlockCollection):
         alt_names = []
         if alternates != None: 
             alt_names =  self[main_name].get(self.related_item,None)
-            if isinstance(alt_names,StringType): 
+            if isinstance(alt_names,basestring): 
                 alt_names = [alt_names]
                 alternates = [alternates]
             together = map(None,alt_names,alternates)
@@ -1257,7 +1256,7 @@ class CifDic(StarFile.BlockCollection):
                 self.done_parents.append(parent_item)
                 print "Done parents %s" % `self.done_parents`
         # initialise parent/child values
-        if isinstance(item_value,StringType):
+        if isinstance(item_value,basestring):
             child_values = [item_value]
         else: child_values = item_value[:]    #copy for safety
         # track down the parent
@@ -1284,7 +1283,7 @@ class CifDic(StarFile.BlockCollection):
             parent_values = provisional_items.get(parent_item,whole_block.get(parent_item))
             if not parent_values:   # check global block
                 parent_values = globals.get(parent_item)
-        if isinstance(parent_values,StringType):
+        if isinstance(parent_values,basestring):
             parent_values = [parent_values]   
         #print "Checking parent %s against %s, values %s/%s" % (parent_item,
         #                                          item_name,`parent_values`,`child_values`)
@@ -1301,9 +1300,9 @@ class CifDic(StarFile.BlockCollection):
         # special case for dictionaries  -> we check parents of children only
         if globals.has_key(item_name):  #dictionary so skip
             return {"result":None}
-        if isinstance(child_items,StringType): # only one child
+        if isinstance(child_items,basestring): # only one child
             child_items = [child_items]
-        if isinstance(item_value,StringType): # single value
+        if isinstance(item_value,basestring): # single value
             parent_values = [item_value]
         else: parent_values = item_value[:]
         # expand child list with list of alternates
@@ -1322,7 +1321,7 @@ class CifDic(StarFile.BlockCollection):
             elif whole_block.has_key(child_item):
                 child_values = whole_block[child_item][:]
             else:  continue 
-            if isinstance(child_values,StringType):
+            if isinstance(child_values,basestring):
                 child_values = [child_values]
             #    print "Checking child %s against %s, values %s/%s" % (child_item,
             #                                          item_name,`child_values`,`parent_values`)
@@ -1345,7 +1344,7 @@ class CifDic(StarFile.BlockCollection):
             child_items = self[item_name][self.child_spec]
         except KeyError:
             return {"result":None}
-        if isinstance(child_items,StringType): # only one child
+        if isinstance(child_items,basestring): # only one child
             child_items = [child_items]
         for child_item in child_items:
             if whole_block.has_key(child_item): 
@@ -1357,7 +1356,7 @@ class CifDic(StarFile.BlockCollection):
             dep_items = self[item_name][self.dep_spec][:]
         except KeyError:
             return {"result":None}    #not relevant
-        if isinstance(dep_items,StringType):
+        if isinstance(dep_items,basestring):
             dep_items = [dep_items]
         actual_names = whole_block.keys()
         actual_names.extend(prov.keys())
@@ -1385,11 +1384,11 @@ class CifDic(StarFile.BlockCollection):
         catentry = self.cat_map[category]
         # we make a copy in the following as we will be removing stuff later!
         unique_i = self[catentry].get("_category_key.name",[])[:]
-        if isinstance(unique_i,StringType):
+        if isinstance(unique_i,basestring):
             unique_i = [unique_i]
         if item_name not in unique_i:       #no need to verify
             return {"result":None}
-        if isinstance(item_value,StringType):  #not looped
+        if isinstance(item_value,basestring):  #not looped
             return {"result":None}
         # print "Checking %s -> %s -> %s ->Unique: " % (item_name,category,catentry) + `unique_i`
         # check that we can't optimize by not doing this check
@@ -1608,7 +1607,7 @@ class ValidCifBlock(CifBlock):
         CifBlock.AddToLoop(self,dataname,loopdata)
  
     def AddCifItem(self,data):
-        if isinstance(data[0],StringType):   # single item
+        if isinstance(data[0],basestring):   # single item
             valid,problems = self.single_item_check(data[0],data[1])
             self.report_if_invalid(valid,problems,data[0])
             valid,problems = self.global_item_check(data[0],data[1])
@@ -1959,7 +1958,7 @@ def get_number_with_esd(numstring):
     return base_num,esd
 
 def float_with_esd(inval):
-    if isinstance(inval,StringType):
+    if isinstance(inval,basestring):
         j = inval.find("(")
         if j>=0:  return float(inval[:j])
     return float(inval)
@@ -1988,7 +1987,7 @@ def transpose(base_list):
 
 # listify strings - used surprisingly often
 def listify(item):
-    if isinstance(item,StringType): return [item]
+    if isinstance(item,basestring): return [item]
     else: return item
 
 # given a list of search items, return a list of items 
@@ -2002,7 +2001,7 @@ def merge_dic(diclist,mergemode="replace",ddlspec=None):
     dic_as_cif_list = []
     for dic in diclist:
         if not isinstance(dic,CifFile) and \
-           not isinstance(dic,StringType):
+           not isinstance(dic,basestring):
                raise TypeError, "Require list of CifFile names/objects for dictionary merging"
         if not isinstance(dic,CifFile): dic_as_cif_list.append(CifFile(dic))
         else: dic_as_cif_list.append(dic)
@@ -2023,7 +2022,7 @@ def merge_dic(diclist,mergemode="replace",ddlspec=None):
 def find_parent(ddl2_def):
     if not ddl2_def.has_key("_item.name"):
        return None 
-    if isinstance(ddl2_def["_item.name"],StringType):
+    if isinstance(ddl2_def["_item.name"],basestring):
         return ddl2_def["_item.name"]
     if not ddl2_def.has_key("_item_linked.child_name"):
         raise CifError("Asked to find parent in block with no child_names")

@@ -40,96 +40,117 @@ class Spline
     private:
         
         /// Radial grid.
-        Radial_grid radial_grid_;
-        
-        /// Spline "a" coefficients.
-        std::vector<T> a;
-        
-        /// Spline "b" coefficients.
-        std::vector<T> b;
-        
-        /// Spline "c" coefficients.
-        std::vector<T> c;
-        
-        /// Spline "d" coefficients.
-        std::vector<T> d;
+        Radial_grid const* radial_grid_;
 
-        // TODO: maybe add x-coordinate as an oprator. we know the radial grid and we can return x here
+        mdarray<T, 2> coefs_;
+
+        Spline(Spline<T> const& src__) = delete;
+
+        Spline<T>& operator=(Spline<T> const& src__) = delete;
 
     public:
-    
-        template <typename U> 
-        friend class Spline;
 
-        /// Constructor of an empty spline.
-        Spline()
+        /// Default constructor.
+        Spline() : radial_grid_(nullptr)
         {
         }
         
-        /// Constructor of a new uninitialized spline.
-        Spline(Radial_grid radial_grid__) : radial_grid_(radial_grid__)
+        /// Constructor of a new empty spline.
+        Spline(Radial_grid const& radial_grid__) : radial_grid_(&radial_grid__)
         {
-            a.resize(num_points());
+            coefs_ = mdarray<T, 2>(radial_grid_->num_points(), 4);
+            coefs_.zero();
         }
 
-        /// Constructor of a constant value spline.
-        Spline(Radial_grid radial_grid__, T val__) : radial_grid_(radial_grid__)
+        /// Constructor of a spline from a list of values.
+        Spline(Radial_grid const& radial_grid__, std::vector<T> y__) : radial_grid_(&radial_grid__)
         {
+            assert(radial_grid_->num_points() == (int)y__.size());
             int np = num_points();
-            a.resize(np);
-            for (int i = 0; i < np; i++) a[i] = val__;
+            coefs_ = mdarray<T, 2>(np, 4);
+            for (int i = 0; i < np; i++) coefs_(i, 0) = y__[i];
+            interpolate();
         }
-        
-        /// Constructor of a spline.
-        Spline(Radial_grid& radial_grid__, std::vector<T>& y__) : radial_grid_(radial_grid__)
+
+        Spline(Spline<T>&& src__)
         {
-            interpolate(y__);
+            radial_grid_ = src__.radial_grid_;
+            coefs_ = std::move(src__.coefs_);
         }
-        
-        inline Spline<T>& interpolate(std::vector<T>& y__)
+
+        Spline<T>& operator=(Spline<T>&& src__)
         {
-            assert(radial_grid_.num_points() == (int)y__.size());
-            a = y__;
-            return interpolate();
+            if (this != &src__)
+            {
+                radial_grid_ = src__.radial_grid_;
+                coefs_ = std::move(src__.coefs_);
+            }
+            return *this;
         }
         
         /// Integrate with r^m weight.
-        T integrate(int m__)
+        T integrate(int m__) const
         {
             std::vector<T> g(num_points());
             return integrate(g, m__);
         }
         
-        inline std::vector<T>& values()
+        inline std::vector<T> values() const
         {
+            std::vector<T> a(num_points());
+            for (int i = 0; i < num_points(); i++) a[i] = coefs_(i, 0);
             return a;
         }
         
         /// Return number of spline points.
-        inline int num_points()
+        inline int num_points() const
         {
-            return radial_grid_.num_points();
+            return radial_grid_->num_points();
         }
 
-        inline Spline<T>& operator=(std::vector<T>& y)
+        inline std::array<T, 4> coefs(int i__) const
         {
-            a = y;
-            return *this;
+            return {coefs_(i__, 0), coefs_(i__, 1), coefs_(i__, 2), coefs_(i__, 3)};
         }
 
-        // TODO: check spline iterpolation between different grids. Can it be done analytically?
-        inline T operator()(double x)
+        inline mdarray<T, 2> const& coefs() const
+        {
+            return coefs_;
+        }
+
+        inline double x(int i__) const
+        {
+            return (*radial_grid_)[i__];
+        }
+
+        inline double dx(int i__) const
+        {
+            return radial_grid_->dx(i__);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+        inline T operator()(double x) const
         {
             int np = num_points();
 
-            assert(x <= radial_grid_[np - 1]);
+            assert(x <= (*radial_grid_)[np - 1]);
             
-            if (x >= radial_grid_[0])
+            if (x >= (*radial_grid_)[0])
             {
                 int j = np - 1;
                 for (int i = 0; i < np - 1; i++)
                 {
-                    if (x < radial_grid_[i + 1])
+                    if (x < (*radial_grid_)[i + 1])
                     {
                         j = i;
                         break;
@@ -137,66 +158,64 @@ class Spline
                 }
                 if (j == np - 1) 
                 {
-                    return a[np - 1];
+                    return coefs_(np - 1, 0);
                 }
                 else
                 {
-                    double dx = x - radial_grid_[j];
-                    //return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+                    double dx = x - (*radial_grid_)[j];
                     return (*this)(j, dx);
                 }
             }
             else
             {
-                double dx = x - radial_grid_[0];
-                return a[0] + dx * (b[0] + dx * (c[0] + dx * d[0]));
+                double dx = x - (*radial_grid_)[0];
+                return (*this)(0, dx);
             }
         }
         
         /// Return value at \f$ x_i \f$.
         inline T& operator[](const int i)
         {
-            assert(i >= 0 && i < (int)a.size());
-            return a[i];
+            return coefs_(i, 0);
         }
 
-        inline T operator()(const int i, double dx)
+        inline T operator[](const int i) const
+        {
+            return coefs_(i, 0);
+        }
+
+        inline T operator()(const int i, double dx) const
         {
             assert(i >= 0);
-            assert(i < (int)a.size() - 1);
-            assert(i < (int)b.size());
-            assert(i < (int)c.size());
-            assert(i < (int)d.size());
-            return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
+            assert(i < num_points() - 1);
+            return coefs_(i, 0) + dx * (coefs_(i, 1) + dx * (coefs_(i, 2) + dx * coefs_(i, 3)));
         }
         
         inline T deriv(const int dm, const int i, const double dx)
         {
-            assert(i < (int)a.size() - 1);
-            assert(i < (int)b.size());
-            assert(i < (int)c.size());
-            assert(i < (int)d.size());
+            assert(i >= 0);
+            assert(i < num_points() - 1);
 
             switch (dm)
             {
                 case 0:
                 {
-                    return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
+                    return coefs_(i, 0) + dx * (coefs_(i, 1) + dx * (coefs_(i, 2) + dx * coefs_(i, 3)));
                     break;
                 }
                 case 1:
                 {
-                    return b[i] + dx * (c[i] * 2.0 + d[i] * dx * 3.0);
+                    return coefs_(i, 1) + (coefs_(i, 2) * 2.0 + coefs_(i, 3) * dx * 3.0) * dx;
                     break;
                 }
                 case 2:
                 {
-                    return c[i] * 2.0 + d[i] * dx * 6.0;
+                    return coefs_(i, 2) * 2.0 + coefs_(i, 3) * dx * 6.0;
                     break;
                 }
                 case 3:
                 {
-                    return d[i] * 6.0;
+                    return coefs_(i, 3) * 6.0;
                     break;
                 }
                 default:
@@ -212,7 +231,7 @@ class Spline
         {
             if (i == num_points() - 1) 
             {
-                return deriv(dm, i - 1, radial_grid_.dx(i - 1));
+                return deriv(dm, i - 1, radial_grid_->dx(i - 1));
             }
             else 
             {
@@ -220,37 +239,241 @@ class Spline
             }
         }
 
-        Spline<T>& interpolate();
-
-        void get_coefs(T* array, int lda);
-
-        T integrate(std::vector<T>& g, int m);
-
-        /// Integrate two splines with r^1 or r^2 weight
-        template <typename U>
-        static T integrate(Spline<T>* f, Spline<U>* g, int m);
-
-        /// Integrate two splines with r^1 or r^2 weight up to a given number of points
-        template <typename U>
-        static T integrate(Spline<T>* f, Spline<U>* g, int m, int num_points);
-
-        uint64_t hash()
+        inline Radial_grid const& radial_grid() const
         {
-            mdarray<T, 1> v(4 * num_points() - 3);
-            int n = 0;
+            return *radial_grid_;
+        }
+
+        Spline<T>& interpolate()
+        {
+            int np = num_points();
+
+            /* lower diagonal */
+            std::vector<T> a(np - 1);
+            /* main diagonal */
+            std::vector<T> b(np);
+            /* upper diagonal */
+            std::vector<T> c(np - 1);
+
+            std::vector<T> d(np);
+            std::vector<T> dy(np - 1);
+            
+            /* derivative of y */
+            for (int i = 0; i < np - 1; i++) dy[i] = (coefs_(i + 1, 0) - coefs_(i, 0)) / radial_grid_->dx(i);
+            
+            /* setup "B" vector of AX=B equation */
+            for (int i = 0; i < np - 2; i++) d[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+            
+            d[0] = -d[1];
+            d[np - 1] = -d[np - 2];
+            
+            /* main diagonal of "A" matrix */
+            for (int i = 0; i < np - 2; i++) b[i + 1] = 2 * (radial_grid_->dx(i) + radial_grid_->dx(i + 1));
+            double h0 = radial_grid_->dx(0);
+            double h1 = radial_grid_->dx(1);
+            double h2 = radial_grid_->dx(np - 2);
+            double h3 = radial_grid_->dx(np - 3);
+            b[0] = (h1 / h0) * h1 - h0;
+            b[np - 1] = (h3 / h2) * h3 - h2;
+
+            /* subdiagonals of "A" matrix */
+            for (int i = 0; i < np - 1; i++)
+            {
+                c[i] = radial_grid_->dx(i);
+                a[i] = radial_grid_->dx(i);
+            }
+            c[0] = -(h1 * (1 + h1 / h0) + b[1]);
+            a[np - 2] = -(h3 * (1 + h3 / h2) + b[np - 2]); 
+
+            /* solve tridiagonal system */
+            int info = linalg<CPU>::gtsv(np, 1, &a[0], &b[0], &c[0], &d[0], np);
+            auto x = d;
+            
+            if (info)
+            {
+                std::stringstream s;
+                s << "gtsv returned " << info;
+                error_local(__FILE__, __LINE__, s);
+            }
+            
+            //std::vector<T> c1(np - 1);
+            //std::vector<T> d1(np);
+            //
+            //std::vector<T> x(np);
+
+            //c1[0] = c[0] / b[0];
+            //for (int i = 1; i < np - 1; i++) c1[i] = c[i] / (b[i] - a[i - 1] * c1[i - 1]);
+
+            //d1[0] = d[0] / b[0];
+            //for (int i = 1; i < np; i++) d1[i] = (d[i] - a[i - 1] * d1[i - 1]) / (b[i] - a[i - 1] * c1[i - 1]);
+
+            //x[np - 1] = d1[np - 1];
+            //for (int i = np - 2; i >= 0; i--) x[i] = d1[i] - c1[i] * x[i + 1];
+
+            for (int i = 0; i < np - 1; i++)
+            {
+                coefs_(i, 2) = x[i] / 2.0;
+                T t = (x[i + 1] - x[i]) / 6.0;
+                coefs_(i, 1) = dy[i] - (coefs_(i, 2) + t) * radial_grid_->dx(i);
+                coefs_(i, 3) = t / radial_grid_->dx(i);
+            }
+            coefs_(np - 1, 1) = 0;
+            coefs_(np - 1, 2) = 0;
+            coefs_(np - 1, 3) = 0;
+
+            return *this;
+        }
+
+        inline void scale(double a__)
+        {
             for (int i = 0; i < num_points(); i++)
             {
-                v(n++) = a[i];
+                coefs_(i, 0) *= a__;
+                coefs_(i, 1) *= a__;
+                coefs_(i, 2) *= a__;
+                coefs_(i, 3) *= a__;
             }
-            for (int i = 0; i < num_points() - 1; i++)
-            {
-                v(n++) = b[i];
-                v(n++) = c[i];
-                v(n++) = d[i];
-            }
-            return v.hash();
         }
+
+        T integrate(std::vector<T>& g__, int m__) const;
+
+        uint64_t hash() const
+        {
+            return coefs_.hash();
+        }
+
+        #ifdef _GPU_
+        void copy_to_device()
+        {
+            coefs_.allocate_on_device();
+            coefs_.copy_to_device();
+        }
+
+        void async_copy_to_device(int thread_id__)
+        {
+            coefs_.allocate_on_device();
+            coefs_.async_copy_to_device(thread_id__);
+        }
+        #endif
 };
+
+//extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double* f__, double* g__, int stream_id__);
+//
+
+extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
+                                              double const* g__, double* d_buf__, double* h_buf__, int stream_id__);
+
+template<typename T>
+T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
+{
+    assert(f__.radial_grid().hash() == g__.radial_grid().hash());
+    
+    T result = 0;
+
+    switch (m__)
+    {
+        case 0:
+        {
+            for (int i = 0; i < num_points__ - 1; i++)
+            {
+                double dx = f__.dx(i);
+                
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
+
+                T faga = f[0] * g[0];
+                T fdgd = f[3] * g[3];
+
+                T k1 = f[0] * g[1] + f[1] * g[0];
+                T k2 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k3 = f[0] * g[3] + f[1] * g[2] + f[2] * g[1] + f[3] * g[0];
+                T k4 = f[1] * g[3] + f[2] * g[2] + f[3] * g[1];
+                T k5 = f[2] * g[3] + f[3] * g[2];
+
+                result += dx * (faga + 
+                          dx * (k1 / 2.0 + 
+                          dx * (k2 / 3.0 + 
+                          dx * (k3 / 4.0 + 
+                          dx * (k4 / 5.0 + 
+                          dx * (k5 / 6.0 + 
+                          dx * fdgd / 7.0))))));
+            }
+            break;
+        }
+        case 1:
+        {
+            for (int i = 0; i < num_points__ - 1; i++)
+            {
+                double x0 = f__.x(i);
+                double dx = f__.dx(i);
+                
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
+
+                T faga = f[0] * g[0];
+                T fdgd = f[3] * g[3];
+
+                T k1 = f[0] * g[1] + f[1] * g[0];
+                T k2 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k3 = f[0] * g[3] + f[1] * g[2] + f[2] * g[1] + f[3] * g[0];
+                T k4 = f[1] * g[3] + f[2] * g[2] + f[3] * g[1];
+                T k5 = f[2] * g[3] + f[3] * g[2];
+
+                result += dx * ((faga * x0) + 
+                          dx * ((faga + k1 * x0) / 2.0 + 
+                          dx * ((k1 + k2 * x0) / 3.0 + 
+                          dx * ((k2 + k3 * x0) / 4.0 + 
+                          dx * ((k3 + k4 * x0) / 5.0 + 
+                          dx * ((k4 + k5 * x0) / 6.0 + 
+                          dx * ((k5 + fdgd * x0) / 7.0 +
+                          dx * fdgd / 8.0)))))));
+            }
+            break;
+        }
+        case 2:
+        {
+            for (int i = 0; i < num_points__ - 1; i++)
+            {
+                double x0 = f__.x(i);
+                double dx = f__.dx(i);
+
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
+
+                T faga = f[0] * g[0];
+                T fdgd = f[3] * g[3];
+                
+                T k1 = f[3] * g[1] + f[2] * g[2] + f[1] * g[3];
+                T k2 = f[3] * g[0] + f[2] * g[1] + f[1] * g[2] + f[0] * g[3];
+                T k3 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k4 = f[3] * g[2] + f[2] * g[3];
+                T k5 = f[1] * g[0] + f[0] * g[1];
+
+                result += dx * ((faga * x0 * x0) + 
+                          dx * ((x0 * (2.0 * faga + x0 * k5)) / 2.0 +
+                          dx * ((faga + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
+                          dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
+                          dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
+                          dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
+                          dx * ((k1 + x0 * (2.0 * k4 + fdgd * x0)) / 7.0 + 
+                          dx * ((k4 + 2.0 * fdgd * x0) / 8.0 + 
+                          dx * fdgd / 9.0)))))))); 
+            }
+            break;
+        }
+        default:
+        {
+            TERMINATE("wrong r^m prefactor");
+        }
+    }
+    return result;
+}
+
+template<typename T>
+T inner(Spline<T> const& f__, Spline<T> const& g__, int m__)
+{
+    return inner(f__, g__, m__, f__.num_points());
+}
 
 #include "spline.hpp"
 

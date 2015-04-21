@@ -33,6 +33,7 @@ extern "C" {
 #include "matrix3d.h"
 #include "constants.h"
 #include "utils.h"
+#include "fft3d.h"
 
 namespace sirius {
 
@@ -44,19 +45,59 @@ class Symmetry
 
         matrix3d<double> inverse_lattice_vectors_;
 
+        int num_atoms_;
+
+        mdarray<double, 2> positions_;
+
+        std::vector<int> types_;
+
+        double tolerance_;
+
         SpglibDataset* spg_dataset_;
 
     public:
 
-        Symmetry()
-        {
-        }
+        Symmetry(matrix3d<double>& lattice_vectors__,
+                 int num_atoms__,
+                 mdarray<double, 2>& positions__,
+                 std::vector<int>& types__,
+                 double tolerance__);
 
-        Symmetry(double lattice_vectors__[3][3], SpglibDataset* spg_dataset__);
-        
+        ~Symmetry();
+
         inline int num_sym_op()
         {
             return spg_dataset_->n_operations;
+        }
+
+        inline int atom_symmetry_class(int ia__)
+        {
+            return spg_dataset_->equivalent_atoms[ia__];
+        }
+
+        inline int spacegroup_number()
+        {
+            return spg_dataset_->spacegroup_number;
+        }
+
+        inline std::string international_symbol()
+        {
+            return spg_dataset_->international_symbol;
+        }
+
+        inline std::string hall_symbol()
+        {
+            return spg_dataset_->hall_symbol;
+        }
+
+        matrix3d<double> transformation_matrix()
+        {
+           return matrix3d<double>(spg_dataset_->transformation_matrix);
+        }
+
+        vector3d<double> origin_shift()
+        {
+            return vector3d<double>(spg_dataset_->origin_shift);
         }
 
         int proper_rotation(int isym);
@@ -65,7 +106,7 @@ class Symmetry
         matrix3d<double> rot_mtrx_cart(int isym__);
 
         /// Rotation matrix in fractional coordinates.
-        matrix3d<double> rot_mtrx(int isym__);
+        matrix3d<int> rot_mtrx(int isym__);
         
         /// Generate rotation matrix from three Euler angles
         /** Euler angles \f$ \alpha, \beta, \gamma \f$ define the general rotation as three consecutive rotations:
@@ -102,7 +143,43 @@ class Symmetry
         /** 
 
         */
-        vector3d<double> euler_angles(int isym);
+        vector3d<double> euler_angles(int isym__);
+
+        vector3d<double> fractional_translation(int isym__)
+        {
+            vector3d<double> t;
+            for (int x = 0; x < 3; x++) t[x] =  spg_dataset_->translations[isym__][x];
+            return t;
+        }
+
+        void check_gvec_symmetry(FFT3D<CPU>* fft__);
+
+        /// Symmetrize scalar function.
+        /** The following operation is performed:
+         *  \f[
+         *    f({\bf x}) = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} f({\bf \hat P x})
+         *  \f]
+         *  For the function expanded in plane-waves we have:
+         *  \f[
+         *    f({\bf x}) = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G \hat P x}} f({\bf G}) 
+         *               = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G (Rx + t)}} f({\bf G})
+         *               = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G t}} e^{i{\bf G Rx}} f({\bf G})
+         *  \f]
+         *  Now we do a mapping \f$ {\bf GR} \rightarrow \tilde {\bf G} \f$ and find expansion coefficients of the
+         *  symmetry transformed function:
+         *  \f[
+         *    f(\tilde{\bf G}) = e^{i{\bf G t}} f({\bf G})
+         *  \f]
+         */
+        void symmetrize_function(double_complex* f_pw__,
+                                 FFT3D<CPU>* fft__,
+                                 splindex<block>& spl_num_gvec__,
+                                 Communicator& comm__);
+
+        int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
+                                            vector3d<int> is_shift__,
+                                            mdarray<double, 2>& kp__,
+                                            std::vector<double>& wk__);
 };
 
 }

@@ -39,41 +39,40 @@ class Smooth_periodic_function
         
         mdarray<T, 1> data_;
 
-        Reciprocal_lattice* reciprocal_lattice_;
+        FFT3D<CPU>* fft_;
 
     public:
 
-        Smooth_periodic_function() : reciprocal_lattice_(nullptr)
+        Smooth_periodic_function() : fft_(nullptr)
         {
         }
         
-        Smooth_periodic_function(T* ptr__, Reciprocal_lattice* reciprocal_lattice__) : reciprocal_lattice_(reciprocal_lattice__)
+        Smooth_periodic_function(T* ptr__, FFT3D<CPU>* fft__) : fft_(fft__)
         {
             if (domain_t == spatial)
             {
-                data_ = mdarray<T, 1>(nullptr, reciprocal_lattice_->fft()->size());
-                data_.set_ptr(ptr__);
+                data_ = mdarray<T, 1>(ptr__, fft_->size());
             }
         }
 
-        Smooth_periodic_function(Reciprocal_lattice* reciprocal_lattice__) : reciprocal_lattice_(reciprocal_lattice__)
+        Smooth_periodic_function(FFT3D<CPU>* fft__) : fft_(fft__)
         {
             switch (domain_t)
             {
                 case spectral:
                 {
-                    data_ = mdarray<T, 1>(reciprocal_lattice_->num_gvec());
+                    data_ = mdarray<T, 1>(fft_->num_gvec());
                     break;
                 }
                 case spatial:
                 {
-                    data_ = mdarray<T, 1>(reciprocal_lattice_->fft()->size());
+                    data_ = mdarray<T, 1>(fft_->size());
                     break;
                 }
             }
         }
 
-        Smooth_periodic_function(Reciprocal_lattice* reciprocal_lattice__, size_t size__) : reciprocal_lattice_(reciprocal_lattice__)
+        Smooth_periodic_function(FFT3D<CPU>* fft__, size_t size__) : fft_(fft__)
         {
             if (domain_t == spatial) data_ = mdarray<T, 1>(size__);
         }
@@ -81,11 +80,6 @@ class Smooth_periodic_function
         inline T& operator()(const int64_t idx__)
         {
             return data_(idx__);
-        }
-
-        Reciprocal_lattice* reciprocal_lattice()
-        {
-            return reciprocal_lattice_;
         }
 
         inline size_t size()
@@ -97,51 +91,68 @@ class Smooth_periodic_function
         {
             data_.zero();
         }
+
+        inline FFT3D<CPU>* fft()
+        {
+            return fft_;
+        }
 };
 
 /// Transform funciton from real-space grid to plane-wave harmonics. 
 template<typename T>
 Smooth_periodic_function<spectral> transform(Smooth_periodic_function<spatial, T>& f)
 {
-    auto rl = f.reciprocal_lattice();
+    auto fft = f.fft();
 
-    Smooth_periodic_function<spectral> g(rl);
+    Smooth_periodic_function<spectral> g(fft);
         
-    rl->fft()->input(&f(0));
-    rl->fft()->transform(-1);
-    rl->fft()->output(rl->num_gvec(), rl->fft_index(), &g(0));
+    fft->input(&f(0));
+    fft->transform(-1);
+    fft->output(fft->num_gvec(), fft->index_map(), &g(0));
 
     return g;
 }
 
 /// Transform function from plane-wace domain to real-space grid.
-template<typename T, index_domain_t index_domain>
+template<typename T>
 Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral>& f)
 {
-    Reciprocal_lattice* rl = f.reciprocal_lattice();
+    auto fft = f.fft();
 
-    int size = (index_domain == global) ? rl->fft()->size() : rl->fft()->local_size();
-    int offset = (index_domain == global) ? 0 : rl->fft()->global_offset();
+    Smooth_periodic_function<spatial, T> g(fft);
 
-    Smooth_periodic_function<spatial, T> g(rl, size);
-
-    rl->fft()->input(rl->num_gvec(), rl->fft_index(), &f(0));
-    rl->fft()->transform(1);
-    for (int i = 0; i < size; i++) g(i) = type_wrapper<T>::sift(rl->fft()->buffer(offset + i));
+    fft->input(fft->num_gvec(), fft->index_map(), &f(0));
+    fft->transform(1);
+    fft->output(&g(0));
     
+    return g; 
+}
+
+template<typename T>
+Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral>& f, splindex<block>& spl_fft_size__)
+{
+    auto fft = f.fft();
+
+    Smooth_periodic_function<spatial, T> g(fft, spl_fft_size__.local_size());
+
+    fft->input(fft->num_gvec(), fft->index_map(), &f(0));
+    fft->transform(1);
+    for (int i = 0; i < (int)spl_fft_size__.local_size(); i++) 
+        g(i) = type_wrapper<T>::sift(fft->buffer((int)spl_fft_size__.global_offset() + i));
+
     return g; 
 }
 
 Smooth_periodic_function<spectral> laplacian(Smooth_periodic_function<spectral>& f)
 {
-    Reciprocal_lattice* rl = f.reciprocal_lattice();
+    auto fft = f.fft();
 
-    Smooth_periodic_function<spectral> g(rl);
+    Smooth_periodic_function<spectral> g(fft);
 
-    for (int ig = 0; ig < rl->num_gvec(); ig++)
+    for (int ig = 0; ig < fft->num_gvec(); ig++)
     {
-        auto G = rl->gvec_cart(ig);
-        g(ig) = f(ig) * double_complex(-pow(G.length(), 2), 0);
+        auto G = fft->gvec_cart(ig);
+        g(ig) = f(ig) * double_complex(-std::pow(G.length(), 2), 0);
     }
     return g;
 }
@@ -154,15 +165,15 @@ class Smooth_periodic_function_gradient
 
         std::array<Smooth_periodic_function<domaint_t, T>, 3> grad_;
 
-        Reciprocal_lattice* reciprocal_lattice_;
+        FFT3D<CPU>* fft_;
 
     public:
 
-        Smooth_periodic_function_gradient() : reciprocal_lattice_(nullptr)
+        Smooth_periodic_function_gradient() : fft_(nullptr)
         {
         }
 
-        Smooth_periodic_function_gradient(Reciprocal_lattice* reciprocal_lattice__) : reciprocal_lattice_(reciprocal_lattice__)
+        Smooth_periodic_function_gradient(FFT3D<CPU>* fft__) : fft_(fft__)
         {
         }
 
@@ -171,23 +182,23 @@ class Smooth_periodic_function_gradient
             return grad_[idx__];
         }
 
-        inline Reciprocal_lattice* reciprocal_lattice()
+        inline FFT3D<CPU>* fft()
         {
-            return reciprocal_lattice_;
+            return fft_;
         }
 };
         
 Smooth_periodic_function_gradient<spectral> gradient(Smooth_periodic_function<spectral>& f)
 {
-    Reciprocal_lattice* rl = f.reciprocal_lattice();
+    auto fft = f.fft();
 
-    Smooth_periodic_function_gradient<spectral> g(rl);
+    Smooth_periodic_function_gradient<spectral> g(fft);
 
-    for (int x = 0; x < 3; x++) g[x] = Smooth_periodic_function<spectral>(rl);
+    for (int x = 0; x < 3; x++) g[x] = Smooth_periodic_function<spectral>(fft);
 
-    for (int ig = 0; ig < rl->num_gvec(); ig++)
+    for (int ig = 0; ig < fft->num_gvec(); ig++)
     {
-        auto G = rl->gvec_cart(ig);
+        auto G = fft->gvec_cart(ig);
         for (int x = 0; x < 3; x++) g[x](ig) = f(ig) * double_complex(0, G[x]); 
     }
     return g;
@@ -206,12 +217,12 @@ Smooth_periodic_function<spatial, T> operator*(Smooth_periodic_function_gradient
         if (f[x].size() != size || g[x].size() != size) error_local(__FILE__, __LINE__, "wrong size");
     }
 
-    Smooth_periodic_function<spatial, T> result(f.reciprocal_lattice(), size);
+    Smooth_periodic_function<spatial, T> result(f.fft(), size);
     result.zero();
 
     for (int x = 0; x < 3; x++)
     {
-        for (int ir = 0; ir < size; ir++)
+        for (int ir = 0; ir < (int)size; ir++)
         {
             result(ir) += f[x](ir) * g[x](ir);
         }

@@ -37,10 +37,16 @@ Atom::Atom(Atom_type* type__, double* position__, double* vector_field__)
 {
     assert(type__);
         
-    for (int i = 0; i < 3; i++)
+    for (int x = 0; x < 3; x++)
     {
-        position_[i] = position__[i];
-        vector_field_[i] = vector_field__[i];
+        if (position__[x] < 0 || position__[x] >= 1)
+        {
+            std::stringstream s;
+            s << "Wrong atomic position for atom " << type__->label() << ": " << position__[0] << " " << position__[1] << " " << position__[2];
+            TERMINATE(s);
+        }
+        position_[x] = position__[x];
+        vector_field_[x] = vector_field__[x];
     }
 }
 
@@ -111,9 +117,10 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
     if (num_mag_dims_) b_radial_integrals_.zero();
 
     /* interpolate radial functions */
-    std::vector< Spline<double> > rf_spline(type()->indexr().size(), Spline<double>(type()->radial_grid()));
+    std::vector< Spline<double> > rf_spline(type()->indexr().size());
     for (int i = 0; i < type()->indexr().size(); i++)
     {
+        rf_spline[i] = Spline<double>(type()->radial_grid());
         for (int ir = 0; ir < nmtp; ir++) rf_spline[i][ir] = symmetry_class()->radial_function(ir, i);
         rf_spline[i].interpolate();
     }
@@ -121,7 +128,8 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
     #pragma omp parallel default(shared)
     {
         /* potential or magnetic field times a radial function */
-        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_, Spline<double>(type()->radial_grid()));
+        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_);
+        for (int i = 0; i < 1 + num_mag_dims_; i++) vrf_spline[i] = Spline<double>(type()->radial_grid());
 
         for (int lm_loc = 0; lm_loc < (int)spl_lm.local_size(); lm_loc++)
         {
@@ -153,7 +161,7 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
                         if (lm)
                         {
                             h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = 
-                                Spline<double>::integrate(&rf_spline[i1], &vrf_spline[0], 2);
+                                inner(rf_spline[i1], vrf_spline[0], 2);
                         }
                         else
                         {
@@ -163,7 +171,7 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
                         for (int j = 0; j < num_mag_dims_; j++)
                         {
                             b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = 
-                                Spline<double>::integrate(&rf_spline[i1], &vrf_spline[1 + j], 2);
+                                inner(rf_spline[i1], vrf_spline[1 + j], 2);
                         }
                     }
                 }
@@ -171,8 +179,8 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
         }
     }
 
-    comm__.reduce(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), 0);
-    if (num_mag_dims_) comm__.reduce(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), 0);
+    comm__.reduce(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), 0);
+    if (num_mag_dims_) comm__.reduce(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), 0);
 }
 
 }

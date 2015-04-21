@@ -26,6 +26,7 @@
 #define __SBESSEL_PW_H__
 
 #include <gsl/gsl_sf_bessel.h>
+#include "evp_solver.h"
 
 namespace sirius
 {
@@ -68,7 +69,7 @@ class sbessel_pw
 
         void load(double q)
         {
-            std::vector<double> jl(lmax_+ 1);
+            std::vector<double> jl(lmax_ + 1);
             for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < unit_cell_->atom_type(iat)->num_mt_points(); ir++)
@@ -101,22 +102,59 @@ class sbessel_pw
         }
 };
 
+class Spherical_Bessel_functions
+{
+    private:
+
+        std::vector< Spline<double>* > sbessel_;
+
+    public:
+
+        Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double nu__)
+        {
+            sbessel_ = std::vector< Spline<double>* >(lmax__ + 1);
+            for (int l = 0; l <= lmax__; l++) sbessel_[l] = new Spline<double>(rgrid__);
+
+            std::vector<double> jl(lmax__ + 1);
+            for (int ir = 0; ir < rgrid__.num_points(); ir++)
+            {
+                double v = rgrid__[ir] * nu__;
+                gsl_sf_bessel_jl_array(lmax__, v, &jl[0]);
+                for (int l = 0; l <= lmax__; l++) (*sbessel_[l])[ir] = jl[l];
+            }
+            
+            for (int l = 0; l < lmax__; l++) sbessel_[l]->interpolate();
+        }
+
+        ~Spherical_Bessel_functions()
+        {
+            for (auto s: sbessel_) delete s;
+        }
+
+        Spline<double> const& operator()(int i__) const
+        {
+            return *sbessel_[i__];
+        }
+};
+
 class sbessel_approx
 {
     private:
 
         static double sbessel_l2norm(double nu, int l, double R)
         {
-            double d1;
+            if (std::abs(nu) < 1e-10) TERMINATE_NOT_IMPLEMENTED;
+
             if (l == 0)
             {
-                d1 = -gsl_sf_bessel_Ynu(0.5, nu * R);
+                return (nu * R * 2 - std::sin(nu * R * 2)) / 4 / std::pow(nu, 3);
             }
             else
             {
-                d1 = gsl_sf_bessel_Jnu(l - 0.5, nu * R);
+                double jl[l + 2];
+                gsl_sf_bessel_jl_array(l + 1, R * nu, &jl[0]);
+                return std::pow(R, 3) * (jl[l] * jl[l] - jl[l + 1] * jl[l - 1]) / 2;
             }
-            return R * std::sqrt(pi * (std::pow(gsl_sf_bessel_Jnu(0.5 + l, nu * R), 2) - d1 * gsl_sf_bessel_Jnu(l + 1.5, nu * R)) / 4 / nu);
         }
 
         Unit_cell* unit_cell_;
@@ -197,7 +235,7 @@ class sbessel_approx
                             }
                         }
                     }
-                    linalg<lapack>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
+                    linalg<CPU>::gesv(n, (int)q__.size(), A.at<CPU>(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
                 }
             }
         }
@@ -222,39 +260,42 @@ class sbessel_approx
             return coeffs_(iq, j, l, iat);
         }
         
-        // \int_0^{R} j(nu1*r) * j(nu2 * r) * r^2 dr
+        // \int_0^{R} j(nu1 * r) * j(nu2 * r) * r^2 dr
         // this integral can be computed analytically
-        static double overlap(double nu1, double nu2, int l, double R)
+        static double overlap(double nu1__, double nu2__, int l__, double R__)
         {
-            if (std::abs(nu1 - nu2) < 1e-12)
+            if (std::abs(nu1__) < 1e-10 || std::abs(nu2__) < 1e-10) TERMINATE_NOT_IMPLEMENTED;
+
+            if (std::abs(nu1__ - nu2__) < 1e-12)
             {
-                double d1;
-                if (l == 0)
+                if (l__ == 0)
                 {
-                    d1 = -gsl_sf_bessel_Ynu(0.5, nu1 * R);
+                    return (nu2__ * R__ * 2 - std::sin(nu2__ * R__ * 2)) / 4 / std::pow(nu2__, 3);
                 }
                 else
                 {
-                    d1 = gsl_sf_bessel_Jnu(l - 0.5, nu1 * R);
+                    double jl[l__ + 2];
+                    gsl_sf_bessel_jl_array(l__ + 1, R__ * nu2__, &jl[0]);
+                    return std::pow(R__, 3) * (jl[l__] * jl[l__] - jl[l__ + 1] * jl[l__ - 1]) / 2;
                 }
-                return pi * R * R * (std::pow(gsl_sf_bessel_Jnu(0.5 + l, nu1 * R), 2) - d1 * gsl_sf_bessel_Jnu(l + 1.5, nu1 * R)) / 4 / nu1;
             }
             else
             {
-                double d1, d2;
-                if (l == 0)
+                if (l__ == 0)
                 {
-                    d1 = -gsl_sf_bessel_Ynu(0.5, nu1 * R);
-                    d2 = -gsl_sf_bessel_Ynu(0.5, nu2 * R);
+                    return (nu2__ * std::cos(nu2__ * R__) * std::sin(nu1__ * R__) - nu1__ * std::cos(nu1__ * R__) * std::sin(nu2__ * R__)) /
+                           (std::pow(nu1__, 3) * nu2__ - nu1__ * std::pow(nu2__, 3));
                 }
                 else
                 {
-                    d1 = gsl_sf_bessel_Jnu(l - 0.5, nu1 * R);
-                    d2 = gsl_sf_bessel_Jnu(l - 0.5, nu2 * R);
+                    double j1[l__ + 2];
+                    gsl_sf_bessel_jl_array(l__ + 1, R__ * nu1__, &j1[0]);
+
+                    double j2[l__ + 2];
+                    gsl_sf_bessel_jl_array(l__ + 1, R__ * nu2__, &j2[0]);
+
+                    return std::pow(R__, 2) * (nu2__ * j2[l__ - 1] * j1[l__] - nu1__ * j1[l__ - 1] * j2[l__]) / (std::pow(nu1__, 2) - std::pow(nu2__, 2));
                 }
-                
-                double d = nu2 * d2 * gsl_sf_bessel_Jnu(l + 0.5, nu1 * R) - nu1 * d1 * gsl_sf_bessel_Jnu(l + 0.5, nu2 * R);
-                return (pi * R * d / ( 2 * (std::pow(nu1, 2) - std::pow(nu2, 2)) * std::sqrt(nu1 * nu2)));
             }
         }
 
@@ -280,7 +321,8 @@ class sbessel_approx
                 {
                     for (int j = 0; j <= i; j++)
                     {
-                        ovlp(j, i) = overlap(qnu[j], qnu[i], l__, R__) / sbessel_l2norm(qnu[i], l__, R__) / sbessel_l2norm(qnu[j], l__, R__);
+                        double o = overlap(qnu[j], qnu[i], l__, R__);
+                        ovlp(j, i) = o / sbessel_l2norm(qnu[i], l__, R__) / sbessel_l2norm(qnu[j], l__, R__);
                     }
                 }
                 
@@ -288,7 +330,7 @@ class sbessel_approx
                 mdarray<double_complex, 2> z(n, n);
 
                 standard_evp_lapack solver;
-                solver.solve(n, ovlp.ptr(), n, &eval[0], z.ptr(), n);
+                solver.solve(n, ovlp.at<CPU>(), n, &eval[0], z.at<CPU>(), n);
                 min_val = eval[0];
 
             } while (min_val > eps__);

@@ -54,7 +54,7 @@ namespace sirius
  *            [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2}, 
  *              m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
  *  
- *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_kpoint_contribution_it()).
+ *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_it()).
  *  The muffin-tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the
  *  expansion of spinor wave-functions inside the muffin-tin \f$ \alpha \f$
  *  \f[
@@ -113,19 +113,19 @@ class Density
 {
     private:
         
-        /// global set of parameters
+        /// Global set of parameters.
         Global& parameters_;
 
-        /// alias for FFT driver
-        FFT3D<cpu>* fft_;
+        /// Alias for FFT driver.
+        FFT3D<CPU>* fft_;
         
-        /// pointer to charge density
+        /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. 
          */ 
         Periodic_function<double>* rho_;
 
-        /// pointer to pseudo core charge density
+        /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
@@ -137,11 +137,15 @@ class Density
         
         std::vector< std::pair<int, int> > dmat_spins_;
 
-        /// non-zero Gaunt coefficients
+        /// Non-zero Gaunt coefficients.
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
         
         /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
+
+        Mixer<double_complex>* high_freq_mixer_;
+        Mixer<double_complex>* low_freq_mixer_;
+        Mixer<double>* mixer_;
 
         /// Get the local list of occupied bands
         /** Initially bands are distributed over k-points and columns of the MPI grid used 
@@ -159,14 +163,15 @@ class Density
          *  \f]
          */
         template <int num_mag_dims> 
-        void reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
-        
-        /// Add k-point contribution to the auxiliary muffin-tin density matrix
-        /** Complex density matrix has the following expression:
+        void reduce_density_matrix(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
+
+        /// Add k-point contribution to the auxiliary density matrix.
+        /** In case of full-potential LAPW complex density matrix has the following expression:
          *  \f[
          *      D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}}
          *          S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
-         *  \f],
+         *  \f]
+         * 
          *  where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of
          *  spinor wave functions inside muffin-tin spheres.
          *  
@@ -175,54 +180,49 @@ class Density
          *      n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
          *                \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
          *  \f] 
+         *
+         * In case of ultrasoft pseudopotential the following density matrix has to be computed for each atom:
+         *  \f[
+         *      d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle = 
+         *        \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} 
+         *        \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
+         *  \f]
+         *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
+         *  the occupancy operator written in spectral representation.
          */
-        void add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                        mdarray<double_complex, 4>& mt_complex_density_matrix);
-        
-        /// Add k-point contribution to the interstitial density and magnetization
-        void add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
-
-        /// Add k-point contribution to the density matrix in case of ultrasoft pseudo-potential
-        /** The following density matrix has to be computed for each atom:
-            \f[
-                d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle = 
-                  \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} 
-                  \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
-            \f]
-            Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
-            the occupancy operator written in spectral representation. 
-        */
-        void add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                        mdarray<double_complex, 4>& pp_complex_density_matrix);
+        template <processing_unit_t pu, electronic_structure_method_t basis>
+        void add_k_point_contribution(K_point* kp__,
+                                      std::vector< std::pair<int, double> >& occupied_bands__,
+                                      mdarray<double_complex, 4>& density_matrix__);
 
         /// Restore valence density by adding the Q-operator constribution
         /** The following term is added to the valence density, generated by the pseudo wave-functions:
-            \f[
-                \tilde \rho({\bf G}) = \sum_{\alpha} \sum_{\xi \xi'} d_{\xi \xi'}^{\alpha} Q_{\xi' \xi}^{\alpha}({\bf G})
-            \f]
-            Plane-wave coefficients of the Q-operator for a given atom \f$ \alpha \f$ can be obtained from the 
-            corresponding coefficients of the Q-operator for a given atom \a type A:
-            \f[
-                 Q_{\xi' \xi}^{\alpha(A)}({\bf G}) = e^{-i{\bf G}\tau_{\alpha(A)}} Q_{\xi' \xi}^{A}({\bf G})
-            \f]
-            We use this property to split the sum over atoms into sum over atom types and inner sum over atoms of the 
-            same type:
-            \f[
-                 \tilde \rho({\bf G}) = \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) \sum_{\alpha(A)} 
-                    d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} = 
-                    \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) d_{\xi \xi'}^{A}({\bf G})
-            \f]
-            where
-            \f[
-                d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
-            \f]
-        */
+         *  \f[
+         *      \tilde \rho({\bf G}) = \sum_{\alpha} \sum_{\xi \xi'} d_{\xi \xi'}^{\alpha} Q_{\xi' \xi}^{\alpha}({\bf G})
+         *  \f]
+         *  Plane-wave coefficients of the Q-operator for a given atom \f$ \alpha \f$ can be obtained from the 
+         *  corresponding coefficients of the Q-operator for a given atom \a type A:
+         *  \f[
+         *       Q_{\xi' \xi}^{\alpha(A)}({\bf G}) = e^{-i{\bf G}\tau_{\alpha(A)}} Q_{\xi' \xi}^{A}({\bf G})
+         *  \f]
+         *  We use this property to split the sum over atoms into sum over atom types and inner sum over atoms of the 
+         *  same type:
+         *  \f[
+         *       \tilde \rho({\bf G}) = \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) \sum_{\alpha(A)} 
+         *          d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} = 
+         *          \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) d_{\xi \xi'}^{A}({\bf G})
+         *  \f]
+         *  where
+         *  \f[
+         *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
+         *  \f]
+         */
         void add_q_contribution_to_valence_density(K_set& kset);
-        
+
+        /// Add k-point contribution to the interstitial density and magnetization
+        void add_k_point_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
+
         #ifdef _GPU_
-        void add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                            mdarray<double_complex, 4>& pp_complex_density_matrix);
-        
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
         #endif
 
@@ -282,8 +282,14 @@ class Density
         /// Return core leakage for a specific atom symmetry class
         double core_leakage(int ic);
 
-        /// Generate charge density and magnetization from the wave functions
-        void generate(K_set& ks);
+        /// Generate full charge density (valence + core) and magnetization from the wave functions.
+        void generate(K_set& ks__);
+
+        /// Generate valence charge density and magnetization from the wave functions.
+        void generate_valence(K_set& ks__);
+        
+        /// Add augmentation charge Q(r)
+        void augment(K_set& ks__);
         
         /// Integrtae charge density to get total and partial charges
         //** void integrate();
@@ -306,16 +312,16 @@ class Density
             return s;
         }
 
-        inline void pack(Mixer* mixer)
+        inline void pack(Mixer<double>* mixer__)
         {
-            size_t n = rho_->pack(0, mixer);
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer);
+            size_t n = rho_->pack(0, mixer__);
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
         }
 
-        inline void unpack(double* buffer)
+        inline void unpack(double* buffer__)
         {
-            size_t n = rho_->unpack(buffer);
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer[n]);
+            size_t n = rho_->unpack(buffer__);
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
         }
         
         Periodic_function<double>* rho()
@@ -347,6 +353,89 @@ class Density
         {
             rho_->allocate(true, true);
             for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true, true);
+        }
+
+        void mixer_input()
+        {
+            if (mixer_ != nullptr)
+            {
+                pack(mixer_);
+            }
+            else
+            {
+                int k = 0;
+                for (int ig = 0; ig < parameters_.fft_coarse()->num_gvec(); ig++)
+                {
+                    low_freq_mixer_->input(k++, rho_->f_pw(ig));
+                }
+
+                k = 0;
+                for (int ig = parameters_.fft_coarse()->num_gvec(); ig < parameters_.fft()->num_gvec(); ig++)
+                {
+                    high_freq_mixer_->input(k++, rho_->f_pw(ig));
+                }
+            }
+        }
+
+        void mixer_output()
+        {
+            if (mixer_ != nullptr)
+            {
+                unpack(mixer_->output_buffer());
+            }
+            else
+            {
+                int ngv = parameters_.fft()->num_gvec();
+                int ngvc = parameters_.fft_coarse()->num_gvec();
+
+                memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
+                memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+            }
+        }
+
+        void mixer_init()
+        {
+            mixer_input();
+
+            if (mixer_ != nullptr)
+            {
+                mixer_->initialize();
+            }
+            else
+            {
+                low_freq_mixer_->initialize();
+                high_freq_mixer_->initialize();
+            }
+        }
+
+        double mix()
+        {
+            if (mixer_ != nullptr)
+            {
+                mixer_input();
+                double rms = mixer_->mix();
+                mixer_output();
+
+                return rms;
+            }
+            else
+            {
+                mixer_input();
+                double rms = low_freq_mixer_->mix();
+                rms += high_freq_mixer_->mix();
+                mixer_output();
+                
+                fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
+                fft_->transform(1);
+                fft_->output(&rho_->f_it<global>(0));
+
+                return rms;
+            }
+        }
+
+        inline double dr2()
+        {
+            return low_freq_mixer_->rss();
         }
 };
 

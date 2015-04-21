@@ -23,6 +23,7 @@
  */
 
 #include "atom_symmetry_class.h"
+#include "evp_solver.h"
 
 namespace sirius {
 
@@ -180,7 +181,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                 double b[] = {0.0, 0.0, 0.0, 0.0};
                 b[num_rs - 1] = 1.0;
 
-                int info = linalg<lapack>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
+                int info = linalg<CPU>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
 
                 if (info) 
                 {
@@ -289,8 +290,8 @@ void Atom_symmetry_class::check_lo_linear_independence()
     std::vector<double> loprod_eval(num_lo_descriptors());
     mdarray<double_complex, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
-    stdevp.solve(num_lo_descriptors(), loprod_tmp.ptr(), loprod_tmp.ld(), &loprod_eval[0], 
-                 loprod_evec.ptr(), loprod_evec.ld());
+    stdevp.solve(num_lo_descriptors(), loprod_tmp.at<CPU>(), loprod_tmp.ld(), &loprod_eval[0], 
+                 loprod_evec.at<CPU>(), loprod_evec.ld());
 
     if (fabs(loprod_eval[0]) < 0.001) 
     {
@@ -490,24 +491,24 @@ void Atom_symmetry_class::initialize()
     memset(&core_charge_density_[0], 0, atom_type_->num_mt_points() * sizeof(double));
 }
 
-void Atom_symmetry_class::set_spherical_potential(std::vector<double>& vs__)
+void Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
 {
     if (atom_type_->num_mt_points() != (int)vs__.size())
         error_local(__FILE__, __LINE__, "wrong size of effective potential array");
 
     spherical_potential_ = vs__;
 
-    //== /* write spherical potential */
-    //== std::stringstream sstr;
-    //== sstr << "mt_spheric_potential_" << id_ << ".dat";
-    //== FILE* fout = fopen(sstr.str().c_str(), "w");
+    ///* write spherical potential */
+    //std::stringstream sstr;
+    //sstr << "mt_spheric_potential_" << id_ << ".dat";
+    //FILE* fout = fopen(sstr.str().c_str(), "w");
 
-    //== for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
-    //== {
-    //==     double r = atom_type_->radial_grid(ir);
-    //==     fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_->zn() / r);
-    //== }
-    //== fclose(fout);
+    //for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
+    //{
+    //    double r = atom_type_->radial_grid(ir);
+    //    fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_->zn() / r);
+    //}
+    //fclose(fout);
 }
 
 void Atom_symmetry_class::find_enu()
@@ -542,12 +543,14 @@ void Atom_symmetry_class::find_enu()
         }
     }
 
-    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    //Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     #pragma omp parallel for
     for (int i = 0; i < (int)rs_with_auto_enu.size(); i++)
     {
         radial_solution_descriptor* rsd = rs_with_auto_enu[i];
-        rsd->enu = solver.find_enu(rsd->n, rsd->l, spherical_potential_, rsd->enu);
+        rsd->enu = Enu_finder(atom_type_->zn(), rsd->n, rsd->l, atom_type_->radial_grid(), spherical_potential_, rsd->enu).enu();
+
+        //rsd->enu = solver.find_enu(rsd->n, rsd->l, spherical_potential_, rsd->enu);
     }
 }
 
@@ -586,16 +589,16 @@ void Atom_symmetry_class::sync_radial_functions(Communicator const& comm__, int 
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    comm__.bcast(radial_functions_.ptr(), size, rank__);
-    comm__.bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank__);
+    comm__.bcast(radial_functions_.at<CPU>(), size, rank__);
+    comm__.bcast(aw_surface_derivatives_.at<CPU>(), (int)aw_surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 
 void Atom_symmetry_class::sync_radial_integrals(Communicator const& comm__, int const rank__)
 {
-    comm__.bcast(h_spherical_integrals_.ptr(), (int)h_spherical_integrals_.size(), rank__);
-    comm__.bcast(o_radial_integrals_.ptr(), (int)o_radial_integrals_.size(), rank__);
-    comm__.bcast(so_radial_integrals_.ptr(), (int)so_radial_integrals_.size(), rank__);
+    comm__.bcast(h_spherical_integrals_.at<CPU>(), (int)h_spherical_integrals_.size(), rank__);
+    comm__.bcast(o_radial_integrals_.at<CPU>(), (int)o_radial_integrals_.size(), rank__);
+    comm__.bcast(so_radial_integrals_.at<CPU>(), (int)so_radial_integrals_.size(), rank__);
 }
 
 void Atom_symmetry_class::sync_core_charge_density(Communicator const& comm__, int const rank__)

@@ -27,7 +27,7 @@
 
 #include "typedefs.h"
 
-#define FORTRAN(x) x##_
+//#define FORTRAN(x) x##_
 
 //== #define _TIMER_TIMEOFDAY_
 //== #define _TIMER_MPI_WTIME_
@@ -42,8 +42,6 @@
 #if defined(_LIBSCI_ACC_) && !defined(_GPU_)
 #error "GPU interface must be enabled for libsci_acc"
 #endif
-
-//== #define _FFTW_THREADED_
 
 #ifdef _LIBSCI_ACC_
 const int alloc_mode = 1;
@@ -79,21 +77,16 @@ const int debug_level = 0;
  *  verbosity_level >= 6 : print forces contributions \n
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
+#ifdef _VERBOSITY_
+const int verbosity_level = _VERBOSITY_;
+#else
 const int verbosity_level = 6;
+#endif
 
 const bool fix_apwlo_linear_dependence = false;
 
 const radial_grid_t default_radial_grid_t = scaled_pow_grid;
 
 const bool use_second_variation = true;
-
-#define MEMORY_USAGE_INFO()                                                                \
-{                                                                                          \
-    size_t VmRSS, VmHWM;                                                                   \
-    Platform::get_proc_status(&VmHWM, &VmRSS);                                             \
-    printf("[rank %i at line %i of file %s] VmHWM: %i Mb, VmRSS: %i Mb, mdarray: %i Mb\n", \
-           Platform::mpi_rank(), __LINE__, __FILE__, int(VmHWM >> 20), int(VmRSS >> 20),   \
-           int(mdarray_mem_count >> 20));                                                  \
-}
 
 #endif // __CONFIG_H__

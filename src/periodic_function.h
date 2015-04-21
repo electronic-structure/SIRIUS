@@ -74,7 +74,7 @@ class Periodic_function
         Step_function* step_function_;
 
         /// alias for FFT driver
-        FFT3D<cpu>* fft_;
+        FFT3D<CPU>* fft_;
 
         electronic_structure_method_t esm_type_;
 
@@ -100,20 +100,22 @@ class Periodic_function
 
         Communicator comm_;
 
+        splindex<block> spl_fft_size_;
+
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
-            for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++)
             {
                 int ia = unit_cell_->spl_num_atoms(ialoc);
-                f_mt_local_(ialoc).set_ptr(&f_mt_(0, 0, ia));
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
             }
         }
         
         /// Set pointer to local part of interstitial array
         void set_local_it_ptr()
         {
-            f_it_local_.set_ptr(&f_it_(fft_->global_offset()));
+            f_it_local_ = mdarray<T, 1>(&f_it_(spl_fft_size_.global_offset()), spl_fft_size_.local_size());
         }
 
     public:
@@ -152,21 +154,21 @@ class Periodic_function
 
         size_t size();
 
-        size_t pack(size_t offset, Mixer* mixer);
+        size_t pack(size_t offset, Mixer<double>* mixer);
         
         size_t unpack(T* array);
        
         /// Set the global pointer to the muffin-tin part
-        void set_mt_ptr(T* mt_ptr)
+        void set_mt_ptr(T* mt_ptr__)
         {
-            f_mt_.set_ptr(mt_ptr);
+            f_mt_ = mdarray<T, 3>(mt_ptr__, angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
             set_local_mt_ptr();
         }
 
         /// Set the global pointer to the interstitial part
-        void set_it_ptr(T* it_ptr)
+        void set_it_ptr(T* it_ptr__)
         {
-            f_it_.set_ptr(it_ptr);
+            f_it_ = mdarray<T, 1>(it_ptr__, fft_->size());
             set_local_it_ptr();
         }
 
@@ -222,10 +224,17 @@ class Periodic_function
                 for (int ig = 0; ig < num_gvec_; ig++)
                 {
                     vector3d<double> vgc = parameters_.reciprocal_lattice()->gvec_cart(ig);
-                    p += real(f_pw_(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
+                    p += real(f_pw_(ig) * exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
             }
+        }
+
+        int64_t hash()
+        {
+            int64_t h = Utils::hash(&f_it_(0), fft_->size() * sizeof(T));
+            h +=  Utils::hash(&f_pw_(0), num_gvec_ * sizeof(double_complex), h);
+            return h;
         }
 
 };

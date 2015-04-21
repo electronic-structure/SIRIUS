@@ -198,8 +198,7 @@ class Matching_coefficients
                     /* get phase factors of G+k vectors */
                     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
                     {
-                        double phase = twopi * Utils::scalar_product(gklo_basis_descriptors[igk].gkvec, 
-                                                                     parameters_.unit_cell()->atom(ia)->position());
+                        double phase = twopi * (gklo_basis_descriptors[igk].gkvec * parameters_.unit_cell()->atom(ia)->position());
 
                         gkvec_phase_factors_(igk, ia) = exp(complex_i * phase);
                     }

@@ -34,6 +34,7 @@
 #include "mdarray.h"
 #include "timer.h"
 #include "vector3d.h"
+#include "matrix3d.h"
 #include "error_handling.h"
 
 /// Utility class.
@@ -54,7 +55,7 @@ class Utils
 
         static inline int lmax_by_lmmax(int lmmax__)
         {
-            int lmax = int(sqrt(double(lmmax__)) + 1e-8) - 1;
+            int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
             if (lmmax(lmax) != lmmax__) error_local(__FILE__, __LINE__, "wrong lmmax");
             return lmax;
         }
@@ -64,12 +65,6 @@ class Utils
             std::ifstream ifs(file_name.c_str());
             if (ifs.is_open()) return true;
             return false;
-        }
-
-        template <typename U, typename V>
-        static inline double scalar_product(vector3d<U> a, vector3d<V> b)
-        {
-            return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
         }
 
         static inline double fermi_dirac_distribution(double e)
@@ -151,9 +146,11 @@ class Utils
             return result;
         }
         
-        static uint64_t hash(void* buff, size_t size, uint64_t h = 5381)
+        /// Simple hash function.
+        /** Example: printf("hash: %16llX\n", hash()); */
+        static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
         {
-            unsigned char* p = static_cast<unsigned char*>(buff);
+            unsigned char const* p = static_cast<unsigned char const*>(buff);
             for(size_t i = 0; i < size; i++) h = ((h << 5) + h) + p[i];
             return h;
         }
@@ -165,7 +162,7 @@ class Utils
 
         static void write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx);
 
-        static void check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx);
+        static void check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx, int n = -1);
 
         static double confined_polynomial(double r, double R, int p1, int p2, int dm);
 
@@ -173,7 +170,22 @@ class Utils
 
         static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
 
-        static vector3d<int> find_translation_limits(double radius, double lattice_vectors[3][3]);
+        static vector3d<int> find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__);
+
+        static std::vector< std::pair<int, int> > l_m_by_lm(int lmax)
+        {
+            std::vector< std::pair<int, int> > l_m(lmmax(lmax));
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++)
+                {
+                    int lm = lm_by_l_m(l, m);
+                    l_m[lm].first = l;
+                    l_m[lm].second = m;
+                }
+            }
+            return l_m;
+        }
 };
 
 #endif

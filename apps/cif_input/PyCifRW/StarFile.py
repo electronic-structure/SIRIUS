@@ -48,7 +48,7 @@ class StarTuple(tuple):
 class StarDict(dict):
     pass
 
-class LoopBlock:
+class LoopBlock(object):
     def __init__(self,data = (), dimension = 0, maxoutlength=2048, wraplength=80, overwrite=True):
         # print 'Creating new loop block, dimension %d' % dimension
         self.block = {}
@@ -243,7 +243,7 @@ class LoopBlock:
                     yield prep_yield
         else:                                  #in some loop
             for i in range(my_length):
-                kvpairs = map(lambda a:(a,self.coord_to_group(a,coord)[i]),self.block.keys())
+                kvpairs = map(lambda a:(a,self.coord_to_group(a,coord)[i]),self.item_order)
                 kvvals = map(lambda a:a[1],kvpairs)   #just values
                 # print "Recursive kvpairs at %d: %s" % (i,`kvpairs`)
                 if self.loops:
@@ -353,7 +353,7 @@ class LoopBlock:
               self.lower_keys.remove(testkey)
               # now remove the key in the order list
               for i in range(len(self.item_order)):
-                if isinstance(self.item_order[i],StringType): #may be loop
+                if isinstance(self.item_order[i],basestring): #may be loop
                     if self.item_order[i].lower()==testkey:
                         del self.item_order[i]
                         break
@@ -379,7 +379,7 @@ class LoopBlock:
            for key,val in keyvals:
                newloop.AddLoopItem((key,val))
            self.insert_loop(newloop)
-        elif not isinstance(data[0],StringType):
+        elif not isinstance(data[0],basestring):
                   raise TypeError, 'Star datanames are strings only (got %s)' % `data[0]`
         else:
            if data[1] == [] or get_dim(data[1])[0] == self.dimension:
@@ -429,7 +429,7 @@ class LoopBlock:
         if type(item) != TupleType and type(item) != ListType:
            test_item = [item]         #single item list
         def check_one (it):
-            if type(it) == StringType:
+            if type(it) in [unicode,str]:
                 if it=='': return
                 me = self.char_check.match(it)            
                 if not me:
@@ -440,9 +440,8 @@ class LoopBlock:
         map(check_one,test_item)
 
     def regularise_data(self,dataitem):
-        alrighttypes = [IntType, LongType, 
-                        FloatType, StringType]
-        okmappingtypes = [TupleType, ListType]
+        alrighttypes = [int, long, float, str, unicode]
+        okmappingtypes = [tuple, list]
         thistype = type(dataitem)
         if thistype in alrighttypes or thistype in okmappingtypes:
             return dataitem
@@ -609,7 +608,7 @@ class LoopBlock:
                    # grab any comment
                    thiscomment = self.comment_list.get(itemname.lower(),'') 
                    itemvalue = self[itemname]
-                   if isinstance(itemvalue,StringType):  #need to sanitize
+                   if isinstance(itemvalue,basestring):  #need to sanitize
                          thisstring = self._formatstring(itemvalue)
                    else: thisstring = str(itemvalue)
                    # try for a tabstop at 40
@@ -649,7 +648,7 @@ class LoopBlock:
         temp_order = self.item_order[:]
         while len(temp_order)>0:
             itemname = temp_order.pop(0)
-            if isinstance(itemname,StringType):  #(not loop)
+            if isinstance(itemname,basestring):  #(not loop)
                 outstring.write(' ' * indent) 
                 outstring.write(itemname)
                 outstring.write("\n")
@@ -686,8 +685,8 @@ class LoopBlock:
     def format_packet_item(self,pack_item,indent):
         # print 'Formatting %s' % `pack_item`
         curstring = ''
-        if isinstance(pack_item,(StringType,IntType,FloatType,LongType,StarTuple,StarList)):
-           if isinstance(pack_item,StringType):
+        if isinstance(pack_item,(basestring,IntType,FloatType,LongType,StarTuple,StarList)):
+           if isinstance(pack_item,basestring):
                thisstring = self._formatstring(pack_item) #no spaces yet
                if '\n' in thisstring:    #must have semicolon digraph then 
                    curstring = curstring + thisstring
@@ -749,7 +748,7 @@ class LoopBlock:
 
 class StarBlock(LoopBlock):
     def __init__(self,*pos_args,**keyword_args):
-        LoopBlock.__init__(self,*pos_args,**keyword_args)
+        super(StarBlock,self).__init__(*pos_args,**keyword_args)
         self.saves = BlockCollection(element_class=LoopBlock,type_tag="save")
 
     def __getitem__(self,key):
@@ -790,7 +789,7 @@ class StarBlock(LoopBlock):
 class StarPacket(list):
     pass
 
-class BlockCollection:
+class BlockCollection(object):
     def __init__(self,datasource=None,element_class=StarBlock,type_tag=''):
         self.dictionary = {}
         self.type_tag = type_tag
@@ -975,7 +974,7 @@ class BlockCollection:
 
 class StarFile(BlockCollection):
     def __init__(self,datasource=None,maxinlength=-1,maxoutlength=0,blocktype=StarBlock,**kwargs):
-        BlockCollection.__init__(self,datasource=datasource,element_class=blocktype,type_tag='data_')
+        super(StarFile,self).__init__(datasource=datasource,element_class=blocktype,type_tag='data_')
         if isinstance(datasource, StarFile):
             self.my_uri = datasource.my_uri
         self.maxinlength = maxinlength      #no restriction
@@ -1014,10 +1013,15 @@ class StarLengthError(Exception):
     def __str__(self):
         return '\nStar length error: ' + self.value
 def ReadStar(filename,maxlength=2048,dest=StarFile(),scantype='standard',grammar=None):
-    import string
+    import string,sys
     import YappsStarParser_1_1 as Y1
     import YappsStarParser_1_0 as Y0
     if isinstance(filename,basestring):
+        # Some logic to deal with windows filenames
+        if filename[1]==":" and sys.platform=="win32":
+            realurl = "file:" + filename
+        else:
+            realurl = filename
         filestream = urlopen(filename)
     else:
         filestream = filename   #already opened for us
@@ -1052,10 +1056,8 @@ def ReadStar(filename,maxlength=2048,dest=StarFile(),scantype='standard',grammar
     grammar_found = False
     for Y in target_grammars:
       try:
-        if scantype == 'standard':
-            parser = Y.StarParser(Y.StarParserScanner(text))
-        else:
-            parser = Y.StarParser(Y.yappsrt.Scanner(None,[],text,scantype='flex'))
+        parser = Y.StarParser(Y.StarParserScanner(text,scantype='flex'))
+#       parser = Y.StarParser(Y.yappsrt.Scanner(None,[],text,scantype='flex'))
         proto_star = getattr(parser,"input")()
       except Y.yappsrt.SyntaxError:
         errorstring = 'Syntax error in input file: last value parsed was %s' % Y.lastval
@@ -1076,7 +1078,7 @@ def ReadStar(filename,maxlength=2048,dest=StarFile(),scantype='standard',grammar
 
 def get_dim(dataitem,current=0,packlen=0):
     zerotypes = [IntType, LongType, 
-                    FloatType, StringType]
+                    FloatType, basestring]
     if type(dataitem) in zerotypes:
         return current, packlen
     if not dataitem.__class__ == ().__class__ and \

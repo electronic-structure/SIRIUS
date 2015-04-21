@@ -7,19 +7,19 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--disable-fortran", "--disable-mpi", "--disable-openmp", "--disable-threads"]
+              ["--enable-fortran", "--disable-mpi", "--enable-openmp", "--enable-threads"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
               ["--disable-shared"]
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.13.tar.gz",
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.14.tar.gz",
               ["--enable-fortran", "--disable-shared", "--enable-static=yes", 
                "--disable-deprecated-symbols", "--disable-filters","--disable-parallel", "--with-zlib=no","--with-szlib=no"]
              ],
-    "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.0.tar.gz",
+    "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.6/spglib-1.6.0.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.7/spglib-1.7.2.tar.gz",
               []
              ]
 }
@@ -59,6 +59,7 @@ def configure_package(package_name, platform):
     new_env["CC"] = platform["CC"]
     new_env["CXX"] = platform["CXX"]
     new_env["FC"] = platform["FC"]
+    new_env["F77"] = platform["FC"]
     new_env["FCCPP"] = platform["FCCPP"]
 
     p = subprocess.Popen(["./configure"] + package[1], cwd = "./libs/" + package_dir, env = new_env)
@@ -86,7 +87,7 @@ def configure_package(package_name, platform):
 
     if (package_name == "fftw"):
         retval = ["-I" + cwdlibs + package_dir + "/api", 
-                  cwdlibs + package_dir + "/.libs/libfftw3.a",
+                  cwdlibs + package_dir + "/.libs/libfftw3.a " + cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 
@@ -146,6 +147,8 @@ def main():
     
     make_packages = []
     clean_packages = []
+
+    makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/src\n")
 
     if "install" in platform:
         for name in platform["install"]:

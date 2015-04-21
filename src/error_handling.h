@@ -41,6 +41,7 @@
 #include <sys/time.h>
 #include <sstream>
 #include <string>
+#include <stdexcept>
 #include "config.h"
 #include "platform.h"
 
@@ -94,14 +95,26 @@ void log_function_exit(const char* func_name);
 
 #define TERMINATE_NO_SCALAPACK terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
 
-#define INFO std::cout << "[" << __func__ << ":" << Platform::comm_world().rank() << "] "
+#define TERMINATE_NOT_IMPLEMENTED terminate(__FILE__, __LINE__, "feature is not implemented");
 
-#define DUMP(...)                                                                             \
-{                                                                                             \
-    char str__[1024];                                                                         \
-    int x__ = snprintf(str__, 1024, "[%s:rank%i] ", __func__, Platform::comm_world().rank()); \
-    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                                         \
-    printf("%s\n", str__);                                                                    \
+#define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
+
+#define DUMP(...)                                                                \
+{                                                                                \
+    char str__[1024];                                                            \
+    int x__ = snprintf(str__, 1024, "[%s:%i] ", __func__, Platform::rank()); \
+    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                            \
+    printf("%s\n", str__);                                                       \
+}
+
+#define LOG_FUNC_BEGIN()           \
+{                                  \
+    log_function_enter(__func__);  \
+}
+
+#define LOG_FUNC_END()             \
+{                                  \
+    log_function_exit(__func__);   \
 }
 
 #endif // __ERROR_HANDLING_H__

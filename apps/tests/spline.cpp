@@ -12,11 +12,11 @@ void test1(double x0, double x1, int m, double exact_result)
     
     for (int i = 0; i < 5000; i++) s[i] = sin(r[i]);
     
-    double d = s.interpolate().integrate(m);
-    double abs_err = fabs(d - exact_result);
+    double d = s.template interpolate<CPU>().integrate(m);
+    double err = std::abs(1 - d / exact_result);
     
-    printf("       absolute error: %18.12f", abs_err);
-    if (abs_err < 1e-10) 
+    printf("       relative error: %18.12f", err);
+    if (err < 1e-10) 
     {
         printf("  OK\n");
     }
@@ -71,7 +71,7 @@ void test3(double x0, double x1, double exact_val)
     s3.interpolate();
 
     double v1 = s3.integrate(2);
-    double v2 = Spline<double>::integrate(&s1, &s2, 2);
+    double v2 = inner<CPU>(s1, s2, 2);
 
     printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
     printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
@@ -100,7 +100,7 @@ void test4(double x0, double x1, double exact_val)
     s3.interpolate();
 
     double v1 = s3.integrate(1);
-    double v2 = Spline<double>::integrate(&s1, &s2, 1);
+    double v2 = inner<CPU>(s1, s2, 1);
 
     printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
     printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
@@ -132,6 +132,36 @@ void test5()
 //    std::cout << s[4999] << " " << s.deriv(0, 4999) << " " << s.deriv(1, 4999) << " " << s.deriv(2, 4999) << std::endl;
 //}
 
+void test6()
+{
+    printf("4 points interpolation\n");
+    std::vector<double> x = {0, 1, 2, 3};
+    Radial_grid r(x);
+    Spline<double> s(r);
+    s[0] = 0;
+    s[1] = 1;
+    s[2] = 0;
+    s[3] = 0;
+    double val = s.interpolate().integrate(0);
+    if (std::abs(val - 1.125) > 1e-13)
+    {
+        printf("wrong result: %18.12f\n", val);
+    }
+    else
+    {
+        printf("OK\n");
+    }
+    
+    int N = 4000;
+    FILE* fout = fopen("spline_test.dat", "w");
+    for (int i = 0; i < N; i++)
+    {
+        double t = 3.0 * i / (N - 1);
+        fprintf(fout, "%18.12f %18.12f\n", t, s(t));
+    }
+    fclose(fout);
+}
+
 int main(int argn, char **argv)
 {
     Platform::initialize(1);
@@ -160,6 +190,8 @@ int main(int argn, char **argv)
     test4(0.0001, 2.0, 0.7029943796175838);
 
     test5();
+
+    test6();
 
     //test4(0.0001, 1.892184);
 }

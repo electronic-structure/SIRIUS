@@ -42,7 +42,7 @@ class Potential
         Global& parameters_;
 
         /// alias for FFT driver
-        FFT3D<cpu>* fft_;
+        FFT3D<CPU>* fft_;
 
         Periodic_function<double>* effective_potential_;
 
@@ -373,10 +373,6 @@ class Potential
 
         void generate_d_mtrx();
 
-        #ifdef _GPU_
-        void generate_d_mtrx_gpu();
-        #endif
-
         void check_potential_continuity_at_mt();
 
         //void copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src);
@@ -388,7 +384,7 @@ class Potential
             return s;
         }
 
-        inline void pack(Mixer* mixer)
+        inline void pack(Mixer<double>* mixer)
         {
             size_t n = effective_potential_->pack(0, mixer);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);

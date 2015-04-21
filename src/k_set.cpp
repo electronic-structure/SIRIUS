@@ -52,7 +52,7 @@ void K_set::sync_band_energies()
         int ik = (int)spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
-    comm_k_.allgather(band_energies.ptr(), 
+    comm_k_.allgather(band_energies.at<CPU>(), 
                       static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
                       static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()));
 
@@ -61,7 +61,7 @@ void K_set::sync_band_energies()
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::K_set::find_eigen_states");
+    Timer t("sirius::K_set::find_eigen_states", comm_k_);
     
     if (precompute && parameters_.unit_cell()->full_potential())
     {
@@ -70,27 +70,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         parameters_.unit_cell()->generate_radial_functions();
         parameters_.unit_cell()->generate_radial_integrals();
     }
-    if (precompute && (parameters_.esm_type() == ultrasoft_pseudopotential ||
-                       parameters_.esm_type() == norm_conserving_pseudopotential))
-    {   
-        switch (parameters_.processing_unit())
-        {
-            case cpu:
-            {
-                potential->generate_d_mtrx();
-                break;
-            }
-            case gpu:
-            {
-                #ifdef _GPU_
-                potential->generate_d_mtrx_gpu();
-                #else 
-                TERMINATE_NO_GPU
-                #endif
-                break;
-            }
-        }
-    }
+
+    parameters_.work_load_ = 0;
     
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
@@ -109,6 +90,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         kpoints_[ik]->generate_spinor_wave_functions();
     }
     comm_k_.barrier();
+    comm_k_.allreduce(&parameters_.work_load_, 1);
+    if (Platform::rank() == 0) DUMP("work_load : %i", parameters_.work_load_);
 
     /* synchronize eigen-values */
     sync_band_energies();
@@ -153,7 +136,7 @@ double K_set::valence_eval_sum()
 
 void K_set::find_band_occupancies()
 {
-    Timer t("sirius::Density::find_band_occupancies");
+    Timer t("sirius::K_set::find_band_occupancies");
 
     double ef = 0.15;
 
@@ -392,9 +375,9 @@ void K_set::load()
 int K_set::max_num_gkvec()
 {
     int max_num_gkvec_ = 0;
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
+    for (size_t ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
-        int ik = (int)spl_num_kpoints_[ikloc];
+        auto ik = spl_num_kpoints_[ikloc];
         max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());
     }
     comm_k_.allreduce<int, op_max>(&max_num_gkvec_, 1);
@@ -403,7 +386,7 @@ int K_set::max_num_gkvec()
 
 //== void K_set::fixed_band_occupancies()
 //== {
-//==     Timer t("sirius::Density::fixed_band_occupancies");
+//==     Timer t("sirius::K_set::fixed_band_occupancies");
 //== 
 //==     if (parameters_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
 //== 

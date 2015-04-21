@@ -32,7 +32,7 @@ void SHT::backward_transform<double>(int ld, double* flm, int nr, int lmmax, dou
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    linalg<CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -40,7 +40,7 @@ void SHT::backward_transform<double_complex>(int ld, double_complex* flm, int nr
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    linalg<CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -48,7 +48,7 @@ void SHT::forward_transform<double>(double* ftp, int nr, int lmmax, int ld, doub
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 template <>
@@ -56,16 +56,10 @@ void SHT::forward_transform<double_complex>(double_complex* ftp, int nr, int lmm
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
-/** Specialization for real Gaunt coefficients between three complex spherical harmonics
- *  \f[ 
- *      \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
- *  \f]
- */
-template<> 
-double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
+double SHT::gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3)
 {
     assert(l1 >= 0);
     assert(l2 >= 0);
@@ -79,12 +73,32 @@ double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
 }
 
-/** Specialization for complex Gaunt coefficients between two complex and one real spherical harmonics
- *  \f[ 
- *      \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
- *  \f]
- */
-template<> double_complex SHT::gaunt<double_complex>(int l1, int l2, int l3, int m1, int m2, int m3)
+double SHT::gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    assert(l1 >= 0);
+    assert(l2 >= 0);
+    assert(l3 >= 0);
+    assert(m1 >= -l1 && m1 <= l1);
+    assert(m2 >= -l2 && m2 <= l2);
+    assert(m3 >= -l3 && m3 <= l3);
+    
+    double d = 0;
+    for (int k1 = -l1; k1 <= l1; k1++)
+    {
+        for (int k2 = -l2; k2 <= l2; k2++)
+        {
+            for (int k3 = -l3; k3 <= l3; k3++)
+            {
+                d += real(conj(sirius::SHT::ylm_dot_rlm(l1, k1, m1)) *
+                          sirius::SHT::ylm_dot_rlm(l2, k2, m2) *
+                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
+            }
+        }
+    }
+    return d;
+}
+
+double_complex SHT::gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
 {
     assert(l1 >= 0);
     assert(l2 >= 0);
@@ -95,15 +109,14 @@ template<> double_complex SHT::gaunt<double_complex>(int l1, int l2, int l3, int
 
     if (m2 == 0) 
     {
-        return double_complex(gaunt<double>(l1, l2, l3, m1, m2, m3), 0.0);
+        return double_complex(gaunt_ylm(l1, l2, l3, m1, m2, m3), 0.0);
     }
     else 
     {
-        return (ylm_dot_rlm(l2, m2, m2) * gaunt<double>(l1, l2, l3, m1, m2, m3) +  
-                ylm_dot_rlm(l2, -m2, m2) * gaunt<double>(l1, l2, l3, m1, -m2, m3));
+        return (ylm_dot_rlm(l2, m2, m2) * gaunt_ylm(l1, l2, l3, m1, m2, m3) +  
+                ylm_dot_rlm(l2, -m2, m2) * gaunt_ylm(l1, l2, l3, m1, -m2, m3));
     }
 }
-
 
 SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
 {
@@ -172,8 +185,8 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
 
     if (mesh_type_ == 1)
     {
-        linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
-        linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+        linalg<CPU>::geinv(lmmax_, ylm_forward_);
+        linalg<CPU>::geinv(lmmax_, rlm_forward_);
     }
     
     if (debug_level > 0)
@@ -358,29 +371,17 @@ void SHT::uniform_coverage()
     tp_(1, num_points_ - 1) = 0;
 }
 
-Spheric_function<spectral, double> SHT::convert(Spheric_function<spectral, double_complex>& f)
+Spheric_function<spectral, double> SHT::convert(Spheric_function<spectral, double_complex>& f__)
 {
-    Spheric_function<spectral, double> g;
+    auto g = Spheric_function<spectral, double>(f__.angular_domain_size(), f__.radial_grid());
 
-    /* radial index is first */
-    if (f.radial_domain_idx() == 0)
-    {
-        g = Spheric_function<spectral, double>(f.radial_grid(), f.angular_domain_size());
-    }
-    else
-    {
-        g = Spheric_function<spectral, double>(f.angular_domain_size(), f.radial_grid());
-    }
+    convert(f__, g);
 
-    convert(f, g);
-
-    return g;
+    return std::move(g);
 }
 
 Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectral, double>& f)
 {
-    Spheric_function<spectral, double_complex> g;
-    
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
 
     /* cache transformation arrays */
@@ -396,11 +397,9 @@ Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectra
         }
     }
 
-    /* radial index is first */
-    if (f.radial_domain_idx() == 0)
+    auto g = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
+    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
     {
-        g = Spheric_function<spectral, double_complex>(f.radial_grid(), f.angular_domain_size());
-
         int lm = 0;
         for (int l = 0; l <= lmax; l++)
         {
@@ -408,50 +407,25 @@ Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectra
             {
                 if (m == 0)
                 {
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) g(ir, lm) = f(ir, lm);
+                    g(lm, ir) = f(lm, ir);
                 }
                 else 
                 {
                     int lm1 = Utils::lm_by_l_m(l, -m);
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                        g(ir, lm) = tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1);
+                    g(lm, ir) = tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir);
                 }
                 lm++;
             }
         }
     }
-    else
-    {
-        g = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
-        for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-        {
-            int lm = 0;
-            for (int l = 0; l <= lmax; l++)
-            {
-                for (int m = -l; m <= l; m++)
-                {
-                    if (m == 0)
-                    {
-                        g(lm, ir) = f(lm, ir);
-                    }
-                    else 
-                    {
-                        int lm1 = Utils::lm_by_l_m(l, -m);
-                        g(lm, ir) = tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir);
-                    }
-                    lm++;
-                }
-            }
-        }
-    }
 
-    return g;
+    return std::move(g);
 }
 
 void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g)
 {
-    if (f.radial_domain_idx() != g.radial_domain_idx())
-        error_local(__FILE__, __LINE__, "wrong radial domain index");
+    //if (f.radial_domain_idx() != g.radial_domain_idx())
+    //    error_local(__FILE__, __LINE__, "wrong radial domain index");
     
     if (f.radial_grid().hash() != g.radial_grid().hash())
         error_local(__FILE__, __LINE__, "radial grids don't match");
@@ -472,31 +446,31 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
         }
     }
 
-    /* radial index is first */
-    if (f.radial_domain_idx() == 0)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int m = -l; m <= l; m++)
-            {
-                if (m == 0)
-                {
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
-                        g(ir, lm) = real(f(ir, lm));
-                }
-                else 
-                {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
-                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                        g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
-                }
-                lm++;
-            }
-        }
-    }
-    else
-    {
+    ///* radial index is first */
+    //if (f.radial_domain_idx() == 0)
+    //{
+    //    int lm = 0;
+    //    for (int l = 0; l <= lmax; l++)
+    //    {
+    //        for (int m = -l; m <= l; m++)
+    //        {
+    //            if (m == 0)
+    //            {
+    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
+    //                    g(ir, lm) = real(f(ir, lm));
+    //            }
+    //            else 
+    //            {
+    //                int lm1 = Utils::lm_by_l_m(l, -m);
+    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+    //                    g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
+    //            }
+    //            lm++;
+    //        }
+    //    }
+    //}
+    //else
+    //{
         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
         {
             int lm = 0;
@@ -517,7 +491,7 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
                 }
             }
         }
-    }
+    //}
 }
 
 }

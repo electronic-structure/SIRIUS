@@ -56,8 +56,8 @@ void Force::compute_dmat(Global& parameters__,
                         ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
                 }
 
-                blas<cpu>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
-                                complex_one, ev1, ev, complex_one, dm__);
+                linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
+                                  complex_one, ev1, ev, complex_one, dm__);
             }
         }
         else
@@ -75,8 +75,8 @@ void Force::compute_dmat(Global& parameters__,
             {
                 int offs = ispn * parameters__.num_fv_states();
 
-                blas<cpu>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
-                                complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
+                linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
+                                  complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
             }
         }
     }
@@ -137,12 +137,12 @@ void Force::ibs_force(Global& parameters__,
         }
 
         /* apw-apw block of the overlap matrix */
-        blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
-                        alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), o.ptr(), o.ld());
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
+                          alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
             
         /* apw-apw block of the Hamiltonian matrix */
-        blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
-                        alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), h.ptr(), h.ld());
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
+                          alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
         
         int iat = type->id();
 
@@ -156,8 +156,8 @@ void Force::ibs_force(Global& parameters__,
 
                 double_complex zt = conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / parameters__.unit_cell()->omega();
 
-                double t1 = 0.5 * Utils::scalar_product(kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
-                                                        kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
+                double t1 = 0.5 * (kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
+                                   kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
 
                 h(igk_row, igk_col) -= t1 * zt;
                 o(igk_row, igk_col) -= zt;
@@ -183,7 +183,7 @@ void Force::ibs_force(Global& parameters__,
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    vector3d<double>& vgk = kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart;
+                    vector3d<double> const& vgk = kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart;
                     h1(igk_row, icol) = double_complex(0.0, vgk[x]) * h(igk_row, icol);
                     o1(igk_row, icol) = double_complex(0.0, vgk[x]) * o(igk_row, icol);
                 }
@@ -193,23 +193,23 @@ void Force::ibs_force(Global& parameters__,
             {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++)
                 {
-                    vector3d<double>& vgk = kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart;
+                    vector3d<double> const& vgk = kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart;
                     h1(irow, igk_col) = double_complex(0.0, -vgk[x]) * h(irow, igk_col);
                     o1(irow, igk_col) = double_complex(0.0, -vgk[x]) * o(irow, igk_col);
                 }
             }
 
             /* zm1 = H * V */
-            blas<cpu>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
-                            complex_one, h1, fv_evec, complex_zero, zm1);
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+                              complex_one, h1, fv_evec, complex_zero, zm1);
 
             /* F = V^{+} * zm1 = V^{+} * H * V */
-            blas<cpu>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
-                            complex_one, fv_evec, zm1, complex_zero, zf);
+            linalg<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+                              complex_one, fv_evec, zm1, complex_zero, zf);
 
             /* zm1 = O * V */
-            blas<cpu>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
-                            complex_one, o1, fv_evec, complex_zero, zm1);
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+                              complex_one, o1, fv_evec, complex_zero, zm1);
 
             /* multiply by energy */
             for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
@@ -219,8 +219,8 @@ void Force::ibs_force(Global& parameters__,
             }
 
             /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
-            blas<cpu>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
-                            double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
+            linalg<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+                              double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
 
             for (int i = 0; i < dm.num_cols_local(); i++)
             {

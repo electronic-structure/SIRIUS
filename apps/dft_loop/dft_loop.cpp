@@ -27,11 +27,10 @@ void write_json_output(Global* p, DFT_ground_state* gs)
         jw.single("build_date", build_date);
         jw.single("num_ranks", p->comm().size());
         jw.single("max_num_threads", Platform::max_num_threads());
-        jw.single("num_fft_threads", Platform::num_fft_threads());
-        jw.single("cyclic_block_size", p->cyclic_block_size());
+        //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", p->mpi_grid_dims());
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = p->reciprocal_lattice()->fft()->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = p->fft()->size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", p->unit_cell()->chemical_formula());
         jw.single("num_atoms", p->unit_cell()->num_atoms());
@@ -77,7 +76,6 @@ void write_json_output(Global* p, DFT_ground_state* gs)
         
         jw.single("timers", ts);
     }
-
 }
 
 void dft_loop(cmd_args args)
@@ -87,9 +85,10 @@ void dft_loop(cmd_args args)
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         error_global(__FILE__, __LINE__, "wrong task name");
     
+    initial_input_parameters iip("sirius.json");
     std::vector<int> mpi_grid_dims;
-    mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
-    Global parameters(MPI_COMM_WORLD, mpi_grid_dims);
+    iip.common_input_section_.mpi_grid_dims_ = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
+    Global parameters(iip, MPI_COMM_WORLD);
 
     JSON_tree parser("sirius.json");
 
@@ -105,6 +104,8 @@ void dft_loop(cmd_args args)
     parameters.unit_cell()->set_auto_rmt(parser["auto_rmt"].get(0));
     int num_mag_dims = parser["num_mag_dims"].get(0);
     int num_spins = (num_mag_dims == 0) ? 1 : 2;
+
+    int bs = parser["cyclic_block_size"].get(64);
     
     parameters.set_num_mag_dims(num_mag_dims);
     parameters.set_num_spins(num_spins);
@@ -113,7 +114,7 @@ void dft_loop(cmd_args args)
     
     BLACS_grid blacs_grid(parameters.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
                           parameters.mpi_grid().dimension_size(_dim_row_),
-                          parameters.mpi_grid().dimension_size(_dim_col_));
+                          parameters.mpi_grid().dimension_size(_dim_col_), bs);
 
     #ifdef _MEMORY_USAGE_INFO_
     MEMORY_USAGE_INFO();
@@ -128,7 +129,8 @@ void dft_loop(cmd_args args)
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
     
-    K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid, ngridk, parser["use_symmetry"].get(0));
+    K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
+             vector3d<int>(&ngridk[0]), vector3d<int>(0), parser["use_symmetry"].get(0));
 
     ks.initialize();
     
@@ -143,6 +145,8 @@ void dft_loop(cmd_args args)
     MEMORY_USAGE_INFO();
     #endif
     
+    DFT_ground_state dft(parameters, potential, density, &ks);
+
     if (task_name == "gs_restart")
     {
         if (!Utils::file_exists(storage_file_name)) error_global(__FILE__, __LINE__, "storage file is not found");
@@ -152,26 +156,9 @@ void dft_loop(cmd_args args)
     else
     {
         density->initial_density();
-
-        switch(parameters.esm_type())
-        {
-            case full_potential_lapwlo:
-            case full_potential_pwlo:
-            {
-                potential->generate_effective_potential(density->rho(), density->magnetization());
-                break;
-            }
-            case ultrasoft_pseudopotential:
-            case norm_conserving_pseudopotential:
-            {
-                potential->generate_effective_potential(density->rho(), density->rho_pseudo_core(), density->magnetization());
-                break;
-            }
-        }
-
+        dft.generate_effective_potential();
     }
     
-    DFT_ground_state dft(parameters, potential, density, &ks);
     double potential_tol = parser["potential_tol"].get(1e-4);
     double energy_tol = parser["energy_tol"].get(1e-4);
 

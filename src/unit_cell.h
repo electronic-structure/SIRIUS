@@ -61,35 +61,40 @@ class Unit_cell
         /// Split index of atom symmetry classes.
         splindex<block> spl_num_atom_symmetry_classes_;
 
-        /// Bravais lattice vectors in row order.
-        double lattice_vectors_[3][3];
+        /// Bravais lattice vectors in column order.
+        /** The following convention is used to transform fractional coordinates to Cartesian:  
+         *  \f[
+         *    \vec v_{C} = {\bf L} \vec v_{f}
+         *  \f]
+         */
+        matrix3d<double> lattice_vectors_;
         
         /// Inverse Bravais lattice vectors in column order.
-        /** This matrix is used to find fractional coordinates by Cartesian coordinates */
-        double inverse_lattice_vectors_[3][3];
-        
-        /// vectors of the reciprocal lattice in row order (inverse Bravais lattice vectors scaled by 2*Pi)
-        double reciprocal_lattice_vectors_[3][3];
+        /** This matrix is used to find fractional coordinates by Cartesian coordinates:
+         *  \f[
+         *    \vec v_{f} = {\bf L}^{-1} \vec v_{C}
+         *  \f]
+         */
+        matrix3d<double> inverse_lattice_vectors_;
 
-        /// volume of the unit cell; volume of Brillouin zone is (2Pi)^3 / omega
+        matrix3d<double> reciprocal_lattice_vectors_;
+        
+        /// Volume \f$ \Omega \f$ of the unit cell. Volume of Brillouin zone is then \f$ (2\Pi)^3 / \Omega \f$.
         double omega_;
        
-        /// total volume of the muffin tin spheres
+        /// Total volume of the muffin-tin spheres.
         double volume_mt_;
         
-        /// volume of the interstitial region
+        /// Volume of the interstitial region.
         double volume_it_;
 
-        /// spglib structure with symmetry information
-        SpglibDataset* spg_dataset_;
-        
-        /// total nuclear charge
+        /// Total nuclear charge.
         int total_nuclear_charge_;
         
-        /// total number of core electrons
+        /// Total number of core electrons.
         double num_core_electrons_;
         
-        /// total number of valence electrons
+        /// Total number of valence electrons.
         double num_valence_electrons_;
 
         /// total number of electrons
@@ -148,16 +153,26 @@ class Unit_cell
         
         splindex<block> spl_atoms_;
 
-        mdarray<int, 2> beta_t_idx_;
-        
-        /// total number of beta-projectors among atom types
+        /// Total number of beta-projectors among atom types.
         int num_beta_t_;
 
         mdarray<double, 2> atom_pos_;
 
-        Symmetry symmetry_;
+        Symmetry* symmetry_;
 
         Communicator comm_;
+
+        struct beta_chunk
+        {
+            int num_beta_;
+            int num_atoms_;
+            mdarray<int, 2> desc_;
+            mdarray<double, 2> atom_pos_;
+        };
+
+        std::vector<beta_chunk> beta_chunks_;
+
+        processing_unit_t pu_;
 
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
@@ -172,12 +187,10 @@ class Unit_cell
 
     public:
     
-        Unit_cell(electronic_structure_method_t esm_type__, 
-                  Communicator& comm__)
+        Unit_cell(electronic_structure_method_t esm_type__, Communicator& comm__, processing_unit_t pu__)
             : omega_(0),
               volume_mt_(0),
               volume_it_(0),
-              spg_dataset_(NULL), 
               total_nuclear_charge_(0),
               num_core_electrons_(0),
               num_valence_electrons_(0),
@@ -185,7 +198,9 @@ class Unit_cell
               auto_rmt_(0), 
               lmax_beta_(-1),
               esm_type_(esm_type__),
-              comm_(comm__)
+              symmetry_(nullptr),
+              comm_(comm__),
+              pu_(pu__)
         {
         }
         
@@ -253,7 +268,7 @@ class Unit_cell
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
          *  unit cell volume. 
          */
-        void set_lattice_vectors(double* a1, double* a2, double* a3);
+        void set_lattice_vectors(double* a0__, double* a1__, double* a2__);
        
         /// Find the cluster of nearest neighbours around each atom
         void find_nearest_neighbours(double cluster_radius);
@@ -283,36 +298,14 @@ class Unit_cell
         template <typename T>
         inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
         {
-            vector3d<double> b;
-            for (int x = 0; x < 3; x++)
-            {
-                for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
-            }
-            return b;
+            return lattice_vectors_ * a;
         }
 
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
         {
-            vector3d<double> b;
-            for (int l = 0; l < 3; l++)
-            {
-                for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
-            }
-            return b;
+            return inverse_lattice_vectors_ * a;
         }
         
-        /// Get x coordinate of lattice vector l
-        inline double lattice_vectors(int l, int x)
-        {
-            return lattice_vectors_[l][x];
-        }
-        
-        /// Get x coordinate of reciprocal lattice vector l
-        inline double reciprocal_lattice_vectors(int l, int x)
-        {
-            return reciprocal_lattice_vectors_[l][x];
-        }
-
         /// Unit cell volume.
         inline double omega()
         {
@@ -505,20 +498,10 @@ class Unit_cell
             return nearest_neighbours_[ia][i];
         }
 
-        //== inline int num_beta_t()
-        //== {
-        //==     return num_beta_t_;
-        //== }
-
         inline mdarray<double, 2>& atom_pos()
         {
             return atom_pos_;
         }
-
-        //inline mdarray<int, 2>& beta_t_idx()
-        //{
-        //    return beta_t_idx_;
-        //}
 
         inline mt_basis_descriptor& mt_aw_basis_descriptor(int idx)
         {
@@ -530,9 +513,39 @@ class Unit_cell
             return mt_lo_basis_descriptors_[idx];
         }
 
-        inline Symmetry& symmetry()
+        inline Symmetry* symmetry()
         {
             return symmetry_;
+        }
+
+        inline int num_beta_chunks()
+        {
+            return (int)beta_chunks_.size();
+        }
+
+        inline beta_chunk& beta_chunk(int idx)
+        {
+            return beta_chunks_[idx];
+        }
+
+        inline matrix3d<double>& lattice_vectors()
+        {
+            return lattice_vectors_;
+        }
+
+        inline matrix3d<double>& reciprocal_lattice_vectors()
+        {
+            return reciprocal_lattice_vectors_;
+        }
+
+        inline vector3d<double> lattice_vector(int idx__)
+        {
+            return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
+        }
+
+        inline int num_beta_t()
+        {
+            return num_beta_t_;
         }
 };
     

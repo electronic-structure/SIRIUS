@@ -37,7 +37,7 @@ class Free_atom : public sirius::Atom_type
             : Atom_type(symbol, name, zn, mass, levels_nl, scaled_pow_grid), 
               NIST_LDA_Etot(0.0)
         {
-            radial_grid_ = sirius::Radial_grid(scaled_pow_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
+            radial_grid_ = sirius::Radial_grid(exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -49,13 +49,9 @@ class Free_atom : public sirius::Atom_type
 
             free_atom_radial_functions_ = mdarray<double, 2>(np, num_atomic_levels()); 
             
-            sirius::Radial_solver solver(false, -1.0 * zn(), radial_grid());
-        
             sirius::XC_functional Ex("XC_LDA_X", 1);
             sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
         
-            solver.set_tolerance(solver_tol);
-            
             std::vector<double> veff(np);
             std::vector<double> vnuc(np);
             for (int i = 0; i < np; i++)
@@ -105,18 +101,20 @@ class Free_atom : public sirius::Atom_type
                 memset(&rho[0], 0, rho.num_points() * sizeof(double));
                 #pragma omp parallel default(shared)
                 {
-                    std::vector<double> p(rho.num_points());
+                    //std::vector<double> p(rho.num_points());
                     std::vector<double> rho_t(rho.num_points());
                     memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
                 
                     #pragma omp for
                     for (int ist = 0; ist < num_atomic_levels(); ist++)
                     {
-                        enu[ist] = solver.bound_state(atomic_level(ist).n, atomic_level(ist).l, enu[ist], veff, p);
+                        sirius::Bound_state bound_state(zn(), atomic_level(ist).n, atomic_level(ist).l, radial_grid(), veff, enu[ist]);
+                        enu[ist] = bound_state.enu();
+                        auto& u =  bound_state.u();
                     
                         for (int i = 0; i < np; i++)
                         {
-                            free_atom_radial_functions_(i, ist) = p[i] * radial_grid().x_inv(i);
+                            free_atom_radial_functions_(i, ist) = u[i];
                             rho_t[i] += atomic_level(ist).occupancy * pow(y00 * free_atom_radial_functions_(i, ist), 2);
                         }
                     }
@@ -196,9 +194,9 @@ class Free_atom : public sirius::Atom_type
                 error_local(__FILE__, __LINE__, s);
             }
             
-            free_atom_density_ = rho.values();
+            free_atom_density_ = sirius::Spline<double>(radial_grid_, rho.values());
             
-            free_atom_potential_ = veff;
+            free_atom_potential_ = sirius::Spline<double>(radial_grid_, veff);
 
             printf("\n");
             printf("Radial gird\n");
@@ -406,6 +404,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     int lmax = 0;
     for (int i = 0; i < (int)valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
     lmax = std::min(lmax + 1, 3);
+    lmax = 4;
     //lmax = 8;
     int nmax[9];
     for (int l = 0; l <= lmax; l++)
@@ -453,7 +452,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     {
         for (int l = 0; l <= lmax; l++)
         {
-            for (int nn = 0; nn < 10; nn++)
+            for (int nn = 0; nn < 4; nn++)
             {
                 jw.begin_set();
                 std::stringstream s;

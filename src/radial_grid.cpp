@@ -64,22 +64,22 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         }
         case scaled_pow_grid:
         {   
-            /* ratio of last and first dx */
-            double S = rmax * 100;
+            ///* ratio of last and first dx */
+            double S = rmax * 1000;
             double alpha = pow(S, 1.0 / (num_points - 2));
             double x = rmin;
             for (int i = 0; i < num_points; i++)
             {
                 grid_points[i] = x;
-                x += (rmax - rmin) * (alpha - 1) * pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
+                x += (rmax - rmin) * (alpha - 1) * std::pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
             }
             break;
             
-            //double dx0 = 1e-6;
+            //double dx0 = 1e-7;
             //double alpha = -std::log(dx0 / (rmax - rmin)) / std::log(double(num_points - 1));
             //for (int i = 0; i < num_points; i++)
             //{
-            //    grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), alpha);
+            //    grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), alpha);
             //}
             break;
         }
@@ -121,7 +121,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
     }
    
     /* trivial check */
-    if (fabs(rmax - grid_points[num_points - 1]) > 1e-10)
+    if (std::abs(rmax - grid_points[num_points - 1]) > 1e-10)
     {
         std::stringstream s;
         s << "Wrong radial grid" << std::endl
@@ -136,10 +136,10 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
 
 void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, double rmax)
 {
-    assert(rmin > 0);
+    assert(rmin >= 0);
     assert(rmax > 0);
 
-    std::vector<double> grid_points = create_radial_grid_points(grid_type, num_points, rmin, rmax);
+    auto grid_points = create_radial_grid_points(grid_type, num_points, rmin, rmax);
     set_radial_points((int)grid_points.size(), &grid_points[0]);
 
     switch (grid_type)
@@ -187,21 +187,21 @@ void Radial_grid::set_radial_points(int num_points__, double* x__)
     assert(num_points__ > 0);
     
     /* set points */
-    x_.resize(num_points__);
-    memcpy(&x_[0], x__, num_points__ * sizeof(double));
+    x_ = mdarray<double, 1>(num_points__);
+    memcpy(&x_(0), x__, num_points__ * sizeof(double));
     
     /* set x^{-1} */
-    x_inv_.resize(num_points__);
-    for (int i = 0; i < num_points__; i++) x_inv_[i] = (x_[i] == 0) ? 0 : 1.0 / x_[i];
+    x_inv_ = mdarray<double, 1>(num_points__);
+    for (int i = 0; i < num_points__; i++) x_inv_(i) = (x_(i) == 0) ? 0 : 1.0 / x_(i);
     
     /* set dx */
-    dx_.resize(num_points__ - 1);
-    for (int i = 0; i < num_points__ - 1; i++) dx_[i] = x_[i + 1] - x_[i];
+    dx_ = mdarray<double, 1>(num_points__ - 1);
+    for (int i = 0; i < num_points__ - 1; i++) dx_(i) = x_(i + 1) - x_(i);
     
-    if (dx_[0] < 1e-7)
+    if (dx_(0) < 1e-7)
     {
         std::stringstream s;
-        s << "dx step near origin is small : " << Utils::double_to_string(dx_[0]);
+        s << "dx step near origin is small : " << Utils::double_to_string(dx_(0));
         warning_global(__FILE__, __LINE__, s);
     }
 }

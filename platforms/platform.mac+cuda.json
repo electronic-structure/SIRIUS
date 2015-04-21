@@ -1,16 +1,18 @@
 {
     "MPI_CXX"     : "mpic++",
-    "MPI_CXX_OPT" : "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -D_SCALAPACK_ -D_GPU_ -g",
+    "MPI_CXX_OPT" : "-std=c++11 -g -O3 -Wall -Wconversion -fopenmp -DNDEBUG -D_SCALAPACK_ -D_ELPA_ -D_GPU_",
+    "MPI_FC"      : "mpif90",
+    "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
 
-    "CC"          : "gcc-mp-4.7",
-    "CXX"         : "c++-mp-4.7",
-    "FC"          : "gfortran-mp-4.7",
-    "FCCPP"       : "cpp-mp-4.7",
+    "CC"          : "gcc-mp-4.9",
+    "CXX"         : "c++-mp-4.9",
+    "FC"          : "gfortran-mp-4.9",
+    "FCCPP"       : "cpp-mp-4.9",
 
-    "NVCC"        : "/Developer/NVIDIA/CUDA-5.0/bin/nvcc",
+    "NVCC"        : "/Developer/NVIDIA/CUDA-6.5/bin/nvcc",
     "NVCC_OPT"    : "-arch=sm_30 -m64",
 
-    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a -L/opt/local/lib -lz -lgfortran -L/Developer/NVIDIA/CUDA-5.0/lib -lcublas -lcudart",
+    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a /opt/local/lib/libatlas.a /opt/local/lib/libptf77blas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -L/Developer/NVIDIA/CUDA-6.5/lib -lcublas -lcudart -lcufft -Wl,-rpath,/Developer/NVIDIA/CUDA-6.5/lib -lstdc++",
 
     "install"     : ["gsl", "fftw", "xc", "spg", "hdf5"]
 }

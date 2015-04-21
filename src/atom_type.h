@@ -124,53 +124,53 @@ class radial_functions_index
             }
         }
 
-        inline int size()
+        inline int size() const
         {
             return (int)radial_function_index_descriptors_.size();
         }
 
-        inline radial_function_index_descriptor& operator[](int i)
+        inline radial_function_index_descriptor const& operator[](int i) const
         {
             assert(i >= 0 && i < (int)radial_function_index_descriptors_.size());
             return radial_function_index_descriptors_[i];
         }
 
-        inline int index_by_l_order(int l, int order)
+        inline int index_by_l_order(int l, int order) const
         {
             return index_by_l_order_(l, order);
         }
 
-        inline int index_by_idxlo(int idxlo)
+        inline int index_by_idxlo(int idxlo) const
         {
             return index_by_idxlo_(idxlo);
         }
 
         /// Number of radial functions for a given orbital quantum number.
-        inline int num_rf(int l)
+        inline int num_rf(int l) const
         {
             assert(l >= 0 && l < (int)num_rf_.size());
             return num_rf_[l];
         }
 
         /// Number of local orbitals for a given orbital quantum number.
-        inline int num_lo(int l)
+        inline int num_lo(int l) const
         {
             assert(l >= 0 && l < (int)num_lo_.size());
             return num_lo_[l];
         }
         
         /// Maximum possible number of radial functions for an orbital quantum number.
-        inline int max_num_rf()
+        inline int max_num_rf() const
         {
             return max_num_rf_;
         }
 
-        inline int lmax()
+        inline int lmax() const
         {
             return lmax_;
         }
         
-        inline int lmax_lo()
+        inline int lmax_lo() const
         {
             return lmax_lo_;
         }
@@ -235,37 +235,37 @@ class basis_functions_index
         } 
 
         /// Return total number of MT basis functions.
-        inline int size()
+        inline int size() const
         {
             return (int)basis_function_index_descriptors_.size();
         }
 
-        inline int size_aw()
+        inline int size_aw() const
         {
             return size_aw_;
         }
 
-        inline int size_lo()
+        inline int size_lo() const
         {
             return size_lo_;
         }
         
-        inline int index_by_l_m_order(int l, int m, int order)
+        inline int index_by_l_m_order(int l, int m, int order) const
         {
             return index_by_lm_order_(Utils::lm_by_l_m(l, m), order);
         }
         
-        inline int index_by_lm_order(int lm, int order)
+        inline int index_by_lm_order(int lm, int order) const
         {
             return index_by_lm_order_(lm, order);
         }
 
-        inline int index_by_idxrf(int idxrf)
+        inline int index_by_idxrf(int idxrf) const
         {
             return index_by_idxrf_(idxrf);
         }
         
-        inline basis_function_index_descriptor& operator[](int i)
+        inline basis_function_index_descriptor const& operator[](int i) const
         {
             assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
             return basis_function_index_descriptors_[i];
@@ -334,6 +334,10 @@ class Atom_type
         basis_functions_index indexb_;
 
         uspp_descriptor uspp_;
+
+        /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
+        /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
+        matrix<double_complex> p_mtrx_;
 
         std::vector<int> atom_id_;
 
@@ -540,12 +544,12 @@ class Atom_type
             return max_aw_order_;
         }
 
-        inline radial_functions_index& indexr()
+        inline radial_functions_index const& indexr() const
         {
             return indexr_;
         }
         
-        inline radial_function_index_descriptor& indexr(int i)
+        inline radial_function_index_descriptor const& indexr(int i) const
         {
             assert(i >= 0 && i < (int)indexr_.size());
             return indexr_[i];
@@ -561,12 +565,12 @@ class Atom_type
             return indexr_.index_by_idxlo(idxlo);
         }
 
-        inline basis_functions_index& indexb()
+        inline basis_functions_index const& indexb() const
         {
             return indexb_;
         }
 
-        inline basis_function_index_descriptor& indexb(int i)
+        inline basis_function_index_descriptor const& indexb(int i) const
         {
             assert(i >= 0 && i < (int)indexb_.size());
             return indexb_[i];
@@ -697,6 +701,12 @@ class Atom_type
         inline electronic_structure_method_t esm_type()
         {
             return esm_type_;
+        }
+
+        inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
+        {
+            uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
+            d_mtrx_ion__ >> uspp().d_mtrx_ion;
         }
 };
 

@@ -2,6 +2,7 @@
 #define __BLACS_GRID_H__
 
 #include "mpi_grid.h"
+#include "linalg_base.h"
 
 class BLACS_grid
 {
@@ -23,15 +24,20 @@ class BLACS_grid
 
         int blacs_context_;
 
+        int cyclic_block_size_;
+
         BLACS_grid(BLACS_grid const& src) = delete;
         BLACS_grid& operator=(BLACS_grid const& src) = delete; 
 
     public:
         
-        BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
+        BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__, int cyclic_block_size__)
             : comm_(comm__),
               num_ranks_row_(num_ranks_row__),
-              num_ranks_col_(num_ranks_col__)
+              num_ranks_col_(num_ranks_col__),
+              blacs_handler_(-1),
+              blacs_context_(-1),
+              cyclic_block_size_(cyclic_block_size__)
         {
             std::vector<int> xy(2);
             xy[0] = num_ranks_col__;
@@ -41,9 +47,10 @@ class BLACS_grid
 
             rank_col_ = mpi_grid_.coordinate(0);
             rank_row_ = mpi_grid_.coordinate(1);
-
+            
+            #ifdef _SCALAPACK_
             /* create handler first */
-            blacs_handler_ = linalg<scalapack>::create_blacs_handler(comm_.mpi_comm());
+            blacs_handler_ = linalg_base::create_blacs_handler(comm_.mpi_comm());
 
             mdarray<int, 2> map_ranks(num_ranks_row__, num_ranks_col__);
             for (int i = 0; i < num_ranks_row__; i++)
@@ -58,11 +65,11 @@ class BLACS_grid
 
             /* create context */
             blacs_context_ = blacs_handler_;
-            linalg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
+            linalg_base::gridmap(&blacs_context_, &map_ranks(0, 0), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
 
             /* check the grid */
             int nrow1, ncol1, irow1, icol1;
-            linalg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
+            linalg_base::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
 
             if (rank_row_ != irow1 || rank_col_ != icol1 || num_ranks_row__ != nrow1 || num_ranks_col__ != ncol1) 
             {
@@ -73,12 +80,15 @@ class BLACS_grid
                   << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
                 error_local(__FILE__, __LINE__, s);
             }
+            #endif
         }
 
         ~BLACS_grid()
         {
-            linalg<scalapack>::gridexit(blacs_context_);
-            linalg<scalapack>::free_blacs_handler(blacs_handler_);
+            #ifdef _SCALAPACK_
+            linalg_base::gridexit(blacs_context_);
+            linalg_base::free_blacs_handler(blacs_handler_);
+            #endif
         }
 
         inline int context() const
@@ -119,6 +129,11 @@ class BLACS_grid
         inline int rank_col() const
         {
             return rank_col_;
+        }
+
+        inline int cyclic_block_size() const
+        {
+            return cyclic_block_size_;
         }
 };
 

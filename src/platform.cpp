@@ -38,19 +38,23 @@ extern "C" void libsci_acc_init();
 void Platform::initialize(bool call_mpi_init)
 {
     //if (call_mpi_init) MPI_Init(NULL, NULL);
+    int provided;
     if (call_mpi_init) 
     {
-        int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
-        if (provided != MPI_THREAD_MULTIPLE)
-        {
-            printf("MPI_Init_thread() does not provide MPI_THREAD_MULTIPLE\n");
-        }
+    }
+
+    MPI_Query_thread(&provided);
+    if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
+    {
+        printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
     }
 
     #ifdef _GPU_
     //cuda_initialize();
-    if (comm_world().rank() == 0) cuda_device_info();
+    #if defined(_VERBOSITY_) && (_VERBOSITY_ > 0)
+    if (rank() == 0) cuda_device_info();
+    #endif
     cuda_create_streams(max_num_threads());
     cublas_create_handles(max_num_threads());
     #endif
@@ -63,13 +67,11 @@ void Platform::initialize(bool call_mpi_init)
     #ifdef _LIBSCI_ACC_
     libsci_acc_init();
     #endif
-    #ifdef _FFTW_THREADED_
     if (!fftw_init_threads())
     {
         printf("error in fftw_init_threads()\n");
         exit(0);
     }
-    #endif
 
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
@@ -77,7 +79,6 @@ void Platform::initialize(bool call_mpi_init)
 
 void Platform::finalize()
 {
-    comm_world().~Communicator();
     MPI_Finalize();
     #ifdef _MAGMA_
     magma_finalize_wrapper();
@@ -87,21 +88,11 @@ void Platform::finalize()
     cuda_destroy_streams(max_num_threads());
     cuda_device_reset();
     #endif
-    #ifdef _FFTW_THREADED_
     fftw_cleanup_threads();
-    #endif
     fftw_cleanup();
 }
 
 void Platform::abort()
 {
-    if (comm_world().size() == 1)
-    {
-        raise(SIGTERM);
-    }
-    else
-    {   
-        MPI_Abort(MPI_COMM_WORLD, -13);
-    }
-    exit(-13);
+    MPI_Abort(MPI_COMM_WORLD, -13);
 }

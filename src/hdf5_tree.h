@@ -284,20 +284,21 @@ class HDF5_tree
 
         /// Write a multidimensional array by name.
         template <typename T, int N>
-        void write(const std::string& name, mdarray<T, N>& data)
+        void write(const std::string& name, mdarray<T, N> const& data)
         {
             if (type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
                 for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
-                write(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
+                //write(name, (typename type_wrapper<T>::real_t*)(data.at<CPU>()), dims);
+                write(name, (typename type_wrapper<T>::real_t*)data.template at<CPU>(), dims);
             }
             else
             {
                 std::vector<int> dims(N);
                 for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
-                write(name, data.ptr(), dims);
+                write(name, (typename type_wrapper<T>::real_t*)data.template at<CPU>(), dims);
             }
         }
 
@@ -358,13 +359,13 @@ class HDF5_tree
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
                 for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
-                read(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
+                read(name, (typename type_wrapper<T>::real_t*)data.template at<CPU>(), dims);
             }
             else
             {
                 std::vector<int> dims(N);
                 for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
-                read(name, data.ptr(), dims);
+                read(name, data.template at<CPU>(), dims);
             }
         }
 

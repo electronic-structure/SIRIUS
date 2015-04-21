@@ -87,36 +87,45 @@ struct local_orbital_descriptor
 class uspp_descriptor
 {
     public:
+
+        /// Radial mesh.
         std::vector<double> r;
+
+        /// Local part of potential.
         std::vector<double> vloc;
 
-        /// maximum angular momentum for |beta> projectors
+        /// Maximum angular momentum for |beta> projectors.
         int lmax;
 
-        /// number of radial functions for |beta> projectors
+        /// Number of radial functions for |beta> projectors.
         int num_beta_radial_functions;
         
-        /// number of Q coefficients
+        /// Orbital quantum numbers of each beta radial function.
+        std::vector<int> beta_l;
+        
+        /// Number of radial grid points for each beta radial function.
+        std::vector<int> num_beta_radial_points;
+
+        /// Radial functions of beta-projectors.
+        mdarray<double, 2> beta_radial_functions;
+        
+        /// Number of Q coefficients
         int num_q_coefs; 
         
         /// Q coefficients
         mdarray<double, 4> q_coefs;
-
+        
+        /// Inner radius where Q-radial functions are interpolated by polynomials.
         std::vector<double> q_functions_inner_radii;
-
+        
+        /// Radial functions of Q-operator.
         mdarray<double, 2> q_radial_functions;
-
-        std::vector<int> beta_l;
-
-        std::vector<int> num_beta_radial_points;
-
-        mdarray<double, 2> beta_radial_functions;
 
         std::vector<double> core_charge_density;
 
         std::vector<double> total_charge_density;
 
-        mdarray<double_complex, 2> d_mtrx_ion;
+        mdarray<double, 2> d_mtrx_ion;
 
         mdarray<double_complex, 2> d_mtrx;
 

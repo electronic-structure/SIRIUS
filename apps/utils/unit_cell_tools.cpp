@@ -17,16 +17,19 @@ int main(int argn, char** argv)
     }
 
     Platform::initialize(1);
-    Global p(Platform::comm_world());
+    
+    {
+    initial_input_parameters iip("sirius.json");
+    Global p(iip, MPI_COMM_WORLD);
     p.read_unit_cell_input();
 
     if (args.exist("supercell"))
     {
-        int scell[3][3];
+        matrix3d<int> scell;
         std::stringstream s(args.value<std::string>("supercell"));
         for (int i = 0; i < 3; i++)
         {
-            for (int j = 0; j < 3; j++) s >> scell[i][j];
+            for (int j = 0; j < 3; j++) s >> scell(j, i);
         }
         
         std::cout << std::endl;
@@ -34,41 +37,39 @@ int main(int argn, char** argv)
         for (int i = 0; i < 3; i++)
         {
             std::cout << "A" << i << " : ";
-            for (int j = 0; j < 3; j++) std::cout << scell[i][j] << " ";
+            for (int j = 0; j < 3; j++) std::cout << scell(j, i) << " ";
             std::cout << std::endl;
         }
 
-        double scell_lattice_vectors[3][3];
-        for (int i = 0; i < 3; i++)
-        {
-            for (int x = 0; x < 3; x++)
-            {
-                scell_lattice_vectors[i][x] = scell[i][0] * p.unit_cell()->lattice_vectors(0, x) +
-                                              scell[i][1] * p.unit_cell()->lattice_vectors(1, x) +
-                                              scell[i][2] * p.unit_cell()->lattice_vectors(2, x);
-            }
-        }
+        matrix3d<double> scell_lattice_vectors = p.unit_cell()->lattice_vectors() * matrix3d<double>(scell);
 
         std::cout << "supercell vectors (Cartesian coordinates) : " << std::endl;
         for (int i = 0; i < 3; i++)
         {
             std::cout << "A" << i << " : ";
-            for (int x = 0; x < 3; x++) std::cout << scell_lattice_vectors[i][x] << " ";
+            for (int x = 0; x < 3; x++) std::cout << scell_lattice_vectors(x, i) << " ";
             std::cout << std::endl;
         }
 
         std::cout << "volume ratio : " << std::abs(matrix3d<int>(scell).det()) << std::endl;
 
-        Global psc(Platform::comm_world());
-        psc.unit_cell()->set_lattice_vectors(scell_lattice_vectors[0], scell_lattice_vectors[1], scell_lattice_vectors[2]);
-    
-        for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
+        Global psc(iip, MPI_COMM_WORLD);
+        vector3d<double> a0, a1, a2;
+        for (int x = 0; x < 3; x++)
         {
-            std::string label = p.unit_cell_input_section_.labels_[iat];
-            psc.unit_cell()->add_atom_type(label, p.unit_cell_input_section_.atom_files_[label], p.esm_type());
-            for (int ia = 0; ia < (int)p.unit_cell_input_section_.coordinates_[iat].size(); ia++)
+            a0[x] = scell_lattice_vectors(x, 0);
+            a1[x] = scell_lattice_vectors(x, 1);
+            a2[x] = scell_lattice_vectors(x, 2);
+        }
+        psc.unit_cell()->set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+    
+        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
+        {
+            std::string label = iip.unit_cell_input_section_.labels_[iat];
+            psc.unit_cell()->add_atom_type(label, iip.unit_cell_input_section_.atom_files_[label], p.esm_type());
+            for (int ia = 0; ia < (int)iip.unit_cell_input_section_.coordinates_[iat].size(); ia++)
             {
-                vector3d<double> va(&p.unit_cell_input_section_.coordinates_[iat][ia][0]);
+                vector3d<double> va(&iip.unit_cell_input_section_.coordinates_[iat][ia][0]);
 
                 for (int i0 = -10; i0 <= 10; i0++)
                 {
@@ -104,33 +105,33 @@ int main(int argn, char** argv)
     if (args.exist("qe"))
     {
         int nat = 0;
-        for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
-            nat += (int)p.unit_cell_input_section_.coordinates_[iat].size();
+        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
+            nat += (int)iip.unit_cell_input_section_.coordinates_[iat].size();
 
         FILE* fout = fopen("pw.in", "w");
         fprintf(fout, "&control\ncalculation=\'scf\',\nrestart_mode=\'from_scratch\',\npseudo_dir = \'./\',\noutdir=\'./\',\nprefix = \'scf_\'\n/\n");
-        fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.002, nosym=.false.,\n");
-        fprintf(fout, "nat=%i ntyp=%i\n/\n", nat, (int)p.unit_cell_input_section_.labels_.size());
-        fprintf(fout, "&electrons\nconv_thr =  1.0d-8,\nmixing_beta = 0.7,\nelectron_maxstep = 10\n/\n");
+        fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
+        fprintf(fout, "nat=%i ntyp=%i\n/\n", nat, (int)iip.unit_cell_input_section_.labels_.size());
+        fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
         fprintf(fout, "ATOMIC_SPECIES\n");
-        for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
-            fprintf(fout, "%s 0.0 pp.UPF\n", p.unit_cell_input_section_.labels_[iat].c_str());
+        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
+            fprintf(fout, "%s 0.0 pp.UPF\n", iip.unit_cell_input_section_.labels_[iat].c_str());
 
         fprintf(fout,"CELL_PARAMETERS\n");
         for (int i = 0; i < 3; i++)
         {
-            for (int x = 0; x < 3; x++) fprintf(fout, "%18.8f", p.unit_cell()->lattice_vectors(i, x));
+            for (int x = 0; x < 3; x++) fprintf(fout, "%18.8f", p.unit_cell()->lattice_vectors()(x, i));
             fprintf(fout, "\n");
         }
         fprintf(fout, "ATOMIC_POSITIONS (crystal)\n");
-        for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
+        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
         {
-            for (int ia = 0; ia < (int)p.unit_cell_input_section_.coordinates_[iat].size(); ia++)
+            for (int ia = 0; ia < (int)iip.unit_cell_input_section_.coordinates_[iat].size(); ia++)
             {
-                fprintf(fout, "%s  %18.8f %18.8f %18.8f\n", p.unit_cell_input_section_.labels_[iat].c_str(),
-                        p.unit_cell_input_section_.coordinates_[iat][ia][0],
-                        p.unit_cell_input_section_.coordinates_[iat][ia][1],
-                        p.unit_cell_input_section_.coordinates_[iat][ia][2]);
+                fprintf(fout, "%s  %18.8f %18.8f %18.8f\n", iip.unit_cell_input_section_.labels_[iat].c_str(),
+                        iip.unit_cell_input_section_.coordinates_[iat][ia][0],
+                        iip.unit_cell_input_section_.coordinates_[iat][ia][1],
+                        iip.unit_cell_input_section_.coordinates_[iat][ia][2]);
             }
         }
         fprintf(fout, "K_POINTS (automatic)\n2 2 2  0 0 0\n");
@@ -139,6 +140,7 @@ int main(int argn, char** argv)
 
 
 
+    }
     }
 
     //p.unit_cell()->get_symmetry();
