@@ -8,7 +8,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
        band_uspp_gpu_parallel.cpp band_pseudo_pot.cpp band_pseudo_pot_itsol.cpp real_space_prj.cpp \
        Density/initial_density.cpp \
-       Density/add_kpoint_contribution_mt.cpp \
+       Density/add_k_point_contribution.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
        Density/get_occupied_bands_list.cpp \
