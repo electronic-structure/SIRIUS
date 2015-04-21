@@ -9,6 +9,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        band_uspp_gpu_parallel.cpp band_pseudo_pot.cpp band_pseudo_pot_itsol.cpp real_space_prj.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \
+       Density/add_k_point_contribution_it.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
        Density/get_occupied_bands_list.cpp \
@@ -23,7 +24,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/diag_fv_pseudo_potential_davidson_parallel.cpp \
        Band/diag_fv_pseudo_potential_davidson_fast_parallel.cpp \
        Band/apply_h_o_fast_parallel.cpp \
-       Band/apply_h_o_fast_parallel_rs.cpp
+       Band/apply_h_o_fast_parallel_rs.cpp \
+       Potential/poisson.cpp
        
 OBJ = $(SRC:.cpp=.o) 
       

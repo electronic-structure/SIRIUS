@@ -54,7 +54,7 @@ namespace sirius
  *            [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2}, 
  *              m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
  *  
- *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_kpoint_contribution_it()).
+ *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_it()).
  *  The muffin-tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the
  *  expansion of spinor wave-functions inside the muffin-tin \f$ \alpha \f$
  *  \f[
@@ -220,12 +220,9 @@ class Density
         void add_q_contribution_to_valence_density(K_set& kset);
 
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
+        void add_k_point_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
 
         #ifdef _GPU_
-        //void add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-        //                                    mdarray<double_complex, 4>& pp_complex_density_matrix);
-        
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
         #endif
 
@@ -285,9 +282,10 @@ class Density
         /// Return core leakage for a specific atom symmetry class
         double core_leakage(int ic);
 
-        /// Generate charge density and magnetization from the wave functions
+        /// Generate full charge density (valence + core) and magnetization from the wave functions.
         void generate(K_set& ks__);
 
+        /// Generate valence charge density and magnetization from the wave functions.
         void generate_valence(K_set& ks__);
         
         /// Add augmentation charge Q(r)
