@@ -59,9 +59,6 @@ test_blacs:
 test_iallgather:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_iallgather.cpp  $(LIB_SIRIUS) $(LIBS) -o test_iallgather
 
-test_enu:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_enu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_enu
-
 test_diag:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_diag.cpp  $(LIB_SIRIUS) $(LIBS) -o test_diag
 

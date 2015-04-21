@@ -229,9 +229,9 @@ class Spheric_function_gradient
     
     public:
 
-        Spheric_function_gradient() : radial_grid_(nullptr)
-        {
-        }
+        //== Spheric_function_gradient() : radial_grid_(nullptr)
+        //== {
+        //== }
 
         Spheric_function_gradient(int angular_domain_size__, Radial_grid const& radial_grid__) 
             : radial_grid_(&radial_grid__),

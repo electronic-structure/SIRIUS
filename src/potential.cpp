@@ -865,7 +865,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    Spheric_function_gradient<spatial, double> grad_rho_tp;
+    Spheric_function_gradient<spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
     Spheric_function<spatial, double> lapl_rho_tp;
     Spheric_function<spatial, double> grad_rho_grad_rho_tp;
 
@@ -958,7 +958,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
         auto grad_vsigma_lm = gradient(vsigma_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
-        Spheric_function_gradient<spatial, double> grad_vsigma_tp;
+        Spheric_function_gradient<spatial, double> grad_vsigma_tp(sht_->num_points(), rgrid);
         for (int x = 0; x < 3; x++) grad_vsigma_tp[x] = sht_->transform(grad_vsigma_lm[x]);
 
         /* compute scalar product of two gradients */
@@ -990,11 +990,11 @@ void Potential::xc_mt_magnetic(Radial_grid& rgrid,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    Spheric_function_gradient<spatial, double> grad_rho_up_tp;
-    Spheric_function_gradient<spatial, double> grad_rho_dn_tp;
+    Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
+    Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
 
-    Spheric_function<spatial, double> lapl_rho_up_tp;
-    Spheric_function<spatial, double> lapl_rho_dn_tp;
+    Spheric_function<spatial, double> lapl_rho_up_tp(sht_->num_points(), rgrid);
+    Spheric_function<spatial, double> lapl_rho_dn_tp(sht_->num_points(), rgrid);
 
     Spheric_function<spatial, double> grad_rho_up_grad_rho_up_tp;
     Spheric_function<spatial, double> grad_rho_dn_grad_rho_dn_tp;
@@ -1133,9 +1133,9 @@ void Potential::xc_mt_magnetic(Radial_grid& rgrid,
         auto grad_vsigma_dd_lm = gradient(vsigma_dd_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
-        Spheric_function_gradient<spatial, double> grad_vsigma_uu_tp;
-        Spheric_function_gradient<spatial, double> grad_vsigma_ud_tp;
-        Spheric_function_gradient<spatial, double> grad_vsigma_dd_tp;
+        Spheric_function_gradient<spatial, double> grad_vsigma_uu_tp(sht_->num_points(), rgrid);
+        Spheric_function_gradient<spatial, double> grad_vsigma_ud_tp(sht_->num_points(), rgrid);
+        Spheric_function_gradient<spatial, double> grad_vsigma_dd_tp(sht_->num_points(), rgrid);
         for (int x = 0; x < 3; x++)
         {
             grad_vsigma_uu_tp[x] = sht_->transform(grad_vsigma_uu_lm[x]);
