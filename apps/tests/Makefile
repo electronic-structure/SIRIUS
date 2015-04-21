@@ -25,10 +25,10 @@ spline: spline.cpp
 
 test_zgemm: test_zgemm.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
-
+	
 splindex: splindex.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
-
+	
 hydrogen: hydrogen.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	

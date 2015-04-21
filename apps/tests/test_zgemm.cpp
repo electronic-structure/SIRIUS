@@ -107,7 +107,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     if (Platform::rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", tval);
-        printf("performance    : %12.6f GFlops / rank\n", perf);
+        printf("performance    : %12.6f GFlops / node\n", perf);
     }
 
     return perf;
@@ -152,7 +152,7 @@ int main(int argn, char **argv)
 
     if (nrow * ncol == 1)
     {
-        for (int i = 0; i < repeat; i++) test_gemm(M, N, K, transa);
+        test_gemm(M, N, K, transa);
     }
     else
     {
@@ -163,7 +163,7 @@ int main(int argn, char **argv)
         if (Platform::comm_world().rank() == 0)
         {
             printf("\n");
-            printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
+            printf("average performance    : %12.6f GFlops / node\n", perf / repeat);
         }
         #else
         terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");

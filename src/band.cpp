@@ -989,25 +989,12 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
     Timer t("sirius::Band::set_fv_h_o", kp__->comm());
     
-    // TODO: this depends on implementation and will possibly be simplified
-    /* all the above data preparation is done in order to 
-     * execute "normal" pzgemm without matrix transpose 
-     * because it gives the best performance
-     */
-    Timer t1("sirius::Band::set_fv_h_o|zgemm");
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, halm_panel_t, 
-                    complex_zero, h); 
-    
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, alm_panel_t, 
-                    complex_zero, o); 
-    double tval = t1.stop();
-    if (kp->comm().rank() == 0)
-    {
-        printf("pzgemm time : %12.6f\n", tval);
-    }
+    h__.zero();
+    o__.zero();
 
-    mdarray<double_complex, 2> alm_row(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<double_complex, 2> alm_col(kp->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -1015,10 +1002,10 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
         Atom_type* type = atom->type();
        
         /* generate matching coefficients for current atom */
-        kp->alm_coeffs_row()->generate(ia, alm_row);
+        kp__->alm_coeffs_row()->generate(ia, alm_row);
         for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
         {
-            for (int igk = 0; igk < kp->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
+            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
         }
 
         kp__->alm_coeffs_col()->generate(ia, alm_col);
@@ -1032,65 +1019,17 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                           alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), complex_one, h__.at<CPU>(), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
-        set_fv_h_o_apw_lo(kp, type, atom, ia, alm_row, alm_col, h.panel(), o.panel());
+        set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
     }
-    
+
     /* add interstitial contributon */
-    set_fv_h_o_it(kp, effective_potential, h.panel(), o.panel());
+    set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
 
     LOG_FUNC_END();
 }
-
-//== template<> 
-//== void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
-//==                                                   Periodic_function<double>* effective_potential__,
-//==                                                   dmatrix<double_complex>& h__,
-//==                                                   dmatrix<double_complex>& o__)
-//== {
-//==     Timer t("sirius::Band::set_fv_h_o", kp__->comm());
-//==     
-//==     h__.zero();
-//==     o__.zero();
-//== 
-//==     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-//==     {
-//==         Atom* atom = parameters_.unit_cell()->atom(ia);
-//==         Atom_type* type = atom->type();
-//==        
-//==         /* generate matching coefficients for current atom */
-//==         kp__->alm_coeffs_row()->generate(ia, alm_row);
-//==         for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
-//==         {
-//==             for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
-//==         }
-//== 
-//==         kp__->alm_coeffs_col()->generate(ia, alm_col);
-//== 
-//==         blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-//==                         alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), complex_one, o__.ptr(), o__.ld()); 
-//== 
-//==         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
-//== 
-//==         blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-//==                         alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), complex_one, h__.ptr(), h__.ld());
-//== 
-//==         /* setup apw-lo and lo-apw blocks */
-//==         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
-//==     }
-//== 
-//==     /* add interstitial contributon */
-//==     set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
-//== 
-//==     /* setup lo-lo block */
-//==     set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
-//== }
 
 //=====================================================================================================================
 // GPU code, (L)APW+lo basis
