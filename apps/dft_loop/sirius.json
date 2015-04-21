@@ -31,7 +31,7 @@
         "max_history" : 5
     },
     
-    "xc_functionals" : ["XC_LDA_X", "XC_GGA_C_PBE"],
+    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_VWN"],
     
     "unit_cell" : {
 
