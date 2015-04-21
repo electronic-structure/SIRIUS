@@ -188,86 +188,73 @@ void Potential::update()
     }
 }
 
-void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
-                            std::vector< Spheric_function<spectral, double_complex> >& vh_ylm, 
-                            mdarray<double_complex, 2>& qmt)
-{
-    Timer t("sirius::Potential::poisson_vmt");
-
-    qmt.zero();
-    
-    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
-    {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-
-        double R = parameters_.unit_cell()->atom(ia)->mt_radius();
-        int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
-       
-        #pragma omp parallel default(shared)
-        {
-            std::vector<double_complex> g1;
-            std::vector<double_complex> g2;
-
-            Spline<double_complex> rholm(parameters_.unit_cell()->atom(ia)->radial_grid());
-
-            #pragma omp for
-            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-            {
-                int l = l_by_lm_[lm];
-
-                for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho_ylm[ialoc](lm, ir);
-                rholm.interpolate();
-
-                /* save multipole moment */
-                qmt(lm, ia) = rholm.integrate(g1, l + 2);
-                
-                if (lm < parameters_.lmmax_pot())
-                {
-                    rholm.integrate(g2, 1 - l);
-                    
-                    double d1 = 1.0 / pow(R, 2 * l + 1); 
-                    double d2 = 1.0 / double(2 * l + 1); 
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
-
-                        double_complex vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
-                                             (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
-                                             (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
-
-                        vh_ylm[ialoc](lm, ir) = fourpi * vlm * d2;
-                    }
-                }
-            }
-        }
-        
-        /* fixed part of nuclear potential */
-        for (int ir = 0; ir < nmtp; ir++)
-        {
-            //double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
-            //vh_ylm[ialoc](0, ir) -= parameters_.unit_cell()->atom(ia)->zn() * (1 / r - 1 / R) / y00;
-            vh_ylm[ialoc](0, ir) += parameters_.unit_cell()->atom(ia)->zn() / R / y00;
-        }
-
-        //== /* write spherical potential */
-        //== std::stringstream sstr;
-        //== sstr << "mt_spheric_potential_" << ia << ".dat";
-        //== FILE* fout = fopen(sstr.str().c_str(), "w");
-
-        //== for (int ir = 0; ir < nmtp; ir++)
-        //== {
-        //==     double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
-        //==     fprintf(fout, "%20.10f %20.10f \n", r, real(vh_ylm[ialoc](0, ir)));
-        //== }
-        //== fclose(fout);
-        //== stop_here
-        
-        /* nuclear multipole moment */
-        qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->zn() * y00;
-    }
-
-    parameters_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
-}
+//void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
+//                            std::vector< Spheric_function<spectral, double_complex> >& vh_ylm, 
+//                            mdarray<double_complex, 2>& qmt)
+//{
+//    Timer t("sirius::Potential::poisson_vmt");
+//
+//    qmt.zero();
+//    
+//    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+//    {
+//        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+//
+//        double R = parameters_.unit_cell()->atom(ia)->mt_radius();
+//        int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
+//       
+//        #pragma omp parallel default(shared)
+//        {
+//            std::vector<double_complex> g1;
+//            std::vector<double_complex> g2;
+//
+//            Spline<double_complex> rholm(parameters_.unit_cell()->atom(ia)->radial_grid());
+//
+//            #pragma omp for
+//            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+//            {
+//                int l = l_by_lm_[lm];
+//
+//                for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho_ylm[ialoc](lm, ir);
+//                rholm.interpolate();
+//
+//                /* save multipole moment */
+//                qmt(lm, ia) = rholm.integrate(g1, l + 2);
+//                
+//                if (lm < parameters_.lmmax_pot())
+//                {
+//                    rholm.integrate(g2, 1 - l);
+//                    
+//                    double d1 = 1.0 / pow(R, 2 * l + 1); 
+//                    double d2 = 1.0 / double(2 * l + 1); 
+//                    for (int ir = 0; ir < nmtp; ir++)
+//                    {
+//                        double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
+//
+//                        double_complex vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
+//                                             (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
+//                                             (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
+//
+//                        vh_ylm[ialoc](lm, ir) = fourpi * vlm * d2;
+//                    }
+//                }
+//            }
+//        }
+//        
+//        /* fixed part of nuclear potential */
+//        for (int ir = 0; ir < nmtp; ir++)
+//        {
+//            //double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
+//            //vh_ylm[ialoc](0, ir) -= parameters_.unit_cell()->atom(ia)->zn() * (1 / r - 1 / R) / y00;
+//            vh_ylm[ialoc](0, ir) += parameters_.unit_cell()->atom(ia)->zn() / R / y00;
+//        }
+//
+//        /* nuclear multipole moment */
+//        qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->zn() * y00;
+//    }
+//
+//    parameters_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
+//}
 
 void Potential::poisson_sum_G(int lmmax__,
                               double_complex* fpw__,

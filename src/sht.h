@@ -116,6 +116,10 @@ class SHT // TODO: better name
         /// Convert from Ylm to Rlm representation.
         void convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g);
 
+        static void convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__);
+
+        static void convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__);
+
         template <typename T>
         Spheric_function<spectral, T> transform(Spheric_function<spatial, T>& f)
         {

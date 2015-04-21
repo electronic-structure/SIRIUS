@@ -80,9 +80,13 @@ class Potential
         mdarray<double, 1> vh_el_;
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
-                         std::vector< Spheric_function<spectral, double_complex> >& vh, 
-                         mdarray<double_complex, 2>& qmt);
+        //void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
+        //                 std::vector< Spheric_function<spectral, double_complex> >& vh, 
+        //                 mdarray<double_complex, 2>& qmt);
+
+        void poisson_vmt(Periodic_function<double>* rho__, 
+                         Periodic_function<double>* vh__,
+                         mdarray<double_complex, 2>& qmt__);
 
         /// Compute multipole momenst of the interstitial charge density
         /** Also, compute the MT boundary condition 

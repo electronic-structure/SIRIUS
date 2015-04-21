@@ -92,17 +92,17 @@ void Periodic_function<T>::zero()
 }
 
 template <typename T> template <index_domain_t index_domain>
-inline T& Periodic_function<T>::f_mt(int idx0, int idx1, int ia)
+inline T& Periodic_function<T>::f_mt(int idx0, int ir, int ia)
 {
     switch (index_domain)
     {
         case local:
         {
-            return f_mt_local_(ia)(idx0, idx1);
+            return f_mt_local_(ia)(idx0, ir);
         }
         case global:
         {
-            return f_mt_(idx0, idx1, ia);
+            return f_mt_(idx0, ir, ia);
         }
     }
 }

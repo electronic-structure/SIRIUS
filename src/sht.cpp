@@ -422,11 +422,50 @@ Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectra
     return std::move(g);
 }
 
+void SHT::convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__)
+{
+    int lm = 0;
+    for (int l = 0; l <= lmax__; l++)
+    {
+        for (int m = -l; m <= l; m++)
+        {
+            if (m == 0)
+            {
+                f_ylm__[lm] = f_rlm__[lm];
+            }
+            else 
+            {
+                int lm1 = Utils::lm_by_l_m(l, -m);
+                f_ylm__[lm] = ylm_dot_rlm(l, m, m) * f_rlm__[lm] + ylm_dot_rlm(l, m, -m) * f_rlm__[lm1];
+            }
+            lm++;
+        }
+    }
+}
+
+void SHT::convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__)
+{
+    int lm = 0;
+    for (int l = 0; l <= lmax__; l++)
+    {
+        for (int m = -l; m <= l; m++)
+        {
+            if (m == 0)
+            {
+                f_rlm__[lm] = std::real(f_ylm__[lm]);
+            }
+            else 
+            {
+                int lm1 = Utils::lm_by_l_m(l, -m);
+                f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
+            }
+            lm++;
+        }
+    }
+}
+
 void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g)
 {
-    //if (f.radial_domain_idx() != g.radial_domain_idx())
-    //    error_local(__FILE__, __LINE__, "wrong radial domain index");
-    
     if (f.radial_grid().hash() != g.radial_grid().hash())
         error_local(__FILE__, __LINE__, "radial grids don't match");
 
@@ -446,52 +485,26 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
         }
     }
 
-    ///* radial index is first */
-    //if (f.radial_domain_idx() == 0)
-    //{
-    //    int lm = 0;
-    //    for (int l = 0; l <= lmax; l++)
-    //    {
-    //        for (int m = -l; m <= l; m++)
-    //        {
-    //            if (m == 0)
-    //            {
-    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
-    //                    g(ir, lm) = real(f(ir, lm));
-    //            }
-    //            else 
-    //            {
-    //                int lm1 = Utils::lm_by_l_m(l, -m);
-    //                for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-    //                    g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
-    //            }
-    //            lm++;
-    //        }
-    //    }
-    //}
-    //else
-    //{
-        for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+    {
+        int lm = 0;
+        for (int l = 0; l <= lmax; l++)
         {
-            int lm = 0;
-            for (int l = 0; l <= lmax; l++)
+            for (int m = -l; m <= l; m++)
             {
-                for (int m = -l; m <= l; m++)
+                if (m == 0)
                 {
-                    if (m == 0)
-                    {
-                        g(lm, ir) = real(f(lm, ir));
-                    }
-                    else 
-                    {
-                        int lm1 = Utils::lm_by_l_m(l, -m);
-                        g(lm, ir) = real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
-                    }
-                    lm++;
+                    g(lm, ir) = real(f(lm, ir));
                 }
+                else 
+                {
+                    int lm1 = Utils::lm_by_l_m(l, -m);
+                    g(lm, ir) = real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
+                }
+                lm++;
             }
         }
-    //}
+    }
 }
 
 }
