@@ -14,6 +14,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Density/reduce_density_matrix.cpp \
        Density/get_occupied_bands_list.cpp \
        Density/add_q_contribution_to_valence_density.cpp \
+       Density/generate_valence_density_mt.cpp \
        Band/apply_h_local_slice.cpp \
        Band/set_fv_h_o_serial.cpp \
        Band/add_nl_h_o_pw.cpp \
