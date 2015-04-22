@@ -2,6 +2,150 @@
 
 namespace sirius {
 
+void Potential::poisson_sum_G(int lmmax__,
+                              double_complex* fpw__,
+                              mdarray<double, 3>& fl__,
+                              mdarray<double_complex, 2>& flm__)
+{
+    Timer t("sirius::Potential::poisson_sum_G");
+    
+    int ngv_loc = (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size();
+
+    flm__.zero();
+
+    int lmax = Utils::lmax_by_lmmax(lmmax__);
+
+    mdarray<double_complex, 2> zm1(ngv_loc, parameters_.lmmax_rho());
+
+    #pragma omp parallel for default(shared)
+    for (int lm = 0; lm < lmmax__; lm++)
+    {
+        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        {
+            zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * 
+                             conj(fpw__[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
+        }
+    }
+
+    mdarray<double_complex, 2> zm2(ngv_loc, parameters_.unit_cell()->num_atoms());
+
+    for (int l = 0; l <= lmax; l++)
+    {
+        #pragma omp parallel for default(shared)
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            int iat = parameters_.unit_cell()->atom(ia)->type_id();
+            for (int igloc = 0; igloc < ngv_loc; igloc++)
+            {
+                int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+                zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
+                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
+            }
+        }
+
+        linalg<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
+                          &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
+                          &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
+    }
+
+    //== #pragma omp parallel
+    //== {
+    //==     mdarray<double_complex, 2> zm(lmmax__, ngv_loc);
+    //==     #pragma omp for
+    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     {
+    //==         int iat = parameters_.unit_cell()->atom(ia)->type_id();
+    //==         for (int igloc = 0; igloc < ngv_loc; igloc++)
+    //==         {
+    //==             int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+    //==             for (int lm = 0; lm < lmmax__; lm++)
+    //==             {
+    //==                 int l = l_by_lm_[lm];
+    //==                 zm(lm, igloc) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) * 
+    //==                                 zilm_[lm] * conj(parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc)) * 
+    //==                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
+    //==             }
+    //==         }
+    //==         blas<CPU>::gemv(0, lmmax__, ngv_loc, complex_one, zm.at<CPU>(), zm.ld(), 
+    //==                         &fpw__[parameters_.reciprocal_lattice()->spl_num_gvec().global_offset()], 1, complex_zero, 
+    //==                         &flm__(0, ia), 1);
+    //==     }
+    //== }
+    
+    parameters_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
+}
+
+void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw)
+{
+    Timer t("sirius::Potential::poisson_pw");
+    std::vector<double_complex> pseudo_pw(parameters_.reciprocal_lattice()->num_gvec());
+    memset(&pseudo_pw[0], 0, parameters_.reciprocal_lattice()->num_gvec() * sizeof(double_complex));
+    
+    /* The following term is added to the plane-wave coefficients of the charge density:
+     * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
+     *  Integrate[p[x,R]*x^(2+l),{x,0,R},Assumptions->{h>=0,n>=0,R>0}]
+     * i.e. contributon from pseudodensity to l-th channel of plane wave expansion multiplied by 
+     * the difference bethween true and interstitial-in-the-mt multipole moments and divided by the 
+     * moment of the pseudodensity.
+     */
+    #pragma omp parallel default(shared)
+    {
+        std::vector<double_complex> pseudo_pw_pt(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), double_complex(0, 0));
+
+        #pragma omp for
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            int iat = parameters_.unit_cell()->atom(ia)->type_id();
+
+            double R = parameters_.unit_cell()->atom(ia)->mt_radius();
+
+            /* compute G-vector independent prefactor */
+            std::vector<double_complex> zp(parameters_.lmmax_rho());
+            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+            {
+                for (int m = -l; m <= l; m++, lm++)
+                    zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * conj(zil_[l]) * gamma_factors_R_(l, iat);
+            }
+
+            for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+            {
+                int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+                
+                double gR = parameters_.reciprocal_lattice()->gvec_len(ig) * R;
+                
+                double_complex zt = fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / parameters_.unit_cell()->omega();
+
+                if (ig)
+                {
+                    double_complex zt2(0, 0);
+                    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                    {
+                        double_complex zt1(0, 0);
+                        for (int m = -l; m <= l; m++, lm++) zt1 += parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * zp[lm];
+
+                        zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
+                    }
+
+                    pseudo_pw_pt[igloc] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
+                }
+                else // for |G|=0
+                {
+                    pseudo_pw_pt[igloc] += zt * y00 * (qmt(0, ia) - qit(0, ia));
+                }
+            }
+        }
+        #pragma omp critical
+        for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++) 
+            pseudo_pw[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] += pseudo_pw_pt[igloc];
+    }
+
+    parameters_.comm().allgather(&pseudo_pw[0], (int)parameters_.reciprocal_lattice()->spl_num_gvec().global_offset(), 
+                                 (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size());
+        
+    // add pseudo_density to interstitial charge density; now rho(G) has the correct multipole moments in the muffin-tins
+    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
+}
+
 void Potential::poisson_vmt(Periodic_function<double>* rho__, 
                             Periodic_function<double>* vh__,
                             mdarray<double_complex, 2>& qmt__)
@@ -89,7 +233,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_vmt(rho, vh, qmt);
-        
+
         /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_sum_G(parameters_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);

@@ -183,12 +183,15 @@ class Radial_soultion
             p__[0] = std::pow(radial_grid_[0], l_ + 1);
             if (l_ == 0)
             {
-                q__[0] = -zn_ * radial_grid_[0]  / M2 / 2;
+                q__[0] = -zn_ * radial_grid_[0] / M2 / 2;
             }
             else
             {
-                q__[0] = std::pow(radial_grid_[0], l_) * l_ / M2 / 0.5;
+                q__[0] = std::pow(radial_grid_[0], l_) * l_ / M2 / 2;
             }
+
+            //p__[0] = std::pow(radial_grid_[0], l_ + 1); // * exp(-zn_ * radial_grid_[0] / (l_ + 1));
+            //q__[0] = (0.5 / M2) * p__[0] * (l_ / radial_grid_[0] - zn_ / (l_ + 1));
 
             double p2 = p__[0];
             double q2 = q__[0];
@@ -258,6 +261,12 @@ class Radial_soultion
                 {
                     last = i;
                     break;
+                }
+
+                if (!check_overflow && std::abs(p2) > 1e10)
+                {
+                    p2 = std::max(std::min(1e10, p2), -1e10);
+                    q2 = std::max(std::min(1e10, q2), -1e10);
                 }
                
                 p__[i + 1] = p2;
@@ -559,42 +568,88 @@ class Enu_finder: public Radial_soultion
             }
             etop_ = (!found) ? enu_start__ : enu;
 
-            //FILE* fout = fopen("p_top.dat", "w");
-            //for (int ir = 0; ir < np; ir++) 
-            //{
-            //    double x = radial_grid(ir);
-            //    fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
-            //}
-            //fclose(fout);
+            //== if (zn() == 38 && n_ == 3 && l_ == 1)
+            //== {
+            //==     FILE* fout = fopen("p_top.dat", "w");
+            //==     for (int ir = 0; ir < np; ir++) 
+            //==     {
+            //==         double x = radial_grid(ir);
+            //==         fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
+            //==     }
+            //==     fclose(fout);
+            //== }
+
+            auto ptop = p;
 
             // TODO: try u'(R) == 0 instead of p'(R) == 0
             
             /* Now we go down in energy and serach for enu such that the wave-function derivative is zero
              * at the muffin-tin boundary. This will be the bottom of the band. */
-            de = -0.001;
+            de = 0.001;
             found = false;
-            double b;
-            for (int i = 0; i < 1000; i++)
+
+            int nn = -1;
+            double dpdr_R = dpdr[np - 1];
+            do
             {
-                int nn = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                enu -= de;
+                nn = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                de *= 1.25;
+            } while (dpdr[np - 1] * dpdr_R > 0);
 
-                //double a = dpdr[np - 1];
-                double a = dpdr[np - 1] / radial_grid(np - 1) - p[np - 1] / std::pow(radial_grid(np - 1), 2);
+            ebot_ = enu;
+            if (nn != (n_ - l_ - 1))
+            {
+                //FILE* fout = fopen("p.dat", "w");
+                //for (int ir = 0; ir < np; ir++) 
+                //{
+                //    double x = radial_grid(ir);
+                //    fprintf(fout, "%16.8f %16.8f %16.8f\n", x, ptop[ir], p[ir]);
+                //}
+                //fclose(fout);
 
-                if (i > 0)
-                {
-                    de = (a * b < 0) ? -de * 0.5 : de * 1.25;
-                }
-                b = a;
-                enu += de;
-                if (std::abs(de) < 1e-10)
-                {
-                    if (nn != (n_ - l_ - 1)) TERMINATE("wrong number of nodes");
-                    found = true;
-                    break;
-                }
+                //printf("n: %i, l: %i, nn: %i", n_, l_, nn);
+
+                TERMINATE("wrong number of nodes");
+
             }
-            ebot_ = (!found) ? enu_start__ : enu;
+                
+            //double b;
+            //for (int i = 0; i < 1000; i++)
+            //{
+            //    int nn = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
+
+            //    //double a = dpdr[np - 1];
+            //    double a = dpdr[np - 1] / radial_grid(np - 1) - p[np - 1] / std::pow(radial_grid(np - 1), 2);
+
+            //    if (i > 0)
+            //    {
+            //        de = (a * b < 0) ? -de * 0.5 : de * 1.25;
+            //    }
+            //    b = a;
+            //    enu += de;
+            //    if (std::abs(de) < 1e-10)
+            //    {
+            //        if (nn != (n_ - l_ - 1))
+            //        {
+            //            FILE* fout = fopen("p_bot_err.dat", "w");
+            //            for (int ir = 0; ir < np; ir++) 
+            //            {
+            //                double x = radial_grid(ir);
+            //                fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
+            //            }
+            //            fclose(fout);
+
+            //            printf("n: %i, l: %i, nn: %i", n_, l_, nn);
+
+            //            TERMINATE("wrong number of nodes");
+
+            //        }
+            //        found = true;
+            //        break;
+            //    }
+            //}
+            //ebot_ = (!found) ? enu_start__ : enu;
 
             //fout = fopen("p_bot.dat", "w");
             //for (int ir = 0; ir < np; ir++) 

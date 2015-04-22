@@ -648,7 +648,7 @@ void Unit_cell::print_info()
                 printf("\n");
             }
             printf("T : ");
-            for (int j = 0; j < 3; j++) printf("%f8.4 ", t[j]);
+            for (int j = 0; j < 3; j++) printf("%8.4f ", t[j]);
             printf("\n");
         }
     }
