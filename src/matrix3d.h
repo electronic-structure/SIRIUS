@@ -94,9 +94,9 @@ class matrix3d
 
         /// Matrix-vector multiplication.
         template <typename U>
-        inline vector3d<T> operator*(vector3d<U> const& b)
+        inline vector3d<decltype(T{}*U{})> operator*(vector3d<U> const& b)
         {
-            vector3d<T> a;
+            vector3d<decltype(T{}*U{})> a;
             for (int i = 0; i < 3; i++)
             {
                 for (int j = 0; j < 3; j++) a[i] += (*this)(i, j) * b[j];
@@ -104,7 +104,7 @@ class matrix3d
             return a;
         }
 
-        /// Multiply matrix by an integer number.
+        /// Multiply matrix by a scalar number.
         template <typename U>
         inline matrix3d<T> operator*(U p)
         {

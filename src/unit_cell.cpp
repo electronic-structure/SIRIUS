@@ -94,14 +94,20 @@ void Unit_cell::get_symmetry()
     }
 
     mdarray<double, 2> positions(3, num_atoms());
+    mdarray<double, 2> spins(3, num_atoms());
     std::vector<int> types(num_atoms());
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        for (int x = 0; x < 3; x++) positions(x, ia) = atom(ia)->position(x);
+        auto vf = atom(ia)->vector_field();
+        for (int x = 0; x < 3; x++)
+        {
+            positions(x, ia) = atom(ia)->position(x);
+            spins(x, ia) = vf[x];
+        }
         types[ia] = atom(ia)->type_id();
     }
     
-    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, types, 1e-4);
+    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, 1e-4);
 
 
 

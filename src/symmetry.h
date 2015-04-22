@@ -55,11 +55,14 @@ class Symmetry
 
         SpglibDataset* spg_dataset_;
 
+        std::vector< std::pair<int, int> > mag_sym_;
+
     public:
 
         Symmetry(matrix3d<double>& lattice_vectors__,
                  int num_atoms__,
                  mdarray<double, 2>& positions__,
+                 mdarray<double, 2>& spins__,
                  std::vector<int>& types__,
                  double tolerance__);
 
@@ -175,6 +178,10 @@ class Symmetry
                                  FFT3D<CPU>* fft__,
                                  splindex<block>& spl_num_gvec__,
                                  Communicator& comm__);
+        
+        void symmetrize_vector_z_component(double_complex* f_pw__,
+                                           FFT3D<CPU>* fft__,
+                                           Communicator& comm__);
 
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,

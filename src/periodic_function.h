@@ -73,12 +73,12 @@ class Periodic_function
 
         Step_function* step_function_;
 
-        /// alias for FFT driver
+        /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
 
         electronic_structure_method_t esm_type_;
 
-        /// local part of muffin-tin functions 
+        /// Local part of muffin-tin functions.
         mdarray<Spheric_function<spectral, T>, 1> f_mt_local_;
         
         /// global muffin-tin array 
@@ -237,6 +237,31 @@ class Periodic_function
             return h;
         }
 
+        void fft_transform(int direction__)
+        {
+            switch (direction__)
+            {
+                case 1:
+                {
+                    fft_->input(fft_->num_gvec(), fft_->index_map(), &f_pw(0));
+                    fft_->transform(1);
+                    fft_->output(&f_it<global>(0));
+                    break;
+                }
+                case -1:
+                {
+                    fft_->input(&f_it<global>(0));
+                    fft_->transform(-1);
+                    fft_->output(fft_->num_gvec(), fft_->index_map(), &f_pw(0));
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong fft direction");
+                }
+            }
+        }
+        
 };
 
 #include "periodic_function.hpp"

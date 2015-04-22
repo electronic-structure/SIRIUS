@@ -23,7 +23,7 @@
  */
 
 #include "potential.h"
-#include "smooth_periodic_function.h"
+//#include "smooth_periodic_function.h"
 
 namespace sirius {
 

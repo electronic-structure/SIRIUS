@@ -143,7 +143,7 @@ Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral
     return g; 
 }
 
-Smooth_periodic_function<spectral> laplacian(Smooth_periodic_function<spectral>& f)
+inline Smooth_periodic_function<spectral> laplacian(Smooth_periodic_function<spectral>& f)
 {
     auto fft = f.fft();
 
@@ -188,7 +188,7 @@ class Smooth_periodic_function_gradient
         }
 };
         
-Smooth_periodic_function_gradient<spectral> gradient(Smooth_periodic_function<spectral>& f)
+inline Smooth_periodic_function_gradient<spectral> gradient(Smooth_periodic_function<spectral>& f)
 {
     auto fft = f.fft();
 

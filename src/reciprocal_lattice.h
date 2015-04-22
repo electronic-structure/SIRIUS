@@ -176,7 +176,7 @@ class Reciprocal_lattice
         }
 
         /// Pointer to FFT index array
-        inline int* index_map()
+        inline int const* index_map() const
         {
             return fft_->index_map();
         }

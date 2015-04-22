@@ -398,23 +398,23 @@ class FFT3D<CPU>
             return gvec_shell_len_[igsh__];
         }
 
-        inline int* index_map()
+        inline int const* index_map() const
         {
             return &index_map_[0];
         }
 
-        inline int index_map(int ig__)
+        inline int index_map(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)index_map_.size());
             return index_map_[ig__];
         }
 
-        inline int num_fft_threads()
+        inline int num_fft_threads() const
         {
             return num_fft_threads_;
         }
 
-        inline int gvec_index(vector3d<int> gvec__)
+        inline int gvec_index(vector3d<int> gvec__) const
         {
             return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
         }

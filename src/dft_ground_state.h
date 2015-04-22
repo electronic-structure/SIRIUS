@@ -297,6 +297,11 @@ class DFT_ground_state
 
             parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
 
+            if (parameters_.num_mag_dims() == 1)
+            {
+                parameters_.unit_cell()->symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), fft, comm);
+            }
+
             //fft->input(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
             //fft->transform(1);
             //fft->output(&density_->rho()->f_it<global>(0));
