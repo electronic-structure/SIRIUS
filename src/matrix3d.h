@@ -94,9 +94,9 @@ class matrix3d
 
         /// Matrix-vector multiplication.
         template <typename U>
-        inline vector3d<decltype(T{}*U{})> operator*(vector3d<U> const& b)
+        inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b)
         {
-            vector3d<decltype(T{}*U{})> a;
+            vector3d<decltype(T{} * U{})> a;
             for (int i = 0; i < 3; i++)
             {
                 for (int j = 0; j < 3; j++) a[i] += (*this)(i, j) * b[j];

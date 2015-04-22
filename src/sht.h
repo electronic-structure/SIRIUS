@@ -334,7 +334,7 @@ class SHT // TODO: better name
                                             (std::sqrt(Utils::factorial(l - m1)) / Utils::factorial(l + m1 - j)) * 
                                             (std::sqrt(Utils::factorial(l - m2)) / Utils::factorial(j + m2 - m1)) * 
                                             (std::sqrt(Utils::factorial(l + m2)) / Utils::factorial(j));
-                            d += g * pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
+                            d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
                         }
                     }
                     d_mtrx(m1 + l, m2 + l) = (double)d;
@@ -355,7 +355,7 @@ class SHT // TODO: better name
             {
                 for (int m2 = -l; m2 <= l; m2++)
                 {
-                    rot_mtrx(m1 + l, m2 + l) = exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
+                    rot_mtrx(m1 + l, m2 + l) = std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
                                                d_mtrx(m1 + l, m2 + l) * p;
                 }
             }
