@@ -118,51 +118,51 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
     linalg<CPU>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__, hmt, halm__);
 }
 
-template <spin_block_t sblock>
-void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
-{
-    Timer t("sirius::Band::apply_hmt_to_apw", _global_timer_);
-
-    int ngk_loc = (int)alm.size(1);
-
-    mdarray<double_complex, 2> alm_tmp(ngk_loc, alm.size(0));
-    for (int igk = 0; igk < ngk_loc; igk++)
-    {
-        for (int i0 = 0; i0 < (int)alm.size(0); i0++) alm_tmp(igk, i0) = alm(i0, igk);
-    }
-    
-    #pragma omp parallel default(shared)
-    {
-        std::vector<double_complex> zv(ngk_loc);
-        
-        #pragma omp for
-        for (int j = 0; j < parameters_.unit_cell()->mt_aw_basis_size(); j++)
-        {
-            int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-            int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
-            int lm1 = type->indexb(xi).lm;
-            int idxrf1 = type->indexb(xi).idxrf; 
-
-            memset(&zv[0], 0, zv.size() * sizeof(double_complex));
-
-            for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
-            {
-                int lm2 = type->indexb(j2).lm;
-                int idxrf2 = type->indexb(j2).idxrf;
-                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
-
-                if (abs(zsum) > 1e-14) 
-                {
-                    for (int igk = 0; igk < ngk_loc; igk++) zv[igk] += zsum * alm_tmp(igk, atom->offset_aw() + j2); 
-                }
-            }
-            
-            for (int igk = 0; igk < ngk_loc; igk++) halm(j, igk) = zv[igk];
-        }
-    }
-}
+//== template <spin_block_t sblock>
+//== void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
+//== {
+//==     Timer t("sirius::Band::apply_hmt_to_apw", _global_timer_);
+//== 
+//==     int ngk_loc = (int)alm.size(1);
+//== 
+//==     mdarray<double_complex, 2> alm_tmp(ngk_loc, alm.size(0));
+//==     for (int igk = 0; igk < ngk_loc; igk++)
+//==     {
+//==         for (int i0 = 0; i0 < (int)alm.size(0); i0++) alm_tmp(igk, i0) = alm(i0, igk);
+//==     }
+//==     
+//==     #pragma omp parallel default(shared)
+//==     {
+//==         std::vector<double_complex> zv(ngk_loc);
+//==         
+//==         #pragma omp for
+//==         for (int j = 0; j < parameters_.unit_cell()->mt_aw_basis_size(); j++)
+//==         {
+//==             int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+//==             int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+//==             Atom* atom = parameters_.unit_cell()->atom(ia);
+//==             Atom_type* type = atom->type();
+//==             int lm1 = type->indexb(xi).lm;
+//==             int idxrf1 = type->indexb(xi).idxrf; 
+//== 
+//==             memset(&zv[0], 0, zv.size() * sizeof(double_complex));
+//== 
+//==             for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+//==             {
+//==                 int lm2 = type->indexb(j2).lm;
+//==                 int idxrf2 = type->indexb(j2).idxrf;
+//==                 double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+//== 
+//==                 if (abs(zsum) > 1e-14) 
+//==                 {
+//==                     for (int igk = 0; igk < ngk_loc; igk++) zv[igk] += zsum * alm_tmp(igk, atom->offset_aw() + j2); 
+//==                 }
+//==             }
+//==             
+//==             for (int igk = 0; igk < ngk_loc; igk++) halm(j, igk) = zv[igk];
+//==         }
+//==     }
+//== }
 
 //template <spin_block_t sblock>
 //void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 

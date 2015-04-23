@@ -562,8 +562,8 @@ class Band
         template <spin_block_t sblock>
         void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
  
-        template <spin_block_t sblock>
-        void apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
+        //== template <spin_block_t sblock>
+        //== void apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
 
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
         void set_fv_h_o_apw_lo(K_point* kp,
