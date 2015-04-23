@@ -966,12 +966,6 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
 
     h__.deallocate_on_device();
     o__.deallocate_on_device();
-
-    //== alm.deallocate_on_device();
-    //== alm.deallocate_page_locked();
-
-    //== halm.deallocate_on_device();
-    //== halm.deallocate_page_locked();
 }
 #endif
 
@@ -1207,22 +1201,6 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         case GPU:
         {
             set_fv_h_o<GPU, full_potential_lapwlo>(kp, effective_potential, h, o);
-            
-            //== dmatrix<double_complex> h1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), parameters_.blacs_context());
-            //== dmatrix<double_complex> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), parameters_.blacs_context());
-            //== set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
-            //== double diff_h = 0;
-            //== double diff_o = 0;
-            //== for (int j = 0; j < kp->gklo_basis_size_col(); j++)
-            //== {
-            //==     for (int i = 0; i < kp->gklo_basis_size_row(); i++)
-            //==     {
-            //==         diff_h += std::abs(h(i, j) - h1(i, j));
-            //==         diff_o += std::abs(o(i, j) - o1(i, j));
-            //==     }
-            //== }
-            //== std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
-
             break;
         }
         #endif
@@ -1239,150 +1217,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Utils::check_hermitian("o", o.panel());
     }
 
-    //sirius_io::hdf5_write_matrix("h.h5", h.data());
-    //sirius_io::hdf5_write_matrix("o.h5", o.data());
-    
-    //Utils::write_matrix("h.txt", true, h);
-    //Utils::write_matrix("o.txt", true, o);
-
-    //** if (verbosity_level > 1)
-    //** {
-    //**     double h_max = 0;
-    //**     double o_max = 0;
-    //**     int h_irow = 0;
-    //**     int h_icol = 0;
-    //**     int o_irow = 0;
-    //**     int o_icol = 0;
-    //**     std::vector<double> h_diag(apwlo_basis_size(), 0);
-    //**     std::vector<double> o_diag(apwlo_basis_size(), 0);
-    //**     for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
-    //**     {
-    //**         int idxglob = gklo_basis_descriptor_col_[icol].idxglob;
-    //**         for (int irow = 0; irow < apwlo_basis_size_row(); irow++)
-    //**         {
-    //**             if (gklo_basis_descriptor_row_[irow].idxglob == idxglob)
-    //**             {
-    //**                 h_diag[idxglob] = abs(h(irow, icol));
-    //**                 o_diag[idxglob] = abs(o(irow, icol));
-    //**             }
-    //**             if (abs(h(irow, icol)) > h_max)
-    //**             {
-    //**                 h_max = abs(h(irow, icol));
-    //**                 h_irow = irow;
-    //**                 h_icol = icol;
-    //**             }
-    //**             if (abs(o(irow, icol)) > o_max)
-    //**             {
-    //**                 o_max = abs(o(irow, icol));
-    //**                 o_irow = irow;
-    //**                 o_icol = icol;
-    //**             }
-    //**         }
-    //**     }
-
-    //**     Platform::allreduce(&h_diag[0], apwlo_basis_size(),
-    //**                         parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
-    //**     
-    //**     Platform::allreduce(&o_diag[0], apwlo_basis_size(),
-    //**                         parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
-    //**     
-    //**     if (parameters_.mpi_grid().root(1 << band->dim_row() | 1 << band->dim_col()))
-    //**     {
-    //**         std::stringstream s;
-    //**         s << "h_diag : ";
-    //**         for (int i = 0; i < apwlo_basis_size(); i++) s << h_diag[i] << " ";
-    //**         s << std::endl;
-    //**         s << "o_diag : ";
-    //**         for (int i = 0; i < apwlo_basis_size(); i++) s << o_diag[i] << " ";
-    //**         warning(__FILE__, __LINE__, s, 0);
-    //**     }
-
-    //**     std::stringstream s;
-    //**     s << "h_max " << h_max << " irow, icol : " << h_irow << " " << h_icol << std::endl;
-    //**     s << " (row) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_row_[h_irow].igk << " "  
-    //**                                                       << gklo_basis_descriptor_row_[h_irow].ig << " "  
-    //**                                                       << gklo_basis_descriptor_row_[h_irow].ia << " "  
-    //**                                                       << gklo_basis_descriptor_row_[h_irow].l << " "  
-    //**                                                       << gklo_basis_descriptor_row_[h_irow].lm << " "  
-    //**                                                       << gklo_basis_descriptor_row_[h_irow].idxrf << " "  
-    //**                                                       << gklo_basis_descriptor_row_[h_irow].order 
-    //**                                                       << std::endl;
-    //**     s << " (col) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_col_[h_icol].igk << " "  
-    //**                                                       << gklo_basis_descriptor_col_[h_icol].ig << " "  
-    //**                                                       << gklo_basis_descriptor_col_[h_icol].ia << " "  
-    //**                                                       << gklo_basis_descriptor_col_[h_icol].l << " "  
-    //**                                                       << gklo_basis_descriptor_col_[h_icol].lm << " "  
-    //**                                                       << gklo_basis_descriptor_col_[h_icol].idxrf << " "  
-    //**                                                       << gklo_basis_descriptor_col_[h_icol].order 
-    //**                                                       << std::endl;
-
-    //**     s << "o_max " << o_max << " irow, icol : " << o_irow << " " << o_icol << std::endl;
-    //**     s << " (row) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_row_[o_irow].igk << " "  
-    //**                                                       << gklo_basis_descriptor_row_[o_irow].ig << " "  
-    //**                                                       << gklo_basis_descriptor_row_[o_irow].ia << " "  
-    //**                                                       << gklo_basis_descriptor_row_[o_irow].l << " "  
-    //**                                                       << gklo_basis_descriptor_row_[o_irow].lm << " "  
-    //**                                                       << gklo_basis_descriptor_row_[o_irow].idxrf << " "  
-    //**                                                       << gklo_basis_descriptor_row_[o_irow].order 
-    //**                                                       << std::endl;
-    //**     s << " (col) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_col_[o_icol].igk << " "  
-    //**                                                       << gklo_basis_descriptor_col_[o_icol].ig << " "  
-    //**                                                       << gklo_basis_descriptor_col_[o_icol].ia << " "  
-    //**                                                       << gklo_basis_descriptor_col_[o_icol].l << " "  
-    //**                                                       << gklo_basis_descriptor_col_[o_icol].lm << " "  
-    //**                                                       << gklo_basis_descriptor_col_[o_icol].idxrf << " "  
-    //**                                                       << gklo_basis_descriptor_col_[o_icol].order 
-    //**                                                       << std::endl;
-    //**     warning(__FILE__, __LINE__, s, 0);
-    //** }
-    
     assert(kp->gklo_basis_size() > parameters_.num_fv_states());
-    
-    //== // debug scalapack
-    //== //== std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
-    //== //== if (debug_level > 2 && 
-    //== //==     (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
-    //== //== {
-    //==     mdarray<double_complex, 2> h_glob(kp->gklo_basis_size(), kp->gklo_basis_size());
-    //==     mdarray<double_complex, 2> o_glob(kp->gklo_basis_size(), kp->gklo_basis_size());
-    //==     //== mdarray<double_complex, 2> fv_eigen_vectors_glob(apwlo_basis_size(), parameters_.num_fv_states());
-
-    //==     h_glob.zero();
-    //==     o_glob.zero();
-
-    //==     for (int icol = 0; icol < kp->gklo_basis_size_col(); icol++)
-    //==     {
-    //==         int j = kp->gklo_basis_descriptor_col(icol).id;
-    //==         for (int irow = 0; irow < kp->gklo_basis_size_row(); irow++)
-    //==         {
-    //==             int i = kp->gklo_basis_descriptor_row(irow).id;
-    //==             h_glob(i, j) = h(irow, icol);
-    //==             o_glob(i, j) = o(irow, icol);
-    //==         }
-    //==     }
-    //==     
-    //==     Platform::allreduce(h_glob.ptr(), (int)h_glob.size(), 
-    //==                         parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
-    //==     
-    //==     Platform::allreduce(o_glob.ptr(), (int)o_glob.size(), 
-    //==                         parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
-
-    //==     Utils::check_hermitian("h_glob", h_glob);
-    //==     Utils::check_hermitian("o_glob", o_glob);
-    //==     
-    //==     if (Platform::mpi_rank() == 0)
-    //==     {
-    //==         sirius_io::hdf5_write_matrix("h.h5", h_glob);
-    //==         sirius_io::hdf5_write_matrix("o.h5", o_glob);
-    //==     }
-    //==     //**     
-    //==     //**     generalized_evp_lapack lapack_solver(-1.0);
-
-    //==     //**     lapack_solver.solve(apwlo_basis_size(), parameters_.num_fv_states(), h_glob.get_ptr(), h_glob.ld(), 
-    //==     //**                         o_glob.get_ptr(), o_glob.ld(), &fv_eigen_values_glob[0], fv_eigen_vectors_glob.get_ptr(),
-    //==     //**                         fv_eigen_vectors_glob.ld());
-    //==     //**
-    //== //== }
     
     if (fix_apwlo_linear_dependence)
     {
@@ -1403,16 +1238,6 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     h.deallocate();
     o.deallocate();
     
-    //** if ((debug_level > 2) && (parameters_.eigen_value_solver() == scalapack))
-    //** {
-    //**     double d = 0.0;
-    //**     for (int i = 0; i < parameters_.num_fv_states(); i++) 
-    //**         d += fabs(fv_eigen_values_[i] - fv_eigen_values_glob[i]);
-    //**     std::stringstream s;
-    //**     s << "Totoal eigen-value difference : " << d;
-    //**     warning(__FILE__, __LINE__, s, 0);
-    //** }
-
     log_function_exit(__func__);
 }
 
