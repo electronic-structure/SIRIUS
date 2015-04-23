@@ -60,6 +60,8 @@ class DFT_ground_state
 
         K_set* kset_;
 
+        int use_symmetry_;
+
         double ewald_energy_;
 
         double ewald_energy()
@@ -135,11 +137,12 @@ class DFT_ground_state
 
     public:
 
-        DFT_ground_state(Global& parameters__, Potential* potential__, Density* density__, K_set* kset__) 
+        DFT_ground_state(Global& parameters__, Potential* potential__, Density* density__, K_set* kset__, int use_symmetry__)
             : parameters_(parameters__), 
               potential_(potential__), 
               density_(density__), 
-              kset_(kset__)
+              kset_(kset__),
+              use_symmetry_(use_symmetry__)
         {
             if (parameters_.esm_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
         }
@@ -288,23 +291,18 @@ class DFT_ground_state
         {
             auto fft = parameters_.fft();
             
-            //fft->input(&density_->rho()->f_it<global>(0));
-            //fft->transform(-1);
-            //fft->output(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
-
             auto& spl_num_gvec = parameters_.reciprocal_lattice()->spl_num_gvec();
             auto& comm = parameters_.comm();
 
             parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
+            parameters_.unit_cell()->symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
 
             if (parameters_.num_mag_dims() == 1)
             {
                 parameters_.unit_cell()->symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), fft, comm);
+                parameters_.unit_cell()->symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
             }
 
-            //fft->input(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
-            //fft->transform(1);
-            //fft->output(&density_->rho()->f_it<global>(0));
         }
 };
 

@@ -181,8 +181,14 @@ class Symmetry
                                  splindex<block>& spl_num_gvec__,
                                  Communicator& comm__);
         
+        void symmetrize_function(mdarray<double, 3>& frlm__,
+                                 Communicator& comm__);
+        
         void symmetrize_vector_z_component(double_complex* f_pw__,
                                            FFT3D<CPU>* fft__,
+                                           Communicator& comm__);
+
+        void symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
                                            Communicator& comm__);
 
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,

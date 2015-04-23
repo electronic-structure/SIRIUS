@@ -128,9 +128,11 @@ void dft_loop(cmd_args args)
     #endif
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
-    
+
+    int use_symmetry = parser["use_symmetry"].get(0);
+
     K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
-             vector3d<int>(&ngridk[0]), vector3d<int>(0), parser["use_symmetry"].get(0));
+             vector3d<int>(&ngridk[0]), vector3d<int>(0), use_symmetry);
 
     ks.initialize();
     
@@ -145,7 +147,7 @@ void dft_loop(cmd_args args)
     MEMORY_USAGE_INFO();
     #endif
     
-    DFT_ground_state dft(parameters, potential, density, &ks);
+    DFT_ground_state dft(parameters, potential, density, &ks, use_symmetry);
 
     if (task_name == "gs_restart")
     {
@@ -187,7 +189,6 @@ void dft_loop(cmd_args args)
     parameters.clear();
 
     Timer::print();
-
 }
 
 int main(int argn, char** argv)

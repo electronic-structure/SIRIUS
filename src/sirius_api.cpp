@@ -1880,7 +1880,7 @@ void sirius_ground_state_initialize(int32_t* kset_id__)
     log_function_enter(__func__);
     if (dft_ground_state != nullptr) error_local(__FILE__, __LINE__, "dft_ground_state object is already allocate");
 
-    dft_ground_state = new sirius::DFT_ground_state(*global_parameters, potential, density, kset_list[*kset_id__]);
+    dft_ground_state = new sirius::DFT_ground_state(*global_parameters, potential, density, kset_list[*kset_id__], 1);
     log_function_exit(__func__);
 }
 

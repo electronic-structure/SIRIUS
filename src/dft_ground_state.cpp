@@ -115,19 +115,22 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* generate new density from the occupied wave-functions */
         density_->generate(*kset_);
 
-        if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+        if (use_symmetry_)
         {
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                density_->magnetization(j)->fft_transform(-1);
-        }
+            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            {
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    density_->magnetization(j)->fft_transform(-1);
+            }
 
-        symmetrize_density();
+            symmetrize_density();
 
-        if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-        {
-            density_->rho()->fft_transform(1);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                density_->magnetization(j)->fft_transform(1);
+            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            {
+                density_->rho()->fft_transform(1);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    density_->magnetization(j)->fft_transform(1);
+            }
         }
         
         rms = density_->mix();

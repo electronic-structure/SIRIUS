@@ -262,6 +262,10 @@ class Periodic_function
             }
         }
         
+        mdarray<T, 3>& f_mt()
+        {
+            return f_mt_;
+        }
 };
 
 #include "periodic_function.hpp"

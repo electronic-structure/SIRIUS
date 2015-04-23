@@ -85,7 +85,7 @@ const int verbosity_level = 6;
 
 const bool fix_apwlo_linear_dependence = false;
 
-const radial_grid_t default_radial_grid_t = scaled_pow_grid;
+const radial_grid_t default_radial_grid_t = exponential_grid;
 
 const bool use_second_variation = true;
 

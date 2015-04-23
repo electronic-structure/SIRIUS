@@ -23,6 +23,7 @@
  */
 
 #include "symmetry.h"
+#include "sht.h"
 
 namespace sirius {
 
@@ -331,8 +332,10 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
     double* ptr = (double*)&sym_f_pw(0);
 
     #pragma omp parallel for
-    for (int isym = 0; isym < num_sym_op(); isym++)
+    for (int i = 0; i < (int)mag_sym_.size(); i++)
     {
+        int isym = mag_sym_[i].first;
+
         /* full symmetry operation is {R|t} */
         auto R = rot_mtrx(isym);
         auto t = fractional_translation(isym);
@@ -365,7 +368,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
     }
     comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
 
-    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
+    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(mag_sym_.size());
 }
 
 void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
@@ -418,6 +421,103 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
 
     for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(mag_sym_.size());
 
+}
+
+void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
+                                   Communicator& comm__)
+{
+    Timer t("sirius::Symmetry::symmetrize_function_mt");
+
+    int lmmax = (int)frlm__.size(0);
+    int nrmax = (int)frlm__.size(1);
+    if (num_atoms_ != (int)frlm__.size(2)) TERMINATE("wrong number of atoms");
+
+    splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
+
+    int lmax = Utils::lmax_by_lmmax(lmmax);
+
+    mdarray<double, 2> rotm(lmmax, lmmax);
+
+    mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
+    fsym.zero();
+
+    double alpha = 1.0 / double(mag_sym_.size());
+
+    for (int i = 0; i < (int)mag_sym_.size(); i++)
+    {
+        int isym = mag_sym_[i].first;
+
+        int pr = proper_rotation(isym);
+        auto eang = euler_angles(isym);
+        SHT::rotation_matrix(lmax, eang, pr, rotm);
+
+        for (int ia = 0; ia < num_atoms_; ia++)
+        {
+            int ja = sym_table_(ia, isym);
+            auto location = spl_atoms.location(ja);
+            if (location.second == comm__.rank())
+            {
+                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(), 
+                                  frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
+                                  fsym.at<CPU>(0, 0, location.first), fsym.ld());
+            }
+        }
+    }
+    comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
+                     (int)(lmmax * nrmax * spl_atoms.global_offset()), 
+                     (int)(lmmax * nrmax * spl_atoms.local_size()));
+}
+
+void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
+                                             Communicator& comm__)
+{
+    Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
+
+    int lmmax = (int)frlm__.size(0);
+    int nrmax = (int)frlm__.size(1);
+
+    splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
+
+    if (num_atoms_ != (int)frlm__.size(2)) TERMINATE("wrong number of atoms");
+
+    int lmax = Utils::lmax_by_lmmax(lmmax);
+
+    mdarray<double, 2> rotm(lmmax, lmmax);
+
+    mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
+    fsym.zero();
+
+    double alpha = 1.0 / double(mag_sym_.size());
+
+    for (int i = 0; i < (int)mag_sym_.size(); i++)
+    {
+        int isym = mag_sym_[i].first;
+        int jsym = mag_sym_[i].second;
+
+        /* take proper part of rotation matrix */
+        auto Rspin = rot_mtrx_cart(jsym);
+        Rspin = Rspin * Rspin.det();
+
+        int pr = proper_rotation(isym);
+        auto eang = euler_angles(isym);
+        SHT::rotation_matrix(lmax, eang, pr, rotm);
+
+        for (int ia = 0; ia < num_atoms_; ia++)
+        {
+            int ja = sym_table_(ia, isym);
+            auto location = spl_atoms.location(ja);
+            if (location.second == comm__.rank())
+            {
+                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * Rspin(2, 2), rotm.at<CPU>(), rotm.ld(), 
+                                  frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
+                                  fsym.at<CPU>(0, 0, location.first), fsym.ld());
+            }
+        }
+    }
+
+    comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
+                     (int)(lmmax * nrmax * spl_atoms.global_offset()), 
+                     (int)(lmmax * nrmax * spl_atoms.local_size()));
 }
 
 };

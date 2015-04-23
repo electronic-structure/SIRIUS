@@ -181,6 +181,13 @@ class Communicator
         }
 
         template<typename T>
+        void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
+        {
+            CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, recvcounts__, displs__,
+                     type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
+
+        template<typename T>
         void allgather(T* buffer__, int offset__, int count__) const
         {
             std::vector<int> v(size() * 2);
@@ -197,16 +204,7 @@ class Communicator
                 counts[i] = v[2 * i];
                 offsets[i] = v[2 * i + 1];
             }
-        
-            CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, &counts[0], &offsets[0],
-                     type_wrapper<T>::mpi_type_id(), mpi_comm_));
-        }
-
-        template<typename T>
-        void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
-        {
-            CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, &recvcounts__[0], &displs__[0],
-                     type_wrapper<T>::mpi_type_id(), mpi_comm_));
+            allgather(buffer__, &counts[0], &offsets[0]);
         }
 
         template <typename T>
