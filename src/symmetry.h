@@ -57,6 +57,8 @@ class Symmetry
 
         std::vector< std::pair<int, int> > mag_sym_;
 
+        mdarray<int, 2> sym_table_;
+
     public:
 
         Symmetry(matrix3d<double>& lattice_vectors__,
