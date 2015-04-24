@@ -86,14 +86,14 @@ class Matching_coefficients
                              int lm, 
                              int nu, 
                              matrix3d<double>& A, 
-                             double_complex* alm)
+                             double_complex* alm) const
         {
             /* invert matrix of radial derivatives */
             switch (N)
             {
                 case 1:
                 {
-                    if (debug_level >= 1 && fabs(A(0, 0)) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
+                    if (debug_level >= 1 && std::abs(A(0, 0)) < 1.0 / std::sqrt(parameters_.unit_cell()->omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
@@ -109,7 +109,7 @@ class Matching_coefficients
                 {
                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
 
-                    if (debug_level >= 1 && fabs(det) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
+                    if (debug_level >= 1 && std::abs(det) < 1.0 / std::sqrt(parameters_.unit_cell()->omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
@@ -253,12 +253,12 @@ class Matching_coefficients
         /** \param [in] ia Index of atom.
          *  \param [out] alm Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
          */
-        void generate(int ia, mdarray<double_complex, 2>& alm)
+        void generate(int ia, mdarray<double_complex, 2>& alm) const
         {
             Timer t("sirius::Matching_coefficients::generate:atom");
 
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
+            auto atom = parameters_.unit_cell()->atom(ia);
+            auto type = atom->type();
 
             assert(type->max_aw_order() <= 3);
 
@@ -320,7 +320,7 @@ class Matching_coefficients
          *  is used to setup Hamiltonian and overlap matrices.
          */
         template <bool normal_layout>
-        void generate(dmatrix<double_complex>& alm)
+        void generate(dmatrix<double_complex>& alm) const
         {
             Timer t("sirius::Matching_coefficients::generate:panel");
 
@@ -408,7 +408,7 @@ class Matching_coefficients
         }
 
         void generate(splindex<block>& sspl_gkvec_col, 
-                      mdarray<double_complex, 2>& alm_v)
+                      mdarray<double_complex, 2>& alm_v) const
         {
             Timer t("sirius::Matching_coefficients::generate:slice");
 
