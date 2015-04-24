@@ -313,9 +313,10 @@ class Unit_cell
         }
         
         /// Pointer to atom by atom id.
-        inline Atom* atom(int id)
+        inline Atom* atom(int id__)
         {
-            return atoms_[id];
+            assert(id__ >= 0 && id__ < (int)atoms_.size());
+            return atoms_[id__];
         }
         
         /// Number of atom types.
@@ -333,9 +334,10 @@ class Unit_cell
         }
  
         /// Pointer to atom type by internal id.
-        inline Atom_type* atom_type(int id)
+        inline Atom_type* atom_type(int id__)
         {
-            return atom_types_[id];
+            assert(id__ >= 0 && id__ < (int)atom_types_.size());
+            return atom_types_[id__];
         }
        
         /// Number of atom symmetry classes.
