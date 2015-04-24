@@ -160,7 +160,7 @@ class Gaunt_coefficients
         }
     
         /// Return vector of non-zero Gaunt coefficients for a given combination of lm1 and lm2
-        inline std::vector<gaunt_L3<T> >& gaunt_vector(int lm1, int lm2)
+        inline std::vector<gaunt_L3<T> > const& gaunt_vector(int lm1, int lm2) const
         {
             return gaunt_packed_L3_(lm1, lm2);
         }
