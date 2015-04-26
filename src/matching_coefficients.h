@@ -255,8 +255,6 @@ class Matching_coefficients
          */
         void generate(int ia, mdarray<double_complex, 2>& alm) const
         {
-            Timer t("sirius::Matching_coefficients::generate:atom");
-
             auto atom = parameters_.unit_cell()->atom(ia);
             auto type = atom->type();
 
@@ -264,50 +262,46 @@ class Matching_coefficients
 
             int iat = type->id();
                 
-            #pragma omp parallel
+            matrix3d<double> A;
+
+            for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
             {
-                matrix3d<double> A;
+                int l = type->indexb(xi).l;
+                int lm = type->indexb(xi).lm;
+                int nu = type->indexb(xi).order; 
 
-                #pragma omp for
-                for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+                /* order of augmentation for a given orbital quantum number */
+                int num_aw = (int)type->aw_descriptor(l).size();
+                
+                /* create matrix of radial derivatives */
+                for (int order = 0; order < num_aw; order++)
                 {
-                    int l = type->indexb(xi).l;
-                    int lm = type->indexb(xi).lm;
-                    int nu = type->indexb(xi).order; 
+                    for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                }
 
-                    /* order of augmentation for a given orbital quantum number */
-                    int num_aw = (int)type->aw_descriptor(l).size();
-                    
-                    /* create matrix of radial derivatives */
-                    for (int order = 0; order < num_aw; order++)
+                switch (num_aw)
+                {
+                    /* APW */
+                    case 1:
                     {
-                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                        generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                        break;
                     }
-
-                    switch (num_aw)
+                    /* LAPW */
+                    case 2:
                     {
-                        /* APW */
-                        case 1:
-                        {
-                            generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
-                            break;
-                        }
-                        /* LAPW */
-                        case 2:
-                        {
-                            generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
-                            break;
-                        }
-                        /* Super LAPW */
-                        case 3:
-                        {
-                            generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
-                            break;
-                        }
-                        default:
-                        {
-                            error_local(__FILE__, __LINE__, "wrong order of augmented wave");
-                        }
+                        generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                        break;
+                    }
+                    /* Super LAPW */
+                    case 3:
+                    {
+                        generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                        break;
+                    }
+                    default:
+                    {
+                        error_local(__FILE__, __LINE__, "wrong order of augmented wave");
                     }
                 }
             }
