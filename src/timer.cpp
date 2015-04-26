@@ -34,6 +34,13 @@ std::map<std::string, std::vector<double> > Timer::global_timers_;
 
 void Timer::start()
 {
+    #ifndef NDEBUG
+    if (Platform::num_threads() != 1)
+    {
+        TERMINATE("not thread-safe");
+    }
+    #endif
+
     if (active_)
     {
         printf("timer %s is already running\n", label_.c_str());
