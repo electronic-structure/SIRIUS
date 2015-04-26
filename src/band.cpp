@@ -907,52 +907,58 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
     
-    int num_atoms_in_block = 8;
+    int num_atoms_in_block = Platform::max_num_threads();
     int nblk = parameters_.unit_cell()->num_atoms() / num_atoms_in_block +
                std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
 
-    splindex<block> spl_atoms(parameters_.unit_cell()->num_atoms(), nblk, 0);
-    int max_mt_aw = (int)spl_atoms.local_size(0) * parameters_.unit_cell()->max_mt_aw_basis_size();
+    int max_mt_aw = num_atoms_in_block * parameters_.unit_cell()->max_mt_aw_basis_size();
     DUMP("max_mt_aw: %i", max_mt_aw);
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), max_mt_aw);
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), max_mt_aw);
     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), max_mt_aw);
 
+    Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
         int num_mt_aw = 0;
-        std::vector<int> offsets(spl_atoms.local_size(iblk));
-        for (int ialoc = 0; ialoc < (int)spl_atoms.local_size(iblk); ialoc++)
+        std::vector<int> offsets(num_atoms_in_block);
+        for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
         {
-            int ia = (int)spl_atoms.global_index(ialoc, iblk);
             auto atom = parameters_.unit_cell()->atom(ia);
             auto type = atom->type();
-            offsets[ialoc] = num_mt_aw;
+            offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
             num_mt_aw += type->mt_aw_basis_size();
         }
-        #pragma omp parallel for
-        for (int ialoc = 0; ialoc < (int)spl_atoms.local_size(iblk); ialoc++)
+            
+        #pragma omp parallel
         {
-            int ia = (int)spl_atoms.global_index(ialoc, iblk);
-            auto atom = parameters_.unit_cell()->atom(ia);
-            auto type = atom->type();
-
-            mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type->mt_aw_basis_size());
-            mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
-            mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
-
-            kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-            for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+            int tid = Platform::thread_id();
+            for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
-                for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
-            }
-            kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
-            apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+                if (ia % Platform::num_threads() == tid)
+                {
+                    int ialoc = ia - iblk * num_atoms_in_block;
+                    auto atom = parameters_.unit_cell()->atom(ia);
+                    auto type = atom->type();
 
-            /* setup apw-lo and lo-apw blocks */
-            set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
+                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type->mt_aw_basis_size());
+                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
+
+                    kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
+                    for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+                    {
+                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
+                    }
+                    kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
+                    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+
+                    /* setup apw-lo and lo-apw blocks */
+                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
+                }
+            }
         }
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone,
                           alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), zone, 
@@ -961,6 +967,12 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone, 
                           alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), zone,
                           h__.at<CPU>(), h__.ld());
+    }
+    double tval = t1.stop();
+    if (kp__->comm().rank() == 0)
+    {
+        DUMP("effective zgemm performance: %12.6f GFlops/rank",
+             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * parameters_.unit_cell()->mt_aw_basis_size() / tval);
     }
 
     /* add interstitial contributon */
@@ -991,179 +1003,115 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     o__.zero_on_device();
 
     double_complex zone(1, 0);
-    
-    int num_atoms_in_block = 8;
+
+    int num_atoms_in_block = Platform::max_num_threads();
     int nblk = parameters_.unit_cell()->num_atoms() / num_atoms_in_block +
                std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
 
-    splindex<block> spl_atoms(parameters_.unit_cell()->num_atoms(), nblk, 0);
-
-    //int max_mt_aw = 0;
-    //for (int iblk = 0; iblk < nblk; iblk++)
-    //{
-    //    int num_mt_aw = 0;
-    //    for (int ialoc = 0; ialoc < (int)spl_atoms.local_size(iblk); ialoc++)
-    //    {
-    //        int ia = (int)spl_atoms.global_index(ialoc, iblk);
-    //        num_mt_aw += parameters_.unit_cell()->atom(ia)->type()->mt_aw_basis_size();
-    //    }
-    //    max_mt_aw = std::max(max_mt_aw, num_mt_aw);
-    //}
-    int max_mt_aw = (int)spl_atoms.local_size(0) * parameters_.unit_cell()->max_mt_aw_basis_size();
+    int max_mt_aw = num_atoms_in_block * parameters_.unit_cell()->max_mt_aw_basis_size();
     DUMP("max_mt_aw: %i", max_mt_aw);
 
-    mdarray<double_complex, 2> alm_row(nullptr, kp__->num_gkvec_row(), max_mt_aw);
-    alm_row.allocate();
-    //alm_row.allocate_on_device();
+    mdarray<double_complex, 3> alm_row(nullptr, kp__->num_gkvec_row(), max_mt_aw, 2);
+    alm_row.allocate(1);
+    alm_row.allocate_on_device();
 
-    mdarray<double_complex, 2> alm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw);
-    alm_col.allocate();
-    //alm_col.allocate_on_device();
+    mdarray<double_complex, 3> alm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw, 2);
+    alm_col.allocate(1);
+    alm_col.allocate_on_device();
 
-    mdarray<double_complex, 2> halm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw);
-    halm_col.allocate();
-    //halm_col.allocate_on_device();
+    mdarray<double_complex, 3> halm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw, 2);
+    halm_col.allocate(1);
+    halm_col.allocate_on_device();
 
+    Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
-        //int s = iblk % 2;
         int num_mt_aw = 0;
-        std::vector<int> offsets(spl_atoms.local_size(iblk));
-        for (int ialoc = 0; ialoc < (int)spl_atoms.local_size(iblk); ialoc++)
+        std::vector<int> offsets(num_atoms_in_block);
+        for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
         {
-            int ia = (int)spl_atoms.global_index(ialoc, iblk);
             auto atom = parameters_.unit_cell()->atom(ia);
             auto type = atom->type();
-            offsets[ialoc] = num_mt_aw;
+            offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
             num_mt_aw += type->mt_aw_basis_size();
         }
-        #pragma omp parallel for
-        for (int ialoc = 0; ialoc < (int)spl_atoms.local_size(iblk); ialoc++)
+
+        int s = iblk % 2;
+            
+        #pragma omp parallel
         {
-            int ia = (int)spl_atoms.global_index(ialoc, iblk);
-            auto atom = parameters_.unit_cell()->atom(ia);
-            auto type = atom->type();
-            //int tid = Platform::thread_id();
+            int tid = Platform::thread_id();
+            for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
+            {
+                if (ia % Platform::num_threads() == tid)
+                {
+                    int ialoc = ia - iblk * num_atoms_in_block;
+                    auto atom = parameters_.unit_cell()->atom(ia);
+                    auto type = atom->type();
 
-            //== mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc], s), alm_row.at<GPU>(0, offsets[ialoc], s),
-            //==                                        kp__->num_gkvec_row(), type->mt_aw_basis_size());
+                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc], s),
+                                                           alm_row.at<GPU>(0, offsets[ialoc], s),
+                                                           kp__->num_gkvec_row(), type->mt_aw_basis_size());
 
-            //== mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc], s), alm_col.at<GPU>(0, offsets[ialoc], s),
-            //==                                        kp__->num_gkvec_col(), type->mt_aw_basis_size());
-            //== 
-            //== mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc], s), halm_col.at<GPU>(0, offsets[ialoc], s),
-            //==                                         kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc], s),
+                                                           alm_col.at<GPU>(0, offsets[ialoc], s),
+                                                           kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                    
+                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc], s),
+                                                            halm_col.at<GPU>(0, offsets[ialoc], s),
+                                                            kp__->num_gkvec_col(), type->mt_aw_basis_size());
 
-            printf("alm_row: %p\n", (void*)alm_row.at<CPU>(0, offsets[ialoc]));
-            printf("alm_col: %p\n", (void*)alm_col.at<CPU>(0, offsets[ialoc]));
-            printf("halm_col: %p\n", (void*)halm_col.at<CPU>(0, offsets[ialoc]));
+                    kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
+                    for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+                    {
+                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
+                    }
+                    alm_row_tmp.async_copy_to_device(tid);
 
-            mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type->mt_aw_basis_size());
-            mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
-            mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                    kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
+                    alm_col_tmp.async_copy_to_device(tid);
 
-            kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-            //for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
-            //{
-            //    for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
-            //}
-            //alm_row_tmp.copy_to_device();
+                    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+                    halm_col_tmp.async_copy_to_device(tid);
 
-            kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
-            //alm_col_tmp.copy_to_device();
-
-            apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
-            //halm_col_tmp.copy_to_device();
-
-            /* setup apw-lo and lo-apw blocks */
-            //set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
-
-            //cuda_stream_synchronize(tid);
+                    /* setup apw-lo and lo-apw blocks */
+                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
+                }
+            }
+            cuda_stream_synchronize(tid);
         }
-        //cublas_set_matrix(kp__->num_gkvec_row(), num_mt_aw, sizeof(double_complex), alm_row.at<CPU>(0, 0, s), alm_row.ld(),
-        //                  alm_row.at<GPU>(0, 0, s), alm_row.ld());
-        //cublas_set_matrix(kp__->num_gkvec_col(), num_mt_aw, sizeof(double_complex), alm_col.at<CPU>(0, 0, s), alm_col.ld(),
-        //                  alm_col.at<GPU>(0, 0, s), alm_col.ld());
-        //cublas_set_matrix(kp__->num_gkvec_col(), num_mt_aw, sizeof(double_complex), halm_col.at<CPU>(0, 0, s), halm_col.ld(),
-        //                  halm_col.at<GPU>(0, 0, s), halm_col.ld());
-        //== cublas_set_matrix(kp__->num_gkvec_row(), num_mt_aw, sizeof(double_complex), alm_row.at<CPU>(), alm_row.ld(),
-        //==                   alm_row.at<GPU>(), alm_row.ld());
-        //== cublas_set_matrix(kp__->num_gkvec_col(), num_mt_aw, sizeof(double_complex), alm_col.at<CPU>(), alm_col.ld(),
-        //==                   alm_col.at<GPU>(), alm_col.ld());
-        //== cublas_set_matrix(kp__->num_gkvec_col(), num_mt_aw, sizeof(double_complex), halm_col.at<CPU>(), halm_col.ld(),
-        //==                   halm_col.at<GPU>(), halm_col.ld());
+        cuda_stream_synchronize(Platform::max_num_threads());
+        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
+                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone, 
+                          o__.at<GPU>(), o__.ld(), Platform::max_num_threads());
 
-        //linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
-        //                  alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone, 
-        //                  o__.at<GPU>(), o__.ld());
-
-        //linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
-        //                  alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &zone,
-        //                  h__.at<GPU>(), h__.ld());
-        //== linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone,
-        //==                   alm_row.at<GPU>(), alm_row.ld(), alm_col.at<GPU>(), alm_col.ld(), &zone, 
-        //==                   o__.at<GPU>(), o__.ld());
-
-        //== linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
-        //==                   alm_row.at<GPU>(), alm_row.ld(), halm_col.at<GPU>(), halm_col.ld(), &zone,
-        //==                   h__.at<GPU>(), h__.ld());
-        //== linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone,
-        //==                   alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), zone, 
-        //==                   o__.at<CPU>(), o__.ld());
-
-        //== linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone, 
-        //==                   alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), zone,
-        //==                   h__.at<CPU>(), h__.ld());
+        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
+                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &zone,
+                          h__.at<GPU>(), h__.ld(), Platform::max_num_threads());
     }
 
-    //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //{
-    //    Atom* atom = parameters_.unit_cell()->atom(ia);
-    //    Atom_type* type = atom->type();
-    //   
-    //    /* generate matching coefficients for current atom */
-    //    kp__->alm_coeffs_row()->generate(ia, alm_row);
-    //    for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
-    //    {
-    //        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
-    //    }
-    //    alm_row.async_copy_to_device();
-
-    //    kp__->alm_coeffs_col()->generate(ia, alm_col);
-    //    alm_col.copy_to_device();
-
-    //    linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-    //                      alm_row.at<GPU>(0, 0), alm_row.ld(), alm_col.at<GPU>(0, 0), alm_col.ld(), &zone, 
-    //                      o__.at<GPU>(0, 0), o__.ld()); 
-
-    //    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
-    //    halm_col.copy_to_device();
-
-    //    linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-    //                      alm_row.at<GPU>(0, 0), alm_row.ld(), halm_col.at<GPU>(0, 0), halm_col.ld(), &zone,
-    //                      h__.at<GPU>(0, 0), h__.ld());
-
-    //    /* setup apw-lo and lo-apw blocks */
-    //    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
-    //}
-
-    //cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 
-    //                  h__.at<CPU>(), h__.ld());
-    //
-    //cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<GPU>(0, 0), o__.ld(), 
-    //                  o__.at<CPU>(), o__.ld());
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 
+                      h__.at<CPU>(), h__.ld());
     
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<GPU>(0, 0), o__.ld(), 
+                      o__.at<CPU>(), o__.ld());
+    
+    double tval = t1.stop();
+    if (kp__->comm().rank() == 0)
+    {
+        DUMP("effective zgemm performance: %12.6f GFlops/rank",
+             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * parameters_.unit_cell()->mt_aw_basis_size() / tval);
+    }
+
     /* add interstitial contributon */
-    //set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
+    set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
 
     /* setup lo-lo block */
-    //set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
+    set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
 
-    //h__.deallocate_on_device();
-    //o__.deallocate_on_device();
-
-    STOP();
+    h__.deallocate_on_device();
+    o__.deallocate_on_device();
 }
 #endif
 
