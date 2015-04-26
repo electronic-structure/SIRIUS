@@ -96,14 +96,11 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
                             mdarray<double_complex, 2>& alm__,
                             mdarray<double_complex, 2>& halm__)
 {
-    Timer t("sirius::Band::apply_hmt_to_apw|atom");
-    
     Atom* atom = parameters_.unit_cell()->atom(ia__);
     Atom_type* type = atom->type();
 
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is available
     mdarray<double_complex, 2> hmt(type->mt_aw_basis_size(), type->mt_aw_basis_size());
-    #pragma omp parallel for
     for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
     {
         int lm2 = type->indexb(j2).lm;
