@@ -55,8 +55,8 @@ void Platform::initialize(bool call_mpi_init)
     #if defined(_VERBOSITY_) && (_VERBOSITY_ > 0)
     if (rank() == 0) cuda_device_info();
     #endif
-    cuda_create_streams(max_num_threads());
-    cublas_create_handles(max_num_threads());
+    cuda_create_streams(max_num_threads() + 1);
+    cublas_create_handles(max_num_threads() + 1);
     #endif
     #ifdef _MAGMA_
     magma_init_wrapper();
@@ -84,8 +84,8 @@ void Platform::finalize()
     magma_finalize_wrapper();
     #endif
     #ifdef _GPU_
-    cublas_destroy_handles(max_num_threads());
-    cuda_destroy_streams(max_num_threads());
+    cublas_destroy_handles(max_num_threads() + 1);
+    cuda_destroy_streams(max_num_threads() + 1);
     cuda_device_reset();
     #endif
     fftw_cleanup_threads();
