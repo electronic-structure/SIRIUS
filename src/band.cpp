@@ -1124,8 +1124,6 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
                              mdarray<double_complex, 2>& h, 
                              mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_fv_h_o_apw_lo");
-    
     /* apw-lo block */
     for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
     {
