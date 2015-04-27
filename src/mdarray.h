@@ -615,6 +615,13 @@ class mdarray_base
 
             return h;
         }
+
+        T checksum() const
+        {
+            T cs(0);
+            for (size_t i = 0; i < size(); i++) cs += ptr_[i];
+            return cs;
+        }
         
         /// Copy the content of the array to dest
         void operator>>(mdarray_base<T, N>& dest__) const
