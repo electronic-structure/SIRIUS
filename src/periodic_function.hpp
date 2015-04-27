@@ -268,7 +268,7 @@ size_t Periodic_function<T>::pack(size_t offset, Mixer<double>* mixer)
 }
 
 template <typename T>
-size_t Periodic_function<T>::unpack(T* array)
+size_t Periodic_function<T>::unpack(T const* array)
 {
     size_t n = 0;
 
