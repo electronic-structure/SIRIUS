@@ -396,7 +396,7 @@ class Potential
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);
         }
 
-        inline void unpack(double* buffer)
+        inline void unpack(double const* buffer)
         {
             size_t n = effective_potential_->unpack(buffer);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->unpack(&buffer[n]);
