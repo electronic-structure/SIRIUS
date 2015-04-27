@@ -107,6 +107,15 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         /* compute new potential */
         generate_effective_potential();
+
+        //if (iter == 0) 
+        //{
+        //    potential_->mixer_init();
+        //}
+        //else
+        //{
+        //    potential_->mix();
+        //}
         
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
@@ -148,7 +157,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f\n", iter, rms, etot - eold);
         }
         
-        if (fabs(eold - etot) < energy_tol && rms < potential_tol) break;
+        if (std::abs(eold - etot) < energy_tol && rms < potential_tol) break;
 
         eold = etot;
     }

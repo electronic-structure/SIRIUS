@@ -219,14 +219,6 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 {
     Timer t("sirius::Potential::poisson");
 
-    /* get plane-wave coefficients of the charge density */
-    //fft_->input(&rho->f_it<global>(0));
-    //fft_->transform(-1);
-    //fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho->f_pw(0));
-
-    //std::vector< Spheric_function<spectral, double_complex> > rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
-    //std::vector< Spheric_function<spectral, double_complex> > vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
-
     /* in case of full potential we need to do pseudo-charge multipoles */
     if (parameters_.unit_cell()->full_potential())
     {
@@ -309,9 +301,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     }
     
     /* transform Hartree potential to real space */
-    fft_->input(fft_->num_gvec(), fft_->index_map(), &vh->f_pw(0));
-    fft_->transform(1);
-    fft_->output(&vh->f_it<global>(0));
+    vh->fft_transform(1);
     
     /* compute contribution from the smooth part of Hartree potential */
     energy_vha_ = inner(parameters_, rho, vh);

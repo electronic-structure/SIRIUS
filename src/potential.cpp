@@ -96,6 +96,8 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     vh_el_ = mdarray<double, 1>(parameters_.unit_cell()->num_atoms());
 
     update();
+
+    mixer_ = new Linear_mixer<double>(size(), 1, parameters_.comm());
 }
 
 Potential::~Potential()
@@ -108,6 +110,7 @@ Potential::~Potential()
     delete xc_energy_density_;
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential) delete local_potential_;
+    delete mixer_;
 }
 
 void Potential::update()
