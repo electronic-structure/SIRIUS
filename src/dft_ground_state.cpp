@@ -99,7 +99,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     density_->mixer_init();
 
     double eold = 0.0;
-    double rms = 1.0;
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
@@ -108,15 +107,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* compute new potential */
         generate_effective_potential();
 
-        //if (iter == 0) 
-        //{
-        //    potential_->mixer_init();
-        //}
-        //else
-        //{
-        //    potential_->mix();
-        //}
-        
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
@@ -142,7 +132,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             }
         }
         
-        rms = density_->mix();
+        double rms = density_->mix();
 
         parameters_.comm().bcast(&rms, 1, 0);
 
