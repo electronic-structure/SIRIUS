@@ -66,13 +66,13 @@ class Mixer
         double rss_;
 
         /// Return position in the list of mixed vectors for the given mixing step.
-        inline int offset(int step__)
+        inline int offset(int step__) const
         {
             return step__ % max_history_;
         }
         
         /// Compute RMS deviation between current vector and input vector.
-        double rms_deviation()
+        double rms_deviation() const
         {
             double rms = 0.0;
             if (size_ != 0)
@@ -128,7 +128,7 @@ class Mixer
             if (offs_and_rank.second == comm_.rank()) input_buffer_(offs_and_rank.first) = value;
         }
 
-        inline T* output_buffer()
+        inline T const* output_buffer() const
         {
             return output_buffer_.template at<CPU>();
         }
@@ -138,12 +138,12 @@ class Mixer
             memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(T));
         }
 
-        inline double beta()
+        inline double beta() const
         {
             return beta_;
         }
 
-        inline double rss()
+        inline double rss() const
         {
             return rss_;
         }
@@ -170,17 +170,9 @@ class Linear_mixer: public Mixer<T>
 
         double mix()
         {
-            return mix(this->beta_);
-        }
-
-        double mix(double beta__)
-        {
             double rms = this->rms_deviation();
-
             this->count_++;
-
             this->mix_linear(this->beta_);
-
             return rms;
         }
 };
