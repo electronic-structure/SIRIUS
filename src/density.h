@@ -318,7 +318,7 @@ class Density
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
         }
 
-        inline void unpack(double* buffer__)
+        inline void unpack(double const* buffer__)
         {
             size_t n = rho_->unpack(buffer__);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
@@ -414,20 +414,22 @@ class Density
 
             if (mixer_ != nullptr)
             {
+                /* mix in real-space in case of FP-LAPW */
                 mixer_input();
                 rms = mixer_->mix();
                 mixer_output();
-
+                rho_->fft_transform(-1);
             }
             else
             {
+                /* mix in G-space in case of PP */
                 mixer_input();
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
+                rho_->fft_transform(1);
             }
 
-            rho_->fft_transform(1);
             return rms;
         }
 
