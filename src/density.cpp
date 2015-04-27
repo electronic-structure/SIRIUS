@@ -137,12 +137,21 @@ Density::Density(Global& parameters__)
         else if (parameters_.iip_.mixer_input_section_.type_ == "broyden2")
         {
             std::vector<double> weights;
-            mixer_ = new Broyden_modified_mixer<double>(size(),
+            mixer_ = new Broyden_mixer<double>(size(),
                                                parameters_.iip_.mixer_input_section_.max_history_,
                                                parameters_.iip_.mixer_input_section_.beta_,
                                                weights,
                                                parameters_.comm());
 
+        }
+        else if (parameters_.iip_.mixer_input_section_.type_ == "broyden1")
+        {
+            std::vector<double> weights;
+            mixer_ = new Broyden_modified_mixer<double>(size(),
+                                                        parameters_.iip_.mixer_input_section_.max_history_,
+                                                        parameters_.iip_.mixer_input_section_.beta_,
+                                                        weights,
+                                                        parameters_.comm());
         }
         else
         {
