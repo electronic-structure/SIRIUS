@@ -93,7 +93,7 @@ def main():
     print("Initial list of atoms")
     for label in initial_atoms_list:
         for atom in initial_atoms_list[label]:
-            print(label + " at " + "%f %f %f\n"%(atom["x"], atom["y"], atom["z"]))
+            print(label + " at " + "%f %f %f"%(atom["x"], atom["y"], atom["z"]))
         
 
     sym_ops = cb.GetLoop("_symmetry_equiv_pos_as_xyz")

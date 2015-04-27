@@ -215,12 +215,12 @@ class Atom
             return offset_wf_;  
         }
 
-        inline double* h_radial_integrals(int idxrf1, int idxrf2)
+        inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
         
-        inline double* b_radial_integrals(int idxrf1, int idxrf2, int x)
+        inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
@@ -254,13 +254,13 @@ class Atom
                     case ud:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                       -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                                                            -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                     case du:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                        b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                 }

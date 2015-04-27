@@ -907,7 +907,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
     
-    int num_atoms_in_block = Platform::max_num_threads();
+    int num_atoms_in_block = 2 * Platform::max_num_threads();
     int nblk = parameters_.unit_cell()->num_atoms() / num_atoms_in_block +
                std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
@@ -1004,7 +1004,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
 
-    int num_atoms_in_block = Platform::max_num_threads();
+    int num_atoms_in_block = 2 * Platform::max_num_threads();
     int nblk = parameters_.unit_cell()->num_atoms() / num_atoms_in_block +
                std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
