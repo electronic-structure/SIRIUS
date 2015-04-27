@@ -156,7 +156,7 @@ class Periodic_function
 
         size_t pack(size_t offset, Mixer<double>* mixer);
         
-        size_t unpack(T* array);
+        size_t unpack(T const* array);
        
         /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr__)
@@ -233,7 +233,7 @@ class Periodic_function
         int64_t hash()
         {
             int64_t h = Utils::hash(&f_it_(0), fft_->size() * sizeof(T));
-            h +=  Utils::hash(&f_pw_(0), num_gvec_ * sizeof(double_complex), h);
+            h += Utils::hash(&f_pw_(0), num_gvec_ * sizeof(double_complex), h);
             return h;
         }
 
@@ -265,6 +265,11 @@ class Periodic_function
         mdarray<T, 3>& f_mt()
         {
             return f_mt_;
+        }
+
+        mdarray<T, 1>& f_it()
+        {
+            return f_it_;
         }
 };
 
