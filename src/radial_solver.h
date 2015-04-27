@@ -588,16 +588,36 @@ class Enu_finder: public Radial_soultion
             de = 0.001;
             found = false;
 
-            int nn = -1;
             double dpdr_R = dpdr[np - 1];
             do
             {
                 enu -= de;
-                nn = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
-                de *= 1.25;
+                integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                de *= 1.5;
             } while (dpdr[np - 1] * dpdr_R > 0);
 
+            /* refine bottom energy */
+            double e1 = enu;
+            double e0 = enu + de;
+
+            while (true)
+            {
+                enu = (e1 + e0) / 2.0;
+                integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                if (std::abs(dpdr[np - 1]) < 1e-10) break;
+
+                if (dpdr[np - 1] * dpdr_R > 0)
+                {
+                    e0 = enu;
+                }
+                else
+                {
+                    e1 = enu;
+                }
+            }
+        
             ebot_ = enu;
+            int nn = integrate_forward<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
             if (nn != (n_ - l_ - 1))
             {
                 //FILE* fout = fopen("p.dat", "w");
