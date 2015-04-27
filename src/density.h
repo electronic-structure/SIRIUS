@@ -410,27 +410,25 @@ class Density
 
         double mix()
         {
+            double rms;
+
             if (mixer_ != nullptr)
             {
                 mixer_input();
-                double rms = mixer_->mix();
+                rms = mixer_->mix();
                 mixer_output();
 
-                return rms;
             }
             else
             {
                 mixer_input();
-                double rms = low_freq_mixer_->mix();
+                rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                
-                fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
-                fft_->transform(1);
-                fft_->output(&rho_->f_it<global>(0));
-
-                return rms;
             }
+
+            rho_->fft_transform(1);
+            return rms;
         }
 
         inline double dr2()

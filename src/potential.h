@@ -79,6 +79,8 @@ class Potential
         /** Used to compute electron-nuclear contribution to the total energy */
         mdarray<double, 1> vh_el_;
 
+        Mixer<double>* mixer_;
+
         /// Compute MT part of the potential and MT multipole moments
         //void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
         //                 std::vector< Spheric_function<spectral, double_complex> >& vh, 
@@ -458,6 +460,29 @@ class Potential
         inline double energy_vha()
         {
             return energy_vha_;
+        }
+
+        void mixer_input()
+        {
+        }
+
+        void mixer_output()
+        {
+            unpack(mixer_->output_buffer());
+        }
+
+        void mixer_init()
+        {
+            mixer_input();
+            mixer_->initialize();
+        }
+
+        double mix()
+        {
+            pack(mixer_);
+            double rms = mixer_->mix();
+            unpack(mixer_->output_buffer());
+            return rms;
         }
 };
 
