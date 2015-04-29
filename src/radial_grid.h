@@ -96,7 +96,7 @@ class Radial_grid
         }
 
         /// Constructor for user provided radial grid.
-        Radial_grid(int num_points__, double* x__) : grid_type_name_("custom")
+        Radial_grid(int num_points__, double const* x__) : grid_type_name_("custom")
         {
             set_radial_points(num_points__, x__);
         }
@@ -141,7 +141,7 @@ class Radial_grid
         }
 
         /// Set new radial points.
-        void set_radial_points(int num_points__, double* points__);
+        void set_radial_points(int num_points__, double const* points__);
 
         uint64_t hash() const
         {

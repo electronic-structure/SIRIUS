@@ -37,6 +37,32 @@ extern "C" {
 
 namespace sirius {
 
+struct space_group_symmetry_descriptor
+{
+    /// Rotational part of symmetry operation (fractional coordinates).
+    matrix3d<int> R;
+
+    /// Fractional translation.
+    vector3d<double> t;
+    
+    /// Proper (+1) or improper (-1) rotation.
+    int proper;
+
+    /// Proper rotation matrix in Cartesian coordinates.
+    matrix3d<double> rotation;
+
+    vector3d<double> euler_angles;
+};
+
+struct magnetic_group_symmetry_descriptor
+{
+    space_group_symmetry_descriptor spg_op;
+
+    int isym;
+
+    matrix3d<double> spin_rotation;
+};
+
 class Symmetry
 {
     private:
@@ -55,64 +81,22 @@ class Symmetry
 
         SpglibDataset* spg_dataset_;
 
-        std::vector< std::pair<int, int> > mag_sym_;
+        //std::vector< std::pair<int, int> > mag_sym_;
 
         mdarray<int, 2> sym_table_;
-
-    public:
-
-        Symmetry(matrix3d<double>& lattice_vectors__,
-                 int num_atoms__,
-                 mdarray<double, 2>& positions__,
-                 mdarray<double, 2>& spins__,
-                 std::vector<int>& types__,
-                 double tolerance__);
-
-        ~Symmetry();
-
-        inline int num_sym_op()
-        {
-            return spg_dataset_->n_operations;
-        }
-
-        inline int atom_symmetry_class(int ia__)
-        {
-            return spg_dataset_->equivalent_atoms[ia__];
-        }
-
-        inline int spacegroup_number()
-        {
-            return spg_dataset_->spacegroup_number;
-        }
-
-        inline std::string international_symbol()
-        {
-            return spg_dataset_->international_symbol;
-        }
-
-        inline std::string hall_symbol()
-        {
-            return spg_dataset_->hall_symbol;
-        }
-
-        matrix3d<double> transformation_matrix()
-        {
-           return matrix3d<double>(spg_dataset_->transformation_matrix);
-        }
-
-        vector3d<double> origin_shift()
-        {
-            return vector3d<double>(spg_dataset_->origin_shift);
-        }
-
-        int proper_rotation(int isym);
-
-        /// Rotation matrix in Cartesian coordinates.
-        matrix3d<double> rot_mtrx_cart(int isym__);
-
-        /// Rotation matrix in fractional coordinates.
-        matrix3d<int> rot_mtrx(int isym__);
         
+        std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
+
+        std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
+
+        /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.
+        /** 
+
+        */
+        //vector3d<double> euler_angles(int isym__);
+
+        vector3d<double> euler_angles(matrix3d<double> const& rot__) const;
+
         /// Generate rotation matrix from three Euler angles
         /** Euler angles \f$ \alpha, \beta, \gamma \f$ define the general rotation as three consecutive rotations:
          *      - about \f$ \hat e_z \f$ through the angle \f$ \gamma \f$ (\f$ 0 \le \gamma < 2\pi \f$)
@@ -142,20 +126,90 @@ class Symmetry
          *                                \cos(\beta) \end{array} \right)
          *  \f]
          */
-        matrix3d<double> rot_mtrx(vector3d<double> euler_angles);
-        
-        /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.
-        /** 
+        matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__) const;
 
-        */
-        vector3d<double> euler_angles(int isym__);
+    public:
 
-        vector3d<double> fractional_translation(int isym__)
+        Symmetry(matrix3d<double>& lattice_vectors__,
+                 int num_atoms__,
+                 mdarray<double, 2>& positions__,
+                 mdarray<double, 2>& spins__,
+                 std::vector<int>& types__,
+                 double tolerance__);
+
+        ~Symmetry();
+
+        //inline int num_sym_op()
+        //{
+        //    return spg_dataset_->n_operations;
+        //}
+
+        inline int atom_symmetry_class(int ia__)
         {
-            vector3d<double> t;
-            for (int x = 0; x < 3; x++) t[x] =  spg_dataset_->translations[isym__][x];
-            return t;
+            return spg_dataset_->equivalent_atoms[ia__];
         }
+
+        inline int spacegroup_number()
+        {
+            return spg_dataset_->spacegroup_number;
+        }
+
+        inline std::string international_symbol()
+        {
+            return spg_dataset_->international_symbol;
+        }
+
+        inline std::string hall_symbol()
+        {
+            return spg_dataset_->hall_symbol;
+        }
+
+        matrix3d<double> transformation_matrix() const
+        {
+           return matrix3d<double>(spg_dataset_->transformation_matrix);
+        }
+
+        vector3d<double> origin_shift() const
+        {
+            return vector3d<double>(spg_dataset_->origin_shift);
+        }
+
+        inline int num_spg_sym() const
+        {
+            return (int)space_group_symmetry_.size();
+        }
+
+        inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
+        {
+            assert(isym__ >= 0 && isym__ < num_spg_sym());
+            return space_group_symmetry_[isym__];
+        }
+        inline int num_mag_sym() const
+        {
+            return (int)magnetic_group_symmetry_.size();
+        }
+
+        inline magnetic_group_symmetry_descriptor const& magnetic_group_symmetry(int isym__) const
+        {
+            assert(isym__ >= 0 && isym__ < num_mag_sym());
+            return magnetic_group_symmetry_[isym__];
+        }
+
+        //int proper_rotation(int isym);
+
+        /// Rotation matrix in Cartesian coordinates.
+        //matrix3d<double> rot_mtrx_cart(int isym__);
+
+        /// Rotation matrix in fractional coordinates.
+        //matrix3d<int> rot_mtrx(int isym__);
+        
+        
+        //vector3d<double> fractional_translation(int isym__)
+        //{
+        //    vector3d<double> t;
+        //    for (int x = 0; x < 3; x++) t[x] =  spg_dataset_->translations[isym__][x];
+        //    return t;
+        //}
 
         void check_gvec_symmetry(FFT3D<CPU>* fft__);
 

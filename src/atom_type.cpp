@@ -178,7 +178,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
     initialized_ = true;
 }
 
-void Atom_type::set_radial_grid(int num_points, double* points)
+void Atom_type::set_radial_grid(int num_points, double const* points)
 {
     if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
     if (num_points < 0 && points == NULL)
@@ -192,13 +192,13 @@ void Atom_type::set_radial_grid(int num_points, double* points)
     }
 }
 
-void Atom_type::set_free_atom_radial_grid(int num_points__, double* points__)
+void Atom_type::set_free_atom_radial_grid(int num_points__, double const* points__)
 {
     if (num_mt_points_ <= 0) error_local(__FILE__, __LINE__, "wrong number of radial points");
     free_atom_radial_grid_ = Radial_grid(num_points__, points__);
 }
 
-void Atom_type::set_free_atom_potential(int num_points__, double* vs__)
+void Atom_type::set_free_atom_potential(int num_points__, double const* vs__)
 {
     free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
     for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];

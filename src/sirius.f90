@@ -8,6 +8,10 @@ interface
         integer,                 intent(in) :: call_mpi_init
     end subroutine
 
+    subroutine sirius_clear()&
+       &bind(C, name="sirius_clear")
+    end subroutine
+
     subroutine sirius_create_global_parameters()&
        &bind(C, name="sirius_create_global_parameters")
     end subroutine
@@ -27,6 +31,11 @@ interface
     subroutine sirius_set_gk_cutoff(gk_cutoff)&
        &bind(C, name="sirius_set_gk_cutoff")
         real(8),                 intent(in) :: gk_cutoff
+    end subroutine
+
+    subroutine sirius_set_aw_cutoff(aw_cutoff)&
+       &bind(C, name="sirius_set_aw_cutoff")
+        real(8),                 intent(in) :: aw_cutoff
     end subroutine
 
     subroutine sirius_set_num_fv_states(num_fv_states)&
@@ -49,11 +58,33 @@ interface
         integer,                 intent(in) :: num_mt_points
     end subroutine
 
+    subroutine sirius_set_atom_type_configuration(label, n, l, k, occupancy, core)&
+       &bind(C, name="sirius_set_atom_type_configuration")
+        character, dimension(*), intent(in) :: label
+        integer,                 intent(in) :: n
+        integer,                 intent(in) :: l
+        integer,                 intent(in) :: k
+        real(8),                 intent(in) :: occupancy
+        logical,                 intent(in) :: core
+    end subroutine
+
     subroutine sirius_set_atom_type_radial_grid(label, num_radial_points, radial_points)&
        &bind(C, name="sirius_set_atom_type_radial_grid")
         character, dimension(*), intent(in) :: label
         integer,                 intent(in) :: num_radial_points
         real(8),                 intent(in) :: radial_points
+    end subroutine
+
+    subroutine sirius_set_free_atom_potential(label, num_radial_points, vs)&
+       &bind(C, name="sirius_set_free_atom_potential")
+        character, dimension(*), intent(in) :: label
+        integer,                 intent(in) :: num_radial_points
+        real(8),                 intent(in) :: vs
+    end subroutine
+
+    subroutine sirius_set_equivalent_atoms(eqatoms)&
+       &bind(C, name="sirius_set_equivalent_atoms")
+       integer,                  intent(in) :: eqatoms
     end subroutine
 
     subroutine sirius_set_atom_type_beta_rf(label, num_beta, beta_l, num_mesh_points, beta_rf, ld)&
@@ -102,6 +133,27 @@ interface
         character, dimension(*), intent(in) :: label
         integer,                 intent(in) :: num_points
         real(8),                 intent(in) :: vloc
+    end subroutine
+
+    subroutine sirius_add_atom_type_aw_descriptor(label, n, l, enu, dme, auto_enu)&
+       &bind(C, name="sirius_add_atom_type_aw_descriptor")
+        character, dimension(*), intent(in) :: label
+        integer,                 intent(in) :: n
+        integer,                 intent(in) :: l
+        real(8),                 intent(in) :: enu
+        integer,                 intent(in) :: dme
+        integer,                 intent(in) :: auto_enu
+    end subroutine
+
+    subroutine sirius_add_atom_type_lo_descriptor(label, idxlo, n, l, enu, dme, auto_enu)&
+       &bind(C, name="sirius_add_atom_type_lo_descriptor")
+        character, dimension(*), intent(in) :: label
+        integer,                 intent(in) :: idxlo
+        integer,                 intent(in) :: n
+        integer,                 intent(in) :: l
+        real(8),                 intent(in) :: enu
+        integer,                 intent(in) :: dme
+        integer,                 intent(in) :: auto_enu
     end subroutine
 
     subroutine sirius_get_num_gvec(num_gvec)&
@@ -210,6 +262,66 @@ interface
        integer,                  intent(out) :: ig
     end subroutine
 
+    subroutine sirius_get_max_num_mt_points(max_num_mt_points)&
+       &bind(C, name="sirius_get_max_num_mt_points")
+        integer,                 intent(out) :: max_num_mt_points
+    end subroutine
+
+    subroutine sirius_get_fft_grid_limits(d, lower, upper)&
+       &bind(C, name="sirius_get_fft_grid_limits")
+        integer,                 intent(in)  :: d
+        integer,                 intent(out) :: lower
+        integer,                 intent(out) :: upper
+    end subroutine
+
+    subroutine sirius_get_fft_grid_size(fft_grid_size)&
+       &bind(C, name="sirius_get_fft_grid_size")
+        integer,                 intent(out) :: fft_grid_size
+    end subroutine
+
+    subroutine sirius_get_fft_index(fft_index)&
+       &bind(C, name="sirius_get_fft_index")
+        integer,                 intent(out) :: fft_index
+    end subroutine
+
+    subroutine sirius_get_gvec(gvec)&
+       &bind(C, name="sirius_get_gvec")
+        integer,                 intent(out) :: gvec
+    end subroutine
+
+    subroutine sirius_get_gvec_cart(gvec)&
+       &bind(C, name="sirius_get_gvec_cart")
+        real(8),                 intent(out) :: gvec
+    end subroutine
+
+    subroutine sirius_get_gvec_len(gvec_len)&
+       &bind(C, name="sirius_get_gvec_len")
+        real(8),                 intent(out) :: gvec_len
+    end subroutine
+
+    subroutine sirius_get_gvec_phase_factors(sfacg)&
+       &bind(C, name="sirius_get_gvec_phase_factors")
+       complex(8),               intent(out) :: sfacg
+    end subroutine
+
+    subroutine sirius_get_gvec_ylm(gvec_ylm, ld, lmax)&
+       &bind(C, name="sirius_get_gvec_ylm")
+       complex(8),               intent(out) :: gvec_ylm
+       integer,                  intent(in)  :: ld
+       integer,                  intent(in)  :: lmax
+    end subroutine
+
+    subroutine sirius_get_index_by_gvec(index_by_gvec)&
+       &bind(C, name="sirius_get_index_by_gvec")
+        integer,                 intent(out) :: index_by_gvec
+    end subroutine
+
+    subroutine sirius_get_step_function(cfunig, cfunir)&
+       &bind(C, name="sirius_get_step_function")
+        complex(8),              intent(out) :: cfunig
+        real(8),                 intent(out) :: cfunir
+    end subroutine
+
     subroutine sirius_print_timers()&
        &bind(C, name="sirius_print_timers")
     end subroutine
@@ -286,35 +398,47 @@ contains
         c_string(len_trim(f_string) + 1) = C_NULL_CHAR
     end function c_str
 
-    subroutine sirius_density_initialize(rhoit, rhomt, magit, magmt)
+    subroutine sirius_density_initialize(rhoit, magit, rhomt, magmt)
         implicit none
         real(8),           target, intent(in) :: rhoit
-        real(8), optional, target, intent(in) :: rhomt
         real(8), optional, target, intent(in) :: magit
+        real(8), optional, target, intent(in) :: rhomt
         real(8), optional, target, intent(in) :: magmt
         type(C_PTR) rhoit_ptr, rhomt_ptr, magit_ptr, magmt_ptr
 
         rhoit_ptr = C_LOC(rhoit)
-        rhomt_ptr = C_NULL_PTR
+        
         magit_ptr = C_NULL_PTR
+        if (present(magit)) magit_ptr = C_LOC(magit)
+        
+        rhomt_ptr = C_NULL_PTR
+        if (present(rhomt)) rhomt_ptr = C_LOC(rhomt)
+        
         magmt_ptr = C_NULL_PTR
+        if (present(magmt)) magmt_ptr = C_LOC(magmt)
 
         call sirius_density_initialize_aux(rhoit_ptr, rhomt_ptr, magit_ptr, magmt_ptr)
 
     end subroutine
 
-    subroutine sirius_potential_initialize(veffit, veffmt, beffit, beffmt)
+    subroutine sirius_potential_initialize(veffit, beffit, veffmt, beffmt)
         implicit none
         real(8),           target, intent(in) :: veffit
-        real(8), optional, target, intent(in) :: veffmt
         real(8), optional, target, intent(in) :: beffit
+        real(8), optional, target, intent(in) :: veffmt
         real(8), optional, target, intent(in) :: beffmt
         type(C_PTR) veffit_ptr, veffmt_ptr, beffit_ptr, beffmt_ptr
 
         veffit_ptr = C_LOC(veffit)
-        beffmt_ptr = C_NULL_PTR
+
         beffit_ptr = C_NULL_PTR
+        if (present(beffit)) beffit_ptr = C_LOC(beffit)
+
+        veffmt_ptr = C_NULL_PTR
+        if (present(veffmt)) veffmt_ptr = C_LOC(veffmt)
+
         beffmt_ptr = C_NULL_PTR
+        if (present(beffmt)) beffmt_ptr = C_LOC(beffmt)
 
         call sirius_potential_initialize_aux(veffit_ptr, veffmt_ptr, beffit_ptr, beffmt_ptr)
 

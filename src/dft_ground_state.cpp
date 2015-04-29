@@ -106,6 +106,17 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         /* compute new potential */
         generate_effective_potential();
+        
+        double rms = 1.0;
+        if (iter)
+        {
+            rms = potential_->mix();
+        }
+        else
+        {
+            potential_->mixer_init();
+        }
+        parameters_.comm().bcast(&rms, 1, 0);
 
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
@@ -132,9 +143,9 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             }
         }
         
-        double rms = density_->mix();
+        //double rms = density_->mix();
 
-        parameters_.comm().bcast(&rms, 1, 0);
+        //parameters_.comm().bcast(&rms, 1, 0);
 
         /* compute new total energy for a new density */
         double etot = total_energy();

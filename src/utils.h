@@ -132,7 +132,7 @@ class Utils
 
         static inline double phi_by_sin_cos(double sinp, double cosp)
         {
-            double phi = atan2(sinp, cosp);
+            double phi = std::atan2(sinp, cosp);
             if (phi < 0) phi += twopi;
             return phi;
         }

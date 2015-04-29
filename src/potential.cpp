@@ -97,7 +97,13 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 
     update();
 
-    mixer_ = new Linear_mixer<double>(size(), 1, parameters_.comm());
+    //mixer_ = new Linear_mixer<double>(size(), 0.5, parameters_.comm());
+    std::vector<double> weights;
+            mixer_ = new Broyden_mixer<double>(size(),
+                                               parameters_.iip_.mixer_input_section_.max_history_,
+                                               parameters_.iip_.mixer_input_section_.beta_,
+                                               weights,
+                                               parameters_.comm());
 }
 
 Potential::~Potential()

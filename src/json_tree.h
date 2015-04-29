@@ -442,7 +442,7 @@ class JSON_write
             fprintf(fout_, "\"%s\" : ", name);
         }
             
-        inline void begin_array(const char* name)
+        inline void begin_array(const char* name) // TODO: check for closed array wuth the same name
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);

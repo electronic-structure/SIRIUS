@@ -202,7 +202,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
 
                 /* find norm of constructed local orbital */
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
-                double norm = 1.0 / sqrt(s.interpolate().integrate(2));
+                double norm = 1.0 / std::sqrt(s.interpolate().integrate(2));
 
                 /* normalize */
                 for (int ir = 0; ir < nmtp; ir++)

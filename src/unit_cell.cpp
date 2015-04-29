@@ -525,7 +525,7 @@ void Unit_cell::print_info()
         printf("space group number   : %i\n", symmetry_->spacegroup_number());
         printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
         printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-        printf("number of operations : %i\n", symmetry_->num_sym_op());
+        printf("number of operations : %i\n", symmetry_->num_mag_sym());
         printf("transformation matrix : \n");
         auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++)
@@ -539,10 +539,12 @@ void Unit_cell::print_info()
         printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
 
         printf("symmetry operations  : \n");
-        for (int isym = 0; isym < symmetry_->num_sym_op(); isym++)
+        for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++)
         {
-            auto R = symmetry_->rot_mtrx(isym);
-            auto t = symmetry_->fractional_translation(isym);
+            auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+            auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+            auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+
             printf("isym : %i\n", isym);
             printf("R : ");
             for (int i = 0; i < 3; i++)
@@ -553,6 +555,14 @@ void Unit_cell::print_info()
             }
             printf("T : ");
             for (int j = 0; j < 3; j++) printf("%8.4f ", t[j]);
+            printf("\n");
+            printf("S : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%8.4f ", S(i, j));
+                printf("\n");
+            }
             printf("\n");
         }
     }

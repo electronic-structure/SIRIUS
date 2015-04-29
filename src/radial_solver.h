@@ -265,6 +265,7 @@ class Radial_soultion
 
                 if (!check_overflow && std::abs(p2) > 1e10)
                 {
+                    TERMINATE("overflow");
                     p2 = std::max(std::min(1e10, p2), -1e10);
                     q2 = std::max(std::min(1e10, q2), -1e10);
                 }

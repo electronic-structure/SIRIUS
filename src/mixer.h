@@ -306,10 +306,13 @@ class Broyden_mixer: public Mixer<T>
                                                    (double)v2[j + N] * this->vectors_(i, this->offset(this->count_ - N + j)));
                     }
                 }
+                /* mix last vector with the update vector \tilda x */
+                this->mix_linear(this->beta_);
             }
-            
-            /* mix last vector with the update vector \tilda x */
-            this->mix_linear(this->beta_);
+            else
+            {
+                this->mix_linear(0.05);
+            }
 
             return rms;
         }

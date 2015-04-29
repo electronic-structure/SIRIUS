@@ -77,6 +77,11 @@ class matrix3d
         {
             return mtrx_[i][j];
         }
+
+        inline T const& operator()(const int i, const int j) const
+        {
+            return mtrx_[i][j];
+        }
         
         /// Multiply two matrices.
         inline matrix3d<T> operator*(matrix3d<T> b)
@@ -94,7 +99,7 @@ class matrix3d
 
         /// Matrix-vector multiplication.
         template <typename U>
-        inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b)
+        inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b) const
         {
             vector3d<decltype(T{} * U{})> a;
             for (int i = 0; i < 3; i++)
@@ -106,7 +111,7 @@ class matrix3d
 
         /// Multiply matrix by a scalar number.
         template <typename U>
-        inline matrix3d<T> operator*(U p)
+        inline matrix3d<T> operator*(U p) const
         {
             matrix3d<T> c;
             for (int i = 0; i < 3; i++)
@@ -117,7 +122,7 @@ class matrix3d
         }
         
         /// Return determinant of a matrix.
-        inline T det()
+        inline T det() const
         {
             return (mtrx_[0][2] * (mtrx_[1][0] * mtrx_[2][1] - mtrx_[1][1] * mtrx_[2][0]) + 
                     mtrx_[0][1] * (mtrx_[1][2] * mtrx_[2][0] - mtrx_[1][0] * mtrx_[2][2]) + 

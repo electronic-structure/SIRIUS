@@ -348,13 +348,12 @@ class SHT // TODO: better name
             mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
             wigner_d_matrix(l, euler_angles[1], d_mtrx);
 
-            double p = (proper_rotation == -1) ? std::pow(-1.0, l) : 1.0; 
             for (int m1 = -l; m1 <= l; m1++)
             {
                 for (int m2 = -l; m2 <= l; m2++)
                 {
                     rot_mtrx(m1 + l, m2 + l) = std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
-                                               d_mtrx(m1 + l, m2 + l) * p;
+                                               d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
                 }
             }
         }
@@ -368,13 +367,12 @@ class SHT // TODO: better name
             mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
             wigner_d_matrix(l, euler_angles[1], d_mtrx);
 
-            double p = (proper_rotation == -1) ? std::pow(-1.0, l) : 1.0; 
             for (int m1 = -l; m1 <= l; m1++)
             {
                 for (int m2 = -l; m2 <= l; m2++)
                 {
                     rot_mtrx_ylm(m1 + l, m2 + l) = std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
-                                                   d_mtrx(m1 + l, m2 + l) * p;
+                                                   d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
                 }
             }
             for (int m1 = -l; m1 <= l; m1++)

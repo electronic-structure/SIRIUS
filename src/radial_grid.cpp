@@ -182,7 +182,7 @@ void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, d
     }
 }
 
-void Radial_grid::set_radial_points(int num_points__, double* x__)
+void Radial_grid::set_radial_points(int num_points__, double const* x__)
 {
     assert(num_points__ > 0);
     
