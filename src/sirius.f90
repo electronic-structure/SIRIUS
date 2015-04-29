@@ -156,6 +156,22 @@ interface
         integer,                 intent(in) :: auto_enu
     end subroutine
 
+    subroutine sirius_set_aw_enu(ia, l, order, enu)&
+       &bind(C, name="sirius_set_aw_enu")
+        integer,                 intent(in) :: ia
+        integer,                 intent(in) :: l
+        integer,                 intent(in) :: order
+        real(8),                 intent(in) :: enu
+    end subroutine
+
+    subroutine sirius_set_lo_enu(ia, idxlo, order, enu)&
+       &bind(C, name="sirius_set_lo_enu")
+        integer,                 intent(in) :: ia
+        integer,                 intent(in) :: idxlo
+        integer,                 intent(in) :: order
+        real(8),                 intent(in) :: enu
+    end subroutine
+
     subroutine sirius_get_num_gvec(num_gvec)&
        &bind(C, name="sirius_get_num_gvec")
         integer,                 intent(out) :: num_gvec
@@ -164,6 +180,11 @@ interface
     subroutine sirius_get_num_fft_grid_points(num_grid_points)&
        &bind(C, name="sirius_get_num_fft_grid_points")
         integer,                 intent(out) :: num_grid_points
+    end subroutine
+
+    subroutine sirius_get_num_fv_states(num_fv_states)&
+       &bind(C, name="sirius_get_num_fv_states")
+        integer,                 intent(out) :: num_fv_states
     end subroutine
 
     subroutine sirius_ground_state_initialize(kset_id)&
@@ -311,6 +332,27 @@ interface
        integer,                  intent(in)  :: lmax
     end subroutine
 
+    subroutine sirius_get_max_num_gkvec(kset_id, max_num_gkvec)&
+       &bind(C, name="sirius_get_max_num_gkvec")
+        integer,                 intent(in)  :: kset_id
+        integer,                 intent(out) :: max_num_gkvec
+    end subroutine
+
+    subroutine sirius_get_gkvec_arrays(kset_id, ik, num_gkvec, gvec_index, gkvec, gkvec_cart,&
+                                      &gkvec_len, gkvec_tp, gkvec_phase_factors, ld)&
+       &bind(C, name="sirius_get_gkvec_arrays")
+        integer,                 intent(in)  :: kset_id
+        integer,                 intent(in)  :: ik
+        integer,                 intent(out) :: num_gkvec
+        integer,                 intent(out) :: gvec_index
+        real(8),                 intent(out) :: gkvec
+        real(8),                 intent(out) :: gkvec_cart
+        real(8),                 intent(out) :: gkvec_len
+        real(8),                 intent(out) :: gkvec_tp
+        complex(8),              intent(out) :: gkvec_phase_factors
+        integer,                 intent(in)  :: ld
+    end subroutine
+
     subroutine sirius_get_index_by_gvec(index_by_gvec)&
        &bind(C, name="sirius_get_index_by_gvec")
         integer,                 intent(out) :: index_by_gvec
@@ -320,6 +362,16 @@ interface
        &bind(C, name="sirius_get_step_function")
         complex(8),              intent(out) :: cfunig
         real(8),                 intent(out) :: cfunir
+    end subroutine
+
+    subroutine sirius_start_timer(timer_name)&
+       &bind(C, name="sirius_start_timer")
+        character, dimension(*), intent(in) :: timer_name
+    end subroutine
+
+    subroutine sirius_stop_timer(timer_name)&
+       &bind(C, name="sirius_stop_timer")
+        character, dimension(*), intent(in) :: timer_name
     end subroutine
 
     subroutine sirius_print_timers()&
@@ -339,6 +391,135 @@ interface
     subroutine sirius_get_density_dr2(dr2)&
        &bind(C, name="sirius_get_density_dr2")
         real(8),                 intent(out) :: dr2
+    end subroutine
+
+    subroutine sirius_generate_coulomb_potential(vclmt, vclit)&
+       &bind(C, name="sirius_generate_coulomb_potential")
+        real(8),                 intent(out) :: vclmt
+        real(8),                 intent(out) :: vclit
+    end subroutine
+
+    subroutine sirius_generate_xc_potential(vxcmt, vxcit, bxcmt, bxcit)&
+       &bind(C, name="sirius_generate_xc_potential")
+        real(8),                 intent(out) :: vxcmt
+        real(8),                 intent(out) :: vxcit
+        real(8),                 intent(out) :: bxcmt
+        real(8),                 intent(out) :: bxcit
+    end subroutine
+
+    subroutine sirius_generate_potential_pw_coefs()&
+       &bind(C, name="sirius_generate_potential_pw_coefs")
+    end subroutine
+
+    subroutine sirius_generate_radial_functions()&
+       &bind(C, name="sirius_generate_radial_functions")
+    end subroutine
+
+    subroutine sirius_generate_radial_integrals()&
+       &bind(C, name="sirius_generate_radial_integrals")
+    end subroutine
+
+    subroutine sirius_get_aw_deriv_radial_function(ia, l, io, dfdr)&
+       &bind(C, name="sirius_get_aw_deriv_radial_function")
+        integer,                 intent(in)  :: ia
+        integer,                 intent(in)  :: l
+        integer,                 intent(in)  :: io
+        real(8),                 intent(out) :: dfdr
+    end subroutine
+
+    subroutine sirius_get_lo_deriv_radial_function(ia, idxlo, dfdr)&
+       &bind(C, name="sirius_get_lo_deriv_radial_function")
+        integer,                 intent(in)  :: ia
+        integer,                 intent(in)  :: idxlo
+        real(8),                 intent(out) :: dfdr
+    end subroutine
+
+    subroutine sirius_get_aw_radial_function(ia, l, io, f)&
+       &bind(C, name="sirius_get_aw_radial_function")
+        integer,                 intent(in)  :: ia
+        integer,                 intent(in)  :: l
+        integer,                 intent(in)  :: io
+        real(8),                 intent(out) :: f
+    end subroutine
+
+    subroutine sirius_get_lo_radial_function(ia, idxlo, f)&
+       &bind(C, name="sirius_get_lo_radial_function")
+        integer,                 intent(in)  :: ia
+        integer,                 intent(in)  :: idxlo
+        real(8),                 intent(out) :: f
+    end subroutine
+
+    subroutine sirius_get_evalsum(val)&
+       &bind(C, name="sirius_get_evalsum")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_exc(val)&
+       &bind(C, name="sirius_get_energy_exc")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_vxc(val)&
+       &bind(C, name="sirius_get_energy_vxc")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_bxc(val)&
+       &bind(C, name="sirius_get_energy_bxc")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_veff(val)&
+       &bind(C, name="sirius_get_energy_veff")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_vha(val)&
+       &bind(C, name="sirius_get_energy_vha")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_enuc(val)&
+       &bind(C, name="sirius_get_energy_enuc")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_energy_kin(val)&
+       &bind(C, name="sirius_get_energy_kin")
+        real(8),                 intent(out) :: val
+    end subroutine
+
+    subroutine sirius_get_fv_h_o(kset_id, ik, msize, h, o)&
+       &bind(C, name="sirius_get_fv_h_o")
+        integer,                 intent(in)  :: kset_id
+        integer,                 intent(in)  :: ik
+        integer,                 intent(in)  :: msize
+        complex(8),              intent(out) :: h
+        complex(8),              intent(out) :: o
+    end subroutine
+
+    subroutine sirius_solve_fv(kset_id, ik, h, o, eval, evec, ld)&
+       &bind(C, name="sirius_solve_fv")
+        integer,                 intent(in)  :: kset_id
+        integer,                 intent(in)  :: ik
+        complex(8),              intent(out) :: h
+        complex(8),              intent(out) :: o
+        real(8),                 intent(out) :: eval
+        complex(8),              intent(out) :: evec
+        integer,                 intent(in)  :: ld
+    end subroutine
+
+    subroutine sirius_update_atomic_potential()&
+       &bind(C, name="sirius_update_atomic_potential")
+    end subroutine
+
+    subroutine sirius_get_matching_coefficients(kset_id, ik, apwalm, ngkmax, apwordmax)&
+       &bind(C, name="sirius_get_matching_coefficients")
+        integer,                 intent(in)  :: kset_id
+        integer,                 intent(in)  :: ik
+        complex(8),              intent(out) :: apwalm
+        integer,                 intent(in)  :: ngkmax
+        integer,                 intent(in)  :: apwordmax
     end subroutine
 
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
