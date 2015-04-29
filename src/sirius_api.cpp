@@ -67,9 +67,9 @@ void sirius_platform_initialize(int32_t* call_mpi_init_)
     Platform::initialize(call_mpi_init);
 }
 
-void sirius_create_global_parameters(void)
+void sirius_create_global_parameters()
 {
-    sirius::initial_input_parameters iip("sirius.json");
+    auto iip = (Utils::file_exists("sirius.json")) ? sirius::initial_input_parameters("sirius.json") : sirius::initial_input_parameters();
     global_parameters = new sirius::Global(iip, MPI_COMM_WORLD);
 }
 
@@ -1165,7 +1165,8 @@ void sirius_add_atom_type_lo_descriptor(char const* label__,
                                         int32_t* auto_enu__)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    std::string label(label__);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(label);
     type->add_lo_descriptor(*ilo__ - 1, *n__, *l__, *enu__, *dme__, *auto_enu__);
     log_function_exit(__func__);
 }

@@ -145,17 +145,6 @@ inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
         comm_.allgather(f_mt__, static_cast<int>(ld * unit_cell_->spl_num_atoms().global_offset()),
                         static_cast<int>(ld * unit_cell_->spl_num_atoms().local_size()));
     }
-    
-
-
-    //==for (int irloc = 0; irloc < fft_->local_size(); irloc++)
-    //==    f_it_local_(irloc) = src->f_it<local>(irloc);
-
-    //==if (unit_cell_->full_potential())
-    //=={
-    //==    for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
-    //==        f_mt_local_(ialoc).copy(src->f_mt(ialoc));
-    //==}
 }
 
 template <typename T>

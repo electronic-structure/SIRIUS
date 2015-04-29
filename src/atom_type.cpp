@@ -264,7 +264,17 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     }
     else
     {
-        if (l != lo_descriptors_[ilo].l) error_local(__FILE__, __LINE__, "wrong angular quantum number");
+        if (l != lo_descriptors_[ilo].l)
+        {
+            std::stringstream s;
+            s << "wrong angular quantum number" << std::endl
+              << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
+              << "idxlo: " << ilo << std::endl
+              << "n: " << l << std::endl
+              << "l: " << n << std::endl
+              << "expected l: " <<  lo_descriptors_[ilo].l << std::endl;
+            TERMINATE(s);
+        }
     }
     
     radial_solution_descriptor rsd;

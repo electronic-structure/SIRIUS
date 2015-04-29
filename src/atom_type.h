@@ -682,7 +682,7 @@ class Atom_type
             return initialized_;
         }
 
-        inline std::string label()
+        inline std::string const& label() const
         {
             return label_;
         }

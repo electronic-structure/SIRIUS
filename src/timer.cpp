@@ -21,7 +21,9 @@
  *   
  *  \brief Contains remaining implementation of sirius::Timer class.
  */
-
+#ifndef NDEBUG
+#include <omp.h>
+#endif
 #include "timer.h"
 
 std::map<std::string, sirius::Timer*> ftimers;
@@ -35,9 +37,11 @@ std::map<std::string, std::vector<double> > Timer::global_timers_;
 void Timer::start()
 {
     #ifndef NDEBUG
-    if (Platform::num_threads() != 1)
+    if (omp_get_num_threads() != 1)
     {
-        TERMINATE("not thread-safe");
+        printf("std::map used by Timer is not thread-safe\n");
+        printf("timer name: %s\n", label_.c_str());
+        exit(-1);
     }
     #endif
 

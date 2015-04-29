@@ -38,7 +38,8 @@ class initial_input_parameters
             std::string electronic_structure_method_;
 
             common_input_section()
-                : num_fft_threads_(Platform::max_num_threads()),
+                : mpi_grid_dims_({1}),
+                  num_fft_threads_(Platform::max_num_threads()),
                   num_fft_workers_(1),
                   cyclic_block_size_(64),
                   num_fv_states_(-1),
@@ -52,16 +53,15 @@ class initial_input_parameters
 
             void read(JSON_tree const& parser__)
             {
-                mpi_grid_dims_ = parser__["mpi_grid_dims"].get(mpi_grid_dims_); 
-                cyclic_block_size_ = parser__["cyclic_block_size"].get(cyclic_block_size_);
-                num_fft_threads_ = parser__["num_fft_threads"].get(num_fft_threads_);
-                num_fft_workers_ = parser__["num_fft_workers"].get(num_fft_workers_);
-                num_fv_states_ = parser__["num_fv_states"].get(num_fv_states_);
-                smearing_width_ = parser__["smearing_width"].get(smearing_width_);
-
-                std_evp_solver_type_ = parser__["std_evp_solver_type"].get(std_evp_solver_type_);
-                gen_evp_solver_type_ = parser__["gen_evp_solver_type"].get(gen_evp_solver_type_);
-                processing_unit_ = parser__["processing_unit"].get(processing_unit_);
+                mpi_grid_dims_               = parser__["mpi_grid_dims"].get(mpi_grid_dims_); 
+                cyclic_block_size_           = parser__["cyclic_block_size"].get(cyclic_block_size_);
+                num_fft_threads_             = parser__["num_fft_threads"].get(num_fft_threads_);
+                num_fft_workers_             = parser__["num_fft_workers"].get(num_fft_workers_);
+                num_fv_states_               = parser__["num_fv_states"].get(num_fv_states_);
+                smearing_width_              = parser__["smearing_width"].get(smearing_width_);
+                std_evp_solver_type_         = parser__["std_evp_solver_type"].get(std_evp_solver_type_);
+                gen_evp_solver_type_         = parser__["gen_evp_solver_type"].get(gen_evp_solver_type_);
+                processing_unit_             = parser__["processing_unit"].get(processing_unit_);
                 electronic_structure_method_ = parser__["electronic_structure_method"].get(electronic_structure_method_);
             }
         } common_input_section_;
