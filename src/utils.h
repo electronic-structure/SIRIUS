@@ -186,6 +186,13 @@ class Utils
             }
             return l_m;
         }
+
+        inline static double round(double a__, int n__)
+        {
+            double a0 = std::floor(a__);
+            double b = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
+            return a0 + b;
+        }
 };
 
 #endif
