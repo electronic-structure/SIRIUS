@@ -38,6 +38,9 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
     spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
     
     f_pw_ = mdarray<double_complex, 1>(num_gvec_);
+
+    if (unit_cell_->full_potential())
+        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>((int)unit_cell_->spl_num_atoms().local_size());
 }
 
 template <typename T>
@@ -61,7 +64,6 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
 
     if (unit_cell_->full_potential())
     {
-        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>((int)unit_cell_->spl_num_atoms().local_size());
         if (allocate_global_mt)
         {
             f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
@@ -166,7 +168,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
 {
     it_val = 0.0;
     
-    if (step_function_ == NULL)
+    if (step_function_ == nullptr)
     {
         for (int irloc = 0; irloc < (int)spl_fft_size_.local_size(); irloc++) it_val += f_it_local_(irloc);
     }
@@ -236,7 +238,7 @@ size_t Periodic_function<T>::size()
 }
 
 template <typename T>
-size_t Periodic_function<T>::pack(size_t offset, Mixer<double>* mixer)
+size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
 {
     size_t n = 0;
     
@@ -246,18 +248,18 @@ size_t Periodic_function<T>::pack(size_t offset, Mixer<double>* mixer)
         {
             for (int i1 = 0; i1 < unit_cell_->atom(ia)->num_mt_points(); i1++)
             {
-                for (int i0 = 0; i0 < angular_domain_size_; i0++) mixer->input(offset + n++, f_mt_(i0, i1, ia));
+                for (int i0 = 0; i0 < angular_domain_size_; i0++) mixer__->input(offset__ + n++, f_mt_(i0, i1, ia));
             }
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) mixer->input(offset + n++, f_it_(ir));
+    for (int ir = 0; ir < fft_->size(); ir++) mixer__->input(offset__ + n++, f_it_(ir));
 
     return n;
 }
 
 template <typename T>
-size_t Periodic_function<T>::unpack(T const* array)
+size_t Periodic_function<T>::unpack(T const* array__)
 {
     size_t n = 0;
 
@@ -267,12 +269,12 @@ size_t Periodic_function<T>::unpack(T const* array)
         {
             for (int i1 = 0; i1 < unit_cell_->atom(ia)->num_mt_points(); i1++)
             {
-                for (int i0 = 0; i0 < angular_domain_size_; i0++) f_mt_(i0, i1, ia) = array[n++];
+                for (int i0 = 0; i0 < angular_domain_size_; i0++) f_mt_(i0, i1, ia) = array__[n++];
             }
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) f_it_(ir) = array[n++];
+    for (int ir = 0; ir < fft_->size(); ir++) f_it_(ir) = array__[n++];
 
     return n;
 }
@@ -285,7 +287,7 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
 
     T result = 0.0;
 
-    if (parameters_.step_function() == NULL)
+    if (parameters_.step_function() == nullptr)
     {
         for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
             result += type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc);
