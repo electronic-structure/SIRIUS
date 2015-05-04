@@ -558,13 +558,36 @@ void Atom_symmetry_class::generate_radial_functions()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
 
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(spherical_potential): %16llX", mdarray<double, 1>(&spherical_potential_[0], atom_type_->num_mt_points()).hash());
+    #endif
+
     radial_functions_.zero();
 
     find_enu();
 
     generate_aw_radial_functions();
+
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(aw_radial_functions): %16llX", radial_functions_.hash());
+    #endif
+
     generate_lo_radial_functions();
+
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(aw_and_lo_radial_functions): %16llX", radial_functions_.hash());
+    #endif
+
     transform_radial_functions(false, false);
+
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(&spherical_potential_[0], atom_type_->num_mt_points()).checksum());
+    DUMP("checksum(radial_functions): %18.10f", radial_functions_.checksum());
+    #endif
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(radial_functions): %16llX", radial_functions_.hash());
+    #endif
+
     
     //** if (verbosity_level > 0)
     //** {
@@ -862,52 +885,61 @@ void Atom_symmetry_class::generate_core_charge_density()
     
     /* nothing to do */
     if (atom_type_->num_core_electrons() == 0.0) return;
+
+    int nmtp = atom_type_->num_mt_points();
+
+    std::vector<double> free_atom_grid(nmtp);
+    for (int i = 0; i < nmtp; i++) free_atom_grid[i] = atom_type_->radial_grid(i);
     
+    /* extend radial grid */
+    double x = atom_type_->radial_grid(nmtp - 1);
+    double dx = atom_type_->radial_grid().dx(nmtp - 2);
+    while (x < 30.0 + atom_type_->zn() / 4.0)
+    {
+        x += dx;
+        free_atom_grid.push_back(x);
+        dx *= 1.025;
+    }
+    Radial_grid rgrid(free_atom_grid);
+
     /* radial solver with a grid of a free atom */
-    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->free_atom_radial_grid());
+    Radial_solver solver(false, -1.0 * atom_type_->zn(), rgrid);
         
-    /* find point on the grid close to the muffin-tin radius */
-    int irmt = atom_type_->idx_rmt_free_atom();
-    
     /* interpolate spherical potential inside muffin-tin */
     Spline<double> svmt(atom_type_->radial_grid());
-    
     /* remove nucleus contribution from Vmt */
-    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
-        svmt[ir] = spherical_potential_[ir] + atom_type_->zn() / atom_type_->radial_grid(ir);
+    for (int ir = 0; ir < nmtp; ir++)
+        svmt[ir] = spherical_potential_[ir] + atom_type_->zn() * atom_type_->radial_grid().x_inv(ir);
     svmt.interpolate();
+    /* fit tail to alpha/r + beta */
+    double alpha = -(std::pow(atom_type_->mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + atom_type_->zn());
+    double beta = svmt[nmtp - 1] - (atom_type_->zn() + alpha) / atom_type_->mt_radius();
 
-    /* cook an effective potential from muffin-tin part and free atom tail */
-    std::vector<double> veff = atom_type_->free_atom_potential().values();
-    for (int ir = 0; ir <= irmt; ir++)
-    {
-        double x = atom_type_->free_atom_radial_grid(ir);
-        veff[ir] = svmt(x) - atom_type_->zn() / x;
-    }
-    for (int ir = irmt + 1; ir < atom_type_->free_atom_radial_grid().num_points(); ir++)
-    {
-        veff[ir] -= (atom_type_->free_atom_potential(irmt) - veff[irmt]);
-    }
+    /* cook an effective potential from muffin-tin part and a tail */
+    std::vector<double> veff(rgrid.num_points());
+    for (int ir = 0; ir < nmtp; ir++) veff[ir] = spherical_potential_[ir];
 
+    for (int ir = nmtp; ir < rgrid.num_points(); ir++) veff[ir] = alpha * rgrid.x_inv(ir) + beta;
+    
     //== /* write spherical potential */
     //== std::stringstream sstr;
     //== sstr << "spheric_potential_" << id_ << ".dat";
     //== FILE* fout = fopen(sstr.str().c_str(), "w");
 
-    //== for (int ir = 0; ir < atom_type_->free_atom_radial_grid().num_points(); ir++)
+    //== for (int ir = 0; ir < rgrid.num_points(); ir++)
     //== {
-    //==     fprintf(fout, "%f %f \n", atom_type_->free_atom_radial_grid(ir), veff[ir]);
+    //==     fprintf(fout, "%18.10f %18.10f\n", rgrid[ir], veff[ir]);
     //== }
     //== fclose(fout);
 
     /* charge density */
-    Spline<double> rho(atom_type_->free_atom_radial_grid());
+    Spline<double> rho(rgrid);
     
     /* atomic level energies */
     std::vector<double> level_energy(atom_type_->num_atomic_levels());
 
     for (int ist = 0; ist < atom_type_->num_atomic_levels(); ist++)
-        level_energy[ist] = -1.0 * atom_type_->zn() / 2 / pow(double(atom_type_->atomic_level(ist).n), 2);
+        level_energy[ist] = -1.0 * atom_type_->zn() / 2 / std::pow(double(atom_type_->atomic_level(ist).n), 2);
     
     #pragma omp parallel default(shared)
     {
@@ -923,10 +955,9 @@ void Atom_symmetry_class::generate_core_charge_density()
                 level_energy[ist] = solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
                                                        level_energy[ist], veff, p);
         
-                for (int i = 0; i < atom_type_->free_atom_radial_grid().num_points(); i++)
+                for (int i = 0; i < rgrid.num_points(); i++)
                 {
-                    rho_t[i] += atom_type_->atomic_level(ist).occupancy * 
-                                pow(y00 * p[i] / atom_type_->free_atom_radial_grid(i), 2);
+                    rho_t[i] += atom_type_->atomic_level(ist).occupancy * std::pow(y00 * p[i] * rgrid.x_inv(i), 2);
                 }
             }
         }
@@ -935,20 +966,13 @@ void Atom_symmetry_class::generate_core_charge_density()
         for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
     }
 
-    /* interpolate charge density */
-    rho.interpolate();
-
-    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
-    {
-        double x = atom_type_->radial_grid(ir);
-        core_charge_density_[ir] = rho(x);
-    }
+    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++) core_charge_density_[ir] = rho[ir];
     
     /* interpolate muffin-tin part of core density */
     Spline<double> rho_mt(atom_type_->radial_grid(), core_charge_density_);
     
     /* compute core leakage */
-    core_leakage_ = fourpi * (rho.integrate(2) - rho_mt.integrate(2));
+    core_leakage_ = fourpi * (rho.interpolate().integrate(2) - rho_mt.integrate(2));
     
     /* compute eigen-value sum of core states */
     core_eval_sum_ = 0.0;
