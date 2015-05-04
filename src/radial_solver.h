@@ -54,7 +54,7 @@ class Radial_solver
         double zn_;
         
         /// Radial grid.
-        Radial_grid& radial_grid_;
+        Radial_grid const& radial_grid_;
         
         /// Tolerance of bound state energy. 
         double enu_tolerance_;
@@ -72,7 +72,7 @@ class Radial_solver
     public:
 
         /// Constructor
-        Radial_solver(bool relativistic__, double zn__, Radial_grid& radial_grid__) 
+        Radial_solver(bool relativistic__, double zn__, Radial_grid const& radial_grid__) 
             : relativistic_(relativistic__), 
               zn_(zn__), 
               radial_grid_(radial_grid__),
