@@ -117,6 +117,15 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
             }
             printf("\n");
         }
+
+        //== FILE* fout = fopen("eval.txt", "w");
+        //== for (int ik = 0; ik < num_kpoints(); ik++)
+        //== {
+        //==     fprintf(fout, "ik : %2i\n", ik); 
+        //==     for (int j = 0; j < parameters_.num_bands(); j++) 
+        //==         fprintf(fout, "%4i: %18.10f\n", j, kpoints_[ik]->band_energy(j));
+        //== }
+        //== fclose(fout);
     }
 }
 
