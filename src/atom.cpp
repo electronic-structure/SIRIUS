@@ -68,12 +68,8 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
 
         h_radial_integrals_ = mdarray<double, 3>(lmmax, type()->indexr().size(), type()->indexr().size());
         
-        veff_ = mdarray<double, 2>(nullptr, lmmax, type()->num_mt_points());
-        
         b_radial_integrals_ = mdarray<double, 4>(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
         
-        for (int j = 0; j < 3; j++) beff_[j] = mdarray<double, 2>(nullptr, lmmax, type()->num_mt_points());
-
         occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
         
         uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
@@ -181,6 +177,14 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
 
     comm__.reduce(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), 0);
     if (num_mag_dims_) comm__.reduce(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), 0);
+
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(veff): %16llX", veff_.hash());
+    DUMP("hash(h_radial_integrals): %16llX", h_radial_integrals_.hash());
+    #endif
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
+    #endif
 }
 
 }
