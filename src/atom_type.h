@@ -414,51 +414,51 @@ class Atom_type
         
         void fix_q_radial_function(int l, int i, int j, double* qrf);
         
-        inline int id()
+        inline int id() const
         {
             return id_;
         }
         
-        inline int zn()
+        inline int zn() const
         {
             assert(zn_ > 0);
             return zn_;
         }
         
-        const std::string& symbol()
+        std::string const& symbol() const
         { 
             return symbol_;
         }
 
-        const std::string& name()
+        std::string const& name() const
         { 
             return name_;
         }
         
-        inline double mass()
+        inline double mass() const
         {
             return mass_;
         }
         
-        inline double mt_radius()
+        inline double mt_radius() const
         {
             return mt_radius_;
         }
         
-        inline int num_mt_points()
+        inline int num_mt_points() const
         {
             assert(num_mt_points_ > 0);
             return num_mt_points_;
         }
         
-        inline Radial_grid& radial_grid()
+        inline Radial_grid const& radial_grid() const
         {
             assert(num_mt_points_ > 0);
             assert(radial_grid_.num_points() > 0);
             return radial_grid_;
         }
 
-        inline Radial_grid& free_atom_radial_grid()
+        inline Radial_grid const& free_atom_radial_grid() const
         {
             return free_atom_radial_grid_;
         }
