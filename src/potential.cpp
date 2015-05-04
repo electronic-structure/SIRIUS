@@ -97,13 +97,13 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 
     update();
 
-    //mixer_ = new Linear_mixer<double>(size(), 0.5, parameters_.comm());
+    //mixer_ = new Linear_mixer<double>(size(), parameters_.iip_.mixer_input_section_.beta_, parameters_.comm());
     std::vector<double> weights;
-            mixer_ = new Broyden_mixer<double>(size(),
-                                               parameters_.iip_.mixer_input_section_.max_history_,
-                                               parameters_.iip_.mixer_input_section_.beta_,
-                                               weights,
-                                               parameters_.comm());
+    mixer_ = new Broyden_modified_mixer<double>(size(),
+                                       parameters_.iip_.mixer_input_section_.max_history_,
+                                       parameters_.iip_.mixer_input_section_.beta_,
+                                       weights,
+                                       parameters_.comm());
 }
 
 Potential::~Potential()
@@ -153,16 +153,19 @@ void Potential::update()
 
         for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
         {
-            sbessel_mom_(0, iat, 0) = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
+            sbessel_mom_(0, iat, 0) = std::pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
             for (int igs = 1; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
             {
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                 {
-                    sbessel_mom_(l, iat, igs) = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l + 2) * 
+                    sbessel_mom_(l, iat, igs) = std::pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l + 2) * 
                                                 sbessel_mt_(l + 1, iat, igs) / parameters_.reciprocal_lattice()->gvec_shell_len(igs);
                 }
             }
         }
+        #ifdef _PRINT_OBJECT_HASH_
+        DUMP("hash(sbessel_mom): %16llX", sbessel_mom_.hash());
+        #endif
         
         /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
          *
@@ -430,9 +433,22 @@ void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->size(); ir++)
         fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * parameters_.step_function(ir);
-    
+
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
+    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it<global>(0) , fft_->size()).checksum());
+    //DUMP("checksum(step_function): %18.10f", mdarray<double, 1>(&parameters_.step_function(0), fft_->size()).checksum();
+    DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
+    #endif
+
     fft_->transform(-1);
     fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential()->f_pw(0));
+
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    DUMP("checksum(veff_it): %18.10f", effective_potential()->f_it().checksum());
+    double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), fft_->num_gvec()).checksum();
+    DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    #endif
 
     if (!use_second_variation) // for full diagonalization we also need Beff(G)
     {
