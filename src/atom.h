@@ -274,7 +274,7 @@ class Atom
             return type_->num_mt_points();
         }
 
-        inline Radial_grid& radial_grid()
+        inline Radial_grid const& radial_grid() const
         {
             return type_->radial_grid();
         }
