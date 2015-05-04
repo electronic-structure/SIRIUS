@@ -70,6 +70,12 @@ class Mixer
         {
             return step__ % max_history_;
         }
+
+        inline int idx_hist(int offset__ = 0) const
+        {
+            assert(count_ - offset__ >= 0);
+            return (count_ - offset__) % max_history_;
+        }
         
         /// Compute RMS deviation between current vector and input vector.
         double rms_deviation() const
@@ -82,7 +88,7 @@ class Mixer
                     rms += std::pow(std::abs(vectors_(i, offset(count_)) - input_buffer_(i)), 2);
                 }
                 comm_.allreduce(&rms, 1);
-                rms = sqrt(rms / double(size_));
+                rms = std::sqrt(rms / double(size_));
             }
             return rms;
         }
@@ -348,18 +354,18 @@ class Broyden_modified_mixer: public Mixer<T>
 
             if (weights_.size())
             {
+                int ipos = this->idx_hist();
                 for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                 {
-                    int ipos = this->offset(this->count_);
                     residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
                     this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
                 }
             }
             else
             {
+                int ipos = this->idx_hist();
                 for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
                 {
-                    int ipos = this->offset(this->count_);
                     residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
                     this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
                 }
@@ -416,12 +422,26 @@ class Broyden_modified_mixer: public Mixer<T>
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
 
+                // printf("[mixer] S matrix\n");
+                // for (int i = 0; i < N; i++)
+                // {
+                //     for (int j = 0; j < N; j++) printf("%18.10f ", S(i, j));
+                //     printf("\n");
+                // }
+
                 linalg<CPU>::syinv(N, S);
                 /* restore lower triangular part */
                 for (int j1 = 0; j1 < N; j1++)
                 {
                     for (int j2 = 0; j2 < j1; j2++) S(j1, j2) = S(j2, j1);
                 }
+
+                // printf("[mixer] S^{-1} matrix\n");
+                // for (int i = 0; i < N; i++)
+                // {
+                //     for (int j = 0; j < N; j++) printf("%18.10f ", S(i, j));
+                //     printf("\n");
+                // }
 
                 mdarray<double, 1> c(N);
                 c.zero();
@@ -458,7 +478,7 @@ class Broyden_modified_mixer: public Mixer<T>
                     {
                         T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
                         T dv = this->vectors_(i, this->offset(this->count_ - j)) - this->vectors_(i, this->offset(this->count_ - j - 1));
-                        
+
                         this->input_buffer_(i) -= gamma * (dr * this->beta_ + dv);
                     }
                 }
