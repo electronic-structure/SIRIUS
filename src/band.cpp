@@ -931,7 +931,13 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
             offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
             num_mt_aw += type->mt_aw_basis_size();
         }
-            
+        
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        alm_row.zero();
+        alm_col.zero();
+        halm_col.zero();
+        #endif
+
         #pragma omp parallel
         {
             int tid = Platform::thread_id();
@@ -960,6 +966,14 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                 }
             }
         }
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z1 = alm_row.checksum();
+        double_complex z2 = alm_col.checksum();
+        double_complex z3 = halm_col.checksum();
+        DUMP("checksum(alm_row): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        DUMP("checksum(alm_col): %18.10f %18.10f", std::real(z2), std::imag(z2));
+        DUMP("checksum(halm_col): %18.10f %18.10f", std::real(z3), std::imag(z3));
+        #endif
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone,
                           alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), zone, 
                           o__.at<CPU>(), o__.ld());
@@ -1202,6 +1216,11 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
 {
     Timer t("sirius::Band::set_fv_h_o_it");
 
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), fft_->num_gvec()).checksum();
+    DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    #endif
+
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
     {
@@ -1210,7 +1229,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
             int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
                                                                    kp->gklo_basis_descriptor_col(igk_col).ig);
             
-            // pw kinetic energy
+            /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
                                kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
                                
@@ -1360,6 +1379,18 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Utils::check_hermitian("h", h.panel());
         Utils::check_hermitian("o", o.panel());
     }
+
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    auto z1 = h.panel().checksum();
+    auto z2 = o.panel().checksum();
+    DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
+    #endif
+
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(h): %16llX", h.panel().hash());
+    DUMP("hash(o): %16llX", o.panel().hash());
+    #endif
 
     assert(kp->gklo_basis_size() > parameters_.num_fv_states());
     
