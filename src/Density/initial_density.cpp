@@ -11,24 +11,42 @@ void Density::initial_density()
     auto rl = parameters_.reciprocal_lattice();
     auto uc = parameters_.unit_cell();
 
+    /* let rho(r) = a*Exp[-b*r]
+       \int rho(r) dr = 4pi * a * \int Exp[-b*r]*r*r*dr = 4pi*a * (2/b^3) = Z
+       a = Z * b^3 / 2 / 4 / pi
+    */
+
     if (uc->full_potential())
     {
         /* initialize smooth density of free atoms */
         for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->init_free_atom(true);
 
-        /* compute radial integrals */
+        //== /* compute radial integrals */
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
+        //auto rho_radial_integrals = generate_rho_radial_integrals(5);
 
         /* compute contribution from free atoms to the interstitial density */
         auto v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z = mdarray<double_complex, 1>(&v[0], rl->num_gvec()).checksum();
+        DUMP("checksum(rho_pw): %18.10f %18.10f", std::real(z), std::imag(z));
+        #endif
 
         /* set plane-wave coefficients of the charge density */
         memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
-
         /* convert charge deisnty to real space mesh */
-        fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
-        fft_->transform(1);
-        fft_->output(&rho_->f_it<global>(0));
+        rho_->fft_transform(1);
+
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z2 = rho_->f_it().checksum(); 
+        DUMP("checksum(rho_it): %18.10f %18.10f", std::real(z2), std::imag(z2));
+        #endif
+
+        #ifdef _PRINT_OBJECT_HASH_
+        DUMP("hash(rhopw): %16llX", rho_->f_pw().hash());
+        DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
+        #endif
 
         /* remove possible negative noise */
         for (int ir = 0; ir < fft_->size(); ir++)
@@ -111,6 +129,11 @@ void Density::initial_density()
         }
         parameters_.comm().allreduce(znulm.at<CPU>(), (int)znulm.size());
         t3.stop();
+        
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z3 = znulm.checksum();
+        DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
+        #endif
 
         Timer t4("sirius::Density::initial_density|rholm");
         
@@ -120,6 +143,12 @@ void Density::initial_density()
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
             int iat = uc->atom(ia)->type_id();
+            //double b = 4;
+            //double R = parameters_.unit_cell()->atom(ia)->mt_radius();
+            //int Z = parameters_.unit_cell()->atom(ia)->zn();
+
+            //double c2 = (std::pow(b,3)*(3 + b*R)*Z)/(8.*std::exp(b*R)*pi*std::pow(R,2));
+            //double c3 = -(std::pow(b,3)*(2 + b*R)*Z)/(8.*std::exp(b*R)*pi*std::pow(R,3));
 
             Spheric_function<spectral, double_complex> rhoylm(lmmax, uc->atom(ia)->radial_grid());
             rhoylm.zero();
@@ -142,6 +171,7 @@ void Density::initial_density()
             {
                 double x = uc->atom(ia)->radial_grid(ir);
                 rhoylm(0, ir) += (v[0] - uc->atom(ia)->type()->free_atom_density(x)) / y00;
+                //rhoylm(0, ir) += (v[0] - (c2 * std::pow(x, 2) + c3*std::pow(x, 3))) / y00;
             }
             sht.convert(rhoylm, rho_->f_mt(ialoc));
         }
@@ -153,6 +183,9 @@ void Density::initial_density()
 
         for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
+            //double b = 8;
+            //int Z = parameters_.unit_cell()->atom(ia)->zn();
+
             auto p = uc->spl_num_atoms().location(ia);
             
             if (p.second == parameters_.comm().rank())
@@ -162,6 +195,7 @@ void Density::initial_density()
                 {
                     double x = uc->atom(ia)->type()->radial_grid(ir);
                     rho_->f_mt<local>(0, ir, (int)p.first) += uc->atom(ia)->type()->free_atom_density(x) / y00;
+                    //rho_->f_mt<local>(0, ir, (int)p.first) += Z * std::pow(b, 3) * std::exp(-b * x) / 8 / pi / y00;
                 }
             }
         }
@@ -418,6 +452,13 @@ void Density::initial_density()
 
     if (uc->full_potential())
     {
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        DUMP("checksum(rhomt): %18.10f", rho_->f_mt().checksum());
+        #endif
+
+        #ifdef _PRINT_OBJECT_HASH_
+        DUMP("hash(rho) : %16llX", rho_->hash());
+        #endif
         /* check initial charge */
         std::vector<double> nel_mt;
         double nel_it;
