@@ -665,14 +665,14 @@ void sirius_clear(void)
     log_function_exit(__func__);
 }
 
-void sirius_generate_initial_density(void)
+void sirius_generate_initial_density()
 {
     log_function_enter(__func__);
     density->initial_density();
     log_function_exit(__func__);
 }
 
-void sirius_generate_effective_potential(void)
+void sirius_generate_effective_potential()
 {
     log_function_enter(__func__);
     dft_ground_state->generate_effective_potential();
@@ -1678,9 +1678,9 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
     assert(global_parameters->num_spins() == 2);
 
     /* set temporary array wrapper */
-    mdarray<double,4> bxcmt(bxcmt__, global_parameters->lmmax_pot(), global_parameters->unit_cell()->max_num_mt_points(), 
-                            global_parameters->unit_cell()->num_atoms(), global_parameters->num_mag_dims());
-    mdarray<double,2> bxcit(bxcit__, global_parameters->fft()->size(), global_parameters->num_mag_dims());
+    mdarray<double, 4> bxcmt(bxcmt__, global_parameters->lmmax_pot(), global_parameters->unit_cell()->max_num_mt_points(), 
+                             global_parameters->unit_cell()->num_atoms(), global_parameters->num_mag_dims());
+    mdarray<double, 2> bxcit(bxcit__, global_parameters->fft()->size(), global_parameters->num_mag_dims());
 
     if (global_parameters->num_mag_dims() == 1)
     {
@@ -1702,7 +1702,7 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
 void sirius_generate_coulomb_potential(double* vclmt__, double* vclit__)
 {
     log_function_enter(__func__);
-
+    
     potential->poisson(density->rho(), potential->hartree_potential());
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 
@@ -2716,5 +2716,14 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
     }
 }
 
+void FORTRAN(sirius_scf_loop)()
+{
+    dft_ground_state->scf_loop(1e-6, 1e-6, 20);
+}
+
+void FORTRAN(sirius_potential_checksum)()
+{
+    potential->checksum();
+}
 
 } // extern "C"
