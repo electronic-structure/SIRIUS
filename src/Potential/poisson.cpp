@@ -226,12 +226,37 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_vmt(rho, vh, qmt);
 
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z1 = qmt.checksum();
+        DUMP("checksum(qmt): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        #endif
+        #ifdef _PRINT_OBJECT_HASH_
+        DUMP("hash(qmt): %16llX", qmt.hash());
+        #endif
+
         /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_sum_G(parameters_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
-        
+
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z2 = qit.checksum();
+        DUMP("checksum(qit): %18.10f %18.10f", std::real(z2), std::imag(z2));
+        #endif
+        #ifdef _PRINT_OBJECT_HASH_
+        DUMP("hash(rhopw): %16llX", rho->f_pw().hash());
+        DUMP("hash(qit): %16llX", qit.hash());
+        #endif
+
         /* add contribution from the pseudo-charge */
         poisson_add_pseudo_pw(qmt, qit, &rho->f_pw(0));
+        
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        double_complex z3 = mdarray<double_complex, 1>(&rho->f_pw(0), fft_->num_gvec()).checksum();
+        DUMP("checksum(rho_ps_pw): %18.10f %18.10f", std::real(z3), std::imag(z3));
+        #endif
+        #ifdef _PRINT_OBJECT_HASH_
+        DUMP("hash(rho_ps_pw): %16llX", mdarray<double_complex, 1>(&rho->f_pw(0), fft_->num_gvec()).hash());
+        #endif
 
         if (check_pseudo_charge)
         {
@@ -242,6 +267,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             {
                 for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) d += abs(qmt(lm, ia) - qit(lm, ia));
             }
+            printf("pseudocharge error: %18.10f\n", d);
         }
     }
 
@@ -249,7 +275,15 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     vh->f_pw(0) = 0.0;
     #pragma omp parallel for schedule(static)
     for (int ig = 1; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
-        vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
+        vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
+
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    double_complex z4 = mdarray<double_complex, 1>(&vh->f_pw(0), fft_->num_gvec()).checksum();
+    DUMP("checksum(vh_pw): %20.14f %20.14f", std::real(z4), std::imag(z4));
+    #endif
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(vh_pw): %16llX", mdarray<double_complex, 1>(&vh->f_pw(0), fft_->num_gvec()).hash());
+    #endif
     
     /* boundary condition for muffin-tins */
     if (parameters_.unit_cell()->full_potential())
@@ -302,6 +336,13 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     
     /* transform Hartree potential to real space */
     vh->fft_transform(1);
+
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    DUMP("checksum(vha_it): %20.14f", vh->f_it().checksum());
+    #endif
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(vha_it): %16llX", vh->f_it().hash());
+    #endif
     
     /* compute contribution from the smooth part of Hartree potential */
     energy_vha_ = inner(parameters_, rho, vh);
