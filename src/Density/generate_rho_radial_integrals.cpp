@@ -19,6 +19,73 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     /* split G-shells between MPI ranks */
     splindex<block> spl_gshells(rl->num_gvec_shells_inner(), parameters_.comm().size(), parameters_.comm().rank());
 
+    if (type__ == 5)
+    {
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            DUMP("iat: %i, checksum(radial_grid): %18.10f %18.10f", iat, uc->atom_type(iat)->radial_grid().x().checksum(),
+                                                                    uc->atom_type(iat)->radial_grid().dx().checksum());
+        }
+        #endif
+        #ifdef _PRINT_OBJECT_HASH_
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            DUMP("iat: %i, hash(radial_grid): %16llX", iat, uc->atom_type(iat)->radial_grid().hash());
+            DUMP("iat: %i, hash(free_atom_radial_grid): %16llX", iat, uc->atom_type(iat)->free_atom_radial_grid().hash());
+        }
+        #endif
+
+        double b = 8;
+        for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+        {
+            double G = rl->gvec_shell_len(igs);
+
+            for (int iat = 0; iat < uc->num_atom_types(); iat++) 
+            {
+                int Z = uc->atom_type(iat)->zn();
+                double R = uc->atom_type(iat)->mt_radius();
+                if (igs != 0)
+                {
+                    rho_radial_integrals(iat, igs) = (std::pow(b,3)*Z*((std::pow(G,5)*(G*(2*b + (std::pow(b,2) + std::pow(G,2))*R)*std::cos(G*R) +
+                                                     (std::pow(b,2) - std::pow(G,2) + b*(std::pow(b,2) + std::pow(G,2))*R)*std::sin(G*R)))/
+                                                     std::pow(std::pow(b,2) + std::pow(G,2),2) + (G*(3 + b*R)*(G*R*(6 - std::pow(G,2)*std::pow(R,2))*std::cos(G*R) +
+                                                     3*(-2 + std::pow(G,2)*std::pow(R,2))*std::sin(G*R)))/std::pow(R,2) +
+                                                     ((2 + b*R)*((24 - 12*std::pow(G,2)*std::pow(R,2) + std::pow(G,4)*std::pow(R,4))*std::cos(G*R) -
+                                                     4*(6 + G*R*(-6 + std::pow(G,2)*std::pow(R,2))*std::sin(G*R))))/std::pow(R,3)))/
+                                                     (8.*std::exp(b*R)*std::pow(G,6)*pi);
+                }
+                else
+                {
+                    rho_radial_integrals(iat, igs) = ((60 + 60*b*R + 30*std::pow(b,2)*std::pow(R,2) + 8*std::pow(b,3)*std::pow(R,3) +
+                                                      std::pow(b,4)*std::pow(R,4))*Z)/(240.*std::exp(b*R)*pi);
+                }
+            }
+        }
+        #ifdef _PRINT_OBJECT_CHECKSUM_
+        DUMP("checksum(rho_radial_integrals): %18.10f", rho_radial_integrals.checksum());
+        #endif
+        return rho_radial_integrals;
+    }
+
+    if (type__ == 4)
+    {
+        /* rho[r_] := Z*b^3/8/Pi*Exp[-b*r]
+         * Integrate[Sin[G*r]*rho[r]*r*r/(G*r), {r, 0, \[Infinity]}, Assumptions -> {G >= 0, b > 0}]
+         * Out[] = (b^4 Z)/(4 (b^2 + G^2)^2 \[Pi])
+         */
+        double b = 4;
+        for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+        {
+            double G = rl->gvec_shell_len(igs);
+
+            for (int iat = 0; iat < uc->num_atom_types(); iat++) 
+            {
+                rho_radial_integrals(iat, igs) = std::pow(b, 4) * uc->atom_type(iat)->zn() / (4 * std::pow(std::pow(b, 2) + std::pow(G, 2), 2) * pi);
+            }
+        }
+        return rho_radial_integrals;
+    }
     #pragma omp parallel
     {
         /* splines for all atom types */
