@@ -3,7 +3,7 @@
 
 namespace sirius {
 
-void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
+void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                   std::vector<XC_functional*>& xc_func,
                                   Spheric_function<spectral, double>& rho_lm, 
                                   Spheric_function<spatial, double>& rho_tp, 
@@ -125,7 +125,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
     }
 }
 
-void Potential::xc_mt_magnetic(Radial_grid& rgrid,
+void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
                                std::vector<XC_functional*>& xc_func,
                                Spheric_function<spectral, double>& rho_up_lm, 
                                Spheric_function<spatial, double>& rho_up_tp, 
@@ -603,6 +603,14 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         vxc->f_it<local>(irloc) = vxc_tmp(irloc);
         exc->f_it<local>(irloc) = exc_tmp(irloc);
     }
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    DUMP("checksum(vxc_tmp): %18.10f", vxc_tmp.checksum());
+    DUMP("checksum(exc_tmp): %18.10f", exc_tmp.checksum());
+    #endif
+    #ifdef _PRINT_OBJECT_HASH_
+    DUMP("hash(vxc_tmp): %16llX", vxc_tmp.hash());
+    DUMP("hash(exc_tmp): %16llX", exc_tmp.hash());
+    #endif
 }
 
 void Potential::xc_it_magnetic(Periodic_function<double>* rho, 
