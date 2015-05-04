@@ -96,27 +96,16 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 {
     Timer t("sirius::DFT_ground_state::scf_loop");
     
-    density_->mixer_init();
+    //density_->mixer_init();
 
     double eold = 0.0;
+    
+    generate_effective_potential();
+    potential_->mixer_init();
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
         Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
-
-        /* compute new potential */
-        generate_effective_potential();
-        
-        double rms = 1.0;
-        if (iter)
-        {
-            rms = potential_->mix();
-        }
-        else
-        {
-            potential_->mixer_init();
-        }
-        parameters_.comm().bcast(&rms, 1, 0);
 
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
@@ -125,27 +114,14 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* generate new density from the occupied wave-functions */
         density_->generate(*kset_);
 
-        if (use_symmetry_)
-        {
-            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-            {
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(-1);
-            }
+        if (use_symmetry_) symmetrize_density();
 
-            symmetrize_density();
+        /* compute new potential */
+        generate_effective_potential();
 
-            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-            {
-                density_->rho()->fft_transform(1);
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(1);
-            }
-        }
-        
-        //double rms = density_->mix();
+        double rms = potential_->mix();
 
-        //parameters_.comm().bcast(&rms, 1, 0);
+        parameters_.comm().bcast(&rms, 1, 0);
 
         /* compute new total energy for a new density */
         double etot = total_energy();
@@ -155,7 +131,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         if (parameters_.comm().rank() == 0)
         {
-            printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f\n", iter, rms, etot - eold);
+            printf("iteration : %3i, potential RMS %12.6f, energy difference : %12.6f\n", iter, rms, etot - eold);
         }
         
         if (std::abs(eold - etot) < energy_tol && rms < potential_tol) break;
