@@ -271,6 +271,11 @@ class Periodic_function
         {
             return f_it_;
         }
+
+        mdarray<complex_t, 1>& f_pw()
+        {
+            return f_pw_;
+        }
 };
 
 #include "periodic_function.hpp"
