@@ -96,6 +96,12 @@ void Step_function::update()
           << "  difference with exact value : " << fabs(vit - uc->volume_it());
         warning_global(__FILE__, __LINE__, s);
     }
+    #ifdef _PRINT_OBJECT_CHECKSUM_
+    double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], fft_->size()).checksum();
+    double d1 = mdarray<double, 1>(&step_function_[0], fft_->size()).checksum();
+    DUMP("checksum(step_function): %18.10f", d1);
+    DUMP("checksum(step_function_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    #endif
 }
 
 }
