@@ -103,14 +103,14 @@ class Potential
 
         void generate_local_potential();
         
-        void xc_mt_nonmagnetic(Radial_grid& rgrid,
+        void xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                std::vector<XC_functional*>& xc_func,
                                Spheric_function<spectral, double>& rho_lm,
                                Spheric_function<spatial, double>& rho_tp,
                                Spheric_function<spatial, double>& vxc_tp, 
                                Spheric_function<spatial, double>& exc_tp);
 
-        void xc_mt_magnetic(Radial_grid& rgrid, 
+        void xc_mt_magnetic(Radial_grid const& rgrid, 
                             std::vector<XC_functional*>& xc_func,
                             Spheric_function<spectral, double>& rho_up_lm, 
                             Spheric_function<spatial, double>& rho_up_tp, 
@@ -462,18 +462,9 @@ class Potential
             return energy_vha_;
         }
 
-        void mixer_input()
-        {
-        }
-
-        void mixer_output()
-        {
-            unpack(mixer_->output_buffer());
-        }
-
         void mixer_init()
         {
-            mixer_input();
+            pack(mixer_);
             mixer_->initialize();
         }
 
@@ -483,6 +474,11 @@ class Potential
             double rms = mixer_->mix();
             unpack(mixer_->output_buffer());
             return rms;
+        }
+
+        inline void checksum()
+        {
+            DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
         }
 };
 
