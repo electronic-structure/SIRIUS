@@ -294,6 +294,12 @@ class DFT_ground_state
             auto& spl_num_gvec = parameters_.reciprocal_lattice()->spl_num_gvec();
             auto& comm = parameters_.comm();
 
+            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            {
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    density_->magnetization(j)->fft_transform(-1);
+            }
+
             parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
             parameters_.unit_cell()->symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
 
@@ -303,6 +309,18 @@ class DFT_ground_state
                 parameters_.unit_cell()->symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
             }
 
+            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            {
+                density_->rho()->fft_transform(1);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    density_->magnetization(j)->fft_transform(1);
+            }
+
+            #ifdef _PRINT_OBJECT_HASH_
+            DUMP("hash(rhomt): %16llX", density_->rho()->f_mt().hash());
+            DUMP("hash(rhoit): %16llX", density_->rho()->f_it().hash());
+            DUMP("hash(rhopw): %16llX", density_->rho()->f_pw().hash());
+            #endif
         }
 };
 
