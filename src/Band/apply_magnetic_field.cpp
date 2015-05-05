@@ -78,7 +78,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
         }
     }
     
-    Timer *t1 = new Timer("sirius::Band::apply_magnetic_field|it");
+    Timer t1("sirius::Band::apply_magnetic_field|it");
 
     int offset = parameters_.unit_cell()->mt_basis_size();
 
@@ -94,15 +94,13 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
         {
             fft_->input(num_gkvec, fft_index, &fv_states(offset, i), thread_id);
             fft_->transform(1, thread_id);
-            fft_->output(&psi_it[0], thread_id);
                                         
             for (int ir = 0; ir < fft_->size(); ir++)
             {
-                // hpsi(r) = psi(r) * Bz(r) * Theta(r)
-                hpsi_it[ir] = psi_it[ir] * effective_magnetic_field[0]->f_it<global>(ir) * parameters_.step_function(ir);
+                /* hpsi(r) = psi(r) * Bz(r) * Theta(r) */
+                fft_->buffer(ir, thread_id) *= (effective_magnetic_field[0]->f_it<global>(ir) * parameters_.step_function(ir));
             }
             
-            fft_->input(&hpsi_it[0], thread_id);
             fft_->transform(-1, thread_id);
             fft_->output(num_gkvec, fft_index, &hpsi(offset, i, 0), thread_id); 
 
@@ -110,7 +108,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
             {
                 for (int ir = 0; ir < fft_->size(); ir++)
                 {
-                    // hpsi(r) = psi(r) * (Bx(r) - iBy(r)) * Theta(r)
+                    /* hpsi(r) = psi(r) * (Bx(r) - iBy(r)) * Theta(r) */
                     hpsi_it[ir] = psi_it[ir] * parameters_.step_function(ir) * 
                                   (effective_magnetic_field[1]->f_it<global>(ir) - 
                                    complex_i * effective_magnetic_field[2]->f_it<global>(ir));
@@ -125,7 +123,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
             {
                 for (int ir = 0; ir < fft_->size(); ir++)
                 {
-                    // hpsi(r) = psi(r) * (Bx(r) + iBy(r)) * Theta(r)
+                    /* hpsi(r) = psi(r) * (Bx(r) + iBy(r)) * Theta(r) */
                     hpsi_it[ir] = psi_it[ir] * parameters_.step_function(ir) *
                                   (effective_magnetic_field[1]->f_it<global>(ir) + 
                                    complex_i * effective_magnetic_field[2]->f_it<global>(ir));
@@ -137,9 +135,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
             }
         }
     }
-    delete t1;
 
-    // copy Bz|\psi> to -Bz|\psi>
+    /* copy Bz|\psi> to -Bz|\psi> */
     for (int i = 0; i < nfv; i++)
     {
         for (int j = 0; j < (int)fv_states.size(0); j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
