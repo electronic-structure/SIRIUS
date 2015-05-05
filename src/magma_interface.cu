@@ -7,7 +7,7 @@
 #include <magma_z.h>
 #include <magma_zbulge.h>
 #include <magma_threadsetting.h>
-#include "gpu_interface.h"
+//#include "gpu_interface.h"
 
 extern "C" void magma_init_wrapper()
 {
@@ -29,8 +29,10 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
     int liwork = 3 + 5 * matrix_size;
             
-    magmaDoubleComplex* h_work = (magmaDoubleComplex*)cuda_malloc_host(lwork * sizeof(magmaDoubleComplex));
-    double* rwork = (double*)cuda_malloc_host(lrwork * sizeof(double));
+    magmaDoubleComplex* h_work;
+    cudaMallocHost((void**)&h_work, lwork * sizeof(magmaDoubleComplex));
+    double* rwork;
+    cudaMallocHost((void**)&rwork, lrwork * sizeof(double));
     
     magma_int_t *iwork;
     if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
@@ -51,8 +53,8 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 
     memcpy(eval, &w[0], nv * sizeof(double));
     
-    cuda_free_host((void**)&h_work);
-    cuda_free_host((void**)&rwork);
+    cudaFreeHost(h_work);
+    cudaFreeHost(rwork);
     free(iwork);
     free(w);
 

@@ -30,9 +30,7 @@
 
 const int _null_stream_ = -1;
 
-#ifndef _MAGMA_
 typedef std::complex<double> cuDoubleComplex;
-#endif
 
 //================
 // CUDA functions
