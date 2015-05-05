@@ -1581,18 +1581,18 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         return;
     }
     
-    if (kp->num_ranks() > 1 && !std_evp_solver()->parallel())
-        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
+    if (kp->num_ranks() > 1 && !std_evp_solver()->parallel()) TERMINATE("eigen-value solver is not parallel");
 
-    // number of h|\psi> components 
+    /* number of h|\psi> components */
     int nhpsi = parameters_.num_mag_dims() + 1;
-    
-    // size of the first-variational state 
+    if (!std_evp_solver()->parallel() && parameters_.num_mag_dims() == 3) nhpsi = 3;
+
+    /* size of the first-variational state */
     int fvsz = kp->wf_size();
 
     std::vector<double> band_energies(parameters_.num_bands());
 
-    // product of the second-variational Hamiltonian and a wave-function
+    /* product of the second-variational Hamiltonian and a wave-function */
     mdarray<double_complex, 3> hpsi(fvsz, kp->sub_spl_fv_states().local_size(), nhpsi);
     hpsi.zero();
 
@@ -1639,8 +1639,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         
             Timer t1("sirius::Band::solve_sv|stdevp");
             std_evp_solver()->solve(parameters_.num_fv_states(), h.at<CPU>(), h.ld(),
-                                                &band_energies[ispn * parameters_.num_fv_states()],
-                                                kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
+                                    &band_energies[ispn * parameters_.num_fv_states()],
+                                    kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
         }
     }
 
