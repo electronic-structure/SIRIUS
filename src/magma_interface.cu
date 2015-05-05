@@ -30,7 +30,7 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int liwork = 3 + 5 * matrix_size;
             
     cuDoubleComplex* h_work = (cuDoubleComplex*)cuda_malloc_host(lwork * sizeof(cuDoubleComplex));
-    double* rwork = (double*)cuda_malloc_host((void**)&rwork, lrwork * sizeof(double));
+    double* rwork = (double*)cuda_malloc_host(lrwork * sizeof(double));
     
     magma_int_t *iwork;
     if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
