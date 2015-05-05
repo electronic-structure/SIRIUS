@@ -1624,16 +1624,54 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     }
     hpsi.deallocate(); // we don't need full vectors anymore
 
+    if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+    {
+        #ifdef _GPU_
+        kp->fv_states_panel().panel().allocate_on_device();
+        kp->fv_states_panel().panel().copy_to_device();
+        #endif
+    }
+    double_complex alpha = complex_one;
+    double_complex beta = complex_zero;
+
     if (parameters_.num_mag_dims() != 3)
     {
         dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), kp->blacs_grid());
+        if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+        {
+            #ifdef _GPU_
+            h.panel().allocate_on_device();
+            #endif
+        }
 
-        // perform one or two consecutive diagonalizations
+        /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
-            // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-            linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
-                              kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
+            if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+            {
+                #ifdef _GPU_
+                Timer t4("sirius::Band::solve_sv|zgemm");
+                hpsi_panel[ispn]->panel().allocate_on_device();
+                hpsi_panel[ispn]->panel().copy_to_device();
+                linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
+                                  kp->fv_states_panel().panel().at<GPU>(), kp->fv_states_panel().panel().ld(),
+                                  hpsi_panel[ispn]->panel().at<GPU>(),hpsi_panel[ispn]->panel().ld(), &beta,
+                                  h.panel().at<GPU>(), h.panel().ld());
+                h.panel().copy_to_host();
+                hpsi_panel[ispn]->panel().deallocate_on_device();
+                double tval = t4.stop();
+                DUMP("effective zgemm performance: %12.6f GFlops", 
+                     8e-9 * parameters_.num_fv_states() * parameters_.num_fv_states() * fvsz / tval);
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
+            else
+            {
+                /* compute <wf_i | (h * wf_j)> for up-up or dn-dn block */
+                linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
+                                  kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
+            }
             
             for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
         
