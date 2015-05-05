@@ -710,12 +710,6 @@ class mdarray_base
                 pinned_ = false;
             }
         }
-
-        /// Set raw device pointer.
-        inline void set_ptr_device(T* ptr_device__)
-        {
-            ptr_device_ = ptr_device__;
-        }
         #endif
 };
 
@@ -761,6 +755,15 @@ class mdarray: public mdarray_base<T, N>
             this->ptr_ = ptr__;
         }
 
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0)
+        {
+            this->init_dimensions({d0});
+            this->ptr_ = ptr__;
+            #ifdef _GPU_
+            this->ptr_device_ = ptr_device__;
+            #endif
+        }
+
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
             this->init_dimensions({d0, d1});
@@ -786,7 +789,7 @@ class mdarray: public mdarray_base<T, N>
             this->init_dimensions({d0, d1});
             this->ptr_ = ptr__;
             #ifdef _GPU_
-            this->set_ptr_device(ptr_device__);
+            this->ptr_device_ = ptr_device__;
             #endif
         }
 
@@ -796,7 +799,7 @@ class mdarray: public mdarray_base<T, N>
             this->init_dimensions({d0, d1, d2});
             this->ptr_ = ptr__;
             #ifdef _GPU_
-            this->set_ptr_device(ptr_device__);
+            this->ptr_device_ = ptr_device__;
             #endif
         }
 
