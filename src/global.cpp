@@ -179,7 +179,7 @@ void Global::initialize()
     fft_->init_gvec(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors());
 
     #ifdef _GPU_
-    fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 2);
+    fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
     #endif
     
     if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)

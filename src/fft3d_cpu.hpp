@@ -152,20 +152,12 @@ class FFT3D<CPU>
             }
         }
 
-        /// Zero the input buffer for a given thread.
-        inline void zero(int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads());
-
-            memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
-        }
-
         template<typename T>
         inline void input(int n, int const* map, T* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads());
             
-            zero(thread_id);
+            memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
             for (int i = 0; i < n; i++) fftw_buffer_(map[i], thread_id) = data[i];
         }
 
