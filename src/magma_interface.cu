@@ -25,15 +25,12 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int m;
     int info;
 
-    int lwork = magma_zbulge_get_lq2(matrix_size, magma_get_numthreads()) + 2 * matrix_size + matrix_size * matrix_size;
+    int lwork = magma_zbulge_get_lq2(matrix_size, magma_get_parallel_numthreads()) + 2 * matrix_size + matrix_size * matrix_size;
     int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
     int liwork = 3 + 5 * matrix_size;
             
-    cuDoubleComplex* h_work;
-    cuda_malloc_host((void**)&h_work, lwork * sizeof(cuDoubleComplex));
-
-    double* rwork;
-    cuda_malloc_host((void**)&rwork, lrwork * sizeof(double));
+    cuDoubleComplex* h_work = (cuDoubleComplex*)cuda_malloc_host(lwork * sizeof(cuDoubleComplex));
+    double* rwork = (double*)cuda_malloc_host((void**)&rwork, lrwork * sizeof(double));
     
     magma_int_t *iwork;
     if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
