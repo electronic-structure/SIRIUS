@@ -56,6 +56,12 @@ void cuda_copy_to_host(void *target, void *source, size_t size);
 
 void cuda_copy_device_to_device(void* target, void* source, size_t size);
 
+void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
+
+void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
+
+void cuda_async_copy_device_to_device(void* target, void const* source, size_t size, int stream_id);
+
 void cuda_memset(void *ptr, int value, size_t size);
 
 void cuda_host_register(void* ptr, size_t size);
@@ -70,9 +76,6 @@ void cuda_destroy_streams(int num_streams);
 
 void cuda_stream_synchronize(int stream_id);
 
-void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
-
-void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
 
 size_t cuda_get_free_mem();
 
@@ -81,6 +84,8 @@ void cuda_device_reset();
 void cuda_check_last_error();
 
 }
+
+void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__);
 
 //==================
 // CUBLAS functions

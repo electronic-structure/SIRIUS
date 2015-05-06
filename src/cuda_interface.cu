@@ -159,6 +159,13 @@ void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream
     CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToHost, stream));
 }
 
+void cuda_async_copy_device_to_device(void* target, void const* source, size_t size, int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToDevice, stream));
+}
+
 void cuda_memset(void* ptr, int value, size_t size)
 {
     CALL_CUDA(cudaMemset, (ptr, value, size));
@@ -233,7 +240,14 @@ void cuda_check_last_error()
     }
 }
 
+} // extern "C"
+
+
+void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__)
+{
+    CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
 }
+
 
 //==================
 // CUBLAS functions
