@@ -166,7 +166,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                     if (!done)
                     {
                         /* copy pw coeffs to GPU */
-                        mdarray<double_complex, 1>(&fv_states(wf_pw_offset, i), psi_pw_gpu.at<GPU>(), num_gkvec).copy_to_device();
+                        //mdarray<double_complex, 1>(&fv_states(wf_pw_offset, i), psi_pw_gpu.at<GPU>(), num_gkvec).copy_to_device();
+                        cuda_copy_device_to_device(psi_pw_gpu.at<GPU>(), fv_states.at<GPU>(wf_pw_offset, i), num_gkvec * sizeof(double_complex));
 
                         fft_gpu->batch_load(num_gkvec, fft_index_gpu.at<GPU>(), psi_pw_gpu.at<GPU>(), psi_it_gpu.at<GPU>());
 

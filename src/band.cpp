@@ -1627,8 +1627,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
         #ifdef _GPU_
-        kp->fv_states_panel().panel().allocate_on_device();
-        kp->fv_states_panel().panel().copy_to_device();
+        //kp->fv_states_panel().panel().allocate_on_device();
+        //kp->fv_states_panel().panel().copy_to_device();
         #endif
     }
     double_complex alpha = complex_one;
@@ -1654,7 +1654,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
                 hpsi_panel[ispn]->panel().allocate_on_device();
                 hpsi_panel[ispn]->panel().copy_to_device();
                 linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
-                                  kp->fv_states_panel().panel().at<GPU>(), kp->fv_states_panel().panel().ld(),
+                                  kp->fv_states().at<GPU>(), kp->fv_states().ld(),
                                   hpsi_panel[ispn]->panel().at<GPU>(),hpsi_panel[ispn]->panel().ld(), &beta,
                                   h.panel().at<GPU>(), h.panel().ld());
                 h.panel().copy_to_host();
