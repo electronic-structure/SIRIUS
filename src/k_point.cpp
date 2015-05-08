@@ -587,11 +587,12 @@ void K_point::generate_fv_states()
                 cuda_stream_synchronize(Platform::max_num_threads());
                 /* gnerate aw expansion coefficients */
                 linalg<GPU>::gemm(1, 0, num_mt_aw_blk, parameters_.num_fv_states(), num_gkvec_row(), &alpha,
-                                  alm_row.at<GPU>(), alm_row.ld(),
+                                  alm_row.at<GPU>(0, 0, s), alm_row.ld(),
                                   fv_eigen_vectors_panel_.panel().at<GPU>(), fv_eigen_vectors_panel_.panel().ld(),
                                   &beta, fv_states_.at<GPU>(mt_aw_blk_offset, 0), fv_states_.ld(), Platform::max_num_threads());
                 mt_aw_blk_offset += num_mt_aw_blk;
             }
+            cuda_stream_synchronize(Platform::max_num_threads());
             alm_row.deallocate_on_device();
 
             mdarray<double_complex, 2> tmp_buf(nullptr, uc->max_mt_aw_basis_size(), parameters_.num_fv_states());
@@ -686,6 +687,12 @@ void K_point::generate_fv_states()
             }
         }
 
+        //if (parameters_.processing_unit() == GPU)
+        //{
+        //    fv_states_.allocate_on_device();
+        //    fv_states_.copy_to_device();
+        //}
+
         fv_states_panel_.scatter(fv_states_);
     }
     else
@@ -718,9 +725,6 @@ void K_point::generate_spinor_wave_functions()
                 #ifdef _GPU_
                 spinor_wave_functions_.allocate_on_device();
                 spinor_wave_functions_.zero_on_device();
-
-                //fv_states_.allocate_on_device();
-                //fv_states_.copy_to_device();
                 #endif
             }
 
