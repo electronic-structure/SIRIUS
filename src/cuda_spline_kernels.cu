@@ -60,13 +60,13 @@ __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
             double k5 = b1 * a2 + a1 * b2; // 25 FLOP
 
             sdata[threadIdx.x] += dxi * ((a1a2 * xi * xi) + 
-                                  dxi * ((xi * (2.0 * a1a2 + xi * k5)) / 2.0 +
+                                  dxi * ((xi * (2.0 * a1a2 + xi * k5)) * 0.5 +
                                   dxi * ((a1a2 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + 
-                                  dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) / 4.0 +
-                                  dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) / 5.0 + 
+                                  dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25 +
+                                  dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2 + 
                                   dxi * ((k2 + xi * (2.0 * k1 + k4 * xi)) / 6.0 + 
                                   dxi * ((k1 + xi * (2.0 * k4 + d1d2 * xi)) / 7.0 + 
-                                  dxi * ((k4 + 2.0 * d1d2 * xi) / 8.0 + 
+                                  dxi * ((k4 + 2.0 * d1d2 * xi) * 0.125 + 
                                   dxi * d1d2 / 9.0)))))))); // 60 FLOP 
         }
     }
@@ -90,7 +90,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
                                             double const* g__,
                                             double* result__)
 {
-    dim3 grid_t(64);
+    dim3 grid_t(32);
     dim3 grid_b(num_ri__);
 
     spline_inner_product_gpu_kernel_v3 <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>

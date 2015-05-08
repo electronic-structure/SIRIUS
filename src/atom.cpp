@@ -251,7 +251,8 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         for (int j = 0; j < (int)non_zero_elements.size(); j++)
             result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
     }
-    t2.stop();
+    double tval = t2.stop();
+    DUMP("spline integration performance: %12.6f GFlops", 1e-9 * double(non_zero_elements.size()) * nmtp * 85 / tval);
     
     int n = 0;
     for (int lm = 0; lm < lmmax; lm++)
