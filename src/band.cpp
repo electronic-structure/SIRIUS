@@ -1655,7 +1655,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
                 hpsi_panel[ispn]->panel().copy_to_device();
                 linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
                                   kp->fv_states().at<GPU>(), kp->fv_states().ld(),
-                                  hpsi_panel[ispn]->panel().at<GPU>(),hpsi_panel[ispn]->panel().ld(), &beta,
+                                  hpsi_panel[ispn]->panel().at<GPU>(), hpsi_panel[ispn]->panel().ld(), &beta,
                                   h.panel().at<GPU>(), h.panel().ld());
                 h.panel().copy_to_host();
                 hpsi_panel[ispn]->panel().deallocate_on_device();
