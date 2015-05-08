@@ -107,7 +107,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
                                             double const* g__,
                                             double* result__);
 
-void Atom::generate_radial_integrals(Communicator const& comm__)
+void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__)
 {
     Timer t("sirius::Atom::generate_radial_integrals");
     
@@ -123,7 +123,8 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
 
     h_radial_integrals_.zero();
     if (num_mag_dims_) b_radial_integrals_.zero();
-
+    
+    Timer t1("sirius::Atom::generate_radial_integrals|interp");
     /* interpolate radial functions */
     std::vector< Spline<double> > rf_spline(nrf);
     #pragma omp parallel for
@@ -162,6 +163,7 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
             }
         }
     }
+    t1.stop();
 
     /* flag the non-zero radial integrals */
     std::vector< std::pair<int, int> > non_zero_elements;
@@ -199,51 +201,56 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
     Timer t2("sirius::Atom::generate_radial_integrals|inner");
 
     mdarray<double, 1> result(non_zero_elements.size());
-    
-    #ifdef _GPU_
-    idx_ri.allocate_on_device();
-    idx_ri.copy_to_device();
 
-    mdarray<double, 3> rf_coef(nmtp, 4, nrf);
-    mdarray<double, 3> vrf_coef(nmtp, 4, lmmax * nrf * (num_mag_dims_ + 1)); 
-
-    for (int i = 0; i < nrf; i++)
-        memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
-    rf_coef.allocate_on_device();
-    rf_coef.copy_to_device();
-
-    for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++)
-        memcpy(vrf_coef.at<CPU>(0, 0, i), vrf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
-    vrf_coef.allocate_on_device();
-    vrf_coef.copy_to_device();
-
-    auto& rgrid = type()->radial_grid();
-    mdarray<double, 1> x(nmtp);
-    mdarray<double, 1> dx(nmtp - 1);
-    rgrid.x() >> x;
-    rgrid.dx() >> dx;
-    x.allocate_on_device();
-    x.copy_to_device();
-    dx.allocate_on_device();
-    dx.copy_to_device();
-
-    result.allocate_on_device();
-    spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)non_zero_elements.size(), nmtp, x.at<GPU>(), 
-                                dx.at<GPU>(), rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
-    result.copy_to_host();
-    result.deallocate_on_device();
-    dx.deallocate_on_device();
-    x.deallocate_on_device();
-    vrf_coef.deallocate_on_device();
-    rf_coef.deallocate_on_device();
-    idx_ri.deallocate_on_device();
-    #else
-    #pragma omp parallel for
-    for (int j = 0; j < (int)non_zero_elements.size(); j++)
+    if (pu__ == GPU)
     {
-        result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
+        #ifdef _GPU_
+        idx_ri.allocate_on_device();
+        idx_ri.copy_to_device();
+
+        mdarray<double, 3> rf_coef(nmtp, 4, nrf);
+        mdarray<double, 3> vrf_coef(nmtp, 4, lmmax * nrf * (num_mag_dims_ + 1)); 
+
+        for (int i = 0; i < nrf; i++)
+            memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
+        rf_coef.allocate_on_device();
+        rf_coef.copy_to_device();
+
+        for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++)
+            memcpy(vrf_coef.at<CPU>(0, 0, i), vrf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
+        vrf_coef.allocate_on_device();
+        vrf_coef.copy_to_device();
+
+        auto& rgrid = type()->radial_grid();
+        mdarray<double, 1> x(nmtp);
+        mdarray<double, 1> dx(nmtp - 1);
+        rgrid.x() >> x;
+        rgrid.dx() >> dx;
+        x.allocate_on_device();
+        x.copy_to_device();
+        dx.allocate_on_device();
+        dx.copy_to_device();
+
+        result.allocate_on_device();
+        spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)non_zero_elements.size(), nmtp, x.at<GPU>(), 
+                                    dx.at<GPU>(), rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
+        result.copy_to_host();
+        result.deallocate_on_device();
+        dx.deallocate_on_device();
+        x.deallocate_on_device();
+        vrf_coef.deallocate_on_device();
+        rf_coef.deallocate_on_device();
+        idx_ri.deallocate_on_device();
+        #else
+        TERMINATE_NO_GPU();
+        #endif
     }
-    #endif
+    if (pu__ == CPU)
+    {
+        #pragma omp parallel for
+        for (int j = 0; j < (int)non_zero_elements.size(); j++)
+            result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
+    }
     t2.stop();
     
     int n = 0;
@@ -277,15 +284,6 @@ void Atom::generate_radial_integrals(Communicator const& comm__)
             }
         }
     }
-
-
-
-
-    
-
-            
-
-
     
     //== #pragma omp parallel default(shared)
     //== {

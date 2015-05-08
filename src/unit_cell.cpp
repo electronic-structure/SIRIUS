@@ -869,7 +869,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
     {
         int ia = (int)spl_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(comm_bundle_atoms_.comm());
+        atom(ia)->generate_radial_integrals(pu_, comm_bundle_atoms_.comm());
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
