@@ -46,28 +46,25 @@ __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
             double c2 = g__[c_offs_g + i];
             double d2 = g__[d_offs_g + i];
                 
-            double a1a2 = a1 * a2;
-            double d1d2 = d1 * d2;
-                
+            double k0 = a1 * a2;
             double k1 = d1 * b2 + c1 * c2 + b1 * d2;
-
             double k2 = d1 * a2 + c1 * b2 + b1 * c2 + a1 * d2;
-
             double k3 = c1 * a2 + b1 * b2 + a1 * c2;
-
             double k4 = d1 * c2 + c1 * d2;
-            
             double k5 = b1 * a2 + a1 * b2; // 25 FLOP
+            double k6 = d1 * d2;
 
-            sdata[threadIdx.x] += dxi * ((a1a2 * xi * xi) + 
-                                  dxi * ((xi * (2.0 * a1a2 + xi * k5)) * 0.5 +
-                                  dxi * ((a1a2 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + 
-                                  dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25 +
-                                  dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2 + 
-                                  dxi * ((k2 + xi * (2.0 * k1 + k4 * xi)) / 6.0 + 
-                                  dxi * ((k1 + xi * (2.0 * k4 + d1d2 * xi)) / 7.0 + 
-                                  dxi * ((k4 + 2.0 * d1d2 * xi) * 0.125 + 
-                                  dxi * d1d2 / 9.0)))))))); // 60 FLOP 
+            double v1 = dxi * k6 * (1.0 / 9.0);
+            double r = (k4 + 2.0 * k6 * xi) * 0.125;
+            double v2 = dxi * (r + v1);
+            double v3 = dxi * ((k1 + xi * (2.0 * k4 + k6 * xi)) * (1.0 / 7.0) + v2);
+            double v4 = dxi * ((k2 + xi * (2.0 * k1 + k4 * xi)) * (1.0 / 6.0) + v3);
+            double v5 = dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2 + v4);
+            double v6 = dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25 + v5);
+            double v7 = dxi * ((k0 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + v6);
+            double v8 = dxi * ((xi * (2.0 * k0 + xi * k5)) * 0.5 + v7);
+
+            sdata[threadIdx.x] += dxi * (k0 * xi * xi + v8);
         }
     }
     __syncthreads();
