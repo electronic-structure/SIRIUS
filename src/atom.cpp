@@ -124,7 +124,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     h_radial_integrals_.zero();
     if (num_mag_dims_) b_radial_integrals_.zero();
     
-    Timer t1("sirius::Atom::generate_radial_integrals|interp");
+    //Timer t1("sirius::Atom::generate_radial_integrals|interp");
     /* interpolate radial functions */
     std::vector< Spline<double> > rf_spline(nrf);
     #pragma omp parallel for
@@ -147,7 +147,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
             for (int ir = 0; ir < nmtp; ir++)
                 vrf_spline[lm + lmmax * i][ir] = symmetry_class()->radial_function(ir, i) * veff_(lm, ir);
 
-            vrf_spline[lm + lmmax * i].interpolate();
+            //vrf_spline[lm + lmmax * i].interpolate();
         }
         for (int j = 0; j < num_mag_dims_; j++)
         {
@@ -159,11 +159,11 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
                 for (int ir = 0; ir < nmtp; ir++)
                     vrf_spline[lm + lmmax * i + offs][ir] = symmetry_class()->radial_function(ir, i) * beff_[j](lm, ir);
                 
-                vrf_spline[lm + lmmax * i + offs].interpolate();
+                //vrf_spline[lm + lmmax * i + offs].interpolate();
             }
         }
     }
-    t1.stop();
+    //t1.stop();
 
     /* flag the non-zero radial integrals */
     std::vector< std::pair<int, int> > non_zero_elements;
@@ -209,17 +209,28 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         idx_ri.copy_to_device();
 
         mdarray<double, 3> rf_coef(nmtp, 4, nrf);
-        mdarray<double, 3> vrf_coef(nmtp, 4, lmmax * nrf * (num_mag_dims_ + 1)); 
+        mdarray<double, 3> vrf_coef(nullptr, nmtp, 4, lmmax * nrf * (num_mag_dims_ + 1)); 
+        vrf_coef.allocate(1);
+        vrf_coef.allocate_on_device();
+
+        #pragma omp parallel
+        {
+            int tid = Platform::thread_id();
+            #pragma omp for
+            for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++)
+            {
+                vrf_spline[i].interpolate();
+                memcpy(vrf_coef.at<CPU>(0, 0, i), vrf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
+                cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, i), vrf_coef.at<CPU>(0, 0, i), nmtp * 4 *sizeof(double), tid);
+            }
+        }
+
+        //vrf_coef.copy_to_device();
 
         for (int i = 0; i < nrf; i++)
             memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
         rf_coef.allocate_on_device();
         rf_coef.copy_to_device();
-
-        for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++)
-            memcpy(vrf_coef.at<CPU>(0, 0, i), vrf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
-        vrf_coef.allocate_on_device();
-        vrf_coef.copy_to_device();
 
         auto& rgrid = type()->radial_grid();
         mdarray<double, 1> x(nmtp);
@@ -232,8 +243,12 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         dx.copy_to_device();
 
         result.allocate_on_device();
+        Timer t3("spline_inner_gpu");
         spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)non_zero_elements.size(), nmtp, x.at<GPU>(), 
                                     dx.at<GPU>(), rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
+        cuda_device_synchronize();
+        double tval = t3.stop();
+        DUMP("spline GPU integration performance: %12.6f GFlops", 1e-9 * double(non_zero_elements.size()) * nmtp * 85 / tval);
         result.copy_to_host();
         result.deallocate_on_device();
         dx.deallocate_on_device();
@@ -247,6 +262,9 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     }
     if (pu__ == CPU)
     {
+        #pragma omp parallel for
+        for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++) vrf_spline[i].interpolate();
+
         #pragma omp parallel for
         for (int j = 0; j < (int)non_zero_elements.size(); j++)
             result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
