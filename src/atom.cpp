@@ -160,8 +160,6 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
 
     auto& idx_ri = type()->idx_radial_integrals();
 
-    Timer t2("sirius::Atom::generate_radial_integrals|inner");
-
     mdarray<double, 1> result(idx_ri.size(1));
 
     if (pu__ == GPU)
