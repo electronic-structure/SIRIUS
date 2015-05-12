@@ -49,7 +49,8 @@ Atom_type::Atom_type(const char* symbol__,
 Atom_type::Atom_type(const int id__, 
                      const std::string label__, 
                      const std::string file_name__, 
-                     const electronic_structure_method_t esm_type__) 
+                     const electronic_structure_method_t esm_type__,
+                     processing_unit_t pu__)
     : id_(id__), 
       label_(label__),
       zn_(0), 
@@ -58,6 +59,7 @@ Atom_type::Atom_type(const int id__,
       offset_lo_(-1),
       esm_type_(esm_type__), 
       file_name_(file_name__),
+      pu_(pu__),
       initialized_(false)
 {
 }
@@ -66,7 +68,7 @@ Atom_type::~Atom_type()
 {
 }
 
-void Atom_type::init(int lmax__, int offset_lo__)
+void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_lo__)
 {
     /* check if the class instance was already initialized */
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
@@ -174,6 +176,58 @@ void Atom_type::init(int lmax__, int offset_lo__)
 
     /* get number of valence electrons */
     num_valence_electrons_ = zn_ - num_core_electrons_;
+
+    int lmmax_pot = Utils::lmmax(lmax_pot__);
+    auto l_by_lm = Utils::l_by_lm(lmax_pot__);
+
+    /* flag the non-zero radial integrals */
+    std::vector< std::pair<int, int> > non_zero_elements;
+
+    for (int lm = 0; lm < lmmax_pot; lm++)
+    {
+        int l = l_by_lm[lm];
+
+        for (int i2 = 0; i2 < indexr().size(); i2++)
+        {
+            int l2 = indexr(i2).l;
+            
+            for (int i1 = 0; i1 <= i2; i1++)
+            {
+                int l1 = indexr(i1).l;
+                if ((l + l1 + l2) % 2 == 0)
+                {
+                    if (lm) non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1));
+                    for (int j = 0; j < num_mag_dims__; j++)
+                    {
+                        int offs = (j + 1) * lmmax_pot * indexr().size();
+                        non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1 + offs));
+                    }
+                }
+            }
+        }
+    }
+    idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
+    for (int j = 0; j < (int)non_zero_elements.size(); j++)
+    {
+        idx_radial_integrals_(0, j) = non_zero_elements[j].first;
+        idx_radial_integrals_(1, j) = non_zero_elements[j].second;
+    }
+
+    if (pu_ == GPU)
+    {
+        #ifdef _GPU_
+        idx_radial_integrals_.allocate_on_device();
+        idx_radial_integrals_.copy_to_device();
+        rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
+        rf_coef_.allocate(1);
+        rf_coef_.allocate_on_device();
+        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (num_mag_dims__ + 1)); 
+        vrf_coef_.allocate(1);
+        vrf_coef_.allocate_on_device();
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
     
     initialized_ = true;
 }
@@ -181,7 +235,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
 void Atom_type::set_radial_grid(int num_points, double const* points)
 {
     if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
-    if (num_points < 0 && points == NULL)
+    if (num_points < 0 && points == nullptr)
     {
         radial_grid_ = Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_); 
     }
@@ -189,6 +243,12 @@ void Atom_type::set_radial_grid(int num_points, double const* points)
     {
         assert(num_points == num_mt_points_);
         radial_grid_ = Radial_grid(num_points, points);
+    }
+    if (pu_ == GPU)
+    {
+        #ifdef _GPU_
+        radial_grid_.copy_to_device();
+        #endif
     }
 }
 

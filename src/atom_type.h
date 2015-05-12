@@ -346,6 +346,13 @@ class Atom_type
         
         std::string file_name_;
 
+        mdarray<int, 2> idx_radial_integrals_;
+
+        mdarray<double, 3> rf_coef_;
+        mdarray<double, 3> vrf_coef_;
+
+        processing_unit_t pu_;
+
         bool initialized_;
        
         // forbid copy constructor
@@ -390,13 +397,14 @@ class Atom_type
         Atom_type(const int id__, 
                   const std::string label, 
                   const std::string file_name__, 
-                  const electronic_structure_method_t esm_type__);
+                  const electronic_structure_method_t esm_type__,
+                  processing_unit_t pu__);
 
         ~Atom_type();
         
-        void init(int lmax__, int offset_lo__);
+        void init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_lo__);
 
-        void set_radial_grid(int num_points__ = -1, double const* points__ = NULL);
+        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
 
         void set_free_atom_radial_grid(int num_points__, double const* points__);
 
@@ -707,6 +715,21 @@ class Atom_type
         {
             uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
             d_mtrx_ion__ >> uspp().d_mtrx_ion;
+        }
+
+        inline mdarray<int, 2> const& idx_radial_integrals() const
+        {
+            return idx_radial_integrals_;
+        }
+        
+        inline mdarray<double, 3>& rf_coef()
+        {
+            return rf_coef_;
+        }
+
+        inline mdarray<double, 3>& vrf_coef()
+        {
+            return vrf_coef_;
         }
 };
 

@@ -44,7 +44,7 @@ void Unit_cell::add_atom_type(const std::string label, const std::string file_na
                               electronic_structure_method_t esm_type)
 {
     int id = next_atom_type_id(label);
-    atom_types_.push_back(new Atom_type(id, label, file_name, esm_type));
+    atom_types_.push_back(new Atom_type(id, label, file_name, esm_type, pu_));
 }
 
 void Unit_cell::add_atom(const std::string label, double* position, double* vector_field)
@@ -270,7 +270,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(iat)->init(lmax_apw__, offs_lo);
+        atom_type(iat)->init(lmax_apw__, lmax_pot__, num_mag_dims__, offs_lo);
         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
         max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
