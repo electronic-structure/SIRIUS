@@ -51,20 +51,36 @@ __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
             double k2 = d1 * a2 + c1 * b2 + b1 * c2 + a1 * d2;
             double k3 = c1 * a2 + b1 * b2 + a1 * c2;
             double k4 = d1 * c2 + c1 * d2;
-            double k5 = b1 * a2 + a1 * b2; // 25 FLOP
-            double k6 = d1 * d2;
+            double k5 = b1 * a2 + a1 * b2;
+            double k6 = d1 * d2; // 25 flop in total
 
-            double v1 = dxi * k6 * (1.0 / 9.0);
-            double r = (k4 + 2.0 * k6 * xi) * 0.125;
-            double v2 = dxi * (r + v1);
-            double v3 = dxi * ((k1 + xi * (2.0 * k4 + k6 * xi)) * (1.0 / 7.0) + v2);
-            double v4 = dxi * ((k2 + xi * (2.0 * k1 + k4 * xi)) * (1.0 / 6.0) + v3);
-            double v5 = dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2 + v4);
-            double v6 = dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25 + v5);
-            double v7 = dxi * ((k0 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + v6);
-            double v8 = dxi * ((xi * (2.0 * k0 + xi * k5)) * 0.5 + v7);
+            //double v1 = dxi * k6 * (1.0 / 9.0);
+            //double r = (k4 + 2.0 * k6 * xi) * 0.125;
+            //double v2 = dxi * (r + v1);
+            //double v3 = dxi * ((k1 + xi * (2.0 * k4 + k6 * xi)) * (1.0 / 7.0) + v2);
+            //double v4 = dxi * ((k2 + xi * (2.0 * k1 + k4 * xi)) * (1.0 / 6.0) + v3);
+            //double v5 = dxi * ((k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2 + v4);
+            //double v6 = dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25 + v5);
+            //double v7 = dxi * ((k0 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + v6);
+            //double v8 = dxi * ((xi * (2.0 * k0 + xi * k5)) * 0.5 + v7);
+            double r1 = k4 * 0.125 + k6 * xi * 0.25;
+            double r2 = (k1 + xi * (2.0 * k4 + k6 * xi)) * 0.14285714285714285714;
+            double r3 = (k2 + xi * (2.0 * k1 + k4 * xi)) * 0.16666666666666666667;
+            double r4 = (k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2;
+            double r5 = (k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25;
+            double r6 = (k0 + xi * (2.0 * k5 + k3 * xi)) * 0.33333333333333333333;
+            double r7 = (xi * (2.0 * k0 + xi * k5)) * 0.5;
 
-            sdata[threadIdx.x] += dxi * (k0 * xi * xi + v8);
+            double v = dxi * k6 * 0.11111111111111111111;
+            v = dxi * (r1 + v);
+            v = dxi * (r2 + v);
+            v = dxi * (r3 + v);
+            v = dxi * (r4 + v);
+            v = dxi * (r5 + v); 
+            v = dxi * (r6 + v);
+            v = dxi * (r7 + v);
+
+            sdata[threadIdx.x] += dxi * (k0 * xi * xi + v);
         }
     }
     __syncthreads();
