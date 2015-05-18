@@ -12,7 +12,7 @@ void test1(double x0, double x1, int m, double exact_result)
     
     for (int i = 0; i < 5000; i++) s[i] = sin(r[i]);
     
-    double d = s.template interpolate<CPU>().integrate(m);
+    double d = s.interpolate().integrate(m);
     double err = std::abs(1 - d / exact_result);
     
     printf("       relative error: %18.12f", err);
@@ -71,7 +71,7 @@ void test3(double x0, double x1, double exact_val)
     s3.interpolate();
 
     double v1 = s3.integrate(2);
-    double v2 = inner<CPU>(s1, s2, 2);
+    double v2 = inner(s1, s2, 2);
 
     printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
     printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
@@ -100,7 +100,7 @@ void test4(double x0, double x1, double exact_val)
     s3.interpolate();
 
     double v1 = s3.integrate(1);
-    double v2 = inner<CPU>(s1, s2, 1);
+    double v2 = inner(s1, s2, 1);
 
     printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
     printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
@@ -116,7 +116,7 @@ void test5()
     for (int ir = 0; ir < N; ir++) s[ir] = std::log(r[ir]); 
     double true_value = -0.012395331058672921;
     std::cout << "result    : " << Utils::double_to_string(s.interpolate().integrate(7), 10) << std::endl;
-    std::cout << "tru_value : " << Utils::double_to_string(true_value, 10) << std::endl;
+    std::cout << "true value : " << Utils::double_to_string(true_value, 10) << std::endl;
 }
 
 //void test4(double x0, double x1)

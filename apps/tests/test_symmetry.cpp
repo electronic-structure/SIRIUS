@@ -5,7 +5,11 @@ using namespace sirius;
 void test_symmetry()
 {
     matrix3d<double> lattice;
-    lattice(0, 0) = lattice(1, 1) = lattice(2, 2) = 5;
+    lattice(0, 0) = 7;
+    lattice(1, 1) = 7;
+    lattice(0, 2) = lattice(1, 2) = 3.5;
+    lattice(2, 2) = 12;
+
 
     int num_atoms = 1;
     mdarray<double, 2> positions(3, num_atoms);
@@ -18,20 +22,20 @@ void test_symmetry()
 
     Symmetry symmetry(lattice, num_atoms, positions, spins, types, 1e-4);
 
-    printf("num_sym_op: %i\n", symmetry.num_sym_op());
+    printf("num_sym_op: %i\n", symmetry.num_mag_sym());
 
     for (int iter = 0; iter < 10; iter++)
     {
-        for (int isym = 0; isym < symmetry.num_sym_op(); isym++)
+        for (int isym = 0; isym < symmetry.num_mag_sym(); isym++)
         {
             printf("\n");
             printf("symmetry operation: %i\n", isym);
 
-            vector3d<double> ang = symmetry.euler_angles(isym);
+            vector3d<double> ang = symmetry.magnetic_group_symmetry(isym).spg_op.euler_angles;
 
             std::cout << "Euler angles : " << ang[0] / pi << " " << ang[1] / pi << " " << ang[2] / pi << std::endl;
 
-            int proper_rotation = symmetry.proper_rotation(isym);
+            int proper_rotation = symmetry.magnetic_group_symmetry(isym).spg_op.proper;
             
             vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
             vector3d<double> scoord;
@@ -44,7 +48,7 @@ void test_symmetry()
             SHT::spherical_harmonics(lmax, scoord[1], scoord[2], &rlm(0));
             
             /* rotate coordinates with inverse operation */
-            matrix3d<double> rotm = inverse(matrix3d<double>(symmetry.rot_mtrx(isym)));
+            matrix3d<double> rotm = inverse(symmetry.magnetic_group_symmetry(isym).spg_op.rotation * double(proper_rotation));
             printf("3x3 rotation matrix\n");
             for (int i = 0; i < 3; i++)
             {
