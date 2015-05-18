@@ -32,9 +32,6 @@ splindex: splindex.cpp
 hydrogen: hydrogen.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-read_atom:
-	$(CXX) $(CXX_OPT) $(INCLUDE) read_atom.cpp     $(LIB_SIRIUS) $(LIBS) -o read_atom
-	
 fft: fft.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
 	
@@ -79,6 +76,9 @@ test_allreduce: test_allreduce.cpp $(LIB_SIRIUS)
 
 test_linalg: test_linalg.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_linalg.cpp $(LIB_SIRIUS) $(LIBS) -o $@
+
+read_atom: read_atom.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 test_bcast: test_bcast.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
