@@ -158,7 +158,7 @@ void dft_loop(cmd_args args)
     else
     {
         density->initial_density();
-        dft.generate_effective_potential();
+        ///dft.generate_effective_potential();
     }
     
     double potential_tol = parser["potential_tol"].get(1e-4);
