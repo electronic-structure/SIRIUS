@@ -8,75 +8,75 @@ INCLUDE = -I./../../src
 
 all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft fft_t test_mdarray test_xc
 
-hdf5: hdf5.cpp
+hdf5: hdf5.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-allgather: allgather.cpp
+allgather: allgather.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-mt_function: mt_function.cpp
+mt_function: mt_function.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-mt_kinetic: mt_kinetic.cpp
+mt_kinetic: mt_kinetic.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-spline: spline.cpp
+spline: spline.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_zgemm: test_zgemm.cpp
+test_zgemm: test_zgemm.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-splindex: splindex.cpp
+splindex: splindex.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-hydrogen: hydrogen.cpp
+hydrogen: hydrogen.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
-	
+
 fft: fft.cpp $(LIB_SIRIUS)
-	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
-	
-fft_t: fft_t.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 	
-test_mdarray:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_mdarray.cpp  $(LIB_SIRIUS) $(LIBS) -o test_mdarray
+fft_t: fft_t.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_pstdout:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_pstdout.cpp  $(LIB_SIRIUS) $(LIBS) -o test_pstdout
+test_mdarry: test_mdarry.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_init:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_init.cpp  $(LIB_SIRIUS) $(LIBS) -o test_init
+test_pstdout: test_pstdout.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_init_global:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_init_global.cpp  $(LIB_SIRIUS) $(LIBS) -o test_init_global
+test_init: test_init.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_blacs:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_blacs.cpp  $(LIB_SIRIUS) $(LIBS) -o test_blacs
+test_init_global: test_init_global.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_iallgather:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_iallgather.cpp  $(LIB_SIRIUS) $(LIBS) -o test_iallgather
+test_blacs: test_blacs.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_diag:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_diag.cpp  $(LIB_SIRIUS) $(LIBS) -o test_diag
+test_iallgather: test_iallgather.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_rank2:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_rank2.cpp  $(LIB_SIRIUS) $(LIBS) -o test_rank2
+test_diag: test_diag.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_copy_gpu:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_copy_gpu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_copy_gpu
+test_rank2: test_rank2.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
+
+test_copy_gpu: test_copy_gpu.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 test_gen_eig: test_gen_eig.cpp $(LIB_SIRIUS)
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_gen_eig.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gen_eig
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-test_gpudirect: test_gpudirect.cpp
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_gpudirect.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gpudirect
+test_gpudirect: test_gpudirect.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 test_allreduce: test_allreduce.cpp $(LIB_SIRIUS)
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_allreduce.cpp $(LIB_SIRIUS) $(LIBS) -o test_allreduce
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 test_linalg: test_linalg.cpp $(LIB_SIRIUS)
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_linalg.cpp $(LIB_SIRIUS) $(LIBS) -o $@
-
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
+	
 read_atom: read_atom.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
