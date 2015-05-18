@@ -319,7 +319,6 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     if ((int)lo_descriptors_.size() == ilo) 
     {
         lo_descriptors_.push_back(local_orbital_descriptor());
-        lo_descriptors_[ilo].type = lo_rs;
         lo_descriptors_[ilo].l = l;
     }
     else
@@ -470,31 +469,17 @@ void Atom_type::print_info()
         printf("local orbitals\n");
         for (int j = 0; j < (int)lo_descriptors_.size(); j++)
         {
-            switch (lo_descriptors_[j].type)
+            printf("[");
+            for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
             {
-                case lo_rs:
-                {
-                    printf("radial solutions   [");
-                    for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
-                    {
-                        if (order) printf(", ");
-                        printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
-                                                                                    lo_descriptors_[j].rsd_set[order].n,
-                                                                                    lo_descriptors_[j].rsd_set[order].enu,
-                                                                                    lo_descriptors_[j].rsd_set[order].dme,
-                                                                                    lo_descriptors_[j].rsd_set[order].auto_enu);
-                    }
-                    printf("]\n");
-                    break;
-                }
-                case lo_cp:
-                {
-                    printf("confined polynomial {l : %2i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
-                                                                                lo_descriptors_[j].p1, 
-                                                                                lo_descriptors_[j].p2);
-                    break;
-                }
+                if (order) printf(", ");
+                printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
+                                                                            lo_descriptors_[j].rsd_set[order].n,
+                                                                            lo_descriptors_[j].rsd_set[order].enu,
+                                                                            lo_descriptors_[j].rsd_set[order].dme,
+                                                                            lo_descriptors_[j].rsd_set[order].auto_enu);
             }
+            printf("]\n");
         }
     }
 
@@ -647,7 +632,6 @@ void Atom_type::read_input_lo(JSON_tree& parser)
         if (parser["lo"][j].exist("basis"))
         {
             local_orbital_descriptor lod;
-            lod.type = lo_rs;
             lod.l = l;
             rsd.l = l;
             rsd_set.clear();
@@ -662,36 +646,6 @@ void Atom_type::read_input_lo(JSON_tree& parser)
             lod.rsd_set = rsd_set;
             lo_descriptors_.push_back(lod);
         }
-        if (parser["lo"][j].exist("polynom"))
-        {
-            local_orbital_descriptor lod;
-            lod.type = lo_cp;
-            lod.l = l;
-
-            std::vector<int> p1;
-            std::vector<int> p2;
-            
-            parser["lo"][j]["polynom"]["p1"] >> p1;
-            if (parser["lo"][j]["polynom"].exist("p2")) 
-            {
-                parser["lo"][j]["polynom"]["p2"] >> p2;
-            }
-            else
-            {
-                p2.push_back(2);
-            }
-
-            for (int i = 0; i < (int)p2.size(); i++)
-            {
-                for (int j = 0; j < (int)p1.size(); j++)
-                {
-                    lod.p1 = p1[j];
-                    lod.p2 = p2[i];
-                    lo_descriptors_.push_back(lod);
-                }
-            }
-        }
-
     }
 }
     

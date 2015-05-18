@@ -73,8 +73,6 @@ typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 /// descriptor of a local orbital radial function
 struct local_orbital_descriptor
 {
-    local_orbital_t type;
-
     int l;
 
     radial_solution_descriptor_set rsd_set;

@@ -117,12 +117,6 @@ enum radial_grid_t
     incremental_grid
 };
 
-/// type of local orbitals
-/** lo_rs - local orbital, composed of radial solutions
- *  lo_cp - confined polynomial local orbital 
- */
-enum local_orbital_t {lo_rs, lo_cp};
-
 /// Wrapper for data types
 template <typename T> 
 class type_wrapper;
