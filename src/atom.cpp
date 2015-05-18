@@ -124,7 +124,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     h_radial_integrals_.zero();
     if (num_mag_dims_) b_radial_integrals_.zero();
     
-    /* interpolate radial functions */
+    /* copy radial functions to spline objects */
     std::vector< Spline<double> > rf_spline(nrf);
     #pragma omp parallel for
     for (int i = 0; i < nrf; i++)
@@ -133,30 +133,47 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         for (int ir = 0; ir < nmtp; ir++) rf_spline[i][ir] = symmetry_class()->radial_function(ir, i);
     }
 
-    /* interpolate potential multiplied by a radial function */
-    std::vector< Spline<double> > vrf_spline(lmmax * nrf * (1 + num_mag_dims_));
-    #pragma omp parallel for
-    for (int i = 0; i < nrf; i++)
+    /* copy effective potential components to spline objects */
+    std::vector< Spline<double> > v_spline(lmmax * (1 + num_mag_dims_));
+    for (int lm = 0; lm < lmmax; lm++)
     {
+        v_spline[lm] = Spline<double>(type()->radial_grid());
+        for (int ir = 0; ir < nmtp; ir++) v_spline[lm][ir] = veff_(lm, ir);
+    }
+    for (int j = 0; j < num_mag_dims_; j++)
+    {
+        int offs = (j + 1) * lmmax;
         for (int lm = 0; lm < lmmax; lm++)
         {
-            vrf_spline[lm + lmmax * i] = Spline<double>(type()->radial_grid());
-
-            for (int ir = 0; ir < nmtp; ir++)
-                vrf_spline[lm + lmmax * i][ir] = symmetry_class()->radial_function(ir, i) * veff_(lm, ir);
-        }
-        for (int j = 0; j < num_mag_dims_; j++)
-        {
-            int offs = (j + 1) * lmmax * nrf;
-            for (int lm = 0; lm < lmmax; lm++)
-            {
-                vrf_spline[lm + lmmax * i + offs] = Spline<double>(type()->radial_grid());
-
-                for (int ir = 0; ir < nmtp; ir++)
-                    vrf_spline[lm + lmmax * i + offs][ir] = symmetry_class()->radial_function(ir, i) * beff_[j](lm, ir);
-            }
+            v_spline[lm + offs] = Spline<double>(type()->radial_grid());
+            for (int ir = 0; ir < nmtp; ir++) v_spline[lm + offs][ir] = beff_[j](lm, ir);
         }
     }
+
+    /* interpolate potential multiplied by a radial function */
+    std::vector< Spline<double> > vrf_spline(lmmax * nrf * (1 + num_mag_dims_));
+    //#pragma omp parallel for
+    //for (int i = 0; i < nrf; i++)
+    //{
+    //    for (int lm = 0; lm < lmmax; lm++)
+    //    {
+    //        vrf_spline[lm + lmmax * i] = Spline<double>(type()->radial_grid());
+
+    //        for (int ir = 0; ir < nmtp; ir++)
+    //            vrf_spline[lm + lmmax * i][ir] = symmetry_class()->radial_function(ir, i) * veff_(lm, ir);
+    //    }
+    //    for (int j = 0; j < num_mag_dims_; j++)
+    //    {
+    //        int offs = (j + 1) * lmmax * nrf;
+    //        for (int lm = 0; lm < lmmax; lm++)
+    //        {
+    //            vrf_spline[lm + lmmax * i + offs] = Spline<double>(type()->radial_grid());
+
+    //            for (int ir = 0; ir < nmtp; ir++)
+    //                vrf_spline[lm + lmmax * i + offs][ir] = symmetry_class()->radial_function(ir, i) * beff_[j](lm, ir);
+    //        }
+    //    }
+    //}
 
     auto& idx_ri = type()->idx_radial_integrals();
 
@@ -211,7 +228,23 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
             #pragma omp for
             for (int i = 0; i < nrf; i++) rf_spline[i].interpolate();
             #pragma omp for
-            for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++) vrf_spline[i].interpolate();
+            for (int i = 0; i < (int)v_spline.size(); i++) v_spline[i].interpolate();
+            
+            #pragma omp for
+            for (int i = 0; i < nrf; i++)
+            {
+                for (int lm = 0; lm < lmmax; lm++) vrf_spline[lm + lmmax * i] = rf_spline[i] * v_spline[lm];
+
+                for (int j = 0; j < num_mag_dims_; j++)
+                {
+                    int offs = (j + 1) * lmmax * nrf;
+                    for (int lm = 0; lm < lmmax; lm++) 
+                        vrf_spline[lm + lmmax * i + offs] = rf_spline[i] * v_spline[lm + (j + 1) * lmmax];
+                }
+            }
+
+            //#pragma omp for
+            //for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++) vrf_spline[i].interpolate();
         }
         t1.stop();
 

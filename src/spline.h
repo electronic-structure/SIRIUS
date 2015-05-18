@@ -128,16 +128,10 @@ class Spline
             return radial_grid_->dx(i__);
         }
 
-
-
-
-
-
-
-
-
-
-
+        inline void set_coefs(mdarray<double, 2>& coefs__)
+        {
+            coefs__ >> coefs_;
+        }
 
         inline T operator()(double x) const
         {
@@ -356,6 +350,28 @@ class Spline
         }
         #endif
 };
+
+template <typename T>
+inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
+{
+    assert(a__.radial_grid().hash() == b__.radial_grid().hash());
+
+    auto& coefs_a = a__.coefs();
+    auto& coefs_b = b__.coefs();
+    mdarray<T, 2> coefs(a__.radial_grid().num_points(), 4);
+
+    for (int ir = 0; ir < a__.radial_grid().num_points(); ir++)
+    {
+        coefs(ir, 0) = coefs_a(ir, 0) * coefs_b(ir, 0);
+        coefs(ir, 1) = coefs_a(ir, 1) * coefs_b(ir, 0) + coefs_a(ir, 0) * coefs_b(ir, 1);
+        coefs(ir, 2) = coefs_a(ir, 2) * coefs_b(ir, 0) + coefs_a(ir, 1) * coefs_b(ir, 1) + coefs_a(ir, 0) * coefs_b(ir, 2);
+        coefs(ir, 3) = coefs_a(ir, 3) * coefs_b(ir, 0) + coefs_a(ir, 2) * coefs_b(ir, 1) + coefs_a(ir, 1) * coefs_b(ir, 2) + coefs_a(ir, 0) * coefs_b(ir, 3);
+    }
+
+    Spline<double> s12(a__.radial_grid());
+    s12.set_coefs(coefs);
+    return std::move(s12);
+}
 
 //extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double* f__, double* g__, int stream_id__);
 //
