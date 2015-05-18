@@ -115,7 +115,7 @@ class Free_atom : public sirius::Atom_type
                         for (int i = 0; i < np; i++)
                         {
                             free_atom_radial_functions_(i, ist) = u[i];
-                            rho_t[i] += atomic_level(ist).occupancy * pow(y00 * free_atom_radial_functions_(i, ist), 2);
+                            rho_t[i] += atomic_level(ist).occupancy * std::pow(y00 * free_atom_radial_functions_(i, ist), 2);
                         }
                     }
         
@@ -216,8 +216,7 @@ class Free_atom : public sirius::Atom_type
             printf("NIST  : %20.12f\n", NIST_LDA_Etot);
 
             /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-            double dE = double(int64_t(fabs(energy_tot - NIST_LDA_Etot) * 1e8)) / 1e8;
-            if (dE < 5e-7) dE = 0;
+            double dE = (Utils::round(energy_tot, 6) - NIST_LDA_Etot);
             std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
             
             return energy_tot;
@@ -309,6 +308,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     std::vector<atomic_level_descriptor> core;
     std::vector<atomic_level_descriptor> valence;
     std::string level_symb[] = {"s", "p", "d", "f"};
+    std::vector<double> enu_valence;
     
     printf("\n");
     printf("Core / valence partitioning\n");
@@ -337,6 +337,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
         else
         {
             valence.push_back(a->atomic_level(ist));
+            enu_valence.push_back(enu[ist]);
             printf("  => valence\n");
         }
     }
@@ -358,20 +359,19 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     }
     printf("Effective infinity : %f\n", rinf);
 
-    std::vector<double> g;
-    rho_c.interpolate().integrate(g, 2);
-
     double core_radius = 2.0;
     int nrmt = 1500;
     if (ncore != 0)
     {
+        std::vector<double> g;
+        rho_c.interpolate().integrate(g, 2);
+
         for (int ir = a->radial_grid().num_points() - 1; ir >= 0; ir--)
         {
-            //if (fourpi * fabs(g[ir] - g[a->radial_grid().size() - 1]) > 1e-5) 
-            if (fabs(g[ir] - g[a->radial_grid().num_points() - 1]) / fabs(g[a->radial_grid().num_points() - 1]) > 1e-5) 
+            if (std::abs(fourpi * g[ir] - ncore) / ncore > 1e-5) 
             {
                 core_radius = a->radial_grid(ir);
-                nrmt = ir;
+                //nrmt = ir;
                 break;
             }
         }
@@ -404,7 +404,6 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     int lmax = 0;
     for (int i = 0; i < (int)valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
     lmax = std::min(lmax + 1, 3);
-    lmax = 4;
     //lmax = 8;
     int nmax[9];
     for (int l = 0; l <= lmax; l++)
@@ -422,18 +421,18 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
         }
         nmax[l] = n;
                
-        jw.begin_set();
-        jw.single("l", l);
-        jw.single("n", n);
-        if (apw_order == 1)
-        {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
-        }
-        if (apw_order == 2)
-        {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
-        }
-        jw.end_set();
+        //== jw.begin_set();
+        //== jw.single("l", l);
+        //== jw.single("n", n);
+        //== if (apw_order == 1)
+        //== {
+        //==     jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
+        //== }
+        //== if (apw_order == 2)
+        //== {
+        //==     jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
+        //== }
+        //== jw.end_set();
     }
     jw.end_array();
     jw.begin_array("lo");
@@ -441,8 +440,8 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     {
         jw.begin_set();
         std::stringstream s;
-        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
-          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]";
+        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : " << enu_valence[i] << ", \"dme\" : 0, \"auto\" : 1}," 
+          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : " << enu_valence[i] << ", \"dme\" : 1, \"auto\" : 1}]";
         jw.single("l", valence[i].l);
         jw.string("basis", s.str());
         jw.end_set();
@@ -471,9 +470,9 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
         {
             jw.begin_set();
             std::stringstream s;
-            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
-              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}," 
-              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
+            s << "[{" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
+              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}," 
+              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : " << enu_valence[i] << ", \"dme\" : 0, \"auto\" : 1}]";
             jw.single("l", valence[i].l);
             jw.string("basis", s.str());
             jw.end_set();
