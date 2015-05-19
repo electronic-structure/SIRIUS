@@ -228,21 +228,20 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
             #pragma omp for
             for (int i = 0; i < nrf; i++) rf_spline[i].interpolate();
             #pragma omp for
-            for (int i = 0; i < (int)v_spline.size(); i++) v_spline[i].interpolate();
+            for (int i = 0; i < lmmax * (1 + num_mag_dims_); i++) v_spline[i].interpolate();
             
             #pragma omp for
-            for (int i = 0; i < nrf; i++)
+            for (int lm = 0; lm < lmmax; lm++)
             {
-                for (int lm = 0; lm < lmmax; lm++) vrf_spline[lm + lmmax * i] = rf_spline[i] * v_spline[lm];
-
-                for (int j = 0; j < num_mag_dims_; j++)
+                for (int i = 0; i < nrf; i++)
                 {
-                    int offs = (j + 1) * lmmax * nrf;
-                    for (int lm = 0; lm < lmmax; lm++) 
-                        vrf_spline[lm + lmmax * i + offs] = rf_spline[i] * v_spline[lm + (j + 1) * lmmax];
+                    for (int j = 0; j < num_mag_dims_ + 1; j++)
+                    {
+                        vrf_spline[lm + lmmax * i + lmmax * nrf * j] = rf_spline[i] * v_spline[lm + j * lmmax];
+                    }
                 }
             }
-
+                        
             //#pragma omp for
             //for (int i = 0; i < lmmax * nrf * (num_mag_dims_ + 1); i++) vrf_spline[i].interpolate();
         }

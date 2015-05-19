@@ -881,8 +881,15 @@ class generalized_evp_magma: public generalized_evp
                   double_complex* z, int32_t ldz)
         {
             assert(nevec <= matrix_size);
+
+            int nt = omp_get_max_threads();
             
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
+
+            if (nt != omp_get_max_threads())
+            {
+                TERMINATE("magma has changed the number of threads");
+            }
             
             for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(double_complex));
 
