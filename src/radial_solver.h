@@ -34,13 +34,13 @@ namespace sirius {
 
 /// Solves a "classical" or scalar relativistic radial Schroedinger equation
 /** Second order differential equation is converted into the system of coupled first-order differential equations, 
- *  which are then solved byt the Runge–Kutta 4th order method.
+ *  which are then solved by the Runge–Kutta 4th order method.
  *
  *  \f{eqnarray*}{
  *     P' &=& 2 M Q + \frac{P}{r} \\
  *     Q' &=& (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
  *  \f}
- *  
+ *
  *  \todo Correct relativistic DFT 
  */
 class Radial_solver
@@ -136,6 +136,45 @@ class Radial_solver
                            std::vector<double>& rdudr__) const;
 };
 
+/// Find a solution to radial Schrodinger equation.
+/** Non-relativistic radial Schrodinger equation:
+ *  \f[
+ *    -\frac{1}{2}p''(r) + V_{eff}(r)p(r) = Ep(r)
+ *  \f]
+ *  where \f$ V_{eff}(r) = V(r) + \frac{\ell (\ell+1)}{2r^2} \f$, \f$ p(r) = u(r)r \f$ and \f$ u(r) \f$ are the 
+ *  radial wave-functions. Energy derivatives of radial solutions obey the slightly different equation:
+ *  \f[
+ *    -\frac{1}{2}\dot{p}''(r) + V_{eff}(r)\dot{p}(r) = E\dot{p}(r) + p(r)
+ *  \f]
+ *  \f[
+ *    -\frac{1}{2}\ddot{p}''(r) + V_{eff}(r)\ddot{p}(r) = E\ddot{p}(r) + 2\dot{p}(r)
+ *  \f]
+ *  So we can generalize the radial Schrodinger equation like this:
+ *  \f[
+ *    -\frac{1}{2}p''(r) + \big(V_{eff}(r) - E\big) p(r) = \chi(r)
+ *  \f]
+ *  where now \f$ p(r) \f$ represents m-th energy derivative of the radial solution and 
+ *  \f$ \chi(r) = m \frac{\partial^{m-1} p(r)} {\partial^{m-1}E} \f$
+ *
+ *  Let's now decouple second-order differential equation into a system of two first-order euquations. From
+ *  \f$ p(r) = u(r)r \f$ we have
+ *  \f[
+ *    p'(r) = u'(r)r + uyy(r) = 2q(r) + \frac{p(r)}{r}
+ *  \f]
+ *  where we have introduced a new variable \f$ q(r) = \frac{u'(r) r}{2} \f$. Differentiating \f$ p'(r) \f$ again
+ *  we arrive to the following equation for \f$ q'(r) \f$:
+ *  \f[
+ *    p''(r) = 2q'(r) + \frac{p'(r)}{r} - \frac{p(r)}{r^2} = 2q'(r) + \frac{2q(r)}{r} + \frac{p(r)}{r^2} - \frac{p(r)}{r^2} 
+ *  \f]
+ *  \f[
+ *    q'(r) = \frac{1}{2}p''(r) - \frac{q(r)}{r} = \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
+ *  \f]
+ *  Final expression for a linear system of differential equations:
+ *  \f{eqnarray*}{
+ *    p'(r) &=& 2q(r) + \frac{p(r)}{r} \\
+ *    q'(r) &=& \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
+ *  \f}
+ */
 class Radial_soultion
 {
     private:
