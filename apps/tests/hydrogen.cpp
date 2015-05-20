@@ -64,6 +64,7 @@ int main(int argn, char** argv)
 
     std::vector<double> err(levels.size());
     
+    Timer t("all_states");
     #pragma omp parallel for
     for (int j = 0; j < (int)levels.size(); j++)
     {
@@ -94,6 +95,8 @@ int main(int argn, char** argv)
         }
         err[j] = rel_err;
     }
+    double tval = t.stop();
+    printf("done in %f sec.\n", tval);
 
     FILE* fout = fopen("err.dat", "w");
     for (int j = 0; j < (int)err.size(); j++)
@@ -101,11 +104,6 @@ int main(int argn, char** argv)
         fprintf(fout, "%i %20.16f\n", j, err[j]);
     }
     fclose(fout);
-
-
-    
-
-
 
     
     JSON_write jw("out.json");

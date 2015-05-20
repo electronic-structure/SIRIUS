@@ -14,6 +14,9 @@ all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom ff
 %: %.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
+test_zgemm: test_zgemm.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) -D_TEST_REAL_ $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@.real
+
 ###test_mdarray: test_mdarray.cpp $(LIB_SIRIUS)
 ###	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 ##
@@ -32,8 +35,6 @@ all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom ff
 ##spline: spline.cpp $(LIB_SIRIUS)
 ##	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 ##
-##test_zgemm: test_zgemm.cpp $(LIB_SIRIUS)
-##	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 ##	
 ##splindex: splindex.cpp $(LIB_SIRIUS)
 ##	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
