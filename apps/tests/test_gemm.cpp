@@ -1,10 +1,19 @@
 #include <sirius.h>
 
+#ifdef _TEST_REAL_
+typedef double gemm_type;
+int const nop_gemm = 2;
+#else
+typedef double_complex gemm_type;
+int const nop_gemm = 8;
+#endif
+
+
 void test_gemm(int M, int N, int K, int transa)
 {
     sirius::Timer t("test_gemm"); 
     
-    mdarray<double_complex, 2> a, b, c;
+    mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
     if (transa == 0)
     {
@@ -16,21 +25,21 @@ void test_gemm(int M, int N, int K, int transa)
         imax = K;
         jmax = M;
     }
-    a = matrix<double_complex>(nullptr, imax, jmax);
-    b = matrix<double_complex>(nullptr, K, N);
-    c = matrix<double_complex>(nullptr, M, N);
+    a = matrix<gemm_type>(nullptr, imax, jmax);
+    b = matrix<gemm_type>(nullptr, K, N);
+    c = matrix<gemm_type>(nullptr, M, N);
     a.allocate(alloc_mode);
     b.allocate(alloc_mode);
     c.allocate(alloc_mode);
 
     for (int j = 0; j < jmax; j++)
     {
-        for (int i = 0; i < imax; i++) a(i, j) = type_wrapper<double_complex>::random();
+        for (int i = 0; i < imax; i++) a(i, j) = type_wrapper<gemm_type>::random();
     }
 
     for (int j = 0; j < N; j++)
     {
-        for (int i = 0; i < K; i++) b(i, j) = type_wrapper<double_complex>::random();
+        for (int i = 0; i < K; i++) b(i, j) = type_wrapper<gemm_type>::random();
     }
 
     c.zero();
@@ -43,14 +52,8 @@ void test_gemm(int M, int N, int K, int transa)
     linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
     t1.stop();
     printf("execution time (sec) : %12.6f\n", t1.value());
-    printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value());
+    printf("performance (GFlops) : %12.6f\n", nop_gemm * 1e-9 * M * N * K / t1.value());
 }
-
-#ifdef _TEST_REAL_
-typedef double gemm_type;
-#else
-typedef double_complex gemm_type;
-#endif
 
 #ifdef _SCALAPACK_
 double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, int bs)
@@ -103,7 +106,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== cuda_device_synchronize();
     //== #endif
     double tval = t1.stop();
-    double perf = 8e-9 * M * (N - n) * K / tval / nrow / ncol;
+    double perf = nop_gemm * 1e-9 * M * (N - n) * K / tval / nrow / ncol;
     if (Platform::rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", tval);
