@@ -356,7 +356,7 @@ class Radial_soultion
             return nn;
         }
 
-        double extrapolate_to_zero(int istep, double y, double* x, double* work) const
+        inline double extrapolate_to_zero(int istep, double y, double* x, double* work) const
         {
             double dy = y;
             double result = y;
@@ -387,7 +387,7 @@ class Radial_soultion
         }
 
         /// Integrate system of two first-order differential equations forward starting from the origin.
-        /** Use Bulirsch-Stoer technique with Gragg modified midpoint method */
+        /** Use Bulirsch-Stoer technique with Gragg's modified midpoint method */
         template <bool check_overflow>
         int integrate_forward_gbs(double enu__,
                                   Spline<double> const& ve__,
@@ -455,7 +455,7 @@ class Radial_soultion
                         double x = x0 + h * step;
                         double xinv = 1.0 / x;
                         double p2 = p0 + h2 * (2 * q1 + p1 * xinv);
-                        double q2 = q0 + h2 * ((ve__(ir, h * step) - zn_ * xinv + ll2 * xinv * xinv - enu__) * p1 -
+                        double q2 = q0 + h2 * ((ve__(ir, h * step) + xinv * (ll2 * xinv - zn_) - enu__) * p1 -
                                                q1 * xinv - mp__(ir, h * step));
                         p0 = p1;
                         p1 = p2;
@@ -463,7 +463,7 @@ class Radial_soultion
                         q1 = q2;
                     }
                     p_est = 0.5 * (p0 + p1 + h * (2 * q1 + p1 * x1inv));
-                    q_est = 0.5 * (q0 + q1 + h * ((ve__[ir + 1] - zn_ * x1inv + ll2 * x1inv * x1inv - enu__) * p1 -
+                    q_est = 0.5 * (q0 + q1 + h * ((ve__[ir + 1] + x1inv * (ll2 * x1inv - zn_) - enu__) * p1 -
                                                    q1 * x1inv - mp__[ir + 1]));
 
                     p__[ir + 1] = extrapolate_to_zero(j, p_est, step_size2, work_p);
@@ -471,7 +471,7 @@ class Radial_soultion
                     
                     if (j > 1)
                     {
-                        if (std::abs(p__[ir + 1] - p_old) < 1e-8 && std::abs(q__[ir + 1] - q_old) < 1e-8) break;
+                        if (std::abs(p__[ir + 1] - p_old) < 1e-12 && std::abs(q__[ir + 1] - q_old) < 1e-12) break;
                     }
                 }
 
@@ -607,7 +607,7 @@ class Bound_state: public Radial_soultion
             /* search for the bound state */
             for (int iter = 0; iter < 1000; iter++)
             {
-                //int nn = integrate_forward<true>(enu_, vs, mp, p, dpdr, q, dqdr);
+                //int nn = integrate_forward_rk4<true>(enu_, vs, mp, p, dpdr, q, dqdr);
                 int nn = integrate_forward_gbs<true>(enu_, vs, mp, p, dpdr, q, dqdr);
                 
                 sp = s;
@@ -615,8 +615,6 @@ class Bound_state: public Radial_soultion
                 denu = s * std::abs(denu);
                 denu = (s != sp) ? denu * 0.5 : denu * 1.25;
                 enu_ += denu;
-
-                //std::cout <<"iter="<<iter<<" nn="<<nn<<" denu="<<denu<<" enu="<<enu_<<std::endl;
 
                 if (std::abs(denu) < enu_tolerance_ && iter > 4) break;
             }
