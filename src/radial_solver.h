@@ -607,8 +607,8 @@ class Bound_state: public Radial_soultion
             /* search for the bound state */
             for (int iter = 0; iter < 1000; iter++)
             {
-                //int nn = integrate_forward_rk4<true>(enu_, vs, mp, p, dpdr, q, dqdr);
-                int nn = integrate_forward_gbs<true>(enu_, vs, mp, p, dpdr, q, dqdr);
+                int nn = integrate_forward_rk4<true>(enu_, vs, mp, p, dpdr, q, dqdr);
+                //int nn = integrate_forward_gbs<true>(enu_, vs, mp, p, dpdr, q, dqdr);
                 
                 sp = s;
                 s = (nn > (n_ - l_ - 1)) ? -1 : 1;
@@ -765,8 +765,8 @@ class Enu_finder: public Radial_soultion
              * of the band. */
             for (int i = 0; i < 1000; i++)
             {
-                //int nnd = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr) - (n_ - l_ - 1);
-                int nnd = integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr) - (n_ - l_ - 1);
+                int nnd = integrate_forward_rk4<false>(enu, vs, mp, p, dpdr, q, dqdr) - (n_ - l_ - 1);
+                //int nnd = integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr) - (n_ - l_ - 1);
 
                 enu = (nnd > 0) ? enu - de : enu + de;
 
@@ -783,17 +783,6 @@ class Enu_finder: public Radial_soultion
             }
             etop_ = (!found) ? enu_start__ : enu;
 
-            //== if (zn() == 38 && n_ == 3 && l_ == 1)
-            //== {
-            //==     FILE* fout = fopen("p_top.dat", "w");
-            //==     for (int ir = 0; ir < np; ir++) 
-            //==     {
-            //==         double x = radial_grid(ir);
-            //==         fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
-            //==     }
-            //==     fclose(fout);
-            //== }
-
             auto ptop = p;
 
             // TODO: try u'(R) == 0 instead of p'(R) == 0
@@ -807,8 +796,8 @@ class Enu_finder: public Radial_soultion
             do
             {
                 enu -= de;
-                //integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
-                integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                integrate_forward_rk4<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                //integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr);
                 de *= 1.5;
             } while (dpdr[np - 1] * dpdr_R > 0);
 
@@ -819,8 +808,8 @@ class Enu_finder: public Radial_soultion
             while (true)
             {
                 enu = (e1 + e0) / 2.0;
-                //integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
-                integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                integrate_forward_rk4<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                //integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr);
                 if (std::abs(dpdr[np - 1]) < 1e-10) break;
 
                 if (dpdr[np - 1] * dpdr_R > 0)
@@ -834,8 +823,8 @@ class Enu_finder: public Radial_soultion
             }
         
             ebot_ = enu;
-            //int nn = integrate_forward<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
-            int nn = integrate_forward_gbs<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
+            int nn = integrate_forward_rk4<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
+            //int nn = integrate_forward_gbs<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
             if (nn != (n_ - l_ - 1))
             {
                 //FILE* fout = fopen("p.dat", "w");
@@ -852,51 +841,6 @@ class Enu_finder: public Radial_soultion
 
             }
                 
-            //double b;
-            //for (int i = 0; i < 1000; i++)
-            //{
-            //    int nn = integrate_forward<false>(enu, vs, mp, p, dpdr, q, dqdr);
-
-            //    //double a = dpdr[np - 1];
-            //    double a = dpdr[np - 1] / radial_grid(np - 1) - p[np - 1] / std::pow(radial_grid(np - 1), 2);
-
-            //    if (i > 0)
-            //    {
-            //        de = (a * b < 0) ? -de * 0.5 : de * 1.25;
-            //    }
-            //    b = a;
-            //    enu += de;
-            //    if (std::abs(de) < 1e-10)
-            //    {
-            //        if (nn != (n_ - l_ - 1))
-            //        {
-            //            FILE* fout = fopen("p_bot_err.dat", "w");
-            //            for (int ir = 0; ir < np; ir++) 
-            //            {
-            //                double x = radial_grid(ir);
-            //                fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
-            //            }
-            //            fclose(fout);
-
-            //            printf("n: %i, l: %i, nn: %i", n_, l_, nn);
-
-            //            TERMINATE("wrong number of nodes");
-
-            //        }
-            //        found = true;
-            //        break;
-            //    }
-            //}
-            //ebot_ = (!found) ? enu_start__ : enu;
-
-            //fout = fopen("p_bot.dat", "w");
-            //for (int ir = 0; ir < np; ir++) 
-            //{
-            //    double x = radial_grid(ir);
-            //    fprintf(fout, "%16.8f %16.8f\n", x, p[ir]);
-            //}
-            //fclose(fout);
-
             enu_ = (ebot_ + etop_) / 2.0;
         }
 
