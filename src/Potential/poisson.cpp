@@ -2,51 +2,90 @@
 
 namespace sirius {
 
+/** The following operation is performed:
+ *  \f[
+ *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
+ *  \f]
+ */
 void Potential::poisson_sum_G(int lmmax__,
                               double_complex* fpw__,
                               mdarray<double, 3>& fl__,
-                              mdarray<double_complex, 2>& flm__)
+                              matrix<double_complex>& flm__)
 {
     Timer t("sirius::Potential::poisson_sum_G");
     
-    int ngv_loc = (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size();
+    auto rl = parameters_.reciprocal_lattice();
+    auto uc = parameters_.unit_cell();
+    int ngv_loc = (int)rl->spl_num_gvec().local_size();
+    //int lmax = Utils::lmax_by_lmmax(lmmax__);
 
-    flm__.zero();
+    int na_max = 0;
+    for (int iat = 0; iat < uc->num_atom_types(); iat++) na_max = std::max(na_max, uc->atom_type(iat)->num_atoms());
+    
+    matrix<double_complex> phase_factors(ngv_loc, na_max);
+    matrix<double_complex> zm(lmmax__, ngv_loc);
+    matrix<double_complex> tmp(lmmax__, na_max);
 
-    int lmax = Utils::lmax_by_lmmax(lmmax__);
-
-    mdarray<double_complex, 2> zm1(ngv_loc, parameters_.lmmax_rho());
-
-    #pragma omp parallel for default(shared)
-    for (int lm = 0; lm < lmmax__; lm++)
+    for (int iat = 0; iat < uc->num_atom_types(); iat++)
     {
+        int na = uc->atom_type(iat)->num_atoms();
+        #pragma omp parallel for
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * 
-                             conj(fpw__[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
-        }
-    }
-
-    mdarray<double_complex, 2> zm2(ngv_loc, parameters_.unit_cell()->num_atoms());
-
-    for (int l = 0; l <= lmax; l++)
-    {
-        #pragma omp parallel for default(shared)
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-        {
-            int iat = parameters_.unit_cell()->atom(ia)->type_id();
-            for (int igloc = 0; igloc < ngv_loc; igloc++)
+            int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+            for (int i = 0; i < na; i++)
             {
-                int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-                zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
-                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
+                int ia = uc->atom_type(iat)->atom_id(i);
+                phase_factors(igloc, i) = rl->gvec_phase_factor<local>(igloc, ia);
+            }
+            for (int lm = 0; lm < lmmax__; lm++)
+            {
+                int l = l_by_lm_[lm];
+                zm(lm, igloc) = fourpi * fpw__[rl->spl_num_gvec(igloc)] * zilm_[lm] *
+                                fl__(l, iat, rl->gvec_shell(ig)) * std::conj(rl->gvec_ylm(lm, igloc));
             }
         }
-
-        linalg<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
-                          &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
-                          &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
+        linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
+                          tmp.at<CPU>(), tmp.ld());
+        for (int i = 0; i < na; i++)
+        {
+            int ia = uc->atom_type(iat)->atom_id(i);
+            for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
+        }
     }
+
+
+    //matrix<double_complex> zm1(ngv_loc, lmmax__);
+    //#pragma omp parallel for default(shared)
+    //for (int lm = 0; lm < lmmax__; lm++)
+    //{
+    //    for (int igloc = 0; igloc < ngv_loc; igloc++)
+    //    {
+    //        zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * 
+    //                         conj(fpw__[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
+    //    }
+    //}
+
+    //matrix<double_complex> zm2(ngv_loc, parameters_.unit_cell()->num_atoms());
+
+    //for (int l = 0; l <= lmax; l++)
+    //{
+    //    #pragma omp parallel for default(shared)
+    //    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //    {
+    //        int iat = parameters_.unit_cell()->atom(ia)->type_id();
+    //        for (int igloc = 0; igloc < ngv_loc; igloc++)
+    //        {
+    //            int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+    //            zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
+    //                             fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
+    //        }
+    //    }
+
+    //    linalg<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
+    //                      &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
+    //                      &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
+    //}
 
     //== #pragma omp parallel
     //== {
@@ -77,7 +116,7 @@ void Potential::poisson_sum_G(int lmmax__,
 
 void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw)
 {
-    Timer t("sirius::Potential::poisson_pw");
+    Timer t("sirius::Potential::poisson_add_pseudo_pw");
     std::vector<double_complex> pseudo_pw(parameters_.reciprocal_lattice()->num_gvec());
     memset(&pseudo_pw[0], 0, parameters_.reciprocal_lattice()->num_gvec() * sizeof(double_complex));
     
@@ -199,7 +238,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
 
         SHT::convert(parameters_.lmax_rho(), &qmt[0], &qmt__(0, ia));
 
-        /* fixed part of nuclear potential */
+        /* constant part of nuclear potential */
         for (int ir = 0; ir < nmtp; ir++)
         {
             //double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);

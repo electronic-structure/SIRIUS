@@ -97,21 +97,21 @@ class Reciprocal_lattice
         
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         template <index_domain_t index_domain>
-        inline double_complex gvec_phase_factor(int ig, int ia)
+        inline double_complex gvec_phase_factor(int ig__, int ia__)
         {
             switch (index_domain)
             {
                 case global:
                 {
-                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig)) * unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_->atom(ia__)->position())));
                     break;
                 }
                 case local:
                 {
                     #ifdef _CACHE_GVEC_PHASE_FACTORS_
-                    return gvec_phase_factors_(ig, ia);
+                    return gvec_phase_factors_(ig__, ia__);
                     #else
-                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig]) * unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig__]) * unit_cell_->atom(ia__)->position())));
                     #endif
                     break;
                 }

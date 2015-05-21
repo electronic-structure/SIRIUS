@@ -670,12 +670,12 @@ class Atom_type
             atomic_levels_.push_back(level);
         }
 
-        inline int num_atoms()
+        inline int num_atoms() const
         {
             return (int)atom_id_.size();
         }
 
-        inline int atom_id(int idx)
+        inline int atom_id(int idx) const
         {
             return atom_id_[idx];
         }
@@ -685,7 +685,7 @@ class Atom_type
             atom_id_.push_back(atom_id__);
         }
 
-        inline bool initialized()
+        inline bool initialized() const
         {
             return initialized_;
         }
@@ -695,12 +695,12 @@ class Atom_type
             return label_;
         }
 
-        inline std::string file_name()
+        inline std::string const& file_name() const
         {
             return file_name_;
         }
 
-        inline int offset_lo()
+        inline int offset_lo() const
         {
             assert(offset_lo_ >= 0);
             return offset_lo_;
