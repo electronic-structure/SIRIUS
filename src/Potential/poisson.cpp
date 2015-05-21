@@ -2,6 +2,14 @@
 
 namespace sirius {
 
+#ifdef _GPU_
+extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
+                                           int num_atoms__,
+                                           int const* gvec__,
+                                           double const* atom_pos__,
+                                           cuDoubleComplex* phase_factors__);
+#endif
+
 /** The following operation is performed:
  *  \f[
  *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
@@ -17,7 +25,6 @@ void Potential::poisson_sum_G(int lmmax__,
     auto rl = parameters_.reciprocal_lattice();
     auto uc = parameters_.unit_cell();
     int ngv_loc = (int)rl->spl_num_gvec().local_size();
-    //int lmax = Utils::lmax_by_lmmax(lmmax__);
 
     int na_max = 0;
     for (int iat = 0; iat < uc->num_atom_types(); iat++) na_max = std::max(na_max, uc->atom_type(iat)->num_atoms());
@@ -26,90 +33,95 @@ void Potential::poisson_sum_G(int lmmax__,
     matrix<double_complex> zm(lmmax__, ngv_loc);
     matrix<double_complex> tmp(lmmax__, na_max);
 
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    if (parameters_.processing_unit() == CPU)
     {
-        int na = uc->atom_type(iat)->num_atoms();
-        #pragma omp parallel for
-        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
         {
-            int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+            int na = uc->atom_type(iat)->num_atoms();
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < ngv_loc; igloc++)
+            {
+                int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+                for (int i = 0; i < na; i++)
+                {
+                    int ia = uc->atom_type(iat)->atom_id(i);
+                    phase_factors(igloc, i) = rl->gvec_phase_factor<local>(igloc, ia);
+                }
+                for (int lm = 0; lm < lmmax__; lm++)
+                {
+                    int l = l_by_lm_[lm];
+                    zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
+                                    fl__(l, iat, rl->gvec_shell(ig)) * std::conj(rl->gvec_ylm(lm, igloc));
+                }
+            }
+            linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
+                              tmp.at<CPU>(), tmp.ld());
             for (int i = 0; i < na; i++)
             {
                 int ia = uc->atom_type(iat)->atom_id(i);
-                phase_factors(igloc, i) = rl->gvec_phase_factor<local>(igloc, ia);
+                for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
             }
-            for (int lm = 0; lm < lmmax__; lm++)
-            {
-                int l = l_by_lm_[lm];
-                zm(lm, igloc) = fourpi * fpw__[rl->spl_num_gvec(igloc)] * zilm_[lm] *
-                                fl__(l, iat, rl->gvec_shell(ig)) * std::conj(rl->gvec_ylm(lm, igloc));
-            }
-        }
-        linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
-                          tmp.at<CPU>(), tmp.ld());
-        for (int i = 0; i < na; i++)
-        {
-            int ia = uc->atom_type(iat)->atom_id(i);
-            for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
         }
     }
 
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        auto gvec = mdarray<int, 2>(3, ngv_loc);
+        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        {
+            for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
+        }
+        gvec.allocate_on_device();
+        gvec.copy_to_device();
 
-    //matrix<double_complex> zm1(ngv_loc, lmmax__);
-    //#pragma omp parallel for default(shared)
-    //for (int lm = 0; lm < lmmax__; lm++)
-    //{
-    //    for (int igloc = 0; igloc < ngv_loc; igloc++)
-    //    {
-    //        zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * 
-    //                         conj(fpw__[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
-    //    }
-    //}
+        phase_factors.allocate_on_device();
+        zm.allocate_on_device();
+        tmp.allocate_on_device();
 
-    //matrix<double_complex> zm2(ngv_loc, parameters_.unit_cell()->num_atoms());
+        double_complex alpha(1, 0);
+        double_complex beta(0, 0);
 
-    //for (int l = 0; l <= lmax; l++)
-    //{
-    //    #pragma omp parallel for default(shared)
-    //    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //    {
-    //        int iat = parameters_.unit_cell()->atom(ia)->type_id();
-    //        for (int igloc = 0; igloc < ngv_loc; igloc++)
-    //        {
-    //            int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-    //            zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
-    //                             fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
-    //        }
-    //    }
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            int na = uc->atom_type(iat)->num_atoms();
+            
+            mdarray<double, 2> atom_pos(3, na);
+            for (int i = 0; i < na; i++)
+            {
+                int ia = uc->atom_type(iat)->atom_id(i);
+                for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
+            }
+            atom_pos.allocate_on_device();
+            atom_pos.copy_to_device();
 
-    //    linalg<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
-    //                      &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
-    //                      &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
-    //}
+            generate_phase_factors_gpu(ngv_loc, na, gvec.at<GPU>(), atom_pos.at<GPU>(), phase_factors.at<GPU>());
 
-    //== #pragma omp parallel
-    //== {
-    //==     mdarray<double_complex, 2> zm(lmmax__, ngv_loc);
-    //==     #pragma omp for
-    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //==     {
-    //==         int iat = parameters_.unit_cell()->atom(ia)->type_id();
-    //==         for (int igloc = 0; igloc < ngv_loc; igloc++)
-    //==         {
-    //==             int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-    //==             for (int lm = 0; lm < lmmax__; lm++)
-    //==             {
-    //==                 int l = l_by_lm_[lm];
-    //==                 zm(lm, igloc) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) * 
-    //==                                 zilm_[lm] * conj(parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc)) * 
-    //==                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
-    //==             }
-    //==         }
-    //==         blas<CPU>::gemv(0, lmmax__, ngv_loc, complex_one, zm.at<CPU>(), zm.ld(), 
-    //==                         &fpw__[parameters_.reciprocal_lattice()->spl_num_gvec().global_offset()], 1, complex_zero, 
-    //==                         &flm__(0, ia), 1);
-    //==     }
-    //== }
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < ngv_loc; igloc++)
+            {
+                int ig = rl->spl_num_gvec(igloc);
+                for (int lm = 0; lm < lmmax__; lm++)
+                {
+                    int l = l_by_lm_[lm];
+                    zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
+                                    fl__(l, iat, rl->gvec_shell(ig)) * std::conj(rl->gvec_ylm(lm, igloc));
+                }
+            }
+            zm.copy_to_device();
+            linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc, &alpha, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(), phase_factors.ld(),
+                              &beta, tmp.at<GPU>(), tmp.ld());
+            tmp.copy_to_host();
+            for (int i = 0; i < na; i++)
+            {
+                int ia = uc->atom_type(iat)->atom_id(i);
+                for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
+            }
+        }
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
     
     parameters_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
 }

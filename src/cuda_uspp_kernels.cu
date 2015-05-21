@@ -614,11 +614,18 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
 //== 
 //== }
 
-__global__ void generate_phase_factors_gpu_kernel(int num_gvec_loc, 
-                                                  int num_atoms, 
-                                                  double* atom_pos, 
-                                                  int* gvec, 
-                                                  cuDoubleComplex* phase_factors)
+
+
+// TODO: proper order of indices for atom_pos
+
+__global__ void generate_phase_factors_conj_gpu_kernel
+(
+    int num_gvec_loc, 
+    int num_atoms, 
+    double* atom_pos, 
+    int* gvec, 
+    cuDoubleComplex* phase_factors
+)
 {
     int ia = blockIdx.y;
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
@@ -642,6 +649,36 @@ __global__ void generate_phase_factors_gpu_kernel(int num_gvec_loc,
     }
 }
 
+__global__ void generate_phase_factors_gpu_kernel
+(
+    int num_gvec_loc, 
+    double const* atom_pos, 
+    int const* gvec, 
+    cuDoubleComplex* phase_factors
+)
+{
+    int ia = blockIdx.y;
+    int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (igloc < num_gvec_loc)
+    {
+        int gvx = gvec[array2D_offset(0, igloc, 3)];
+        int gvy = gvec[array2D_offset(1, igloc, 3)];
+        int gvz = gvec[array2D_offset(2, igloc, 3)];
+    
+        double ax = atom_pos[array2D_offset(0, ia, 3)];
+        double ay = atom_pos[array2D_offset(1, ia, 3)];
+        double az = atom_pos[array2D_offset(2, ia, 3)];
+
+        double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        phase_factors[array2D_offset(igloc, ia, num_gvec_loc)] = make_cuDoubleComplex(cosp, sinp);
+    }
+}
+
 
 extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
                                        int num_gvec_loc,
@@ -659,11 +696,14 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_atoms);
 
-    generate_phase_factors_gpu_kernel<<<grid_b, grid_t>>>(num_gvec_loc, 
-                                                          num_atoms, 
-                                                          atom_pos, 
-                                                          gvec, 
-                                                          phase_factors);
+    generate_phase_factors_conj_gpu_kernel<<<grid_b, grid_t>>>
+    (
+        num_gvec_loc, 
+        num_atoms, 
+        atom_pos, 
+        gvec, 
+        phase_factors
+    );
     
     cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
     cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
@@ -673,6 +713,25 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
                  d_mtrx_pw, num_gvec_loc, -1);
 
     cuda_free(phase_factors);
+}
+
+extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
+                                           int num_atoms__,
+                                           int const* gvec__,
+                                           double const* atom_pos__,
+                                           cuDoubleComplex* phase_factors__)
+
+{
+    dim3 grid_t(32);
+    dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
+
+    generate_phase_factors_gpu_kernel<<<grid_b, grid_t>>>
+    (
+        num_gvec_loc__, 
+        atom_pos__, 
+        gvec__, 
+        phase_factors__
+    );
 }
 
 __global__ void sum_q_pw_d_mtrx_pw_gpu_kernel
