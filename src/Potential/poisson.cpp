@@ -143,9 +143,9 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
      */
     #pragma omp parallel default(shared)
     {
-        std::vector<double_complex> pseudo_pw_pt(rl->spl_num_gvec().local_size(), double_complex(0, 0));
+        int tid = Platform::thread_id();
+        splindex<block> spl_gv_t(rl->spl_num_gvec().local_size(), Platform::num_threads(), tid);
 
-        #pragma omp for
         for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
             int iat = uc->atom(ia)->type_id();
@@ -160,10 +160,11 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                     zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * conj(zil_[l]) * gamma_factors_R_(l, iat);
             }
 
-            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+            for (int igloc_t = 0; igloc_t < (int)spl_gv_t.local_size(); igloc_t++)
             {
+                int igloc = (int)spl_gv_t[igloc_t];
                 int ig = rl->spl_num_gvec(igloc);
-                
+
                 double gR = rl->gvec_len(ig) * R;
                 
                 double_complex zt = fourpi * conj(rl->gvec_phase_factor<local>(igloc, ia)) / uc->omega();
@@ -179,17 +180,14 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                         zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, rl->gvec_shell(ig));
                     }
 
-                    pseudo_pw_pt[igloc] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
+                    pseudo_pw[ig] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
                 }
                 else // for |G|=0
                 {
-                    pseudo_pw_pt[igloc] += zt * y00 * (qmt(0, ia) - qit(0, ia));
+                    pseudo_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
                 }
             }
         }
-        #pragma omp critical
-        for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++) 
-            pseudo_pw[rl->spl_num_gvec(igloc)] += pseudo_pw_pt[igloc];
     }
 
     parameters_.comm().allgather(&pseudo_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
@@ -236,7 +234,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                 {
                     rholm.integrate(g2, 1 - l);
                     
-                    double d1 = 1.0 / pow(R, 2 * l + 1); 
+                    double d1 = 1.0 / std::pow(R, 2 * l + 1); 
                     double d2 = 1.0 / double(2 * l + 1); 
                     for (int ir = 0; ir < nmtp; ir++)
                     {
