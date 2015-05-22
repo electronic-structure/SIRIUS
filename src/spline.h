@@ -128,10 +128,10 @@ class Spline
             return radial_grid_->dx(i__);
         }
 
-        inline void set_coefs(mdarray<double, 2>& coefs__)
-        {
-            coefs__ >> coefs_;
-        }
+        //inline void set_coefs(mdarray<double, 2>& coefs__)
+        //{
+        //    coefs__ >> coefs_;
+        //}
 
         inline T operator()(double x) const
         {
@@ -355,10 +355,12 @@ template <typename T>
 inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
 {
     assert(a__.radial_grid().hash() == b__.radial_grid().hash());
+    Spline<double> s12(a__.radial_grid());
 
     auto& coefs_a = a__.coefs();
     auto& coefs_b = b__.coefs();
-    mdarray<T, 2> coefs(a__.radial_grid().num_points(), 4);
+    auto& coefs = const_cast<mdarray<double, 2>&>(s12.coefs());
+    //mdarray<T, 2> coefs(a__.radial_grid().num_points(), 4);
 
     for (int ir = 0; ir < a__.radial_grid().num_points(); ir++)
     {
@@ -368,8 +370,7 @@ inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
         coefs(ir, 3) = coefs_a(ir, 3) * coefs_b(ir, 0) + coefs_a(ir, 2) * coefs_b(ir, 1) + coefs_a(ir, 1) * coefs_b(ir, 2) + coefs_a(ir, 0) * coefs_b(ir, 3);
     }
 
-    Spline<double> s12(a__.radial_grid());
-    s12.set_coefs(coefs);
+    //s12.set_coefs(coefs);
     return std::move(s12);
 }
 

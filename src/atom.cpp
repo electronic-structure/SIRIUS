@@ -165,32 +165,34 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         Timer t1("sirius::Atom::generate_radial_integrals|interp");
         #pragma omp parallel
         {
-            int tid = Platform::thread_id();
+            //int tid = Platform::thread_id();
             #pragma omp for
             for (int i = 0; i < nrf; i++)
             {
                 rf_spline[i].interpolate();
                 memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
-                cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 * sizeof(double), tid);
+                //cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 * sizeof(double), tid);
             }
             #pragma omp for
             for (int i = 0; i < lmmax * (1 + num_mag_dims_); i++) v_spline[i].interpolate();
+        }
+        rf_coef.async_copy_to_device();
 
-            #pragma omp for
-            for (int lm = 0; lm < lmmax; lm++)
+        #pragma omp parallel for
+        for (int lm = 0; lm < lmmax; lm++)
+        {
+            for (int i = 0; i < nrf; i++)
             {
-                for (int i = 0; i < nrf; i++)
+                for (int j = 0; j < num_mag_dims_ + 1; j++)
                 {
-                    for (int j = 0; j < num_mag_dims_ + 1; j++)
-                    {
-                        int idx = lm + lmmax * i + lmmax * nrf * j;
-                        vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-                        memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
-                        cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4 *sizeof(double), tid);
-                    }
+                    int idx = lm + lmmax * i + lmmax * nrf * j;
+                    vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
+                    memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
+                    //cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4 *sizeof(double), tid);
                 }
             }
         }
+        vrf_coef.copy_to_device();
         t1.stop();
 
         result.allocate_on_device();
