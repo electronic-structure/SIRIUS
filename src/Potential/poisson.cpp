@@ -131,8 +131,8 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     Timer t("sirius::Potential::poisson_add_pseudo_pw");
     auto rl = parameters_.reciprocal_lattice();
     auto uc = parameters_.unit_cell();
-    std::vector<double_complex> pseudo_pw(rl->num_gvec());
-    memset(&pseudo_pw[0], 0, rl->num_gvec() * sizeof(double_complex));
+    //std::vector<double_complex> pseudo_pw(rl->num_gvec());
+    //memset(&pseudo_pw[0], 0, rl->num_gvec() * sizeof(double_complex));
     
     /* The following term is added to the plane-wave coefficients of the charge density:
      * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -145,6 +145,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     {
         int tid = Platform::thread_id();
         splindex<block> spl_gv_t(rl->spl_num_gvec().local_size(), Platform::num_threads(), tid);
+        std::vector<double_complex> pseudo_pw_t(spl_gv_t.local_size(), complex_zero); 
 
         for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
@@ -180,22 +181,29 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                         zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, rl->gvec_shell(ig));
                     }
 
-                    pseudo_pw[ig] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
+                    pseudo_pw_t[igloc_t] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order + 1);
                 }
                 else // for |G|=0
                 {
-                    pseudo_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
+                    pseudo_pw_t[igloc_t] += zt * y00 * (qmt(0, ia) - qit(0, ia));
                 }
             }
         }
+        for (int igloc_t = 0; igloc_t < (int)spl_gv_t.local_size(); igloc_t++)
+        {
+            int igloc = (int)spl_gv_t[igloc_t];
+            int ig = rl->spl_num_gvec(igloc);
+            rho_pw[ig] += pseudo_pw_t[igloc_t];
+        }
     }
 
-    parameters_.comm().allgather(&pseudo_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
+    //parameters_.comm().allgather(&pseudo_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
+    parameters_.comm().allgather(&rho_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
         
     /* add pseudo_density to interstitial charge density;
      * now rho(G) has the correct multipole moments in the muffin-tins
      */
-    for (int ig = 0; ig < rl->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
+    //for (int ig = 0; ig < rl->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
 }
 
 void Potential::poisson_vmt(Periodic_function<double>* rho__, 
