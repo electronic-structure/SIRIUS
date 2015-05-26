@@ -489,6 +489,11 @@ interface
         real(8),                 intent(out) :: val
     end subroutine
 
+    subroutine sirius_get_energy_tot(val)&
+       &bind(C, name="sirius_get_energy_tot")
+        real(8),                 intent(out) :: val
+    end subroutine
+
     subroutine sirius_get_fv_h_o(kset_id, ik, msize, h, o)&
        &bind(C, name="sirius_get_fv_h_o")
         integer,                 intent(in)  :: kset_id

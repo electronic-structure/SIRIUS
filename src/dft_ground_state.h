@@ -301,7 +301,9 @@ class DFT_ground_state
             }
 
             parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
-            parameters_.unit_cell()->symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
+
+            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+                parameters_.unit_cell()->symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
 
             if (parameters_.num_mag_dims() == 1)
             {

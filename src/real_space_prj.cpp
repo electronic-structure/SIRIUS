@@ -140,9 +140,9 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
     //filter_radial_functions(mask_alpha_ * pw_cutoff__);
 
-    filter_radial_functions_v2(pw_cutoff__);
+    //filter_radial_functions_v2(pw_cutoff__);
     
-    auto beta_radial_integrals_filtered = generate_beta_radial_integrals(beta_rf_filtered_, 2);
+    //auto beta_radial_integrals_filtered = generate_beta_radial_integrals(beta_rf_filtered_, 2);
     
     //== double err = 0;
     //== for (int igsh = 0; igsh < fft_->num_gvec_shells_total(); igsh++)
@@ -159,7 +159,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
 
 
-    auto beta_pw_t = generate_beta_pw_t(unit_cell_, beta_radial_integrals_filtered);
+    auto beta_pw_t = generate_beta_pw_t(unit_cell_, beta_radial_integrals);
 
 
 
@@ -172,7 +172,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     {
         int iat = unit_cell_->atom(ia)->type_id();
         auto atom_type = unit_cell_->atom_type(iat);
-        //double Rmask = R_beta_[iat] * R_mask_scale_;
+        double Rmask = R_beta_[iat] * R_mask_scale_;
         
         beta_projectors_[ia].beta_ = mdarray<double, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
 
@@ -208,8 +208,8 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
             {
                 int ir = beta_projectors_[ia].ir_[i];
-                //double dist = beta_projectors_[ia].dist_[i];
-                double b = real(fft_->buffer(ir));// * mask(dist, Rmask));
+                double dist = beta_projectors_[ia].dist_[i];
+                double b = real(fft_->buffer(ir) * mask(dist, Rmask));
                 beta_projectors_[ia].beta_(i, xi) = b;
             }
             //int lm = atom_type->indexb(xi).lm;
@@ -323,7 +323,9 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 {
     Timer t("sirius::Real_space_prj::generate_beta_radial_integrals");
 
-    mdarray<double, 3> beta_radial_integrals(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types(), fft_->num_gvec_shells_total());
+    mdarray<double, 3> beta_radial_integrals(unit_cell_->max_mt_radial_basis_size(),
+                                             unit_cell_->num_atom_types(),
+                                             fft_->num_gvec_shells_total());
 
     splindex<block> spl_gsh(fft_->num_gvec_shells_total(), comm_.size(), comm_.rank());
     #pragma omp parallel
@@ -946,7 +948,7 @@ void Real_space_prj::get_beta_grid()
                             for (int t2 = -1; t2 <= 1; t2++)
                             {
                                 vector3d<double> v1 = v0 - (unit_cell_->atom(ia)->position() + vector3d<double>(t0, t1, t2));
-                                auto r = unit_cell_->get_cartesian_coordinates(vector3d<double>(v1));
+                                auto r = unit_cell_->get_cartesian_coordinates(v1);
                                 if (r.length() <= Rmask)
                                 {
                                     if (found) TERMINATE("point was already found");

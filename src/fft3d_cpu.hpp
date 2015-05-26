@@ -261,7 +261,7 @@ class FFT3D<CPU>
             return fftw_buffer_(i, thread_id);
         }
         
-        vector3d<int> grid_size()
+        vector3d<int> grid_size() const
         {
             return vector3d<int>(grid_size_);
         }
@@ -336,26 +336,26 @@ class FFT3D<CPU>
         }
         
         /// Return number of G-vectors within the cutoff.
-        inline int num_gvec()
+        inline int num_gvec() const
         {
             return num_gvec_;
         }
 
         /// Return G-vector in fractional coordinates (this are the three Miller indices).
-        inline vector3d<int> gvec(int ig__)
+        inline vector3d<int> gvec(int ig__) const
         {
             return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
         }
         
         /// Return G-vector in Cartesian coordinates.
-        inline vector3d<double>gvec_cart(int ig__)
+        inline vector3d<double> gvec_cart(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
             return gvec_cart_[ig__];
         }
 
         /// Return length of a G-vector.
-        inline double gvec_len(int ig__)
+        inline double gvec_len(int ig__) const
         {
             return gvec_shell_len(gvec_shell(ig__));
         }
@@ -377,14 +377,14 @@ class FFT3D<CPU>
         }
 
         /// Return index of a G-vector shell for a given G-vector.
-        inline int gvec_shell(int ig__)
+        inline int gvec_shell(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
             return gvec_shell_[ig__];
         }
 
         /// Return length of a G-vector shell.
-        inline double gvec_shell_len(int igsh__)
+        inline double gvec_shell_len(int igsh__) const
         {
             assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
             return gvec_shell_len_[igsh__];

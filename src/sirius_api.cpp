@@ -1135,7 +1135,7 @@ void FORTRAN(sirius_set_uj_correction)(int32_t* uj_correction)
 //    log_function_exit(__func__);
 //}
 
-void sirius_get_total_energy(double* total_energy__)
+void sirius_get_energy_tot(double* total_energy__)
 {
     log_function_enter(__func__);
     *total_energy__ = dft_ground_state->total_energy();
