@@ -112,10 +112,10 @@ class initial_input_parameters
                 {
                     exist_ = true;
                     JSON_tree section = parser["mixer"];
-                    beta_ = section["beta"].get(beta_);
-                    gamma_ = section["gamma"].get(gamma_);
+                    beta_        = section["beta"].get(beta_);
+                    gamma_       = section["gamma"].get(gamma_);
                     max_history_ = section["max_history"].get(max_history_);
-                    type_ = section["type"].get(type_);
+                    type_        = section["type"].get(type_);
                 }
             }
         } mixer_input_section_;
@@ -200,16 +200,18 @@ class initial_input_parameters
                     {
                         for (int iat = 0; iat < (int)labels_.size(); iat++)
                         {
-                            if (parser["unit_cell"]["atom_files"].exist(labels_[iat]))
-                            {
-                                std::string fname;
-                                parser["unit_cell"]["atom_files"][labels_[iat]] >> fname;
-                                atom_files_[labels_[iat]] = fname;
-                            }
-                            else
-                            {
-                                atom_files_[labels_[iat]] = "";
-                            }
+                            atom_files_[labels_[iat]] = parser["unit_cell"]["atom_files"][labels_[iat]].get(std::string(""));
+
+                            //if (parser["unit_cell"]["atom_files"].exist(labels_[iat]))
+                            //{
+                            //    std::string fname;
+                            //    parser["unit_cell"]["atom_files"][labels_[iat]] >> fname;
+                            //    atom_files_[labels_[iat]] = fname;
+                            //}
+                            //else
+                            //{
+                            //    atom_files_[labels_[iat]] = "";
+                            //}
                         }
                     }
                     

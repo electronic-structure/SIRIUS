@@ -36,6 +36,7 @@ extern "C" {
 #include "atom.h"
 #include "mpi_grid.h"
 #include "symmetry.h"
+#include "input.h"
 
 namespace sirius {
 
@@ -187,7 +188,7 @@ class Unit_cell
 
     public:
     
-        Unit_cell(electronic_structure_method_t esm_type__, Communicator& comm__, processing_unit_t pu__)
+        Unit_cell(electronic_structure_method_t esm_type__, Communicator const& comm__, processing_unit_t pu__)
             : omega_(0),
               volume_mt_(0),
               volume_it_(0),
@@ -540,14 +541,35 @@ class Unit_cell
             return reciprocal_lattice_vectors_;
         }
 
-        inline vector3d<double> lattice_vector(int idx__)
+        inline vector3d<double> lattice_vector(int idx__) const
         {
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
         }
 
-        inline int num_beta_t()
+        inline int num_beta_t() const
         {
             return num_beta_t_;
+        }
+
+        void import(initial_input_parameters const& iip__)
+        {
+            auto unit_cell_input_section = iip__.unit_cell_input_section_;
+
+            for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
+            {
+                auto label = unit_cell_input_section.labels_[iat];
+                auto fname = unit_cell_input_section.atom_files_[label];
+                add_atom_type(label, fname, esm_type_);
+                for (int ia = 0; ia < (int)unit_cell_input_section.coordinates_[iat].size(); ia++)
+                {
+                    auto v = unit_cell_input_section.coordinates_[iat][ia];
+                    add_atom(label, &v[0], &v[3]);
+                }
+            }
+
+            set_lattice_vectors(unit_cell_input_section.lattice_vectors_[0], 
+                                unit_cell_input_section.lattice_vectors_[1], 
+                                unit_cell_input_section.lattice_vectors_[2]);
         }
 };
     

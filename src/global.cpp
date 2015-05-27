@@ -24,13 +24,14 @@
 
 #include "global.h"
 #include "real_space_prj.h"
+#include "simulation.h"
 
 namespace sirius {
 
 void Global::parse_input()
 {
-    mpi_grid_dims_ = iip_.common_input_section_.mpi_grid_dims_;
-    num_fv_states_ = iip_.common_input_section_.num_fv_states_;
+    mpi_grid_dims_  = iip_.common_input_section_.mpi_grid_dims_;
+    num_fv_states_  = iip_.common_input_section_.num_fv_states_;
     smearing_width_ = iip_.common_input_section_.smearing_width_;
     
     std::string evsn[] = {iip_.common_input_section_.std_evp_solver_type_, iip_.common_input_section_.gen_evp_solver_type_};
@@ -114,26 +115,26 @@ void Global::parse_input()
     }
 }
 
-void Global::read_unit_cell_input()
-{
-    auto unit_cell_input_section = iip_.unit_cell_input_section_;
-
-    for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
-    {
-        std::string label = unit_cell_input_section.labels_[iat];
-        std::string fname = unit_cell_input_section.atom_files_[label];
-        unit_cell()->add_atom_type(label, fname, esm_type());
-        for (int ia = 0; ia < (int)unit_cell_input_section.coordinates_[iat].size(); ia++)
-        {
-            std::vector<double> v = unit_cell_input_section.coordinates_[iat][ia];
-            unit_cell()->add_atom(label, &v[0], &v[3]);
-        }
-    }
-
-    unit_cell()->set_lattice_vectors(unit_cell_input_section.lattice_vectors_[0], 
-                                     unit_cell_input_section.lattice_vectors_[1], 
-                                     unit_cell_input_section.lattice_vectors_[2]);
-}
+//== void Global::read_unit_cell_input()
+//== {
+//==     auto unit_cell_input_section = iip_.unit_cell_input_section_;
+//== 
+//==     for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
+//==     {
+//==         auto label = unit_cell_input_section.labels_[iat];
+//==         auto fname = unit_cell_input_section.atom_files_[label];
+//==         unit_cell()->add_atom_type(label, fname, esm_type());
+//==         for (int ia = 0; ia < (int)unit_cell_input_section.coordinates_[iat].size(); ia++)
+//==         {
+//==             std::vector<double> v = unit_cell_input_section.coordinates_[iat][ia];
+//==             unit_cell()->add_atom(label, &v[0], &v[3]);
+//==         }
+//==     }
+//== 
+//==     unit_cell()->set_lattice_vectors(unit_cell_input_section.lattice_vectors_[0], 
+//==                                      unit_cell_input_section.lattice_vectors_[1], 
+//==                                      unit_cell_input_section.lattice_vectors_[2]);
+//== }
 
 std::string Global::start_time(const char* fmt)
 {
@@ -169,66 +170,66 @@ void Global::initialize()
     }
 
     /* initialize variables, related to the unit cell */
-    unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
+    //== unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
     
-    /* create FFT interface */
-    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors()),
-                          iip_.common_input_section_.num_fft_threads_,
-                          iip_.common_input_section_.num_fft_workers_);
-    
-    fft_->init_gvec(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors());
+    //== /* create FFT interface */
+    //== fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors()),
+    //==                       iip_.common_input_section_.num_fft_threads_,
+    //==                       iip_.common_input_section_.num_fft_workers_);
+    //== 
+    //== fft_->init_gvec(pw_cutoff_, unit_cell_->reciprocal_lattice_vectors());
 
-    #ifdef _GPU_
-    fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
-    #endif
-    
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
-    {
-        /* create FFT interface for coarse grid */
-        fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors()),
-                                     iip_.common_input_section_.num_fft_threads_,
-                                     iip_.common_input_section_.num_fft_workers_);
-        
-        fft_coarse_->init_gvec(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors());
+    //== #ifdef _GPU_
+    //== fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
+    //== #endif
+    //== 
+    //== if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    //== {
+    //==     /* create FFT interface for coarse grid */
+    //==     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors()),
+    //==                                  iip_.common_input_section_.num_fft_threads_,
+    //==                                  iip_.common_input_section_.num_fft_workers_);
+    //==     
+    //==     fft_coarse_->init_gvec(gk_cutoff_ * 2, unit_cell_->reciprocal_lattice_vectors());
 
-        #ifdef _GPU_
-        fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
-        #endif
-    }
+    //==     #ifdef _GPU_
+    //==     fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
+    //==     #endif
+    //== }
     
-    if (unit_cell_->num_atoms() != 0) unit_cell_->symmetry()->check_gvec_symmetry(fft_);
+    //if (unit_cell_->num_atoms() != 0) unit_cell_->symmetry()->check_gvec_symmetry(fft_);
 
     /* create a reciprocal lattice */
-    int lmax = -1;
-    switch (esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            lmax = lmax_pot_;
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            STOP();
-        }
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
-        {
-            lmax = 2 * unit_cell_->lmax_beta();
-            break;
-        }
-    }
-    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), fft_, lmax, comm_);
+    //int lmax = -1;
+    //switch (esm_type())
+    //{
+    //    case full_potential_lapwlo:
+    //    {
+    //        lmax = lmax_pot_;
+    //        break;
+    //    }
+    //    case full_potential_pwlo:
+    //    {
+    //        STOP();
+    //    }
+    //    case ultrasoft_pseudopotential:
+    //    case norm_conserving_pseudopotential:
+    //    {
+    //        //lmax = 2 * unit_cell_->lmax_beta();
+    //        break;
+    //    }
+    //}
+    //== reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), fft_, lmax, comm_);
 
-    if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, fft_, comm_);
+    //== if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, fft_, comm_);
 
-    if (iip_.iterative_solver_input_section_.real_space_prj_) 
-    {
-        real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iip_.iterative_solver_input_section_.R_mask_scale_,
-                                             iip_.iterative_solver_input_section_.mask_alpha_,
-                                             gk_cutoff_, iip_.common_input_section_.num_fft_threads_,
-                                             iip_.common_input_section_.num_fft_workers_);
-    }
+    //if (iip_.iterative_solver_input_section_.real_space_prj_) 
+    //{
+    //    real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iip_.iterative_solver_input_section_.R_mask_scale_,
+    //                                         iip_.iterative_solver_input_section_.mask_alpha_,
+    //                                         gk_cutoff_, iip_.common_input_section_.num_fft_threads_,
+    //                                         iip_.common_input_section_.num_fft_workers_);
+    //}
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 
@@ -237,69 +238,69 @@ void Global::initialize()
         mpi_grid_dims_[0] = comm_.size();
     }
 
-    /* setup MPI grid */
-    mpi_grid_ = MPI_grid(mpi_grid_dims_, comm_);
+    ///* setup MPI grid */
+    //mpi_grid_ = MPI_grid(mpi_grid_dims_, comm_);
 
-    /* take 20% of empty non-magnetic states */
-    if (num_fv_states_ < 0) 
-    {
-        num_fv_states_ = int(1e-8 + unit_cell_->num_valence_electrons() / 2.0) +
-                         std::max(10, int(0.1 * unit_cell_->num_valence_electrons()));
-    }
+    ///* take 20% of empty non-magnetic states */
+    //if (num_fv_states_ < 0) 
+    //{
+    //    num_fv_states_ = int(1e-8 + unit_cell_->num_valence_electrons() / 2.0) +
+    //                     std::max(10, int(0.1 * unit_cell_->num_valence_electrons()));
+    //}
 
-    if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
-        error_global(__FILE__, __LINE__, "not enough first-variational states");
+    //if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
+    //    error_global(__FILE__, __LINE__, "not enough first-variational states");
 
-    /* total number of bands */
-    num_bands_ = num_fv_states_ * num_spins_;
+    ///* total number of bands */
+    //num_bands_ = num_fv_states_ * num_spins_;
 
-    //== if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && nrow * ncol > 1)
-    //== {
-    //==     printf("\n");
-    //==     printf("table of column distribution of first-variational states\n");
-    //==     printf("(columns of the table correspond to column MPI ranks)\n");
-    //==     for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
-    //==     {
-    //==         for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_fv_states_col_.global_index(i0, i1));
-    //==         printf("\n");
-    //==     }
-    //==     
-    //==     printf("\n");
-    //==     printf("table of row distribution of first-variational states\n");
-    //==     printf("(columns of the table correspond to row MPI ranks)\n");
-    //==     for (int i0 = 0; i0 < spl_fv_states_row_.local_size(0); i0++)
-    //==     {
-    //==         for (int i1 = 0; i1 < nrow; i1++) printf("%6i", spl_fv_states_row_.global_index(i0, i1));
-    //==         printf("\n");
-    //==     }
+    ////== if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && nrow * ncol > 1)
+    ////== {
+    ////==     printf("\n");
+    ////==     printf("table of column distribution of first-variational states\n");
+    ////==     printf("(columns of the table correspond to column MPI ranks)\n");
+    ////==     for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
+    ////==     {
+    ////==         for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_fv_states_col_.global_index(i0, i1));
+    ////==         printf("\n");
+    ////==     }
+    ////==     
+    ////==     printf("\n");
+    ////==     printf("table of row distribution of first-variational states\n");
+    ////==     printf("(columns of the table correspond to row MPI ranks)\n");
+    ////==     for (int i0 = 0; i0 < spl_fv_states_row_.local_size(0); i0++)
+    ////==     {
+    ////==         for (int i1 = 0; i1 < nrow; i1++) printf("%6i", spl_fv_states_row_.global_index(i0, i1));
+    ////==         printf("\n");
+    ////==     }
 
-    //==     printf("\n");
-    //==     printf("First-variational states index -> (local index, rank) for column distribution\n");
-    //==     for (int i = 0; i < num_fv_states(); i++)
-    //==     {
-    //==         printf("%6i -> (%6i %6i)\n", i, spl_fv_states_col_.location(_splindex_offs_, i), 
-    //==                                         spl_fv_states_col_.location(_splindex_rank_, i));
-    //==     }
-    //==     
-    //==     printf("\n");
-    //==     printf("First-variational states index -> (local index, rank) for row distribution\n");
-    //==     for (int i = 0; i < num_fv_states(); i++)
-    //==     {
-    //==         printf("%6i -> (%6i %6i)\n", i, spl_fv_states_row_.location(_splindex_offs_, i), 
-    //==                                         spl_fv_states_row_.location(_splindex_rank_, i));
-    //==     }
-    //==     
-    //==     printf("\n");
-    //==     printf("table of column distribution of spinor wave functions\n");
-    //==     printf("(columns of the table correspond to MPI ranks)\n");
-    //==     for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
-    //==     {
-    //==         for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
-    //==         printf("\n");
-    //==     }
-    //== }
-    
-    if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
+    ////==     printf("\n");
+    ////==     printf("First-variational states index -> (local index, rank) for column distribution\n");
+    ////==     for (int i = 0; i < num_fv_states(); i++)
+    ////==     {
+    ////==         printf("%6i -> (%6i %6i)\n", i, spl_fv_states_col_.location(_splindex_offs_, i), 
+    ////==                                         spl_fv_states_col_.location(_splindex_rank_, i));
+    ////==     }
+    ////==     
+    ////==     printf("\n");
+    ////==     printf("First-variational states index -> (local index, rank) for row distribution\n");
+    ////==     for (int i = 0; i < num_fv_states(); i++)
+    ////==     {
+    ////==         printf("%6i -> (%6i %6i)\n", i, spl_fv_states_row_.location(_splindex_offs_, i), 
+    ////==                                         spl_fv_states_row_.location(_splindex_rank_, i));
+    ////==     }
+    ////==     
+    ////==     printf("\n");
+    ////==     printf("table of column distribution of spinor wave functions\n");
+    ////==     printf("(columns of the table correspond to MPI ranks)\n");
+    ////==     for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
+    ////==     {
+    ////==         for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
+    ////==         printf("\n");
+    ////==     }
+    ////== }
+    //
+    //if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
     initialized_ = true;
 }
 
@@ -307,7 +308,7 @@ void Global::clear()
 {
     if (initialized_)
     {
-        unit_cell_->clear();
+        //unit_cell_->clear();
         delete reciprocal_lattice_;
         delete step_function_;
         initialized_ = false;
@@ -332,7 +333,7 @@ void Global::print_info()
     printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
     printf("cyclic block size               : %i\n", iip_.common_input_section_.cyclic_block_size_);
 
-    unit_cell_->print_info();
+    //unit_cell_->print_info();
 
     printf("\n");
     printf("plane wave cutoff : %f\n", pw_cutoff_);
@@ -352,11 +353,11 @@ void Global::print_info()
                                                                    fft_coarse_->grid_limits(2).first, fft_coarse_->grid_limits(2).second);
     }
 
-    for (int i = 0; i < unit_cell_->num_atom_types(); i++) unit_cell_->atom_type(i)->print_info();
+    //for (int i = 0; i < unit_cell_->num_atom_types(); i++) unit_cell_->atom_type(i)->print_info();
 
     printf("\n");
-    printf("total number of aw basis functions : %i\n", unit_cell_->mt_aw_basis_size());
-    printf("total number of lo basis functions : %i\n", unit_cell_->mt_lo_basis_size());
+    //printf("total number of aw basis functions : %i\n", unit_cell_->mt_aw_basis_size());
+    //printf("total number of lo basis functions : %i\n", unit_cell_->mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());
     printf("number of bands                    : %i\n", num_bands());
     printf("number of spins                    : %i\n", num_spins());
@@ -470,13 +471,13 @@ void Global::write_json_output()
         std::vector<int> fftgrid(3);
         for (int i = 0; i < 3; i++) fftgrid[i] = fft_->size(i);
         jw.single("fft_grid", fftgrid);
-        jw.single("chemical_formula", unit_cell()->chemical_formula());
-        jw.single("num_atoms", unit_cell()->num_atoms());
+        //jw.single("chemical_formula", unit_cell()->chemical_formula());
+        //jw.single("num_atoms", unit_cell()->num_atoms());
         jw.single("num_fv_states", num_fv_states());
         jw.single("num_bands", num_bands());
         jw.single("aw_cutoff", aw_cutoff());
         jw.single("pw_cutoff", pw_cutoff());
-        jw.single("omega", unit_cell()->omega());
+        //jw.single("omega", unit_cell()->omega());
         
         jw.single("timers", ts);
     }
@@ -503,7 +504,7 @@ void Global::create_storage_file()
 
 void Global::update()
 {
-    unit_cell_->update();
+    //unit_cell_->update();
     reciprocal_lattice_->update();
     step_function_->update();
 }

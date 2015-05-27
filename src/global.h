@@ -113,7 +113,7 @@ class Global
 
         Reciprocal_lattice* reciprocal_lattice_;
 
-        Unit_cell* unit_cell_;
+        //===!!!! Unit_cell* unit_cell_;
 
         /// Base communicator.
         Communicator comm_;
@@ -179,13 +179,13 @@ class Global
             parse_input();
 
             /* create new empty unit cell */
-            unit_cell_ = new Unit_cell(esm_type_, comm_, processing_unit_);
+            //== unit_cell_ = new Unit_cell(esm_type_, comm_, processing_unit_);
         }
             
         ~Global()
         {
             clear();
-            delete unit_cell_;
+            //delete unit_cell_;
         }
 
         void set_lmax_apw(int lmax_apw__)
@@ -213,52 +213,54 @@ class Global
             num_mag_dims_ = num_mag_dims__;
         }
 
-        inline int lmax_apw()
+        inline int lmax_apw() const
         {
             return lmax_apw_;
         }
 
-        inline int lmmax_apw()
+        inline int lmmax_apw() const
         {
             return Utils::lmmax(lmax_apw_);
         }
         
-        inline int lmax_pw()
+        inline int lmax_pw() const
         {
             return lmax_pw_;
         }
 
-        inline int lmmax_pw()
+        inline int lmmax_pw() const
         {
             return Utils::lmmax(lmax_pw_);
         }
         
-        inline int lmax_rho()
+        inline int lmax_rho() const
         {
             return lmax_rho_;
         }
 
-        inline int lmmax_rho()
+        inline int lmmax_rho() const
         {
             return Utils::lmmax(lmax_rho_);
         }
         
-        inline int lmax_pot()
+        inline int lmax_pot() const
         {
             return lmax_pot_;
         }
 
-        inline int lmax_beta()
+        inline int lmax_beta() const
         {
-            return unit_cell_->lmax_beta();
+            STOP();
+            return -1;
+            //return unit_cell_->lmax_beta();
         }
 
-        inline int lmmax_pot()
+        inline int lmmax_pot() const
         {
             return Utils::lmmax(lmax_pot_);
         }
 
-        inline double aw_cutoff()
+        inline double aw_cutoff() const
         {
             return aw_cutoff_;
         }
@@ -370,7 +372,7 @@ class Global
             return false;
         }
         
-        inline std::vector<int>& mpi_grid_dims()
+        inline std::vector<int> const& mpi_grid_dims() const
         {
             return mpi_grid_dims_;
         }
@@ -435,10 +437,10 @@ class Global
             return reciprocal_lattice_;
         }
 
-        inline Unit_cell* unit_cell()
-        {
-            return unit_cell_;
-        }
+        //== inline Unit_cell* unit_cell()
+        //== {
+        //==     return unit_cell_;
+        //== }
 
         inline Communicator& comm()
         {
