@@ -16,6 +16,8 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 {
     Timer t("sirius::Real_space_prj::Real_space_prj");
 
+    pw_cutoff__ *= mask_alpha__;
+
     std::cout << "pw_cutoff__" << pw_cutoff__ << std::endl;
 
     //== for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
