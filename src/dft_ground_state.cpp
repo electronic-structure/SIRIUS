@@ -29,12 +29,12 @@ namespace sirius {
 double DFT_ground_state::energy_enuc()
 {
     double enuc = 0.0;
-    if (parameters_.unit_cell()->full_potential())
+    if (unit_cell_.full_potential())
     {
-        for (size_t ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (size_t ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
-            int ia = parameters_.unit_cell()->spl_num_atoms((int)ialoc);
-            int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
+            int ia = unit_cell_.spl_num_atoms((int)ialoc);
+            int zn = unit_cell_.atom(ia)->type()->zn();
             enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
         }
         parameters_.comm().allreduce(&enuc, 1);
@@ -46,50 +46,50 @@ double DFT_ground_state::energy_enuc()
 double DFT_ground_state::core_eval_sum()
 {
     double sum = 0.0;
-    for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
-        sum += parameters_.unit_cell()->atom_symmetry_class(ic)->core_eval_sum() * 
-               parameters_.unit_cell()->atom_symmetry_class(ic)->num_atoms();
+        sum += unit_cell_.atom_symmetry_class(ic)->core_eval_sum() * 
+               unit_cell_.atom_symmetry_class(ic)->num_atoms();
     }
     return sum;
 }
 
 void DFT_ground_state::move_atoms(int istep)
 {
-    mdarray<double, 2> atom_force(3, parameters_.unit_cell()->num_atoms());
+    mdarray<double, 2> atom_force(3, unit_cell_.num_atoms());
     forces(atom_force);
     if (verbosity_level >= 6 && parameters_.comm().rank() == 0)
     {
         printf("\n");
         printf("Atomic forces\n");
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
             printf("ia : %i, force : %12.6f %12.6f %12.6f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
         }
     }
 
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        vector3d<double> pos = parameters_.unit_cell()->atom(ia)->position();
+        vector3d<double> pos = unit_cell_.atom(ia)->position();
 
-        vector3d<double> forcef = parameters_.unit_cell()->get_fractional_coordinates(vector3d<double>(&atom_force(0, ia)));
+        vector3d<double> forcef = unit_cell_.get_fractional_coordinates(vector3d<double>(&atom_force(0, ia)));
 
         for (int x = 0; x < 3; x++) pos[x] += forcef[x];
         
-        parameters_.unit_cell()->atom(ia)->set_position(pos);
+        unit_cell_.atom(ia)->set_position(pos);
     }
 }
 
-void DFT_ground_state::update()
-{
-    parameters_.update();
-    potential_->update();
-    kset_->update();
-}
+//void DFT_ground_state::update()
+//{
+//    parameters_.update();
+//    potential_->update();
+//    kset_->update();
+//}
 
 void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {
-    Force::total_force(parameters_, potential_, density_, kset_, forces__);
+    Force::total_force(parameters_, unit_cell_, potential_, density_, kset_, forces__);
 }
 
 void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
@@ -182,7 +182,7 @@ void DFT_ground_state::print_info()
     
     if (parameters_.comm().rank() == 0)
     {
-        if (parameters_.unit_cell()->full_potential())
+        if (unit_cell_.full_potential())
         {
             double total_core_leakage = 0.0;
             printf("\n");
@@ -195,9 +195,9 @@ void DFT_ground_state::print_info()
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
 
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                double core_leakage = parameters_.unit_cell()->atom(ia)->symmetry_class()->core_leakage();
+                double core_leakage = unit_cell_.atom(ia)->symmetry_class()->core_leakage();
                 total_core_leakage += core_leakage;
                 printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
                 if (parameters_.num_mag_dims())
@@ -251,7 +251,7 @@ void DFT_ground_state::print_info()
         printf("\n"); 
 
         printf("valence_eval_sum          : %18.8f\n", evalsum1);
-        if (parameters_.unit_cell()->full_potential())
+        if (unit_cell_.full_potential())
         {
             printf("core_eval_sum             : %18.8f\n", evalsum2);
             printf("kinetic energy            : %18.8f\n", ekin);
@@ -274,7 +274,7 @@ void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
-        if (parameters_.unit_cell()->full_potential()) printf("core leakage : %18.8f\n", core_leak);
+        if (unit_cell_.full_potential()) printf("core leakage : %18.8f\n", core_leak);
     }
 }
 

@@ -148,7 +148,7 @@ class Atom_symmetry_class
         void generate_radial_integrals();
         
         /// Return symmetry class id.
-        inline int id()
+        inline int id() const
         {
             return id_;
         }
@@ -160,64 +160,64 @@ class Atom_symmetry_class
         }
         
         /// Return number of atoms belonging to the current symmetry class.
-        inline int num_atoms()
+        inline int num_atoms() const
         {
             return (int)atom_id_.size();
         }
 
-        inline int atom_id(int idx)
+        inline int atom_id(int idx) const
         {
             return atom_id_[idx];
         }
 
-        inline double radial_function(int ir, int idx)
+        inline double radial_function(int ir, int idx) const
         {
             return radial_functions_(ir, idx, 0);
         }
 
-        inline double r_deriv_radial_function(int ir, int idx)
+        inline double r_deriv_radial_function(int ir, int idx) const
         {
             return radial_functions_(ir, idx, 1);
         }
         
-        inline double h_spherical_integral(int i1, int i2)
+        inline double h_spherical_integral(int i1, int i2) const
         {
             return h_spherical_integrals_(i1, i2);
         }
 
-        inline double o_radial_integral(int l, int order1, int order2)
+        inline double o_radial_integral(int l, int order1, int order2) const
         {
             return o_radial_integrals_(l, order1, order2);
         }
         
-        inline double so_radial_integral(int l, int order1, int order2)
+        inline double so_radial_integral(int l, int order1, int order2) const
         {
             return so_radial_integrals_(l, order1, order2);
         }
         
-        double core_charge_density(int ir)
+        inline double core_charge_density(int ir) const
         {
             assert(ir >= 0 && ir < (int)core_charge_density_.size());
 
             return core_charge_density_[ir];
         }
 
-        inline Atom_type* atom_type()
+        inline Atom_type const* atom_type() const
         {
             return atom_type_;
         }
 
-        inline double core_eval_sum()
+        inline double core_eval_sum() const
         {
             return core_eval_sum_;
         }
 
-        inline double core_leakage()
+        inline double core_leakage() const
         {
             return core_leakage_;
         }
         
-        inline int num_aw_descriptors()
+        inline int num_aw_descriptors() const
         {
             return (int)aw_descriptors_.size();
         }
@@ -227,7 +227,7 @@ class Atom_symmetry_class
             return aw_descriptors_[idx];
         }
         
-        inline int num_lo_descriptors()
+        inline int num_lo_descriptors() const
         {
             return (int)lo_descriptors_.size();
         }

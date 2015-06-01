@@ -31,6 +31,7 @@
 
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
+// TODO: template parameter to flag that the G-vectors are not used
 namespace sirius
 {
 
@@ -69,14 +70,14 @@ class Periodic_function
         
         typedef typename type_wrapper<T>::complex_t complex_t; 
         
-        Unit_cell* unit_cell_;
+        Unit_cell const& unit_cell_;
 
-        Step_function* step_function_;
+        Step_function const* step_function_;
+
+        Communicator const& comm_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
-
-        electronic_structure_method_t esm_type_;
 
         /// Local part of muffin-tin functions.
         mdarray<Spheric_function<spectral, T>, 1> f_mt_local_;
@@ -98,17 +99,15 @@ class Periodic_function
         /// number of plane-wave expansion coefficients
         int num_gvec_;
 
-        Communicator comm_;
-
         splindex<block> spl_fft_size_;
 
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
-            for (int ialoc = 0; ialoc < (int)unit_cell_->spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = unit_cell_->spl_num_atoms(ialoc);
-                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
+                int ia = unit_cell_.spl_num_atoms(ialoc);
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_.atom(ia)->radial_grid());
             }
         }
         
@@ -121,7 +120,11 @@ class Periodic_function
     public:
 
         /// Constructor
-        Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec, Communicator const& comm__);
+        Periodic_function(Unit_cell const& unit_cell__,
+                          Step_function const* step_function__,
+                          FFT3D<CPU>* fft__,
+                          int angular_domain_size,
+                          Communicator const& comm__);
         
         /// Destructor
         ~Periodic_function();
@@ -161,7 +164,7 @@ class Periodic_function
         /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr__)
         {
-            f_mt_ = mdarray<T, 3>(mt_ptr__, angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
+            f_mt_ = mdarray<T, 3>(mt_ptr__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
             set_local_mt_ptr();
         }
 
@@ -177,8 +180,29 @@ class Periodic_function
             return f_mt_local_(ialoc);
         }
 
+        inline Spheric_function<spectral, T> const& f_mt(int ialoc) const
+        {
+            return f_mt_local_(ialoc);
+        }
+
         template <index_domain_t index_domain>
         inline T& f_it(int ir)
+        {
+            switch (index_domain)
+            {
+                case local:
+                {
+                    return f_it_local_(ir);
+                }
+                case global:
+                {
+                    return f_it_(ir);
+                }
+            }
+        }
+
+        template <index_domain_t index_domain>
+        inline T const& f_it(int ir) const
         {
             switch (index_domain)
             {
@@ -203,7 +227,7 @@ class Periodic_function
             int ja, jr;
             double dr, tp[2];
         
-            if (unit_cell_->is_point_in_mt(vc, ja, jr, dr, tp)) 
+            if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) 
             {
                 int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
                 std::vector<double> rlm(angular_domain_size_);
@@ -212,7 +236,7 @@ class Periodic_function
                 for (int lm = 0; lm < angular_domain_size_; lm++)
                 {
                     double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / 
-                               (unit_cell_->atom(ja)->type()->radial_grid(jr + 1) - unit_cell_->atom(ja)->type()->radial_grid(jr));
+                               (unit_cell_.atom(ja)->type()->radial_grid(jr + 1) - unit_cell_.atom(ja)->type()->radial_grid(jr));
         
                     p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
                 }
@@ -275,6 +299,45 @@ class Periodic_function
         mdarray<complex_t, 1>& f_pw()
         {
             return f_pw_;
+        }
+
+        static T inner(Periodic_function<T> const* f__, Periodic_function<T> const* g__)
+        {
+            assert(f__->fft_ == g__->fft_);
+            assert(f__->step_function_ == g__->step_function_);
+            assert(&f__->unit_cell_ == &g__->unit_cell_);
+            assert(&f__->comm_ == &g__->comm_);
+            
+            splindex<block> spl_fft_size(f__->fft_->size(), f__->comm_.size(), f__->comm_.rank());
+        
+            T result = 0.0;
+        
+            if (f__->step_function_ == nullptr)
+            {
+                for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
+                    result += type_wrapper<T>::conjugate(f__->f_it<local>(irloc)) * g__->f_it<local>(irloc);
+            }
+            else
+            {
+                for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
+                {
+                    int ir = (int)spl_fft_size[irloc];
+                    result += type_wrapper<T>::conjugate(f__->f_it<local>(irloc)) * g__->f_it<local>(irloc) * 
+                              f__->step_function_->theta_it(ir);
+                }
+            }
+                    
+            result *= (f__->unit_cell_.omega() / f__->fft_->size());
+            
+            if (f__->unit_cell_.full_potential())
+            {
+                for (int ialoc = 0; ialoc < (int)f__->unit_cell_.spl_num_atoms().local_size(); ialoc++)
+                    result += sirius::inner(f__->f_mt(ialoc), g__->f_mt(ialoc));
+            }
+        
+            f__->comm_.allreduce(&result, 1);
+        
+            return result;
         }
 };
 

@@ -44,6 +44,8 @@ class Band
         /// Global set of parameters
         Global& parameters_;
 
+        Unit_cell& unit_cell_;
+
         /// BLACS grid for distributed linear algebra operations.
         BLACS_grid const& blacs_grid_;
 
@@ -457,8 +459,11 @@ class Band
     public:
         
         /// Constructor
-        Band(Global& parameters__, BLACS_grid const& blacs_grid__) 
+        Band(Global& parameters__,
+             Unit_cell& unit_cell__,
+             BLACS_grid const& blacs_grid__) 
             : parameters_(parameters__),
+              unit_cell_(unit_cell__),
               blacs_grid_(blacs_grid__)
         {
             fft_ = parameters_.fft();

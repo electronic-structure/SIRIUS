@@ -30,12 +30,16 @@ namespace sirius {
 // TODO: everything here must be documented
 // TODO: better naming convention: q is meaningless
 
-Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_density_order(9)
+Potential::Potential(Simulation_context& ctx__)
+    : ctx_(ctx__),
+      parameters_(ctx__.parameters()),
+      unit_cell_(ctx__.unit_cell()),
+      comm_(ctx__.comm()),
+      fft_(ctx__.fft()),
+      pseudo_density_order(9)
 {
     Timer t("sirius::Potential::Potential");
     
-    fft_ = parameters_.fft();
-
     switch (parameters_.esm_type())
     {
         case full_potential_lapwlo:
@@ -68,42 +72,43 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
     }
 
-    int ngv = (use_second_variation) ? 0 : parameters_.reciprocal_lattice()->num_gvec();
+    //int ngv = (use_second_variation) ? 0 : parameters_.reciprocal_lattice()->num_gvec();
 
-    effective_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
+    effective_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
+
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), ngv, parameters_.comm());
+        effective_magnetic_field_[j] = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
     
-    hartree_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
+    hartree_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
     hartree_potential_->allocate(false, true);
     
-    xc_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), 0, parameters_.comm());
+    xc_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
     xc_potential_->allocate(false, false);
     
-    xc_energy_density_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), 0, parameters_.comm());
+    xc_energy_density_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
     xc_energy_density_->allocate(false, false);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
     {
-        local_potential_ = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
+        local_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, 0, comm_);
         local_potential_->allocate(false, true);
         local_potential_->zero();
 
         generate_local_potential();
     }
 
-    vh_el_ = mdarray<double, 1>(parameters_.unit_cell()->num_atoms());
+    vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
 
-    update();
+    init();
 
     //mixer_ = new Linear_mixer<double>(size(), parameters_.iip_.mixer_input_section_.beta_, parameters_.comm());
     std::vector<double> weights;
     mixer_ = new Broyden_modified_mixer<double>(size(),
-                                       parameters_.iip_.mixer_input_section_.max_history_,
-                                       parameters_.iip_.mixer_input_section_.beta_,
+                                       parameters_.mixer_input_section().max_history_,
+                                       parameters_.mixer_input_section().beta_,
                                        weights,
-                                       parameters_.comm());
+                                       comm_);
 }
 
 Potential::~Potential()
@@ -119,21 +124,22 @@ Potential::~Potential()
     delete mixer_;
 }
 
-void Potential::update()
+void Potential::init()
 {
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
+        auto rl = ctx_.reciprocal_lattice();
         /* compute values of spherical Bessel functions at MT boundary */
-        sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, parameters_.unit_cell()->num_atom_types(), 
-                                         parameters_.reciprocal_lattice()->num_gvec_shells_inner());
+        sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, unit_cell_.num_atom_types(), 
+                                         rl->num_gvec_shells_inner());
         sbessel_mt_.allocate();
 
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
+            for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
             {
                 gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order + 1, 
-                                       parameters_.reciprocal_lattice()->gvec_shell_len(igs) * parameters_.unit_cell()->atom_type(iat)->mt_radius(), 
+                                       rl->gvec_shell_len(igs) * unit_cell_.atom_type(iat)->mt_radius(), 
                                        &sbessel_mt_(0, iat, igs));
             }
         }
@@ -146,20 +152,20 @@ void Potential::update()
          * and use relation between Bessel and spherical Bessel functions: 
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
          */
-        sbessel_mom_ = mdarray<double, 3>(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types(), 
-                                          parameters_.reciprocal_lattice()->num_gvec_shells_inner());
+        sbessel_mom_ = mdarray<double, 3>(parameters_.lmax_rho() + 1, unit_cell_.num_atom_types(), 
+                                          rl->num_gvec_shells_inner());
         sbessel_mom_.allocate();
         sbessel_mom_.zero();
 
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            sbessel_mom_(0, iat, 0) = std::pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
-            for (int igs = 1; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
+            sbessel_mom_(0, iat, 0) = std::pow(unit_cell_.atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
+            for (int igs = 1; igs < rl->num_gvec_shells_inner(); igs++)
             {
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                 {
-                    sbessel_mom_(l, iat, igs) = std::pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l + 2) * 
-                                                sbessel_mt_(l + 1, iat, igs) / parameters_.reciprocal_lattice()->gvec_shell_len(igs);
+                    sbessel_mom_(l, iat, igs) = std::pow(unit_cell_.atom_type(iat)->mt_radius(), l + 2) * 
+                                                sbessel_mt_(l + 1, iat, igs) / rl->gvec_shell_len(igs);
                 }
             }
         }
@@ -171,12 +177,12 @@ void Potential::update()
          *
          * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi]
          */
-        gamma_factors_R_ = mdarray<double, 2>(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types());
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        gamma_factors_R_ = mdarray<double, 2>(parameters_.lmax_rho() + 1, unit_cell_.num_atom_types());
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
             {
-                long double Rl = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l);
+                long double Rl = pow(unit_cell_.atom_type(iat)->mt_radius(), l);
 
                 int n_min = (2 * l + 3);
                 int n_max = (2 * l + 1) + (2 * pseudo_density_order + 2);
@@ -207,14 +213,14 @@ void Potential::update()
 //    mdarray<double_complex, 1> fpw(parameters_.reciprocal_lattice()->num_gvec());
 //    fpw.zero();
 //
-//    mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
-//    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//    mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), unit_cell_.num_atoms());
+//    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //    {
 //        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
 //        {
-//            svlm(lm, ia) = new Spline<double>(parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+//            svlm(lm, ia) = new Spline<double>(unit_cell_.atom(ia)->type()->radial_grid());
 //            
-//            for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
+//            for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
 //                (*svlm(lm, ia))[ir] = effective_potential_->f_mt<global>(lm, ir, ia);
 //            
 //            svlm(lm, ia)->interpolate();
@@ -234,9 +240,9 @@ void Potential::update()
 //
 //            jl.interpolate(parameters_.reciprocal_lattice()->gvec_len(ig));
 //
-//            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //            {
-//                int iat = parameters_.unit_cell()->atom(ia)->type_id();
+//                int iat = unit_cell_.atom(ia)->type_id();
 //
 //                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
 //                {
@@ -263,14 +269,14 @@ void Potential::update()
 //                        }
 //                    }
 //                }
-//                fpw(ig) += zt * fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / parameters_.unit_cell()->omega();
+//                fpw(ig) += zt * fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / unit_cell_.omega();
 //            }
 //        }
 //    }
 //    parameters_.comm().allreduce(fpw.at<CPU>(), (int)fpw.size());
 //    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
 //    
-//    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //    {
 //        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
 //    }
@@ -432,7 +438,7 @@ void Potential::update()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->size(); ir++)
-        fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * parameters_.step_function(ir);
+        fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * ctx_.step_function()->theta_it(ir);
 
     #ifdef _PRINT_OBJECT_CHECKSUM_
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
@@ -455,7 +461,7 @@ void Potential::generate_pw_coefs()
         for (int i = 0; i < parameters_.num_mag_dims(); i++)
         {
             for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * parameters_.step_function(ir);
+                fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * ctx_.step_function()->theta_it(ir);
     
             fft_->transform(-1);
             fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_magnetic_field(i)->f_pw(0));
@@ -550,7 +556,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
                                              Periodic_function<double>* rho_core, 
                                              Periodic_function<double>* magnetization[3])
 {
-    Timer t("sirius::Potential::generate_effective_potential", parameters_.comm());
+    Timer t("sirius::Potential::generate_effective_potential", comm_);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
@@ -564,7 +570,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         effective_potential_->add(hartree_potential_);
 
         /* create temporary function for rho + rho_core */
-        Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
+        Periodic_function<double>* rhovc = new Periodic_function<double>(unit_cell_, step_function_, fft_, 0, comm_);
         rhovc->allocate(false, true);
         rhovc->zero();
         rhovc->add(rho);
@@ -592,10 +598,10 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     {
         zero();
 
-        auto rl = parameters_.reciprocal_lattice();
+        auto rl = ctx_.reciprocal_lattice();
 
         /* create temporary function for rho + rho_core */
-        Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
+        Periodic_function<double>* rhovc = new Periodic_function<double>(unit_cell_, step_function_, fft_, 0, comm_);
         rhovc->allocate(false, true);
         rhovc->zero();
         rhovc->add(rho);
@@ -632,17 +638,17 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
         {
             int ig = rl->spl_num_gvec(igloc);
-            vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2);
+            vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / std::pow(ctx_.reciprocal_lattice()->gvec_len(ig), 2);
             energy_vha_ += real(conj(rho->f_pw(ig)) * vtmp[igloc]);
             vtmp[igloc] += effective_potential_->f_pw(ig);
         }
-        parameters_.comm().allreduce(&energy_vha_, 1);
-        energy_vha_ *= parameters_.unit_cell()->omega();
+        comm_.allreduce(&energy_vha_, 1);
+        energy_vha_ *= unit_cell_.omega();
 
         auto offsets = rl->spl_num_gvec().offsets();
         auto counts = rl->spl_num_gvec().counts();
         //parameters_.comm().allgather(&vtmp[0], rl->spl_num_gvec().local_size(), &hartree_potential_->f_pw(0), &counts[0], &offsets[0]);
-        parameters_.comm().allgather(&vtmp[0], (int)rl->spl_num_gvec().local_size(), &effective_potential_->f_pw(0), &counts[0], &offsets[0]);
+        comm_.allgather(&vtmp[0], (int)rl->spl_num_gvec().local_size(), &effective_potential_->f_pw(0), &counts[0], &offsets[0]);
 
         //for (int ig = 0; ig < rl->num_gvec(); ig++)
         //    effective_potential_->f_pw(ig) += hartree_potential_->f_pw(ig);
@@ -666,8 +672,7 @@ void Potential::generate_d_mtrx()
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
-        auto uc = parameters_.unit_cell();
-        auto rl = parameters_.reciprocal_lattice();
+        auto rl = ctx_.reciprocal_lattice();
 
         /* get plane-wave coefficients of effective potential */
         fft_->input(&effective_potential_->f_it<global>(0));
@@ -685,9 +690,9 @@ void Potential::generate_d_mtrx()
             veff.allocate_on_device();
             veff.copy_to_device();
 
-            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                 auto type = parameters_.unit_cell()->atom_type(iat);
+                 auto type = unit_cell_.atom_type(iat);
                  type->uspp().q_pw.allocate_on_device();
                  type->uspp().q_pw.copy_to_device();
             }
@@ -702,9 +707,9 @@ void Potential::generate_d_mtrx()
         }
         #endif
 
-        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            auto atom_type = uc->atom_type(iat);
+            auto atom_type = unit_cell_.atom_type(iat);
             int nbf = atom_type->mt_basis_size();
             matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type->num_atoms()); 
 
@@ -741,7 +746,7 @@ void Potential::generate_d_mtrx()
                 for (int i = 0; i < atom_type->num_atoms(); i++)
                 {
                     int ia = atom_type->atom_id(i);
-                    for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
+                    for (int x = 0; x < 3; x++) atom_pos(x, i) = unit_cell_.atom(ia)->position(x);
                 }
                 atom_pos.allocate_on_device();
                 atom_pos.copy_to_device();
@@ -763,7 +768,7 @@ void Potential::generate_d_mtrx()
                 #endif
             }
 
-            parameters_.comm().allreduce(d_tmp.at<CPU>(), (int)d_tmp.size());
+            comm_.allreduce(d_tmp.at<CPU>(), (int)d_tmp.size());
 
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type->num_atoms(); i++)
@@ -782,17 +787,17 @@ void Potential::generate_d_mtrx()
 
                         if (xi1 == xi2)
                         {
-                            uc->atom(ia)->d_mtrx(xi1, xi2) = real(d_tmp(idx12, i)) * uc->omega() +
+                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = real(d_tmp(idx12, i)) * unit_cell_.omega() +
                                                              atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
                         }
                         else
                         {
-                            uc->atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * uc->omega();
-                            uc->atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * uc->omega();
+                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * unit_cell_.omega();
+                            unit_cell_.atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * unit_cell_.omega();
                             if (lm1 == lm2)
                             {
-                                uc->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                                uc->atom(ia)->d_mtrx(xi2, xi1) += atom_type->uspp().d_mtrx_ion(idxrf2, idxrf1);
+                                unit_cell_.atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                                unit_cell_.atom(ia)->d_mtrx(xi2, xi1) += atom_type->uspp().d_mtrx_ion(idxrf2, idxrf1);
                             }
                         }
                     }
@@ -803,9 +808,9 @@ void Potential::generate_d_mtrx()
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
         {
-            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                 auto type = uc->atom_type(iat);
+                 auto type = unit_cell_.atom_type(iat);
                  type->uspp().q_pw.deallocate_on_device();
             }
         }
@@ -900,8 +905,8 @@ void Potential::set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
     assert(parameters_.num_spins() == 2);
     
     // set temporary array wrapper
-    mdarray<double,4> beffmt_tmp(beffmt, parameters_.lmmax_pot(), parameters_.unit_cell()->max_num_mt_points(), 
-                                 parameters_.unit_cell()->num_atoms(), parameters_.num_mag_dims());
+    mdarray<double,4> beffmt_tmp(beffmt, parameters_.lmmax_pot(), unit_cell_.max_num_mt_points(), 
+                                 unit_cell_.num_atoms(), parameters_.num_mag_dims());
     mdarray<double,2> beffit_tmp(beffit, fft_->size(), parameters_.num_mag_dims());
     
     if (parameters_.num_mag_dims() == 1)
@@ -933,32 +938,32 @@ void Potential::zero()
 
 void Potential::update_atomic_potential()
 {
-    for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
-       int ia = parameters_.unit_cell()->atom_symmetry_class(ic)->atom_id(0);
-       int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
+       int ia = unit_cell_.atom_symmetry_class(ic)->atom_id(0);
+       int nmtp = unit_cell_.atom(ia)->num_mt_points();
        
        std::vector<double> veff(nmtp);
        
        for (int ir = 0; ir < nmtp; ir++) veff[ir] = y00 * effective_potential_->f_mt<global>(0, ir, ia);
 
-       parameters_.unit_cell()->atom_symmetry_class(ic)->set_spherical_potential(veff);
+       const_cast<Atom_symmetry_class*>(unit_cell_.atom_symmetry_class(ic))->set_spherical_potential(veff);
     }
     
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         double* veff = &effective_potential_->f_mt<global>(0, 0, ia);
         
         double* beff[] = {nullptr, nullptr, nullptr};
         for (int i = 0; i < parameters_.num_mag_dims(); i++) beff[i] = &effective_magnetic_field_[i]->f_mt<global>(0, 0, ia);
         
-        parameters_.unit_cell()->atom(ia)->set_nonspherical_potential(veff, beff);
+        unit_cell_.atom(ia)->set_nonspherical_potential(veff, beff);
     }
 }
 
 void Potential::save()
 {
-    if (parameters_.comm().rank() == 0)
+    if (comm_.rank() == 0)
     {
         HDF5_tree fout(storage_file_name, false);
 
@@ -968,12 +973,12 @@ void Potential::save()
             effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
 
         //== fout["effective_potential"].create_node("free_atom_potential");
-        //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        //== for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         //== {
-        //==     fout["effective_potential"]["free_atom_potential"].write(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
+        //==     fout["effective_potential"]["free_atom_potential"].write(iat, unit_cell_.atom_type(iat)->free_atom_potential());
         //== }
     }
-    parameters_.comm().barrier();
+    comm_.barrier();
 }
 
 void Potential::load()
@@ -985,39 +990,38 @@ void Potential::load()
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
     
-    //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-    //==     fout["effective_potential"]["free_atom_potential"].read(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
+    //== for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    //==     fout["effective_potential"]["free_atom_potential"].read(iat, unit_cell_.atom_type(iat)->free_atom_potential());
 
-    if (parameters_.unit_cell()->full_potential()) update_atomic_potential();
+    if (unit_cell_.full_potential()) update_atomic_potential();
 }
 
 void Potential::generate_local_potential()
 {
     Timer t("sirius::Potential::generate_local_potential");
 
-    auto rl = parameters_.reciprocal_lattice();
-    auto uc = parameters_.unit_cell();
+    auto rl = ctx_.reciprocal_lattice();
 
-    mdarray<double, 2> vloc_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+    mdarray<double, 2> vloc_radial_integrals(unit_cell_.num_atom_types(), rl->num_gvec_shells_inner());
 
     /* split G-shells between MPI ranks */
-    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), parameters_.comm().size(), parameters_.comm().rank());
+    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), comm_.size(), comm_.rank());
 
     #pragma omp parallel
     {
         /* splines for all atom types */
-        std::vector< Spline<double> > sa(uc->num_atom_types());
+        std::vector< Spline<double> > sa(unit_cell_.num_atom_types());
         
-        for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) sa[iat] = Spline<double>(unit_cell_.atom_type(iat)->radial_grid());
     
         #pragma omp for
         for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
         {
             int igs = (int)spl_gshells[igsloc];
 
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = uc->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
 
                 if (igs == 0)
                 {
@@ -1043,8 +1047,8 @@ void Potential::generate_local_potential()
         }
     }
 
-    int ld = uc->num_atom_types();
-    parameters_.comm().allgather(vloc_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
+    int ld = unit_cell_.num_atom_types();
+    comm_.allgather(vloc_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
                                  static_cast<int>(ld * spl_gshells.local_size()));
 
     std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());

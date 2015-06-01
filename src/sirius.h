@@ -63,7 +63,7 @@
 #include "density.h"
 #include "force.h"
 #include "dft_ground_state.h"
-#include "simulcaiton.h"
+#include "simulation.h"
 
 #endif // __SIRIUS_H__
 

@@ -53,6 +53,8 @@ class K_point
         /// Global set of parameters.
         Global& parameters_;
 
+        Unit_cell const& unit_cell_;
+
         BLACS_grid const& blacs_grid_;
 
         /// Alias for FFT driver.
@@ -221,10 +223,14 @@ class K_point
 
     public:
 
-        initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+        Input_parameters::iterative_solver_input_section iterative_solver_input_section_;
 
         /// Constructor
-        K_point(Global& parameters__, double* vk__, double weight__, BLACS_grid const& blacs_grid__);
+        K_point(Global& parameters__,
+                Unit_cell const& unit_cell__,
+                double* vk__,
+                double weight__,
+                BLACS_grid const& blacs_grid__);
 
         ~K_point()
         {
@@ -359,7 +365,7 @@ class K_point
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
                 {
-                    return parameters_.unit_cell()->mt_basis_size() + num_gkvec();
+                    return unit_cell_.mt_basis_size() + num_gkvec();
                     break;
                 }
                 case ultrasoft_pseudopotential:
@@ -379,7 +385,7 @@ class K_point
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
                 {
-                    return parameters_.unit_cell()->mt_basis_size();
+                    return unit_cell_.mt_basis_size();
                     break;
                 }
                 case ultrasoft_pseudopotential:

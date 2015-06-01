@@ -250,7 +250,7 @@ vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
 int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                               vector3d<int> is_shift__,
                                               mdarray<double, 2>& kp__,
-                                              std::vector<double>& wk__)
+                                              std::vector<double>& wk__) const
 {
     int nktot = k_mesh__[0] * k_mesh__[1] * k_mesh__[2];
 
@@ -294,7 +294,7 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     return nknr;
 }
 
-void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
+void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
 {
     for (int isym = 0; isym < num_mag_sym(); isym++)
     {
@@ -344,7 +344,7 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
 void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    FFT3D<CPU>* fft__,
                                    splindex<block>& spl_num_gvec__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_function");
     mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
@@ -391,7 +391,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
 
 void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
                                    FFT3D<CPU>* fft__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_vector_z_component");
     
@@ -436,7 +436,7 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
 }
 
 void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_function_mt");
 
@@ -481,7 +481,7 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
 }
 
 void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
-                                             Communicator& comm__)
+                                             Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
 

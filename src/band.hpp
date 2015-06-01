@@ -30,15 +30,15 @@
 //== {
 //==     Timer t("sirius::Band::apply_uj_correction");
 //== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
-//==         if (parameters_.unit_cell()->atom(ia)->apply_uj_correction())
+//==         if (unit_cell_.atom(ia)->apply_uj_correction())
 //==         {
-//==             Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
+//==             Atom_type* type = unit_cell_.atom(ia)->type();
 //== 
-//==             int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
+//==             int offset = unit_cell_.atom(ia)->offset_wf();
 //== 
-//==             int l = parameters_.unit_cell()->atom(ia)->uj_correction_l();
+//==             int l = unit_cell_.atom(ia)->uj_correction_l();
 //== 
 //==             int nrf = type->indexr().num_rf(l);
 //== 
@@ -49,7 +49,7 @@
 //==                     int idx2 = type->indexb_by_lm_order(lm2, order2);
 //==                     for (int order1 = 0; order1 < nrf; order1++)
 //==                     {
-//==                         double ori = parameters_.unit_cell()->atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
+//==                         double ori = unit_cell_.atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
 //==                         
 //==                         for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
 //==                         {
@@ -61,25 +61,25 @@
 //==                                 if (sblock == uu)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 0) += z1 * 
-//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
+//==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
 //==                                 }
 //== 
 //==                                 if (sblock == dd)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 1) += z1 *
-//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
+//==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
 //==                                 }
 //== 
 //==                                 if (sblock == ud)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 2) += z1 *
-//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
+//==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
 //==                                 }
 //==                                 
 //==                                 if (sblock == du)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 3) += z1 *
-//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
+//==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
 //==                                 }
 //==                             }
 //==                         }
@@ -96,7 +96,7 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
                             mdarray<double_complex, 2>& alm__,
                             mdarray<double_complex, 2>& halm__)
 {
-    Atom* atom = parameters_.unit_cell()->atom(ia__);
+    Atom* atom = unit_cell_.atom(ia__);
     Atom_type* type = atom->type();
 
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is available
@@ -133,11 +133,11 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
 //==         std::vector<double_complex> zv(ngk_loc);
 //==         
 //==         #pragma omp for
-//==         for (int j = 0; j < parameters_.unit_cell()->mt_aw_basis_size(); j++)
+//==         for (int j = 0; j < unit_cell_.mt_aw_basis_size(); j++)
 //==         {
-//==             int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-//==             int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-//==             Atom* atom = parameters_.unit_cell()->atom(ia);
+//==             int ia = unit_cell_.mt_aw_basis_descriptor(j).ia;
+//==             int xi = unit_cell_.mt_aw_basis_descriptor(j).xi;
+//==             Atom* atom = unit_cell_.atom(ia);
 //==             Atom_type* type = atom->type();
 //==             int lm1 = type->indexb(xi).lm;
 //==             int idxrf1 = type->indexb(xi).idxrf; 
@@ -299,7 +299,7 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
         {
             if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
-                Atom* atom = parameters_.unit_cell()->atom(ia);
+                Atom* atom = unit_cell_.atom(ia);
                 int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
                 int idxrf1 = kp->gklo_basis_descriptor_row(irow).idxrf; 
 
@@ -318,14 +318,14 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 //==     // index of column apw coefficients in apw array
 //==     int apw_offset_col = kp->apw_offset_col();
 //==     
-//==     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> halm(kp->num_gkvec_row(), unit_cell_.max_mt_aw_basis_size());
 //== 
 //==     h.zero();
 //== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
-//==         Atom* atom = parameters_.unit_cell()->atom(ia);
+//==         Atom* atom = unit_cell_.atom(ia);
 //==         Atom_type* type = atom->type();
 //==        
 //==         // generate conjugated coefficients
@@ -362,8 +362,6 @@ void Band::get_h_o_diag(K_point const* kp__,
     h_diag__.resize(kp__->num_gkvec_loc());
     o_diag__.resize(kp__->num_gkvec_loc());
 
-    auto uc = parameters_.unit_cell();
-    
     /* local H contribution */
     for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
     {
@@ -374,11 +372,11 @@ void Band::get_h_o_diag(K_point const* kp__,
 
     /* non-local H contribution */
     auto const& beta_gk_t = kp__->beta_gk_t();
-    matrix<double_complex> beta_gk_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_loc());
+    matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
 
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = uc->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type->mt_basis_size();
         matrix<double_complex> d_sum(nbf, nbf);
         d_sum.zero();
@@ -398,13 +396,13 @@ void Band::get_h_o_diag(K_point const* kp__,
             {
                 for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    d_sum(xi1, xi2) += uc->atom(ia)->d_mtrx(xi1, xi2);
-                    if (need_o_diag) q_sum(xi1, xi2) += uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                    d_sum(xi1, xi2) += unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+                    if (need_o_diag) q_sum(xi1, xi2) += unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
                 }
             }
         }
 
-        int ofs = uc->atom_type(iat)->offset_lo();
+        int ofs = unit_cell_.atom_type(iat)->offset_lo();
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
         {
             for (int xi = 0; xi < nbf; xi++) beta_gk_tmp(xi, igk_loc) = beta_gk_t(igk_loc, ofs + xi);

@@ -57,6 +57,7 @@ class Force
                                  dmatrix<double_complex>& dm__);
 
         static void ibs_force(Global& parameters__,
+                              Unit_cell& unit_cell_,
                               Band* band__,
                               K_point* kp__,
                               mdarray<double, 2>& ffac__,
@@ -65,6 +66,7 @@ class Force
     public:
 
         static void total_force(Global& parameters__,
+                                Unit_cell& unit_cell_,
                                 Potential* potential__,
                                 Density* density__,
                                 K_set* ks__,

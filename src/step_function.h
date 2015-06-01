@@ -69,13 +69,12 @@ namespace sirius {
 class Step_function
 {
     private:
+
+        Unit_cell const& unit_cell_;
         
         /// Reciprocal lattice for the unit cell.
-        Reciprocal_lattice* reciprocal_lattice_;
+        Reciprocal_lattice const* reciprocal_lattice_;
         
-        /// FFT interface.
-        FFT3D<CPU>* fft_;
-    
         /// Plane wave expansion coefficients of the step function.
         std::vector<double_complex> step_function_pw_;
         
@@ -84,10 +83,15 @@ class Step_function
 
         Communicator comm_;
        
+        void init(FFT3D<CPU>* fft__);
+
     public:
         
         /// Constructor
-        Step_function(Reciprocal_lattice* reciprocal_lattice__, FFT3D<CPU>* fft__, Communicator const& comm__);
+        Step_function(Unit_cell const& unit_cell_, 
+                      Reciprocal_lattice const* reciprocal_lattice__,
+                      FFT3D<CPU>* fft__,
+                      Communicator const& comm__);
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
         /**
@@ -100,20 +104,18 @@ class Step_function
         mdarray<double, 2> get_step_function_form_factors(int num_gsh);
        
         /// Return plane-wave coefficient of the step function.
-        inline double_complex theta_pw(int ig__)
+        inline double_complex theta_pw(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)step_function_pw_.size());
             return step_function_pw_[ig__];
         }
 
         /// Return the value of the step function for the grid point ir.
-        inline double theta_it(int ir__)
+        inline double theta_it(int ir__) const
         {
             assert(ir__ >= 0 && ir__ < (int)step_function_.size());
             return step_function_[ir__];
         }
-
-        void update();
 };
 
 };

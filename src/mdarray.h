@@ -813,5 +813,7 @@ class mdarray: public mdarray_base<T, N>
 // Alias for matrix
 template <typename T> using matrix = mdarray<T, 2>;
 
+// TODO:: allgather for mdarray with last index distributed
+
 #endif // __MDARRAY_H__
 

@@ -502,11 +502,4 @@ void Global::create_storage_file()
     comm_.barrier();
 }
 
-void Global::update()
-{
-    //unit_cell_->update();
-    reciprocal_lattice_->update();
-    step_function_->update();
-}
-
 }

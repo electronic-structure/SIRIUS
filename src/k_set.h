@@ -61,21 +61,25 @@ class K_set
 
         double band_gap_;
 
+        Unit_cell& unit_cell_;
+
         Communicator comm_k_;
 
         BLACS_grid const& blacs_grid_;
 
         void init()
         {
-            band_ = new Band(parameters_, blacs_grid_);
+            band_ = new Band(parameters_, unit_cell_, blacs_grid_);
         }
 
     public:
 
         K_set(Global& parameters__,
+              Unit_cell& unit_cell__,
               Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__)
             : parameters_(parameters__),
+              unit_cell_(unit_cell__),
               comm_k_(comm_k__),
               blacs_grid_(blacs_grid__)
         {
@@ -83,12 +87,14 @@ class K_set
         }
 
         K_set(Global& parameters__,
+              Unit_cell const& unit_cell__,
               Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__,
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
             : parameters_(parameters__),
+              unit_cell_(unit_cell_),
               comm_k_(comm_k__),
               blacs_grid_(blacs_grid__)
         {
@@ -99,10 +105,7 @@ class K_set
             std::vector<double> wk;
             if (use_symmetry__)
             {
-                nk = parameters_.unit_cell()->symmetry()->get_irreducible_reciprocal_mesh(k_grid__,
-                                                                                          k_shift__,
-                                                                                          kp,
-                                                                                          wk);
+                nk = unit_cell_.symmetry()->get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
             }
             else
             {
@@ -221,7 +224,7 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            kpoints_.push_back(new K_point(parameters_, vk__, weight__, blacs_grid_));
+            kpoints_.push_back(new K_point(parameters_, unit_cell_, vk__, weight__, blacs_grid_));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)

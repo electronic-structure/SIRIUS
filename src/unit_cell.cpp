@@ -668,7 +668,7 @@ void Unit_cell::write_json()
     }
 }
 
-void Unit_cell::set_lattice_vectors(double* a0__, double* a1__, double* a2__)
+void Unit_cell::set_lattice_vectors(double const* a0__, double const* a1__, double const* a2__)
 {
     for (int x = 0; x < 3; x++)
     {
@@ -762,7 +762,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     //== }
 }
 
-bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2])
+bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
 {
     vector3d<int> ntr;
     
@@ -822,7 +822,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
     return false;
 }
 
-void Unit_cell::generate_radial_functions() 
+void Unit_cell::generate_radial_functions()
 {
     Timer t("sirius::Unit_cell::generate_radial_functions");
    

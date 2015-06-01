@@ -138,15 +138,15 @@ class Global
         Real_space_prj* real_space_prj_;
 
         /// Initiail input parameters from the input file and command line.
-        initial_input_parameters iip_;
+        Input_parameters iip_;
 
-        initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
-        initial_input_parameters::xc_functionals_input_section xc_functionals_input_section_;
-        initial_input_parameters::mixer_input_section mixer_input_section_;
+        Input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+        Input_parameters::xc_functionals_input_section xc_functionals_input_section_;
+        Mixer_input_section mixer_input_section_;
 
         int work_load_;
     
-        Global(initial_input_parameters iip__, Communicator const& comm__)
+        Global(Input_parameters iip__, Communicator const& comm__)
             : initialized_(false), 
               lmax_apw_(lmax_apw_default), 
               lmax_pw_(-1), 
@@ -175,7 +175,7 @@ class Global
 
             iterative_solver_input_section_ = iip_.iterative_solver_input_section_;
             xc_functionals_input_section_ = iip_.xc_functionals_input_section_;
-            mixer_input_section_ = iip_.mixer_input_section_;
+            mixer_input_section_ = iip_.mixer_input_section();
             parse_input();
 
             /* create new empty unit cell */

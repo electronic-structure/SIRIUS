@@ -63,12 +63,12 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
     Timer t("sirius::K_set::find_eigen_states", comm_k_);
     
-    if (precompute && parameters_.unit_cell()->full_potential())
+    if (precompute && unit_cell_.full_potential())
     {
         potential->generate_pw_coefs();
         potential->update_atomic_potential();
-        parameters_.unit_cell()->generate_radial_functions();
-        parameters_.unit_cell()->generate_radial_integrals();
+        unit_cell_.generate_radial_functions();
+        unit_cell_.generate_radial_integrals();
     }
 
     parameters_.work_load_ = 0;
@@ -172,10 +172,10 @@ void K_set::find_band_occupancies()
             }
         }
 
-        if (fabs(ne - parameters_.unit_cell()->num_valence_electrons()) < 1e-11) break;
+        if (fabs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
 
         sp = s;
-        s = (ne > parameters_.unit_cell()->num_valence_electrons()) ? -1 : 1;
+        s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
 
         de = s * fabs(de);
 
@@ -189,9 +189,9 @@ void K_set::find_band_occupancies()
 
     band_gap_ = 0.0;
     
-    int nve = static_cast<int>(parameters_.unit_cell()->num_valence_electrons() + 1e-12);
+    int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
     if (parameters_.num_spins() == 2 || 
-        (fabs(nve - parameters_.unit_cell()->num_valence_electrons()) < 1e-12 && nve % 2 == 0))
+        (fabs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0))
     {
         /* find band gap */
         std::vector< std::pair<double, double> > eband;
@@ -229,7 +229,7 @@ void K_set::print_info()
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
         printf("  ik                vk                    weight  num_gkvec");
-        if (parameters_.unit_cell()->full_potential()) printf("   gklo_basis_size");
+        if (unit_cell_.full_potential()) printf("   gklo_basis_size");
         printf("\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
@@ -245,7 +245,7 @@ void K_set::print_info()
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
-            if (parameters_.unit_cell()->full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+            if (unit_cell_.full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
             
             pout.printf("\n");
         }

@@ -54,6 +54,8 @@ class DFT_ground_state
 
         Global& parameters_;
 
+        Unit_cell& unit_cell_;
+
         Potential* potential_;
 
         Density* density_;
@@ -84,9 +86,9 @@ class DFT_ground_state
                     int ig = rl->spl_num_gvec(igloc);
 
                     double_complex rho(0, 0);
-                    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
                     {
-                        rho += rl->gvec_phase_factor<local>(igloc, ia) * double(parameters_.unit_cell()->atom(ia)->zn());
+                        rho += rl->gvec_phase_factor<local>(igloc, ia) * double(unit_cell_.atom(ia)->zn());
                     }
                     double g2 = pow(rl->gvec_len(ig), 2);
                     if (ig)
@@ -95,7 +97,7 @@ class DFT_ground_state
                     }
                     else
                     {
-                        ewald_g_pt -= pow(parameters_.unit_cell()->num_electrons(), 2) / alpha / 4; // constant term in QE comments
+                        ewald_g_pt -= pow(unit_cell_.num_electrons(), 2) / alpha / 4; // constant term in QE comments
                     }
                 }
 
@@ -103,12 +105,12 @@ class DFT_ground_state
                 ewald_g += ewald_g_pt;
             }
             parameters_.comm().allreduce(&ewald_g, 1);
-            ewald_g *= (twopi / parameters_.unit_cell()->omega());
+            ewald_g *= (twopi / unit_cell_.omega());
 
             /* remove self-interaction */
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                ewald_g -= sqrt(alpha / pi) * std::pow(parameters_.unit_cell()->atom(ia)->zn(), 2);
+                ewald_g -= sqrt(alpha / pi) * std::pow(unit_cell_.atom(ia)->zn(), 2);
             }
 
             double ewald_r = 0;
@@ -117,14 +119,14 @@ class DFT_ground_state
                 double ewald_r_pt = 0;
 
                 #pragma omp for
-                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
                 {
-                    for (int i = 1; i < parameters_.unit_cell()->num_nearest_neighbours(ia); i++)
+                    for (int i = 1; i < unit_cell_.num_nearest_neighbours(ia); i++)
                     {
-                        int ja = parameters_.unit_cell()->nearest_neighbour(i, ia).atom_id;
-                        double d = parameters_.unit_cell()->nearest_neighbour(i, ia).distance;
-                        ewald_r_pt += 0.5 * parameters_.unit_cell()->atom(ia)->zn() * 
-                                            parameters_.unit_cell()->atom(ja)->zn() * gsl_sf_erfc(sqrt(alpha) * d) / d;
+                        int ja = unit_cell_.nearest_neighbour(i, ia).atom_id;
+                        double d = unit_cell_.nearest_neighbour(i, ia).distance;
+                        ewald_r_pt += 0.5 * unit_cell_.atom(ia)->zn() * 
+                                            unit_cell_.atom(ja)->zn() * gsl_sf_erfc(sqrt(alpha) * d) / d;
                     }
                 }
 
@@ -137,8 +139,14 @@ class DFT_ground_state
 
     public:
 
-        DFT_ground_state(Global& parameters__, Potential* potential__, Density* density__, K_set* kset__, int use_symmetry__)
-            : parameters_(parameters__), 
+        DFT_ground_state(Global& parameters__,
+                         Unit_cell& unit_cell__,
+                         Potential* potential__,
+                         Density* density__,
+                         K_set* kset__,
+                         int use_symmetry__)
+            : parameters_(parameters__),
+              unit_cell_(unit_cell__),
               potential_(potential__), 
               density_(density__), 
               kset_(kset__),
@@ -175,14 +183,14 @@ class DFT_ground_state
         
         double energy_vxc()
         {
-            return inner(parameters_, density_->rho(), potential_->xc_potential());
+            return Periodic_function<double>::inner(density_->rho(), potential_->xc_potential());
         }
         
         double energy_exc()
         {
-            double exc = inner(parameters_, density_->rho(), potential_->xc_energy_density());
+            double exc = Periodic_function<double>::inner(density_->rho(), potential_->xc_energy_density());
             if (parameters_.esm_type() == ultrasoft_pseudopotential) 
-                exc += inner(parameters_, density_->rho_pseudo_core(), potential_->xc_energy_density());
+                exc += Periodic_function<double>::inner(density_->rho_pseudo_core(), potential_->xc_energy_density());
             return exc;
         }
 
@@ -190,7 +198,7 @@ class DFT_ground_state
         {
             double ebxc = 0.0;
             for (int j = 0; j < parameters_.num_mag_dims(); j++) 
-                ebxc += inner(parameters_, density_->magnetization(j), potential_->effective_magnetic_field(j));
+                ebxc += Periodic_function<double>::inner(density_->magnetization(j), potential_->effective_magnetic_field(j));
             return ebxc;
         }
 
@@ -300,15 +308,15 @@ class DFT_ground_state
                     density_->magnetization(j)->fft_transform(-1);
             }
 
-            parameters_.unit_cell()->symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
+            unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-                parameters_.unit_cell()->symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
+                unit_cell_.symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
 
             if (parameters_.num_mag_dims() == 1)
             {
-                parameters_.unit_cell()->symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), fft, comm);
-                parameters_.unit_cell()->symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
+                unit_cell_.symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), fft, comm);
+                unit_cell_.symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
             }
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)

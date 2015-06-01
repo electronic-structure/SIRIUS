@@ -234,7 +234,7 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     return v;
 }
 
-vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__)
+vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> const& lattice_vectors__)
 {
     sirius::Timer t("sirius::Utils::find_translation_limits");
 

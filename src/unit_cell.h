@@ -269,12 +269,12 @@ class Unit_cell
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
          *  unit cell volume. 
          */
-        void set_lattice_vectors(double* a0__, double* a1__, double* a2__);
+        void set_lattice_vectors(double const* a0__, double const* a1__, double const* a2__);
        
         /// Find the cluster of nearest neighbours around each atom
         void find_nearest_neighbours(double cluster_radius);
 
-        bool is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]);
+        bool is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const;
         
         void generate_radial_functions();
 
@@ -297,31 +297,31 @@ class Unit_cell
         } 
 
         template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a) const
         {
             return lattice_vectors_ * a;
         }
 
-        inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a) const
         {
             return inverse_lattice_vectors_ * a;
         }
         
         /// Unit cell volume.
-        inline double omega()
+        inline double omega() const
         {
             return omega_;
         }
         
         /// Pointer to atom by atom id.
-        inline Atom* atom(int id__)
+        inline Atom* atom(int id__) const
         {
             assert(id__ >= 0 && id__ < (int)atoms_.size());
             return atoms_[id__];
         }
         
         /// Number of atom types.
-        inline int num_atom_types()
+        inline int num_atom_types() const
         {
             assert(atom_types_.size() == atom_type_id_map_.size());
 
@@ -329,20 +329,20 @@ class Unit_cell
         }
 
         /// Pointer to atom type by label.
-        inline Atom_type* atom_type(const std::string label)
+        inline Atom_type* atom_type(std::string const label)
         {
             return atom_types_[atom_type_id_map_[label]];
         }
- 
+
         /// Pointer to atom type by internal id.
-        inline Atom_type* atom_type(int id__)
+        inline Atom_type* atom_type(int id__) const
         {
             assert(id__ >= 0 && id__ < (int)atom_types_.size());
             return atom_types_[id__];
         }
        
         /// Number of atom symmetry classes.
-        inline int num_atom_symmetry_classes()
+        inline int num_atom_symmetry_classes() const
         {
             return (int)atom_symmetry_classes_.size();
         }
@@ -352,45 +352,50 @@ class Unit_cell
         {
             return atom_symmetry_classes_[id];
         }
+
+        inline Atom_symmetry_class const* atom_symmetry_class(int id) const
+        {
+            return atom_symmetry_classes_[id];
+        }
         
         /// Total number of electrons (core + valence)
-        inline double num_electrons()
+        inline double num_electrons() const
         {
             return num_electrons_;
         }
 
         /// Number of valence electrons
-        inline double num_valence_electrons()
+        inline double num_valence_electrons() const
         {
             return num_valence_electrons_;
         }
         
         /// Number of core electrons
-        inline double num_core_electrons()
+        inline double num_core_electrons() const
         {
             return num_core_electrons_;
         }
         
         /// Number of atoms in the unit cell.
-        inline int num_atoms()
+        inline int num_atoms() const
         {
             return (int)atoms_.size();
         }
        
         /// Maximum number of muffin-tin points across all atom types
-        inline int max_num_mt_points()
+        inline int max_num_mt_points() const
         {
             return max_num_mt_points_;
         }
         
         /// Total number of the augmented wave basis functions over all atoms
-        inline int mt_aw_basis_size()
+        inline int mt_aw_basis_size() const
         {
             return mt_aw_basis_size_;
         }
 
         /// Total number of local orbital basis functions over all atoms
-        inline int mt_lo_basis_size()
+        inline int mt_lo_basis_size() const
         {
             return mt_lo_basis_size_;
         }
@@ -400,37 +405,37 @@ class Unit_cell
          *  basis functions and the total number of local orbital basis functions across all atoms. It controls 
          *  the size of the muffin-tin part of the first-variational states and second-variational wave functions. 
          */
-        inline int mt_basis_size()
+        inline int mt_basis_size() const
         {
             return mt_basis_size_;
         }
         
         /// Maximum number of basis functions across all atom types
-        inline int max_mt_basis_size()
+        inline int max_mt_basis_size() const
         {
             return max_mt_basis_size_;
         }
 
         /// Maximum number of radial functions actoss all atom types
-        inline int max_mt_radial_basis_size()
+        inline int max_mt_radial_basis_size() const
         {
             return max_mt_radial_basis_size_;
         }
 
         /// Minimum muffin-tin radius
-        inline double min_mt_radius()
+        inline double min_mt_radius() const
         {
             return min_mt_radius_;
         }
 
         /// Maximum muffin-tin radius
-        inline double max_mt_radius()
+        inline double max_mt_radius() const
         {
             return max_mt_radius_;
         }
 
         /// Maximum number of AW basis functions across all atom types
-        inline int max_mt_aw_basis_size()
+        inline int max_mt_aw_basis_size() const
         {
             return max_mt_aw_basis_size_;
         }
@@ -440,63 +445,63 @@ class Unit_cell
             auto_rmt_ = auto_rmt__;
         }
 
-        inline int auto_rmt()
+        inline int auto_rmt() const
         {
             return auto_rmt_;
         }
         
-        void set_equivalent_atoms(int* equivalent_atoms__)
+        void set_equivalent_atoms(int const* equivalent_atoms__)
         {
             equivalent_atoms_.resize(num_atoms());
             memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
         }
         
-        inline splindex<block>& spl_num_atoms()
+        inline splindex<block> const& spl_num_atoms() const
         {
             return spl_num_atoms_;
         }
 
-        inline int spl_num_atoms(int i)
+        inline int spl_num_atoms(int i) const
         {
             return static_cast<int>(spl_num_atoms_[i]);
         }
         
-        inline splindex<block>& spl_num_atom_symmetry_classes()
+        inline splindex<block> const& spl_num_atom_symmetry_classes() const
         {
             return spl_num_atom_symmetry_classes_;
         }
 
-        inline int spl_num_atom_symmetry_classes(int i)
+        inline int spl_num_atom_symmetry_classes(int i) const
         {
             return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
         }
 
-        inline double volume_mt()
+        inline double volume_mt() const
         {
             return volume_mt_;
         }
 
-        inline double volume_it()
+        inline double volume_it() const
         {
             return volume_it_;
         }
 
-        inline int lmax_beta()
+        inline int lmax_beta() const
         {
             return lmax_beta_;
         }
 
-        inline bool full_potential()
+        inline bool full_potential() const
         {
             return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
         }
 
-        inline int num_nearest_neighbours(int ia)
+        inline int num_nearest_neighbours(int ia) const
         {
             return (int)nearest_neighbours_[ia].size();
         }
 
-        inline nearest_neighbour_descriptor& nearest_neighbour(int i, int ia)
+        inline nearest_neighbour_descriptor const& nearest_neighbour(int i, int ia) const
         {
             return nearest_neighbours_[ia][i];
         }
@@ -506,22 +511,22 @@ class Unit_cell
             return atom_pos_;
         }
 
-        inline mt_basis_descriptor& mt_aw_basis_descriptor(int idx)
+        inline mt_basis_descriptor const& mt_aw_basis_descriptor(int idx) const
         {
             return mt_aw_basis_descriptors_[idx];
         }
 
-        inline mt_basis_descriptor& mt_lo_basis_descriptor(int idx)
+        inline mt_basis_descriptor const& mt_lo_basis_descriptor(int idx) const
         {
             return mt_lo_basis_descriptors_[idx];
         }
 
-        inline Symmetry* symmetry()
+        inline Symmetry const* symmetry() const
         {
             return symmetry_;
         }
 
-        inline int num_beta_chunks()
+        inline int num_beta_chunks() const
         {
             return (int)beta_chunks_.size();
         }
@@ -531,12 +536,12 @@ class Unit_cell
             return beta_chunks_[idx];
         }
 
-        inline matrix3d<double>& lattice_vectors()
+        inline matrix3d<double> const& lattice_vectors() const
         {
             return lattice_vectors_;
         }
 
-        inline matrix3d<double>& reciprocal_lattice_vectors()
+        inline matrix3d<double> const& reciprocal_lattice_vectors() const
         {
             return reciprocal_lattice_vectors_;
         }
@@ -551,25 +556,21 @@ class Unit_cell
             return num_beta_t_;
         }
 
-        void import(initial_input_parameters const& iip__)
+        void import(Unit_cell_input_section const& inp__)
         {
-            auto unit_cell_input_section = iip__.unit_cell_input_section_;
-
-            for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
+            for (int iat = 0; iat < (int)inp__.labels_.size(); iat++)
             {
-                auto label = unit_cell_input_section.labels_[iat];
-                auto fname = unit_cell_input_section.atom_files_[label];
+                auto label = inp__.labels_[iat];
+                auto fname = inp__.atom_files_.at(label);
                 add_atom_type(label, fname, esm_type_);
-                for (int ia = 0; ia < (int)unit_cell_input_section.coordinates_[iat].size(); ia++)
+                for (int ia = 0; ia < (int)inp__.coordinates_[iat].size(); ia++)
                 {
-                    auto v = unit_cell_input_section.coordinates_[iat][ia];
+                    auto v = inp__.coordinates_[iat][ia];
                     add_atom(label, &v[0], &v[3]);
                 }
             }
 
-            set_lattice_vectors(unit_cell_input_section.lattice_vectors_[0], 
-                                unit_cell_input_section.lattice_vectors_[1], 
-                                unit_cell_input_section.lattice_vectors_[2]);
+            set_lattice_vectors(inp__.lattice_vectors_[0], inp__.lattice_vectors_[1], inp__.lattice_vectors_[2]);
         }
 };
     
