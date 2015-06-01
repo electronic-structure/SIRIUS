@@ -57,17 +57,17 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
-    auto fft_gpu = parameters_.fft_gpu();
+    auto fft_gpu = ctx_.fft_gpu();
     if (fft_gpu->num_fft() != 1) TERMINATE("Current implementation requires batch size of 1");
     #endif
 
     std::vector<std::thread> fft_threads;
 
-    auto fft = parameters_.fft();
+    auto fft = ctx_.fft();
     int num_spins = parameters_.num_spins();
     int num_mag_dims = parameters_.num_mag_dims();
     int num_fv_states = parameters_.num_fv_states();
-    double omega = parameters_.unit_cell()->omega();
+    double omega = unit_cell_.omega();
 
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {

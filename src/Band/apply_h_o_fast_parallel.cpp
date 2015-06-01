@@ -29,8 +29,6 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
 
     kp__->collect_all_bands(spl_phi, &phi_slice__(0, 0),  &hphi_slab__(0, N__));
 
-    auto uc = parameters_.unit_cell();
-
     if (parameters_.processing_unit() == CPU)
     {
         /* set intial ophi */
@@ -51,11 +49,11 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
     #endif
 
     int offs = 0;
-    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    for (int ib = 0; ib < unit_cell_.num_beta_chunks(); ib++)
     {
         /* number of beta-projectors in the current chunk */
-        int nbeta =  uc->beta_chunk(ib).num_beta_;
-        int natoms = uc->beta_chunk(ib).num_atoms_;
+        int nbeta =  unit_cell_.beta_chunk(ib).num_beta_;
+        int natoms = unit_cell_.beta_chunk(ib).num_atoms_;
 
         /* wrapper for <beta|phi> with required dimensions */
         matrix<double_complex> beta_gk;
@@ -84,10 +82,10 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
 
         kp__->generate_beta_phi(nbeta, phi_slab__, n__, N__, beta_gk, beta_phi);
 
-        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk, d_mtrx_packed__,
+        kp__->add_non_local_contribution(natoms, nbeta, unit_cell_.beta_chunk(ib).desc_, beta_gk, d_mtrx_packed__,
                                          packed_mtrx_offset__, beta_phi, hphi_slab__, n__, N__, complex_one, work);
         
-        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk, q_mtrx_packed__,
+        kp__->add_non_local_contribution(natoms, nbeta, unit_cell_.beta_chunk(ib).desc_, beta_gk, q_mtrx_packed__,
                                          packed_mtrx_offset__, beta_phi, ophi_slab__, n__, N__, complex_one, work);
         
         offs += nbeta;

@@ -72,12 +72,14 @@ class Simulation_parameters
         int num_fft_threads_;
 
         int num_fft_workers_;
-        
-        electronic_structure_method_t esm_type_;
 
-        Input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+        electronic_structure_method_t esm_type_;
         
-        Input_parameters::xc_functionals_input_section xc_functionals_input_section_;
+        int cyclic_block_size_;
+
+        Iterative_solver_input_section iterative_solver_input_section_;
+        
+        XC_functionals_input_section xc_functionals_input_section_;
         
         Mixer_input_section mixer_input_section_;
         
@@ -196,14 +198,17 @@ class Simulation_parameters
               gen_evp_solver_type_(ev_lapack),
               processing_unit_(CPU),
               smearing_width_(0.001), 
-              esm_type_(full_potential_lapwlo)
+              esm_type_(full_potential_lapwlo),
+              cyclic_block_size_(32)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
     
-            iterative_solver_input_section_ = iip__.iterative_solver_input_section_;
-            xc_functionals_input_section_   = iip__.xc_functionals_input_section_;
+            iterative_solver_input_section_ = iip__.iterative_solver_input_section();
+            xc_functionals_input_section_   = iip__.xc_functionals_input_section();
             mixer_input_section_            = iip__.mixer_input_section();
+
+            cyclic_block_size_ = iip__.common_input_section_.cyclic_block_size_;
         }
             
         ~Simulation_parameters()
@@ -403,6 +408,11 @@ class Simulation_parameters
         {
             return num_fft_workers_;
         }
+
+        inline int cyclic_block_size() const
+        {
+            return cyclic_block_size_;
+        }
     
         /// Initialize the global variables
         void initialize();
@@ -457,9 +467,19 @@ class Simulation_parameters
             return gen_evp_solver_type_;
         }
 
-        Mixer_input_section const& mixer_input_section() const
+        inline Mixer_input_section const& mixer_input_section() const
         {
             return mixer_input_section_;
+        }
+
+        inline XC_functionals_input_section const& xc_functionals_input_section() const
+        {
+            return xc_functionals_input_section_;
+        }
+
+        inline Iterative_solver_input_section const& iterative_solver_input_section() const
+        {
+            return iterative_solver_input_section_;
         }
 };
 

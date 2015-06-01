@@ -138,10 +138,12 @@ class Global
         Real_space_prj* real_space_prj_;
 
         /// Initiail input parameters from the input file and command line.
-        Input_parameters iip_;
+        //Input_parameters iip_;
 
-        Input_parameters::iterative_solver_input_section iterative_solver_input_section_;
-        Input_parameters::xc_functionals_input_section xc_functionals_input_section_;
+        Iterative_solver_input_section iterative_solver_input_section_;
+
+        XC_functionals_input_section xc_functionals_input_section_;
+
         Mixer_input_section mixer_input_section_;
 
         int work_load_;
@@ -167,15 +169,14 @@ class Global
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),
               reciprocal_lattice_(nullptr),
-              comm_(comm__),
-              iip_(iip__)
+              comm_(comm__)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
 
-            iterative_solver_input_section_ = iip_.iterative_solver_input_section_;
-            xc_functionals_input_section_ = iip_.xc_functionals_input_section_;
-            mixer_input_section_ = iip_.mixer_input_section();
+            iterative_solver_input_section_ = iip__.iterative_solver_input_section();
+            xc_functionals_input_section_   = iip__.xc_functionals_input_section();
+            mixer_input_section_            = iip__.mixer_input_section();
             parse_input();
 
             /* create new empty unit cell */

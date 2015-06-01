@@ -320,13 +320,11 @@ void Potential::xc_mt(Periodic_function<double>* rho,
 {
     Timer t2("sirius::Potential::xc_mt");
 
-    auto uc = parameters_.unit_cell();
-
-    for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = uc->spl_num_atoms(ialoc);
-        auto& rgrid = uc->atom(ia)->radial_grid();
-        int nmtp = uc->atom(ia)->num_mt_points();
+        int ia = unit_cell_.spl_num_atoms(ialoc);
+        auto& rgrid = unit_cell_.atom(ia)->radial_grid();
+        int nmtp = unit_cell_.atom(ia)->num_mt_points();
 
         /* backward transform density from Rlm to (theta, phi) */
         auto rho_tp = sht_->transform(rho->f_mt(ialoc));
@@ -461,7 +459,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    splindex<block> spl_fft_size(fft_->size(), parameters_.comm().size(), parameters_.comm().rank());
+    splindex<block> spl_fft_size(fft_->size(), ctx_.comm().size(), ctx_.comm().rank());
     int num_loc_points = (int)spl_fft_size.local_size();
     
     /* check for negative values */
@@ -576,7 +574,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     {
         /* gather vsigma */
         Smooth_periodic_function<spatial, double> vsigma_it(fft_);
-        parameters_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), (int)spl_fft_size.global_offset(), num_loc_points);
+        ctx_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), (int)spl_fft_size.global_offset(), num_loc_points);
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral> vsigma_pw = transform(vsigma_it);
@@ -625,7 +623,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    splindex<block> spl_fft_size(fft_->size(), parameters_.comm().size(), parameters_.comm().rank());
+    splindex<block> spl_fft_size(fft_->size(), ctx_.comm().size(), ctx_.comm().rank());
     int num_loc_points = (int)spl_fft_size.local_size();
     
     Smooth_periodic_function<spatial, double> rho_up_it(fft_);
@@ -803,9 +801,9 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         Smooth_periodic_function<spatial, double> vsigma_ud_it(fft_);
         Smooth_periodic_function<spatial, double> vsigma_dd_it(fft_);
         int global_offset = (int)spl_fft_size.global_offset();
-        parameters_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), global_offset, num_loc_points);
-        parameters_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), global_offset, num_loc_points);
-        parameters_.comm().allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), global_offset, num_loc_points);
+        ctx_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), global_offset, num_loc_points);
+        ctx_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), global_offset, num_loc_points);
+        ctx_.comm().allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), global_offset, num_loc_points);
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral> vsigma_uu_pw = transform(vsigma_uu_it);
@@ -868,9 +866,9 @@ void Potential::xc(Periodic_function<double>* rho,
                    Periodic_function<double>* bxc[3], 
                    Periodic_function<double>* exc)
 {
-    Timer t("sirius::Potential::xc", parameters_.comm());
+    Timer t("sirius::Potential::xc", ctx_.comm());
 
-    if (parameters_.xc_functionals_input_section_.xc_functional_names_.size() == 0)
+    if (parameters_.xc_functionals_input_section().xc_functional_names_.size() == 0)
     {
         vxc->zero();
         exc->zero();
@@ -880,13 +878,13 @@ void Potential::xc(Periodic_function<double>* rho,
 
     /* create list of XC functionals */
     std::vector<XC_functional*> xc_func;
-    for (int i = 0; i < (int)parameters_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    for (int i = 0; i < (int)parameters_.xc_functionals_input_section().xc_functional_names_.size(); i++)
     {
-        std::string xc_label = parameters_.xc_functionals_input_section_.xc_functional_names_[i];
+        std::string xc_label = parameters_.xc_functionals_input_section().xc_functional_names_[i];
         xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
     }
    
-    if (parameters_.unit_cell()->full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
+    if (ctx_.unit_cell().full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
     
     if (parameters_.num_spins() == 1)
     {

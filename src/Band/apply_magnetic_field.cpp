@@ -15,14 +15,14 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 
     Timer t("sirius::Band::apply_magnetic_field");
 
-    mdarray<double_complex, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
+    mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                   parameters_.num_mag_dims());
 
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
-        int mt_basis_size = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-        Atom* atom = parameters_.unit_cell()->atom(ia);
+        int offset = unit_cell_.atom(ia)->offset_wf();
+        int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
+        Atom* atom = unit_cell_.atom(ia);
         
         zm.zero();
         
@@ -100,7 +100,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 
     Timer t1("sirius::Band::apply_magnetic_field|it");
 
-    int wf_pw_offset = parameters_.unit_cell()->mt_basis_size();
+    int wf_pw_offset = unit_cell_.mt_basis_size();
     auto fft = fft_;
     #ifdef _GPU_
     auto fft_gpu = parameters_.fft_gpu();

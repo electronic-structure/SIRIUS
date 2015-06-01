@@ -137,6 +137,69 @@ struct Mixer_input_section
     }
 };
 
+struct XC_functionals_input_section
+{
+    /// List of XC functionals.
+    std::vector<std::string> xc_functional_names_;
+
+    /// Set default variables.
+    XC_functionals_input_section()
+    {
+        xc_functional_names_.push_back("XC_LDA_X");
+        xc_functional_names_.push_back("XC_LDA_C_VWN");
+    }
+
+    void read(JSON_tree const& parser)
+    {
+        if (parser.exist("xc_functionals"))
+        {
+            xc_functional_names_.clear();
+            for (int i = 0; i < parser["xc_functionals"].size(); i++)
+            {
+                std::string s;
+                parser["xc_functionals"][i] >> s;
+                xc_functional_names_.push_back(s);
+            }
+        }
+    }
+};
+
+struct Iterative_solver_input_section
+{
+    int num_steps_;
+    int subspace_size_;
+    double tolerance_;
+    std::string type_;
+    int converge_by_energy_;
+    int real_space_prj_;
+    double R_mask_scale_;
+    double mask_alpha_;
+
+    Iterative_solver_input_section() 
+        : num_steps_(4),
+          subspace_size_(4),
+          tolerance_(1e-5),
+          type_("davidson"),
+          converge_by_energy_(0),
+          real_space_prj_(0),
+          R_mask_scale_(1.5),
+          mask_alpha_(3)
+    {
+    }
+
+    void read(JSON_tree const& parser)
+    {
+        num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
+        subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
+        tolerance_          = parser["iterative_solver"]["tolerance"].get(tolerance_);
+        type_               = parser["iterative_solver"]["type"].get(type_);
+        converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
+        real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
+        R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
+        mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);
+    }
+};
+
 class Input_parameters
 {
     private:
@@ -144,6 +207,10 @@ class Input_parameters
         Unit_cell_input_section unit_cell_input_section_;
 
         Mixer_input_section mixer_input_section_;
+
+        XC_functionals_input_section xc_functionals_input_section_;
+
+        Iterative_solver_input_section iterative_solver_input_section_;
 
     public:
 
@@ -170,6 +237,16 @@ class Input_parameters
         inline Mixer_input_section const& mixer_input_section() const
         {
             return mixer_input_section_;
+        }
+
+        inline XC_functionals_input_section const& xc_functionals_input_section() const
+        {
+            return xc_functionals_input_section_;
+        }
+
+        inline Iterative_solver_input_section const& iterative_solver_input_section() const
+        {
+            return iterative_solver_input_section_;
         }
 
         struct common_input_section
@@ -214,70 +291,7 @@ class Input_parameters
             }
         } common_input_section_;
 
-        struct xc_functionals_input_section
-        {
-            /// List of XC functionals.
-            std::vector<std::string> xc_functional_names_;
-
-            /// Set default variables.
-            xc_functionals_input_section()
-            {
-                xc_functional_names_.push_back("XC_LDA_X");
-                xc_functional_names_.push_back("XC_LDA_C_VWN");
-            }
-
-            void read(JSON_tree const& parser)
-            {
-                if (parser.exist("xc_functionals"))
-                {
-                    xc_functional_names_.clear();
-                    for (int i = 0; i < parser["xc_functionals"].size(); i++)
-                    {
-                        std::string s;
-                        parser["xc_functionals"][i] >> s;
-                        xc_functional_names_.push_back(s);
-                    }
-                }
-            }
-        } xc_functionals_input_section_;
         
-        
-        struct iterative_solver_input_section
-        {
-            int num_steps_;
-            int subspace_size_;
-            double tolerance_;
-            std::string type_;
-            int converge_by_energy_;
-            int real_space_prj_;
-            double R_mask_scale_;
-            double mask_alpha_;
-
-            iterative_solver_input_section() 
-                : num_steps_(4),
-                  subspace_size_(4),
-                  tolerance_(1e-5),
-                  type_("davidson"),
-                  converge_by_energy_(0),
-                  real_space_prj_(0),
-                  R_mask_scale_(1.5),
-                  mask_alpha_(3)
-            {
-            }
-
-            void read(JSON_tree const& parser)
-            {
-                num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
-                subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
-                tolerance_          = parser["iterative_solver"]["tolerance"].get(tolerance_);
-                type_               = parser["iterative_solver"]["type"].get(type_);
-                converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
-                real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
-                R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
-                mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);
-            }
-
-        } iterative_solver_input_section_;
 };
 
 };

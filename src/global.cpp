@@ -30,89 +30,89 @@ namespace sirius {
 
 void Global::parse_input()
 {
-    mpi_grid_dims_  = iip_.common_input_section_.mpi_grid_dims_;
-    num_fv_states_  = iip_.common_input_section_.num_fv_states_;
-    smearing_width_ = iip_.common_input_section_.smearing_width_;
+    //mpi_grid_dims_  = iip_.common_input_section_.mpi_grid_dims_;
+    //num_fv_states_  = iip_.common_input_section_.num_fv_states_;
+    //smearing_width_ = iip_.common_input_section_.smearing_width_;
     
-    std::string evsn[] = {iip_.common_input_section_.std_evp_solver_type_, iip_.common_input_section_.gen_evp_solver_type_};
-    ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
+    //std::string evsn[] = {iip_.common_input_section_.std_evp_solver_type_, iip_.common_input_section_.gen_evp_solver_type_};
+    //ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
-    for (int i = 0; i < 2; i++)
-    {
-        std::string name = evsn[i];
-        if (name == "lapack") 
-        {
-            *evst[i] = ev_lapack;
-        }
-        else if (name == "scalapack") 
-        {
-            *evst[i] = ev_scalapack;
-        }
-        else if (name == "elpa1") 
-        {
-            *evst[i] = ev_elpa1;
-        }
-        else if (name == "elpa2") 
-        {
-            *evst[i] = ev_elpa2;
-        }
-        else if (name == "magma") 
-        {
-            *evst[i] = ev_magma;
-        }
-        else if (name == "plasma")
-        {
-            *evst[i] = ev_plasma;
-        }
-        else if (name == "rs_gpu")
-        {
-            *evst[i] = ev_rs_gpu;
-        }
-        else if (name == "rs_cpu")
-        {
-            *evst[i] = ev_rs_cpu;
-        }
-        else
-        {
-            TERMINATE("wrong eigen value solver");
-        }
-    }
+    //for (int i = 0; i < 2; i++)
+    //{
+    //    std::string name = evsn[i];
+    //    if (name == "lapack") 
+    //    {
+    //        *evst[i] = ev_lapack;
+    //    }
+    //    else if (name == "scalapack") 
+    //    {
+    //        *evst[i] = ev_scalapack;
+    //    }
+    //    else if (name == "elpa1") 
+    //    {
+    //        *evst[i] = ev_elpa1;
+    //    }
+    //    else if (name == "elpa2") 
+    //    {
+    //        *evst[i] = ev_elpa2;
+    //    }
+    //    else if (name == "magma") 
+    //    {
+    //        *evst[i] = ev_magma;
+    //    }
+    //    else if (name == "plasma")
+    //    {
+    //        *evst[i] = ev_plasma;
+    //    }
+    //    else if (name == "rs_gpu")
+    //    {
+    //        *evst[i] = ev_rs_gpu;
+    //    }
+    //    else if (name == "rs_cpu")
+    //    {
+    //        *evst[i] = ev_rs_cpu;
+    //    }
+    //    else
+    //    {
+    //        TERMINATE("wrong eigen value solver");
+    //    }
+    //}
 
-    std::string pu = iip_.common_input_section_.processing_unit_;
-    if (pu == "cpu" || pu == "CPU")
-    {
-        processing_unit_ = CPU;
-    }
-    else if (pu == "gpu" || pu == "GPU")
-    {
-        processing_unit_ = GPU;
-    }
-    else
-    {
-        TERMINATE("wrong processing unit");
-    }
+    //std::string pu = iip_.common_input_section_.processing_unit_;
+    //if (pu == "cpu" || pu == "CPU")
+    //{
+    //    processing_unit_ = CPU;
+    //}
+    //else if (pu == "gpu" || pu == "GPU")
+    //{
+    //    processing_unit_ = GPU;
+    //}
+    //else
+    //{
+    //    TERMINATE("wrong processing unit");
+    //}
 
-    std::string esm = iip_.common_input_section_.electronic_structure_method_;
-    if (esm == "full_potential_lapwlo")
-    {
-        esm_type_ = full_potential_lapwlo;
-    }
-    else if (esm == "full_potential_pwlo")
-    {
-        esm_type_ = full_potential_pwlo;
-    }
-    else if (esm == "ultrasoft_pseudopotential")
-    {
-        esm_type_ = ultrasoft_pseudopotential;
-    } 
-    else if (esm == "norm_conserving_pseudopotential")
-    {
-        esm_type_ = norm_conserving_pseudopotential;
-    }
-    else
-    {
-        TERMINATE("wrong type of electronic structure method");
-    }
+    //std::string esm = iip_.common_input_section_.electronic_structure_method_;
+    //if (esm == "full_potential_lapwlo")
+    //{
+    //    esm_type_ = full_potential_lapwlo;
+    //}
+    //else if (esm == "full_potential_pwlo")
+    //{
+    //    esm_type_ = full_potential_pwlo;
+    //}
+    //else if (esm == "ultrasoft_pseudopotential")
+    //{
+    //    esm_type_ = ultrasoft_pseudopotential;
+    //} 
+    //else if (esm == "norm_conserving_pseudopotential")
+    //{
+    //    esm_type_ = norm_conserving_pseudopotential;
+    //}
+    //else
+    //{
+    //    TERMINATE("wrong type of electronic structure method");
+    //}
 }
 
 //== void Global::read_unit_cell_input()
@@ -329,9 +329,9 @@ void Global::print_info()
     for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
     printf("\n");
     printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
-    printf("number of OMP threads for FFT   : %i\n", iip_.common_input_section_.num_fft_threads_); 
-    printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
-    printf("cyclic block size               : %i\n", iip_.common_input_section_.cyclic_block_size_);
+    //printf("number of OMP threads for FFT   : %i\n", iip_.common_input_section_.num_fft_threads_); 
+    //printf("number of pthreads for each FFT : %i\n", iip_.common_input_section_.num_fft_workers_); 
+    //printf("cyclic block size               : %i\n", iip_.common_input_section_.cyclic_block_size_);
 
     //unit_cell_->print_info();
 
@@ -441,17 +441,17 @@ void Global::print_info()
         }
     }
     
-    printf("\n");
-    printf("XC functionals : \n");
-    for (int i = 0; i < (int)iip_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
-    {
-        std::string xc_label = iip_.xc_functionals_input_section_.xc_functional_names_[i];
-        XC_functional xc(xc_label, num_spins());
-        printf("\n");
-        printf("%s\n", xc_label.c_str());
-        printf("%s\n", xc.name().c_str());
-        printf("%s\n", xc.refs().c_str());
-    }
+    //printf("\n");
+    //printf("XC functionals : \n");
+    //for (int i = 0; i < (int)iip_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    //{
+    //    std::string xc_label = iip_.xc_functionals_input_section_.xc_functional_names_[i];
+    //    XC_functional xc(xc_label, num_spins());
+    //    printf("\n");
+    //    printf("%s\n", xc_label.c_str());
+    //    printf("%s\n", xc.name().c_str());
+    //    printf("%s\n", xc.refs().c_str());
+    //}
 }
 
 void Global::write_json_output()
@@ -466,7 +466,7 @@ void Global::write_json_output()
         jw.single("build_date", build_date);
         jw.single("num_ranks", comm_.size());
         jw.single("max_num_threads", Platform::max_num_threads());
-        jw.single("cyclic_block_size", iip_.common_input_section_.cyclic_block_size_);
+        //jw.single("cyclic_block_size", iip_.common_input_section_.cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);
         for (int i = 0; i < 3; i++) fftgrid[i] = fft_->size(i);

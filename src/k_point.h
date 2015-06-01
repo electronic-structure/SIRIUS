@@ -223,7 +223,7 @@ class K_point
 
     public:
 
-        Input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+        Iterative_solver_input_section iterative_solver_input_section_;
 
         /// Constructor
         K_point(Global& parameters__,

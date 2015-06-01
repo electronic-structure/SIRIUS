@@ -66,11 +66,9 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     
     std::vector<double> res_norm(num_bands);
 
-    auto uc = parameters_.unit_cell();
-
     /* find maximum number of beta-projectors across chunks */
     int nbmax = 0;
-    for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
+    for (int ib = 0; ib < unit_cell_.num_beta_chunks(); ib++) nbmax = std::max(nbmax, unit_cell_.beta_chunk(ib).num_beta_);
     
     /* size of <beta|phi>, D*<beta|phi> and <Gk|beta> */
     size_t kappa_size = 2 * nbmax * num_bands + num_gkvec_loc * nbmax;
@@ -103,11 +101,11 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     }
     
     /* offset in the packed array of on-site matrices */
-    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    mdarray<int, 1> packed_mtrx_offset(unit_cell_.num_atoms());
     int packed_mtrx_size = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {   
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         packed_mtrx_offset(ia) = packed_mtrx_size;
         packed_mtrx_size += nbf * nbf;
     }
@@ -117,15 +115,15 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     mdarray<double_complex, 1> q_mtrx_packed;
     if (with_overlap) q_mtrx_packed = mdarray<double_complex, 1>(packed_mtrx_size);
 
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
-                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
             }
         }
     }
