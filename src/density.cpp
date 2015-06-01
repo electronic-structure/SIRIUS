@@ -45,13 +45,13 @@ Density::Density(Simulation_context& ctx__)
 {
     fft_ = ctx_.fft();
 
-    rho_ = new Periodic_function<double>(unit_cell_, ctx_.step_function(), fft_, parameters_.lmmax_rho(), ctx_.comm());
+    rho_ = new Periodic_function<double>(ctx_, parameters_.lmmax_rho());
 
     /* core density of the pseudopotential method */
     if (parameters_.esm_type() == ultrasoft_pseudopotential || 
         parameters_.esm_type() == norm_conserving_pseudopotential)
     {
-        rho_pseudo_core_ = new Periodic_function<double>(unit_cell_, ctx_.step_function(), fft_, 0, ctx_.comm());
+        rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
         rho_pseudo_core_->allocate(false, true);
         rho_pseudo_core_->zero();
 
@@ -60,7 +60,7 @@ Density::Density(Simulation_context& ctx__)
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new Periodic_function<double>(unit_cell_, ctx_.step_function(), fft_, parameters_.lmmax_rho(), ctx_.comm());
+        magnetization_[i] = new Periodic_function<double>(ctx_, parameters_.lmmax_rho(), false);
     }
     
     /* never change this order!!! */

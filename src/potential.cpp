@@ -74,24 +74,24 @@ Potential::Potential(Simulation_context& ctx__)
 
     //int ngv = (use_second_variation) ? 0 : parameters_.reciprocal_lattice()->num_gvec();
 
-    effective_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
+    effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
+        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
     
-    hartree_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
+    hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
     hartree_potential_->allocate(false, true);
     
-    xc_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
+    xc_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
     xc_potential_->allocate(false, false);
     
-    xc_energy_density_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, parameters_.lmmax_pot(), comm_);
+    xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
     xc_energy_density_->allocate(false, false);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
     {
-        local_potential_ = new Periodic_function<double>(unit_cell_, step_function_, fft_, 0, comm_);
+        local_potential_ = new Periodic_function<double>(ctx_, 0);
         local_potential_->allocate(false, true);
         local_potential_->zero();
 
@@ -570,7 +570,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         effective_potential_->add(hartree_potential_);
 
         /* create temporary function for rho + rho_core */
-        Periodic_function<double>* rhovc = new Periodic_function<double>(unit_cell_, step_function_, fft_, 0, comm_);
+        Periodic_function<double>* rhovc = new Periodic_function<double>(ctx_, 0, false);
         rhovc->allocate(false, true);
         rhovc->zero();
         rhovc->add(rho);
@@ -601,7 +601,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         auto rl = ctx_.reciprocal_lattice();
 
         /* create temporary function for rho + rho_core */
-        Periodic_function<double>* rhovc = new Periodic_function<double>(unit_cell_, step_function_, fft_, 0, comm_);
+        Periodic_function<double>* rhovc = new Periodic_function<double>(ctx_, 0, false);
         rhovc->allocate(false, true);
         rhovc->zero();
         rhovc->add(rho);

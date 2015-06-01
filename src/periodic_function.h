@@ -28,6 +28,7 @@
 #include "mdarray.h"
 #include "spheric_function.h"
 #include "mixer.h"
+#include "simulation.h"
 
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
@@ -62,12 +63,15 @@ class Periodic_function
 { 
     protected:
 
-        Periodic_function(const Periodic_function<T>& src);
-
-        Periodic_function<T>& operator=(const Periodic_function<T>& src);
+        /* forbid copy constructor */
+        Periodic_function(const Periodic_function<T>& src) = delete;
+        
+        /* forbid assigment operator */
+        Periodic_function<T>& operator=(const Periodic_function<T>& src) = delete;
 
     private:
-        
+       
+        /// Complex counterpart for a given type T.
         typedef typename type_wrapper<T>::complex_t complex_t; 
         
         Unit_cell const& unit_cell_;
@@ -120,11 +124,9 @@ class Periodic_function
     public:
 
         /// Constructor
-        Periodic_function(Unit_cell const& unit_cell__,
-                          Step_function const* step_function__,
-                          FFT3D<CPU>* fft__,
-                          int angular_domain_size,
-                          Communicator const& comm__);
+        Periodic_function(Simulation_context& ctx__,
+                          int angular_domain_size__,
+                          bool alloc_pw__ = true);
         
         /// Destructor
         ~Periodic_function();
@@ -248,7 +250,7 @@ class Periodic_function
                 for (int ig = 0; ig < num_gvec_; ig++)
                 {
                     vector3d<double> vgc = parameters_.reciprocal_lattice()->gvec_cart(ig);
-                    p += real(f_pw_(ig) * exp(double_complex(0.0, vc * vgc)));
+                    p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
             }

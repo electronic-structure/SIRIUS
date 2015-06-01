@@ -23,20 +23,18 @@
  */
 
 template <typename T>
-Periodic_function<T>::Periodic_function(Unit_cell const& unit_cell__,
-                                        Step_function const* step_function__,
-                                        FFT3D<CPU>* fft__,
+Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
                                         int angular_domain_size__,
-                                        Communicator const& comm__)
-    : unit_cell_(unit_cell__), 
-      step_function_(step_function__),
-      comm_(comm__),
-      fft_(fft__),
+                                        bool alloc_pw__)
+    : unit_cell_(ctx__.unit_cell()), 
+      step_function_(ctx__.step_function()),
+      comm_(ctx__.comm()),
+      fft_(ctx__.fft()),
       angular_domain_size_(angular_domain_size__)
 {
     spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
     
-    f_pw_ = mdarray<double_complex, 1>(fft_->num_gvec());
+    if (alloc_pw__) f_pw_ = mdarray<double_complex, 1>(fft_->num_gvec());
 
     if (unit_cell_.full_potential())
         f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>((int)unit_cell_.spl_num_atoms().local_size());

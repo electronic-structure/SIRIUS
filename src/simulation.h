@@ -169,6 +169,12 @@ class Simulation_parameters
             {
                 TERMINATE("wrong type of electronic structure method");
             }
+
+            iterative_solver_input_section_ = iip__.iterative_solver_input_section();
+            xc_functionals_input_section_   = iip__.xc_functionals_input_section();
+            mixer_input_section_            = iip__.mixer_input_section();
+
+            cyclic_block_size_              = iip__.common_input_section_.cyclic_block_size_;
         }
     
     public:
@@ -178,7 +184,7 @@ class Simulation_parameters
         /// Initiail input parameters from the input file and command line.
         //input_parameters iip_;
     
-        int work_load_;
+        //int work_load_;
     
         Simulation_parameters(Input_parameters const& iip__)
             : initialized_(false), 
@@ -202,13 +208,9 @@ class Simulation_parameters
               cyclic_block_size_(32)
         {
             /* get the starting time */
-            gettimeofday(&start_time_, NULL);
-    
-            iterative_solver_input_section_ = iip__.iterative_solver_input_section();
-            xc_functionals_input_section_   = iip__.xc_functionals_input_section();
-            mixer_input_section_            = iip__.mixer_input_section();
+            //gettimeofday(&start_time_, NULL);
 
-            cyclic_block_size_ = iip__.common_input_section_.cyclic_block_size_;
+            import(iip__);
         }
             
         ~Simulation_parameters()
