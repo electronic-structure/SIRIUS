@@ -34,11 +34,8 @@ class splindex_base
     private:
         
         /* forbid copy constructor */
-        splindex_base(const splindex_base& src);
+        splindex_base(const splindex_base& src) = delete;
 
-        /* forbid assigment operator */
-        //== splindex_base& operator=(const splindex_base& src);
-    
     protected:
         
         /// Rank of the block with local fraction of the global index.
@@ -57,17 +54,17 @@ class splindex_base
 
     public:
 
-        inline int rank()
+        inline int rank() const
         {
             return rank_;
         }
 
-        inline int num_ranks()
+        inline int num_ranks() const
         {
             return num_ranks_;
         }
 
-        inline size_t global_index_size()
+        inline size_t global_index_size() const
         {
             return global_index_size_;
         }
@@ -142,13 +139,13 @@ class splindex_iterator
         }
         
         /// Return current global index.
-        inline size_t idx()
+        inline size_t idx() const
         {
             return idx_;
         }
 
         /// Return current local index.
-        inline size_t idx_local()
+        inline size_t idx_local() const
         {
             return idx_local_;
         }

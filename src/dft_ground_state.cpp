@@ -37,7 +37,7 @@ double DFT_ground_state::energy_enuc()
             int zn = unit_cell_.atom(ia)->type()->zn();
             enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
         }
-        parameters_.comm().allreduce(&enuc, 1);
+        ctx_.comm().allreduce(&enuc, 1);
     }
     
     return enuc;
@@ -58,7 +58,7 @@ void DFT_ground_state::move_atoms(int istep)
 {
     mdarray<double, 2> atom_force(3, unit_cell_.num_atoms());
     forces(atom_force);
-    if (verbosity_level >= 6 && parameters_.comm().rank() == 0)
+    if (verbosity_level >= 6 && ctx_.comm().rank() == 0)
     {
         printf("\n");
         printf("Atomic forces\n");
@@ -89,7 +89,7 @@ void DFT_ground_state::move_atoms(int istep)
 
 void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {
-    Force::total_force(parameters_, unit_cell_, potential_, density_, kset_, forces__);
+    Force::total_force(ctx_, potential_, density_, kset_, forces__);
 }
 
 void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
@@ -121,7 +121,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         double rms = potential_->mix();
 
-        parameters_.comm().bcast(&rms, 1, 0);
+        ctx_.comm().bcast(&rms, 1, 0);
 
         /* compute new total energy for a new density */
         double etot = total_energy();
@@ -129,7 +129,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* write some information */
         print_info();
 
-        if (parameters_.comm().rank() == 0)
+        if (ctx_.comm().rank() == 0)
         {
             printf("iteration : %3i, potential RMS %12.6f, energy difference : %12.6f\n", iter, rms, etot - eold);
         }
@@ -139,20 +139,22 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         eold = etot;
     }
     
-    parameters_.create_storage_file();
+    ctx_.create_storage_file();
     potential_->save();
     density_->save();
 }
 
 void DFT_ground_state::relax_atom_positions()
 {
-    for (int i = 0; i < 5; i++)
-    {
-        scf_loop(1e-4, 1e-4, 100);
-        move_atoms(i);
-        update();
-        parameters_.print_info();
-    }
+    STOP();
+
+    //for (int i = 0; i < 5; i++)
+    //{
+    //    scf_loop(1e-4, 1e-4, 100);
+    //    move_atoms(i);
+    //    update();
+    //    //parameters_.print_info();
+    //}
 }
 
 void DFT_ground_state::print_info()
@@ -180,7 +182,7 @@ void DFT_ground_state::print_info()
     for (int j = 0; j < parameters_.num_mag_dims(); j++) 
         total_mag[j] = density_->magnetization(j)->integrate(mt_mag[j], it_mag[j]);
     
-    if (parameters_.comm().rank() == 0)
+    if (ctx_.comm().rank() == 0)
     {
         if (unit_cell_.full_potential())
         {

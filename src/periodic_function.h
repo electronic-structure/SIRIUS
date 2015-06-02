@@ -224,7 +224,7 @@ class Periodic_function
             return f_pw_(ig);
         }
 
-        double value(Global& parameters_, vector3d<double>& vc)
+        double value(vector3d<double>& vc)
         {
             int ja, jr;
             double dr, tp[2];
@@ -249,7 +249,7 @@ class Periodic_function
                 double p = 0.0;
                 for (int ig = 0; ig < num_gvec_; ig++)
                 {
-                    vector3d<double> vgc = parameters_.reciprocal_lattice()->gvec_cart(ig);
+                    vector3d<double> vgc = fft_->gvec_cart(ig);
                     p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
@@ -325,7 +325,7 @@ class Periodic_function
                 {
                     int ir = (int)spl_fft_size[irloc];
                     result += type_wrapper<T>::conjugate(f__->f_it<local>(irloc)) * g__->f_it<local>(irloc) * 
-                              f__->step_function_->theta_it(ir);
+                              f__->step_function_->theta_r(ir);
                 }
             }
                     

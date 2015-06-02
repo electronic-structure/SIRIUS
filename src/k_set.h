@@ -49,7 +49,9 @@ class K_set
 {
     private:
     
-        Global& parameters_;
+        Simulation_context& ctx_;
+
+        Simulation_parameters const& parameters_;
 
         Band* band_;
 
@@ -69,32 +71,32 @@ class K_set
 
         void init()
         {
-            band_ = new Band(parameters_, unit_cell_, blacs_grid_);
+            band_ = new Band(ctx_, blacs_grid_);
         }
 
     public:
 
-        K_set(Global& parameters__,
-              Unit_cell& unit_cell__,
+        K_set(Simulation_context& ctx__,
               Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__)
-            : parameters_(parameters__),
-              unit_cell_(unit_cell__),
+            : ctx_(ctx__),
+              parameters_(ctx__.parameters()),
+              unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__),
               blacs_grid_(blacs_grid__)
         {
             init();
         }
 
-        K_set(Global& parameters__,
-              Unit_cell const& unit_cell__,
+        K_set(Simulation_context& ctx__,
               Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__,
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
-            : parameters_(parameters__),
-              unit_cell_(unit_cell_),
+            : ctx_(ctx__),
+              parameters_(ctx__.parameters()),
+              unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__),
               blacs_grid_(blacs_grid__)
         {
@@ -224,7 +226,7 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            kpoints_.push_back(new K_point(parameters_, unit_cell_, vk__, weight__, blacs_grid_));
+            kpoints_.push_back(new K_point(ctx_, vk__, weight__, blacs_grid_));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
@@ -314,9 +316,6 @@ class K_set
 
                 kpq[ik].K = vkqr.second;
             }
-
-
-
         }
 };
 

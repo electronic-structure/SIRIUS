@@ -172,7 +172,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         for (int i = 0; i < num_bands; i++)
         {
             if (kp__->band_occupancy(i) > 1e-2 && 
-                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
+                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section().tolerance_ / 2) 
             {
                 occ_band_converged = false;
             }
@@ -185,7 +185,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
             if (converge_by_energy)
             {
                 /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-                double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+                double tol = parameters_.iterative_solver_input_section().tolerance_ / 2;
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
@@ -213,7 +213,6 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                     ///* number of additional basis functions */
                     //n = (int)res_list.size();
                 }
-                parameters_.work_load_ += n;
             }
             else
             {

@@ -174,7 +174,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
         for (int irloc = 0; irloc < (int)spl_fft_size_.local_size(); irloc++)
         {
             int ir = (int)spl_fft_size_[irloc];
-            it_val += f_it_local_(irloc) * step_function_->theta_it(ir);
+            it_val += f_it_local_(irloc) * step_function_->theta_r(ir);
         }
     }
     it_val *= (unit_cell_.omega() / fft_->size());

@@ -104,7 +104,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     }
     if (parameters_.processing_unit() == CPU && itso.real_space_prj_) 
     {
-        auto rsp = parameters_.real_space_prj_;
+        auto rsp = ctx_.real_space_prj();
         size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
         size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
 
@@ -183,8 +183,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, kappa, packed_mtrx_offset,
                          d_mtrx_packed, q_mtrx_packed);
         
-        parameters_.work_load_ += n;
-
         /* setup eigen-value problem.
          * N is the number of previous basis functions
          * n is the number of new basis functions
@@ -225,7 +223,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         for (int i = 0; i < num_bands; i++)
         {
             if (kp__->band_occupancy(i) > 1e-2 && 
-                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
+                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section().tolerance_ / 2) 
             {
                 //demax = std::abs(eval_old[i] - eval[i]);
                 occ_band_converged = false;
@@ -246,7 +244,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             if (converge_by_energy)
             {
                 /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-                double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+                double tol = parameters_.iterative_solver_input_section().tolerance_ / 2;
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {

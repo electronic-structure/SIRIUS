@@ -118,7 +118,7 @@ class Reciprocal_lattice
        
         /// Ylm components of G-vector
         template <index_domain_t index_domain>
-        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax)
+        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax) const
         {
             switch (index_domain)
             {
@@ -151,7 +151,7 @@ class Reciprocal_lattice
         }
 
         /// G-vector in Cartesian coordinates
-        inline vector3d<double> gvec_cart(int ig__)
+        inline vector3d<double> gvec_cart(int ig__) const
         {
             return fft_->gvec_cart(ig__);
         }
@@ -201,25 +201,25 @@ class Reciprocal_lattice
             return fft_->gvec_shell_len(igs__);
         }
         
-        inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
         {
-            return inverse_reciprocal_lattice_vectors_ * a;
+            return inverse_reciprocal_lattice_vectors_ * a__;
         }
         
         template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
         {
-            return reciprocal_lattice_vectors_ * a;
+            return reciprocal_lattice_vectors_ * a__;
         }
 
         /// Return global index of G1-G2 vector
-        inline int index_g12(int ig1__, int ig2__)
+        inline int index_g12(int ig1__, int ig2__) const
         {
             vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
             return fft_->gvec_index(v);
         }
         
-        inline int index_g12_safe(int ig1__, int ig2__)
+        inline int index_g12_safe(int ig1__, int ig2__) const
         {
             vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
             if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
@@ -234,17 +234,17 @@ class Reciprocal_lattice
             }
         }
 
-        inline splindex<block>& spl_num_gvec()
+        inline splindex<block> const& spl_num_gvec() const
         {
             return spl_num_gvec_;
         }
         
-        inline int spl_num_gvec(int igloc)
+        inline int spl_num_gvec(int igloc__) const
         {
-            return static_cast<int>(spl_num_gvec_[igloc]);
+            return static_cast<int>(spl_num_gvec_[igloc__]);
         }
         
-        inline double_complex gvec_ylm(int lm, int igloc)
+        inline double_complex gvec_ylm(int lm, int igloc) const
         {
             return gvec_ylm_(lm, igloc);
         }
@@ -275,7 +275,7 @@ class Reciprocal_lattice
             //== fclose(fout);
         }
 
-        matrix3d<double>& reciprocal_lattice_vectors()
+        matrix3d<double> const& reciprocal_lattice_vectors() const
         {
             return reciprocal_lattice_vectors_;
         }

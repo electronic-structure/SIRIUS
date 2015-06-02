@@ -7,20 +7,22 @@
 
 namespace sirius {
 
+/// Parameters of the simulation. 
+/** Parameters are first initialized from the initial input parameters and then by set..() methods.
+ *  Any parameter used in the simulation must be initialized here. Then the instance of the Simulation_context class 
+ *  can be created.
+ */
 class Simulation_parameters
 {
     private:
     
-        /// true if class was initialized
-        bool initialized_;
-    
-        /// maximum l for APW functions
+        /// Maximum l for APW functions.
         int lmax_apw_;
         
-        /// maximum l for plane waves
+        /// Maximum l for plane waves.
         int lmax_pw_;
         
-        /// maximum l for density
+        /// Maximum l for density.
         int lmax_rho_;
         
         /// maximum l for potential
@@ -73,15 +75,17 @@ class Simulation_parameters
 
         int num_fft_workers_;
 
-        electronic_structure_method_t esm_type_;
-        
         int cyclic_block_size_;
+
+        electronic_structure_method_t esm_type_;
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
         XC_functionals_input_section xc_functionals_input_section_;
         
         Mixer_input_section mixer_input_section_;
+
+        std::map<std::string, ev_solver_t> str_to_ev_solver_t_;
         
         /// Import data from initial input parameters.
         void import(Input_parameters const& iip__)
@@ -95,43 +99,10 @@ class Simulation_parameters
 
             for (int i = 0; i < 2; i++)
             {
-                std::string name = evsn[i];
-                if (name == "lapack") 
-                {
-                    *evst[i] = ev_lapack;
-                }
-                else if (name == "scalapack") 
-                {
-                    *evst[i] = ev_scalapack;
-                }
-                else if (name == "elpa1") 
-                {
-                    *evst[i] = ev_elpa1;
-                }
-                else if (name == "elpa2") 
-                {
-                    *evst[i] = ev_elpa2;
-                }
-                else if (name == "magma") 
-                {
-                    *evst[i] = ev_magma;
-                }
-                else if (name == "plasma")
-                {
-                    *evst[i] = ev_plasma;
-                }
-                else if (name == "rs_gpu")
-                {
-                    *evst[i] = ev_rs_gpu;
-                }
-                else if (name == "rs_cpu")
-                {
-                    *evst[i] = ev_rs_cpu;
-                }
-                else
-                {
-                    TERMINATE("wrong eigen value solver");
-                }
+                auto name = evsn[i];
+
+                if (str_to_ev_solver_t_.count(name) == 0) TERMINATE("wrong eigen value solver");
+                *evst[i] = str_to_ev_solver_t_[name];
             }
 
             std::string pu = iip__.common_input_section_.processing_unit_;
@@ -178,17 +149,15 @@ class Simulation_parameters
         }
     
     public:
-    
-        //Real_space_prj* real_space_prj_;
-    
-        /// Initiail input parameters from the input file and command line.
-        //input_parameters iip_;
-    
-        //int work_load_;
-    
+
+        /// Create and initialize simulation parameters.
+        /** The order of initialization is the following:
+         *    - first, the default parameter values are set in the constructor
+         *    - second, import() method is called and the parameters are overwritten with the input parameters
+         *    - third, the user sets the values with set...() metods.
+         */
         Simulation_parameters(Input_parameters const& iip__)
-            : initialized_(false), 
-              lmax_apw_(8), 
+            : lmax_apw_(8), 
               lmax_pw_(-1), 
               lmax_rho_(8), 
               lmax_pot_(8), 
@@ -204,11 +173,20 @@ class Simulation_parameters
               gen_evp_solver_type_(ev_lapack),
               processing_unit_(CPU),
               smearing_width_(0.001), 
-              esm_type_(full_potential_lapwlo),
-              cyclic_block_size_(32)
+              cyclic_block_size_(32),
+              esm_type_(full_potential_lapwlo)
         {
             /* get the starting time */
             //gettimeofday(&start_time_, NULL);
+
+            str_to_ev_solver_t_["lapack"]    = ev_lapack;
+            str_to_ev_solver_t_["scalapack"] = ev_scalapack;
+            str_to_ev_solver_t_["elpa1"]     = ev_elpa1;
+            str_to_ev_solver_t_["elpa2"]     = ev_elpa2;
+            str_to_ev_solver_t_["magma"]     = ev_magma;
+            str_to_ev_solver_t_["plasma"]    = ev_plasma;
+            str_to_ev_solver_t_["rs_cpu"]    = ev_rs_cpu;
+            str_to_ev_solver_t_["rs_gpu"]    = ev_rs_gpu;
 
             import(iip__);
         }
@@ -375,11 +353,6 @@ class Simulation_parameters
             return uj_correction_;
         }
     
-        inline bool initialized() const
-        {
-            return initialized_;
-        }
-    
         inline processing_unit_t processing_unit() const
         {
             return processing_unit_;
@@ -435,7 +408,7 @@ class Simulation_parameters
             return esm_type_;
         }
     
-        inline wave_function_distribution_t wave_function_distribution()
+        inline wave_function_distribution_t wave_function_distribution() const
         {
             switch (esm_type_)
             {
@@ -459,12 +432,12 @@ class Simulation_parameters
             return block_cyclic_2d;
         }
     
-        inline ev_solver_t std_evp_solver_type()
+        inline ev_solver_t std_evp_solver_type() const
         {
             return std_evp_solver_type_;
         }
     
-        inline ev_solver_t gen_evp_solver_type()
+        inline ev_solver_t gen_evp_solver_type() const
         {
             return gen_evp_solver_type_;
         }
@@ -519,6 +492,8 @@ class Simulation_context
 
         FFT3D<GPU>* fft_gpu_coarse_;
         #endif
+
+        Real_space_prj* real_space_prj_;
 
     public:
         
@@ -614,12 +589,12 @@ class Simulation_context
             return unit_cell_;
         }
 
-        Step_function* step_function()
+        Step_function const* step_function() const
         {
             return step_function_;
         }
 
-        Reciprocal_lattice* reciprocal_lattice()
+        Reciprocal_lattice const* reciprocal_lattice() const
         {
             return reciprocal_lattice_;
         }
@@ -629,18 +604,18 @@ class Simulation_context
             return fft_;
         }
 
-        inline FFT3D<CPU>* fft_coarse()
+        inline FFT3D<CPU>* fft_coarse() const
         {
             return fft_coarse_;
         }
 
         #ifdef _GPU_
-        inline FFT3D<GPU>* fft_gpu()
+        inline FFT3D<GPU>* fft_gpu() const
         {
             return fft_gpu_;
         }
 
-        inline FFT3D<GPU>* fft_gpu_coarse()
+        inline FFT3D<GPU>* fft_gpu_coarse() const
         {
             return fft_gpu_coarse_;
         }
@@ -651,6 +626,34 @@ class Simulation_context
             return comm_;
         }
 
+        MPI_grid const& mpi_grid() const
+        {
+            return mpi_grid_;
+        }
+        
+        void create_storage_file() const
+        {
+            if (comm_.rank() == 0)
+            {
+                // create new hdf5 file
+                HDF5_tree fout(storage_file_name, true);
+                fout.create_node("parameters");
+                fout.create_node("effective_potential");
+                fout.create_node("effective_magnetic_field");
+                fout.create_node("density");
+                fout.create_node("magnetization");
+                
+                fout["parameters"].write("num_spins", parameters_.num_spins());
+                fout["parameters"].write("num_mag_dims", parameters_.num_mag_dims());
+                fout["parameters"].write("num_bands", parameters_.num_bands());
+            }
+            comm_.barrier();
+        }
+
+        Real_space_prj const* real_space_prj() const
+        {
+            return real_space_prj_;
+        }
 };
 
 };

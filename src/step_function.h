@@ -101,7 +101,7 @@ class Step_function
          *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
          *  \f]
          */
-        mdarray<double, 2> get_step_function_form_factors(int num_gsh);
+        mdarray<double, 2> get_step_function_form_factors(int num_gsh) const;
        
         /// Return plane-wave coefficient of the step function.
         inline double_complex theta_pw(int ig__) const
@@ -111,7 +111,7 @@ class Step_function
         }
 
         /// Return the value of the step function for the grid point ir.
-        inline double theta_it(int ir__) const
+        inline double theta_r(int ir__) const
         {
             assert(ir__ >= 0 && ir__ < (int)step_function_.size());
             return step_function_[ir__];

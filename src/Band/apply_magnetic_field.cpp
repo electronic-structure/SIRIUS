@@ -103,9 +103,9 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
     int wf_pw_offset = unit_cell_.mt_basis_size();
     auto fft = fft_;
     #ifdef _GPU_
-    auto fft_gpu = parameters_.fft_gpu();
+    auto fft_gpu = ctx_.fft_gpu();
     #endif
-    auto step_function = parameters_.step_function();
+    auto step_function = ctx_.step_function();
 
     std::vector<std::thread> thread_workers;
 
@@ -143,7 +143,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                 /* effecive field multiplied by step function */
                 mdarray<double, 1> beff_gpu(fft_gpu->size());
                 for (int ir = 0; ir < (int)fft_gpu->size(); ir++)
-                    beff_gpu(ir) = effective_magnetic_field[0]->f_it<global>(ir) * step_function->theta_it(ir);
+                    beff_gpu(ir) = effective_magnetic_field[0]->f_it<global>(ir) * step_function->theta_r(ir);
                 beff_gpu.allocate_on_device();
                 beff_gpu.copy_to_device();
                 
@@ -227,7 +227,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                         for (int ir = 0; ir < fft->size(); ir++)
                         {
                             /* hpsi(r) = psi(r) * Bz(r) * Theta(r) */
-                            fft->buffer(ir, thread_id) *= (effective_magnetic_field[0]->f_it<global>(ir) * step_function->theta_it(ir));
+                            fft->buffer(ir, thread_id) *= (effective_magnetic_field[0]->f_it<global>(ir) * step_function->theta_r(ir));
                         }
                         
                         fft->transform(-1, thread_id);
@@ -238,7 +238,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                             for (int ir = 0; ir < fft->size(); ir++)
                             {
                                 /* hpsi(r) = psi(r) * (Bx(r) - iBy(r)) * Theta(r) */
-                                hpsi_it[ir] = psi_it[ir] * step_function->theta_it(ir) * 
+                                hpsi_it[ir] = psi_it[ir] * step_function->theta_r(ir) * 
                                               (effective_magnetic_field[1]->f_it<global>(ir) - 
                                                complex_i * effective_magnetic_field[2]->f_it<global>(ir));
                             }
@@ -253,7 +253,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                             for (int ir = 0; ir < fft->size(); ir++)
                             {
                                 /* hpsi(r) = psi(r) * (Bx(r) + iBy(r)) * Theta(r) */
-                                hpsi_it[ir] = psi_it[ir] * step_function->theta_it(ir) *
+                                hpsi_it[ir] = psi_it[ir] * step_function->theta_r(ir) *
                                               (effective_magnetic_field[1]->f_it<global>(ir) + 
                                                complex_i * effective_magnetic_field[2]->f_it<global>(ir));
                             }

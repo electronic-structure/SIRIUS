@@ -438,7 +438,7 @@ void Potential::init()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->size(); ir++)
-        fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * ctx_.step_function()->theta_it(ir);
+        fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * ctx_.step_function()->theta_r(ir);
 
     #ifdef _PRINT_OBJECT_CHECKSUM_
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
@@ -461,7 +461,7 @@ void Potential::generate_pw_coefs()
         for (int i = 0; i < parameters_.num_mag_dims(); i++)
         {
             for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * ctx_.step_function()->theta_it(ir);
+                fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * ctx_.step_function()->theta_r(ir);
     
             fft_->transform(-1);
             fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_magnetic_field(i)->f_pw(0));

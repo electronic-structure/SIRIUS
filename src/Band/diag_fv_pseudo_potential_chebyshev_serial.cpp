@@ -45,7 +45,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
     //}
     //linalg<CPU>::geinv(unit_cell_.mt_basis_size(), S);
 
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = parameters_.iterative_solver_input_section();
 
     /* maximum order of Chebyshev polynomial*/
     int order = itso.num_steps_ + 2;

@@ -28,12 +28,6 @@
 
 namespace sirius {
 
-//Density::Density(Global& parameters__) 
-//    : parameters_(parameters__),
-//      gaunt_coefs_(nullptr),
-//      high_freq_mixer_(nullptr),
-//      low_freq_mixer_(nullptr),
-//      mixer_(nullptr)
 Density::Density(Simulation_context& ctx__)
     : ctx_(ctx__),
       parameters_(ctx__.parameters()),

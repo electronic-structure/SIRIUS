@@ -37,7 +37,7 @@ Step_function::Step_function(Unit_cell const& unit_cell__,
     init(fft__);
 }
 
-mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh)
+mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) const
 {
     mdarray<double, 2> ffac(unit_cell_.num_atom_types(), num_gsh);
     

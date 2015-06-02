@@ -232,7 +232,6 @@ class Symmetry
          */
         void symmetrize_function(double_complex* f_pw__,
                                  FFT3D<CPU>* fft__,
-                                 splindex<block>& spl_num_gvec__,
                                  Communicator const& comm__) const;
         
         void symmetrize_function(mdarray<double, 3>& frlm__,

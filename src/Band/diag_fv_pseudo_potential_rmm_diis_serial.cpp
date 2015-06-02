@@ -6,7 +6,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                     double v0__,
                                                     std::vector<double>& veff_it_coarse__)
 {
-    if (parameters_.iterative_solver_input_section_.tolerance_ > 1e-5)
+    if (parameters_.iterative_solver_input_section().tolerance_ > 1e-5)
     {
         diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
         return;
@@ -276,7 +276,6 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
     apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
                      d_mtrx_packed, q_mtrx_packed);
-    parameters_.work_load_ += num_bands;
 
     update_res(res_norm_start);
 
@@ -299,7 +298,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     
     apply_preconditioner(std::vector<double>(num_bands, 1), res[0], 0.0, phi[1]);
     
-    parameters_.work_load_ += apply_h_o();
+    apply_h_o();
 
     /* estimate lambda */
     for (int i = 0; i < num_bands; i++)
@@ -403,13 +402,12 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
         int n = apply_h_o();
         if (n == 0) break;
-        parameters_.work_load_ += n;
 
         eval_old = eval;
 
         update_res(res_norm);
 
-        double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+        double tol = parameters_.iterative_solver_input_section().tolerance_ / 2;
         
         for (int i = 0; i < num_bands; i++)
         {

@@ -78,7 +78,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU && itso.real_space_prj_)
     {
-        auto rsp = parameters_.real_space_prj_;
+        auto rsp = ctx_.real_space_prj();
         size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
         size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
 
@@ -245,7 +245,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         for (int i = 0; i < num_bands; i++)
         {
             if (kp__->band_occupancy(i) > 1e-2 && 
-                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
+                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section().tolerance_ / 2) 
             {
                 occ_band_converged = false;
             }
@@ -258,7 +258,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
             if (converge_by_energy)
             {
                 /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-                double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+                double tol = parameters_.iterative_solver_input_section().tolerance_ / 2;
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
@@ -283,7 +283,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                     residuals_fast_parallel(N, n, kp__, eval_tmp, evec_full_tmp, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
                                             res_slab, h_diag, o_diag, res_norm, kappa);
                 }
-                parameters_.work_load_ += n;
             }
             else
             {

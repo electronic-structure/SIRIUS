@@ -26,14 +26,15 @@
 
 namespace sirius {
 
-K_point::K_point(Global& parameters__,
-                 Unit_cell const& unit_cell__,
+K_point::K_point(Simulation_context& ctx__,
                  double* vk__,
                  double weight__,
                  BLACS_grid const& blacs_grid__) 
-    : parameters_(parameters__),
-      unit_cell_(unit_cell__),
+    : ctx_(ctx__),
+      parameters_(ctx__.parameters()),
+      unit_cell_(ctx_.unit_cell()),
       blacs_grid_(blacs_grid__),
+      fft_(ctx__.fft()),
       weight_(weight__),
       alm_coeffs_row_(nullptr),
       alm_coeffs_col_(nullptr)
@@ -54,8 +55,6 @@ K_point::K_point(Global& parameters__,
     rank_row_ = comm_row_.rank();
     rank_col_ = comm_col_.rank();
     
-    fft_ = parameters_.fft();
-    
     /* distribue first-variational states along columns */
     spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
     
@@ -66,7 +65,7 @@ K_point::K_point(Global& parameters__,
     sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
     sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
     
-    iterative_solver_input_section_ = parameters_.iterative_solver_input_section_;
+    iterative_solver_input_section_ = parameters_.iterative_solver_input_section();
 }
 
 void K_point::initialize()
@@ -862,12 +861,12 @@ void K_point::generate_gkvec(double gk_cutoff)
     std::vector< std::pair<double, int> > gkmap;
 
     /* find G-vectors for which |G+k| < cutoff */
-    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+    for (int ig = 0; ig < ctx_.reciprocal_lattice()->num_gvec(); ig++)
     {
         vector3d<double> vgk;
-        for (int x = 0; x < 3; x++) vgk[x] = parameters_.reciprocal_lattice()->gvec(ig)[x] + vk_[x];
+        for (int x = 0; x < 3; x++) vgk[x] = ctx_.reciprocal_lattice()->gvec(ig)[x] + vk_[x];
 
-        vector3d<double> v = parameters_.reciprocal_lattice()->get_cartesian_coordinates(vgk);
+        vector3d<double> v = ctx_.reciprocal_lattice()->get_cartesian_coordinates(vgk);
         double gklen = v.length();
 
         if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double, int>(gklen, ig));
@@ -884,12 +883,12 @@ void K_point::generate_gkvec(double gk_cutoff)
         gvec_index_[ig] = gkmap[ig].second;
         for (int x = 0; x < 3; x++)
         {
-            gkvec_(x, ig) = parameters_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
+            gkvec_(x, ig) = ctx_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
         }
     }
     
     fft_index_.resize(num_gkvec());
-    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.fft()->index_map(gvec_index_[igk]);
+    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = fft_->index_map(gvec_index_[igk]);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
@@ -900,10 +899,10 @@ void K_point::generate_gkvec(double gk_cutoff)
             /* G-vector index in the fine mesh */
             int ig = gvec_index_[igk];
             /* G-vector fractional coordinates */
-            vector3d<int> gvec = parameters_.reciprocal_lattice()->gvec(ig);
+            vector3d<int> gvec = ctx_.reciprocal_lattice()->gvec(ig);
 
             /* linear index inside coarse FFT buffer */
-            fft_index_coarse_[igk] = parameters_.fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
+            fft_index_coarse_[igk] = ctx_.fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
         }
     }
 }
@@ -1425,7 +1424,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
                 fft_->transform(1);
                 fft_->output(&v2[0]);
 
-                for (int ir = 0; ir < fft_->size(); ir++) v2[ir] *= parameters_.step_function(ir);
+                for (int ir = 0; ir < fft_->size(); ir++) v2[ir] *= ctx_.step_function()->theta_r(ir);
                 
                 fft_->input(&v2[0]);
                 fft_->transform(-1);
@@ -1487,13 +1486,12 @@ void K_point::test_spinor_wave_functions(int use_fft)
             {
                 for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                 {
-                    fft_->input(num_gkvec(), &fft_index_[0], 
-                                           &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
+                    fft_->input(num_gkvec(), &fft_index_[0], &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
                     fft_->transform(1);
                     fft_->output(&v2[0]);
 
                     for (int ir = 0; ir < fft_->size(); ir++)
-                        zsum += conj(v1[ispn][ir]) * v2[ir] * parameters_.step_function(ir) / double(fft_->size());
+                        zsum += conj(v1[ispn][ir]) * v2[ir] * ctx_.step_function()->theta_r(ir) / double(fft_->size());
                 }
             }
             
@@ -1503,19 +1501,19 @@ void K_point::test_spinor_wave_functions(int use_fft)
                 {
                     for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
                     {
-                        int ig3 = parameters_.reciprocal_lattice()->index_g12(gvec_index(ig1), gvec_index(ig2));
+                        int ig3 = ctx_.reciprocal_lattice()->index_g12(gvec_index(ig1), gvec_index(ig2));
                         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                         {
                             zsum += std::conj(spinor_wave_functions_(unit_cell_.mt_basis_size() + ig1, ispn, j1)) * 
                                     spinor_wave_functions_(unit_cell_.mt_basis_size() + ig2, ispn, j2) * 
-                                    parameters_.step_function()->theta_pw(ig3);
+                                    ctx_.step_function()->theta_pw(ig3);
                         }
                     }
                }
            }
 
            zsum = (j1 == j2) ? zsum - double_complex(1.0, 0.0) : zsum;
-           maxerr = std::max(maxerr, abs(zsum));
+           maxerr = std::max(maxerr, std::abs(zsum));
         }
     }
     std :: cout << "maximum error = " << maxerr << std::endl;

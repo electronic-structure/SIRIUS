@@ -1226,15 +1226,15 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                                   kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
             
             /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
                                kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
                                
-            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function()->theta_pw(ig12));
-            o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
+            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function()->theta_pw(ig12));
+            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }
     }
 }
@@ -1475,10 +1475,10 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                             kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
             
-            o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }
     }
 }
@@ -1823,7 +1823,7 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
     
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = parameters_.iterative_solver_input_section();
     if (itso.type_ == "davidson")
     {
         diag_fv_pseudo_potential_davidson_fast_parallel(kp__, v0__, veff_it_coarse__);
@@ -1848,7 +1848,7 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
     
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = parameters_.iterative_solver_input_section();
     if (itso.type_ == "exact")
     {
         diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse__);
@@ -1878,7 +1878,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 {
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
-    auto fft_coarse = parameters_.fft_coarse();
+    auto fft_coarse = ctx_.fft_coarse();
 
     /* map effective potential to a corase grid */
     std::vector<double> veff_it_coarse(fft_coarse->size());
@@ -1887,7 +1887,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
     for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
     {
-        int ig = parameters_.fft()->gvec_index(fft_coarse->gvec(igc));
+        int ig = ctx_.fft()->gvec_index(fft_coarse->gvec(igc));
         veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
     }
     fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);

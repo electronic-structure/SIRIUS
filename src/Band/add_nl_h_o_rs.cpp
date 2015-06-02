@@ -14,8 +14,8 @@ void Band::add_nl_h_o_rs(K_point* kp__,
 {
     LOG_FUNC_BEGIN();
 
-    auto rsp = parameters_.real_space_prj_;
-    auto fft = parameters_.real_space_prj_->fft();
+    auto rsp = ctx_.real_space_prj();
+    auto fft = rsp->fft();
 
     if (kappa__.size() < size_t(2 * fft->size() + rsp->max_num_points_) * fft->num_fft_threads())
     {

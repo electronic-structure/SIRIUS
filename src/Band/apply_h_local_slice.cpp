@@ -26,9 +26,9 @@ void Band::apply_h_local_slice(K_point* kp__,
 
     auto pu = parameters_.processing_unit();
 
-    auto fft = parameters_.fft_coarse();
+    auto fft = ctx_.fft_coarse();
     #ifdef _GPU_
-    FFT3D<GPU>* fft_gpu = parameters_.fft_gpu_coarse();
+    FFT3D<GPU>* fft_gpu = ctx_.fft_gpu_coarse();
     #endif
 
     int num_fft_threads = -1;

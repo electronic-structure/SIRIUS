@@ -121,7 +121,7 @@ class Real_space_prj
             delete fft_;
         }
 
-        FFT3D<CPU>* fft()
+        FFT3D<CPU>* fft() const
         {
             return fft_;
         }

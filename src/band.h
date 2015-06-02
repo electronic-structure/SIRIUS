@@ -41,17 +41,21 @@ class Band
 {
     private:
 
-        /// Global set of parameters
-        Global& parameters_;
+        /// Simulation context.
+        Simulation_context& ctx_;
 
+        /// Alias for parameters.
+        Simulation_parameters const& parameters_;
+        
+        /// Alias for the unit cell.
         Unit_cell& unit_cell_;
+
+        /// Alias for FFT driver.
+        FFT3D<CPU>* fft_;
 
         /// BLACS grid for distributed linear algebra operations.
         BLACS_grid const& blacs_grid_;
 
-        /// Alias for FFT driver
-        FFT3D<CPU>* fft_;
-        
         /// Non-zero Gaunt coefficients
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
         
@@ -459,15 +463,14 @@ class Band
     public:
         
         /// Constructor
-        Band(Global& parameters__,
-             Unit_cell& unit_cell__,
+        Band(Simulation_context& ctx__,
              BLACS_grid const& blacs_grid__) 
-            : parameters_(parameters__),
-              unit_cell_(unit_cell__),
+            : ctx_(ctx__),
+              parameters_(ctx__.parameters()),
+              unit_cell_(ctx__.unit_cell()),
+              fft_(ctx__.fft()),
               blacs_grid_(blacs_grid__)
         {
-            fft_ = parameters_.fft();
-
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), 
                                                                   parameters_.lmax_pot(), 
                                                                   parameters_.lmax_apw(),

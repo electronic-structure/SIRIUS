@@ -52,12 +52,11 @@ class Force
          *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
          *  \f]
          */
-        static void compute_dmat(Global& parameters__,
+        static void compute_dmat(Simulation_parameters const& parameters__,
                                  K_point* kp__,
                                  dmatrix<double_complex>& dm__);
 
-        static void ibs_force(Global& parameters__,
-                              Unit_cell& unit_cell_,
+        static void ibs_force(Simulation_context& ctx__,
                               Band* band__,
                               K_point* kp__,
                               mdarray<double, 2>& ffac__,
@@ -65,8 +64,7 @@ class Force
 
     public:
 
-        static void total_force(Global& parameters__,
-                                Unit_cell& unit_cell_,
+        static void total_force(Simulation_context& ctx__,
                                 Potential* potential__,
                                 Density* density__,
                                 K_set* ks__,

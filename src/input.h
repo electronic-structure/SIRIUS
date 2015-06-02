@@ -200,6 +200,10 @@ struct Iterative_solver_input_section
     }
 };
 
+/// Initial input parameters from the input file and command line.
+/** The variables which are not found in the input are initialized to defalt values.
+ *  \todo command line support 
+ */
 class Input_parameters
 {
     private:
@@ -290,8 +294,6 @@ class Input_parameters
                 electronic_structure_method_ = parser__["electronic_structure_method"].get(electronic_structure_method_);
             }
         } common_input_section_;
-
-        
 };
 
 };

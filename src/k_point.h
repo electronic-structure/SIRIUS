@@ -50,8 +50,13 @@ class K_point
 {
     private:
 
+        /// Simulation context.
+        Simulation_context& ctx_;
+
+        Simulation_parameters const& parameters_;
+
         /// Global set of parameters.
-        Global& parameters_;
+        //Global& parameters_;
 
         Unit_cell const& unit_cell_;
 
@@ -226,8 +231,7 @@ class K_point
         Iterative_solver_input_section iterative_solver_input_section_;
 
         /// Constructor
-        K_point(Global& parameters__,
-                Unit_cell const& unit_cell__,
+        K_point(Simulation_context& ctx__,
                 double* vk__,
                 double weight__,
                 BLACS_grid const& blacs_grid__);
@@ -281,7 +285,7 @@ class K_point
         /// Return G-vector (in fractional coordinates) of the current G+k vector.
         inline vector3d<int> gvec(int igk__) const
         {
-            return parameters_.reciprocal_lattice()->gvec(gvec_index(igk__));
+            return ctx_.reciprocal_lattice()->gvec(gvec_index(igk__));
         }
         
         /// Global index of G-vector by the index of G+k vector
@@ -301,7 +305,7 @@ class K_point
             {
                 case cartesian:
                 {
-                    return parameters_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
+                    return ctx_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
                     break;
                 }
                 case fractional:
@@ -360,7 +364,7 @@ class K_point
          */ 
         inline int wf_size() const // TODO: better name for this
         {
-            switch (parameters_.esm_type())
+            switch (ctx_.parameters().esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
@@ -380,7 +384,7 @@ class K_point
 
         inline int wf_pw_offset() const
         {
-            switch (parameters_.esm_type())
+            switch (ctx_.parameters().esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:

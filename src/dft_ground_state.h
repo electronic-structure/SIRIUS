@@ -52,7 +52,10 @@ class DFT_ground_state
 {
     private:
 
-        Global& parameters_;
+        //Global& parameters_;
+        Simulation_context& ctx_;
+
+        Simulation_parameters const& parameters_;
 
         Unit_cell& unit_cell_;
 
@@ -74,7 +77,7 @@ class DFT_ground_state
             
             double ewald_g = 0;
 
-            auto rl = parameters_.reciprocal_lattice();
+            auto rl = ctx_.reciprocal_lattice();
 
             #pragma omp parallel
             {
@@ -104,7 +107,7 @@ class DFT_ground_state
                 #pragma omp critical
                 ewald_g += ewald_g_pt;
             }
-            parameters_.comm().allreduce(&ewald_g, 1);
+            ctx_.comm().allreduce(&ewald_g, 1);
             ewald_g *= (twopi / unit_cell_.omega());
 
             /* remove self-interaction */
@@ -139,14 +142,14 @@ class DFT_ground_state
 
     public:
 
-        DFT_ground_state(Global& parameters__,
-                         Unit_cell& unit_cell__,
+        DFT_ground_state(Simulation_context& ctx__,
                          Potential* potential__,
                          Density* density__,
                          K_set* kset__,
                          int use_symmetry__)
-            : parameters_(parameters__),
-              unit_cell_(unit_cell__),
+            : ctx_(ctx__),
+              parameters_(ctx__.parameters()),
+              unit_cell_(ctx__.unit_cell()),
               potential_(potential__), 
               density_(density__), 
               kset_(kset__),
@@ -297,10 +300,8 @@ class DFT_ground_state
 
         void symmetrize_density()
         {
-            auto fft = parameters_.fft();
-            
-            auto& spl_num_gvec = parameters_.reciprocal_lattice()->spl_num_gvec();
-            auto& comm = parameters_.comm();
+            auto fft = ctx_.fft();
+            auto& comm = ctx_.comm();
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
             {
@@ -308,7 +309,7 @@ class DFT_ground_state
                     density_->magnetization(j)->fft_transform(-1);
             }
 
-            unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, spl_num_gvec, comm);
+            unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, comm);
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
                 unit_cell_.symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);

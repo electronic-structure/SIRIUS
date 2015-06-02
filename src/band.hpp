@@ -239,8 +239,8 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                                   kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
             
             /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart *
@@ -250,19 +250,19 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
             {
                 case nm:
                 {
-                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function()->theta_pw(ig12));
+                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function()->theta_pw(ig12));
                     break;
                 }
                 case uu:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + effective_magnetic_field[0]->f_pw(ig12) +  
-                                            t1 * parameters_.step_function()->theta_pw(ig12));
+                                            t1 * ctx_.step_function()->theta_pw(ig12));
                     break;
                 }
                 case dd:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) - effective_magnetic_field[0]->f_pw(ig12) +  
-                                            t1 * parameters_.step_function()->theta_pw(ig12));
+                                            t1 * ctx_.step_function()->theta_pw(ig12));
                     break;
                 }
                 case ud:
