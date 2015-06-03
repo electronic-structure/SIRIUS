@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
+Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
                                Communicator const& comm__,
                                double R_mask_scale__,
                                double mask_alpha__,
@@ -18,17 +18,17 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
     std::cout << "pw_cutoff__" << pw_cutoff__ << std::endl;
 
-    //== for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    //== for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     //== {
     //==     std::stringstream s;
     //==     s << "beta_rf_" << iat << ".dat";
     //==     FILE* fout = fopen(s.str().c_str(), "w");
-    //==     for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+    //==     for (int idxrf = 0; idxrf < unit_cell_.atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
     //==     {
-    //==         for (int ir = 0; ir < unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf]; ir++)
+    //==         for (int ir = 0; ir < unit_cell_.atom_type(iat)->uspp().num_beta_radial_points[idxrf]; ir++)
     //==         {
-    //==             fprintf(fout, "%18.12f %18.12f\n", unit_cell_->atom_type(iat)->radial_grid(ir), 
-    //==                                                unit_cell_->atom_type(iat)->uspp().beta_radial_functions(ir, idxrf));
+    //==             fprintf(fout, "%18.12f %18.12f\n", unit_cell_.atom_type(iat)->radial_grid(ir), 
+    //==                                                unit_cell_.atom_type(iat)->uspp().beta_radial_functions(ir, idxrf));
     //==         }
     //==         fprintf(fout, "\n");
     //==     }
@@ -98,10 +98,10 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
     if (mask(1, 1) > 1e-13) TERMINATE("wrong mask function");
 
-    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff__, unit_cell_->reciprocal_lattice_vectors()),
+    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
                           num_fft_threads__, num_fft_workers__);
 
-    fft_->init_gvec(pw_cutoff__, unit_cell_->reciprocal_lattice_vectors());
+    fft_->init_gvec(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors());
 
     //double rmin = 15 / fft_->gvec_shell_len(fft_->num_gvec_shells_inner() - 1) / R_mask_scale_;
 
@@ -110,17 +110,17 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     get_beta_R();
     get_beta_grid();
 
-    std::vector<Radial_grid> beta_radial_grid(unit_cell_->num_atom_types());
+    std::vector<Radial_grid> beta_radial_grid(unit_cell_.num_atom_types());
     
     /* radial beta functions */
-    mdarray<Spline<double>, 2> beta_rf(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
+    mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
 
         /* create radial grid for all beta-projectors */
-        beta_radial_grid[iat] = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
+        beta_radial_grid[iat] = unit_cell_.atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
 
         double Rmask = R_beta_[iat] * R_mask_scale_;
 
@@ -147,9 +147,9 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
     //== double err = 0;
     //== for (int igsh = 0; igsh < fft_->num_gvec_shells_total(); igsh++)
     //== {
-    //==     for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    //==     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     //==     {
-    //==         auto atom_type = unit_cell_->atom_type(iat);
+    //==         auto atom_type = unit_cell_.atom_type(iat);
 
     //==         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
     //==             err += std::abs(beta_radial_integrals(idxrf, iat, igsh) - beta_radial_integrals_filtered(idxrf, iat, igsh));
@@ -159,7 +159,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
 
 
-    auto beta_pw_t = generate_beta_pw_t(unit_cell_, beta_radial_integrals);
+    auto beta_pw_t = generate_beta_pw_t(beta_radial_integrals);
 
 
 
@@ -168,10 +168,10 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
 
     std::vector<double_complex> beta_pw(fft_->size());
-    for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int iat = unit_cell_->atom(ia)->type_id();
-        auto atom_type = unit_cell_->atom_type(iat);
+        int iat = unit_cell_.atom(ia)->type_id();
+        auto atom_type = unit_cell_.atom_type(iat);
         double Rmask = R_beta_[iat] * R_mask_scale_;
         
         beta_projectors_[ia].beta_ = mdarray<double, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
@@ -181,7 +181,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
             {
                 int ig = (int)spl_num_gvec_[ig_loc];
-                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_->atom(ia)->position())));
+                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_.atom(ia)->position())));
 
                 beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * conj(phase_factor);
             }
@@ -202,7 +202,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             //== double p = 0;
             //== for (int i = 0; i < fft_->size(); i++)
             //==     p += std::pow(std::abs(fft_->buffer(i)), 2);
-            //== std::cout << "ia,xi="<<ia<<", "<<xi<<"  prod="<<p * unit_cell_->omega() / fft_->size() << std::endl;
+            //== std::cout << "ia,xi="<<ia<<", "<<xi<<"  prod="<<p * unit_cell_.omega() / fft_->size() << std::endl;
             
             
             for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
@@ -214,7 +214,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             }
             //int lm = atom_type->indexb(xi).lm;
             //int idxrf = atom_type->indexb(xi).idxrf;
-            //int lmax = unit_cell_->lmax_beta();
+            //int lmax = unit_cell_.lmax_beta();
             //double rlm[Utils::lmmax(lmax)];
 
             //for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
@@ -229,9 +229,9 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
 
     if (false)
     {
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            auto atom_type = unit_cell_->atom_type(iat);
+            auto atom_type = unit_cell_.atom_type(iat);
             for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             {
                 for (int ir = 0; ir < nr_beta_[iat]; ir++) 
@@ -240,12 +240,12 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             }
         }
         beta_radial_integrals = generate_beta_radial_integrals(beta_rf, 1);
-        beta_pw_t = generate_beta_pw_t(unit_cell_, beta_radial_integrals);
+        beta_pw_t = generate_beta_pw_t(beta_radial_integrals);
 
-        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int iat = unit_cell_->atom(ia)->type_id();
-            auto atom_type = unit_cell_->atom_type(iat);
+            int iat = unit_cell_.atom(ia)->type_id();
+            auto atom_type = unit_cell_.atom_type(iat);
 
             double err = 0;
             for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
@@ -253,7 +253,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
                 for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
                 {
                     int ig = (int)spl_num_gvec_[ig_loc];
-                    double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_->atom(ia)->position())));
+                    double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_.atom(ia)->position())));
 
                     beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * conj(phase_factor);
                 }
@@ -267,7 +267,7 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
                         double phase = twopi * (beta_projectors_[ia].r_[i] * fft_->gvec(ig));
                         z += std::exp(double_complex(0, -phase)) * beta_projectors_[ia].beta_(i, xi);
                     }
-                    err += std::abs(beta_pw[ig] - z / std::sqrt(unit_cell_->omega()));
+                    err += std::abs(beta_pw[ig] - z / std::sqrt(unit_cell_.omega()));
                 }
             }
             std::cout << "err=" << err << std::endl;
@@ -287,14 +287,14 @@ Real_space_prj::Real_space_prj(Unit_cell* unit_cell__,
             //        {
             //            prod_rs += beta_projectors_[ia].beta_(i, xi1) * beta_projectors_[ia].beta_(i, xi2);
             //        }
-            //        prod_rs *= (unit_cell_->omega() / fft_->size());
+            //        prod_rs *= (unit_cell_.omega() / fft_->size());
             //        
             //        double prod_pw = 0;
             //        for (int ig = 0; ig < fft_->num_gvec(); ig++)
             //        { 
             //            prod_pw += real(conj(beta_pw_t(ig, atom_type->offset_lo() + xi1)) * beta_pw_t(ig, atom_type->offset_lo() + xi2));
             //        }
-            //        prod_pw *= unit_cell_->omega();
+            //        prod_pw *= unit_cell_.omega();
 
             //        double prod_exact = 0;
             //        if (lm1 == lm2)
@@ -323,17 +323,17 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 {
     Timer t("sirius::Real_space_prj::generate_beta_radial_integrals");
 
-    mdarray<double, 3> beta_radial_integrals(unit_cell_->max_mt_radial_basis_size(),
-                                             unit_cell_->num_atom_types(),
+    mdarray<double, 3> beta_radial_integrals(unit_cell_.max_mt_radial_basis_size(),
+                                             unit_cell_.num_atom_types(),
                                              fft_->num_gvec_shells_total());
 
     splindex<block> spl_gsh(fft_->num_gvec_shells_total(), comm_.size(), comm_.rank());
     #pragma omp parallel
     {
-        mdarray<Spline<double>, 2> jl(unit_cell_->lmax_beta() + 1, unit_cell_->num_atom_types());
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_rf__(0, iat).radial_grid());
+            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_rf__(0, iat).radial_grid());
         }
 
         #pragma omp for
@@ -343,22 +343,22 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 
             /* get spherical Bessel functions */
             double G = fft_->gvec_shell_len(igsh);
-            std::vector<double> v(unit_cell_->lmax_beta() + 1);
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            std::vector<double> v(unit_cell_.lmax_beta() + 1);
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < beta_rf__(0, iat).num_points(); ir++)
                 {
                     double x = beta_rf__(0, iat).x(ir) * G;
-                    gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), x, &v[0]);
-                    for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                    gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), x, &v[0]);
+                    for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
                 }
-                for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat).interpolate();
+                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat).interpolate();
             }
             
             /* compute radial integrals */
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = unit_cell_->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
                 for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
                 {
                     int l = atom_type->indexr(idxrf).l;
@@ -369,35 +369,34 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
         }
     }
     
-    int ld = unit_cell_->max_mt_radial_basis_size() * unit_cell_->num_atom_types();
+    int ld = unit_cell_.max_mt_radial_basis_size() * unit_cell_.num_atom_types();
     comm_.allgather(beta_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gsh.global_offset()), 
                     static_cast<int>(ld * spl_gsh.local_size()));
     
     return beta_radial_integrals;
 }
 
-mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(Unit_cell* uc__,
-                                                              mdarray<double, 3>& beta_radial_integrals__)
+mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(mdarray<double, 3>& beta_radial_integrals__)
 {
     Timer t("sirius::Real_space_prj::generate_beta_pw_t");
 
-    mdarray<double_complex, 2> beta_pw_t(spl_num_gvec_.local_size(), uc__->num_beta_t());
+    mdarray<double_complex, 2> beta_pw_t(spl_num_gvec_.local_size(), unit_cell_.num_beta_t());
     
     #pragma omp parallel
     {
-        std::vector<double> gvec_rlm(Utils::lmmax(uc__->lmax_beta()));
+        std::vector<double> gvec_rlm(Utils::lmmax(unit_cell_.lmax_beta()));
         #pragma omp for
         for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
         {
             int ig = (int)spl_num_gvec_[ig_loc];
 
             auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
-            SHT::spherical_harmonics(uc__->lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
+            SHT::spherical_harmonics(unit_cell_.lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
 
             int igsh = fft_->gvec_shell(ig);
-            for (int iat = 0; iat < uc__->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = uc__->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
             
                 for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
                 {
@@ -405,7 +404,7 @@ mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(Unit_cell* uc__,
                     int lm = atom_type->indexb(xi).lm;
                     int idxrf = atom_type->indexb(xi).idxrf;
 
-                    double_complex z = std::pow(double_complex(0, -1), l) * fourpi / uc__->omega();
+                    double_complex z = std::pow(double_complex(0, -1), l) * fourpi / unit_cell_.omega();
                     beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_rlm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
                 }
             }
@@ -424,18 +423,18 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
     //double b = 5.0 * std::log(10.0) / std::pow(alpha - 1, 2);
 
 
-    mdarray<double, 3> beta_radial_integrals(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types(), nq);
+    mdarray<double, 3> beta_radial_integrals(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types(), nq);
 
     /* interpolate beta radial functions divided by a mask function */
-    std::vector<Radial_grid> beta_radial_grid(unit_cell_->num_atom_types());
+    std::vector<Radial_grid> beta_radial_grid(unit_cell_.num_atom_types());
 
-    mdarray<Spline<double>, 2> beta_rf(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
 
         /* create radial grid for all beta-projectors */
-        beta_radial_grid[iat] = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
+        beta_radial_grid[iat] = unit_cell_.atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
 
         double Rmask = R_beta_[iat] * R_mask_scale_;
 
@@ -454,10 +453,10 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
     splindex<block> spl_nq(nq, comm_.size(), comm_.rank());
     #pragma omp parallel
     {
-        mdarray<Spline<double>, 2> jl(unit_cell_->lmax_beta() + 1, unit_cell_->num_atom_types());
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
+            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
         }
 
         #pragma omp for
@@ -467,22 +466,22 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
             double q = pw_cutoff__ * iq / (nq - 1);
 
             /* get spherical Bessel functions */
-            std::vector<double> v(unit_cell_->lmax_beta() + 1);
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            std::vector<double> v(unit_cell_.lmax_beta() + 1);
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < nr_beta_[iat]; ir++)
                 {
                     double qx = beta_radial_grid[iat][ir] * q;
-                    gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
-                    for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                    gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
+                    for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
                 }
-                for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat).interpolate();
+                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat).interpolate();
             }
             
             /* compute radial integrals */
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = unit_cell_->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
                 for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
                 {
                     int l = atom_type->indexr(idxrf).l;
@@ -493,7 +492,7 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
         }
     }
     
-    int ld = unit_cell_->max_mt_radial_basis_size() * unit_cell_->num_atom_types();
+    int ld = unit_cell_.max_mt_radial_basis_size() * unit_cell_.num_atom_types();
     comm_.allgather(beta_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_nq.global_offset()), 
                     static_cast<int>(ld * spl_nq.local_size()));
     
@@ -503,10 +502,10 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
    int N = 3000;
     
     
-    beta_rf_filtered_ = mdarray<Spline<double>, 2>(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    beta_rf_filtered_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
 
         double Rmask = R_beta_[iat] * R_mask_scale_;
 
@@ -518,10 +517,10 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
         }
     }
     
-    mdarray<Spline<double>, 2> jl(unit_cell_->lmax_beta() + 1, unit_cell_->num_atom_types());
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
+        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
     }
 
     for (int iq_loc = 0; iq_loc < (int)spl_nq.local_size(); iq_loc++)
@@ -532,21 +531,21 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
         double w = 1; //(q < qcut) ? 1 : std::exp(-b * std::pow(q / qcut - 1, 2));
 
         /* get spherical Bessel functions */
-        std::vector<double> v(unit_cell_->lmax_beta() + 1);
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        std::vector<double> v(unit_cell_.lmax_beta() + 1);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             for (int ir = 0; ir < N; ir++)
             {
                 double qx = beta_radial_grid[iat][ir] * q;
-                gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
-                for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
+                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
             }
         }
         
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             //double Rmask = R_beta_[iat] * R_mask_scale_;
-            auto atom_type = unit_cell_->atom_type(iat);
+            auto atom_type = unit_cell_.atom_type(iat);
             #pragma omp parallel for
             for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             {
@@ -570,19 +569,19 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
     }
     fclose(fout);
     
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             beta_rf_filtered_(idxrf, iat).interpolate();
     }
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         std::stringstream s;
         s << "beta_rf_" << iat << ".dat";
         FILE* fout = fopen(s.str().c_str(), "w");
-        for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+        for (int idxrf = 0; idxrf < unit_cell_.atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
         {
             for (int ir = 0; ir < N; ir++)
             {
@@ -607,20 +606,20 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
 
     int nq1 = nqmax - nq0;
     
-    mdarray<double, 3> beta_radial_integrals(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types(), nq0);
+    mdarray<double, 3> beta_radial_integrals(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types(), nq0);
 
-    mdarray<double, 3> beta_radial_integrals_optimized(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types(), nqmax);
+    mdarray<double, 3> beta_radial_integrals_optimized(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types(), nqmax);
 
-    std::vector<Radial_grid> beta_radial_grid(unit_cell_->num_atom_types());
+    std::vector<Radial_grid> beta_radial_grid(unit_cell_.num_atom_types());
 
     /* interpolate beta radial functions */
-    mdarray<Spline<double>, 2> beta_rf(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
 
         /* create radial grid for all beta-projectors */
-        beta_radial_grid[iat] = unit_cell_->atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
+        beta_radial_grid[iat] = unit_cell_.atom_type(iat)->radial_grid().segment(nr_beta_[iat]);
 
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
         {
@@ -636,10 +635,10 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
     splindex<block> spl_nq(nq0, comm_.size(), comm_.rank());
     #pragma omp parallel
     {
-        mdarray<Spline<double>, 2> jl(unit_cell_->lmax_beta() + 1, unit_cell_->num_atom_types());
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_rf(0, iat).radial_grid());
+            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_rf(0, iat).radial_grid());
         }
 
         #pragma omp for
@@ -649,22 +648,22 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
             double q = iq * dq;
 
             /* get spherical Bessel functions */
-            std::vector<double> v(unit_cell_->lmax_beta() + 1);
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            std::vector<double> v(unit_cell_.lmax_beta() + 1);
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < nr_beta_[iat]; ir++)
                 {
                     double qx = beta_rf(0, iat).x(ir) * q;
-                    gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
-                    for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                    gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
+                    for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
                 }
-                for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iat).interpolate();
+                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat).interpolate();
             }
             
             /* compute radial integrals */
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = unit_cell_->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
                 for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
                 {
                     int l = atom_type->indexr(idxrf).l;
@@ -675,7 +674,7 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         }
     }
     
-    int ld = unit_cell_->max_mt_radial_basis_size() * unit_cell_->num_atom_types();
+    int ld = unit_cell_.max_mt_radial_basis_size() * unit_cell_.num_atom_types();
     comm_.allgather(beta_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_nq.global_offset()), 
                     static_cast<int>(ld * spl_nq.local_size()));
 
@@ -683,27 +682,27 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
 
     int N = 3000;
 
-    mdarray<Spline<double>, 2> jl(unit_cell_->lmax_beta() + 1, nqmax);
+    mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, nqmax);
     auto jl_radial_grid = Radial_grid(linear_grid, N, 0, 100);
-    std::vector<double> v(unit_cell_->lmax_beta() + 1);
+    std::vector<double> v(unit_cell_.lmax_beta() + 1);
     for (int iq = 0; iq < nqmax; iq++)
     {
-        for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iq) = Spline<double>(jl_radial_grid);
+        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iq) = Spline<double>(jl_radial_grid);
         for (int ir = 0; ir < N; ir++)
         {
             double qx = jl_radial_grid[ir] * iq * dq;
-            gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
-            for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iq)[ir] = v[l];
+            gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
+            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iq)[ir] = v[l];
         }
-        for (int l = 0; l <= unit_cell_->lmax_beta(); l++) jl(l, iq).interpolate();
+        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iq).interpolate();
     }
 
 
 
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
 
         double Rmask = R_beta_[iat] * R_mask_scale_;
         int nr = -1;
@@ -717,9 +716,9 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         }
 
 
-        mdarray<double, 3> M01(nq0, nq1, unit_cell_->lmax_beta() + 1);
-        mdarray<double, 3> M11(nq1, nq1, unit_cell_->lmax_beta() + 1);
-        for (int l = 0; l <= unit_cell_->lmax_beta(); l++)
+        mdarray<double, 3> M01(nq0, nq1, unit_cell_.lmax_beta() + 1);
+        mdarray<double, 3> M11(nq1, nq1, unit_cell_.lmax_beta() + 1);
+        for (int l = 0; l <= unit_cell_.lmax_beta(); l++)
         {
             for (int jq = 0; jq < nq1; jq++)
             {
@@ -776,10 +775,10 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
    
     
     
-    beta_rf_filtered_ = mdarray<Spline<double>, 2>(unit_cell_->max_mt_radial_basis_size(), unit_cell_->num_atom_types());
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    beta_rf_filtered_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
 
         double Rmask = R_beta_[iat] * R_mask_scale_;
 
@@ -791,10 +790,10 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         }
     }
     
-    mdarray<Spline<double>, 2> sf_bessel_jl(unit_cell_->lmax_beta() + 1, unit_cell_->num_atom_types());
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    mdarray<Spline<double>, 2> sf_bessel_jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        for (int l = 0; l <= unit_cell_->lmax_beta(); l++) sf_bessel_jl(l, iat) = Spline<double>(beta_rf_filtered_(0, iat).radial_grid());
+        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) sf_bessel_jl(l, iat) = Spline<double>(beta_rf_filtered_(0, iat).radial_grid());
     }
     
     spl_nq = splindex<block>(nqmax, comm_.size(), comm_.rank());
@@ -805,20 +804,20 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         double q = iq * dq;
         
         /* get spherical Bessel functions */
-        std::vector<double> v(unit_cell_->lmax_beta() + 1);
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        std::vector<double> v(unit_cell_.lmax_beta() + 1);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             for (int ir = 0; ir < N; ir++)
             {
                 double qx = beta_rf_filtered_(0, iat).x(ir) * q;
-                gsl_sf_bessel_jl_array(unit_cell_->lmax_beta(), qx, &v[0]);
-                for (int l = 0; l <= unit_cell_->lmax_beta(); l++) sf_bessel_jl(l, iat)[ir] = v[l];
+                gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
+                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) sf_bessel_jl(l, iat)[ir] = v[l];
             }
         }
         
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            auto atom_type = unit_cell_->atom_type(iat);
+            auto atom_type = unit_cell_.atom_type(iat);
             #pragma omp parallel for
             for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             {
@@ -832,12 +831,12 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         }
     }
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         std::stringstream s;
         s << "beta_q_" << iat << ".dat";
         FILE* fout = fopen(s.str().c_str(), "w");
-        for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+        for (int idxrf = 0; idxrf < unit_cell_.atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
         {
             for (int iq = 0; iq < nqmax; iq++)
             {
@@ -848,19 +847,19 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         fclose(fout);
     }
     
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
         for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             beta_rf_filtered_(idxrf, iat).interpolate();
     }
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         std::stringstream s;
         s << "beta_rf_" << iat << ".dat";
         FILE* fout = fopen(s.str().c_str(), "w");
-        for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+        for (int idxrf = 0; idxrf < unit_cell_.atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
         {
             for (int ir = 0; ir < N; ir++)
             {
@@ -876,24 +875,24 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
 
 void Real_space_prj::get_beta_R()
 {
-    R_beta_ = std::vector<double>(unit_cell_->num_atom_types(), 0.0);
-    nr_beta_ = std::vector<int>(unit_cell_->num_atom_types(), 0);
+    R_beta_ = std::vector<double>(unit_cell_.num_atom_types(), 0.0);
+    nr_beta_ = std::vector<int>(unit_cell_.num_atom_types(), 0);
     /* get the list of max beta radii */
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        for (int idxrf = 0; idxrf < unit_cell_->atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
+        for (int idxrf = 0; idxrf < unit_cell_.atom_type(iat)->uspp().num_beta_radial_functions; idxrf++)
         {
             int nr = 0;
-            for (int ir = unit_cell_->atom_type(iat)->uspp().num_beta_radial_points[idxrf] - 1; ir >= 0; ir--)
+            for (int ir = unit_cell_.atom_type(iat)->uspp().num_beta_radial_points[idxrf] - 1; ir >= 0; ir--)
             {
-                 if (std::abs(unit_cell_->atom_type(iat)->uspp().beta_radial_functions(ir, idxrf)) > 1e-10)
+                 if (std::abs(unit_cell_.atom_type(iat)->uspp().beta_radial_functions(ir, idxrf)) > 1e-10)
                  {
                     nr = ir + 1;
                     break;
                  }
             }
 
-            R_beta_[iat] = std::max(R_beta_[iat], unit_cell_->atom_type(iat)->radial_grid(nr - 1));
+            R_beta_[iat] = std::max(R_beta_[iat], unit_cell_.atom_type(iat)->radial_grid(nr - 1));
             //R_beta_[iat] = std::max(R_beta_[iat], rmin);
             nr_beta_[iat] = std::max(nr_beta_[iat], nr);
 
@@ -908,17 +907,17 @@ void Real_space_prj::get_beta_R()
 
 void Real_space_prj::get_beta_grid()
 {
-    beta_projectors_ = std::vector<beta_real_space_prj_descriptor>(unit_cell_->num_atoms());
+    beta_projectors_ = std::vector<beta_real_space_prj_descriptor>(unit_cell_.num_atoms());
     max_num_points_ = 0;
     num_points_ = 0;
-    for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int iat = unit_cell_->atom(ia)->type_id();
+        int iat = unit_cell_.atom(ia)->type_id();
         double Rmask = R_beta_[iat] * R_mask_scale_;
 
-        auto v0 = unit_cell_->lattice_vector(0);
-        auto v1 = unit_cell_->lattice_vector(1);
-        auto v2 = unit_cell_->lattice_vector(2);
+        auto v0 = unit_cell_.lattice_vector(0);
+        auto v1 = unit_cell_.lattice_vector(1);
+        auto v2 = unit_cell_.lattice_vector(2);
 
         if (2 * Rmask > v0.length() || 2 * Rmask > v1.length() || 2 * Rmask > v2.length())
         {
@@ -947,8 +946,8 @@ void Real_space_prj::get_beta_grid()
                         {
                             for (int t2 = -1; t2 <= 1; t2++)
                             {
-                                vector3d<double> v1 = v0 - (unit_cell_->atom(ia)->position() + vector3d<double>(t0, t1, t2));
-                                auto r = unit_cell_->get_cartesian_coordinates(v1);
+                                vector3d<double> v1 = v0 - (unit_cell_.atom(ia)->position() + vector3d<double>(t0, t1, t2));
+                                auto r = unit_cell_.get_cartesian_coordinates(v1);
                                 if (r.length() <= Rmask)
                                 {
                                     if (found) TERMINATE("point was already found");
@@ -971,12 +970,12 @@ void Real_space_prj::get_beta_grid()
     }
     if (comm_.rank() == 0)
     {
-        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int iat = unit_cell_->atom(ia)->type_id();
+            int iat = unit_cell_.atom(ia)->type_id();
             printf("atom: %3i,  R_beta: %8.4f, num_points: %5i, estimated num_points: %5i\n", ia, R_beta_[iat],
                    beta_projectors_[ia].num_points_,
-                   static_cast<int>(fft_->size() * fourpi * std::pow(R_mask_scale_ * R_beta_[iat], 3) / 3.0 / unit_cell_->omega()));
+                   static_cast<int>(fft_->size() * fourpi * std::pow(R_mask_scale_ * R_beta_[iat], 3) / 3.0 / unit_cell_.omega()));
         }
         printf("sum(num_points): %i\n", num_points_);
     }

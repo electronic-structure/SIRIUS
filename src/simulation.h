@@ -7,6 +7,8 @@
 
 namespace sirius {
 
+class Simulation_context;
+
 /// Parameters of the simulation. 
 /** Parameters are first initialized from the initial input parameters and then by set..() methods.
  *  Any parameter used in the simulation must be initialized here. Then the instance of the Simulation_context class 
@@ -14,6 +16,8 @@ namespace sirius {
  */
 class Simulation_parameters
 {
+    friend Simulation_context;
+
     private:
     
         /// Maximum l for APW functions.
@@ -25,8 +29,11 @@ class Simulation_parameters
         /// Maximum l for density.
         int lmax_rho_;
         
-        /// maximum l for potential
+        /// Maximum l for potential
         int lmax_pot_;
+
+        /// Maximum l for beta-projectors of the pseudopotential method.
+        int lmax_beta_;
     
         /// Cutoff for augmented-wave functions.
         double aw_cutoff_;
@@ -85,6 +92,8 @@ class Simulation_parameters
         
         Mixer_input_section mixer_input_section_;
 
+        Unit_cell_input_section unit_cell_input_section_;
+
         std::map<std::string, ev_solver_t> str_to_ev_solver_t_;
         
         /// Import data from initial input parameters.
@@ -106,11 +115,13 @@ class Simulation_parameters
             }
 
             std::string pu = iip__.common_input_section_.processing_unit_;
-            if (pu == "cpu" || pu == "CPU")
+            std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
+
+            if (pu == "cpu")
             {
                 processing_unit_ = CPU;
             }
-            else if (pu == "gpu" || pu == "GPU")
+            else if (pu == "gpu")
             {
                 processing_unit_ = GPU;
             }
@@ -144,8 +155,12 @@ class Simulation_parameters
             iterative_solver_input_section_ = iip__.iterative_solver_input_section();
             xc_functionals_input_section_   = iip__.xc_functionals_input_section();
             mixer_input_section_            = iip__.mixer_input_section();
+            unit_cell_input_section_        = iip__.unit_cell_input_section();
 
             cyclic_block_size_              = iip__.common_input_section_.cyclic_block_size_;
+
+            num_fft_threads_                = iip__.common_input_section_.num_fft_threads_;
+            num_fft_workers_                = iip__.common_input_section_.num_fft_workers_;
         }
     
     public:
@@ -154,13 +169,15 @@ class Simulation_parameters
         /** The order of initialization is the following:
          *    - first, the default parameter values are set in the constructor
          *    - second, import() method is called and the parameters are overwritten with the input parameters
-         *    - third, the user sets the values with set...() metods.
+         *    - third, the user sets the values with set...() metods
+         *    - fourh, the Simulation_context creates the copy of parameters and chekcs/sets the correct values
          */
         Simulation_parameters(Input_parameters const& iip__)
             : lmax_apw_(8), 
               lmax_pw_(-1), 
               lmax_rho_(8), 
-              lmax_pot_(8), 
+              lmax_pot_(8),
+              lmax_beta_(-1),
               aw_cutoff_(7.0), 
               pw_cutoff_(20.0), 
               gk_cutoff_(5.0), 
@@ -195,19 +212,29 @@ class Simulation_parameters
         {
         }
     
-        void set_lmax_apw(int lmax_apw__)
+        inline void set_lmax_apw(int lmax_apw__)
         {
             lmax_apw_ = lmax_apw__;
         }
     
-        void set_lmax_rho(int lmax_rho__)
+        inline void set_lmax_rho(int lmax_rho__)
         {
             lmax_rho_ = lmax_rho__;
         }
     
-        void set_lmax_pot(int lmax_pot__)
+        inline void set_lmax_pot(int lmax_pot__)
         {
             lmax_pot_ = lmax_pot__;
+        }
+
+        inline void set_lmax_pw(int lmax_pw__)
+        {
+            lmax_pw_ = lmax_pw__;
+        }
+
+        inline void set_lmax_beta(int lmax_beta__)
+        {
+            lmax_beta_ = lmax_beta__;
         }
     
         void set_num_spins(int num_spins__)
@@ -249,6 +276,11 @@ class Simulation_parameters
         inline void set_uj_correction(bool uj_correction__)
         {
             uj_correction_ = uj_correction__; 
+        }
+
+        inline void set_num_bands(int num_bands__)
+        {
+            num_bands_ = num_bands__;
         }
     
         inline int lmax_apw() const
@@ -293,9 +325,7 @@ class Simulation_parameters
 
         inline int lmax_beta() const
         {
-            STOP();
-            return -1;
-            //return unit_cell_->lmax_beta();
+            return lmax_beta_;
         }
     
         inline double aw_cutoff() const
@@ -456,6 +486,11 @@ class Simulation_parameters
         {
             return iterative_solver_input_section_;
         }
+
+        Unit_cell_input_section const& unit_cell_input_section() const
+        {
+            return unit_cell_input_section_;
+        }
 };
 
 class Simulation_context
@@ -463,14 +498,13 @@ class Simulation_context
     private:
 
         /// Parameters of simulcaiton.
-        Simulation_parameters const& parameters_; 
+        Simulation_parameters parameters_; 
     
         /// Communicator for this simulation.
         Communicator const& comm_;
 
         /// MPI grid for this simulation.
         MPI_grid mpi_grid_;
-
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -495,14 +529,49 @@ class Simulation_context
 
         Real_space_prj* real_space_prj_;
 
+        /// Creation time of the context.
+        timeval start_time_;
+
+        bool initialized_;
+
     public:
         
         Simulation_context(Simulation_parameters const& parameters__,
                            Communicator const& comm__)
             : parameters_(parameters__),
               comm_(comm__),
-              unit_cell_(parameters_.esm_type(), comm_, parameters_.processing_unit())
+              unit_cell_(parameters_.esm_type(), comm_, parameters_.processing_unit()),
+              reciprocal_lattice_(nullptr),
+              step_function_(nullptr),
+              fft_(nullptr),
+              fft_coarse_(nullptr),
+              #ifdef _GPU_
+              fft_gpu_(nullptr),
+              fft_gpu_coarse_(nullptr),
+              #endif
+              real_space_prj_(nullptr),
+              initialized_(false)
         {
+            gettimeofday(&start_time_, NULL);
+            
+            //==     tm* ptm = localtime(&start_time_.tv_sec); 
+            //==     strftime(buf, sizeof(buf), fmt, ptm);
+            //==     start_time("%Y%m%d%H%M%S")
+
+            unit_cell_.import(parameters_.unit_cell_input_section());
+        }
+
+        ~Simulation_context()
+        {
+            if (fft_ != nullptr) delete fft_;
+            if (fft_coarse_ != nullptr) delete fft_coarse_;
+            #ifdef _GPU_
+            if (fft_gpu_ != nullptr) delete fft_gpu_;
+            if (fft_gpu_coarse_ != nullptr) delete fft_gpu_coarse_;
+            #endif
+            if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
+            if (step_function_ != nullptr) delete step_function_;
+            if (real_space_prj_ != nullptr) delete real_space_prj_;
         }
 
         inline bool full_potential()
@@ -513,6 +582,30 @@ class Simulation_context
         /// Initialize the similation (can only be called once).
         void initialize()
         {
+            if (initialized_) TERMINATE("Simulation context is already initialized.");
+
+            switch (parameters_.esm_type())
+            {
+                case full_potential_lapwlo:
+                {
+                    break;
+                }
+                case full_potential_pwlo:
+                {
+                    parameters_.set_lmax_pw(parameters_.lmax_apw());
+                    parameters_.set_lmax_apw(-1);
+                    break;
+                }
+                case ultrasoft_pseudopotential:
+                case norm_conserving_pseudopotential:
+                {
+                    parameters_.set_lmax_apw(-1);
+                    parameters_.set_lmax_rho(-1);
+                    parameters_.set_lmax_pot(-1);
+                    break;
+                }
+            }
+
             /* check MPI grid dimensions and set a default grid if needed */
             auto mpi_grid_dims = parameters_.mpi_grid_dims();
             if (!mpi_grid_dims.size()) 
@@ -526,6 +619,8 @@ class Simulation_context
 
             /* initialize variables, related to the unit cell */
             unit_cell_.initialize(parameters_.lmax_apw(), parameters_.lmax_pot(), parameters_.num_mag_dims());
+
+            parameters_.set_lmax_beta(unit_cell_.lmax_beta());
 
             /* create FFT interface */
             fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors()),
@@ -569,7 +664,7 @@ class Simulation_context
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
-                    lmax = 2 * unit_cell_.lmax_beta();
+                    lmax = 2 * parameters_.lmax_beta();
                     break;
                 }
             }
@@ -577,6 +672,30 @@ class Simulation_context
             reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, lmax, comm_);
 
             if (full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_, fft_, comm_);
+
+            if (parameters_.iterative_solver_input_section().real_space_prj_) 
+            {
+                real_space_prj_ = new Real_space_prj(unit_cell_, comm_, parameters_.iterative_solver_input_section().R_mask_scale_,
+                                                     parameters_.iterative_solver_input_section().mask_alpha_,
+                                                     parameters_.gk_cutoff(), parameters_.num_fft_threads(),
+                                                     parameters_.num_fft_workers());
+            }
+
+            /* take 20% of empty non-magnetic states */
+            if (parameters_.num_fv_states() < 0) 
+            {
+                int nfv = int(1e-8 + unit_cell_.num_valence_electrons() / 2.0) +
+                              std::max(10, int(0.1 * unit_cell_.num_valence_electrons()));
+                parameters_.set_num_fv_states(nfv);
+            }
+            
+            if (parameters_.num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
+                TERMINATE("not enough first-variational states");
+            
+            /* total number of bands */
+            parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
+
+            initialized_ = true;
         }
 
         Simulation_parameters const& parameters() const
