@@ -24,7 +24,7 @@
 
 #include "global.h"
 #include "real_space_prj.h"
-#include "simulation.h"
+//#include "simulation.h"
 
 namespace sirius {
 

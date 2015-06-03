@@ -275,7 +275,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     Timer t("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), unit_cell_.num_atoms());
@@ -341,7 +341,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     #endif
     
     /* boundary condition for muffin-tins */
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         /* compute V_lm at the MT boundary */
         mdarray<double_complex, 2> vmtlm(parameters_.lmmax_pot(), unit_cell_.num_atoms());
@@ -403,7 +403,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     energy_vha_ = Periodic_function<double>::inner(rho, vh);
         
     /* add nucleus potential and contribution to Hartree energy */
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         double evha_nuc_ = 0;
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)

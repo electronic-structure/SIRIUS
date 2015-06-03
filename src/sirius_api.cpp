@@ -171,7 +171,7 @@ void sirius_add_atom_type(char* label__,
 {
     log_function_enter(__func__);
     std::string fname = (fname__ == NULL) ? std::string("") : std::string(fname__);
-    sim_ctx->unit_cell().add_atom_type(std::string(label__), fname, sim_param->esm_type());
+    sim_ctx->unit_cell().add_atom_type(std::string(label__), fname);
     log_function_exit(__func__);
 }
 
@@ -381,7 +381,7 @@ void sirius_global_initialize(int32_t* num_mag_dims__,
 
     sim_ctx = new sirius::Simulation_context(*sim_param, MPI_COMM_WORLD);
     
-    sim_param->initialize();
+    sim_ctx->initialize();
 
     blacs_grid = new BLACS_grid(sim_ctx->mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
                                 sim_ctx->mpi_grid().dimension_size(_dim_row_),
@@ -642,8 +642,6 @@ void sirius_clear(void)
 {
     log_function_enter(__func__);
     
-    sim_param->clear();
-
     if (density != nullptr) 
     {
         delete density;
@@ -671,6 +669,17 @@ void sirius_clear(void)
             delete kset_list[i];
             kset_list[i] = nullptr;
         }
+    }
+    if (sim_ctx != nullptr)
+    {
+        delete sim_ctx;
+        sim_ctx = nullptr;
+    }
+
+    if (sim_param != nullptr)
+    {
+        delete sim_param;
+        sim_param = nullptr;
     }
     kset_list.clear();
     log_function_exit(__func__);
@@ -1056,7 +1065,8 @@ void FORTRAN(sirius_plot_potential)(void)
 void FORTRAN(sirius_write_json_output)(void)
 {
     log_function_enter(__func__);
-    sim_param->write_json_output();
+    TERMINATE("aaa");
+    //sim_param->write_json_output();
     log_function_exit(__func__);
 }
 
@@ -1994,7 +2004,7 @@ void sirius_ground_state_print_info()
 
 void sirius_create_storage_file()
 {
-    sim_param->create_storage_file();
+    sim_ctx->create_storage_file();
 }
 
 void sirius_test_spinor_wave_functions(int32_t* kset_id)

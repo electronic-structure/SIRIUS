@@ -340,13 +340,13 @@ void K_point::update()
     if (use_second_variation)
     {
         /* allocate memory for first-variational eigen vectors */
-        if (unit_cell_.full_potential())
+        if (parameters_.full_potential())
         {
             fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_);
             fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
 
-        if (unit_cell_.full_potential())
+        if (parameters_.full_potential())
         {
             // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
             fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
@@ -417,7 +417,7 @@ void K_point::update()
     }
     else  /* use full diagonalziation */
     {
-        if (unit_cell_.full_potential())
+        if (parameters_.full_potential())
         {
             fd_eigen_vectors_ = mdarray<double_complex, 2>(gklo_basis_size_row(), spl_spinor_wf_.local_size());
             spinor_wave_functions_.allocate();
@@ -519,7 +519,7 @@ void K_point::generate_fv_states()
     log_function_enter(__func__);
     Timer t("sirius::K_point::generate_fv_states");
     
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         if (parameters_.processing_unit() == GPU && num_ranks() == 1)
         {
@@ -840,7 +840,7 @@ void K_point::generate_spinor_wave_functions()
 void K_point::generate_gkvec(double gk_cutoff)
 {
     if ((gk_cutoff * unit_cell_.max_mt_radius() > double(parameters_.lmax_apw())) && 
-        unit_cell_.full_potential())
+        parameters_.full_potential())
     {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 

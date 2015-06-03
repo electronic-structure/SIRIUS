@@ -40,11 +40,10 @@ int Unit_cell::next_atom_type_id(const std::string label)
     return atom_type_id_map_[label];
 }
 
-void Unit_cell::add_atom_type(const std::string label, const std::string file_name, 
-                              electronic_structure_method_t esm_type)
+void Unit_cell::add_atom_type(const std::string label, const std::string file_name)
 {
     int id = next_atom_type_id(label);
-    atom_types_.push_back(new Atom_type(id, label, file_name, esm_type, pu_));
+    atom_types_.push_back(new Atom_type(parameters_, id, label, file_name));
 }
 
 void Unit_cell::add_atom(const std::string label, double* position, double* vector_field)
@@ -242,7 +241,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
+void Unit_cell::initialize()
 {
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
@@ -270,7 +269,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(iat)->init(lmax_apw__, lmax_pot__, num_mag_dims__, offs_lo);
+        atom_type(iat)->init(parameters_.lmax_apw(), parameters_.lmax_pot(), parameters_.num_mag_dims(), offs_lo);
         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
         max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
@@ -297,91 +296,14 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        atom(ia)->init(lmax_pot__, num_mag_dims__, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        atom(ia)->init(parameters_.lmax_pot(), parameters_.num_mag_dims(), mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
         mt_basis_size_ += atom(ia)->type()->mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-
-    update();
-
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
-    {
-        /* split beta-projectors into chunks */
-        int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
-        int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
-        splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
-        beta_chunks_.resize(num_beta_chunks);
-        
-        for (int ib = 0; ib < num_beta_chunks; ib++)
-        {
-            /* number of atoms in chunk */
-            int na = (int)spl_beta_chunks.local_size(ib);
-            beta_chunks_[ib].num_atoms_ = na;
-            beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
-            beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
-
-            int num_beta = 0;
     
-            for (int i = 0; i < na; i++)
-            {
-                int ia = (int)spl_beta_chunks.global_index(i, ib);
-                auto type = atom(ia)->type();
-                /* atom fractional coordinates */
-                for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
-                /* number of beta functions for atom */
-                beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
-                /* offset in beta_gk*/
-                beta_chunks_[ib].desc_(1, i) = num_beta;
-                /* offset in beta_gk_t */
-                beta_chunks_[ib].desc_(2, i) = type->offset_lo();
-                beta_chunks_[ib].desc_(3, i) = ia;
-    
-                num_beta += type->mt_basis_size();
-            }
-            beta_chunks_[ib].num_beta_ = num_beta;
-
-            if (pu_ == GPU)
-            {
-                #ifdef _GPU_
-                beta_chunks_[ib].desc_.allocate_on_device();
-                beta_chunks_[ib].desc_.copy_to_device();
-
-                beta_chunks_[ib].atom_pos_.allocate_on_device();
-                beta_chunks_[ib].atom_pos_.copy_to_device();
-                #endif
-            }
-        }
-
-        num_beta_t_ = 0;
-        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
-    }
-            
-    mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia)->mt_aw_basis_size(); xi++, n++)
-        {
-            mt_aw_basis_descriptors_[n].ia = ia;
-            mt_aw_basis_descriptors_[n].xi = xi;
-        }
-    }
-
-    mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia)->mt_lo_basis_size(); xi++, n++)
-        {
-            mt_lo_basis_descriptors_[n].ia = ia;
-            mt_lo_basis_descriptors_[n].xi = xi;
-        }
-    }
-}
-
-void Unit_cell::update()
-{
     vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
     vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
     vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
@@ -390,7 +312,7 @@ void Unit_cell::update()
     double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
     find_nearest_neighbours(r);
 
-    if (full_potential())
+    if (parameters_.full_potential())
     {
         /* find new MT radii and initialize radial grid */
         if (auto_rmt())
@@ -429,7 +351,7 @@ void Unit_cell::update()
     spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
     
     volume_mt_ = 0.0;
-    if (full_potential())
+    if (parameters_.full_potential())
     {
         for (int ia = 0; ia < num_atoms(); ia++)
         {
@@ -438,6 +360,78 @@ void Unit_cell::update()
     }
     
     volume_it_ = omega() - volume_mt_;
+
+    if (!parameters_.full_potential())
+    {
+        /* split beta-projectors into chunks */
+        int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
+        int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
+        splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
+        beta_chunks_.resize(num_beta_chunks);
+        
+        for (int ib = 0; ib < num_beta_chunks; ib++)
+        {
+            /* number of atoms in chunk */
+            int na = (int)spl_beta_chunks.local_size(ib);
+            beta_chunks_[ib].num_atoms_ = na;
+            beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
+            beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
+
+            int num_beta = 0;
+    
+            for (int i = 0; i < na; i++)
+            {
+                int ia = (int)spl_beta_chunks.global_index(i, ib);
+                auto type = atom(ia)->type();
+                /* atom fractional coordinates */
+                for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
+                /* number of beta functions for atom */
+                beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
+                /* offset in beta_gk*/
+                beta_chunks_[ib].desc_(1, i) = num_beta;
+                /* offset in beta_gk_t */
+                beta_chunks_[ib].desc_(2, i) = type->offset_lo();
+                beta_chunks_[ib].desc_(3, i) = ia;
+    
+                num_beta += type->mt_basis_size();
+            }
+            beta_chunks_[ib].num_beta_ = num_beta;
+
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef _GPU_
+                beta_chunks_[ib].desc_.allocate_on_device();
+                beta_chunks_[ib].desc_.copy_to_device();
+
+                beta_chunks_[ib].atom_pos_.allocate_on_device();
+                beta_chunks_[ib].atom_pos_.copy_to_device();
+                #endif
+            }
+        }
+
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
+    }
+            
+    mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < atom(ia)->mt_aw_basis_size(); xi++, n++)
+        {
+            mt_aw_basis_descriptors_[n].ia = ia;
+            mt_aw_basis_descriptors_[n].xi = xi;
+        }
+    }
+
+    mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < atom(ia)->mt_lo_basis_size(); xi++, n++)
+        {
+            mt_lo_basis_descriptors_[n].ia = ia;
+            mt_lo_basis_descriptors_[n].xi = xi;
+        }
+    }
 }
 
 void Unit_cell::clear()
@@ -869,7 +863,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
     {
         int ia = (int)spl_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(pu_, comm_bundle_atoms_.comm());
+        atom(ia)->generate_radial_integrals(parameters_.processing_unit(), comm_bundle_atoms_.comm());
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)

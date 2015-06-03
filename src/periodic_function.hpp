@@ -26,17 +26,23 @@ template <typename T>
 Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
                                         int angular_domain_size__,
                                         bool alloc_pw__)
-    : unit_cell_(ctx__.unit_cell()), 
+    : parameters_(ctx__.parameters()),
+      unit_cell_(ctx__.unit_cell()), 
       step_function_(ctx__.step_function()),
       comm_(ctx__.comm()),
       fft_(ctx__.fft()),
-      angular_domain_size_(angular_domain_size__)
+      angular_domain_size_(angular_domain_size__),
+      num_gvec_(0)
 {
     spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
     
-    if (alloc_pw__) f_pw_ = mdarray<double_complex, 1>(fft_->num_gvec());
+    if (alloc_pw__)
+    {
+        num_gvec_ = fft_->num_gvec();
+        f_pw_ = mdarray<double_complex, 1>(fft_->num_gvec());
+    }
 
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
         f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>((int)unit_cell_.spl_num_atoms().local_size());
 }
 
@@ -59,7 +65,7 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
         f_it_local_ = mdarray<T, 1>(spl_fft_size_.local_size());
     }
 
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         if (allocate_global_mt)
         {
@@ -83,7 +89,7 @@ void Periodic_function<T>::zero()
     f_mt_.zero();
     f_it_.zero();
     f_pw_.zero();
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
     }
@@ -132,7 +138,7 @@ inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
 {
     comm_.allgather(f_it_local_.template at<CPU>(), f_it__, (int)spl_fft_size_.global_offset(), (int)spl_fft_size_.local_size());
 
-    if (unit_cell_.full_potential()) 
+    if (parameters_.full_potential()) 
     {
         mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
@@ -153,7 +159,7 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
     for (int irloc = 0; irloc < (int)spl_fft_size_.local_size(); irloc++)
         f_it_local_(irloc) += g->f_it<local>(irloc);
     
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
             f_mt_local_(ialoc) += g->f_mt(ialoc);
@@ -181,7 +187,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
     comm_.allreduce(&it_val, 1);
     T total = it_val;
     
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         mt_val.resize(unit_cell_.num_atoms());
         memset(&mt_val[0], 0, unit_cell_.num_atoms() * sizeof(T));
@@ -206,7 +212,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
 template <typename T>
 void Periodic_function<T>::hdf5_write(HDF5_tree h5f)
 {
-    if (unit_cell_.full_potential()) h5f.write("f_mt", f_mt_);
+    if (parameters_.full_potential()) h5f.write("f_mt", f_mt_);
     h5f.write("f_it", f_it_);
     if (num_gvec_) h5f.write("f_pw", f_pw_);
 }
@@ -214,7 +220,7 @@ void Periodic_function<T>::hdf5_write(HDF5_tree h5f)
 template <typename T>
 void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 {
-    if (unit_cell_.full_potential()) h5f.read_mdarray("f_mt", f_mt_);
+    if (parameters_.full_potential()) h5f.read_mdarray("f_mt", f_mt_);
     h5f.read_mdarray("f_it", f_it_);
     if (num_gvec_) h5f.read_mdarray("f_pw", f_pw_);
 }
@@ -223,7 +229,7 @@ template <typename T>
 size_t Periodic_function<T>::size()
 {
     size_t size = fft_->size();
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
         {
@@ -239,7 +245,7 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
 {
     size_t n = 0;
     
-    if (unit_cell_.full_potential()) 
+    if (parameters_.full_potential()) 
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
@@ -260,7 +266,7 @@ size_t Periodic_function<T>::unpack(T const* array__)
 {
     size_t n = 0;
 
-    if (unit_cell_.full_potential()) 
+    if (parameters_.full_potential()) 
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {

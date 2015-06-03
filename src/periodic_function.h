@@ -25,10 +25,10 @@
 #ifndef __PERIODIC_FUNCTION_H__
 #define __PERIODIC_FUNCTION_H__
 
+#include "simulation_context.h"
 #include "mdarray.h"
 #include "spheric_function.h"
 #include "mixer.h"
-#include "simulation.h"
 
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
@@ -73,6 +73,8 @@ class Periodic_function
        
         /// Complex counterpart for a given type T.
         typedef typename type_wrapper<T>::complex_t complex_t; 
+
+        Simulation_parameters const& parameters_;
         
         Unit_cell const& unit_cell_;
 
@@ -331,7 +333,7 @@ class Periodic_function
                     
             result *= (f__->unit_cell_.omega() / f__->fft_->size());
             
-            if (f__->unit_cell_.full_potential())
+            if (f__->parameters_.full_potential())
             {
                 for (int ialoc = 0; ialoc < (int)f__->unit_cell_.spl_num_atoms().local_size(); ialoc++)
                     result += sirius::inner(f__->f_mt(ialoc), g__->f_mt(ialoc));

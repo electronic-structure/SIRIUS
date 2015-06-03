@@ -15,7 +15,7 @@ void Density::initial_density()
        a = Z * b^3 / 2 / 4 / pi
     */
 
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         /* initialize smooth density of free atoms */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(true);
@@ -449,7 +449,7 @@ void Density::initial_density()
     rho_->sync(true, true);
     for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync(true, true);
 
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         #ifdef _PRINT_OBJECT_CHECKSUM_
         DUMP("checksum(rhomt): %18.10f", rho_->f_mt().checksum());

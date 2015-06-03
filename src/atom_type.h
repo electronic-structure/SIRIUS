@@ -36,6 +36,7 @@
 #include "radial_solver.h"
 #include "json_tree.h"
 #include "xc_functional.h"
+#include "simulation_parameters.h"
 
 namespace sirius {
 
@@ -276,6 +277,8 @@ class Atom_type
 {
     private:
 
+        Simulation_parameters const& parameters_;
+
         /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
         int id_;
 
@@ -341,9 +344,6 @@ class Atom_type
 
         std::vector<int> atom_id_;
 
-        /// type of electronic structure method used
-        electronic_structure_method_t esm_type_;
-        
         std::string file_name_;
 
         mdarray<int, 2> idx_radial_integrals_;
@@ -351,15 +351,13 @@ class Atom_type
         mdarray<double, 3> rf_coef_;
         mdarray<double, 3> vrf_coef_;
 
-        processing_unit_t pu_;
-
         bool initialized_;
        
-        // forbid copy constructor
-        Atom_type(const Atom_type& src);
+        /* forbid copy constructor */
+        Atom_type(const Atom_type& src) = delete;
         
-        // forbid assignment operator
-        Atom_type& operator=(const Atom_type& src);
+        /* forbid assignment operator */
+        Atom_type& operator=(const Atom_type& src) = delete;
         
         void read_input_core(JSON_tree& parser);
 
@@ -387,18 +385,18 @@ class Atom_type
 
     public:
         
-        Atom_type(const char* symbol__, 
+        Atom_type(Simulation_parameters const& parameters__,
+                  const char* symbol__, 
                   const char* name__, 
                   int zn__, 
                   double mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
                   radial_grid_t grid_type__);
  
-        Atom_type(const int id__, 
+        Atom_type(Simulation_parameters const& parameters__,
+                  const int id__, 
                   const std::string label, 
-                  const std::string file_name__, 
-                  const electronic_structure_method_t esm_type__,
-                  processing_unit_t pu__);
+                  const std::string file_name__);
 
         ~Atom_type();
         
@@ -706,11 +704,6 @@ class Atom_type
             return offset_lo_;
         }
 
-        inline electronic_structure_method_t esm_type()
-        {
-            return esm_type_;
-        }
-
         inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
         {
             uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
@@ -730,6 +723,11 @@ class Atom_type
         inline mdarray<double, 3>& vrf_coef()
         {
             return vrf_coef_;
+        }
+
+        inline Simulation_parameters const& parameters() const
+        {
+            return parameters_;
         }
 };
 

@@ -993,7 +993,7 @@ void Potential::load()
     //== for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     //==     fout["effective_potential"]["free_atom_potential"].read(iat, unit_cell_.atom_type(iat)->free_atom_potential());
 
-    if (unit_cell_.full_potential()) update_atomic_potential();
+    if (parameters_.full_potential()) update_atomic_potential();
 }
 
 void Potential::generate_local_potential()

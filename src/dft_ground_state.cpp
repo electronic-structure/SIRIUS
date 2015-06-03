@@ -29,7 +29,7 @@ namespace sirius {
 double DFT_ground_state::energy_enuc()
 {
     double enuc = 0.0;
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         for (size_t ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
@@ -184,7 +184,7 @@ void DFT_ground_state::print_info()
     
     if (ctx_.comm().rank() == 0)
     {
-        if (unit_cell_.full_potential())
+        if (parameters_.full_potential())
         {
             double total_core_leakage = 0.0;
             printf("\n");
@@ -253,7 +253,7 @@ void DFT_ground_state::print_info()
         printf("\n"); 
 
         printf("valence_eval_sum          : %18.8f\n", evalsum1);
-        if (unit_cell_.full_potential())
+        if (parameters_.full_potential())
         {
             printf("core_eval_sum             : %18.8f\n", evalsum2);
             printf("kinetic energy            : %18.8f\n", ekin);
@@ -276,7 +276,7 @@ void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
-        if (unit_cell_.full_potential()) printf("core leakage : %18.8f\n", core_leak);
+        if (parameters_.full_potential()) printf("core leakage : %18.8f\n", core_leak);
     }
 }
 

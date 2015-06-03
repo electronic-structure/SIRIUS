@@ -29,7 +29,7 @@
 #include "periodic_function.h"
 #include "band.h"
 #include "k_set.h"
-#include "simulation.h"
+#include "simulation_context.h"
 
 namespace sirius
 {

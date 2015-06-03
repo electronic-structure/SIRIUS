@@ -62,7 +62,7 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     lmax_pot_ = lmax_pot__;
     num_mag_dims_ = num_mag_dims__;
 
-    if (type()->esm_type() == full_potential_lapwlo || type()->esm_type() == full_potential_pwlo)
+    if (type()->parameters().full_potential())
     {
         int lmmax = Utils::lmmax(lmax_pot_);
 
@@ -75,8 +75,7 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
         uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
     }
 
-    if (type()->esm_type() == ultrasoft_pseudopotential ||
-        type()->esm_type() == norm_conserving_pseudopotential)
+    if (!type()->parameters().full_potential())
     {
         int nbf = type()->mt_lo_basis_size();
         d_mtrx_ = matrix<double_complex>(nbf, nbf);

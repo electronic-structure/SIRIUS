@@ -399,7 +399,7 @@ void Density::generate(K_set& ks__)
     
     generate_valence(ks__);
 
-    if (unit_cell_.full_potential())
+    if (parameters_.full_potential())
     {
         generate_core_charge_density();
 
@@ -417,15 +417,13 @@ void Density::generate(K_set& ks__)
     }
     
     double nel = 0;
-    if (parameters_.esm_type() == full_potential_lapwlo ||
-        parameters_.esm_type() == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         std::vector<double> nel_mt;
         double nel_it;
         nel = rho_->integrate(nel_mt, nel_it);
     }
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
+    else
     {
         nel = real(rho_->f_pw(0)) * unit_cell_.omega();
     }
@@ -437,7 +435,7 @@ void Density::generate(K_set& ks__)
           << "obtained value : " << nel << std::endl 
           << "target value : " << unit_cell_.num_electrons() << std::endl
           << "difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
-        if (unit_cell_.full_potential())
+        if (parameters_.full_potential())
         {
             s << "total core leakage : " << core_leakage();
             for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) 

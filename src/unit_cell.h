@@ -37,12 +37,16 @@ extern "C" {
 #include "mpi_grid.h"
 #include "symmetry.h"
 #include "input.h"
+#include "simulation_parameters.h"
 
 namespace sirius {
 
 class Unit_cell
 {
     private:
+        
+        /// Basic parameters of the simulation.
+        Simulation_parameters const& parameters_;
         
         /// Mapping between atom type label and an ordered internal id in the range [0, \f$ N_{types} \f$).
         std::map<std::string, int> atom_type_id_map_;
@@ -78,6 +82,7 @@ class Unit_cell
          */
         matrix3d<double> inverse_lattice_vectors_;
 
+        /// Vectors of reciprocal lattice in column order.
         matrix3d<double> reciprocal_lattice_vectors_;
         
         /// Volume \f$ \Omega \f$ of the unit cell. Volume of Brillouin zone is then \f$ (2\Pi)^3 / \Omega \f$.
@@ -98,22 +103,22 @@ class Unit_cell
         /// Total number of valence electrons.
         double num_valence_electrons_;
 
-        /// total number of electrons
+        /// Total number of electrons.
         double num_electrons_;
 
-        /// list of equivalent atoms, provided externally
+        /// List of equivalent atoms, provided externally.
         std::vector<int> equivalent_atoms_;
     
-        /// maximum number of muffin-tin points across all atom types
+        /// Maximum number of muffin-tin points across all atom types.
         int max_num_mt_points_;
         
-        /// total number of MT basis functions
+        /// Total number of MT basis functions.
         int mt_basis_size_;
         
-        /// maximum number of MT basis functions across all atoms
+        /// Maximum number of MT basis functions across all atoms.
         int max_mt_basis_size_;
 
-        /// maximum number of MT radial basis functions across all atoms
+        /// Maximum number of MT radial basis functions across all atoms.
         int max_mt_radial_basis_size_;
 
         /// Total number of augmented wave basis functions in the muffin-tins.
@@ -148,7 +153,7 @@ class Unit_cell
 
         int lmax_beta_;
 
-        electronic_structure_method_t esm_type_;
+        //electronic_structure_method_t esm_type_;
 
         Communicator_bundle comm_bundle_atoms_;
         
@@ -173,7 +178,7 @@ class Unit_cell
 
         std::vector<beta_chunk> beta_chunks_;
 
-        processing_unit_t pu_;
+        //processing_unit_t pu_;
 
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
@@ -188,8 +193,9 @@ class Unit_cell
 
     public:
     
-        Unit_cell(electronic_structure_method_t esm_type__, Communicator const& comm__, processing_unit_t pu__)
-            : omega_(0),
+        Unit_cell(Simulation_parameters const& parameters__, Communicator const& comm__)
+            : parameters_(parameters__),
+              omega_(0),
               volume_mt_(0),
               volume_it_(0),
               total_nuclear_charge_(0),
@@ -198,10 +204,8 @@ class Unit_cell
               num_electrons_(0),
               auto_rmt_(0), 
               lmax_beta_(-1),
-              esm_type_(esm_type__),
               symmetry_(nullptr),
-              comm_(comm__),
-              pu_(pu__)
+              comm_(comm__)
         {
         }
         
@@ -218,7 +222,8 @@ class Unit_cell
          *  Initialization must be broken into two parts: one is called once, and the second one is called
          *  each time the atoms change the position.
          */
-        void initialize(int lmax_apw, int lmax_pot, int num_mag_dims);
+        //void initialize(int lmax_apw, int lmax_pot, int num_mag_dims);
+        void initialize();
 
         /// Update the unit cell after moving the atoms.
         /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
@@ -239,8 +244,7 @@ class Unit_cell
         void clear();
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
-        void add_atom_type(const std::string label, const std::string file_name, 
-                           electronic_structure_method_t esm_type);
+        void add_atom_type(const std::string label, const std::string file_name);
         
         /// Add new atom to the list of atom types.
         void add_atom(const std::string label, double* position, double* vector_field);
@@ -491,10 +495,10 @@ class Unit_cell
             return lmax_beta_;
         }
 
-        inline bool full_potential() const
-        {
-            return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
-        }
+        //inline bool full_potential() const
+        //{
+        //    return (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo);
+        //}
 
         inline int num_nearest_neighbours(int ia) const
         {
@@ -562,7 +566,7 @@ class Unit_cell
             {
                 auto label = inp__.labels_[iat];
                 auto fname = inp__.atom_files_.at(label);
-                add_atom_type(label, fname, esm_type_);
+                add_atom_type(label, fname);
                 for (int ia = 0; ia < (int)inp__.coordinates_[iat].size(); ia++)
                 {
                     auto v = inp__.coordinates_[iat][ia];

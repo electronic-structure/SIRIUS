@@ -27,6 +27,7 @@
 
 #include <gsl/gsl_sf_bessel.h>
 #include "evp_solver.h"
+#include "unit_cell.h"
 
 namespace sirius
 {

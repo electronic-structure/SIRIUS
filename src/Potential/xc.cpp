@@ -884,7 +884,7 @@ void Potential::xc(Periodic_function<double>* rho,
         xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
     }
    
-    if (ctx_.unit_cell().full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
+    if (parameters_.full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
     
     if (parameters_.num_spins() == 1)
     {
