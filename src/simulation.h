@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file simulation.h
+ *   
+ *  \brief Contains definition and implementation of Simulation_parameters and Simulation_context classes.
+ */
+
 #ifndef __SIMULATION_H__
 #define __SIMULATION_H__
 
@@ -5,12 +29,13 @@
 #include "mpi_grid.h"
 #include "step_function.h"
 
+/// SIRIUS namespace.
 namespace sirius {
 
 /// Parameters of the simulation. 
 /** Parameters are first initialized from the initial input parameters and then by set..() methods.
- *  Any parameter used in the simulation must be initialized here. Then the instance of the Simulation_context class 
- *  can be created.
+ *  Any parameter used in the simulation must be first initialized here. Then the instance of the 
+ *  Simulation_context class can be created where proper values of some parameters are set.
  */
 class Simulation_parameters
 {
@@ -127,6 +152,7 @@ class Simulation_parameters
             }
 
             std::string esm = iip__.common_input_section_.electronic_structure_method_;
+            std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
             if (esm == "full_potential_lapwlo")
             {
                 esm_type_ = full_potential_lapwlo;
@@ -414,20 +440,6 @@ class Simulation_parameters
         {
             return cyclic_block_size_;
         }
-    
-        /// Initialize the global variables
-        void initialize();
-    
-        /// Clear global variables
-        void clear();
-    
-        void print_info();
-    
-        void write_json_output();
-    
-        void create_storage_file();
-    
-        std::string start_time(const char* fmt);
     
         inline electronic_structure_method_t esm_type() const
         {
@@ -911,5 +923,46 @@ class Simulation_context
 };
 
 };
+
+/** \page stdvarname Standard variable names
+    
+    Below is the list of standard names for some of the loop variables:
+    
+    l - index of orbital quantum number \n
+    m - index of azimutal quantum nuber \n
+    lm - combined index of (l,m) quantum numbers \n
+    ia - index of atom \n
+    ic - index of atom class \n
+    iat - index of atom type \n
+    ir - index of r-point \n
+    ig - index of G-vector \n
+    idxlo - index of local orbital \n
+    idxrf - index of radial function \n
+
+    The loc suffix is added to the variable to indicate that it runs over local fraction of elements for the given
+    MPI rank. Typical code looks like this:
+    
+    \code{.cpp}
+        // zero array
+        memset(&mt_val[0], 0, parameters_.num_atoms() * sizeof(T));
+        
+        // loop over local fraction of atoms
+        for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+        {
+            // get global index of atom
+            int ia = parameters_.spl_num_atoms(ialoc);
+
+            int nmtp = parameters_.atom(ia)->num_mt_points();
+           
+            // integrate spherical part of the function
+            Spline<T> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+            for (int ir = 0; ir < nmtp; ir++) s[ir] = f_mt<local>(0, ir, ialoc);
+            mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
+        }
+
+        // simple array synchronization
+        Platform::allreduce(&mt_val[0], parameters_.num_atoms());
+    \endcode
+*/
 
 #endif // __SIMULATION_H__
