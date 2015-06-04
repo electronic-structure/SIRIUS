@@ -379,7 +379,7 @@ class JSON_write
          *      "name" : [v1, v2, v2, ...]
          *  \endcode
          */
-        inline void single(const char* name, std::vector<double>& values)
+        inline void single(const char* name, std::vector<double> const& values)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
@@ -392,7 +392,7 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        inline void single(const char* name, std::vector<int>& values)
+        inline void single(const char* name, std::vector<int> const& values)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
@@ -404,7 +404,7 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        inline void single(const char* name, std::vector<std::string>& values)
+        inline void single(const char* name, std::vector<std::string> const& values)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);

@@ -101,7 +101,7 @@ void Reciprocal_lattice::init(int lmax)
 
 std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv) const
 {
-    assert((int)form_factors.size(0) == unit_cell_->num_atom_types());
+    assert((int)form_factors.size(0) == unit_cell_.num_atom_types());
     
     std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
