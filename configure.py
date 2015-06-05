@@ -159,7 +159,7 @@ def main():
             clean_packages.append(opts[3])
    
     build_elpa = False
-    if "-D_ELPA_" in platform["MPI_CXX_OPT"]:
+    if "-D__ELPA" in platform["MPI_CXX_OPT"]:
         build_elpa = True
         makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/elpa/2014.06/libelpa.a\n")
 

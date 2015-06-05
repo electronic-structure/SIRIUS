@@ -33,15 +33,15 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        
 OBJ = $(SRC:.cpp=.o) 
       
-ifneq (,$(findstring D_GPU_,$(CXX_OPT)))
+ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) cuda_interface.o cuda_uspp_kernels.o cuda_spline_kernels.o
 endif
 
-ifneq (,$(findstring D_MAGMA_,$(CXX_OPT)))
+ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
 	OBJ := $(OBJ) magma_interface.o
 endif
 
-ifneq (,$(findstring D_PLASMA_,$(CXX_OPT)))
+ifneq (,$(findstring D__PLASMA,$(CXX_OPT)))
 	OBJ := $(OBJ) plasma_interface.o
 endif
 

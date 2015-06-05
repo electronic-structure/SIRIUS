@@ -53,6 +53,8 @@
 
 //== #define __GPU_DIRECT
 
+//== #definr __RS_GEN_EIG
+
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
