@@ -48,10 +48,18 @@ struct Unit_cell_input_section
     std::map<std::string, std::string> atom_files_;
     std::vector< std::vector< std::vector<double> > > coordinates_;
 
+    bool exist_;
+
+    Unit_cell_input_section() : exist_(false)
+    {
+    }
+
     void read(JSON_tree const& parser)
     {
         if (parser.exist("unit_cell"))
         {
+            exist_ = true;
+
             auto section = parser["unit_cell"];
             std::vector<double> a0, a1, a2;
             section["lattice_vectors"][0] >> a0;
@@ -119,7 +127,12 @@ struct Mixer_input_section
 
     bool exist_;
 
-    Mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden2"), max_history_(8), exist_(false)
+    Mixer_input_section() 
+        : beta_(0.9),
+          gamma_(1.0),
+          type_("broyden2"),
+          max_history_(8),
+          exist_(false)
     {
     }
 
@@ -164,6 +177,7 @@ struct XC_functionals_input_section
     }
 };
 
+/** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
     int num_steps_;

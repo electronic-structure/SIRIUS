@@ -24,8 +24,10 @@
 
 #include "sirius.h"
 
+/// Parameters of the simulation.
 sirius::Simulation_parameters* sim_param = nullptr;
 
+/// Simulation context.
 sirius::Simulation_context* sim_ctx = nullptr;
 
 /// Pointer to Density class, implicitly used by Fortran side.
@@ -33,9 +35,6 @@ sirius::Density* density = nullptr;
 
 /// Pointer to Potential class, implicitly used by Fortran side.
 sirius::Potential* potential = nullptr;
-
-/// Set of global parameters
-//== sirius::Global* global_parameters = nullptr;
 
 /// List of pointers to the sets of k-points.
 std::vector<sirius::K_set*> kset_list;
@@ -74,10 +73,33 @@ void sirius_platform_initialize(int32_t* call_mpi_init_)
 void sirius_create_global_parameters()
 {
     auto iip = (Utils::file_exists("sirius.json")) ? sirius::Input_parameters("sirius.json") : sirius::Input_parameters();
-    //global_parameters = new sirius::Global(iip, MPI_COMM_WORLD);
 
     sim_param = new sirius::Simulation_parameters(iip);
-    //sim_ctx = new sirius::Simulation_context(*sim_param, MPI_COMM_WORLD);
+}
+
+void sirius_create_simulation_context()
+{
+    sim_ctx = new sirius::Simulation_context(*sim_param, MPI_COMM_WORLD);
+}
+
+void sirius_set_lmax_apw(int32_t* lmax_apw__)
+{
+    sim_param->set_lmax_apw(*lmax_apw__);
+}
+
+void sirius_set_lmax_pot(int32_t* lmax_pot__)
+{
+    sim_param->set_lmax_pot(*lmax_pot__);
+}
+
+void sirius_set_lmax_rho(int32_t* lmax_rho__)
+{
+    sim_param->set_lmax_rho(*lmax_rho__);
+}
+
+void sirius_set_num_mag_dims(int32_t* num_mag_dims__)
+{
+    sim_param->set_num_mag_dims(*num_mag_dims__);
 }
 
 /// Set lattice vectors.
@@ -345,42 +367,11 @@ void sirius_set_aw_cutoff(double* aw_cutoff__)
 /// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
  *  atom types and atoms into the unit cell.
- *
- *  \param [in] lmax_apw maximum \f$ \ell \f$ for APW functions
- *  \param [in] lmax_rho maximum \f$ \ell \f$ for charge density and magnetization
- *  \param [in] lmax_pot maximum \f$ \ell \f$ for potential and effective magnetic field
- *  \param [in] num_mag_dims number of magnetic dimensions (0, 1 or 3)
- *
- *  Example:
-    \code{.F90}
-    integer lmaxapw, lmaxvr, ndmag
-    lmaxapw = 10
-    lmaxvr = 8
-    ndmag = 0
-    ! initialize global variables
-    call sirius_global_initialize(lmaxapw, lmaxvr, lmaxvr, ndmag)
-    \endcode
  */
-void sirius_global_initialize(int32_t* num_mag_dims__,
-                              int32_t* lmax_apw__,
-                              int32_t* lmax_rho__,
-                              int32_t* lmax_pot__)
+void sirius_global_initialize()
 {
     log_function_enter(__func__);
 
-    
-    int num_mag_dims = (num_mag_dims__ != NULL) ? (*num_mag_dims__) : 0;
-    int num_spins = (num_mag_dims == 0) ? 1 : 2;
-
-
-    if (lmax_apw__ != NULL) sim_param->set_lmax_apw(*lmax_apw__);
-    if (lmax_rho__ != NULL) sim_param->set_lmax_rho(*lmax_rho__);
-    if (lmax_pot__ != NULL) sim_param->set_lmax_pot(*lmax_pot__);
-    sim_param->set_num_spins(num_spins);
-    sim_param->set_num_mag_dims(num_mag_dims);
-
-    sim_ctx = new sirius::Simulation_context(*sim_param, MPI_COMM_WORLD);
-    
     sim_ctx->initialize();
 
     blacs_grid = new BLACS_grid(sim_ctx->mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
@@ -2207,8 +2198,8 @@ void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
 
 void sirius_set_iterative_solver_tolerance(double* tol__)
 {
-    TERMINATE("fix this");
-    //sim_param->iterative_solver_input_section().tolerance_ = *tol__;
+    /* convert tolerance to Ha */
+    sim_ctx->set_iterative_solver_tolerance(*tol__ / 2);
 }
 
 void sirius_get_density_dr2(double* dr2__)

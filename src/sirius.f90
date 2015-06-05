@@ -16,6 +16,14 @@ interface
        &bind(C, name="sirius_create_global_parameters")
     end subroutine
 
+    subroutine sirius_create_simulation_context()&
+       &bind(C, name="sirius_create_simulation_context")
+    end subroutine
+
+    subroutine sirius_global_initialize()&
+       &bind(C, name="sirius_global_initialize")
+    end subroutine
+
     subroutine sirius_set_lattice_vectors(a1, a2, a3)&
        &bind(C, name="sirius_set_lattice_vectors")
         real(8),                 intent(in) :: a1
@@ -46,6 +54,26 @@ interface
     subroutine sirius_set_auto_rmt(auto_rmt)&
        &bind(C, name="sirius_set_auto_rmt")
         integer,                 intent(in) :: auto_rmt
+    end subroutine
+
+    subroutine sirius_set_lmax_apw(lmax_apw)&
+       &bind(C, name="sirius_set_lmax_apw")
+        integer,                 intent(in) :: lmax_apw
+    end subroutine
+
+    subroutine sirius_set_lmax_pot(lmax_pot)&
+       &bind(C, name="sirius_set_lmax_pot")
+        integer,                 intent(in) :: lmax_pot
+    end subroutine
+
+    subroutine sirius_set_lmax_rho(lmax_rho)&
+       &bind(C, name="sirius_set_lmax_rho")
+        integer,                 intent(in) :: lmax_rho
+    end subroutine
+
+    subroutine sirius_set_num_mag_dims(num_mag_dims)&
+       &bind(C, name="sirius_set_num_mag_dims")
+        integer,                 intent(in) :: num_mag_dims
     end subroutine
 
     subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
@@ -560,15 +588,6 @@ interface
         type(C_PTR), value, intent(in) :: vfield
     end subroutine
 
-    subroutine sirius_global_initialize_aux(num_mag_dims_ptr, lmax_apw_ptr, lmax_rho_ptr, lmax_pot_ptr)&
-       &bind(C, name="sirius_global_initialize")
-        use, intrinsic :: ISO_C_BINDING
-        type(C_PTR), value, intent(in) :: num_mag_dims_ptr
-        type(C_PTR), value, intent(in) :: lmax_apw_ptr
-        type(C_PTR), value, intent(in) :: lmax_rho_ptr
-        type(C_PTR), value, intent(in) :: lmax_pot_ptr
-    end subroutine
-
 end interface
 
 contains
@@ -658,33 +677,5 @@ contains
         call sirius_add_atom_aux(label_ptr, pos_ptr, vfield_ptr)
 
     end subroutine
-
-    subroutine sirius_global_initialize(num_mag_dims, lmax_apw, lmax_rho, lmax_pot)
-        implicit none
-        integer, optional, target, intent(in) :: num_mag_dims
-        integer, optional, target, intent(in) :: lmax_apw
-        integer, optional, target, intent(in) :: lmax_rho
-        integer, optional, target, intent(in) :: lmax_pot
-        type(C_PTR) num_mag_dims_ptr, lmax_apw_ptr, lmax_rho_ptr, lmax_pot_ptr
-
-        num_mag_dims_ptr = C_NULL_PTR
-        if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
-
-        lmax_apw_ptr = C_NULL_PTR
-        if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
-
-        lmax_rho_ptr = C_NULL_PTR
-        if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
-        
-        lmax_pot_ptr = C_NULL_PTR
-        if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
-
-        call sirius_global_initialize_aux(num_mag_dims_ptr, lmax_apw_ptr, lmax_rho_ptr, lmax_pot_ptr)
-
-    end subroutine
-
-
-
-
 
 end module

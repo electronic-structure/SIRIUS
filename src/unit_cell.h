@@ -560,19 +560,22 @@ class Unit_cell
 
         void import(Unit_cell_input_section const& inp__)
         {
-            for (int iat = 0; iat < (int)inp__.labels_.size(); iat++)
+            if (inp__.exist_)
             {
-                auto label = inp__.labels_[iat];
-                auto fname = inp__.atom_files_.at(label);
-                add_atom_type(label, fname);
-                for (int ia = 0; ia < (int)inp__.coordinates_[iat].size(); ia++)
+                for (int iat = 0; iat < (int)inp__.labels_.size(); iat++)
                 {
-                    auto v = inp__.coordinates_[iat][ia];
-                    add_atom(label, &v[0], &v[3]);
+                    auto label = inp__.labels_[iat];
+                    auto fname = inp__.atom_files_.at(label);
+                    add_atom_type(label, fname);
+                    for (int ia = 0; ia < (int)inp__.coordinates_[iat].size(); ia++)
+                    {
+                        auto v = inp__.coordinates_[iat][ia];
+                        add_atom(label, &v[0], &v[3]);
+                    }
                 }
-            }
 
-            set_lattice_vectors(inp__.lattice_vectors_[0], inp__.lattice_vectors_[1], inp__.lattice_vectors_[2]);
+                set_lattice_vectors(inp__.lattice_vectors_[0], inp__.lattice_vectors_[1], inp__.lattice_vectors_[2]);
+            }
         }
 };
     

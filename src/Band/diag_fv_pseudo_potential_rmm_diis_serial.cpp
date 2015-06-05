@@ -6,7 +6,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                     double v0__,
                                                     std::vector<double>& veff_it_coarse__)
 {
-    if (parameters_.iterative_solver_input_section().tolerance_ > 1e-5)
+    if (ctx_.iterative_solver_tolerance() > 1e-5)
     {
         diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
         return;
@@ -407,7 +407,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
         update_res(res_norm);
 
-        double tol = parameters_.iterative_solver_input_section().tolerance_ / 2;
+        double tol = ctx_.iterative_solver_tolerance();
         
         for (int i = 0; i < num_bands; i++)
         {
