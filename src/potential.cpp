@@ -725,7 +725,7 @@ void Potential::generate_d_mtrx()
                     for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
                     {
                         int ig = rl->spl_num_gvec(igloc);
-                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
+                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * std::conj(rl->gvec_phase_factor<local>(igloc, ia));
                     }
                 }
 
