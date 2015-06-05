@@ -47,11 +47,11 @@
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
 
-#if defined(_LIBSCI_ACC_) && !defined(_GPU_)
+#if defined(__LIBSCI_ACC) && !defined(_GPU_)
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 
-#ifdef _LIBSCI_ACC_
+#ifdef __LIBSCI_ACC
 const int alloc_mode = 1;
 #else
 const int alloc_mode = 0;

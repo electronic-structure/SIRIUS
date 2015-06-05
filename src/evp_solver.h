@@ -105,7 +105,7 @@ class standard_evp_lapack: public standard_evp
         }
 };
 
-#ifdef _PLASMA_
+#ifdef __PLASMA
 extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
                                       int32_t ldz, double* eval);
 #endif
@@ -119,7 +119,7 @@ class standard_evp_plasma: public standard_evp
         {
         }
 
-        #ifdef _PLASMA_
+        #ifdef __PLASMA
         void solve(int32_t matrix_size, double_complex* a, int32_t lda, double* eval, double_complex* z, int32_t ldz)
         {
             //plasma_set_num_threads(1);
@@ -875,7 +875,7 @@ class generalized_evp_magma: public generalized_evp
         {
         }
 
-        #ifdef _MAGMA_
+        #ifdef __MAGMA
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)

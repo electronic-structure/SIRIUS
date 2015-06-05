@@ -158,7 +158,7 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
 // MAGMA functions
 //=================
 
-#ifdef _MAGMA_
+#ifdef __MAGMA
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
                                              void* b, int32_t ldb, double* eval);
 

@@ -27,11 +27,11 @@
 
 int Platform::num_fft_threads_ = -1;
 
-#ifdef _PLASMA_
+#ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
 #endif
 
-#ifdef _LIBSCI_ACC_
+#ifdef __LIBSCI_ACC
 extern "C" void libsci_acc_init();
 #endif
 
@@ -58,13 +58,13 @@ void Platform::initialize(bool call_mpi_init__)
     cuda_create_streams(max_num_threads() + 1);
     cublas_create_handles(max_num_threads() + 1);
     #endif
-    #ifdef _MAGMA_
+    #ifdef __MAGMA
     magma_init_wrapper();
     #endif
-    #ifdef _PLASMA_
+    #ifdef __PLASMA
     plasma_init(max_num_threads());
     #endif
-    #ifdef _LIBSCI_ACC_
+    #ifdef __LIBSCI_ACC
     libsci_acc_init();
     #endif
     if (!fftw_init_threads())
@@ -80,7 +80,7 @@ void Platform::initialize(bool call_mpi_init__)
 void Platform::finalize()
 {
     MPI_Finalize();
-    #ifdef _MAGMA_
+    #ifdef __MAGMA
     magma_finalize_wrapper();
     #endif
     #ifdef _GPU_
