@@ -28,10 +28,10 @@
 #include "gpu_interface.h"
 #endif
 
-#if defined(_SCALAPACK_) && defined(_PILAENV_BLOCKSIZE_)
+#if defined(__SCALAPACK) && defined(__PILAENV_BLOCKSIZE)
 extern "C" int pilaenv_(int* ctxt, char* prec) 
 {
-    return _PILAENV_BLOCKSIZE_;
+    return __PILAENV_BLOCKSIZE;
 }
 #endif
 
@@ -372,7 +372,7 @@ ftn_int linalg<CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_doubl
     return info;
 }
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 template<>
 ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
                                                ftn_int ia, ftn_int ja, ftn_int* ipiv)

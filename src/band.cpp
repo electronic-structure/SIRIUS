@@ -1815,7 +1815,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     //== kp->set_band_energies(&eval[0]);
 }
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
                                              double v0__,
                                              std::vector<double>& veff_it_coarse__)
@@ -1839,7 +1839,7 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
 
     log_function_exit(__func__);
 }
-#endif // _SCALAPACK_
+#endif // __SCALAPACK
 
 void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
                                            double v0__,
@@ -1898,7 +1898,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 
     if (gen_evp_solver()->parallel())
     {
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
         #else
         TERMINATE_NO_SCALAPACK

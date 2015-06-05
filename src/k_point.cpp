@@ -1065,7 +1065,7 @@ void K_point::distribute_basis_index()
         for (int i = 0; i < (int)spl_col.local_size(); i++)
             gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
 
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         int bs = blacs_grid_.cyclic_block_size();
         int nr = linalg_base::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
         

@@ -119,7 +119,7 @@ class Band
                                              std::vector<double>& veff_it_coarse__);
 
 
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         void add_non_local_contribution_parallel(K_point* kp__,
                                                  int N__,
                                                  int n__,

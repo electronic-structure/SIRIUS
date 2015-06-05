@@ -107,7 +107,7 @@ void FORTRAN(dgesv)(ftn_int* n, ftn_int* nrhs, ftn_double* A, ftn_int* lda, ftn_
 void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* B,
                     ftn_int* ldb, ftn_int* info);
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 int Csys2blacs_handle(MPI_Comm SysCtxt);
 
 MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
@@ -183,7 +183,7 @@ ftn_int FORTRAN(pjlaenv)(ftn_int* ictxt, ftn_int* ispec, ftn_char name, ftn_char
 ftn_len FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
 #endif
 
-#ifdef _ELPA_
+#ifdef __ELPA
 void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk,
                                     ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
 
@@ -244,7 +244,7 @@ class linalg_base
                                    (ftn_len)opts.length());
         }
         
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         static ftn_int numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)
         {
             return FORTRAN(numroc)(&n, &nb, &iproc, &isrcproc, &nprocs); 

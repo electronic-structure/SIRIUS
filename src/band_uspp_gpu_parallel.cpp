@@ -496,7 +496,7 @@ namespace sirius {
 //==     log_function_exit(__func__);
 //== }
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 void Band::generate_fv_states_pp(K_point* kp__,
                                  int num_phi__,
                                  dmatrix<double_complex>& evec__,
@@ -686,7 +686,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
 }
 #endif
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 //== void Band::diag_fv_ncpp_parallel(K_point* kp__,
 //==                                  double v0__,
 //==                                  std::vector<double>& veff_it_coarse__)

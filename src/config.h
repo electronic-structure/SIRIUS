@@ -39,6 +39,10 @@
 
 //== #define __SCALAPACK
 
+//== #define __PILAENV_BLOCKSIZE=2048
+
+//== #define __ELPA
+
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif

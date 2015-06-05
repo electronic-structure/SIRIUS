@@ -19,7 +19,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  cuDoubleComplex* phi2);
 #endif
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
                                                        std::vector<double> const& veff_it_coarse__)
 {

@@ -31,7 +31,7 @@ extern "C" void normalize_residuals_gpu(int num_gkvec_row,
                                         double_complex* res);
 #endif
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 /** \param [in] phi Input wave-functions [storage: CPU || GPU].
  *  \param [out] op_phi Result of application of operator to the wave-functions [storage: CPU || GPU].
  */
@@ -1524,7 +1524,7 @@ void Band::residuals_parallel(int N__,
 
     log_function_exit(__func__);
 }
-#endif // _SCALAPACK_
+#endif // __SCALAPACK
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
