@@ -251,12 +251,12 @@ void Density::initial_density()
         parameters_.esm_type() == norm_conserving_pseudopotential) 
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
-        #ifdef _WRITE_OBJECTS_HASH_
+        #ifdef _PRINT_OBJECT_HASH_
         DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
         #endif
 
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
-        #ifdef _WRITE_OBJECTS_HASH_
+        #ifdef _PRINT_OBJECT_HASH_
         DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], rl->num_gvec() * sizeof(double_complex)));
         #endif
 
@@ -276,7 +276,7 @@ void Density::initial_density()
         fft_->transform(1);
         fft_->output(&rho_->f_it<global>(0));
 
-        #ifdef _WRITE_OBJECTS_HASH_
+        #ifdef _PRINT_OBJECT_HASH_
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
         #endif
         
@@ -287,7 +287,7 @@ void Density::initial_density()
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
 
-        #ifdef _WRITE_OBJECTS_HASH_
+        #ifdef _PRINT_OBJECT_HASH_
         DUMP("hash(rho) : %16llX", rho_->hash());
         #endif
 

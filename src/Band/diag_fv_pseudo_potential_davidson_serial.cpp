@@ -169,7 +169,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     /* number of newly added basis functions */
     int n = num_bands;
     
-    #ifdef _WRITE_OBJECTS_HASH_
+    #ifdef _PRINT_OBJECT_HASH_
     std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
     std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
     std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;

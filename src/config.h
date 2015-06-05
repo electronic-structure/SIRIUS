@@ -33,6 +33,9 @@
 
 //== #define __CACHE_GVEC_PHASE_FACTORS
 
+//== #define _PRINT_OBJECT_HASH_
+//== #define _PRINT_OBJECT_CHECKSUM_
+
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
