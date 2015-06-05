@@ -88,7 +88,7 @@ void Reciprocal_lattice::init(int lmax)
     }
 
     /* precompute G-vector phase factors */
-    #ifdef _CACHE_GVEC_PHASE_FACTORS_
+    #ifdef __CACHE_GVEC_PHASE_FACTORS
     gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
     #pragma omp parallel for
     for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)

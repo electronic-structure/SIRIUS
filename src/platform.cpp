@@ -35,24 +35,24 @@ extern "C" void plasma_init(int num_cores);
 extern "C" void libsci_acc_init();
 #endif
 
-void Platform::initialize(bool call_mpi_init)
+void Platform::initialize(bool call_mpi_init__)
 {
-    //if (call_mpi_init) MPI_Init(NULL, NULL);
-    int provided;
-    if (call_mpi_init) 
-    {
-        MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
-    }
+    if (call_mpi_init__) MPI_Init(NULL, NULL);
+    //== int provided;
+    //== if (call_mpi_init) 
+    //== {
+    //==     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
+    //== }
 
-    MPI_Query_thread(&provided);
-    if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
-    {
-        printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
-    }
+    //== MPI_Query_thread(&provided);
+    //== if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
+    //== {
+    //==     printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
+    //== }
 
     #ifdef _GPU_
     //cuda_initialize();
-    #if defined(_VERBOSITY_) && (_VERBOSITY_ > 0)
+    #if defined(__VERBOSITY) && (__VERBOSITY > 0)
     if (rank() == 0) cuda_device_info();
     #endif
     cuda_create_streams(max_num_threads() + 1);

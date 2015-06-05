@@ -81,7 +81,7 @@ class Step_function
         /// Step function on the real-space grid.
         std::vector<double> step_function_;
 
-        Communicator comm_;
+        Communicator const& comm_;
        
         void init(FFT3D<CPU>* fft__);
 

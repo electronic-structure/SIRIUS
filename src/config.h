@@ -31,7 +31,7 @@
 //== #define _TIMER_MPI_WTIME_
 #define _TIMER_CHRONO_
 
-//== #define _CACHE_GVEC_PHASE_FACTORS_
+//== #define __CACHE_GVEC_PHASE_FACTORS
 
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
@@ -75,8 +75,8 @@ const int debug_level = 0;
  *  verbosity_level >= 6 : print forces contributions \n
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
-#ifdef _VERBOSITY_
-const int verbosity_level = _VERBOSITY_;
+#ifdef __VERBOSITY
+const int verbosity_level = __VERBOSITY;
 #else
 const int verbosity_level = 6;
 #endif

@@ -107,14 +107,20 @@ void log_function_exit(const char* func_name);
     printf("%s\n", str__);                                                       \
 }
 
-#define LOG_FUNC_BEGIN()           \
-{                                  \
-    log_function_enter(__func__);  \
+#if defined (__GNUC__)
+  #define LOG_FUNC_NAME __PRETTY_FUNCTION__ 
+#else
+  #define LOG_FUNC_NAME __func__
+#endif
+
+#define LOG_FUNC_BEGIN()                \
+{                                       \
+    log_function_enter(LOG_FUNC_NAME);  \
 }
 
-#define LOG_FUNC_END()             \
-{                                  \
-    log_function_exit(__func__);   \
+#define LOG_FUNC_END()                  \
+{                                       \
+    log_function_exit(LOG_FUNC_NAME);   \
 }
 
 #endif // __ERROR_HANDLING_H__

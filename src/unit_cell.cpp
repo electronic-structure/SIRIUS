@@ -434,26 +434,6 @@ void Unit_cell::initialize()
     }
 }
 
-void Unit_cell::clear()
-{
-    delete symmetry_;
-
-    /* delete atom types */
-    for (int i = 0; i < (int)atom_types_.size(); i++) delete atom_types_[i];
-    atom_types_.clear();
-    atom_type_id_map_.clear();
-
-    /* delete atom classes */
-    for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++) delete atom_symmetry_classes_[i];
-    atom_symmetry_classes_.clear();
-
-    /* delete atoms */
-    for (int i = 0; i < num_atoms(); i++) delete atoms_[i];
-    atoms_.clear();
-
-    equivalent_atoms_.clear();
-}
-
 void Unit_cell::print_info()
 {
     printf("\n");
@@ -817,6 +797,8 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 
 void Unit_cell::generate_radial_functions()
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Unit_cell::generate_radial_functions");
    
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
@@ -844,10 +826,14 @@ void Unit_cell::generate_radial_functions()
             printf("Linearization energies\n");
         }
     }
+
+    LOG_FUNC_END();
 }
 
 void Unit_cell::generate_radial_integrals()
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Unit_cell::generate_radial_integrals");
     
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
@@ -870,6 +856,8 @@ void Unit_cell::generate_radial_integrals()
         int rank = spl_num_atoms().local_rank(ia);
         atom(ia)->sync_radial_integrals(comm_, rank);
     }
+
+    LOG_FUNC_END();
 }
 
 std::string Unit_cell::chemical_formula()

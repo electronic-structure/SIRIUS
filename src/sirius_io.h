@@ -43,7 +43,7 @@ class pstdout
 
         int fill_;
 
-        Communicator comm_;
+        Communicator const& comm_;
 
     public:
 

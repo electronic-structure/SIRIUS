@@ -153,8 +153,6 @@ class Unit_cell
 
         int lmax_beta_;
 
-        //electronic_structure_method_t esm_type_;
-
         Communicator_bundle comm_bundle_atoms_;
         
         splindex<block> spl_atoms_;
@@ -166,7 +164,7 @@ class Unit_cell
 
         Symmetry* symmetry_;
 
-        Communicator comm_;
+        Communicator const& comm_;
 
         struct beta_chunk
         {
@@ -177,8 +175,6 @@ class Unit_cell
         };
 
         std::vector<beta_chunk> beta_chunks_;
-
-        //processing_unit_t pu_;
 
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
@@ -208,6 +204,12 @@ class Unit_cell
               comm_(comm__)
         {
         }
+
+        ~Unit_cell()
+        {
+            if (symmetry_ != nullptr) delete symmetry_;
+        }
+
         
         /// Initialize the unit cell data
         /** Several things must be done during this phase:
@@ -222,7 +224,6 @@ class Unit_cell
          *  Initialization must be broken into two parts: one is called once, and the second one is called
          *  each time the atoms change the position.
          */
-        //void initialize(int lmax_apw, int lmax_pot, int num_mag_dims);
         void initialize();
 
         /// Update the unit cell after moving the atoms.
@@ -240,9 +241,6 @@ class Unit_cell
          */
         void update();
 
-        /// Clear the unit cell data.
-        void clear();
-       
         /// Add new atom type to the list of atom types and read necessary data from the .json file
         void add_atom_type(const std::string label, const std::string file_name);
         
