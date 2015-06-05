@@ -25,7 +25,6 @@
 #ifndef __K_POINT_H__
 #define __K_POINT_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "matching_coefficients.h"
 #include "blacs_grid.h"

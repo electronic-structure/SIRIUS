@@ -25,7 +25,6 @@
 #ifndef __BAND_H__
 #define __BAND_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "k_point.h"
 

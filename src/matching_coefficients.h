@@ -25,8 +25,6 @@
 #ifndef __MATCHING_COEFFICIENTS_H__
 #define __MATCHING_COEFFICIENTS_H__
 
-#include "global.h"
-
 namespace sirius {
 
 /** The following matching conditions must be fulfilled:

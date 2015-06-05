@@ -25,7 +25,6 @@
 #ifndef __POTENTIAL_H__
 #define __POTENTIAL_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "spheric_function.h"
 #include "simulation_context.h"

@@ -25,7 +25,6 @@
 #ifndef __K_SET_H__
 #define __K_SET_H__
 
-#include "global.h"
 #include "band.h"
 #include "potential.h"
 #include "k_point.h"

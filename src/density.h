@@ -25,7 +25,6 @@
 #ifndef __DENSITY_H__
 #define __DENSITY_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "band.h"
 #include "k_set.h"

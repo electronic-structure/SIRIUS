@@ -25,7 +25,6 @@
 #ifndef __FORCE_H__
 #define __FORCE_H__
 
-#include "global.h"
 #include "k_point.h"
 #include "band.h"
 #include "potential.h"

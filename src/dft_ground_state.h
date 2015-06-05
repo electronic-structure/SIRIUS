@@ -25,7 +25,6 @@
 #ifndef __DFT_GROUND_STATE_H__
 #define __DFT_GROUND_STATE_H__
 
-#include "global.h"
 #include "potential.h"
 #include "density.h"
 #include "k_set.h"
@@ -52,7 +51,6 @@ class DFT_ground_state
 {
     private:
 
-        //Global& parameters_;
         Simulation_context& ctx_;
 
         Simulation_parameters const& parameters_;

@@ -54,7 +54,6 @@
 #include "unit_cell.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
-#include "global.h"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "band.h"
