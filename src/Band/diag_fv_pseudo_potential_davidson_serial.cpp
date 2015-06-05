@@ -548,7 +548,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     }
 
     kp__->set_fv_eigen_values(&eval[0]);
-    //kp__->fv_states_panel().scatter(psi);
 }
 
 };
