@@ -474,7 +474,7 @@ class generalized_evp_scalapack: public generalized_evp
         }
 };
 
-#ifdef _RS_GEN_EIG_
+#ifdef __RS_GEN_EIG
 void my_gen_eig(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
                 double_complex* b, int ib, int jb, int* descb, double* d,
                 double_complex* q, int iq, int jq, int* descq, int* info);
@@ -509,7 +509,7 @@ class generalized_evp_rs_gpu: public generalized_evp
             #endif
         }
 
-        #ifdef _RS_GEN_EIG_
+        #ifdef __RS_GEN_EIG
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
@@ -587,7 +587,7 @@ class generalized_evp_rs_cpu: public generalized_evp
             #endif
         }
 
-        #ifdef _RS_GEN_EIG_
+        #ifdef __RS_GEN_EIG
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
