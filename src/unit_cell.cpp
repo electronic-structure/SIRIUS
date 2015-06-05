@@ -524,7 +524,6 @@ void Unit_cell::print_info()
         auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++)
         {
-
             for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
             printf("\n");
         }

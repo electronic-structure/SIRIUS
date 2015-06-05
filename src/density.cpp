@@ -54,7 +54,7 @@ Density::Density(Simulation_context& ctx__)
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new Periodic_function<double>(ctx_, parameters_.lmmax_rho(), false);
+        magnetization_[i] = new Periodic_function<double>(ctx_, parameters_.lmmax_rho());
     }
     
     /* never change this order!!! */
