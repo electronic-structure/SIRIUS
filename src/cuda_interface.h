@@ -1,3 +1,5 @@
+#include <cuda.h>
+#include <cublas_v2.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -6,8 +8,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <assert.h>
-#include <cuda.h>
-#include <cublas_v2.h>
 #include <cufft.h>
 #include <stdint.h>
 

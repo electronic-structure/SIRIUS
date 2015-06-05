@@ -216,20 +216,14 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
         gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
-        printf("N=%i\n", N);
         }
 
         bool occ_band_converged = true;
-        //double demax = 0;
         for (int i = 0; i < num_bands; i++)
         {
             if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
-            {
-                //demax = std::abs(eval_old[i] - eval[i]);
                 occ_band_converged = false;
-            }
         }
-        //DUMP("step: %i, eval error: %18.14f", k, demax);
 
         /* copy eigen-vectors to GPU */
         #ifdef __GPU

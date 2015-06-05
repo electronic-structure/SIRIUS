@@ -28,13 +28,20 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/apply_h_o_fast_parallel.cpp \
        Band/apply_h_o_fast_parallel_rs.cpp \
        Band/apply_magnetic_field.cpp \
+       Band/residuals_serial.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp
        
 OBJ = $(SRC:.cpp=.o) 
       
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
-	OBJ := $(OBJ) cuda_interface.o cuda_uspp_kernels.o cuda_spline_kernels.o
+	OBJ := $(OBJ) \
+	cuda_interface.o \
+	cuda_uspp_kernels.o \
+	cuda_spline_kernels.o \
+	Kernels/compute_residuals.o \
+	Kernels/apply_preconditioner.o \
+	Kernels/normalize_residuals.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
@@ -50,7 +57,7 @@ endif
 	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
 
 .cu.o:
-	$(NVCC) -DADD_ $(NVCC_OPT) -c $<
+	$(NVCC) -DADD_ $(NVCC_OPT) -c -o $(*D)/$(*F).o $<
 
 .f90.o:
 	$(MPI_FC) $(MPI_FC_OPT) -c $<
