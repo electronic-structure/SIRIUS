@@ -20,7 +20,7 @@ void Band::add_nl_h_o_pw(K_point* kp__,
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
     matrix<double_complex> work(unit_cell_.mt_basis_size(), n__);
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
         beta_phi.allocate_on_device();
@@ -45,7 +45,7 @@ void Band::add_nl_h_o_pw(K_point* kp__,
     }
     else
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         kp__->generate_beta_gk(unit_cell_.num_atoms(), unit_cell_.beta_chunk(0).atom_pos_, unit_cell_.beta_chunk(0).desc_, beta_gk__);
         
         phi__.copy_to_device();
@@ -66,7 +66,7 @@ void Band::add_nl_h_o_pw(K_point* kp__,
         TERMINATE_NO_GPU
         #endif
     }
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
 }

@@ -94,7 +94,7 @@ void Density::add_k_point_contribution<CPU, ultrasoft_pseudopotential>(K_point* 
     }
 }
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void copy_beta_psi_gpu(int nbf,
                                   int nloc,
                                   double_complex const* beta_psi,

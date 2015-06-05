@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
@@ -65,7 +65,7 @@ void Potential::poisson_sum_G(int lmmax__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         auto gvec = mdarray<int, 2>(3, ngv_loc);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {

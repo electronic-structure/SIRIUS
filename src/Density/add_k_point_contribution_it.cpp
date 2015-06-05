@@ -4,7 +4,7 @@
 
 namespace sirius {
 
-#ifdef _GPU_
+#ifdef __GPU
 //extern "C" void update_it_density_matrix_gpu(int fft_size, 
 //                                             int nfft_max, 
 //                                             int num_spins, 
@@ -48,7 +48,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
     mdarray<double, 3> it_density_matrix(fft_->size(), parameters_.num_mag_dims() + 1, num_fft_threads);
     it_density_matrix.zero();
     
-    #ifdef _GPU_
+    #ifdef __GPU
     mdarray<double, 2> it_density_matrix_gpu;
     /* last thread is doing cuFFT */
     if (parameters_.processing_unit() == GPU && num_fft_threads > 1)
@@ -73,7 +73,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
     {
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             fft_threads.push_back(std::thread([thread_id, kp, fft_gpu, &idx_band, &idx_band_mutex, num_spins, num_mag_dims,
                                                num_fv_states, omega, &occupied_bands, &it_density_matrix_gpu]()
             {
@@ -256,7 +256,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
         error_local(__FILE__, __LINE__, s);
     }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU && num_fft_threads > 1)
     {
         it_density_matrix_gpu.copy_to_host();

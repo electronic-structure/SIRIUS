@@ -111,7 +111,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     for (int ig = 0; ig < rl->num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
 }
 
-#ifdef _GPU_
+#ifdef __GPU
 
 extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
                                        int num_beta,

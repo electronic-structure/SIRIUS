@@ -158,7 +158,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
 
     if (pu__ == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         auto& rgrid = type()->radial_grid();
         auto& rf_coef = type()->rf_coef();
         auto& vrf_coef = type()->vrf_coef();

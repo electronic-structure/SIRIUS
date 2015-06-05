@@ -3,7 +3,7 @@
 
 namespace sirius {
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void compute_inner_product_gpu(int num_gkvec_row,
                                           int n,
                                           cuDoubleComplex const* f1,
@@ -112,7 +112,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         for (int i = 0; i < order; i++) phi[i].allocate_on_device();
         hphi.allocate_on_device();
         kappa.allocate_on_device();
@@ -149,7 +149,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     }
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         mdarray<double, 1> e0_loc(kp__->spl_fv_states().local_size());
         e0_loc.allocate_on_device();
         e0_loc.zero_on_device();
@@ -187,7 +187,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
         }
         case GPU:
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cuda_copy_device_to_device(phi[1].at<GPU>(), hphi.at<GPU>(), hphi.panel().size() * sizeof(double_complex));
             #endif
             break;
@@ -212,7 +212,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     }
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
                                          phi[0].at<GPU>(), phi[1].at<GPU>(), NULL);
         phi[1].panel().copy_to_host();
@@ -234,7 +234,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
             }
             case GPU:
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 cuda_copy_device_to_device(phi[k].at<GPU>(), hphi.at<GPU>(), hphi.panel().size() * sizeof(double_complex));
                 #endif
                 break;
@@ -258,7 +258,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
         }
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
                                              phi[k - 2].at<GPU>(), phi[k - 1].at<GPU>(), phi[k].at<GPU>());
             phi[k].panel().copy_to_host();
@@ -272,7 +272,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         hphi.panel().copy_to_host();
         phi[0].panel().copy_to_host();
         #endif

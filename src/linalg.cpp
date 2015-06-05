@@ -24,7 +24,7 @@
 
 #include "linalg.h"
 #include "constants.h"
-#ifdef _GPU_
+#ifdef __GPU
 #include "gpu_interface.h"
 #endif
 
@@ -519,7 +519,7 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 }
 #endif
 
-#ifdef _GPU_
+#ifdef __GPU
 template<>
 void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int n, ftn_double_complex* alpha,
                                            ftn_double_complex* A, ftn_int lda, ftn_double_complex* x, ftn_int incx,

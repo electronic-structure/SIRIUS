@@ -491,7 +491,7 @@ class dmatrix
             return matrix_local_.ld();
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         inline void allocate_on_device()
         {
             matrix_local_.allocate_on_device();

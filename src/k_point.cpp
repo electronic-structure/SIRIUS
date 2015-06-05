@@ -310,7 +310,7 @@ void K_point::update()
         if (parameters_.processing_unit() == GPU)
         {
             //== STOP();
-            //== #ifdef _GPU_
+            //== #ifdef __GPU
             //== gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
             //== /* copy G+k vectors */
             //== for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
@@ -471,7 +471,7 @@ void K_point::update()
 //==            ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
 //== }
 
-//== #ifdef _GPU_
+//== #ifdef __GPU
 //== void K_point::generate_fv_states_aw_mt_gpu()
 //== {
 //==     int num_fv_loc = parameters_.spl_fv_states_col().local_size();
@@ -523,7 +523,7 @@ void K_point::generate_fv_states()
     {
         if (parameters_.processing_unit() == GPU && num_ranks() == 1)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             /* copy eigen-vectors to GPU */
             fv_eigen_vectors_panel_.panel().allocate_on_device();
             fv_eigen_vectors_panel_.panel().copy_to_device();
@@ -719,7 +719,7 @@ void K_point::generate_spinor_wave_functions()
             spinor_wave_functions_.zero();
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 spinor_wave_functions_.allocate_on_device();
                 spinor_wave_functions_.zero_on_device();
                 #endif
@@ -731,7 +731,7 @@ void K_point::generate_spinor_wave_functions()
                 {
                     if (parameters_.processing_unit() == GPU)
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         sv_eigen_vectors_[ispn].panel().allocate_on_device();
                         sv_eigen_vectors_[ispn].panel().copy_to_device();
 
@@ -762,7 +762,7 @@ void K_point::generate_spinor_wave_functions()
             }
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 spinor_wave_functions_.copy_to_host();
                 spinor_wave_functions_.deallocate_on_device();
                 fv_states_.deallocate_on_device();

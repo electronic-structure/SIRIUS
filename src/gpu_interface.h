@@ -22,8 +22,8 @@
  *  \brief CUDA related functions.
  */
 
-#ifndef _GPU_INTERFACE_H_
-#define _GPU_INTERFACE_H_
+#ifndef __GPUINTERFACE_H_
+#define __GPUINTERFACE_H_
 
 #include <complex>
 #include <cstdlib>
@@ -202,5 +202,5 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
                                    double* atom_pos,
                                    void* beta_pw);
 
-#endif // _GPU_INTERFACE_H_
+#endif // __GPUINTERFACE_H_
 

@@ -999,7 +999,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 //=====================================================================================================================
 // GPU code, (L)APW+lo basis
 //=====================================================================================================================
-#ifdef _GPU_
+#ifdef __GPU
 template<> 
 void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
@@ -1360,7 +1360,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
             set_fv_h_o<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
-        #ifdef _GPU_
+        #ifdef __GPU
         case GPU:
         {
             set_fv_h_o<GPU, full_potential_lapwlo>(kp, effective_potential, h, o);
@@ -1626,7 +1626,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         //kp->fv_states_panel().panel().allocate_on_device();
         //kp->fv_states_panel().panel().copy_to_device();
         #endif
@@ -1639,7 +1639,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), kp->blacs_grid());
         if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             h.panel().allocate_on_device();
             #endif
         }
@@ -1649,7 +1649,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         {
             if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 Timer t4("sirius::Band::solve_sv|zgemm");
                 hpsi_panel[ispn]->panel().allocate_on_device();
                 hpsi_panel[ispn]->panel().copy_to_device();

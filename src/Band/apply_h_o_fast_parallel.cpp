@@ -35,7 +35,7 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
         memcpy(&ophi_slab__(0, N__), &phi_slab__(0, N__), kp__->num_gkvec_loc() * n__ * sizeof(double_complex));
     }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
         /* copy hphi do device */
@@ -70,7 +70,7 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
             }
             case GPU:
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 beta_phi = matrix<double_complex>(kappa__.at<CPU>(),            kappa__.at<GPU>(),            nbeta, n__);
                 work     = matrix<double_complex>(kappa__.at<CPU>(nbeta * n__), kappa__.at<GPU>(nbeta * n__), nbeta, n__);
                 beta_gk  = matrix<double_complex>(kp__->beta_gk().at<CPU>(0, offs), kappa__.at<GPU>(2 * nbeta * n__), kp__->num_gkvec_loc(), nbeta);
@@ -91,7 +91,7 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
         offs += nbeta;
     }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
 

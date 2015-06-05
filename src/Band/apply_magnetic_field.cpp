@@ -102,7 +102,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 
     int wf_pw_offset = unit_cell_.mt_basis_size();
     auto fft = fft_;
-    #ifdef _GPU_
+    #ifdef __GPU
     auto fft_gpu = ctx_.fft_gpu();
     #endif
     auto step_function = ctx_.step_function();
@@ -113,7 +113,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
     {
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             thread_workers.push_back(std::thread([thread_id, &idx_psi, &idx_psi_mutex, nfv, num_gkvec, wf_pw_offset,
                                                   fft_gpu, fft_index, &fv_states, &hpsi, step_function,
                                                   effective_magnetic_field]()

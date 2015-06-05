@@ -42,7 +42,7 @@ class FFT3D;
 
 #include "fft3d_cpu.hpp"
 
-#ifdef _GPU_
+#ifdef __GPU
 #include "fft3d_gpu.hpp"
 #endif
 

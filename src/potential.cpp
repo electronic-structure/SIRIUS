@@ -282,7 +282,7 @@ void Potential::init()
 //    }
 //}
 
-//== #ifdef _GPU_
+//== #ifdef __GPU
 //== template <> void Potential::add_mt_contribution_to_pw<GPU>()
 //== {
 //==     // TODO: couple of things to consider: 1) global array jvlm with G-vector shells may be large; 
@@ -478,7 +478,7 @@ void Potential::generate_pw_coefs()
                 //add_mt_contribution_to_pw<CPU>();
                 break;
             }
-            #ifdef _GPU_
+            #ifdef __GPU
             //== case GPU:
             //== {
             //==     add_mt_contribution_to_pw<GPU>();
@@ -657,7 +657,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     }
 }
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__,
                                                 double_complex const* veff__,
@@ -679,7 +679,7 @@ void Potential::generate_d_mtrx()
         fft_->transform(-1);
         fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
 
-        #ifdef _GPU_
+        #ifdef __GPU
         mdarray<double_complex, 1> veff;
         mdarray<int, 2> gvec;
 
@@ -736,7 +736,7 @@ void Potential::generate_d_mtrx()
             }
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 matrix<double_complex> veff_a(nullptr, rl->spl_num_gvec().local_size(), atom_type->num_atoms());
                 veff_a.allocate_on_device();
                 
@@ -805,7 +805,7 @@ void Potential::generate_d_mtrx()
             }
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         if (parameters_.processing_unit() == GPU)
         {
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)

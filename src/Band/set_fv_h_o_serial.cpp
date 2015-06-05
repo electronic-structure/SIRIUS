@@ -43,7 +43,7 @@ void Band::set_fv_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == GPU)
     {
         bool economize_gpu_memory = (kappa__.size() != 0);
-        #ifdef _GPU_
+        #ifdef __GPU
         if (!economize_gpu_memory)
         {
             linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi__.at<GPU>(0, 0), phi__.ld(),

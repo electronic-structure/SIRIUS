@@ -162,7 +162,7 @@ void Timer::print()
             }
         }
         
-        #ifdef _GPU_
+        #ifdef __GPU
         print_cuda_timers();
         #endif
     }

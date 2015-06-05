@@ -148,7 +148,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         phi_slab.allocate_on_device();
         hphi_slab.allocate_on_device();
         d_mtrx_packed.allocate_on_device();
@@ -234,7 +234,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cublas_set_matrix(N, num_bands, sizeof(double_complex), evec_full.at<CPU>(), evec_full.ld(),
                               evec_full.at<GPU>(), evec_full.ld());
             #endif
@@ -275,7 +275,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                 {
                     if (parameters_.processing_unit() == GPU)
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         cublas_set_matrix(N, n, sizeof(double_complex), evec_full_tmp.at<CPU>(), evec_full_tmp.ld(),
                                           evec_full_tmp.at<GPU>(), evec_full_tmp.ld());
                         #endif
@@ -329,7 +329,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                     }
                     case GPU:
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab.at<GPU>(), phi_slab.ld(),
                                           evec_full.at<GPU>(), evec_full.ld(), psi_slab.at<GPU>(), psi_slab.ld()); 
                         #endif
@@ -368,7 +368,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                     }
                     case GPU:
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, hphi_slab.at<GPU>(), hphi_slab.ld(),
                                           evec_full.at<GPU>(), evec_full.ld(), hpsi_slab.at<GPU>(), hpsi_slab.ld()); 
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, ophi_slab.at<GPU>(), ophi_slab.ld(),
@@ -393,7 +393,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                 }
                 case GPU:
                 {
-                    #ifdef _GPU_
+                    #ifdef __GPU
                     cuda_copy_device_to_device(phi_slab.at<GPU>(),  psi_slab.at<GPU>(),  num_gkvec_loc * num_bands * sizeof(double_complex));
                     cuda_copy_device_to_device(hphi_slab.at<GPU>(), hpsi_slab.at<GPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
                     cuda_copy_device_to_device(ophi_slab.at<GPU>(), opsi_slab.at<GPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
@@ -423,13 +423,13 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cuda_copy_to_device(phi_slab.at<GPU>(0, N), phi_slab.at<CPU>(0, N), n * num_gkvec_loc * sizeof(double_complex));
             #endif
         }
     }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
         //if (!with_overlap) psi.deallocate_on_device();

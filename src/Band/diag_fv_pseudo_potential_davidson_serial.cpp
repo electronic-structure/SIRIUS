@@ -111,7 +111,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         kappa = mdarray<double_complex, 1>(size);
     }
     
-    #ifdef _GPU_
+    #ifdef __GPU
     if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
     {
         printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
@@ -124,7 +124,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         if (!economize_gpu_memory)
         {
             phi.allocate_on_device();
@@ -232,7 +232,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         //DUMP("step: %i, eval error: %18.14f", k, demax);
 
         /* copy eigen-vectors to GPU */
-        #ifdef _GPU_
+        #ifdef __GPU
         if (parameters_.processing_unit() == GPU)
             cublas_set_matrix(N, num_bands, sizeof(double_complex), evec.at<CPU>(), evec.ld(), evec.at<GPU>(), evec.ld());
         #endif
@@ -256,14 +256,14 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                     }
                 }
 
-                #ifdef _GPU_
+                #ifdef __GPU
                 if (parameters_.processing_unit() == GPU)
                     cublas_set_matrix(N, n, sizeof(double_complex), evec_tmp.at<CPU>(), evec_tmp.ld(), evec_tmp.at<GPU>(), evec_tmp.ld());
                 #endif
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
 
-                //== #ifdef _GPU_
+                //== #ifdef __GPU
                 //== matrix<double_complex> res_tmp;
                 //== if (parameters_.processing_unit() == GPU)
                 //== {
@@ -297,7 +297,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 //==                 }
                 //==                 case GPU:
                 //==                 {
-                //==                     //#ifdef _GPU_
+                //==                     //#ifdef __GPU
                 //==                     //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
                 //==                     //#else
                 //==                     //TERMINATE_NO_GPU
@@ -313,7 +313,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 //== /* final number of residuals */
                 //== n = m;
 
-                #ifdef _GPU_
+                #ifdef __GPU
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)
                 {
                     /* copy residuals to CPU because the content of kappa array can be destroyed */
@@ -326,7 +326,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             {
                 residuals_serial(kp__, N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
 
-                #ifdef _GPU_
+                #ifdef __GPU
                 matrix<double_complex> res_tmp;
                 if (parameters_.processing_unit() == GPU)
                 {
@@ -361,7 +361,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                 }
                                 case GPU:
                                 {
-                                    #ifdef _GPU_
+                                    #ifdef __GPU
                                     cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
                                     #else
                                     TERMINATE_NO_GPU
@@ -373,7 +373,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                         n++;
                     }
                 }
-                #ifdef _GPU_
+                #ifdef __GPU
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)
                 {
                     /* copy residuals to CPU because the content of kappa array will be destroyed */
@@ -400,7 +400,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 }
                 case GPU:
                 {
-                    #ifdef _GPU_
+                    #ifdef __GPU
                     if (!economize_gpu_memory)
                     {
                         linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, phi.at<GPU>(), phi.ld(), evec.at<GPU>(), evec.ld(), 
@@ -464,7 +464,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                         }
                         case GPU:
                         {
-                            #ifdef _GPU_
+                            #ifdef __GPU
                             if (!economize_gpu_memory)
                             {
                                 TERMINATE("implement this");
@@ -502,7 +502,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                     memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 }
                 
-                #ifdef _GPU_
+                #ifdef __GPU
                 if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
                 {
                     cuda_copy_device_to_device(hphi.at<GPU>(), hpsi.at<GPU>(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
@@ -523,7 +523,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         }
         if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cuda_copy_device_to_device(phi.at<GPU>(0, N), res.at<GPU>(), n * kp__->num_gkvec() * sizeof(double_complex));
             cuda_copy_to_host(phi.at<CPU>(0, N), phi.at<GPU>(0, N), n * kp__->num_gkvec() * sizeof(double_complex));
             #else
@@ -534,7 +534,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         if (!economize_gpu_memory)
         {
             kp__->beta_gk().deallocate_on_device();

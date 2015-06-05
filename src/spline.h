@@ -331,7 +331,7 @@ class Spline
             return coefs_.hash();
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void copy_to_device()
         {
             coefs_.allocate_on_device();

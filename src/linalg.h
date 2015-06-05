@@ -155,7 +155,7 @@ class linalg<CPU>: public linalg_base
         static void tranu(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic, ftn_int jc);
 };
 
-#ifdef _GPU_
+#ifdef __GPU
 template<> 
 class linalg<GPU>: public linalg_base
 {

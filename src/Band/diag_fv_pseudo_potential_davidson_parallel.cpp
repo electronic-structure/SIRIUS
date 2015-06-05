@@ -119,7 +119,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
     
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         phi.allocate_on_device();
         if (!with_overlap) psi.allocate_on_device();
         res.allocate_on_device();
@@ -247,7 +247,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         {
             Timer t2("sirius::Band::diag_fv_pseudo_potential|update_phi");
 
-            #ifdef _GPU_
+            #ifdef __GPU
             if (parameters_.processing_unit() == GPU) phi.copy_cols_to_host(0, N);
             #endif
 
@@ -311,8 +311,8 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         }
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
-            #ifdef _GPU_DIRECT_
+            #ifdef __GPU
+            #ifdef __GPU_DIRECT
             /* expand variational space with extra basis functions */
             for (int i = 0; i < n; i++)
             {
@@ -332,7 +332,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         }
     }
     
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
         if (!with_overlap) psi.deallocate_on_device();

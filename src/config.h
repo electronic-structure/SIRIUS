@@ -43,11 +43,21 @@
 
 //== #define __ELPA
 
+//== #define __PLASMA
+
+//== #define __MAGMA
+
+//== #definr __LIBSCI_ACC
+
+//== #define __GPU
+
+//== #define __GPU_DIRECT
+
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
 
-#if defined(__LIBSCI_ACC) && !defined(_GPU_)
+#if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 

@@ -50,7 +50,7 @@ void Platform::initialize(bool call_mpi_init__)
     //==     printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
     //== }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     //cuda_initialize();
     #if defined(__VERBOSITY) && (__VERBOSITY > 0)
     if (rank() == 0) cuda_device_info();
@@ -83,7 +83,7 @@ void Platform::finalize()
     #ifdef __MAGMA
     magma_finalize_wrapper();
     #endif
-    #ifdef _GPU_
+    #ifdef __GPU
     cublas_destroy_handles(max_num_threads() + 1);
     cuda_destroy_streams(max_num_threads() + 1);
     cuda_device_reset();

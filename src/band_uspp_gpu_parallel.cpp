@@ -29,7 +29,7 @@ namespace sirius {
 //==     /* apply local part of Hamiltonian */
 //==     apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, 0, parameters_.num_bands(), phi__, hphi__);
 //== 
-//==     #ifdef _GPU_
+//==     #ifdef __GPU
 //==     if (parameters_.processing_unit() == GPU)
 //==     {
 //==         cuda_copy_to_device(phi__.at<GPU>(), phi__.at<CPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
@@ -52,7 +52,7 @@ namespace sirius {
 //==     mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
 //==     mdarray<double, 2> atom_pos(3, atom_blocks.local_size(0));
 //== 
-//==     #ifdef _GPU_
+//==     #ifdef __GPU
 //==     if (parameters_.processing_unit() == GPU)
 //==     {
 //==         beta_phi_tmp.allocate_on_device();
@@ -62,8 +62,8 @@ namespace sirius {
 //==     }
 //==     #endif
 //== 
-//==     #ifdef _GPU_
-//==     #ifdef _GPU_DIRECT_
+//==     #ifdef __GPU
+//==     #ifdef __GPU_DIRECT
 //==     // allrecue with gpu-direct is broken at the moment
 //==     bool gpu_direct = false;
 //==     #else
@@ -91,7 +91,7 @@ namespace sirius {
 //==             nbf_in_block += uc->atom(ia)->mt_basis_size();
 //==         }
 //== 
-//==         #ifdef _GPU_
+//==         #ifdef __GPU
 //==         if (parameters_.processing_unit() == GPU)
 //==         {
 //==             beta_pw_desc.copy_to_device();
@@ -141,7 +141,7 @@ namespace sirius {
 //==                               beta_phi.at<CPU>(), beta_phi.ld());
 //==             kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
 //==         }
-//==         #ifdef _GPU_
+//==         #ifdef __GPU
 //==         if (parameters_.processing_unit() == GPU)
 //==         {
 //==             ///* create beta projectors directly on GPU */
@@ -204,7 +204,7 @@ namespace sirius {
 //==                               hphi__.at<CPU>(), hphi__.ld());
 //==         }
 //== 
-//==         #ifdef _GPU_
+//==         #ifdef __GPU
 //==         if (parameters_.processing_unit() == GPU)
 //==         {
 //==             #pragma omp parallel for
@@ -232,11 +232,11 @@ namespace sirius {
 //==         }
 //==         #endif
 //==     }
-//==     #ifdef _GPU_
+//==     #ifdef __GPU
 //==     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
 //==     #endif
 //== 
-//==     #if defined(_GPU_)
+//==     #if defined(__GPU)
 //==     if (parameters_.processing_unit() == GPU)
 //==     {
 //==         cuda_copy_to_host(hphi__.at<CPU>(), hphi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
@@ -287,7 +287,7 @@ namespace sirius {
 //==     h_slab.zero();
 //==     o_slab.zero();
 //== 
-//==     #ifdef _GPU_
+//==     #ifdef __GPU
 //==     if (parameters_.processing_unit() == GPU)
 //==     {
 //==         h_tmp.allocate_on_device();
@@ -314,8 +314,8 @@ namespace sirius {
 //==     {
 //==         Timer t("sirius::Band::set_fv_h_o_ncpp_parallel|bcast");
 //== 
-//==         #ifdef _GPU_
-//==         #ifdef _GPU_DIRECT_
+//==         #ifdef __GPU
+//==         #ifdef __GPU_DIRECT
 //==         bool gpu_direct = true;
 //==         #else
 //==         bool gpu_direct = false;
@@ -335,7 +335,7 @@ namespace sirius {
 //==         }
 //==         if (pu == GPU)
 //==         {
-//==             #ifdef _GPU_
+//==             #ifdef __GPU
 //==             if (gpu_direct)
 //==             {
 //==                 if (kp__->rank_col() == icol)
@@ -422,7 +422,7 @@ namespace sirius {
 //==             while (lock_h[icol % 2].load());
 //==             if (pu == GPU)
 //==             {
-//==                 #ifdef _GPU_
+//==                 #ifdef __GPU
 //==                 linalg<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), 
 //==                                   hphi__.at<GPU>(), hphi__.ld(), 
 //==                                   phi_tmp.at<GPU>(0, 0, icol % 2), phi_tmp.ld(),
@@ -447,7 +447,7 @@ namespace sirius {
 //==             while (lock_o[icol % 2].load());
 //==             if (pu == GPU)
 //==             {
-//==                 #ifdef _GPU_
+//==                 #ifdef __GPU
 //==                 linalg<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
 //==                                   phi__.at<GPU>(), phi__.ld(),
 //==                                   phi_tmp.at<GPU>(0, 0, icol % 2), phi_tmp.ld(), 
@@ -526,7 +526,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
     int num_bnd_max = (int)spl_num_bands_col.local_size(0);
 
     mdarray<double_complex, 3> evec_tmp(num_phi_loc, num_bnd_max, 2);
-    #ifdef _GPU_
+    #ifdef __GPU
     if (pu == GPU) evec_tmp.allocate_on_device();
     #endif
     
@@ -567,7 +567,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
             }
         }
         kp__->comm_row().allreduce(&evec_tmp(0, 0, icol % 2), num_phi_loc * num_bands_of_col);
-        #ifdef _GPU_
+        #ifdef __GPU
         if (pu == GPU)
         {
             /* send evec to gpu */
@@ -586,8 +586,8 @@ void Band::generate_fv_states_pp(K_point* kp__,
     /* communication thread */
     std::thread comm_thread([kp__, &lock_evec_tmp, &psi__, &lock_psi_tmp, &psi_tmp, &spl_num_bands_col, get_evec, pu]()
     {
-        #ifdef _GPU_
-        #ifdef _GPU_DIRECT_
+        #ifdef __GPU
+        #ifdef __GPU_DIRECT
         // gpu-direct is not working at the moment
         bool gpu_direct = false;
         #else
@@ -615,7 +615,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
                 }
                 case GPU:
                 {
-                    #ifdef _GPU_
+                    #ifdef __GPU
                     if (gpu_direct)
                     {
                         kp__->comm_col().reduce(psi_tmp.at<GPU>(), psi__.at<GPU>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
@@ -656,7 +656,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
             }
             case GPU:
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
                                   phi__.at<GPU>(), phi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
                                   psi_tmp.at<GPU>(), psi_tmp.ld());
@@ -776,7 +776,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
 //== 
 //==     if (parameters_.processing_unit() == GPU)
 //==     {
-//==         #ifdef _GPU_
+//==         #ifdef __GPU
 //==         psi.allocate_on_device();
 //==         for (int i = 0; i < order; i++) phi[i].allocate_on_device();
 //==         kappa.allocate_on_device();
@@ -880,7 +880,7 @@ void Band::generate_fv_states_pp(K_point* kp__,
 //==     //blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, num_bands, complex_one, phi[order - 1], evec, complex_zero, psi); 
 //==     //t3.stop();
 //==     
-//==     #ifdef _GPU_
+//==     #ifdef __GPU
 //==     if (parameters_.processing_unit() == GPU)
 //==     {
 //==         //beta_gk_t.deallocate_on_device();

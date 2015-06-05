@@ -29,7 +29,7 @@
 #include <omp.h>
 #include <signal.h>
 #include <unistd.h>
-#ifdef _GPU_
+#ifdef __GPU
 #include "gpu_interface.h"
 #endif
 #include <vector>

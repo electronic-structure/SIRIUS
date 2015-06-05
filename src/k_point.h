@@ -29,7 +29,7 @@
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void create_beta_gk_gpu(int num_atoms,
                                    int num_gkvec,
                                    int const* beta_desc,
@@ -257,7 +257,7 @@ class K_point
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void generate_fv_states_aw_mt_gpu();
         #endif
 
@@ -829,7 +829,7 @@ class K_point
             }
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 /* create beta projectors directly on GPU */
                 create_beta_gk_gpu(num_atoms__,
                                    num_gkvec_row(),
@@ -852,8 +852,8 @@ class K_point
                                matrix<double_complex>& beta_phi__) // TODO: pass num_gkvec_loc or num_gkvec_row
         {
             Timer t("sirius::K_point::generate_beta_phi");
-            #ifdef _GPU_
-            #ifdef _GPU_DIRECT_
+            #ifdef __GPU
+            #ifdef __GPU_DIRECT
             // allrecue with gpu-direct is broken at the moment
             bool gpu_direct = false;
             #else
@@ -874,7 +874,7 @@ class K_point
 
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 /* compute <beta|phi> */
                 linalg<GPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_loc(), 
                                   beta_gk__.at<GPU>(), beta_gk__.ld(), 
@@ -944,7 +944,7 @@ class K_point
 
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 #pragma omp parallel for
                 for (int i = 0; i < num_atoms__; i++)
                 {

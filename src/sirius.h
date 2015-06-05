@@ -25,7 +25,7 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
 
-#ifdef _GPU_
+#ifdef __GPU
 #include "gpu_interface.h"
 #endif
 #include "platform.h"

@@ -104,7 +104,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     mdarray<double_complex, 1> kappa;
     if (economize_gpu_memory) kappa = mdarray<double_complex, 1>(nullptr, kp__->num_gkvec() * (std::max(unit_cell_.mt_basis_size(), num_bands) + num_bands));
     
-    //== #ifdef _GPU_
+    //== #ifdef __GPU
     //== if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
     //== {
     //==     printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
@@ -117,7 +117,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     
     //== if (parameters_.processing_unit() == GPU)
     //== {
-    //==     #ifdef _GPU_
+    //==     #ifdef __GPU
     //==     if (!economize_gpu_memory)
     //==     {
     //==         phi.allocate_on_device();

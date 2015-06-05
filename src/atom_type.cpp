@@ -214,7 +214,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         idx_radial_integrals_.allocate_on_device();
         idx_radial_integrals_.copy_to_device();
         rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
@@ -245,7 +245,7 @@ void Atom_type::set_radial_grid(int num_points, double const* points)
     }
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         radial_grid_.copy_to_device();
         #endif
     }

@@ -399,7 +399,7 @@ void Unit_cell::initialize()
 
             if (parameters_.processing_unit() == GPU)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 beta_chunks_[ib].desc_.allocate_on_device();
                 beta_chunks_[ib].desc_.copy_to_device();
 
