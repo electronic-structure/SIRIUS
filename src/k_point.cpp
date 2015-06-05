@@ -179,8 +179,7 @@ void K_point::update()
     }
 
     /* compute |beta> projectors for atom types */
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         Timer t1("sirius::K_point::update|beta_pw");
         
@@ -309,20 +308,19 @@ void K_point::update()
         
         if (parameters_.processing_unit() == GPU)
         {
-            //== STOP();
-            //== #ifdef __GPU
-            //== gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
-            //== /* copy G+k vectors */
-            //== for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
-            //== {
-            //==     for (int x = 0; x < 3; x++) gkvec_row_(x, igk_row) = gklo_basis_descriptor_row(igk_row).gkvec[x];
-            //== }
-            //== gkvec_row_.allocate_on_device();
-            //== gkvec_row_.copy_to_device();
+            #ifdef __GPU
+            gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
+            /* copy G+k vectors */
+            for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+            {
+                for (int x = 0; x < 3; x++) gkvec_row_(x, igk_row) = gklo_basis_descriptor_row(igk_row).gkvec[x];
+            }
+            gkvec_row_.allocate_on_device();
+            gkvec_row_.copy_to_device();
 
-            //== beta_gk_t_.allocate_on_device();
-            //== beta_gk_t_.copy_to_device();
-            //== #endif
+            beta_gk_t_.allocate_on_device();
+            beta_gk_t_.copy_to_device();
+            #endif
         }
     }
     
@@ -1100,11 +1098,6 @@ void K_point::distribute_basis_index()
     {
         if (gklo_basis_descriptor_row(i).igk != -1) num_gkvec_row_++;
     }
-    
-    //== spl_gkvec_ = splindex<block>(gklo_basis_size(), comm_.size(), comm_.rank());
-    //== gklo_basis_descriptors_local_.resize(spl_gkvec_.local_size());
-    //== for (int i = 0; i < (int)spl_gkvec_.local_size(); i++)
-    //==     gklo_basis_descriptors_local_[i] = gklo_basis_descriptors_[spl_gkvec_[i]];
 }
 
 //Periodic_function<double_complex>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)

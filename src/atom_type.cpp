@@ -212,7 +212,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
         idx_radial_integrals_(1, j) = non_zero_elements[j].second;
     }
 
-    if (parameters_.processing_unit() == GPU)
+    if (parameters_.processing_unit() == GPU && parameters_.full_potential())
     {
         #ifdef __GPU
         idx_radial_integrals_.allocate_on_device();

@@ -54,9 +54,6 @@ class K_point
 
         Simulation_parameters const& parameters_;
 
-        /// Global set of parameters.
-        //Global& parameters_;
-
         Unit_cell const& unit_cell_;
 
         BLACS_grid const& blacs_grid_;
@@ -148,8 +145,6 @@ class K_point
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        //std::vector<gklo_basis_descriptor> gklo_basis_descriptors_local_;
-
         splindex<block> spl_gkvec_;
             
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
@@ -164,9 +159,6 @@ class K_point
         /// mapping between lm and l
         std::vector<int> l_by_lm_;
 
-        /// spherical bessel functions for G+k vectors  
-        //std::vector< sbessel_pw<double>* > sbessel_;
-        
         /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
         int rank_col_;
 
@@ -237,10 +229,6 @@ class K_point
 
         ~K_point()
         {
-            //== if (parameters_.esm_type() == full_potential_pwlo)
-            //== {
-            //==     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
-            //== }
             if (alm_coeffs_row_) delete alm_coeffs_row_;
             if (alm_coeffs_col_) delete alm_coeffs_col_;
         }
@@ -822,7 +810,7 @@ class K_point
                         for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
                         {
                             beta_gk__(igk_row, beta_desc__(1, i) + xi) = 
-                                beta_gk_t_(igk_row, beta_desc__(2, i) + xi) * conj(gkvec_phase_factor(igk_row, ia));
+                                beta_gk_t_(igk_row, beta_desc__(2, i) + xi) * std::conj(gkvec_phase_factor(igk_row, ia));
                         }
                     }
                 }

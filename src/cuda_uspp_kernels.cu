@@ -16,8 +16,8 @@ __global__ void create_beta_gk_gpu_kernel
     cuDoubleComplex* beta_gk
 )
 {
-    int igk = blockDim.x * blockIdx.x + threadIdx.x;
     int ia = blockIdx.y;
+    int igk = blockDim.x * blockIdx.x + threadIdx.x;
 
     int nbf              = beta_desc__[array2D_offset(0, ia, 4)];
     int offset_beta_gk   = beta_desc__[array2D_offset(1, ia, 4)];
