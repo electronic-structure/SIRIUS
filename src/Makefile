@@ -41,7 +41,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	cuda_spline_kernels.o \
 	Kernels/compute_residuals.o \
 	Kernels/apply_preconditioner.o \
-	Kernels/normalize_residuals.o
+	Kernels/normalize_residuals.o \
+	Kernels/scale_matrix.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

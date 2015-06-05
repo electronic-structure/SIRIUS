@@ -96,6 +96,10 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         }
     }
 
+    #ifdef __GPU
+    DUMP("GPU free memory: %i Mb", int(cuda_get_free_mem() >> 20));
+    #endif
+
     bool economize_gpu_memory = true; // TODO: move to user-controlled input
     
     mdarray<double_complex, 1> kappa;

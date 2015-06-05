@@ -245,6 +245,10 @@ class Simulation_context
             
             if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
 
+            #ifdef __GPU
+            DUMP("GPU free memory: %i Mb", int(cuda_get_free_mem() >> 20));
+            #endif
+
             initialized_ = true;
 
             LOG_FUNC_END();
