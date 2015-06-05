@@ -94,7 +94,7 @@ void Step_function::init(FFT3D<CPU>* fft__)
           << "  difference with exact value : " << std::abs(vit - unit_cell_.volume_it());
         warning_global(__FILE__, __LINE__, s);
     }
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], fft_->size()).checksum();
     double d1 = mdarray<double, 1>(&step_function_[0], fft_->size()).checksum();
     DUMP("checksum(step_function): %18.10f", d1);

@@ -346,11 +346,11 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     //== comm__.reduce(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), 0);
     //== if (num_mag_dims_) comm__.reduce(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), 0);
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(veff): %16llX", veff_.hash());
     DUMP("hash(h_radial_integrals): %16llX", h_radial_integrals_.hash());
     #endif
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
     #endif
 

@@ -169,7 +169,7 @@ void Potential::init()
                 }
             }
         }
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(sbessel_mom): %16llX", sbessel_mom_.hash());
         #endif
         
@@ -440,7 +440,7 @@ void Potential::generate_pw_coefs()
     for (int ir = 0; ir < fft_->size(); ir++)
         fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * ctx_.step_function()->theta_r(ir);
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
     DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it<global>(0) , fft_->size()).checksum());
     //DUMP("checksum(step_function): %18.10f", mdarray<double, 1>(&parameters_.step_function(0), fft_->size()).checksum();
@@ -450,7 +450,7 @@ void Potential::generate_pw_coefs()
     fft_->transform(-1);
     fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential()->f_pw(0));
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(veff_it): %18.10f", effective_potential()->f_it().checksum());
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), fft_->num_gvec()).checksum();
     DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));

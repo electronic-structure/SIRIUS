@@ -27,7 +27,7 @@ void Density::initial_density()
         /* compute contribution from free atoms to the interstitial density */
         auto v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
         
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z = mdarray<double_complex, 1>(&v[0], rl->num_gvec()).checksum();
         DUMP("checksum(rho_pw): %18.10f %18.10f", std::real(z), std::imag(z));
         #endif
@@ -37,12 +37,12 @@ void Density::initial_density()
         /* convert charge deisnty to real space mesh */
         rho_->fft_transform(1);
 
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z2 = rho_->f_it().checksum(); 
         DUMP("checksum(rho_it): %18.10f %18.10f", std::real(z2), std::imag(z2));
         #endif
 
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rhopw): %16llX", rho_->f_pw().hash());
         DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
         #endif
@@ -129,7 +129,7 @@ void Density::initial_density()
         ctx_.comm().allreduce(znulm.at<CPU>(), (int)znulm.size());
         t3.stop();
         
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z3 = znulm.checksum();
         DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
         #endif
@@ -251,12 +251,12 @@ void Density::initial_density()
         parameters_.esm_type() == norm_conserving_pseudopotential) 
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
         #endif
 
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], rl->num_gvec() * sizeof(double_complex)));
         #endif
 
@@ -276,7 +276,7 @@ void Density::initial_density()
         fft_->transform(1);
         fft_->output(&rho_->f_it<global>(0));
 
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
         #endif
         
@@ -287,7 +287,7 @@ void Density::initial_density()
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
 
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho) : %16llX", rho_->hash());
         #endif
 
@@ -451,11 +451,11 @@ void Density::initial_density()
 
     if (parameters_.full_potential())
     {
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         DUMP("checksum(rhomt): %18.10f", rho_->f_mt().checksum());
         #endif
 
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho) : %16llX", rho_->hash());
         #endif
         /* check initial charge */

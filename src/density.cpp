@@ -444,7 +444,7 @@ void Density::generate(K_set& ks__)
         warning_global(__FILE__, __LINE__, s);
     }
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(rhomt): %16llX", rho_->f_mt().hash());
     DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
     #endif

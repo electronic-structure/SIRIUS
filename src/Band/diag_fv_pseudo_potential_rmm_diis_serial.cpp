@@ -156,7 +156,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     //==     #endif
     //== }
 
-    //== #ifdef _PRINT_OBJECT_HASH_
+    //== #ifdef __PRINT_OBJECT_HASH
     //== std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
     //== std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
     //== std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;

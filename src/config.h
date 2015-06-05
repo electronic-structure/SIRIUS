@@ -27,14 +27,17 @@
 
 #include "typedefs.h"
 
-//== #define _TIMER_TIMEOFDAY_
-//== #define _TIMER_MPI_WTIME_
-#define _TIMER_CHRONO_
+//== #define __TIMER_TIMEOFDAY
+//== #define __TIMER_MPI_WTIME
+#define __TIMER_CHRONO
 
 //== #define __CACHE_GVEC_PHASE_FACTORS
 
-//== #define _PRINT_OBJECT_HASH_
-//== #define _PRINT_OBJECT_CHECKSUM_
+//== #define __PRINT_OBJECT_HASH
+
+//== #define __PRINT_OBJECT_CHECKSUM
+
+//== #define __SCALAPACK
 
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")

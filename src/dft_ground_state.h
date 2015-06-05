@@ -325,7 +325,7 @@ class DFT_ground_state
                     density_->magnetization(j)->fft_transform(1);
             }
 
-            #ifdef _PRINT_OBJECT_HASH_
+            #ifdef __PRINT_OBJECT_HASH
             DUMP("hash(rhomt): %16llX", density_->rho()->f_mt().hash());
             DUMP("hash(rhoit): %16llX", density_->rho()->f_it().hash());
             DUMP("hash(rhopw): %16llX", density_->rho()->f_pw().hash());

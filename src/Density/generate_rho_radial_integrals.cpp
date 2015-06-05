@@ -20,14 +20,14 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 
     if (type__ == 5)
     {
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             DUMP("iat: %i, checksum(radial_grid): %18.10f %18.10f", iat, unit_cell_.atom_type(iat)->radial_grid().x().checksum(),
                                                                     unit_cell_.atom_type(iat)->radial_grid().dx().checksum());
         }
         #endif
-        #ifdef _PRINT_OBJECT_HASH_
+        #ifdef __PRINT_OBJECT_HASH
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             DUMP("iat: %i, hash(radial_grid): %16llX", iat, unit_cell_.atom_type(iat)->radial_grid().hash());
@@ -61,7 +61,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                 }
             }
         }
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         DUMP("checksum(rho_radial_integrals): %18.10f", rho_radial_integrals.checksum());
         #endif
         return rho_radial_integrals;

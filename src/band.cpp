@@ -932,7 +932,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
             num_mt_aw += type->mt_aw_basis_size();
         }
         
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         alm_row.zero();
         alm_col.zero();
         halm_col.zero();
@@ -966,7 +966,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                 }
             }
         }
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z1 = alm_row.checksum();
         double_complex z2 = alm_col.checksum();
         double_complex z3 = halm_col.checksum();
@@ -1216,7 +1216,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
 {
     Timer t("sirius::Band::set_fv_h_o_it");
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), fft_->num_gvec()).checksum();
     DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
     #endif
@@ -1380,14 +1380,14 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Utils::check_hermitian("o", o.panel());
     }
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = h.panel().checksum();
     auto z2 = o.panel().checksum();
     DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
     DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(h): %16llX", h.panel().hash());
     DUMP("hash(o): %16llX", o.panel().hash());
     #endif
