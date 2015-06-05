@@ -103,7 +103,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
                                             double const* g__,
                                             double* result__)
 {
-    dim3 grid_t(32);
+    dim3 grid_t(64);
     dim3 grid_b(num_ri__);
 
     spline_inner_product_gpu_kernel_v3 <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
