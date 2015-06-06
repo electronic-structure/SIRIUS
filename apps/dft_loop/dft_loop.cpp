@@ -102,12 +102,10 @@ void dft_loop(cmd_args args)
     parameters.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
     
     int num_mag_dims = parser["num_mag_dims"].get(0);
-    int num_spins = (num_mag_dims == 0) ? 1 : 2;
 
     int bs = parameters.cyclic_block_size();
     
     parameters.set_num_mag_dims(num_mag_dims);
-    parameters.set_num_spins(num_spins);
 
     Communicator comm(MPI_COMM_WORLD);
     Simulation_context ctx(parameters, comm);
