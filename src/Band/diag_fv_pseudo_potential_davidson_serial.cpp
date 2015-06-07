@@ -96,10 +96,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         }
     }
 
-    #ifdef __GPU
-    DUMP("GPU free memory: %i Mb", int(cuda_get_free_mem() >> 20));
-    #endif
-
     bool economize_gpu_memory = true; // TODO: move to user-controlled input
     
     mdarray<double_complex, 1> kappa;
@@ -121,7 +117,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     #ifdef __GPU
     if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
     {
-        printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
+        printf("size of kappa array: %f GB\n", sizeof(double_complex) * double(kappa.size()) >> 30);
     }
     #endif
 
@@ -260,56 +256,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 #endif
 
                 residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
-
-                //== #ifdef __GPU
-                //== matrix<double_complex> res_tmp;
-                //== if (parameters_.processing_unit() == GPU)
-                //== {
-                //==     if (economize_gpu_memory)
-                //==     {
-                //==         res_tmp = matrix<double_complex>(nullptr, kappa.at<GPU>(0, 2 * n), ngk, num_bands);
-                //==     }
-                //==     else
-                //==     {
-                //==         res_tmp = matrix<double_complex>(nullptr, res.at<GPU>(), ngk, num_bands);
-                //==     }
-                //== }
-                //== #endif
-                
-                //== /* get rid of residuals with small norm */
-                //== int m = 0;
-                //== for (int i = 0; i < n; i++)
-                //== {
-                //==     /* take the residual if it's norm is above the threshold */
-                //==     if (res_norm[i] > 1e-6)
-                //==     {
-                //==         /* shift unconverged residuals to the beginning of array */
-                //==         if (m != i)
-                //==         {
-                //==             switch (parameters_.processing_unit())
-                //==             {
-                //==                 case CPU:
-                //==                 {
-                //==                     memcpy(&res(0, m), &res(0, i), ngk * sizeof(double_complex));
-                //==                     break;
-                //==                 }
-                //==                 case GPU:
-                //==                 {
-                //==                     //#ifdef __GPU
-                //==                     //cuda_copy_device_to_device(res_tmp.at<GPU>(0, m), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
-                //==                     //#else
-                //==                     //TERMINATE_NO_GPU
-                //==                     //#endif
-                //==                     break;
-                //==                 }
-                //==             }
-                //==         }
-                //==         m++;
-                //==     }
-                //== }
-                //== DUMP("step: %i, n_res: %i %i", k, n, m);
-                //== /* final number of residuals */
-                //== n = m;
 
                 #ifdef __GPU
                 if (parameters_.processing_unit() == GPU && economize_gpu_memory)

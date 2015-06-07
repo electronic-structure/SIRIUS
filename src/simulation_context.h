@@ -168,6 +168,12 @@ class Simulation_context
             /* initialize variables, related to the unit cell */
             unit_cell_.initialize();
 
+            if (comm_.rank() == 0)
+            {
+                unit_cell_.write_cif();
+                unit_cell_.write_json();
+            }
+
             parameters_.set_lmax_beta(unit_cell_.lmax_beta());
 
             /* create FFT interface */
@@ -180,8 +186,7 @@ class Simulation_context
             fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
             #endif
             
-            if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-                parameters_.esm_type() == norm_conserving_pseudopotential)
+            if (!parameters_.full_potential())
             {
                 /* create FFT interface for coarse grid */
                 fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors()),
@@ -244,10 +249,6 @@ class Simulation_context
             parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
             
             if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
-
-            #ifdef __GPU
-            DUMP("GPU free memory: %i Mb", int(cuda_get_free_mem() >> 20));
-            #endif
 
             initialized_ = true;
 
