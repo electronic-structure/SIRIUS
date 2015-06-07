@@ -53,7 +53,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
-	OBJ := $(OBJ) magma_interface.o
+	OBJ := $(OBJ) Kernels/magma_interface.o
 endif
 
 ifneq (,$(findstring D__PLASMA,$(CXX_OPT)))
