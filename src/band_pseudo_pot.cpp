@@ -5,32 +5,6 @@
 
 namespace sirius {
 
-#ifdef __GPU
-extern "C" void compute_residuals_gpu(int num_gkvec_row,
-                                      int num_res_local,
-                                      int* res_idx,
-                                      double* eval,
-                                      double_complex const* hpsi,
-                                      double_complex const* opsi,
-                                      double_complex* res,
-                                      double* res_norm);
-
-extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
-                                         int num_res_local,
-                                         int* res_idx,
-                                         double* eval,
-                                         double const* h_diag,
-                                         double const* o_diag,
-                                         double_complex* res,
-                                         double* res_norm);
-
-extern "C" void normalize_residuals_gpu(int num_gkvec_row,
-                                        int num_res_local,
-                                        int* res_idx,
-                                        double* norm2,
-                                        double_complex* res);
-#endif
-
 #ifdef __SCALAPACK
 /** \param [in] phi Input wave-functions [storage: CPU || GPU].
  *  \param [out] op_phi Result of application of operator to the wave-functions [storage: CPU || GPU].
