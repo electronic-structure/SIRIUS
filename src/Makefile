@@ -45,11 +45,11 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	cuda_interface.o \
 	cuda_uspp_kernels.o \
-	cuda_spline_kernels.o \
 	Kernels/compute_residuals.o \
 	Kernels/apply_preconditioner.o \
 	Kernels/normalize_residuals.o \
-	Kernels/scale_matrix.o
+	Kernels/scale_matrix.o \
+	Kernels/spline.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

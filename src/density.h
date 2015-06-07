@@ -264,7 +264,6 @@ class Density
     public:
 
         /// Constructor
-        //Density(Global& parameters__);
         Density(Simulation_context& ctx_);
         
         /// Destructor
