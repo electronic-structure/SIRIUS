@@ -63,7 +63,7 @@
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 
-#ifdef __LIBSCI_ACC
+#if defined(__LIBSCI_ACC) || defined(__MAGMA)
 const int alloc_mode = 1;
 #else
 const int alloc_mode = 0;

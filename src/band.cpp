@@ -1571,7 +1571,7 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
 
 void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])
 {
-    log_function_enter(__func__);
+    LOG_FUNC_BEGIN();
 
     Timer t("sirius::Band::solve_sv");
 
@@ -1757,7 +1757,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //== }
 
     kp->set_band_energies(&band_energies[0]);
-    log_function_exit(__func__);
+    LOG_FUNC_END();
 }
 
 void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
