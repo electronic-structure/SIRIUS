@@ -123,8 +123,10 @@ class FFT3D<CPU>
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
-
+            
+            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(num_fft_workers_);
+            #endif
 
             fftw_buffer_ = mdarray<double_complex, 2>(size(), num_fft_threads_);
 
@@ -140,7 +142,9 @@ class FFT3D<CPU>
                                                     (fftw_complex*)&fftw_buffer_(0, i), 
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_ESTIMATE);
             }
+            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(1);
+            #endif
         }
 
         ~FFT3D()

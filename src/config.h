@@ -31,6 +31,10 @@
 //== #define __TIMER_MPI_WTIME
 #define __TIMER_CHRONO
 
+/* use threaded version of FFT */
+/* never turn this off unless you know what you are doing */
+//== #define __FFTW_THREADED
+
 //== #define __CACHE_GVEC_PHASE_FACTORS
 
 //== #define __PRINT_OBJECT_HASH

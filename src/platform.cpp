@@ -67,11 +67,13 @@ void Platform::initialize(bool call_mpi_init__)
     #ifdef __LIBSCI_ACC
     libsci_acc_init();
     #endif
+    #ifdef __FFTW_THREADED
     if (!fftw_init_threads())
     {
         printf("error in fftw_init_threads()\n");
         exit(0);
     }
+    #endif
 
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);

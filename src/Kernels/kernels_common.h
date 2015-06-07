@@ -2,6 +2,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <stdio.h>
 
 const double twopi = 6.2831853071795864769;
 
