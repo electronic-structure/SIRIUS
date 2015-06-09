@@ -117,14 +117,14 @@ void dft_loop(cmd_args args)
                           ctx.mpi_grid().dimension_size(_dim_row_),
                           ctx.mpi_grid().dimension_size(_dim_col_), bs);
 
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
     Potential* potential = new Potential(ctx);
     potential->allocate();
 
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
 
@@ -137,14 +137,14 @@ void dft_loop(cmd_args args)
 
     ks.initialize();
     
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
     Density* density = new Density(ctx);
     density->allocate();
     
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
@@ -159,7 +159,6 @@ void dft_loop(cmd_args args)
     else
     {
         density->initial_density();
-        ///dft.generate_effective_potential();
     }
     
     double potential_tol = parser["potential_tol"].get(1e-4);

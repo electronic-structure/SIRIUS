@@ -41,6 +41,8 @@
 
 //== #define __PRINT_OBJECT_CHECKSUM
 
+#define __PRINT_MEMORY_USAGE
+
 //== #define __SCALAPACK
 
 //== #define __PILAENV_BLOCKSIZE=2048

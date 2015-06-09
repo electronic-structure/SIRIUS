@@ -30,6 +30,7 @@
 #include "step_function.h"
 #include "real_space_prj.h"
 #include "version.h"
+#include "debug.hpp"
 
 namespace sirius {
 
@@ -168,6 +169,10 @@ class Simulation_context
             /* initialize variables, related to the unit cell */
             unit_cell_.initialize();
 
+            #ifdef __PRINT_MEMORY_USAGE
+            MEMORY_USAGE_INFO();
+            #endif
+
             if (comm_.rank() == 0)
             {
                 unit_cell_.write_cif();
@@ -198,6 +203,10 @@ class Simulation_context
                 fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
                 #endif
             }
+
+            #ifdef __PRINT_MEMORY_USAGE
+            MEMORY_USAGE_INFO();
+            #endif
     
             if (unit_cell_.num_atoms() != 0) unit_cell_.symmetry()->check_gvec_symmetry(fft_);
 
@@ -223,6 +232,10 @@ class Simulation_context
             }
             
             reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, lmax, comm_);
+
+            #ifdef __PRINT_MEMORY_USAGE
+            MEMORY_USAGE_INFO();
+            #endif
 
             if (parameters_.full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_, fft_, comm_);
 
