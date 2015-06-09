@@ -23,6 +23,7 @@
  */
 
 #include "atom.h"
+#include "error_handling.h"
 
 namespace sirius {
 
@@ -206,7 +207,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         result.copy_to_host();
         result.deallocate_on_device();
         #else
-        TERMINATE_NO_GPU();
+        TERMINATE_NO_GPU
         #endif
     }
     if (pu__ == CPU)

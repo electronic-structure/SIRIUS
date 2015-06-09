@@ -23,6 +23,7 @@
  */
 
 #include "k_point.h"
+#include "error_handling.h"
 
 namespace sirius {
 
