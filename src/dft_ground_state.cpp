@@ -96,12 +96,13 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 {
     Timer t("sirius::DFT_ground_state::scf_loop");
     
-    //density_->mixer_init();
+    if (!parameters_.full_potential()) density_->mixer_init();
 
     double eold = 0.0;
-    
+    double rms;
+
     generate_effective_potential();
-    potential_->mixer_init();
+    if (parameters_.full_potential()) potential_->mixer_init();
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
@@ -116,10 +117,12 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         if (use_symmetry_) symmetrize_density();
 
+        if (!parameters_.full_potential()) rms = density_->mix();
+
         /* compute new potential */
         generate_effective_potential();
 
-        double rms = potential_->mix();
+        if (parameters_.full_potential()) rms = potential_->mix();
 
         ctx_.comm().bcast(&rms, 1, 0);
 

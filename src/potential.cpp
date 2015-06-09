@@ -72,8 +72,6 @@ Potential::Potential(Simulation_context& ctx__)
         for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
     }
 
-    //int ngv = (use_second_variation) ? 0 : parameters_.reciprocal_lattice()->num_gvec();
-
     effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
@@ -102,7 +100,6 @@ Potential::Potential(Simulation_context& ctx__)
 
     init();
 
-    //mixer_ = new Linear_mixer<double>(size(), parameters_.iip_.mixer_input_section_.beta_, parameters_.comm());
     std::vector<double> weights;
     mixer_ = new Broyden_modified_mixer<double>(size(),
                                        parameters_.mixer_input_section().max_history_,

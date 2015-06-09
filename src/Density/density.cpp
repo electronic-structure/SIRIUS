@@ -59,8 +59,7 @@ Density::Density(Simulation_context& ctx__)
 
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         high_freq_mixer_ = new Linear_mixer<double_complex>((ctx_.fft()->num_gvec() - ctx_.fft_coarse()->num_gvec()),
                                                             parameters_.mixer_input_section().beta_, ctx_.comm());
@@ -84,7 +83,7 @@ Density::Density(Simulation_context& ctx__)
                                                                 weights,
                                                                 ctx_.comm());
         } 
-        else if (parameters_.mixer_input_section().type_ == "broyden_modified")
+        else if (parameters_.mixer_input_section().type_ == "broyden1")
         {
 
             low_freq_mixer_ = new Broyden_modified_mixer<double_complex>(ctx_.fft_coarse()->num_gvec(),
@@ -99,8 +98,7 @@ Density::Density(Simulation_context& ctx__)
         }
     }
 
-    if (parameters_.esm_type() == full_potential_lapwlo ||
-        parameters_.esm_type() == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         if (parameters_.mixer_input_section().type_ == "linear")
         {
