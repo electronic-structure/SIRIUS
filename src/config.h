@@ -33,7 +33,7 @@
 
 /* use threaded version of FFT */
 /* never turn this off unless you know what you are doing */
-//== #define __FFTW_THREADED
+#define __FFTW_THREADED
 
 //== #define __CACHE_GVEC_PHASE_FACTORS
 
