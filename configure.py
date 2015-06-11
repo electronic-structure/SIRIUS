@@ -7,7 +7,7 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--enable-fortran", "--disable-mpi", "--enable-openmp", "--enable-threads"]
+              ["--enable-fortran", "--enable-mpi", "--enable-openmp", "--enable-threads"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
               ["--disable-shared"]
@@ -61,6 +61,12 @@ def configure_package(package_name, platform):
     new_env["FC"] = platform["FC"]
     new_env["F77"] = platform["FC"]
     new_env["FCCPP"] = platform["FCCPP"]
+    
+    if (package_name == "fftw"):
+        new_env["CC"] = platform["MPI_CXX"]
+        new_env["CXX"] = platform["MPI_CXX"]
+        new_env["FC"] = platform["MPI_FC"]
+        new_env["F77"] = platform["MPI_FC"]
 
     p = subprocess.Popen(["./configure"] + package[1], cwd = "./libs/" + package_dir, env = new_env)
     p.wait()
@@ -86,7 +92,7 @@ def configure_package(package_name, platform):
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 
     if (package_name == "fftw"):
-        retval = ["-I" + cwdlibs + package_dir + "/api", 
+        retval = ["-I" + cwdlibs + package_dir + "/api -I" + cwdlibs + package_dir + "/mpi", 
                   cwdlibs + package_dir + "/.libs/libfftw3.a " + cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
