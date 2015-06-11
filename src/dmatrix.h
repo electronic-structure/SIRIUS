@@ -476,7 +476,7 @@ class dmatrix
             return static_cast<int>(spl_col_[icol_loc]);
         }
 
-        inline int* descriptor()
+        inline int const* descriptor() const
         {
             return descriptor_;
         }

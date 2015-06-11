@@ -153,6 +153,10 @@ class linalg<CPU>: public linalg_base
         
         template <typename T>
         static void tranu(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic, ftn_int jc);
+
+        template <typename T>
+        static void gemr2d(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja,
+                           dmatrix<T>& B, ftn_int ib, ftn_int jb, ftn_int gcontext); 
 };
 
 #ifdef __GPU

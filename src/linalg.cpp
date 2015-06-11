@@ -447,6 +447,15 @@ void linalg<CPU>::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
     pztranu(m, n, zone, A.at<CPU>(), ia, ja, A.descriptor(), zzero, C.at<CPU>(), ic, jc, C.descriptor());
 }
 
+template <>
+void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                   dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
+{
+    ia++; ja++;
+    ib++; jb++;
+    FORTRAN(pzgemr2d)(&m, &n, A.at<CPU>(), &ia, &ja, A.descriptor(), B.at<CPU>(), &ib, &jb, B.descriptor(), &gcontext);
+}
+
 template<> 
 void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                    ftn_double alpha, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
