@@ -33,6 +33,7 @@ extern "C" void plasma_init(int num_cores);
 
 #ifdef _LIBSCI_ACC_
 extern "C" void libsci_acc_init();
+extern "C" void libsci_acc_finalize();
 #endif
 
 void Platform::initialize(bool call_mpi_init)
@@ -82,6 +83,9 @@ void Platform::finalize()
     MPI_Finalize();
     #ifdef _MAGMA_
     magma_finalize_wrapper();
+    #endif
+    #ifdef _LIBSCI_ACC_
+    libsci_acc_finalize();
     #endif
     #ifdef _GPU_
     cublas_destroy_handles(max_num_threads() + 1);

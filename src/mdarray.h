@@ -40,6 +40,11 @@
 #endif
 #include "typedefs.h"
 
+#ifdef _LIBSCI_ACC_
+extern "C" int libsci_acc_HostAlloc(void**, size_t);
+extern "C" int libsci_acc_HostFree(void*);
+#endif
+
 #ifdef NDEBUG
   #define mdarray_assert(condition__)
 #else
@@ -199,7 +204,11 @@ struct mdarray_mem_mgr
             #ifdef _GPU_
             case 1:
             {
+                #ifdef _LIBSCI_ACC_
+                libsci_acc_HostFree(p__);
+                #else
                 cuda_free_host(p__);
+                #endif
                 break;
             }
             case 2:
@@ -577,7 +586,11 @@ class mdarray_base
             if (mode__ == 1)
             {
                 #ifdef _GPU_
+                #ifdef _LIBSCI_ACC_
+                libsci_acc_HostAlloc((void**)&ptr_, sz * sizeof(T));
+                #else
                 ptr_ = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
+                #endif
                 unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(ptr_, mdarray_mem_mgr<T>(sz, 1));
                 #else
                 printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
