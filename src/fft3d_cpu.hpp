@@ -123,8 +123,10 @@ class FFT3D<CPU>
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
-
+            
+            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(num_fft_workers_);
+            #endif
 
             fftw_buffer_ = mdarray<double_complex, 2>(size(), num_fft_threads_);
 
@@ -140,7 +142,9 @@ class FFT3D<CPU>
                                                     (fftw_complex*)&fftw_buffer_(0, i), 
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_ESTIMATE);
             }
+            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(1);
+            #endif
         }
 
         ~FFT3D()
@@ -233,20 +237,20 @@ class FFT3D<CPU>
         }
 
         /// Total size of the FFT grid.
-        inline int size()
+        inline int size() const
         {
             return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
         }
 
         /// Size of a given dimension.
-        inline int size(int d)
+        inline int size(int d) const
         {
             assert(d >= 0 && d < 3);
             return grid_size_[d]; 
         }
 
         /// Return linear index of a plane-wave harmonic with fractional coordinates (10, i1, i2) inside fft buffer.
-        inline int index(int i0, int i1, int i2)
+        inline int index(int i0, int i1, int i2) const
         {
             if (i0 < 0) i0 += grid_size_[0];
             if (i1 < 0) i1 += grid_size_[1];
@@ -266,7 +270,7 @@ class FFT3D<CPU>
             return vector3d<int>(grid_size_);
         }
 
-        void init_gvec(double Gmax__, matrix3d<double>& M__)
+        void init_gvec(double Gmax__, matrix3d<double> const& M__)
         {
             mdarray<int, 2> gvec_tmp(3, size());
             std::vector< std::pair<double, int> > gvec_tmp_length;

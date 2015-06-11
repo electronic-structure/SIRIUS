@@ -211,7 +211,7 @@ class Symmetry
         //    return t;
         //}
 
-        void check_gvec_symmetry(FFT3D<CPU>* fft__);
+        void check_gvec_symmetry(FFT3D<CPU>* fft__) const;
 
         /// Symmetrize scalar function.
         /** The following operation is performed:
@@ -232,23 +232,22 @@ class Symmetry
          */
         void symmetrize_function(double_complex* f_pw__,
                                  FFT3D<CPU>* fft__,
-                                 splindex<block>& spl_num_gvec__,
-                                 Communicator& comm__);
+                                 Communicator const& comm__) const;
         
         void symmetrize_function(mdarray<double, 3>& frlm__,
-                                 Communicator& comm__);
+                                 Communicator const& comm__) const;
         
         void symmetrize_vector_z_component(double_complex* f_pw__,
                                            FFT3D<CPU>* fft__,
-                                           Communicator& comm__);
+                                           Communicator const& comm__) const;
 
         void symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
-                                           Communicator& comm__);
+                                           Communicator const& comm__) const;
 
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
                                             mdarray<double, 2>& kp__,
-                                            std::vector<double>& wk__);
+                                            std::vector<double>& wk__) const;
 };
 
 }

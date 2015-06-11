@@ -25,9 +25,9 @@
 #ifndef __POTENTIAL_H__
 #define __POTENTIAL_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "spheric_function.h"
+#include "simulation_context.h"
 
 namespace sirius {
 
@@ -39,7 +39,16 @@ class Potential
 {
     private:
         
-        Global& parameters_;
+        Simulation_context& ctx_;
+
+        Simulation_parameters const& parameters_;
+        //Global& parameters_;
+
+        Unit_cell const& unit_cell_;
+
+        Step_function const* step_function_;
+
+        Communicator const& comm_;
 
         /// alias for FFT driver
         FFT3D<CPU>* fft_;
@@ -132,14 +141,15 @@ class Potential
                             Periodic_function<double>* vxc, 
                             Periodic_function<double>* bxc[3], 
                             Periodic_function<double>* exc);
+
+        void init();
+
     public:
 
         /// Constructor
-        Potential(Global& parameters__);
+        Potential(Simulation_context& ctx__);
 
         ~Potential();
-
-        void update();
 
         void set_effective_potential_ptr(double* veffmt, double* veffit);
         

@@ -28,153 +28,6 @@
 
 namespace sirius {
 
-Density::Density(Global& parameters__) 
-    : parameters_(parameters__),
-      gaunt_coefs_(nullptr),
-      high_freq_mixer_(nullptr),
-      low_freq_mixer_(nullptr),
-      mixer_(nullptr)
-{
-    fft_ = parameters_.fft();
-
-    rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
-
-    /* core density of the pseudopotential method */
-    if (parameters_.esm_type() == ultrasoft_pseudopotential || 
-        parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        rho_pseudo_core_ = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
-        rho_pseudo_core_->allocate(false, true);
-        rho_pseudo_core_->zero();
-
-        generate_pseudo_core_charge_density();
-    }
-
-    for (int i = 0; i < parameters_.num_mag_dims(); i++)
-    {
-        magnetization_[i] = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
-    }
-    
-    /* never change this order!!! */
-    dmat_spins_.clear();
-    dmat_spins_.push_back(std::pair<int, int>(0, 0));
-    dmat_spins_.push_back(std::pair<int, int>(1, 1));
-    dmat_spins_.push_back(std::pair<int, int>(0, 1));
-    
-    switch (parameters_.esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
-                                                                  parameters_.lmax_apw(), SHT::gaunt_hybrid);
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
-                                                                  parameters_.lmax_pw(), SHT::gaunt_hybrid);
-            break;
-        }
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
-        {
-            break;
-        }
-    }
-
-    l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        high_freq_mixer_ = new Linear_mixer<double_complex>((parameters_.fft()->num_gvec() - parameters_.fft_coarse()->num_gvec()),
-                                                            parameters_.iip_.mixer_input_section_.beta_,
-                                                            parameters_.comm());
-
-        std::vector<double> weights(parameters_.fft_coarse()->num_gvec());
-        weights[0] = 0;
-        for (int ig = 1; ig < parameters_.fft_coarse()->num_gvec(); ig++)
-            weights[ig] = fourpi * parameters_.unit_cell()->omega() / std::pow(parameters_.fft_coarse()->gvec_len(ig), 2);
-
-        if (parameters_.iip_.mixer_input_section_.type_ == "linear")
-        {
-            low_freq_mixer_ = new Linear_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
-                                                               parameters_.iip_.mixer_input_section_.beta_,
-                                                               parameters_.comm());
-        }
-        else if (parameters_.iip_.mixer_input_section_.type_ == "broyden2")
-        {
-            low_freq_mixer_ = new Broyden_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
-                                                                parameters_.iip_.mixer_input_section_.max_history_,
-                                                                parameters_.iip_.mixer_input_section_.beta_,
-                                                                weights,
-                                                                parameters_.comm());
-        } 
-        else if (parameters_.iip_.mixer_input_section_.type_ == "broyden_modified")
-        {
-
-            low_freq_mixer_ = new Broyden_modified_mixer<double_complex>(parameters_.fft_coarse()->num_gvec(),
-                                                                         parameters_.iip_.mixer_input_section_.max_history_,
-                                                                         parameters_.iip_.mixer_input_section_.beta_,
-                                                                         weights,
-                                                                         parameters_.comm());
-        }
-        else
-        {
-            TERMINATE("wrong mixer type");
-        }
-    }
-
-    if (parameters_.esm_type() == full_potential_lapwlo ||
-        parameters_.esm_type() == full_potential_pwlo)
-    {
-        if (parameters_.iip_.mixer_input_section_.type_ == "linear")
-        {
-            mixer_ = new Linear_mixer<double>(size(),
-                                              parameters_.iip_.mixer_input_section_.beta_,
-                                              parameters_.comm());
-        }
-        else if (parameters_.iip_.mixer_input_section_.type_ == "broyden2")
-        {
-            std::vector<double> weights;
-            mixer_ = new Broyden_mixer<double>(size(),
-                                               parameters_.iip_.mixer_input_section_.max_history_,
-                                               parameters_.iip_.mixer_input_section_.beta_,
-                                               weights,
-                                               parameters_.comm());
-
-        }
-        else if (parameters_.iip_.mixer_input_section_.type_ == "broyden1")
-        {
-            std::vector<double> weights;
-            mixer_ = new Broyden_modified_mixer<double>(size(),
-                                                        parameters_.iip_.mixer_input_section_.max_history_,
-                                                        parameters_.iip_.mixer_input_section_.beta_,
-                                                        weights,
-                                                        parameters_.comm());
-        }
-        else
-        {
-            TERMINATE("wrong mixer type");
-        }
-    }
-
-}
-
-Density::~Density()
-{
-    delete rho_;
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential) delete rho_pseudo_core_;
-    
-    if (gaunt_coefs_ != nullptr) delete gaunt_coefs_;
-    if (low_freq_mixer_ != nullptr) delete low_freq_mixer_;
-    if (high_freq_mixer_ != nullptr) delete high_freq_mixer_;
-    if (mixer_ != nullptr) delete mixer_;
-}
-
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 {
     if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
@@ -188,8 +41,8 @@ void Density::set_magnetization_ptr(double* magmt, double* magir)
     assert(parameters_.num_spins() == 2);
 
     // set temporary array wrapper
-    mdarray<double, 4> magmt_tmp(magmt, parameters_.lmmax_rho(), parameters_.unit_cell()->max_num_mt_points(), 
-                                 parameters_.unit_cell()->num_atoms(), parameters_.num_mag_dims());
+    mdarray<double, 4> magmt_tmp(magmt, parameters_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
+                                 unit_cell_.num_atoms(), parameters_.num_mag_dims());
     mdarray<double, 2> magir_tmp(magir, fft_->size(), parameters_.num_mag_dims());
     
     if (parameters_.num_mag_dims() == 1)
@@ -219,53 +72,35 @@ void Density::zero()
     for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->zero();
 }
 
-void Density::generate_valence_density_it(K_set& ks)
-{
-    Timer t("sirius::Density::generate_valence_density_it", parameters_.comm());
-
-    /* add k-point contribution */
-    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = ks.spl_num_kpoints(ikloc);
-        auto occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
-        add_k_point_contribution_it(ks[ik], occupied_bands);
-    }
-    
-    /* reduce arrays; assume that each rank did it's own fraction of the density */
-    parameters_.comm().allreduce(&rho_->f_it<global>(0), fft_->size()); 
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        parameters_.comm().allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
-}
-
 double Density::core_leakage()
 {
     double sum = 0.0;
-    for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
-        sum += core_leakage(ic) * parameters_.unit_cell()->atom_symmetry_class(ic)->num_atoms();
+        sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic)->num_atoms();
     }
     return sum;
 }
 
 double Density::core_leakage(int ic)
 {
-    return parameters_.unit_cell()->atom_symmetry_class(ic)->core_leakage();
+    return unit_cell_.atom_symmetry_class(ic)->core_leakage();
 }
 
 void Density::generate_core_charge_density()
 {
     Timer t("sirius::Density::generate_core_charge_density");
 
-    for (int icloc = 0; icloc < (int)parameters_.unit_cell()->spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < (int)unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
-        int ic = parameters_.unit_cell()->spl_num_atom_symmetry_classes(icloc);
-        parameters_.unit_cell()->atom_symmetry_class(ic)->generate_core_charge_density();
+        int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
+        unit_cell_.atom_symmetry_class(ic)->generate_core_charge_density();
     }
 
-    for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
-        int rank = parameters_.unit_cell()->spl_num_atom_symmetry_classes().local_rank(ic);
-        parameters_.unit_cell()->atom_symmetry_class(ic)->sync_core_charge_density(parameters_.comm(), rank);
+        int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
+        unit_cell_.atom_symmetry_class(ic)->sync_core_charge_density(ctx_.comm(), rank);
     }
 }
 
@@ -273,7 +108,7 @@ void Density::generate_pseudo_core_charge_density()
 {
     Timer t("sirius::Density::generate_pseudo_core_charge_density");
 
-    auto rl = parameters_.reciprocal_lattice();
+    auto rl = ctx_.reciprocal_lattice();
     auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
     std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
@@ -285,7 +120,7 @@ void Density::generate_pseudo_core_charge_density()
 
 void Density::generate_valence(K_set& ks__)
 {
-    Timer t("sirius::Density::generate_valence", parameters_.comm());
+    Timer t("sirius::Density::generate_valence", ctx_.comm());
     
     double wt = 0.0;
     double ot = 0.0;
@@ -297,13 +132,13 @@ void Density::generate_valence(K_set& ks__)
 
     if (std::abs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
 
-    if (std::abs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
+    if (std::abs(ot - unit_cell_.num_valence_electrons()) > 1e-8)
     {
         std::stringstream s;
         s << "wrong occupancies" << std::endl
           << "  computed : " << ot << std::endl
-          << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
-          << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
+          << "  required : " << unit_cell_.num_valence_electrons() << std::endl
+          << "  difference : " << fabs(ot - unit_cell_.num_valence_electrons());
         warning_local(__FILE__, __LINE__, s);
     }
     
@@ -369,7 +204,7 @@ void Density::augment(K_set& ks__)
                     add_q_contribution_to_valence_density(ks__);
                     break;
                 }
-                #ifdef _GPU_
+                #ifdef __GPU
                 case GPU:
                 {
                     add_q_contribution_to_valence_density_gpu(ks__);
@@ -394,20 +229,20 @@ void Density::generate(K_set& ks__)
 {
     LOG_FUNC_BEGIN();
 
-    Timer t("sirius::Density::generate", parameters_.comm());
+    Timer t("sirius::Density::generate", ctx_.comm());
     
     generate_valence(ks__);
 
-    if (parameters_.unit_cell()->full_potential())
+    if (parameters_.full_potential())
     {
         generate_core_charge_density();
 
         /* add core contribution */
-        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
-            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-            for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
-                rho_->f_mt<local>(0, ir, ialoc) += parameters_.unit_cell()->atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
+            int ia = unit_cell_.spl_num_atoms(ialoc);
+            for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
+                rho_->f_mt<local>(0, ir, ialoc) += unit_cell_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
         }
 
         /* synchronize muffin-tin part (interstitial is already syncronized with allreduce) */
@@ -416,36 +251,34 @@ void Density::generate(K_set& ks__)
     }
     
     double nel = 0;
-    if (parameters_.esm_type() == full_potential_lapwlo ||
-        parameters_.esm_type() == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         std::vector<double> nel_mt;
         double nel_it;
         nel = rho_->integrate(nel_mt, nel_it);
     }
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
+    else
     {
-        nel = real(rho_->f_pw(0)) * parameters_.unit_cell()->omega();
+        nel = real(rho_->f_pw(0)) * unit_cell_.omega();
     }
 
-    if (std::abs(nel - parameters_.unit_cell()->num_electrons()) > 1e-5)
+    if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5)
     {
         std::stringstream s;
         s << "wrong charge density after k-point summation" << std::endl
           << "obtained value : " << nel << std::endl 
-          << "target value : " << parameters_.unit_cell()->num_electrons() << std::endl
-          << "difference : " << fabs(nel - parameters_.unit_cell()->num_electrons()) << std::endl;
-        if (parameters_.unit_cell()->full_potential())
+          << "target value : " << unit_cell_.num_electrons() << std::endl
+          << "difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
+        if (parameters_.full_potential())
         {
             s << "total core leakage : " << core_leakage();
-            for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++) 
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) 
                 s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
         }
         warning_global(__FILE__, __LINE__, s);
     }
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(rhomt): %16llX", rho_->f_mt().hash());
     DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
     #endif
@@ -457,9 +290,9 @@ void Density::generate(K_set& ks__)
 //void Density::check_density_continuity_at_mt()
 //{
 //    // generate plane-wave coefficients of the potential in the interstitial region
-//    parameters_.fft().input(&rho_->f_it<global>(0));
-//    parameters_.fft().transform(-1);
-//    parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), &rho_->f_pw(0));
+//    ctx_.fft().input(&rho_->f_it<global>(0));
+//    ctx_.fft().transform(-1);
+//    ctx_.fft().output(parameters_.num_gvec(), ctx_.fft_index(), &rho_->f_pw(0));
 //    
 //    SHT sht(parameters_.lmax_rho());
 //
@@ -492,14 +325,14 @@ void Density::generate(K_set& ks__)
 
 void Density::save()
 {
-    if (parameters_.comm().rank() == 0)
+    if (ctx_.comm().rank() == 0)
     {
         HDF5_tree fout(storage_file_name, false);
         rho_->hdf5_write(fout["density"]);
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
     }
-    parameters_.comm().barrier();
+    ctx_.comm().barrier();
 }
 
 void Density::load()

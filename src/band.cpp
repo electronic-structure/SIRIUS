@@ -30,11 +30,11 @@ namespace sirius {
 //== {
 //==     Timer t("sirius::Band::apply_so_correction");
 //== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
-//==         Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
+//==         Atom_type* type = unit_cell_.atom(ia)->type();
 //== 
-//==         int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
+//==         int offset = unit_cell_.atom(ia)->offset_wf();
 //== 
 //==         for (int l = 0; l <= parameters_.lmax_apw(); l++)
 //==         {
@@ -44,7 +44,7 @@ namespace sirius {
 //==             {
 //==                 for (int order2 = 0; order2 < nrf; order2++)
 //==                 {
-//==                     double sori = parameters_.unit_cell()->atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
+//==                     double sori = unit_cell_.atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
 //==                     
 //==                     for (int m = -l; m <= l; m++)
 //==                     {
@@ -758,7 +758,7 @@ namespace sirius {
 //==     h.zero();
 //==     o.zero();
 //== 
-//==     int naw = parameters_.unit_cell()->mt_aw_basis_size();
+//==     int naw = unit_cell_.mt_aw_basis_size();
 //== 
 //==     /* generate and conjugate panel of matching coefficients; this would be the <bra| states */
 //==     dmatrix<double_complex> alm_panel_n;
@@ -805,12 +805,12 @@ namespace sirius {
 //==                     complex_zero, o); 
 //==     t1.stop();
 //== 
-//==     mdarray<double_complex, 2> alm_row(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> alm_col(kp->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> alm_row(kp->num_gkvec_row(), unit_cell_.max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> alm_col(kp->num_gkvec_col(), unit_cell_.max_mt_aw_basis_size());
 //== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
-//==         Atom* atom = parameters_.unit_cell()->atom(ia);
+//==         Atom* atom = unit_cell_.atom(ia);
 //==         Atom_type* type = atom->type();
 //==        
 //==         /* generate matching coefficients for current atom */
@@ -848,14 +848,14 @@ namespace sirius {
 //==     h__.zero();
 //==     o__.zero();
 //== 
-//==     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), unit_cell_.max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), unit_cell_.max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), unit_cell_.max_mt_aw_basis_size());
 //==     
 //==     Timer t1("sirius::Band::set_fv_h_o|zgemm");
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
-//==         Atom* atom = parameters_.unit_cell()->atom(ia);
+//==         Atom* atom = unit_cell_.atom(ia);
 //==         Atom_type* type = atom->type();
 //==        
 //==         /* generate matching coefficients for current atom */
@@ -882,7 +882,7 @@ namespace sirius {
 //==     if (kp__->comm().rank() == 0)
 //==     {
 //==         DUMP("effective zgemm performance: %12.6f GFlops/rank",
-//==              2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * parameters_.unit_cell()->mt_aw_basis_size() / tval);
+//==              2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
 //==     }
 //== 
 //==     /* add interstitial contributon */
@@ -908,11 +908,11 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
     double_complex zone(1, 0);
     
     int num_atoms_in_block = 2 * Platform::max_num_threads();
-    int nblk = parameters_.unit_cell()->num_atoms() / num_atoms_in_block +
-               std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
+    int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
+               std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
 
-    int max_mt_aw = num_atoms_in_block * parameters_.unit_cell()->max_mt_aw_basis_size();
+    int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
     DUMP("max_mt_aw: %i", max_mt_aw);
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), max_mt_aw);
@@ -924,15 +924,15 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
     {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);
-        for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
+        for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
         {
-            auto atom = parameters_.unit_cell()->atom(ia);
+            auto atom = unit_cell_.atom(ia);
             auto type = atom->type();
             offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
             num_mt_aw += type->mt_aw_basis_size();
         }
         
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         alm_row.zero();
         alm_col.zero();
         halm_col.zero();
@@ -941,12 +941,12 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
         #pragma omp parallel
         {
             int tid = Platform::thread_id();
-            for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
+            for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
                 if (ia % Platform::num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
-                    auto atom = parameters_.unit_cell()->atom(ia);
+                    auto atom = unit_cell_.atom(ia);
                     auto type = atom->type();
 
                     mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type->mt_aw_basis_size());
@@ -966,7 +966,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                 }
             }
         }
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z1 = alm_row.checksum();
         double_complex z2 = alm_col.checksum();
         double_complex z3 = halm_col.checksum();
@@ -986,7 +986,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
     if (kp__->comm().rank() == 0)
     {
         DUMP("effective zgemm performance: %12.6f GFlops/rank",
-             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * parameters_.unit_cell()->mt_aw_basis_size() / tval);
+             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
     }
 
     /* add interstitial contributon */
@@ -999,7 +999,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 //=====================================================================================================================
 // GPU code, (L)APW+lo basis
 //=====================================================================================================================
-#ifdef _GPU_
+#ifdef __GPU
 template<> 
 void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
@@ -1019,11 +1019,11 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     double_complex zone(1, 0);
 
     int num_atoms_in_block = 2 * Platform::max_num_threads();
-    int nblk = parameters_.unit_cell()->num_atoms() / num_atoms_in_block +
-               std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
+    int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
+               std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
 
-    int max_mt_aw = num_atoms_in_block * parameters_.unit_cell()->max_mt_aw_basis_size();
+    int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
     DUMP("max_mt_aw: %i", max_mt_aw);
 
     mdarray<double_complex, 3> alm_row(nullptr, kp__->num_gkvec_row(), max_mt_aw, 2);
@@ -1043,9 +1043,9 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);
-        for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
+        for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
         {
-            auto atom = parameters_.unit_cell()->atom(ia);
+            auto atom = unit_cell_.atom(ia);
             auto type = atom->type();
             offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
             num_mt_aw += type->mt_aw_basis_size();
@@ -1056,12 +1056,12 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
         #pragma omp parallel
         {
             int tid = Platform::thread_id();
-            for (int ia = iblk * num_atoms_in_block; ia < std::min(parameters_.unit_cell()->num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
+            for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
                 if (ia % Platform::num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
-                    auto atom = parameters_.unit_cell()->atom(ia);
+                    auto atom = unit_cell_.atom(ia);
                     auto type = atom->type();
 
                     mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc], s),
@@ -1115,7 +1115,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     if (kp__->comm().rank() == 0)
     {
         DUMP("effective zgemm performance: %12.6f GFlops/rank",
-             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * parameters_.unit_cell()->mt_aw_basis_size() / tval);
+             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
     }
 
     /* add interstitial contributon */
@@ -1216,7 +1216,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
 {
     Timer t("sirius::Band::set_fv_h_o_it");
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), fft_->num_gvec()).checksum();
     DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
     #endif
@@ -1226,15 +1226,15 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                                   kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
             
             /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
                                kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
                                
-            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function()->theta_pw(ig12));
-            o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
+            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function()->theta_pw(ig12));
+            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }
     }
 }
@@ -1255,7 +1255,7 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
         {
             if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
-                Atom* atom = parameters_.unit_cell()->atom(ia);
+                Atom* atom = unit_cell_.atom(ia);
                 int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
                 int idxrf1 = kp->gklo_basis_descriptor_row(irow).idxrf; 
 
@@ -1360,7 +1360,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
             set_fv_h_o<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
-        #ifdef _GPU_
+        #ifdef __GPU
         case GPU:
         {
             set_fv_h_o<GPU, full_potential_lapwlo>(kp, effective_potential, h, o);
@@ -1380,14 +1380,14 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Utils::check_hermitian("o", o.panel());
     }
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = h.panel().checksum();
     auto z2 = o.panel().checksum();
     DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
     DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(h): %16llX", h.panel().hash());
     DUMP("hash(o): %16llX", o.panel().hash());
     #endif
@@ -1475,10 +1475,10 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                             kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
             
-            o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }
     }
 }
@@ -1498,7 +1498,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
         {
             if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
-                Atom* atom = parameters_.unit_cell()->atom(ia);
+                Atom* atom = unit_cell_.atom(ia);
                 int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
 
                 if (lm1 == lm2)
@@ -1520,14 +1520,14 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 //==     // index of column apw coefficients in apw array
 //==     int apw_offset_col = kp->apw_offset_col();
 //==     
-//==     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
 //==     o.zero();
 //== 
 //==     double_complex zone(1, 0);
 //==     
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
-//==         Atom* atom = parameters_.unit_cell()->atom(ia);
+//==         Atom* atom = unit_cell_.atom(ia);
 //==         Atom_type* type = atom->type();
 //==        
 //==         // generate conjugated coefficients
@@ -1571,7 +1571,7 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
 
 void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])
 {
-    log_function_enter(__func__);
+    LOG_FUNC_BEGIN();
 
     Timer t("sirius::Band::solve_sv");
 
@@ -1626,7 +1626,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         //kp->fv_states_panel().panel().allocate_on_device();
         //kp->fv_states_panel().panel().copy_to_device();
         #endif
@@ -1639,7 +1639,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), kp->blacs_grid());
         if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             h.panel().allocate_on_device();
             #endif
         }
@@ -1649,7 +1649,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         {
             if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 Timer t4("sirius::Band::solve_sv|zgemm");
                 hpsi_panel[ispn]->panel().allocate_on_device();
                 hpsi_panel[ispn]->panel().copy_to_device();
@@ -1757,7 +1757,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //== }
 
     kp->set_band_energies(&band_energies[0]);
-    log_function_exit(__func__);
+    LOG_FUNC_END();
 }
 
 void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
@@ -1815,7 +1815,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     //== kp->set_band_energies(&eval[0]);
 }
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
                                              double v0__,
                                              std::vector<double>& veff_it_coarse__)
@@ -1823,7 +1823,7 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
     
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = parameters_.iterative_solver_input_section();
     if (itso.type_ == "davidson")
     {
         diag_fv_pseudo_potential_davidson_fast_parallel(kp__, v0__, veff_it_coarse__);
@@ -1839,7 +1839,7 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
 
     log_function_exit(__func__);
 }
-#endif // _SCALAPACK_
+#endif // __SCALAPACK
 
 void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
                                            double v0__,
@@ -1848,7 +1848,7 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
     
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = parameters_.iterative_solver_input_section();
     if (itso.type_ == "exact")
     {
         diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse__);
@@ -1878,7 +1878,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 {
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
-    auto fft_coarse = parameters_.fft_coarse();
+    auto fft_coarse = ctx_.fft_coarse();
 
     /* map effective potential to a corase grid */
     std::vector<double> veff_it_coarse(fft_coarse->size());
@@ -1887,7 +1887,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
     for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
     {
-        int ig = parameters_.fft()->gvec_index(fft_coarse->gvec(igc));
+        int ig = ctx_.fft()->gvec_index(fft_coarse->gvec(igc));
         veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
     }
     fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);
@@ -1898,7 +1898,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 
     if (gen_evp_solver()->parallel())
     {
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
         #else
         TERMINATE_NO_SCALAPACK

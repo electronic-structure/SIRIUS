@@ -4,7 +4,7 @@
 
 namespace sirius {
 
-#ifdef _GPU_
+#ifdef __GPU
 //extern "C" void update_it_density_matrix_gpu(int fft_size, 
 //                                             int nfft_max, 
 //                                             int num_spins, 
@@ -48,7 +48,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
     mdarray<double, 3> it_density_matrix(fft_->size(), parameters_.num_mag_dims() + 1, num_fft_threads);
     it_density_matrix.zero();
     
-    #ifdef _GPU_
+    #ifdef __GPU
     mdarray<double, 2> it_density_matrix_gpu;
     /* last thread is doing cuFFT */
     if (parameters_.processing_unit() == GPU && num_fft_threads > 1)
@@ -57,23 +57,23 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
-    auto fft_gpu = parameters_.fft_gpu();
+    auto fft_gpu = ctx_.fft_gpu();
     if (fft_gpu->num_fft() != 1) TERMINATE("Current implementation requires batch size of 1");
     #endif
 
     std::vector<std::thread> fft_threads;
 
-    auto fft = parameters_.fft();
+    auto fft = ctx_.fft();
     int num_spins = parameters_.num_spins();
     int num_mag_dims = parameters_.num_mag_dims();
     int num_fv_states = parameters_.num_fv_states();
-    double omega = parameters_.unit_cell()->omega();
+    double omega = unit_cell_.omega();
 
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             fft_threads.push_back(std::thread([thread_id, kp, fft_gpu, &idx_band, &idx_band_mutex, num_spins, num_mag_dims,
                                                num_fv_states, omega, &occupied_bands, &it_density_matrix_gpu]()
             {
@@ -256,7 +256,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
         error_local(__FILE__, __LINE__, s);
     }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU && num_fft_threads > 1)
     {
         it_density_matrix_gpu.copy_to_host();

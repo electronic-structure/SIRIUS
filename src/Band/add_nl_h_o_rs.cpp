@@ -14,9 +14,8 @@ void Band::add_nl_h_o_rs(K_point* kp__,
 {
     LOG_FUNC_BEGIN();
 
-    auto uc = parameters_.unit_cell();
-    auto rsp = parameters_.real_space_prj_;
-    auto fft = parameters_.real_space_prj_->fft();
+    auto rsp = ctx_.real_space_prj();
+    auto fft = rsp->fft();
 
     if (kappa__.size() < size_t(2 * fft->size() + rsp->max_num_points_) * fft->num_fft_threads())
     {
@@ -69,14 +68,14 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     timers.zero();
 
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> beta_phi_re(uc->max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> beta_phi_im(uc->max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> beta_phi_re(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> beta_phi_im(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
 
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> d_beta_phi_re(uc->max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> d_beta_phi_im(uc->max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> q_beta_phi_re(uc->max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> q_beta_phi_im(uc->max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> d_beta_phi_re(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> d_beta_phi_im(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> q_beta_phi_re(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> q_beta_phi_im(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
     
     double* ptr = (double*)kappa__.at<CPU>(2 * hphi_rs.size());
     mdarray<double, 2> phi_tmp_re(ptr,                     rsp->max_num_points_, fft->num_fft_threads());
@@ -84,8 +83,8 @@ void Band::add_nl_h_o_rs(K_point* kp__,
 
     mdarray<double_complex, 2> phase(rsp->max_num_points_, fft->num_fft_threads());
     
-    double w1 = std::sqrt(uc->omega()) / fft->size();
-    double w2 = std::sqrt(uc->omega());
+    double w1 = std::sqrt(unit_cell_.omega()) / fft->size();
+    double w2 = std::sqrt(unit_cell_.omega());
 
     Timer t5("sirius::Band::apply_h_o_serial|real_space_kernel");
     #pragma omp parallel num_threads(fft->num_fft_threads())
@@ -104,9 +103,9 @@ void Band::add_nl_h_o_rs(K_point* kp__,
             fft->transform(1, thread_id);
             timers(0, thread_id) += omp_get_wtime() - t0;
 
-            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                auto type = parameters_.unit_cell()->atom(ia)->type();
+                auto type = unit_cell_.atom(ia)->type();
                 auto& beta_prj = rsp->beta_projectors_[ia];
                 int nbf = type->mt_basis_size();
                 int npt = beta_prj.num_points_;

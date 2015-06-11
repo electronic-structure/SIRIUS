@@ -105,7 +105,7 @@ class standard_evp_lapack: public standard_evp
         }
 };
 
-#ifdef _PLASMA_
+#ifdef __PLASMA
 extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
                                       int32_t ldz, double* eval);
 #endif
@@ -119,7 +119,7 @@ class standard_evp_plasma: public standard_evp
         {
         }
 
-        #ifdef _PLASMA_
+        #ifdef __PLASMA
         void solve(int32_t matrix_size, double_complex* a, int32_t lda, double* eval, double_complex* z, int32_t ldz)
         {
             //plasma_set_num_threads(1);
@@ -153,7 +153,7 @@ class standard_evp_scalapack: public standard_evp
         int num_ranks_col_;
         int blacs_context_;
         
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
                                             int blacs_context)
         {
@@ -182,12 +182,12 @@ class standard_evp_scalapack: public standard_evp
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               blacs_context_(blacs_grid__.context())
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             block_size_ = blacs_grid__.cyclic_block_size();
             #endif
         }
 
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         void solve(int32_t matrix_size, double_complex* a, int32_t lda, double* eval, double_complex* z, int32_t ldz)
         {
 
@@ -335,7 +335,7 @@ class generalized_evp_scalapack: public generalized_evp
         int blacs_context_;
         double abstol_;
         
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
                                             int blacs_context)
         {
@@ -380,12 +380,12 @@ class generalized_evp_scalapack: public generalized_evp
               blacs_context_(blacs_grid__.context()),
               abstol_(abstol__)
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             block_size_ = blacs_grid__.cyclic_block_size();
             #endif
         }
 
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
@@ -474,7 +474,7 @@ class generalized_evp_scalapack: public generalized_evp
         }
 };
 
-#ifdef _RS_GEN_EIG_
+#ifdef __RS_GEN_EIG
 void my_gen_eig(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
                 double_complex* b, int ib, int jb, int* descb, double* d,
                 double_complex* q, int iq, int jq, int* descq, int* info);
@@ -504,12 +504,12 @@ class generalized_evp_rs_gpu: public generalized_evp
               rank_col_(blacs_grid__.rank_col()),
               blacs_context_(blacs_grid__.context())
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             block_size_ = blacs_grid__.cyclic_block_size();
             #endif
         }
 
-        #ifdef _RS_GEN_EIG_
+        #ifdef __RS_GEN_EIG
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
@@ -582,12 +582,12 @@ class generalized_evp_rs_cpu: public generalized_evp
               rank_col_(blacs_grid__.rank_col()),
               blacs_context_(blacs_grid__.context())
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             block_size_ = blacs_grid__.cyclic_block_size();
             #endif
         }
 
-        #ifdef _RS_GEN_EIG_
+        #ifdef __RS_GEN_EIG
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
@@ -664,12 +664,12 @@ class generalized_evp_elpa1: public generalized_evp
               comm_row_(blacs_grid__.comm_row()), 
               comm_col_(blacs_grid__.comm_col())
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             block_size_ = blacs_grid__.cyclic_block_size();
             #endif
         }
         
-        #ifdef _ELPA_
+        #ifdef __ELPA
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
@@ -778,12 +778,12 @@ class generalized_evp_elpa2: public generalized_evp
               comm_col_(blacs_grid__.comm_col()),
               comm_all_(blacs_grid__.comm())
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             block_size_ = blacs_grid__.cyclic_block_size();
             #endif
         }
         
-        #ifdef _ELPA_
+        #ifdef __ELPA
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)
@@ -875,7 +875,7 @@ class generalized_evp_magma: public generalized_evp
         {
         }
 
-        #ifdef _MAGMA_
+        #ifdef __MAGMA
         int solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                   double_complex* z, int32_t ldz)

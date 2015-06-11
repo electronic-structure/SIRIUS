@@ -36,6 +36,7 @@
 #include "radial_solver.h"
 #include "json_tree.h"
 #include "xc_functional.h"
+#include "simulation_parameters.h"
 
 namespace sirius {
 
@@ -276,6 +277,8 @@ class Atom_type
 {
     private:
 
+        Simulation_parameters const& parameters_;
+
         /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
         int id_;
 
@@ -341,9 +344,6 @@ class Atom_type
 
         std::vector<int> atom_id_;
 
-        /// type of electronic structure method used
-        electronic_structure_method_t esm_type_;
-        
         std::string file_name_;
 
         mdarray<int, 2> idx_radial_integrals_;
@@ -351,15 +351,13 @@ class Atom_type
         mdarray<double, 3> rf_coef_;
         mdarray<double, 3> vrf_coef_;
 
-        processing_unit_t pu_;
-
         bool initialized_;
        
-        // forbid copy constructor
-        Atom_type(const Atom_type& src);
+        /* forbid copy constructor */
+        Atom_type(const Atom_type& src) = delete;
         
-        // forbid assignment operator
-        Atom_type& operator=(const Atom_type& src);
+        /* forbid assignment operator */
+        Atom_type& operator=(const Atom_type& src) = delete;
         
         void read_input_core(JSON_tree& parser);
 
@@ -387,18 +385,18 @@ class Atom_type
 
     public:
         
-        Atom_type(const char* symbol__, 
+        Atom_type(Simulation_parameters const& parameters__,
+                  const char* symbol__, 
                   const char* name__, 
                   int zn__, 
                   double mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
                   radial_grid_t grid_type__);
  
-        Atom_type(const int id__, 
+        Atom_type(Simulation_parameters const& parameters__,
+                  const int id__, 
                   const std::string label, 
-                  const std::string file_name__, 
-                  const electronic_structure_method_t esm_type__,
-                  processing_unit_t pu__);
+                  const std::string file_name__);
 
         ~Atom_type();
         
@@ -471,83 +469,83 @@ class Atom_type
             return free_atom_radial_grid_;
         }
         
-        inline double radial_grid(int ir)
+        inline double radial_grid(int ir) const
         {
             return radial_grid_[ir];
         }
 
-        inline double free_atom_radial_grid(int ir)
+        inline double free_atom_radial_grid(int ir) const
         {
             return free_atom_radial_grid_[ir];
         }
         
-        inline int num_atomic_levels()
+        inline int num_atomic_levels() const
         {
             return (int)atomic_levels_.size();
         }    
         
-        inline atomic_level_descriptor& atomic_level(int idx)
+        inline atomic_level_descriptor const& atomic_level(int idx) const
         {
             return atomic_levels_[idx];
         }
         
-        inline double num_core_electrons()
+        inline double num_core_electrons() const
         {
             return num_core_electrons_;
         }
         
-        inline double num_valence_electrons()
+        inline double num_valence_electrons() const
         {
             return num_valence_electrons_;
         }
         
-        inline double free_atom_density(const int idx)
+        inline double free_atom_density(const int idx) const
         {
             return free_atom_density_[idx];
         }
 
-        inline double free_atom_density(double x)
+        inline double free_atom_density(double x) const
         {
             return free_atom_density_(x);
         }
         
-        inline double free_atom_potential(const int idx)
+        inline double free_atom_potential(const int idx) const
         {
             return free_atom_potential_[idx];
         }
 
-        inline double free_atom_potential(double x)
+        inline double free_atom_potential(double x) const
         {
             return free_atom_potential_(x);
         }
 
-        Spline<double>& free_atom_potential()
+        Spline<double> const& free_atom_potential() const
         {
             return free_atom_potential_;
         }
 
-        inline int num_aw_descriptors()
+        inline int num_aw_descriptors() const
         {
             return (int)aw_descriptors_.size();
         }
 
-        inline radial_solution_descriptor_set& aw_descriptor(int l)
+        inline radial_solution_descriptor_set const& aw_descriptor(int l) const
         {
             assert(l < (int)aw_descriptors_.size());
             return aw_descriptors_[l];
         }
         
-        inline int num_lo_descriptors()
+        inline int num_lo_descriptors() const
         {
             return (int)lo_descriptors_.size();
         }
 
-        inline local_orbital_descriptor& lo_descriptor(int idx)
+        inline local_orbital_descriptor const& lo_descriptor(int idx) const
         {
             return lo_descriptors_[idx];
         }
 
-        inline int max_aw_order()
+        inline int max_aw_order() const
         {
             return max_aw_order_;
         }
@@ -563,12 +561,12 @@ class Atom_type
             return indexr_[i];
         }
 
-        inline int indexr_by_l_order(int l, int order)
+        inline int indexr_by_l_order(int l, int order) const
         {
             return indexr_.index_by_l_order(l, order);
         }
         
-        inline int indexr_by_idxlo(int idxlo)
+        inline int indexr_by_idxlo(int idxlo) const
         {
             return indexr_.index_by_idxlo(idxlo);
         }
@@ -584,38 +582,38 @@ class Atom_type
             return indexb_[i];
         }
 
-        inline int indexb_by_l_m_order(int l, int m, int order)
+        inline int indexb_by_l_m_order(int l, int m, int order) const
         {
             return indexb_.index_by_l_m_order(l, m, order);
         }
         
-        inline int indexb_by_lm_order(int lm, int order)
+        inline int indexb_by_lm_order(int lm, int order) const
         {
             return indexb_.index_by_lm_order(lm, order);
         }
 
-        inline int mt_aw_basis_size()
+        inline int mt_aw_basis_size() const
         {
             return indexb_.size_aw();
         }
         
-        inline int mt_lo_basis_size()
+        inline int mt_lo_basis_size() const
         {
             return indexb_.size_lo();
         }
 
-        inline int mt_basis_size()
+        inline int mt_basis_size() const
         {
             return indexb_.size();
         }
 
-        inline int mt_radial_basis_size()
+        inline int mt_radial_basis_size() const
         {
             return indexr_.size();
         }
 
         /// Return index of a free atom grid point close to the muffin-tin radius.
-        inline int idx_rmt_free_atom()
+        inline int idx_rmt_free_atom() const
         {
             for (int i = 0; i < free_atom_radial_grid().num_points(); i++)
             {
@@ -706,11 +704,6 @@ class Atom_type
             return offset_lo_;
         }
 
-        inline electronic_structure_method_t esm_type()
-        {
-            return esm_type_;
-        }
-
         inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
         {
             uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
@@ -730,6 +723,11 @@ class Atom_type
         inline mdarray<double, 3>& vrf_coef()
         {
             return vrf_coef_;
+        }
+
+        inline Simulation_parameters const& parameters() const
+        {
+            return parameters_;
         }
 };
 

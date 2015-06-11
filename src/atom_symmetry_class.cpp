@@ -523,7 +523,7 @@ void Atom_symmetry_class::generate_radial_functions()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(spherical_potential): %16llX", mdarray<double, 1>(&spherical_potential_[0], atom_type_->num_mt_points()).hash());
     #endif
 
@@ -533,23 +533,23 @@ void Atom_symmetry_class::generate_radial_functions()
 
     generate_aw_radial_functions();
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(aw_radial_functions): %16llX", radial_functions_.hash());
     #endif
 
     generate_lo_radial_functions();
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(aw_and_lo_radial_functions): %16llX", radial_functions_.hash());
     #endif
 
     transform_radial_functions(false, false);
 
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(&spherical_potential_[0], atom_type_->num_mt_points()).checksum());
     DUMP("checksum(radial_functions): %18.10f", radial_functions_.checksum());
     #endif
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(radial_functions): %16llX", radial_functions_.hash());
     #endif
 

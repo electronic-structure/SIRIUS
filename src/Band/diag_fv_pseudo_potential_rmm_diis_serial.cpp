@@ -6,7 +6,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                     double v0__,
                                                     std::vector<double>& veff_it_coarse__)
 {
-    if (parameters_.iterative_solver_input_section_.tolerance_ > 1e-5)
+    if (ctx_.iterative_solver_tolerance() > 1e-5)
     {
         diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
         return;
@@ -71,15 +71,13 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
     std::vector<double> eval_old(num_bands);
-    
-    auto uc = parameters_.unit_cell();
 
     /* offset in the packed array of on-site matrices */
-    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    mdarray<int, 1> packed_mtrx_offset(unit_cell_.num_atoms());
     int packed_mtrx_size = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {   
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         packed_mtrx_offset(ia) = packed_mtrx_size;
         packed_mtrx_size += nbf * nbf;
     }
@@ -89,24 +87,24 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     mdarray<double_complex, 1> q_mtrx_packed;
     if (with_overlap) q_mtrx_packed = mdarray<double_complex, 1>(packed_mtrx_size);
 
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
-                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
             }
         }
     }
 
     bool economize_gpu_memory = true;
     mdarray<double_complex, 1> kappa;
-    if (economize_gpu_memory) kappa = mdarray<double_complex, 1>(nullptr, kp__->num_gkvec() * (std::max(uc->mt_basis_size(), num_bands) + num_bands));
+    if (economize_gpu_memory) kappa = mdarray<double_complex, 1>(nullptr, kp__->num_gkvec() * (std::max(unit_cell_.mt_basis_size(), num_bands) + num_bands));
     
-    //== #ifdef _GPU_
+    //== #ifdef __GPU
     //== if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
     //== {
     //==     printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
@@ -119,7 +117,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     
     //== if (parameters_.processing_unit() == GPU)
     //== {
-    //==     #ifdef _GPU_
+    //==     #ifdef __GPU
     //==     if (!economize_gpu_memory)
     //==     {
     //==         phi.allocate_on_device();
@@ -158,7 +156,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     //==     #endif
     //== }
 
-    //== #ifdef _WRITE_OBJECTS_HASH_
+    //== #ifdef __PRINT_OBJECT_HASH
     //== std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
     //== std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
     //== std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
@@ -278,7 +276,6 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
     apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
                      d_mtrx_packed, q_mtrx_packed);
-    parameters_.work_load_ += num_bands;
 
     update_res(res_norm_start);
 
@@ -301,7 +298,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     
     apply_preconditioner(std::vector<double>(num_bands, 1), res[0], 0.0, phi[1]);
     
-    parameters_.work_load_ += apply_h_o();
+    apply_h_o();
 
     /* estimate lambda */
     for (int i = 0; i < num_bands; i++)
@@ -405,13 +402,12 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 
         int n = apply_h_o();
         if (n == 0) break;
-        parameters_.work_load_ += n;
 
         eval_old = eval;
 
         update_res(res_norm);
 
-        double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+        double tol = ctx_.iterative_solver_tolerance();
         
         for (int i = 0; i < num_bands; i++)
         {

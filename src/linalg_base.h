@@ -48,13 +48,13 @@ ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n
  *  matrix-vector operations
  */
 
-void FORTRAN(zgemv)(ftn_char trans, ftn_int* m, ftn_int* n, ftn_double_complex* alpha, 
-                    ftn_double_complex* A, ftn_int* lda, ftn_double_complex* X, ftn_int* incx,
-                    ftn_double_complex* beta, ftn_double_complex* Y, ftn_int* incy, ftn_len trans_len);
+void FORTRAN(zgemv)(ftn_char trans, ftn_int const* m, ftn_int const* n, ftn_double_complex const* alpha, 
+                    ftn_double_complex const* A, ftn_int const* lda, ftn_double_complex const* X, ftn_int const* incx,
+                    ftn_double_complex const* beta, ftn_double_complex* Y, ftn_int const* incy, ftn_len trans_len);
 
-void FORTRAN(dgemv)(ftn_char trans, ftn_int* m, ftn_int* n, ftn_double* alpha, 
-                    ftn_double* A, ftn_int* lda, ftn_double* X, ftn_int* incx,
-                    ftn_double* beta, ftn_double* Y, ftn_int* incy, ftn_len trans_len);
+void FORTRAN(dgemv)(ftn_char trans, ftn_int const* m, ftn_int const* n, ftn_double const* alpha, 
+                    ftn_double const* A, ftn_int const* lda, ftn_double const* X, ftn_int const* incx,
+                    ftn_double const* beta, ftn_double* Y, ftn_int const* incy, ftn_len trans_len);
 
 /*
  *  matrix-matrix operations
@@ -107,7 +107,7 @@ void FORTRAN(dgesv)(ftn_int* n, ftn_int* nrhs, ftn_double* A, ftn_int* lda, ftn_
 void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* B,
                     ftn_int* ldb, ftn_int* info);
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 int Csys2blacs_handle(MPI_Comm SysCtxt);
 
 MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
@@ -125,41 +125,43 @@ void Cblacs_barrier(int ConTxt, const char* scope);
 void Cblacs_gridexit(int ConTxt);
 
 void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double* aplha,
-                     ftn_double* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
-                     ftn_double* B, ftn_int* ib, ftn_int* jb, ftn_int* descb,
+                     ftn_double* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, 
+                     ftn_double* B, ftn_int* ib, ftn_int* jb, ftn_int const* descb,
                      ftn_double* beta,
-                     ftn_double* C, ftn_int* ic, ftn_int* jc, ftn_int* descc,
+                     ftn_double* C, ftn_int* ic, ftn_int* jc, ftn_int const* descc,
                      ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex* aplha,
-                     ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
-                     ftn_double_complex* B, ftn_int* ib, ftn_int* jb, ftn_int* descb, ftn_double_complex* beta,
-                     ftn_double_complex* C, ftn_int* ic, ftn_int* jc, ftn_int* descc,
+                     ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, 
+                     ftn_double_complex* B, ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex* beta,
+                     ftn_double_complex* C, ftn_int* ic, ftn_int* jc, ftn_int const* descc,
                      ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca,
+void FORTRAN(pzgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
                       ftn_int* ipiv, ftn_int* info);
 
-void FORTRAN(pzgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, ftn_int* ipiv,
+void FORTRAN(pzgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_int* ipiv,
                       ftn_double_complex* work, ftn_int* lwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info);
 
-void FORTRAN(descinit)(ftn_int* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc, ftn_int* icsrc, 
+void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc, ftn_int* icsrc, 
                        ftn_int* ictxt, ftn_int* lld, ftn_int* info);
 
-void FORTRAN(pztranc)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int* desca,
-                      ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic, ftn_int* jc,ftn_int* descc);
+void FORTRAN(pztranc)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha,
+                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
+                      ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic, ftn_int* jc,ftn_int const* descc);
 
-void FORTRAN(pztranu)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int* desca,
-                      ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic, ftn_int* jc,ftn_int* descc);
+void FORTRAN(pztranu)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a,
+                      ftn_int* ia, ftn_int* ja, ftn_int const* desca,
+                      ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic, ftn_int* jc,ftn_int const* descc);
 
 void FORTRAN(pzhegvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n, 
-                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
-                      ftn_double_complex* b, ftn_int* ib, ftn_int* jb, ftn_int* descb, 
+                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca, 
+                      ftn_double_complex* b, ftn_int* ib, ftn_int* jb, ftn_int const* descb, 
                       ftn_double* vl, ftn_double* vu, 
                       ftn_int* il, ftn_int* iu, 
                       ftn_double* abstol, 
                       ftn_int* m, ftn_int* nz, ftn_double* w, ftn_double* orfac, 
-                      ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int* descz, 
+                      ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz, 
                       ftn_double_complex* work, ftn_int* lwork, 
                       ftn_double* rwork, ftn_int* lrwork, 
                       ftn_int* iwork, ftn_int* liwork, 
@@ -167,9 +169,9 @@ void FORTRAN(pzhegvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char u
                       ftn_len jobz_len, ftn_len range_len, ftn_len uplo_len);
 
 void FORTRAN(pzheevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, 
-                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
+                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca, 
                       ftn_double* w, 
-                      ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int* descz, 
+                      ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz, 
                       ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork, ftn_int* lrwork, ftn_int* iwork, 
                       ftn_int* liwork, ftn_int* info, ftn_len jobz_len, ftn_len uplo_len);
 
@@ -181,9 +183,21 @@ ftn_int FORTRAN(pjlaenv)(ftn_int* ictxt, ftn_int* ispec, ftn_char name, ftn_char
                          ftn_int* n3, ftn_int* n4, ftn_len name_len, ftn_len opts_len);
 
 ftn_len FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
+
+void FORTRAN(pzgemr2d)(ftn_int* m,
+                       ftn_int* n,
+                       ftn_double_complex* a,
+                       ftn_int* ia,
+                       ftn_int* ja,
+                       ftn_int const* desca,  
+                       ftn_double_complex* b,
+                       ftn_int* ib,
+                       ftn_int* jb,
+                       ftn_int const* descb,
+                       ftn_int* gcontext);
 #endif
 
-#ifdef _ELPA_
+#ifdef __ELPA
 void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk,
                                     ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
 
@@ -244,7 +258,7 @@ class linalg_base
                                    (ftn_len)opts.length());
         }
         
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         static ftn_int numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)
         {
             return FORTRAN(numroc)(&n, &nb, &iproc, &isrcproc, &nprocs); 
@@ -313,15 +327,15 @@ class linalg_base
         }
 
         static void pztranc(ftn_int m, ftn_int n, ftn_double_complex alpha, ftn_double_complex* A, ftn_int ia, ftn_int ja,
-                            ftn_int* desca, ftn_double_complex beta, ftn_double_complex* C, ftn_int ic, ftn_int jc,
-                            ftn_int* descc)
+                            ftn_int const* desca, ftn_double_complex beta, ftn_double_complex* C, ftn_int ic, ftn_int jc,
+                            ftn_int const* descc)
         {
             FORTRAN(pztranc)(&m, &n, &alpha, A, &ia, &ja, desca, &beta, C, &ic, &jc, descc);
         }
 
         static void pztranu(ftn_int m, ftn_int n, ftn_double_complex alpha, ftn_double_complex* A, ftn_int ia, ftn_int ja,
-                            ftn_int* desca, ftn_double_complex beta, ftn_double_complex* C, ftn_int ic, ftn_int jc,
-                            ftn_int* descc)
+                            ftn_int const* desca, ftn_double_complex beta, ftn_double_complex* C, ftn_int ic, ftn_int jc,
+                            ftn_int const* descc)
         {
             FORTRAN(pztranu)(&m, &n, &alpha, A, &ia, &ja, desca, &beta, C, &ic, &jc, descc);
         }

@@ -22,8 +22,8 @@
  *  \brief CUDA related functions.
  */
 
-#ifndef _GPU_INTERFACE_H_
-#define _GPU_INTERFACE_H_
+#ifndef __GPUINTERFACE_H_
+#define __GPUINTERFACE_H_
 
 #include <complex>
 #include <cstdlib>
@@ -158,7 +158,7 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
 // MAGMA functions
 //=================
 
-#ifdef _MAGMA_
+#ifdef __MAGMA
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
                                              void* b, int32_t ldb, double* eval);
 
@@ -202,5 +202,5 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
                                    double* atom_pos,
                                    void* beta_pw);
 
-#endif // _GPU_INTERFACE_H_
+#endif // __GPUINTERFACE_H_
 

@@ -133,14 +133,14 @@ class type_wrapper<double>
             return H5T_NATIVE_DOUBLE;
         }
         
-        static inline double conjugate(double& v)
+        static inline double conjugate(double const& v)
         {
             return v;
         }
 
-        static inline double sift(std::complex<double> v)
+        static inline double sift(double_complex const& v)
         {
-            return real(v);
+            return std::real(v);
         }
         
         static MPI_Datatype mpi_type_id()
@@ -202,12 +202,12 @@ class type_wrapper< std::complex<double> >
         typedef std::complex<double> complex_t;
         typedef double real_t;
         
-        static inline std::complex<double> conjugate(std::complex<double>& v)
+        static inline std::complex<double> conjugate(double_complex const& v)
         {
             return conj(v);
         }
         
-        static inline std::complex<double> sift(std::complex<double> v)
+        static inline std::complex<double> sift(double_complex const& v)
         {
             return v;
         }

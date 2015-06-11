@@ -250,7 +250,7 @@ vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
 int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                               vector3d<int> is_shift__,
                                               mdarray<double, 2>& kp__,
-                                              std::vector<double>& wk__)
+                                              std::vector<double>& wk__) const
 {
     int nktot = k_mesh__[0] * k_mesh__[1] * k_mesh__[2];
 
@@ -294,7 +294,7 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     return nknr;
 }
 
-void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
+void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
 {
     for (int isym = 0; isym < num_mag_sym(); isym++)
     {
@@ -343,12 +343,14 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
 
 void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    FFT3D<CPU>* fft__,
-                                   splindex<block>& spl_num_gvec__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_function");
+
+    splindex<block> spl_gvec(fft__->num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
     sym_f_pw.zero();
+    
     double* ptr = (double*)&sym_f_pw(0);
 
     #pragma omp parallel for
@@ -358,9 +360,9 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
         auto R = magnetic_group_symmetry(i).spg_op.R;
         auto t = magnetic_group_symmetry(i).spg_op.t;
 
-        for (int igloc = 0; igloc < (int)spl_num_gvec__.local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
         {
-            int ig = (int)spl_num_gvec__[igloc];
+            int ig = (int)spl_gvec[igloc];
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
              * GR is a vector-matrix multiplication [G][.....]
@@ -378,10 +380,10 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
             double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
             
             #pragma omp atomic update
-            ptr[2 * ig_rot] += real(z);
+            ptr[2 * ig_rot] += std::real(z);
 
             #pragma omp atomic update
-            ptr[2 * ig_rot + 1] += imag(z);
+            ptr[2 * ig_rot + 1] += std::imag(z);
         }
     }
     comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
@@ -391,7 +393,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
 
 void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
                                    FFT3D<CPU>* fft__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_vector_z_component");
     
@@ -436,7 +438,7 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
 }
 
 void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_function_mt");
 
@@ -481,7 +483,7 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
 }
 
 void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
-                                             Communicator& comm__)
+                                             Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
 

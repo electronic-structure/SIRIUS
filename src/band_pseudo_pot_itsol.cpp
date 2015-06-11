@@ -3,7 +3,7 @@
 
 namespace sirius {
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void compute_inner_product_gpu(int num_gkvec_row,
                                           int n,
                                           cuDoubleComplex const* f1,
@@ -19,7 +19,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  cuDoubleComplex* phi2);
 #endif
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
                                                        std::vector<double> const& veff_it_coarse__)
 {
@@ -34,17 +34,15 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
-    auto uc = parameters_.unit_cell();
-
     //auto& beta_pw_panel = kp__->beta_pw_panel();
-    //dmatrix<double_complex> S(uc->mt_basis_size(), uc->mt_basis_size(), kp__->blacs_grid());
-    //linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), uc->mt_basis_size(), kp__->num_gkvec(), complex_one,
+    //dmatrix<double_complex> S(unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->blacs_grid());
+    //linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->num_gkvec(), complex_one,
     //                  beta_pw_panel, beta_pw_panel, complex_zero, S);
-    //for (int ia = 0; ia < uc->num_atoms(); ia++)
+    //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     //{
-    //    auto type = uc->atom(ia)->type();
+    //    auto type = unit_cell_.atom(ia)->type();
     //    int nbf = type->mt_basis_size();
-    //    int ofs = uc->atom(ia)->offset_lo();
+    //    int ofs = unit_cell_.atom(ia)->offset_lo();
     //    matrix<double_complex> qinv(nbf, nbf);
     //    type->uspp().q_mtrx >> qinv;
     //    linalg<CPU>::geinv(nbf, qinv);
@@ -53,9 +51,9 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     //        for (int j = 0; j < nbf; j++) S.add(ofs + j, ofs + i, qinv(j, i));
     //    }
     //}
-    //linalg<CPU>::geinv(uc->mt_basis_size(), S);
+    //linalg<CPU>::geinv(unit_cell_.mt_basis_size(), S);
 
-    auto& itso = parameters_.iterative_solver_input_section_;
+    auto& itso = parameters_.iterative_solver_input_section();
 
     /* maximum order of Chebyshev polynomial*/
     int order = itso.num_steps_ + 2;
@@ -72,9 +70,9 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     /* trial basis functions */
     psi.panel() >> phi[0].panel();
 
-    //int num_atoms_in_block = std::min(uc->num_atoms(), 256);
+    //int num_atoms_in_block = std::min(unit_cell_.num_atoms(), 256);
     int num_bands_local = (int)kp__->spl_fv_states().local_size(0);
-    int kappa_size = std::max(uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_, 4 * num_bands_local);
+    int kappa_size = std::max(unit_cell_.max_mt_basis_size() * unit_cell_.beta_chunk(0).num_atoms_, 4 * num_bands_local);
     /* temporary array for <G+k|beta> */
     matrix<double_complex> kappa(kp__->num_gkvec_row(), kappa_size);
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -83,11 +81,11 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     }
     
     /* offset in the packed array of on-site matrices */
-    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    mdarray<int, 1> packed_mtrx_offset(unit_cell_.num_atoms());
     int packed_mtrx_size = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {   
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         packed_mtrx_offset(ia) = packed_mtrx_size;
         packed_mtrx_size += nbf * nbf;
     }
@@ -97,16 +95,16 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
     mdarray<double_complex, 1> p_mtrx_packed(packed_mtrx_size);
 
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int nbf = uc->atom(ia)->mt_basis_size();
-        int iat = uc->atom(ia)->type()->id();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
+        int iat = unit_cell_.atom(ia)->type()->id();
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
-                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
                 p_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = kp__->p_mtrx(xi1, xi2, iat);
             }
         }
@@ -114,7 +112,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         for (int i = 0; i < order; i++) phi[i].allocate_on_device();
         hphi.allocate_on_device();
         kappa.allocate_on_device();
@@ -151,7 +149,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     }
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         mdarray<double, 1> e0_loc(kp__->spl_fv_states().local_size());
         e0_loc.allocate_on_device();
         e0_loc.zero_on_device();
@@ -189,7 +187,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
         }
         case GPU:
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cuda_copy_device_to_device(phi[1].at<GPU>(), hphi.at<GPU>(), hphi.panel().size() * sizeof(double_complex));
             #endif
             break;
@@ -214,7 +212,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     }
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
                                          phi[0].at<GPU>(), phi[1].at<GPU>(), NULL);
         phi[1].panel().copy_to_host();
@@ -236,7 +234,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
             }
             case GPU:
             {
-                #ifdef _GPU_
+                #ifdef __GPU
                 cuda_copy_device_to_device(phi[k].at<GPU>(), hphi.at<GPU>(), hphi.panel().size() * sizeof(double_complex));
                 #endif
                 break;
@@ -260,7 +258,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
         }
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
                                              phi[k - 2].at<GPU>(), phi[k - 1].at<GPU>(), phi[k].at<GPU>());
             phi[k].panel().copy_to_host();
@@ -274,7 +272,7 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         hphi.panel().copy_to_host();
         phi[0].panel().copy_to_host();
         #endif
@@ -347,14 +345,12 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     phi.zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
-    auto uc = parameters_.unit_cell();
-
     /* offset in the packed array of on-site matrices */
-    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    mdarray<int, 1> packed_mtrx_offset(unit_cell_.num_atoms());
     int packed_mtrx_size = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {   
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         packed_mtrx_offset(ia) = packed_mtrx_size;
         packed_mtrx_size += nbf * nbf;
     }
@@ -363,15 +359,15 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
     mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
 
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
-                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
             }
         }
     }

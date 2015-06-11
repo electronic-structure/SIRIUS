@@ -23,6 +23,7 @@
  */
 
 #include "atom.h"
+#include "error_handling.h"
 
 namespace sirius {
 
@@ -62,7 +63,7 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     lmax_pot_ = lmax_pot__;
     num_mag_dims_ = num_mag_dims__;
 
-    if (type()->esm_type() == full_potential_lapwlo || type()->esm_type() == full_potential_pwlo)
+    if (type()->parameters().full_potential())
     {
         int lmmax = Utils::lmmax(lmax_pot_);
 
@@ -75,8 +76,7 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
         uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
     }
 
-    if (type()->esm_type() == ultrasoft_pseudopotential ||
-        type()->esm_type() == norm_conserving_pseudopotential)
+    if (!type()->parameters().full_potential())
     {
         int nbf = type()->mt_lo_basis_size();
         d_mtrx_ = matrix<double_complex>(nbf, nbf);
@@ -109,6 +109,8 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
 
 void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__)
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Atom::generate_radial_integrals");
     
     int lmmax = Utils::lmmax(lmax_pot_);
@@ -157,7 +159,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
 
     if (pu__ == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         auto& rgrid = type()->radial_grid();
         auto& rf_coef = type()->rf_coef();
         auto& vrf_coef = type()->vrf_coef();
@@ -205,7 +207,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         result.copy_to_host();
         result.deallocate_on_device();
         #else
-        TERMINATE_NO_GPU();
+        TERMINATE_NO_GPU
         #endif
     }
     if (pu__ == CPU)
@@ -345,13 +347,15 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     //== comm__.reduce(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), 0);
     //== if (num_mag_dims_) comm__.reduce(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), 0);
 
-    #ifdef _PRINT_OBJECT_HASH_
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(veff): %16llX", veff_.hash());
     DUMP("hash(h_radial_integrals): %16llX", h_radial_integrals_.hash());
     #endif
-    #ifdef _PRINT_OBJECT_CHECKSUM_
+    #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
     #endif
+
+    LOG_FUNC_END();
 }
 
 }

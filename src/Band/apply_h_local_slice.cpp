@@ -26,9 +26,9 @@ void Band::apply_h_local_slice(K_point* kp__,
 
     auto pu = parameters_.processing_unit();
 
-    auto fft = parameters_.fft_coarse();
-    #ifdef _GPU_
-    FFT3D<GPU>* fft_gpu = parameters_.fft_gpu_coarse();
+    auto fft = ctx_.fft_coarse();
+    #ifdef __GPU
+    FFT3D<GPU>* fft_gpu = ctx_.fft_gpu_coarse();
     #endif
 
     int num_fft_threads = -1;
@@ -53,7 +53,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     std::mutex idx_phi_mutex;
 
     int count_fft_cpu = 0;
-    #ifdef _GPU_
+    #ifdef __GPU
     int count_fft_gpu = 0;
     #endif
 
@@ -64,7 +64,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     {
         if (thread_id == num_fft_threads - 1 && num_fft_threads > 1 && pu == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
                                                &hphi__, &effective_potential__, &pw_ekin__, &count_fft_gpu, &timers]()
             {

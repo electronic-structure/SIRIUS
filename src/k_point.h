@@ -25,12 +25,11 @@
 #ifndef __K_POINT_H__
 #define __K_POINT_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void create_beta_gk_gpu(int num_atoms,
                                    int num_gkvec,
                                    int const* beta_desc,
@@ -50,8 +49,12 @@ class K_point
 {
     private:
 
-        /// Global set of parameters.
-        Global& parameters_;
+        /// Simulation context.
+        Simulation_context& ctx_;
+
+        Simulation_parameters const& parameters_;
+
+        Unit_cell const& unit_cell_;
 
         BLACS_grid const& blacs_grid_;
 
@@ -142,8 +145,6 @@ class K_point
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        //std::vector<gklo_basis_descriptor> gklo_basis_descriptors_local_;
-
         splindex<block> spl_gkvec_;
             
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
@@ -158,9 +159,6 @@ class K_point
         /// mapping between lm and l
         std::vector<int> l_by_lm_;
 
-        /// spherical bessel functions for G+k vectors  
-        //std::vector< sbessel_pw<double>* > sbessel_;
-        
         /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
         int rank_col_;
 
@@ -221,17 +219,16 @@ class K_point
 
     public:
 
-        initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+        Iterative_solver_input_section iterative_solver_input_section_;
 
         /// Constructor
-        K_point(Global& parameters__, double* vk__, double weight__, BLACS_grid const& blacs_grid__);
+        K_point(Simulation_context& ctx__,
+                double* vk__,
+                double weight__,
+                BLACS_grid const& blacs_grid__);
 
         ~K_point()
         {
-            //== if (parameters_.esm_type() == full_potential_pwlo)
-            //== {
-            //==     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
-            //== }
             if (alm_coeffs_row_) delete alm_coeffs_row_;
             if (alm_coeffs_col_) delete alm_coeffs_col_;
         }
@@ -248,7 +245,7 @@ class K_point
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void generate_fv_states_aw_mt_gpu();
         #endif
 
@@ -275,7 +272,7 @@ class K_point
         /// Return G-vector (in fractional coordinates) of the current G+k vector.
         inline vector3d<int> gvec(int igk__) const
         {
-            return parameters_.reciprocal_lattice()->gvec(gvec_index(igk__));
+            return ctx_.reciprocal_lattice()->gvec(gvec_index(igk__));
         }
         
         /// Global index of G-vector by the index of G+k vector
@@ -295,7 +292,7 @@ class K_point
             {
                 case cartesian:
                 {
-                    return parameters_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
+                    return ctx_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
                     break;
                 }
                 case fractional:
@@ -354,12 +351,12 @@ class K_point
          */ 
         inline int wf_size() const // TODO: better name for this
         {
-            switch (parameters_.esm_type())
+            switch (ctx_.parameters().esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
                 {
-                    return parameters_.unit_cell()->mt_basis_size() + num_gkvec();
+                    return unit_cell_.mt_basis_size() + num_gkvec();
                     break;
                 }
                 case ultrasoft_pseudopotential:
@@ -374,12 +371,12 @@ class K_point
 
         inline int wf_pw_offset() const
         {
-            switch (parameters_.esm_type())
+            switch (ctx_.parameters().esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
                 {
-                    return parameters_.unit_cell()->mt_basis_size();
+                    return unit_cell_.mt_basis_size();
                     break;
                 }
                 case ultrasoft_pseudopotential:
@@ -531,12 +528,6 @@ class K_point
             return gklo_basis_descriptors_row_[idx];
         }
 
-        //inline gklo_basis_descriptor const& gklo_basis_descriptor_local(int idx) const
-        //{
-        //    assert(idx >= 0 && idx < (int)gklo_basis_descriptors_local_.size());
-        //    return gklo_basis_descriptors_local_[idx];
-        //}
-        
         inline int num_ranks_row() const
         {
             return num_ranks_row_;
@@ -716,182 +707,26 @@ class K_point
             return fv_states_slab_;
         }
 
-        void collect_all_gkvec(splindex<block>& spl_phi__, double_complex const* phi_slab__, double_complex* phi_slice__)
-        {
-            LOG_FUNC_BEGIN();
-            Timer t("sirius::K_point::collect_all_gkvec");
+        void collect_all_gkvec(splindex<block>& spl_phi__,
+                               double_complex const* phi_slab__,
+                               double_complex* phi_slice__);
 
-            std::vector<int> sendcounts(comm_.size());
-            std::vector<int> sdispls(comm_.size());
-            std::vector<int> recvcounts(comm_.size());
-            std::vector<int> rdispls(comm_.size());
-
-            sdispls[0] = 0;
-            rdispls[0] = 0;
-            for (int rank = 0; rank < comm_.size(); rank++)
-            {
-                sendcounts[rank] = int(spl_gkvec_.local_size() * spl_phi__.local_size(rank));
-                if (rank) sdispls[rank] = sdispls[rank - 1] + sendcounts[rank - 1];
-
-                recvcounts[rank] = int(spl_gkvec_.local_size(rank) * spl_phi__.local_size());
-                if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
-            }
-
-            std::vector<double_complex> recvbuf(num_gkvec() * spl_phi__.local_size()); // TODO: preallocate buffer
-
-            comm_.alltoall(phi_slab__, &sendcounts[0], &sdispls[0], &recvbuf[0], &recvcounts[0], &rdispls[0]);
-            
-            for (int rank = 0; rank < comm_.size(); rank++)
-            {
-                matrix<double_complex> tmp(&recvbuf[rdispls[rank]], spl_gkvec_.local_size(rank), spl_phi__.local_size());
-                for (int i = 0; i < (int)spl_phi__.local_size(); i++)
-                {
-                    memcpy(&phi_slice__[i * num_gkvec() + spl_gkvec_.global_offset(rank)], &tmp(0, i),
-                           spl_gkvec_.local_size(rank) * sizeof(double_complex));
-               }
-            }
-            LOG_FUNC_END();
-        }
-
-        void collect_all_bands(splindex<block>& spl_phi__, double_complex const* phi_slice__, double_complex* phi_slab__)
-        {
-            LOG_FUNC_BEGIN();
-            Timer t("sirius::K_point::collect_all_bands");
-
-            std::vector<int> sendcounts(comm_.size());
-            std::vector<int> sdispls(comm_.size());
-            std::vector<int> recvcounts(comm_.size());
-            std::vector<int> rdispls(comm_.size());
-
-            sdispls[0] = 0;
-            rdispls[0] = 0;
-
-            for (int rank = 0; rank < comm_.size(); rank++)
-            {
-                sendcounts[rank] = int(spl_gkvec_.local_size(rank) * spl_phi__.local_size());
-                if (rank) sdispls[rank] = sdispls[rank - 1] + sendcounts[rank - 1];
-
-                recvcounts[rank] = int(spl_gkvec_.local_size() * spl_phi__.local_size(rank));
-                if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
-            }
-
-            std::vector<double_complex> sendbuf(num_gkvec() * spl_phi__.local_size()); // TODO: preallocate buffer
-
-            for (int rank = 0; rank < comm_.size(); rank++)
-            {
-                matrix<double_complex> tmp(&sendbuf[sdispls[rank]], spl_gkvec_.local_size(rank), spl_phi__.local_size());
-                for (int i = 0; i < (int)spl_phi__.local_size(); i++)
-                {
-                    memcpy(&tmp(0, i), &phi_slice__[i * num_gkvec() + spl_gkvec_.global_offset(rank)],
-                           spl_gkvec_.local_size(rank) * sizeof(double_complex));
-               }
-            }
-
-            comm_.alltoall(&sendbuf[0], &sendcounts[0], &sdispls[0], phi_slab__, &recvcounts[0], &rdispls[0]);
-            LOG_FUNC_END();
-        }
-
+        void collect_all_bands(splindex<block>& spl_phi__,
+                               double_complex const* phi_slice__,
+                               double_complex* phi_slab__);
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,
                               mdarray<double, 2>& atom_pos__,
                               mdarray<int, 2> const& beta_desc__,
-                              matrix<double_complex>& beta_gk__)
-        {
-            Timer t("sirius::K_point::generate_beta_gk");
-
-            if (parameters_.processing_unit() == CPU)
-            {
-                /* create beta projectors */
-                #pragma omp parallel
-                for (int i = 0; i < num_atoms__; i++)
-                {
-                    int ia = beta_desc__(3, i);
-                    #pragma omp for
-                    for (int xi = 0; xi < beta_desc__(0, i); xi++)
-                    {
-                        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
-                        {
-                            beta_gk__(igk_row, beta_desc__(1, i) + xi) = 
-                                beta_gk_t_(igk_row, beta_desc__(2, i) + xi) * conj(gkvec_phase_factor(igk_row, ia));
-                        }
-                    }
-                }
-            }
-            if (parameters_.processing_unit() == GPU)
-            {
-                #ifdef _GPU_
-                /* create beta projectors directly on GPU */
-                create_beta_gk_gpu(num_atoms__,
-                                   num_gkvec_row(),
-                                   beta_desc__.at<GPU>(),
-                                   beta_gk_t_.at<GPU>(),
-                                   gkvec_row_.at<GPU>(),
-                                   atom_pos__.at<GPU>(),
-                                   beta_gk__.at<GPU>());
-                #else
-                TERMINATE_NO_GPU
-                #endif
-            }
-        }
+                              matrix<double_complex>& beta_gk__);
 
         void generate_beta_phi(int nbeta__,
                                matrix<double_complex>& phi__,
                                int nphi__,
                                int offs__,
                                matrix<double_complex>& beta_gk__,
-                               matrix<double_complex>& beta_phi__) // TODO: pass num_gkvec_loc or num_gkvec_row
-        {
-            Timer t("sirius::K_point::generate_beta_phi");
-            #ifdef _GPU_
-            #ifdef _GPU_DIRECT_
-            // allrecue with gpu-direct is broken at the moment
-            bool gpu_direct = false;
-            #else
-            bool gpu_direct = false;
-            #endif
-            #endif
-
-            if (parameters_.processing_unit() == CPU)
-            {
-                /* compute <beta|phi> */
-                linalg<CPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_loc(), 
-                                  beta_gk__.at<CPU>(), beta_gk__.ld(), 
-                                  phi__.at<CPU>(0, offs__), phi__.ld(), 
-                                  beta_phi__.at<CPU>(), beta_phi__.ld());
-
-                comm().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
-            }
-
-            if (parameters_.processing_unit() == GPU)
-            {
-                #ifdef _GPU_
-                /* compute <beta|phi> */
-                linalg<GPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_loc(), 
-                                  beta_gk__.at<GPU>(), beta_gk__.ld(), 
-                                  phi__.at<GPU>(0, offs__), phi__.ld(), 
-                                  beta_phi__.at<GPU>(), beta_phi__.ld());
-                
-                if (comm().size() > 1)
-                {
-                    if (gpu_direct)
-                    {
-                        comm().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
-                    }
-                    else
-                    {
-                        beta_phi__.copy_to_host();
-                        comm().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
-                        beta_phi__.copy_to_device();
-                    }
-                }
-
-                cuda_device_synchronize();
-                #else
-                TERMINATE_NO_GPU
-                #endif
-            }
-        }
+                               matrix<double_complex>& beta_phi__);
 
         void add_non_local_contribution(int num_atoms__,
                                         int num_beta__,
@@ -904,67 +739,7 @@ class K_point
                                         int nphi__,
                                         int offs__,
                                         double_complex alpha,
-                                        matrix<double_complex>& work__)
-        {
-            Timer t("sirius::K_point::add_non_local_contribution");
-
-            double_complex beta = complex_one;
-
-            if (parameters_.processing_unit() == CPU)
-            {
-                #pragma omp parallel for
-                for (int i = 0; i < num_atoms__; i++)
-                {
-                    /* number of beta functions for a given atom */
-                    int nbf = beta_desc__(0, i);
-                    int ofs = beta_desc__(1, i);
-                    int ia  = beta_desc__(3, i);
-
-                    /* compute O * <beta|phi> */
-                    linalg<CPU>::gemm(0, 0, nbf, nphi__, nbf,
-                                      op_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                      beta_phi__.at<CPU>(ofs, 0), beta_phi__.ld(),
-                                      work__.at<CPU>(ofs, 0), work__.ld());
-                }
-                
-                /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-                linalg<CPU>::gemm(0, 0, num_gkvec_loc(), nphi__, num_beta__, alpha,
-                                  beta_gk__.at<CPU>(), beta_gk__.ld(), work__.at<CPU>(), work__.ld(), beta,
-                                  op_phi__.at<CPU>(0, offs__), op_phi__.ld());
-            }
-
-            if (parameters_.processing_unit() == GPU)
-            {
-                #ifdef _GPU_
-                #pragma omp parallel for
-                for (int i = 0; i < num_atoms__; i++)
-                {
-                    /* number of beta functions for a given atom */
-                    int nbf = beta_desc__(0, i);
-                    int ofs = beta_desc__(1, i);
-                    int ia  = beta_desc__(3, i);
-
-                    /* compute O * <beta|phi> */
-                    linalg<GPU>::gemm(0, 0, nbf, nphi__, nbf,
-                                      op_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                      beta_phi__.at<GPU>(ofs, 0), beta_phi__.ld(),
-                                      work__.at<GPU>(ofs, 0), work__.ld(), 
-                                      Platform::thread_id());
-
-                }
-                cuda_device_synchronize();
-                
-                /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-                linalg<GPU>::gemm(0, 0, num_gkvec_loc(), nphi__, num_beta__, &alpha,
-                                  beta_gk__.at<GPU>(), beta_gk__.ld(), work__.at<GPU>(), work__.ld(), &beta, 
-                                  op_phi__.at<GPU>(0, offs__), op_phi__.ld());
-                
-                cuda_device_synchronize();
-                #else
-                TERMINATE_NO_GPU
-                #endif
-            }
-        }
+                                        matrix<double_complex>& work__);
 };
 
 }

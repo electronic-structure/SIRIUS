@@ -149,14 +149,14 @@ class splindex<block>: public splindex_base
             return global_index(idxloc__, rank_);
         }
 
-        inline std::vector<int> offsets()
+        inline std::vector<int> offsets() const
         {
             std::vector<int> v(num_ranks_);
             for (int i = 0; i < num_ranks_; i++) v[i] = (int)global_offset(i);
             return v;
         }
 
-        inline std::vector<int> counts()
+        inline std::vector<int> counts() const
         {
             std::vector<int> v(num_ranks_);
             for (int i = 0; i < num_ranks_; i++) v[i] = (int)local_size(i);

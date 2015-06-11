@@ -51,11 +51,11 @@ void Timer::start()
         exit(-2);
     }
     if (comm_ != nullptr) comm_->barrier();
-    #if defined(_TIMER_TIMEOFDAY_)
+    #if defined(__TIMER_TIMEOFDAY)
     gettimeofday(&starting_time_, NULL);
-    #elif defined(_TIMER_MPI_WTIME_)
+    #elif defined(__TIMER_MPI_WTIME)
     starting_time_ = MPI_Wtime();
-    #elif defined (_TIMER_CHRONO_)
+    #elif defined (__TIMER_CHRONO)
     starting_time_ = std::chrono::high_resolution_clock::now();
     #endif
     active_ = true;
@@ -70,14 +70,14 @@ double Timer::stop()
     }
     if (comm_ != nullptr) comm_->barrier();
 
-    #if defined(_TIMER_TIMEOFDAY_)
+    #if defined(__TIMER_TIMEOFDAY)
     timeval end;
     gettimeofday(&end, NULL);
     double val = double(end.tv_sec - starting_time_.tv_sec) + 
                  double(end.tv_usec - starting_time_.tv_usec) / 1e6;
-    #elif defined(_TIMER_MPI_WTIME_)
+    #elif defined(__TIMER_MPI_WTIME)
     double val = MPI_Wtime() - starting_time_;
-    #elif defined(_TIMER_CHRONO_)
+    #elif defined(__TIMER_CHRONO)
     auto t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> tdiff = std::chrono::duration_cast< std::chrono::duration<double> >(t2 - starting_time_);
     double val = tdiff.count();
@@ -162,7 +162,7 @@ void Timer::print()
             }
         }
         
-        #ifdef _GPU_
+        #ifdef __GPU
         print_cuda_timers();
         #endif
     }

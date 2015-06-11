@@ -74,7 +74,7 @@ class dmatrix
 
         void init()
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             bs_ = blacs_grid_->cyclic_block_size();
             #endif
 
@@ -83,7 +83,7 @@ class dmatrix
 
             matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
             #endif
         }
@@ -476,7 +476,7 @@ class dmatrix
             return static_cast<int>(spl_col_[icol_loc]);
         }
 
-        inline int* descriptor()
+        inline int const* descriptor() const
         {
             return descriptor_;
         }
@@ -491,7 +491,7 @@ class dmatrix
             return matrix_local_.ld();
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         inline void allocate_on_device()
         {
             matrix_local_.allocate_on_device();

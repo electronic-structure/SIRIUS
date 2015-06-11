@@ -32,7 +32,7 @@
 #include <vector>
 #include "config.h"
 #include "communicator.h"
-#ifdef _TIMER_CHRONO_
+#ifdef __TIMER_CHRONO
 #include <chrono>
 #endif
 
@@ -61,11 +61,11 @@ class Timer
         std::string label_;
         
         /// starting time
-        #if defined(_TIMER_TIMEOFDAY_)
+        #if defined(__TIMER_TIMEOFDAY)
         timeval starting_time_;
-        #elif defined(_TIMER_MPI_WTIME_)
+        #elif defined(__TIMER_MPI_WTIME)
         double starting_time_;
-        #elif defined(_TIMER_CHRONO_)
+        #elif defined(__TIMER_CHRONO)
         std::chrono::high_resolution_clock::time_point starting_time_;
         #endif
 

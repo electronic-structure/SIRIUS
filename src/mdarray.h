@@ -35,12 +35,12 @@
 #include <vector>
 #include <cstring>
 #include <initializer_list>
-#ifdef _GPU_
+#ifdef __GPU
 #include "gpu_interface.h"
 #endif
 #include "typedefs.h"
 
-#ifdef _LIBSCI_ACC_
+#ifdef __LIBSCI_ACC
 extern "C" int libsci_acc_HostAlloc(void**, size_t);
 extern "C" int libsci_acc_HostFree(void*);
 #endif
@@ -201,10 +201,10 @@ struct mdarray_mem_mgr
                 delete[] p__;
                 break;
             }
-            #ifdef _GPU_
+            #ifdef __GPU
             case 1:
             {
-                #ifdef _LIBSCI_ACC_
+                #ifdef __LIBSCI_ACC
                 libsci_acc_HostFree(p__);
                 #else
                 cuda_free_host(p__);
@@ -239,7 +239,7 @@ class mdarray_base
         /// Raw pointer.
         T* ptr_;
         
-        #ifdef _GPU_
+        #ifdef __GPU
         /// Unique pointer to the allocated GPU memory.
         std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_device_;
         
@@ -328,7 +328,7 @@ class mdarray_base
                 }
                 case GPU:
                 {
-                    #ifdef _GPU_
+                    #ifdef __GPU
                     mdarray_assert(ptr_device_ != nullptr);
                     return &ptr_device_[idx__];
                     #else
@@ -352,7 +352,7 @@ class mdarray_base
                 }
                 case GPU:
                 {
-                    #ifdef _GPU_
+                    #ifdef __GPU
                     mdarray_assert(ptr_device_ != nullptr);
                     return &ptr_device_[idx__];
                     #else
@@ -370,7 +370,7 @@ class mdarray_base
         mdarray_base() 
             : unique_ptr_(nullptr),
               ptr_(nullptr),
-              #ifdef _GPU_
+              #ifdef __GPU
               unique_ptr_device_(nullptr),
               ptr_device_(nullptr), 
               #endif
@@ -382,7 +382,7 @@ class mdarray_base
         ~mdarray_base()
         {
             deallocate();
-            #ifdef _GPU_
+            #ifdef __GPU
             deallocate_on_device();
             #endif
         }
@@ -397,7 +397,7 @@ class mdarray_base
         mdarray_base(mdarray_base<T, N>&& src) 
             : unique_ptr_(std::move(src.unique_ptr_)),
               ptr_(src.ptr_),
-              #ifdef _GPU_
+              #ifdef __GPU
               unique_ptr_device_(std::move(src.unique_ptr_device_)),
               ptr_device_(src.ptr_device_),
               #endif
@@ -418,7 +418,7 @@ class mdarray_base
             {
                 unique_ptr_ = std::move(src.unique_ptr_);
                 ptr_ = src.ptr_;
-                #ifdef _GPU_
+                #ifdef __GPU
                 unique_ptr_device_ = std::move(src.unique_ptr_device_);
                 ptr_device_ = src.ptr_device_;
                 #endif
@@ -585,8 +585,8 @@ class mdarray_base
 
             if (mode__ == 1)
             {
-                #ifdef _GPU_
-                #ifdef _LIBSCI_ACC_
+                #ifdef __GPU
+                #ifdef __LIBSCI_ACC
                 libsci_acc_HostAlloc((void**)&ptr_, sz * sizeof(T));
                 #else
                 ptr_ = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
@@ -602,7 +602,7 @@ class mdarray_base
         /// Deallocate memory and reset pointers.
         void deallocate()
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             unpin_memory();
             #endif
             unique_ptr_.reset(nullptr);
@@ -651,7 +651,7 @@ class mdarray_base
             memcpy(dest__.ptr_, ptr_, size() * sizeof(T));
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void allocate_on_device()
         {
             size_t sz = size();
@@ -772,7 +772,7 @@ class mdarray: public mdarray_base<T, N>
         {
             this->init_dimensions({d0});
             this->ptr_ = ptr__;
-            #ifdef _GPU_
+            #ifdef __GPU
             this->ptr_device_ = ptr_device__;
             #endif
         }
@@ -801,7 +801,7 @@ class mdarray: public mdarray_base<T, N>
         {
             this->init_dimensions({d0, d1});
             this->ptr_ = ptr__;
-            #ifdef _GPU_
+            #ifdef __GPU
             this->ptr_device_ = ptr_device__;
             #endif
         }
@@ -811,7 +811,7 @@ class mdarray: public mdarray_base<T, N>
         {
             this->init_dimensions({d0, d1, d2});
             this->ptr_ = ptr__;
-            #ifdef _GPU_
+            #ifdef __GPU
             this->ptr_device_ = ptr_device__;
             #endif
         }
@@ -825,6 +825,8 @@ class mdarray: public mdarray_base<T, N>
 
 // Alias for matrix
 template <typename T> using matrix = mdarray<T, 2>;
+
+// TODO:: allgather for mdarray with last index distributed
 
 #endif // __MDARRAY_H__
 

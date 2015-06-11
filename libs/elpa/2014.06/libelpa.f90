@@ -5,7 +5,7 @@ integer na, lda, nblk, mpi_comm_rows, mpi_comm_cols
 complex*16 a(lda,*)
 logical success
     
-call cholesky_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols, success)
+call cholesky_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols, .false., success)
 
 end subroutine
 
@@ -17,7 +17,7 @@ integer na, lda, nblk, mpi_comm_rows, mpi_comm_cols
 complex*16 a(lda,*)
 logical success
 
-call invert_trm_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols, success)
+call invert_trm_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols, .false., success)
 
 end subroutine
 

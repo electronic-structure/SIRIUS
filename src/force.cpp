@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-void Force::compute_dmat(Global& parameters__,
+void Force::compute_dmat(Simulation_parameters const& parameters__,
                          K_point* kp__,
                          dmatrix<double_complex>& dm__)
 {
@@ -82,7 +82,7 @@ void Force::compute_dmat(Global& parameters__,
     }
 }
 
-void Force::ibs_force(Global& parameters__,
+void Force::ibs_force(Simulation_context& ctx__,
                       Band* band__,
                       K_point* kp__,
                       mdarray<double, 2>& ffac__,
@@ -90,10 +90,14 @@ void Force::ibs_force(Global& parameters__,
 {
     Timer timer("sirius::Force::ibs_force");
 
+    auto param = ctx__.parameters();
+    auto& uc = ctx__.unit_cell();
+    auto rl = ctx__.reciprocal_lattice();
+
     forcek__.zero();
 
-    dmatrix<double_complex> dm(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
-    compute_dmat(parameters__, kp__, dm);
+    dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid());
+    compute_dmat(param, kp__, dm);
 
     auto& fv_evec = kp__->fv_eigen_vectors_panel();
 
@@ -103,21 +107,19 @@ void Force::ibs_force(Global& parameters__,
     dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
     dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
 
-    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->blacs_grid());
-    dmatrix<double_complex> zf(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), param.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> zf(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid());
 
-    mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), parameters__.unit_cell()->max_mt_aw_basis_size());
-    mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), parameters__.unit_cell()->max_mt_aw_basis_size());
-    mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), parameters__.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
 
-    auto rl = parameters__.reciprocal_lattice();
-
-    for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+    for (int ia = 0; ia < uc.num_atoms(); ia++)
     {
         h.zero();
         o.zero();
 
-        Atom* atom = parameters__.unit_cell()->atom(ia);
+        Atom* atom = uc.atom(ia);
         Atom_type* type = atom->type();
 
         /* generate matching coefficients for current atom */
@@ -154,7 +156,7 @@ void Force::ibs_force(Global& parameters__,
                                          kp__->gklo_basis_descriptor_col(igk_col).ig);
                 int igs = rl->gvec_shell(ig12);
 
-                double_complex zt = conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / parameters__.unit_cell()->omega();
+                double_complex zt = std::conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
 
                 double t1 = 0.5 * (kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
                                    kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
@@ -200,15 +202,15 @@ void Force::ibs_force(Global& parameters__,
             }
 
             /* zm1 = H * V */
-            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), param.num_fv_states(), kp__->gklo_basis_size(), 
                               complex_one, h1, fv_evec, complex_zero, zm1);
 
             /* F = V^{+} * zm1 = V^{+} * H * V */
-            linalg<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+            linalg<CPU>::gemm(2, 0, param.num_fv_states(), param.num_fv_states(), kp__->gklo_basis_size(),
                               complex_one, fv_evec, zm1, complex_zero, zf);
 
             /* zm1 = O * V */
-            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), param.num_fv_states(), kp__->gklo_basis_size(), 
                               complex_one, o1, fv_evec, complex_zero, zm1);
 
             /* multiply by energy */
@@ -219,7 +221,7 @@ void Force::ibs_force(Global& parameters__,
             }
 
             /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
-            linalg<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+            linalg<CPU>::gemm(2, 0, param.num_fv_states(), param.num_fv_states(), kp__->gklo_basis_size(),
                               double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
 
             for (int i = 0; i < dm.num_cols_local(); i++)
@@ -231,7 +233,7 @@ void Force::ibs_force(Global& parameters__,
     } //ia
 }
 
-void Force::total_force(Global& parameters__,
+void Force::total_force(Simulation_context& ctx__,
                         Potential* potential__,
                         Density* density__,
                         K_set* ks__,
@@ -239,76 +241,78 @@ void Force::total_force(Global& parameters__,
 {
     Timer t("sirius::Force::total_force");
 
-    auto uc = parameters__.unit_cell();
+    auto param = ctx__.parameters();
+    auto& uc = ctx__.unit_cell();
+    auto rl = ctx__.reciprocal_lattice();
 
-    auto ffac = parameters__.step_function()->get_step_function_form_factors(parameters__.reciprocal_lattice()->num_gvec_shells_inner());
+    auto ffac = ctx__.step_function()->get_step_function_form_factors(rl->num_gvec_shells_inner());
 
     force__.zero();
 
-    mdarray<double, 2> forcek(3, uc->num_atoms());
+    mdarray<double, 2> forcek(3, uc.num_atoms());
     for (int ikloc = 0; ikloc < (int)ks__->spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks__->spl_num_kpoints(ikloc);
-        ibs_force(parameters__, ks__->band(), (*ks__)[ik], ffac, forcek);
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        ibs_force(ctx__, ks__->band(), (*ks__)[ik], ffac, forcek);
+        for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
             for (int x = 0; x < 3; x++) force__(x, ia) += forcek(x, ia);
         }
     }
-    parameters__.comm().allreduce(&force__(0, 0), (int)force__.size());
+    ctx__.comm().allreduce(&force__(0, 0), (int)force__.size());
     
-    if (verbosity_level >= 6 && parameters__.comm().rank() == 0)
+    if (verbosity_level >= 6 && ctx__.comm().rank() == 0)
     {
         printf("\n");
         printf("Forces\n");
         printf("\n");
-        for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
             printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, force__(0, ia), force__(1, ia), force__(2, ia));
         }
     }
 
-    mdarray<double, 2> forcehf(3, uc->num_atoms());
+    mdarray<double, 2> forcehf(3, uc.num_atoms());
 
     forcehf.zero();
-    for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = uc->spl_num_atoms(ialoc);
+        int ia = uc.spl_num_atoms(ialoc);
         auto g = gradient(potential__->hartree_potential_mt(ialoc));
-        for (int x = 0; x < 3; x++) forcehf(x, ia) = uc->atom(ia)->type()->zn() * g[x](0, 0) * y00;
+        for (int x = 0; x < 3; x++) forcehf(x, ia) = uc.atom(ia)->type()->zn() * g[x](0, 0) * y00;
     }
-    parameters__.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
+    ctx__.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
 
-    if (verbosity_level >= 6 && parameters__.comm().rank() == 0)
+    if (verbosity_level >= 6 && ctx__.comm().rank() == 0)
     {
         printf("\n");
-        for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
             printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
         }
     }
     
-    mdarray<double, 2> forcerho(3, uc->num_atoms());
+    mdarray<double, 2> forcerho(3, uc.num_atoms());
     forcerho.zero();
-    for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = uc->spl_num_atoms(ialoc);
+        int ia = uc.spl_num_atoms(ialoc);
         auto g = gradient(density__->density_mt(ialoc));
         for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
     }
-    parameters__.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
+    ctx__.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
 
-    if (verbosity_level >= 6 && parameters__.comm().rank() == 0)
+    if (verbosity_level >= 6 && ctx__.comm().rank() == 0)
     {
         printf("\n");
         printf("rho force\n");
-        for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
             printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
         }
     }
     
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < uc.num_atoms(); ia++)
     {
         for (int x = 0; x < 3; x++) force__(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
     }

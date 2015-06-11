@@ -167,7 +167,7 @@ class Radial_grid
             return std::move(r);
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void copy_to_device()
         {
             x_.allocate_on_device();

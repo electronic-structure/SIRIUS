@@ -2,43 +2,43 @@
 
 using namespace sirius;
 
-void write_json_output(Global* p, DFT_ground_state* gs)
+void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
 {
-    //double evalsum1 = gs->kset_->valence_eval_sum();
-    //double evalsum2 = gs->core_eval_sum();
-    //double ekin = gs->energy_kin();
-    double evxc = gs->energy_vxc();
-    double eexc = gs->energy_exc();
-    //double ebxc = gs->energy_bxc();
-    double evha = gs->energy_vha();
-    double etot = gs->total_energy();
+    //double evalsum1 = gs.kset_->valence_eval_sum();
+    //double evalsum2 = gs.core_eval_sum();
+    //double ekin = gs.energy_kin();
+    double evxc = gs.energy_vxc();
+    double eexc = gs.energy_exc();
+    //double ebxc = gs.energy_bxc();
+    double evha = gs.energy_vha();
+    double etot = gs.total_energy();
     //double gap = kset_->band_gap() * ha2ev;
     //double ef = kset_->energy_fermi();
     //double core_leak = density_->core_leakage();
-    double enuc = gs->energy_enuc();
+    double enuc = gs.energy_enuc();
 
     auto ts = Timer::collect_timer_stats();
-    if (p->comm().rank() == 0)
+    if (ctx.comm().rank() == 0)
     {
-        std::string fname = std::string("output_") + p->start_time("%Y%m%d%H%M%S") + std::string(".json");
+        std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
         JSON_write jw(fname);
         
         jw.single("git_hash", git_hash);
         jw.single("build_date", build_date);
-        jw.single("num_ranks", p->comm().size());
+        jw.single("num_ranks", ctx.comm().size());
         jw.single("max_num_threads", Platform::max_num_threads());
         //jw.single("cyclic_block_size", p->cyclic_block_size());
-        jw.single("mpi_grid", p->mpi_grid_dims());
+        jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = p->fft()->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft()->size(i);
         jw.single("fft_grid", fftgrid);
-        jw.single("chemical_formula", p->unit_cell()->chemical_formula());
-        jw.single("num_atoms", p->unit_cell()->num_atoms());
-        jw.single("num_fv_states", p->num_fv_states());
-        jw.single("num_bands", p->num_bands());
-        jw.single("aw_cutoff", p->aw_cutoff());
-        jw.single("pw_cutoff", p->pw_cutoff());
-        jw.single("omega", p->unit_cell()->omega());
+        jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
+        jw.single("num_atoms", ctx.unit_cell().num_atoms());
+        jw.single("num_fv_states", ctx.parameters().num_fv_states());
+        jw.single("num_bands", ctx.parameters().num_bands());
+        jw.single("aw_cutoff", ctx.parameters().aw_cutoff());
+        jw.single("pw_cutoff", ctx.parameters().pw_cutoff());
+        jw.single("omega", ctx.unit_cell().omega());
 
         jw.begin_set("energy");
         jw.single("total", etot, 8);
@@ -85,14 +85,14 @@ void dft_loop(cmd_args args)
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         error_global(__FILE__, __LINE__, "wrong task name");
     
-    initial_input_parameters iip("sirius.json");
-    std::vector<int> mpi_grid_dims;
-    iip.common_input_section_.mpi_grid_dims_ = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
-    Global parameters(iip, MPI_COMM_WORLD);
+    Input_parameters iip("sirius.json");
+    Simulation_parameters parameters(iip);
+
+    std::vector<int> mpi_grid_dims = parameters.mpi_grid_dims();
+    mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
+    parameters.set_mpi_grid_dims(mpi_grid_dims);
 
     JSON_tree parser("sirius.json");
-
-    parameters.read_unit_cell_input();
 
     parameters.set_lmax_apw(parser["lmax_apw"].get(10));
     parameters.set_lmax_pot(parser["lmax_pot"].get(10));
@@ -101,29 +101,30 @@ void dft_loop(cmd_args args)
     parameters.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
     parameters.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
     
-    parameters.unit_cell()->set_auto_rmt(parser["auto_rmt"].get(0));
     int num_mag_dims = parser["num_mag_dims"].get(0);
-    int num_spins = (num_mag_dims == 0) ? 1 : 2;
 
-    int bs = parser["cyclic_block_size"].get(64);
+    int bs = parameters.cyclic_block_size();
     
     parameters.set_num_mag_dims(num_mag_dims);
-    parameters.set_num_spins(num_spins);
 
-    parameters.initialize();
+    Communicator comm(MPI_COMM_WORLD);
+    Simulation_context ctx(parameters, comm);
+    ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
+
+    ctx.initialize();
     
-    BLACS_grid blacs_grid(parameters.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
-                          parameters.mpi_grid().dimension_size(_dim_row_),
-                          parameters.mpi_grid().dimension_size(_dim_col_), bs);
+    BLACS_grid blacs_grid(ctx.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
+                          ctx.mpi_grid().dimension_size(_dim_row_),
+                          ctx.mpi_grid().dimension_size(_dim_col_), bs);
 
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
-    Potential* potential = new Potential(parameters);
+    Potential* potential = new Potential(ctx);
     potential->allocate();
 
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
 
@@ -131,23 +132,23 @@ void dft_loop(cmd_args args)
 
     int use_symmetry = parser["use_symmetry"].get(0);
 
-    K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
+    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
              vector3d<int>(&ngridk[0]), vector3d<int>(0), use_symmetry);
 
     ks.initialize();
     
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
-    Density* density = new Density(parameters);
+    Density* density = new Density(ctx);
     density->allocate();
     
-    #ifdef _MEMORY_USAGE_INFO_
+    #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
-    DFT_ground_state dft(parameters, potential, density, &ks, use_symmetry);
+    DFT_ground_state dft(ctx, potential, density, &ks, use_symmetry);
 
     if (task_name == "gs_restart")
     {
@@ -158,7 +159,6 @@ void dft_loop(cmd_args args)
     else
     {
         density->initial_density();
-        ///dft.generate_effective_potential();
     }
     
     double potential_tol = parser["potential_tol"].get(1e-4);
@@ -167,9 +167,9 @@ void dft_loop(cmd_args args)
     if (task_name == "test_init")
     {
         potential->update_atomic_potential();
-        parameters.unit_cell()->generate_radial_functions();
+        ctx.unit_cell().generate_radial_functions();
         dft.print_info();
-        parameters.create_storage_file();
+        ctx.create_storage_file();
         density->save();
     }
     if (task_name == "gs_new" || task_name == "gs_restart")
@@ -181,12 +181,10 @@ void dft_loop(cmd_args args)
         dft.relax_atom_positions();
     }
 
-    write_json_output(&parameters, &dft);
+    write_json_output(ctx, dft);
 
     delete density;
     delete potential;
-    
-    parameters.clear();
 
     Timer::print();
 }

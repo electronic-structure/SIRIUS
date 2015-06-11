@@ -11,28 +11,27 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 {
     Timer t("sirius::Density::generate_rho_radial_integrals");
 
-    auto rl = parameters_.reciprocal_lattice();
-    auto uc = parameters_.unit_cell();
+    auto rl = ctx_.reciprocal_lattice();
 
-    mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+    mdarray<double, 2> rho_radial_integrals(unit_cell_.num_atom_types(), rl->num_gvec_shells_inner());
 
     /* split G-shells between MPI ranks */
-    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), parameters_.comm().size(), parameters_.comm().rank());
+    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), ctx_.comm().size(), ctx_.comm().rank());
 
     if (type__ == 5)
     {
-        #ifdef _PRINT_OBJECT_CHECKSUM_
-        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            DUMP("iat: %i, checksum(radial_grid): %18.10f %18.10f", iat, uc->atom_type(iat)->radial_grid().x().checksum(),
-                                                                    uc->atom_type(iat)->radial_grid().dx().checksum());
+            DUMP("iat: %i, checksum(radial_grid): %18.10f %18.10f", iat, unit_cell_.atom_type(iat)->radial_grid().x().checksum(),
+                                                                    unit_cell_.atom_type(iat)->radial_grid().dx().checksum());
         }
         #endif
-        #ifdef _PRINT_OBJECT_HASH_
-        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        #ifdef __PRINT_OBJECT_HASH
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            DUMP("iat: %i, hash(radial_grid): %16llX", iat, uc->atom_type(iat)->radial_grid().hash());
-            DUMP("iat: %i, hash(free_atom_radial_grid): %16llX", iat, uc->atom_type(iat)->free_atom_radial_grid().hash());
+            DUMP("iat: %i, hash(radial_grid): %16llX", iat, unit_cell_.atom_type(iat)->radial_grid().hash());
+            DUMP("iat: %i, hash(free_atom_radial_grid): %16llX", iat, unit_cell_.atom_type(iat)->free_atom_radial_grid().hash());
         }
         #endif
 
@@ -41,10 +40,10 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
         {
             double G = rl->gvec_shell_len(igs);
 
-            for (int iat = 0; iat < uc->num_atom_types(); iat++) 
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
             {
-                int Z = uc->atom_type(iat)->zn();
-                double R = uc->atom_type(iat)->mt_radius();
+                int Z = unit_cell_.atom_type(iat)->zn();
+                double R = unit_cell_.atom_type(iat)->mt_radius();
                 if (igs != 0)
                 {
                     rho_radial_integrals(iat, igs) = (std::pow(b,3)*Z*((std::pow(G,5)*(G*(2*b + (std::pow(b,2) + std::pow(G,2))*R)*std::cos(G*R) +
@@ -62,7 +61,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                 }
             }
         }
-        #ifdef _PRINT_OBJECT_CHECKSUM_
+        #ifdef __PRINT_OBJECT_CHECKSUM
         DUMP("checksum(rho_radial_integrals): %18.10f", rho_radial_integrals.checksum());
         #endif
         return rho_radial_integrals;
@@ -79,9 +78,9 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
         {
             double G = rl->gvec_shell_len(igs);
 
-            for (int iat = 0; iat < uc->num_atom_types(); iat++) 
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
             {
-                rho_radial_integrals(iat, igs) = std::pow(b, 4) * uc->atom_type(iat)->zn() / (4 * std::pow(std::pow(b, 2) + std::pow(G, 2), 2) * pi);
+                rho_radial_integrals(iat, igs) = std::pow(b, 4) * unit_cell_.atom_type(iat)->zn() / (4 * std::pow(std::pow(b, 2) + std::pow(G, 2), 2) * pi);
             }
         }
         return rho_radial_integrals;
@@ -89,23 +88,23 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     #pragma omp parallel
     {
         /* splines for all atom types */
-        std::vector< Spline<double> > sa(uc->num_atom_types());
+        std::vector< Spline<double> > sa(unit_cell_.num_atom_types());
         
-        for (int iat = 0; iat < uc->num_atom_types(); iat++) 
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
         {
             /* full potential radial integrals requre a free atom grid */
             if (type__ == 0) 
             {
-                sa[iat] = Spline<double>(uc->atom_type(iat)->free_atom_radial_grid());
+                sa[iat] = Spline<double>(unit_cell_.atom_type(iat)->free_atom_radial_grid());
             }
             else
             {
-                sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
+                sa[iat] = Spline<double>(unit_cell_.atom_type(iat)->radial_grid());
             }
         }
         
         /* spherical Bessel functions */
-        sbessel_pw<double> jl(uc, 0);
+        sbessel_pw<double> jl(unit_cell_, 0);
 
         #pragma omp for
         for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
@@ -115,9 +114,9 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
             /* for pseudopotential valence or core charge density */
             if (type__ == 1 || type__ == 2) jl.load(rl->gvec_shell_len(igs));
 
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = uc->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
 
                 if (type__ == 0)
                 {
@@ -155,9 +154,9 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
         }
     }
 
-    int ld = uc->num_atom_types();
-    parameters_.comm().allgather(rho_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
-                                 static_cast<int>(ld * spl_gshells.local_size()));
+    int ld = unit_cell_.num_atom_types();
+    ctx_.comm().allgather(rho_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
+                          static_cast<int>(ld * spl_gshells.local_size()));
 
     return rho_radial_integrals;
 }

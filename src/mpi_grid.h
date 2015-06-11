@@ -210,7 +210,7 @@ class MPI_grid
         }
 
         /// Total number of ranks along specified directions
-        inline int size(int directions = 0xFF)
+        inline int size(int directions = 0xFF) const
         {
             return communicator_size_[valid_directions(directions)];
         }
@@ -222,19 +222,19 @@ class MPI_grid
         //== }
         
         /// Coordinate along a given dimension
-        inline int coordinate(int idim)
+        inline int coordinate(int idim) const
         {
             return (idim < (int)coordinates_.size()) ? coordinates_[idim] : 0;
         }
        
         /// Size of a given dimensions 
-        inline int dimension_size(int idim)
+        inline int dimension_size(int idim) const
         {
             return (idim < (int)dimensions_.size()) ? dimensions_[idim] : 1;
         }
 
         /// Actual number of grid dimensions
-        inline int num_dimensions()
+        inline int num_dimensions() const
         {
             return (int)dimensions_.size();
         }

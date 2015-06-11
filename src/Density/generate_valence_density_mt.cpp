@@ -11,9 +11,9 @@ void Density::generate_valence_density_mt(K_set& ks)
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     // complex density matrix
-    mdarray<double_complex, 4> mt_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
-                                                    parameters_.unit_cell()->max_mt_basis_size(),
-                                                    num_zdmat, parameters_.unit_cell()->num_atoms());
+    mdarray<double_complex, 4> mt_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
+                                                    unit_cell_.max_mt_basis_size(),
+                                                    num_zdmat, unit_cell_.num_atoms());
     mt_complex_density_matrix.zero();
     
     /* add k-point contribution */
@@ -24,20 +24,19 @@ void Density::generate_valence_density_mt(K_set& ks)
         add_k_point_contribution<CPU, full_potential_lapwlo>(ks[ik], occupied_bands, mt_complex_density_matrix);
     }
     
-    mdarray<double_complex, 4> mt_complex_density_matrix_loc(parameters_.unit_cell()->max_mt_basis_size(), 
-                                                             parameters_.unit_cell()->max_mt_basis_size(),
-                                                             num_zdmat, parameters_.unit_cell()->spl_num_atoms().local_size(0));
+    mdarray<double_complex, 4> mt_complex_density_matrix_loc(unit_cell_.max_mt_basis_size(), 
+                                                             unit_cell_.max_mt_basis_size(),
+                                                             num_zdmat, unit_cell_.spl_num_atoms().local_size(0));
    
     for (int j = 0; j < num_zdmat; j++)
     {
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int ialoc = (int)parameters_.unit_cell()->spl_num_atoms().local_index(ia);
-            int rank = parameters_.unit_cell()->spl_num_atoms().local_rank(ia);
+            int ialoc = (int)unit_cell_.spl_num_atoms().local_index(ia);
+            int rank = unit_cell_.spl_num_atoms().local_rank(ia);
 
-           parameters_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
-                                     parameters_.unit_cell()->max_mt_basis_size() * parameters_.unit_cell()->max_mt_basis_size(),
-                                     rank);
+            ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
+                               unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
         }
     }
    
@@ -48,10 +47,10 @@ void Density::generate_valence_density_mt(K_set& ks)
         
         mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
         
-        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
-            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-            Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
+            int ia = unit_cell_.spl_num_atoms(ialoc);
+            Atom_type* type = unit_cell_.atom(ia)->type();
             
             occupation_matrix.zero();
             for (int l = 0; l <= 3; l++)
@@ -71,7 +70,7 @@ void Density::generate_valence_density_mt(K_set& ks)
                             occupation_matrix(lm1, lm2, dmat_spins_[j].first, dmat_spins_[j].second) +=
                                 mt_complex_density_matrix_loc(type->indexb_by_lm_order(lm1, order1),
                                                               type->indexb_by_lm_order(lm2, order2), j, ialoc) *
-                                parameters_.unit_cell()->atom(ia)->symmetry_class()->o_radial_integral(l, order1, order2);
+                                unit_cell_.atom(ia)->symmetry_class()->o_radial_integral(l, order1, order2);
                         }
                         }
                     }
@@ -86,31 +85,31 @@ void Density::generate_valence_density_mt(K_set& ks)
                     occupation_matrix(lm2, lm1, 1, 0) = conj(occupation_matrix(lm1, lm2, 0, 1));
             }
 
-            parameters_.unit_cell()->atom(ia)->set_occupation_matrix(&occupation_matrix(0, 0, 0, 0));
+            unit_cell_.atom(ia)->set_occupation_matrix(&occupation_matrix(0, 0, 0, 0));
         }
 
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int rank = parameters_.unit_cell()->spl_num_atoms().local_rank(ia);
-            parameters_.unit_cell()->atom(ia)->sync_occupation_matrix(parameters_.comm(), rank);
+            int rank = unit_cell_.spl_num_atoms().local_rank(ia);
+            unit_cell_.atom(ia)->sync_occupation_matrix(ctx_.comm(), rank);
         }
 
         delete t3;
     }
 
-    int max_num_rf_pairs = parameters_.unit_cell()->max_mt_radial_basis_size() * 
-                           (parameters_.unit_cell()->max_mt_radial_basis_size() + 1) / 2;
+    int max_num_rf_pairs = unit_cell_.max_mt_radial_basis_size() * 
+                           (unit_cell_.max_mt_radial_basis_size() + 1) / 2;
     
     // real density matrix
     mdarray<double, 3> mt_density_matrix(parameters_.lmmax_rho(), max_num_rf_pairs, parameters_.num_mag_dims() + 1);
     
-    mdarray<double, 2> rf_pairs(parameters_.unit_cell()->max_num_mt_points(), max_num_rf_pairs);
-    mdarray<double, 3> dlm(parameters_.lmmax_rho(), parameters_.unit_cell()->max_num_mt_points(), 
+    mdarray<double, 2> rf_pairs(unit_cell_.max_num_mt_points(), max_num_rf_pairs);
+    mdarray<double, 3> dlm(parameters_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
                            parameters_.num_mag_dims() + 1);
-    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = (int)parameters_.unit_cell()->spl_num_atoms(ialoc);
-        Atom_type* atom_type = parameters_.unit_cell()->atom(ia)->type();
+        int ia = (int)unit_cell_.spl_num_atoms(ialoc);
+        Atom_type* atom_type = unit_cell_.atom(ia)->type();
 
         int nmtp = atom_type->num_mt_points();
         int num_rf_pairs = atom_type->mt_radial_basis_size() * (atom_type->mt_radial_basis_size() + 1) / 2;
@@ -145,10 +144,10 @@ void Density::generate_valence_density_mt(K_set& ks)
             {
                 // off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2
                 int n = (idxrf1 == idxrf2) ? 1 : 2; 
-                for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->type()->num_mt_points(); ir++)
+                for (int ir = 0; ir < unit_cell_.atom(ia)->type()->num_mt_points(); ir++)
                 {
-                    rf_pairs(ir, offs + idxrf1) = n * parameters_.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
-                                                      parameters_.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf2); 
+                    rf_pairs(ir, offs + idxrf1) = n * unit_cell_.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
+                                                      unit_cell_.atom(ia)->symmetry_class()->radial_function(ir, idxrf2); 
                 }
             }
         }

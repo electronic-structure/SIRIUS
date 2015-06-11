@@ -26,13 +26,15 @@
 
 namespace sirius {
 
-Atom_type::Atom_type(const char* symbol__, 
+Atom_type::Atom_type(Simulation_parameters const& parameters__,
+                     const char* symbol__, 
                      const char* name__, 
                      int zn__, 
                      double mass__, 
                      std::vector<atomic_level_descriptor>& levels__,
                      radial_grid_t grid_type__) 
-    : symbol_(std::string(symbol__)), 
+    : parameters_(parameters__),
+      symbol_(std::string(symbol__)), 
       name_(std::string(name__)), 
       zn_(zn__), 
       mass_(mass__), 
@@ -40,26 +42,23 @@ Atom_type::Atom_type(const char* symbol__,
       num_mt_points_(2000 + zn__ * 50), 
       atomic_levels_(levels__), 
       offset_lo_(-1),
-      esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
     radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(const int id__, 
+Atom_type::Atom_type(Simulation_parameters const& parameters__,
+                     const int id__, 
                      const std::string label__, 
-                     const std::string file_name__, 
-                     const electronic_structure_method_t esm_type__,
-                     processing_unit_t pu__)
-    : id_(id__), 
+                     const std::string file_name__)
+    : parameters_(parameters__),
+      id_(id__), 
       label_(label__),
       zn_(0), 
       mass_(0), 
       num_mt_points_(0), 
       offset_lo_(-1),
-      esm_type_(esm_type__), 
       file_name_(file_name__),
-      pu_(pu__),
       initialized_(false)
 {
 }
@@ -91,7 +90,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     }
 
     /* add valence levels to the list of core levels */
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         atomic_level_descriptor level;
         for (int ist = 0; ist < 28; ist++)
@@ -122,7 +121,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     /* set default radial grid if it was not done by user */
     if (radial_grid_.num_points() == 0) set_radial_grid();
     
-    if (esm_type_ == full_potential_lapwlo)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         /* initialize free atom density and potential */
         init_free_atom(false);
@@ -139,7 +138,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
         if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
     }
 
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         local_orbital_descriptor lod;
         for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
@@ -157,7 +156,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     indexb_.init(indexr_);
     
     /* allocate Q matrix */
-    if (esm_type_ == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
 
@@ -166,7 +165,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
    
     /* get the number of core electrons */
     num_core_electrons_ = 0;
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         for (int i = 0; i < (int)atomic_levels_.size(); i++) 
         {
@@ -213,9 +212,9 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
         idx_radial_integrals_(1, j) = non_zero_elements[j].second;
     }
 
-    if (pu_ == GPU)
+    if (parameters_.processing_unit() == GPU && parameters_.full_potential())
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         idx_radial_integrals_.allocate_on_device();
         idx_radial_integrals_.copy_to_device();
         rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
@@ -244,9 +243,9 @@ void Atom_type::set_radial_grid(int num_points, double const* points)
         assert(num_points == num_mt_points_);
         radial_grid_ = Radial_grid(num_points, points);
     }
-    if (pu_ == GPU)
+    if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         radial_grid_.copy_to_device();
         #endif
     }
@@ -456,7 +455,7 @@ void Atom_type::print_info()
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
 
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         printf("\n");
         printf("atomic levels (n, l, k, occupancy, core)\n");
@@ -483,7 +482,7 @@ void Atom_type::print_info()
         }
     }
 
-    if (esm_type_ == full_potential_lapwlo)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         printf("\n");
         printf("augmented wave basis\n");
@@ -653,7 +652,7 @@ void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
 
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         parser["uspp"]["header"]["element"] >> symbol_;
 
@@ -778,7 +777,7 @@ void Atom_type::read_input(const std::string& fname)
         
     }
 
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         parser["name"] >> name_;
         parser["symbol"] >> symbol_;

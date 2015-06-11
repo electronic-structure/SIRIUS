@@ -221,7 +221,7 @@ class HDF5_tree
         {
             if (H5open() < 0) error_local(__FILE__, __LINE__, "error in H5open()");
             
-            if (hdf5_trace_errors) H5Eset_auto(H5E_DEFAULT, NULL, NULL);
+            if (false) H5Eset_auto(H5E_DEFAULT, NULL, NULL);
             
             if (truncate)
             {
