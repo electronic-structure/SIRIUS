@@ -101,7 +101,10 @@ void Platform::finalize()
     cuda_destroy_streams(max_num_threads() + 1);
     cuda_device_reset();
     #endif
+    fftw_mpi_cleanup();
+    #ifdef __FFTW_THREADED
     fftw_cleanup_threads();
+    #endif
     fftw_cleanup();
 }
 

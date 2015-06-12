@@ -416,3 +416,381 @@ class FFT3D<CPU>
         }
 };
 
+class MPI_FFT3D
+{
+    private:
+
+        /// Number of working threads inside each FFT.
+        int num_fft_workers_;
+        
+        /// Size of each dimension.
+        int grid_size_[3];
+
+        /// reciprocal space range
+        std::pair<int, int> grid_limits_[3];
+        
+        /// backward transformation plan for each thread
+        fftw_plan plan_backward_;
+        
+        /// forward transformation plan for each thread
+        fftw_plan plan_forward_;
+    
+        /// inout buffer
+        fftw_complex* fftw_buffer_;
+        
+        int num_gvec_;
+
+        mdarray<int, 2> gvec_;
+        std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
+
+        mdarray<int, 3> gvec_index_;
+
+        std::vector<int> index_map_;
+        std::vector<int> gvec_shell_;
+        std::vector<double> gvec_shell_len_;
+
+        /// Execute backward transformation.
+        inline void backward()
+        {    
+            fftw_execute(plan_backward_);
+        }
+        
+        /// Execute forward transformation.
+        inline void forward()
+        {    
+            fftw_execute(plan_forward_);
+            double norm = 1.0 / size();
+            //for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) *= norm;
+        }
+
+        /// Find smallest optimal grid size starting from n.
+        int find_grid_size(int n)
+        {
+            while (true)
+            {
+                int m = n;
+                for (int k = 2; k <= 5; k++)
+                {
+                    while (m % k == 0) m /= k;
+                }
+                if (m == 1) 
+                {
+                    return n;
+                }
+                else 
+                {
+                    n++;
+                }
+            }
+        } 
+        
+    public:
+
+        MPI_FFT3D(vector3d<int> dims__,
+                  int num_fft_workers__,
+                  Communicator const& comm__)
+            : num_fft_workers_(num_fft_workers__)
+        {
+            Timer t("sirius::MPI_FFT3D::MPI_FFT3D");
+            for (int i = 0; i < 3; i++)
+            {
+                grid_size_[i] = find_grid_size(dims__[i]);
+                
+                grid_limits_[i].second = grid_size_[i] / 2;
+                grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
+            }
+            
+            #ifdef __FFTW_THREADED
+            fftw_plan_with_nthreads(num_fft_workers_);
+            #endif
+            
+            ptrdiff_t local_size_z, offset_z;
+            auto alloc_local_size = fftw_mpi_local_size_3d(size(2), size(1), size(0), comm__.mpi_comm(),
+                                                           &local_size_z, &offset_z);
+
+            DUMP("full box size: %i %i %i", size(0), size(1), size(2));
+            DUMP("local size, global offset: %li %li", local_size_z, offset_z);
+            DUMP("alloc_local_size: %li", alloc_local_size);
+
+            assert(sizeof(fftw_complex) == sizeof(double_complex));
+
+            fftw_buffer_ = fftw_alloc_complex(alloc_local_size);
+
+            std::cout << fftw_buffer_ << std::endl;
+
+            plan_backward_ = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), fftw_buffer_, fftw_buffer_,
+                                                  comm__.mpi_comm(), 1, FFTW_PATIENT);
+        
+            plan_forward_  = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), fftw_buffer_, fftw_buffer_,
+                                                  comm__.mpi_comm(), -1, FFTW_PATIENT);
+
+            std::cout << plan_forward_ << " " << plan_backward_ << std::endl;
+            #ifdef __FFTW_THREADED
+            fftw_plan_with_nthreads(1);
+            #endif
+        }
+
+        ~MPI_FFT3D()
+        {
+            fftw_destroy_plan(plan_backward_);
+            fftw_destroy_plan(plan_forward_);
+            fftw_free(fftw_buffer_);
+        }
+
+        //== template<typename T>
+        //== inline void input(int n, int const* map, T* data, int thread_id = 0)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+        //==     
+        //==     memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
+        //==     for (int i = 0; i < n; i++) fftw_buffer_(map[i], thread_id) = data[i];
+        //== }
+
+        //== inline void input(double* data, int thread_id = 0)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+        //==     
+        //==     for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) = data[i];
+        //== }
+        //== 
+        //== inline void input(double_complex* data, int thread_id = 0)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+        //==     
+        //==     memcpy(&fftw_buffer_(0, thread_id), data, size() * sizeof(double_complex));
+        //== }
+        
+        /// Execute the transformation for a given thread.
+        inline void transform(int direction)
+        {
+            switch(direction)
+            {
+                case 1:
+                {
+                    backward();
+                    break;
+                }
+                case -1:
+                {
+                    forward();
+                    break;
+                }
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "wrong FFT direction");
+                }
+            }
+        }
+
+        //== inline void output(double* data, int thread_id = 0)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+
+        //==     for (int i = 0; i < size(); i++) data[i] = real(fftw_buffer_(i, thread_id));
+        //== }
+        //== 
+        //== inline void output(double_complex* data, int thread_id = 0)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+
+        //==     memcpy(data, &fftw_buffer_(0, thread_id), size() * sizeof(double_complex));
+        //== }
+        //== 
+        //== inline void output(int n, int const* map, double_complex* data, int thread_id = 0)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+
+        //==     for (int i = 0; i < n; i++) data[i] = fftw_buffer_(map[i], thread_id);
+        //== }
+
+        //== inline void output(int n, int const* map, double_complex* data, int thread_id, double alpha)
+        //== {
+        //==     assert(thread_id < num_fft_threads());
+
+        //==     for (int i = 0; i < n; i++) data[i] += alpha * fftw_buffer_(map[i], thread_id);
+        //== }
+        //== 
+        //== inline const std::pair<int, int>& grid_limits(int idim)
+        //== {
+        //==     return grid_limits_[idim];
+        //== }
+
+        /// Total size of the FFT grid.
+        inline int size() const
+        {
+            return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
+        }
+
+        /// Size of a given dimension.
+        inline int size(int d) const
+        {
+            assert(d >= 0 && d < 3);
+            return grid_size_[d]; 
+        }
+
+        //== /// Return linear index of a plane-wave harmonic with fractional coordinates (10, i1, i2) inside fft buffer.
+        //== inline int index(int i0, int i1, int i2) const
+        //== {
+        //==     if (i0 < 0) i0 += grid_size_[0];
+        //==     if (i1 < 0) i1 += grid_size_[1];
+        //==     if (i2 < 0) i2 += grid_size_[2];
+
+        //==     return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
+        //== }
+
+        //== /// Direct access to the fft buffer
+        //== inline double_complex& buffer(int i, int thread_id = 0)
+        //== {
+        //==     return fftw_buffer_(i, thread_id);
+        //== }
+        //== 
+        //== vector3d<int> grid_size() const
+        //== {
+        //==     return vector3d<int>(grid_size_);
+        //== }
+
+        //== void init_gvec(double Gmax__, matrix3d<double> const& M__)
+        //== {
+        //==     mdarray<int, 2> gvec_tmp(3, size());
+        //==     std::vector< std::pair<double, int> > gvec_tmp_length;
+        //==     
+        //==     for (int i0 = grid_limits(0).first; i0 <= grid_limits(0).second; i0++)
+        //==     {
+        //==         for (int i1 = grid_limits(1).first; i1 <= grid_limits(1).second; i1++)
+        //==         {
+        //==             for (int i2 = grid_limits(2).first; i2 <= grid_limits(2).second; i2++)
+        //==             {
+        //==                 int ig = (int)gvec_tmp_length.size();
+
+        //==                 gvec_tmp(0, ig) = i0;
+        //==                 gvec_tmp(1, ig) = i1;
+        //==                 gvec_tmp(2, ig) = i2;
+        //==                 
+        //==                 auto vc = M__ * vector3d<double>(i0, i1, i2);
+
+        //==                 gvec_tmp_length.push_back(std::pair<double, int>(vc.length(), ig));
+        //==             }
+        //==         }
+        //==     }
+
+        //==     /* sort G-vectors by length */
+        //==     std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
+
+        //==     /* create sorted list of G-vectors */
+        //==     gvec_ = mdarray<int, 2>(3, size());
+        //==     gvec_cart_ = std::vector< vector3d<double> >(size());
+
+        //==     /* find number of G-vectors within the cutoff */
+        //==     num_gvec_ = 0;
+        //==     for (int i = 0; i < size(); i++)
+        //==     {
+        //==         for (int x = 0; x < 3; x++) gvec_(x, i) = gvec_tmp(x, gvec_tmp_length[i].second);
+
+        //==         gvec_cart_[i] = M__ * vector3d<double>(gvec_(0, i), gvec_(1, i), gvec_(2, i));
+        //==         
+        //==         if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
+        //==     }
+        //==     
+        //==     gvec_index_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
+        //==                                   mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
+        //==                                   mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
+        //==     index_map_.resize(size());
+        //==     
+        //==     gvec_shell_.resize(size());
+        //==     gvec_shell_len_.clear();
+        //==     
+        //==     for (int ig = 0; ig < size(); ig++)
+        //==     {
+        //==         int i0 = gvec_(0, ig);
+        //==         int i1 = gvec_(1, ig);
+        //==         int i2 = gvec_(2, ig);
+
+        //==         /* mapping from G-vector to it's index */
+        //==         gvec_index_(i0, i1, i2) = ig;
+
+        //==         /* mapping of FFT buffer linear index */
+        //==         index_map_[ig] = index(i0, i1, i2);
+
+        //==         /* find G-shells */
+        //==         double t = gvec_tmp_length[ig].first;
+        //==         if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
+        //==         gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
+        //==     }
+        //== }
+        //== 
+        //== /// Return number of G-vectors within the cutoff.
+        //== inline int num_gvec() const
+        //== {
+        //==     return num_gvec_;
+        //== }
+
+        //== /// Return G-vector in fractional coordinates (this are the three Miller indices).
+        //== inline vector3d<int> gvec(int ig__) const
+        //== {
+        //==     return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
+        //== }
+        //== 
+        //== /// Return G-vector in Cartesian coordinates.
+        //== inline vector3d<double> gvec_cart(int ig__) const
+        //== {
+        //==     assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
+        //==     return gvec_cart_[ig__];
+        //== }
+
+        //== /// Return length of a G-vector.
+        //== inline double gvec_len(int ig__) const
+        //== {
+        //==     return gvec_shell_len(gvec_shell(ig__));
+        //== }
+
+        //== /// Return number of G-vector shells within the cutoff.
+        //== /** G-vectors with the same length belong to the same shell. */
+        //== inline int num_gvec_shells_inner()
+        //== {
+        //==     return gvec_shell(num_gvec_);
+        //== }
+
+        //== /// Return total number of G-vector shells, including incomplete shells.
+        //== /** Incomplete G-shells are formed by G-vectors outisde the cutoff radius (for example,
+        //==  *  by G-vectors at corners of FFT grid).
+        //==  */
+        //== inline int num_gvec_shells_total()
+        //== {
+        //==     return (int)gvec_shell_len_.size();
+        //== }
+
+        //== /// Return index of a G-vector shell for a given G-vector.
+        //== inline int gvec_shell(int ig__) const
+        //== {
+        //==     assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
+        //==     return gvec_shell_[ig__];
+        //== }
+
+        //== /// Return length of a G-vector shell.
+        //== inline double gvec_shell_len(int igsh__) const
+        //== {
+        //==     assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
+        //==     return gvec_shell_len_[igsh__];
+        //== }
+
+        //== inline int const* index_map() const
+        //== {
+        //==     return &index_map_[0];
+        //== }
+
+        //== inline int index_map(int ig__) const
+        //== {
+        //==     assert(ig__ >= 0 && ig__ < (int)index_map_.size());
+        //==     return index_map_[ig__];
+        //== }
+
+        //== inline int num_fft_threads() const
+        //== {
+        //==     return num_fft_threads_;
+        //== }
+
+        //== inline int gvec_index(vector3d<int> gvec__) const
+        //== {
+        //==     return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
+        //== }
+};

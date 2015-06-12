@@ -102,7 +102,7 @@ void log_function_exit(const char* func_name);
 #define DUMP(...)                                                                \
 {                                                                                \
     char str__[1024];                                                            \
-    int x__ = snprintf(str__, 1024, "[%s:%i] ", __func__, Platform::rank()); \
+    int x__ = snprintf(str__, 1024, "[%s:%04i] ", __func__, Platform::rank()); \
     x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                            \
     printf("%s\n", str__);                                                       \
 }

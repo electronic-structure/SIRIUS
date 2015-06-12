@@ -7,7 +7,7 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--enable-fortran", "--enable-mpi", "--enable-openmp", "--enable-threads"]
+              ["--enable-fortran", "--enable-mpi", "--enable-openmp", "--enable-threads", "--enable-debug"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
               ["--disable-shared"]
@@ -93,7 +93,9 @@ def configure_package(package_name, platform):
 
     if (package_name == "fftw"):
         retval = ["-I" + cwdlibs + package_dir + "/api -I" + cwdlibs + package_dir + "/mpi", 
-                  cwdlibs + package_dir + "/.libs/libfftw3.a " + cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a",
+                  cwdlibs + package_dir + "/.libs/libfftw3.a " + 
+                  cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a " + 
+                  cwdlibs + package_dir + "/mpi/.libs/libfftw3_mpi.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 
