@@ -501,7 +501,8 @@ class MPI_FFT3D
             }
             
             #ifdef __FFTW_THREADED
-            fftw_plan_with_nthreads(num_fft_workers_);
+            // this is not working yet
+            //fftw_plan_with_nthreads(num_fft_workers_);
             #endif
             
             ptrdiff_t local_size_z, offset_z;
@@ -526,7 +527,7 @@ class MPI_FFT3D
 
             std::cout << plan_forward_ << " " << plan_backward_ << std::endl;
             #ifdef __FFTW_THREADED
-            fftw_plan_with_nthreads(1);
+            //fftw_plan_with_nthreads(1);
             #endif
         }
 
