@@ -437,6 +437,8 @@ class MPI_FFT3D
     
         /// inout buffer
         fftw_complex* fftw_buffer_;
+
+        size_t local_size_;
         
         int num_gvec_;
 
@@ -460,7 +462,7 @@ class MPI_FFT3D
         {    
             fftw_execute(plan_forward_);
             double norm = 1.0 / size();
-            //for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) *= norm;
+            for (size_t i = 0; i < 2 * local_size_; i++) ((double*)fftw_buffer_)[i] *= norm;
         }
 
         /// Find smallest optimal grid size starting from n.
@@ -508,6 +510,8 @@ class MPI_FFT3D
             ptrdiff_t local_size_z, offset_z;
             auto alloc_local_size = fftw_mpi_local_size_3d(size(2), size(1), size(0), comm__.mpi_comm(),
                                                            &local_size_z, &offset_z);
+            
+            local_size_ = size(0) * size(1) * local_size_z;
 
             DUMP("full box size: %i %i %i", size(0), size(1), size(2));
             DUMP("local size, global offset: %li %li", local_size_z, offset_z);

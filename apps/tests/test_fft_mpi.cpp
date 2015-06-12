@@ -14,9 +14,17 @@ void test_fft_mpi(vector3d<int>& dims__)
 
     MPI_FFT3D fft(dims__, 1, comm);
 
-    fft.transform(1);
-    fft.transform(-1);
+    int num_phi = 160;
 
+    Timer t1("fft_mpi");
+    for (int i = 0; i < num_phi; i++)
+    {
+        fft.transform(1);
+        fft.transform(-1);
+    }
+    double tval = t1.stop();
+
+    printf("performance: %f, (FFT/sec.)\n", 2 * num_phi / tval);
 
 }
 
