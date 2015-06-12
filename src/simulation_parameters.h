@@ -232,6 +232,10 @@ class Simulation_parameters
 
             LOG_FUNC_END();
         }
+
+        Simulation_parameters()
+        {
+        }
             
         ~Simulation_parameters()
         {

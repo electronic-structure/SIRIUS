@@ -299,9 +299,9 @@ class Unit_cell
         } 
 
         template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a) const
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
         {
-            return lattice_vectors_ * a;
+            return lattice_vectors_ * a__;
         }
 
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a) const
