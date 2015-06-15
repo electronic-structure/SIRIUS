@@ -111,5 +111,9 @@ int main(int argn, char **argv)
     test_fft_mpi_correctness(dims);
     test_fft_mpi_performance(dims);
 
+    #ifdef __PRINT_MEMORY_USAGE
+    MEMORY_USAGE_INFO();
+    #endif
+
     Platform::finalize();
 }
