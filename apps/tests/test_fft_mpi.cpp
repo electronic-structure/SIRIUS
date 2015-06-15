@@ -68,10 +68,8 @@ void test_fft_mpi_correctness(vector3d<int>& dims__)
 }
 
 
-void test_fft_mpi(vector3d<int>& dims__)
+void test_fft_mpi_performance(vector3d<int>& dims__)
 {
-    printf("test of threaded FFTs (OMP version)\n");
-
     matrix3d<double> reciprocal_lattice_vectors;
     for (int i = 0; i < 3; i++) reciprocal_lattice_vectors(i, i) = 1.0;
 
@@ -79,7 +77,7 @@ void test_fft_mpi(vector3d<int>& dims__)
 
     MPI_FFT3D fft(dims__, 1, comm);
 
-    int num_phi = 160;
+    int num_phi = 100;
 
     Timer t1("fft_mpi");
     for (int i = 0; i < num_phi; i++)
@@ -110,8 +108,8 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    //test_fft_mpi(dims);
     test_fft_mpi_correctness(dims);
+    test_fft_mpi_performance(dims);
 
     Platform::finalize();
 }
