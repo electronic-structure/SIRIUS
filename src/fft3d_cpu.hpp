@@ -547,10 +547,10 @@ class MPI_FFT3D
             fftw_buffer_ = (double_complex*)fftw_alloc_complex(alloc_local_size);
 
             plan_backward_ = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)fftw_buffer_, (fftw_complex*)fftw_buffer_,
-                                                  comm__.mpi_comm(), 1, FFTW_PATIENT);
+                                                  comm__.mpi_comm(), 1, FFTW_ESTIMATE);
         
             plan_forward_  = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)fftw_buffer_, (fftw_complex*)fftw_buffer_,
-                                                  comm__.mpi_comm(), -1, FFTW_PATIENT);
+                                                  comm__.mpi_comm(), -1, FFTW_ESTIMATE);
 
             #ifdef __FFTW_THREADED
             //fftw_plan_with_nthreads(1);
@@ -712,6 +712,7 @@ class MPI_FFT3D
 
         void init_gvec(double Gmax__, matrix3d<double> const& M__)
         {
+            Timer t("sirius::MPI_FFT3D::init_gvec");
             std::vector< vector3d<int16_t> > gvec_tmp;
             std::vector<int> idx_map_tmp;
             num_gvec_loc_ = 0;
