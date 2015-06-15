@@ -254,6 +254,17 @@ class type_wrapper<int>
 };
 
 template<> 
+class type_wrapper<int16_t>
+{
+    public:
+
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_SHORT;
+        }
+};
+
+template<> 
 class type_wrapper<char>
 {
     public:

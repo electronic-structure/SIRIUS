@@ -18,7 +18,7 @@ void test_fft_mpi_correctness(vector3d<int>& dims__)
     auto& rlv = uc.reciprocal_lattice_vectors();
 
     MPI_FFT3D fft(dims__, 1, comm);
-    fft.init_gvec(5.0, rlv);
+    fft.init_gvec(15.0, rlv);
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -27,6 +27,7 @@ void test_fft_mpi_correctness(vector3d<int>& dims__)
     std::vector<double_complex> pw_coefs(fft.num_gvec());
     
     if (comm.rank() == 0) printf("num_gvec: %i\n", fft.num_gvec());
+    DUMP("num_gvec_loc: %i", fft.num_gvec_loc());
 
     for (int ig = 0; ig < std::min(40, fft.num_gvec()); ig++)
     {
@@ -36,7 +37,7 @@ void test_fft_mpi_correctness(vector3d<int>& dims__)
         if (comm.rank() == 0) printf("G: %i %i %i\n", gvec[0], gvec[1], gvec[2]);
 
         pw_coefs[ig] = 1.0;
-        fft.input_pw(fft.num_gvec(), &pw_coefs[0]);
+        fft.input_pw(&pw_coefs[fft.gvec_offset()]);
         fft.transform(1);
 
         mdarray<double_complex, 3> tmp(&fft.buffer(0), fft.size(0), fft.size(1), fft.local_size_z());

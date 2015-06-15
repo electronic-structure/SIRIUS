@@ -420,6 +420,8 @@ class MPI_FFT3D
 {
     private:
 
+        Communicator const& comm_;
+
         /// Number of working threads inside each FFT.
         int num_fft_workers_;
         
@@ -438,7 +440,7 @@ class MPI_FFT3D
         /// inout buffer
         double_complex* fftw_buffer_;
 
-        mdarray<int, 2> local_size_and_offset_;
+        //mdarray<int, 2> local_z_size_and_offset_;
 
         size_t local_size_;
 
@@ -448,16 +450,26 @@ class MPI_FFT3D
         
         int num_gvec_;
 
-        mdarray<int16_t, 2> gvec_;
-        std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
+        int num_gvec_loc_;
 
-        mdarray<int, 3> gvec_index_;
+        mdarray<int16_t, 2> gvec_;
+        //std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
+
+        //mdarray<int, 3> gvec_index_;
 
         std::vector<int> index_map_;
         std::vector<int> gvec_shell_;
         std::vector<double> gvec_shell_len_;
 
-        mdarray<int, 1> index_map_local_;
+        //mdarray<int, 1> num_gvec_loc_;
+
+        int gvec_offset_;
+
+        
+        
+
+        //mdarray<int, 1> index_map_local_;
+        mdarray<int, 1> index_map_local_to_local_;
 
         /// Execute backward transformation.
         inline void backward()
@@ -499,7 +511,8 @@ class MPI_FFT3D
         MPI_FFT3D(vector3d<int> dims__,
                   int num_fft_workers__,
                   Communicator const& comm__)
-            : num_fft_workers_(num_fft_workers__)
+            : comm_(comm__),
+              num_fft_workers_(num_fft_workers__)
         {
             Timer t("sirius::MPI_FFT3D::MPI_FFT3D");
             for (int i = 0; i < 3; i++)
@@ -521,11 +534,11 @@ class MPI_FFT3D
             local_size_z_ = (int)loc_sz_z;
             offset_z_ = (int)loc_offs;
 
-            local_size_and_offset_ = mdarray<int, 2>(2, comm__.size());
-            local_size_and_offset_.zero();
-            local_size_and_offset_(0, comm__.rank()) = local_size_z_;
-            local_size_and_offset_(1, comm__.rank()) = offset_z_;
-            comm__.allreduce(&local_size_and_offset_(0, 0), (int)local_size_and_offset_.size());
+            //== local_z_size_and_offset_ = mdarray<int, 2>(2, comm__.size());
+            //== local_z_size_and_offset_.zero();
+            //== local_z_size_and_offset_(0, comm__.rank()) = local_size_z_;
+            //== local_z_size_and_offset_(1, comm__.rank()) = offset_z_;
+            //== comm__.allreduce(&local_z_size_and_offset_(0, 0), (int)local_z_size_and_offset_.size());
             
             local_size_ = size(0) * size(1) * local_size_z_;
 
@@ -552,7 +565,7 @@ class MPI_FFT3D
         }
 
         template<typename T>
-        inline void input_pw(int npw__, T* data__)
+        inline void input_pw(T* data__)
         {
             memset(fftw_buffer_, 0, local_size_ * sizeof(double_complex));
 
@@ -571,10 +584,11 @@ class MPI_FFT3D
             //    }
             //}
 
-            for (int i = 0; i < (int)local_size_; i++)
+            for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
             {
-                int ig = index_map_local_(i);
-                if (ig < npw__) fftw_buffer_[i] = data__[ig];
+                //int ig = index_map_local_(i);
+                //if (ig < npw__) fftw_buffer_[i] = data__[ig];
+                fftw_buffer_[index_map_local_to_local_(igloc)] = data__[igloc];
             }
         }
 
@@ -691,90 +705,139 @@ class MPI_FFT3D
         //==     return vector3d<int>(grid_size_);
         //== }
 
+        inline int gvec_offset() const
+        {
+            return gvec_offset_;
+        }
+
         void init_gvec(double Gmax__, matrix3d<double> const& M__)
         {
-            mdarray<int16_t, 2> gvec_tmp(3, size());
-            std::vector< std::pair<double, int> > gvec_tmp_length;
-            
-            for (int16_t i0 = grid_limits(0).first; i0 <= grid_limits(0).second; i0++)
+            std::vector< vector3d<int16_t> > gvec_tmp;
+            std::vector<int> idx_map_tmp;
+            num_gvec_loc_ = 0;
+            for (int k = 0; k < local_size_z_; k++)
             {
-                for (int16_t i1 = grid_limits(1).first; i1 <= grid_limits(1).second; i1++)
+                for (int j = 0; j < size(1); j++)
                 {
-                    for (int16_t i2 = grid_limits(2).first; i2 <= grid_limits(2).second; i2++)
+                    for (int i = 0; i < size(0); i++)
                     {
-                        size_t ig = gvec_tmp_length.size();
-
-                        gvec_tmp(0, ig) = i0;
-                        gvec_tmp(1, ig) = i1;
-                        gvec_tmp(2, ig) = i2;
+                        auto gv = gvec_by_grid_pos(i, j, k + offset_z_);
                         
-                        auto vc = M__ * vector3d<double>(i0, i1, i2);
+                        auto gvc = M__ * vector3d<double>(gv[0], gv[1], gv[2]);
 
-                        gvec_tmp_length.push_back(std::pair<double, int>(vc.length(), ig));
+                        if (gvc.length() <= Gmax__)
+                        {
+                            gvec_tmp.push_back(vector3d<int16_t>((int16_t)gv[0], (int16_t)gv[1], (int16_t)gv[2]));
+                            idx_map_tmp.push_back(i + j * grid_size_[0] + k * grid_size_[0] * grid_size_[1]);
+                            num_gvec_loc_++;
+                        }
                     }
                 }
             }
 
-            /* sort G-vectors by length */
-            std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
+            //DUMP("num_gvec_loc_: %i", num_gvec_loc_);
 
-            /* create sorted list of G-vectors */
-            gvec_ = mdarray<int16_t, 2>(3, size());
-            gvec_cart_ = std::vector< vector3d<double> >(size());
+            num_gvec_ = num_gvec_loc_;
+            comm_.allreduce(&num_gvec_, 1);
 
-            /* find number of G-vectors within the cutoff */
-            num_gvec_ = 0;
-            for (int i = 0; i < size(); i++)
+            mdarray<int, 1> ngv_loc(comm_.size());
+            ngv_loc.zero();
+            ngv_loc(comm_.rank()) = num_gvec_loc_;
+            comm_.allreduce(&ngv_loc(0), comm_.size());
+            mdarray<int, 1> ngv_offs(comm_.size());
+            ngv_offs(0) = 0;
+            for (int i = 1; i < comm_.size(); i++)
             {
-                for (int x = 0; x < 3; x++) gvec_(x, i) = gvec_tmp(x, gvec_tmp_length[i].second);
-
-                gvec_cart_[i] = M__ * vector3d<double>(gvec_(0, i), gvec_(1, i), gvec_(2, i));
-                
-                if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
+                ngv_offs(i) = ngv_offs(i - 1) + ngv_loc(i - 1);
             }
-            
-            //== gvec_index_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
-            //==                               mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
-            //==                               mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
-            //index_map_.resize(size());
-            
-            //gvec_shell_.resize(size());
-            //gvec_shell_len_.clear();
 
-            index_map_local_ = mdarray<int, 1>(local_size_);
+            gvec_offset_ = ngv_offs(comm_.rank());
 
-            //for (int k = 0; k < local_size_z_; k++)
+            gvec_ = mdarray<int16_t, 2>(3, num_gvec_);
+            index_map_local_to_local_ = mdarray<int, 1>(num_gvec_loc_);
+            for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
+            {
+                for (int x = 0; x < 3; x++) gvec_(x, gvec_offset_ + igloc) = gvec_tmp[igloc][x];
+                index_map_local_to_local_(igloc) = idx_map_tmp[igloc];
+            }
+            comm_.allgather(&gvec_(0, 0), 3 * gvec_offset_, 3 * num_gvec_loc_);
+
+            
+
+
+            //mdarray<int16_t, 2> gvec_tmp(3, size());
+            //std::vector< std::pair<double, int> > gvec_tmp_length;
+            //
+            //for (int16_t i0 = grid_limits(0).first; i0 <= grid_limits(0).second; i0++)
             //{
-            //    for (int j = 0; j < size(1); j++)
+            //    for (int16_t i1 = grid_limits(1).first; i1 <= grid_limits(1).second; i1++)
             //    {
-            //        for (int i = 0; i < size(0); i++)
+            //        for (int16_t i2 = grid_limits(2).first; i2 <= grid_limits(2).second; i2++)
             //        {
-            //            auto gv = gvec_by_grid_pos(i, j, k + offset_z_);
+            //            size_t ig = gvec_tmp_length.size();
 
-            //            int ig = this->gvec_index(gv);
-            //            if (ig < npw__)
-            //                fftw_buffer_[i + j * grid_size_[0] + k * grid_size_[0] * grid_size_[1]] = data__[ig];
+            //            gvec_tmp(0, ig) = i0;
+            //            gvec_tmp(1, ig) = i1;
+            //            gvec_tmp(2, ig) = i2;
+            //            
+            //            auto vc = M__ * vector3d<double>(i0, i1, i2);
+
+            //            gvec_tmp_length.push_back(std::pair<double, int>(vc.length(), ig));
             //        }
             //    }
             //}
 
-            for (int ig = 0; ig < size(); ig++)
-            {
-                int i0 = gvec_(0, ig);
-                int i1 = gvec_(1, ig);
-                int i2 = gvec_(2, ig);
+            ///* sort G-vectors by length */
+            //std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
 
-                /* x,y,z position inside fft buffer */
-                int j0 = (i0 < 0) ? i0 + grid_size_[0] : i0;
-                int j1 = (i1 < 0) ? i1 + grid_size_[1] : i1;
-                int j2 = (i2 < 0) ? i2 + grid_size_[2] : i2;
+            ///* create sorted list of G-vectors */
+            //gvec_ = mdarray<int16_t, 2>(3, size());
+            ////gvec_cart_ = std::vector< vector3d<double> >(size());
 
-                if (j2 >= offset_z_ && j2 < offset_z_ + local_size_z_)
-                {
-                    /* this rank hanles a xy-slab */
-                    index_map_local_(j0 + j1 * grid_size_[0] + (j2 - offset_z_) * grid_size_[0] * grid_size_[1]) = ig;
-                }
-            }
+            ///* find number of G-vectors within the cutoff */
+            //num_gvec_ = 0;
+            //for (int i = 0; i < size(); i++)
+            //{
+            //    for (int x = 0; x < 3; x++) gvec_(x, i) = gvec_tmp(x, gvec_tmp_length[i].second);
+
+            //    //gvec_cart_[i] = M__ * vector3d<double>(gvec_(0, i), gvec_(1, i), gvec_(2, i));
+            //    
+            //    if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
+            //}
+            //
+            ////== gvec_index_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
+            ////==                               mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
+            ////==                               mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
+            ////index_map_.resize(size());
+            //
+            ////gvec_shell_.resize(size());
+            ////gvec_shell_len_.clear();
+
+            //index_map_local_ = mdarray<int, 1>(local_size_);
+
+            //num_gvec_loc_ = 0;
+
+            //for (int ig = 0; ig < size(); ig++)
+            //{
+            //    int i0 = gvec_(0, ig);
+            //    int i1 = gvec_(1, ig);
+            //    int i2 = gvec_(2, ig);
+
+            //    auto gvc = M__ * vector3d<double>(gvec_(0, ig), gvec_(1, ig), gvec_(2, ig));
+
+            //    /* x,y,z position inside fft buffer */
+            //    int j0 = (i0 < 0) ? i0 + grid_size_[0] : i0;
+            //    int j1 = (i1 < 0) ? i1 + grid_size_[1] : i1;
+            //    int j2 = (i2 < 0) ? i2 + grid_size_[2] : i2;
+
+            //    /* if this rank handles a xy-slab */
+            //    if (j2 >= offset_z_ && j2 < offset_z_ + local_size_z_)
+            //    {
+            //        index_map_local_(j0 + j1 * grid_size_[0] + (j2 - offset_z_) * grid_size_[0] * grid_size_[1]) = ig;
+
+            //        if (gvc.length() <= Gmax__) num_gvec_loc_++;
+            //    }
+            //}
             
             //for (int ig = 0; ig < size(); ig++)
             //{
@@ -799,6 +862,11 @@ class MPI_FFT3D
         inline int num_gvec() const
         {
             return num_gvec_;
+        }
+
+        inline int num_gvec_loc() const
+        {
+            return num_gvec_loc_;
         }
 
         /// Return G-vector in fractional coordinates (this are the three Miller indices).
