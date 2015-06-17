@@ -416,6 +416,20 @@ class FFT3D<CPU>
         }
 };
 
+struct gvec_descriptor
+{
+    int num_gvec_;
+
+    //mdarray<int16_t, 2> gvec_;
+
+    mdarray<int, 1> gvec_index_;
+
+    int num_gvec_loc_;
+    int gvec_offset_;
+
+    mdarray<int, 1> index_map_local_to_local_;
+};
+
 class MPI_FFT3D
 {
     private:
@@ -565,7 +579,7 @@ class MPI_FFT3D
         }
 
         template<typename T>
-        inline void input_pw(T* data__)
+        inline void input_pw(int num_gvec_loc__, int const* map__, T const* data__)
         {
             memset(fftw_buffer_, 0, local_size_ * sizeof(double_complex));
 
@@ -584,11 +598,16 @@ class MPI_FFT3D
             //    }
             //}
 
-            for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
+            //for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
+            //{
+            //    //int ig = index_map_local_(i);
+            //    //if (ig < npw__) fftw_buffer_[i] = data__[ig];
+            //    fftw_buffer_[index_map_local_to_local_(igloc)] = data__[igloc];
+            //}
+
+            for (int igloc = 0; igloc < num_gvec_loc__; igloc++)
             {
-                //int ig = index_map_local_(i);
-                //if (ig < npw__) fftw_buffer_[i] = data__[ig];
-                fftw_buffer_[index_map_local_to_local_(igloc)] = data__[igloc];
+                fftw_buffer_[map__[igloc]] = data__[igloc];
             }
         }
 
@@ -675,23 +694,32 @@ class MPI_FFT3D
             return grid_size_[d]; 
         }
 
-        ///// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside fft buffer.
-        //inline int index(int i0, int i1, int i2) const
-        //{
-        //    if (i0 < 0) i0 += grid_size_[0];
-        //    if (i1 < 0) i1 += grid_size_[1];
-        //    if (i2 < 0) i2 += grid_size_[2];
+        /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside fft buffer.
+        inline int index_of_gvec(int i0, int i1, int i2) const
+        {
+            if (i0 < 0) i0 += grid_size_[0];
+            if (i1 < 0) i1 += grid_size_[1];
+            if (i2 < 0) i2 += grid_size_[2];
 
-        //    return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
-        //}
+            return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
+        }
 
-        inline vector3d<int> gvec_by_grid_pos(int i0, int i1, int i2)
+        inline vector3d<int> gvec_by_grid_pos(int i0, int i1, int i2) const
         {
             if (i0 > grid_limits_[0].second) i0 -= grid_size_[0];
             if (i1 > grid_limits_[1].second) i1 -= grid_size_[1];
             if (i2 > grid_limits_[2].second) i2 -= grid_size_[2];
 
             return vector3d<int>(i0, i1, i2);
+        }
+
+        inline vector3d<int> gvec_by_index(int ig__) const
+        {
+            int k = ig__ / (grid_size_[0] * grid_size_[1]);
+            ig__ -= k * grid_size_[0] * grid_size_[1];
+            int j = ig__ / grid_size_[0];
+            int i = ig__ -  j * grid_size_[0];
+            return gvec_by_grid_pos(i, j, k);
         }
 
         /// Direct access to the fft buffer
@@ -708,6 +736,61 @@ class MPI_FFT3D
         inline int gvec_offset() const
         {
             return gvec_offset_;
+        }
+
+        gvec_descriptor init_gvec(vector3d<double> q__, double Gmax__, matrix3d<double> const& M__)
+        {
+            Timer t("sirius::MPI_FFT3D::init_gvec");
+
+            Timer t1("sirius::MPI_FFT3D::init_gvec|1");
+            gvec_descriptor gv_desc;
+            /* find local number of G-vectors for each slab of FFT buffer */
+            std::vector< vector3d<int16_t> > pos;
+            for (int k = 0; k < local_size_z_; k++)
+            {
+                for (int j = 0; j < size(1); j++)
+                {
+                    for (int i = 0; i < size(0); i++)
+                    {
+                        auto gv = gvec_by_grid_pos(i, j, k + offset_z_);
+                       
+                        /* take G+q */
+                        auto gk = M__ * (vector3d<double>(gv[0], gv[1], gv[2]) + q__);
+
+                        if (gk.length() <= Gmax__) pos.push_back(vector3d<int16_t>((int16_t)i, (int16_t)j, (int16_t)k));
+                    }
+                }
+            }
+            t1.stop();
+
+            /* get total number of G-vectors */
+            gv_desc.num_gvec_loc_ = (int)pos.size();
+            gv_desc.num_gvec_ = gv_desc.num_gvec_loc_;
+            comm_.allreduce(&gv_desc.num_gvec_, 1);
+
+            gv_desc.gvec_index_ = mdarray<int, 1>(gv_desc.num_gvec_);
+            gv_desc.index_map_local_to_local_ = mdarray<int, 1>(gv_desc.num_gvec_loc_);
+
+            mdarray<int, 1> tmp(comm_.size());
+            tmp.zero();
+            tmp(comm_.rank()) = gv_desc.num_gvec_loc_;
+            comm_.allreduce(&tmp(0), comm_.size());
+
+            gv_desc.gvec_offset_ = 0;
+            for (int i = 1; i <= comm_.rank(); i++) gv_desc.gvec_offset_ += tmp(i - 1);
+
+            for (int igloc = 0; igloc < gv_desc.num_gvec_loc_; igloc++)
+            {
+                auto p = pos[igloc];
+                gv_desc.index_map_local_to_local_(igloc) = p[0] + p[1] * grid_size_[0] + p[2] * grid_size_[0] * grid_size_[1];
+
+                gv_desc.gvec_index_(gv_desc.gvec_offset_ + igloc) = gv_desc.index_map_local_to_local_(igloc) +
+                                                                    offset_z_ * grid_size_[0] * grid_size_[1];
+            }
+
+            comm_.allgather(&gv_desc.gvec_index_(0),  gv_desc.gvec_offset_, gv_desc.num_gvec_loc_); 
+
+            return gv_desc;
         }
 
         void init_gvec(double Gmax__, matrix3d<double> const& M__)
@@ -939,6 +1022,11 @@ class MPI_FFT3D
         //== {
         //==     return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
         //== }
+
+        inline size_t local_size() const
+        {
+            return local_size_;
+        }
 
         inline int local_size_z() const
         {

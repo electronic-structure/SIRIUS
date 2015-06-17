@@ -1345,9 +1345,9 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    dmatrix<double_complex> h(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid());
+    dmatrix<double_complex> h(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
-    dmatrix<double_complex> o(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid());
+    dmatrix<double_complex> o(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     
     h.allocate(alloc_mode);
     o.allocate(alloc_mode);
@@ -1617,7 +1617,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     std::vector< dmatrix<double_complex>* > hpsi_panel(nhpsi);
     for (int i = 0; i < nhpsi; i++)
     {
-        hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid());
+        hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
         // change data distribution of hpsi to panels
         auto sm = hpsi.submatrix(i);
         hpsi_panel[i]->scatter(sm);
@@ -1636,7 +1636,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     if (parameters_.num_mag_dims() != 3)
     {
-        dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), kp->blacs_grid());
+        dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
         if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
         {
             #ifdef __GPU

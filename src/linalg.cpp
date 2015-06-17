@@ -411,7 +411,7 @@ ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_com
 template<>
 void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
-    std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs());
+    std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
     ftn_int info = getrf(n, n, A, 0, 0, &ipiv[0]);
     if (info)
     {

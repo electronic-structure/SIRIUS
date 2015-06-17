@@ -43,7 +43,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
     {
         if (parameters__.num_mag_dims() != 3)
         {
-            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
+            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
             for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
             {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
@@ -62,7 +62,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
         }
         else
         {
-            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid());
+            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
             for (int j = 0; j < ev.num_cols_local(); j++)
@@ -96,19 +96,19 @@ void Force::ibs_force(Simulation_context& ctx__,
 
     forcek__.zero();
 
-    dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
     auto& fv_evec = kp__->fv_eigen_vectors_panel();
 
-    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
-    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
+    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
-    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
-    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
+    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
-    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), param.num_fv_states(), kp__->blacs_grid());
-    dmatrix<double_complex> zf(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> zf(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());

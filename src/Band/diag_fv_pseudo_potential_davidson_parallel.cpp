@@ -45,31 +45,32 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
-    dmatrix<double_complex> phi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> hphi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
+    dmatrix<double_complex> phi(kp__->num_gkvec(), num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> hphi(kp__->num_gkvec(), num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+
     hphi.allocate_ata_buffer(max_num_bands_local);
 
     dmatrix<double_complex> ophi;
-    if (with_overlap) ophi = dmatrix<double_complex>(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
+    if (with_overlap) ophi = dmatrix<double_complex>(kp__->num_gkvec(), num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
-    dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> ovlp_old(num_phi, num_phi, kp__->blacs_grid());
+    dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> ovlp_old(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
-    dmatrix<double_complex> evec(num_phi, num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> evec(num_phi, num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     dmatrix<double_complex> evec_tmp;
-    if (converge_by_energy) evec_tmp = dmatrix<double_complex>(num_phi, num_bands, kp__->blacs_grid());
+    if (converge_by_energy) evec_tmp = dmatrix<double_complex>(num_phi, num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
     std::vector<double> eval_old(num_bands);
     std::vector<double> eval_tmp(num_bands);
     
-    dmatrix<double_complex> res(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
-    dmatrix<double_complex> hpsi(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> res(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> hpsi(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     dmatrix<double_complex> opsi; 
-    if (with_overlap) opsi = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
+    if (with_overlap) opsi = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
     /* trial basis functions */
     assert(phi.num_rows_local() == psi.num_rows_local());

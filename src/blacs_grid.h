@@ -24,20 +24,19 @@ class BLACS_grid
 
         int blacs_context_;
 
-        int cyclic_block_size_;
-
+        /* forbid copy constructor */
         BLACS_grid(BLACS_grid const& src) = delete;
+        /* forbid assigment operator */
         BLACS_grid& operator=(BLACS_grid const& src) = delete; 
 
     public:
         
-        BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__, int cyclic_block_size__)
+        BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
             : comm_(comm__),
               num_ranks_row_(num_ranks_row__),
               num_ranks_col_(num_ranks_col__),
               blacs_handler_(-1),
-              blacs_context_(-1),
-              cyclic_block_size_(cyclic_block_size__)
+              blacs_context_(-1)
         {
             std::vector<int> xy(2);
             xy[0] = num_ranks_col__;
@@ -129,11 +128,6 @@ class BLACS_grid
         inline int rank_col() const
         {
             return rank_col_;
-        }
-
-        inline int cyclic_block_size() const
-        {
-            return cyclic_block_size_;
         }
 };
 
