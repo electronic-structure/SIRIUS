@@ -6,6 +6,7 @@ using namespace sirius;
 void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands, std::vector<int>& mpi_grid)
 {
     Communicator comm(MPI_COMM_WORLD);
+    BLACS_grid blacs_grid(comm, mpi_grid[0], mpi_grid[1]);
 
     double a1[] = {alat, 0, 0};
     double a2[] = {0, alat, 0};
@@ -18,15 +19,15 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     auto& rlv = uc.reciprocal_lattice_vectors();
     auto dims = Utils::find_translation_limits(pw_cutoff, rlv);
 
-    MPI_FFT3D fft(dims, 1, comm);
-
-    if (comm.rank() == 0) printf("FFT dimensions: %i %i %i\n", fft.size(0), fft.size(1), fft.size(2));
+    MPI_FFT3D fft(dims, 1, blacs_grid.comm_row());
 
     auto gv_rho = fft.init_gvec(vector3d<double>(0, 0, 0), pw_cutoff, rlv);
     auto gv_wf = fft.init_gvec(vector3d<double>(0, 0, 0), wf_cutoff, rlv);
 
     if (comm.rank() == 0)
     {
+        printf("MPI grid: %i %i\n", mpi_grid[0], mpi_grid[1]);
+        printf("FFT dimensions: %i %i %i\n", fft.size(0), fft.size(1), fft.size(2));
         printf("num_gvec_rho: %i\n", gv_rho.num_gvec_);
         printf("num_gvec_wf: %i\n", gv_wf.num_gvec_);
     }
@@ -35,11 +36,10 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     rho.zero();
 
 
-    BLACS_grid blacs_grid(comm, mpi_grid[0], mpi_grid[1]);
-
     splindex<block> spl_gv_wf(gv_wf.num_gvec_, blacs_grid.num_ranks_row(), blacs_grid.rank_row());
     DUMP("spl_gv_wf.local_size: %li, block_size: %li", spl_gv_wf.local_size(), spl_gv_wf.block_size());
     DUMP("num_gvec_loc: %i", gv_wf.num_gvec_loc_);
+    DUMP("gvec_offset: %i", gv_wf.gvec_offset_);
 
     dmatrix<double_complex> psi(gv_wf.num_gvec_, num_bands, blacs_grid, (int)spl_gv_wf.block_size(), 1);
 
@@ -54,9 +54,11 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     for (int i = 0; i < psi.num_cols_local(); i++)
     {
         blacs_grid.comm_row().allgather(&psi(0, i), &psi_slice(0), (int)spl_gv_wf.global_offset(), (int)spl_gv_wf.local_size());
-
+        
+        /* this is to make assert statements of mdarray happy */
         int* map = (gv_wf.num_gvec_loc_ != 0) ? &gv_wf.index_map_local_to_local_(0) : nullptr;
-        fft.input_pw(gv_wf.num_gvec_loc_, map, &psi_slice(gv_wf.gvec_offset_));
+        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &psi_slice(gv_wf.gvec_offset_) : nullptr;
+        fft.input_pw(gv_wf.num_gvec_loc_, map, inp);
         fft.transform(1);
         for (int j = 0; j < (int)fft.local_size(); j++) rho(j) += (std::pow(std::real(fft.buffer(j)), 2) +
                                                                    std::pow(std::imag(fft.buffer(j)), 2));
