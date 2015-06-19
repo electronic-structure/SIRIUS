@@ -135,14 +135,14 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     Timer t2("sum_rho");
     for (int i = 0; i < psi.num_cols_local(); i++)
     {
-        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : nullptr;
+        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : NULL;
 
         //blacs_grid.comm_row().allgather(&psi(0, i), &psi_slice(0), (int)spl_gv_wf.global_offset(), (int)spl_gv_wf.local_size());
         blacs_grid.comm_row().alltoall(&psi(0, i), &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], inp,
                                        &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
         
         /* this is to make assert statements of mdarray happy */
-        int* map = (gv_wf.num_gvec_loc_ != 0) ? &gv_wf.index_map_local_to_local_(0) : nullptr;
+        int* map = (gv_wf.num_gvec_loc_ != 0) ? &gv_wf.index_map_local_to_local_(0) : NULL;
         fft.input_pw(gv_wf.num_gvec_loc_, map, inp);
         fft.transform(1);
         for (int j = 0; j < (int)fft.local_size(); j++) rho(j) += (std::pow(std::real(fft.buffer(j)), 2) +
