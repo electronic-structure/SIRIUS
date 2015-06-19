@@ -35,13 +35,16 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     mdarray<double, 1> rho(fft.local_size());
     rho.zero();
 
-
     splindex<block> spl_gv_wf(gv_wf.num_gvec_, blacs_grid.num_ranks_row(), blacs_grid.rank_row());
     DUMP("spl_gv_wf.local_size: %li, block_size: %li", spl_gv_wf.local_size(), spl_gv_wf.block_size());
     DUMP("num_gvec_loc: %i", gv_wf.num_gvec_loc_);
     DUMP("gvec_offset: %i", gv_wf.gvec_offset_);
 
     dmatrix<double_complex> psi(gv_wf.num_gvec_, num_bands, blacs_grid, (int)spl_gv_wf.block_size(), 1);
+    psi.zero();
+
+    for (int i = 0; i < num_bands; i++) psi.set(i, i, double_complex(1, 0));
+
 
     if (psi.num_rows_local() != (int)spl_gv_wf.local_size())
     {
@@ -149,6 +152,13 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
                                                                    std::pow(std::imag(fft.buffer(j)), 2));
     }
     t2.stop();
+
+    double nel = 0;
+    for (int j = 0; j < (int)fft.local_size(); j++) nel += rho(j);
+    comm.allreduce(&nel, 1);
+    nel /= fft.size();
+
+    PRINT("num_bands: %i, num_electrons: %f", num_bands, nel);
 
     
 
