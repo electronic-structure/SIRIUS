@@ -139,7 +139,8 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     Timer t2("sum_rho");
     for (int i = 0; i < psi.num_cols_local(); i++)
     {
-        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : NULL;
+        //double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : NULL;
+        double_complex* inp = &buf(0);
 
         //blacs_grid.comm_row().allgather(&psi(0, i), &psi_slice(0), (int)spl_gv_wf.global_offset(), (int)spl_gv_wf.local_size());
         blacs_grid.comm_row().alltoall(&psi(0, i), &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], inp,
