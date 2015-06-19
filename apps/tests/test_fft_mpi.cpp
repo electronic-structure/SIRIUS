@@ -17,7 +17,7 @@ void test_fft_mpi_correctness(vector3d<int>& dims__)
 
     auto& rlv = uc.reciprocal_lattice_vectors();
 
-    MPI_FFT3D fft(dims__, 1, comm);
+    MPI_FFT3D fft(dims__, Platform::max_num_threads(), comm);
     auto gv = fft.init_gvec(vector3d<double>(0, 0, 0), 15.0, rlv);
 
     #ifdef __PRINT_MEMORY_USAGE
@@ -79,7 +79,7 @@ void test_fft_mpi_performance(vector3d<int>& dims__)
 
     Communicator comm(MPI_COMM_WORLD);
 
-    MPI_FFT3D fft(dims__, 1, comm);
+    MPI_FFT3D fft(dims__, Platform::max_num_threads(), comm);
 
     int num_phi = 100;
 

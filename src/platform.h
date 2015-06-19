@@ -29,11 +29,12 @@
 #include <omp.h>
 #include <signal.h>
 #include <unistd.h>
+#include <vector>
+#include <fstream>
+#include "config.h"
 #ifdef __GPU
 #include "gpu_interface.h"
 #endif
-#include <vector>
-#include <fstream>
 #include "typedefs.h"
 #include "communicator.h"
 

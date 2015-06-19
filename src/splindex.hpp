@@ -30,16 +30,6 @@ class splindex<block>: public splindex_base
 {
     private:
         
-        /// Minimum number of elements for each rank.
-        //size_t min_num_elements_;
-
-        /// Number of ranks with one extra element.
-        //int num_ranks_with_extra_element_;
-
-        /// Size of the prime chunk of the global index.
-        /** This is the part of the global index stored by the number of ranks with an extra element. */
-        //size_t prime_chunk_size_; 
-
         size_t block_size_;
 
         void init(size_t global_index_size__, int num_ranks__, int rank__)
@@ -53,12 +43,6 @@ class splindex<block>: public splindex_base
             rank_ = rank__;
 
             block_size_ = global_index_size_ / num_ranks_ + std::min(size_t(1), global_index_size_ % num_ranks_);
-
-            //min_num_elements_ = global_index_size_ / num_ranks_;
-
-            //num_ranks_with_extra_element_ = static_cast<int>(global_index_size_ % num_ranks_); 
-
-            //prime_chunk_size_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
         }
         
     public:
@@ -129,9 +113,7 @@ class splindex<block>: public splindex_base
 
             assert(idxloc__ < local_size(rank__));
 
-            int n = int(global_index_size_ / block_size_);
-
-            return (rank__ < n) ? rank__ * block_size_ + idxloc__ : n * block_size_ + idxloc__;
+            return rank__ * block_size_ + idxloc__;
         }
 
         inline size_t global_offset() const

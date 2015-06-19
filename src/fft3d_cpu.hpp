@@ -420,14 +420,15 @@ struct gvec_descriptor
 {
     int num_gvec_;
 
-    //mdarray<int16_t, 2> gvec_;
-
     mdarray<int, 1> gvec_index_;
 
     int num_gvec_loc_;
     int gvec_offset_;
 
     mdarray<int, 1> index_map_local_to_local_;
+
+    std::vector<int> gvec_counts_;
+    std::vector<int> gvec_offsets_;
 };
 
 class MPI_FFT3D
@@ -539,7 +540,7 @@ class MPI_FFT3D
             
             #ifdef __FFTW_THREADED
             // this is not working yet
-            //fftw_plan_with_nthreads(num_fft_workers_);
+            fftw_plan_with_nthreads(num_fft_workers_);
             #endif
 
             ptrdiff_t loc_sz_z, loc_offs;
@@ -548,12 +549,6 @@ class MPI_FFT3D
             local_size_z_ = (int)loc_sz_z;
             offset_z_ = (int)loc_offs;
 
-            //== local_z_size_and_offset_ = mdarray<int, 2>(2, comm__.size());
-            //== local_z_size_and_offset_.zero();
-            //== local_z_size_and_offset_(0, comm__.rank()) = local_size_z_;
-            //== local_z_size_and_offset_(1, comm__.rank()) = offset_z_;
-            //== comm__.allreduce(&local_z_size_and_offset_(0, 0), (int)local_z_size_and_offset_.size());
-            
             local_size_ = size(0) * size(1) * local_size_z_;
 
             assert(sizeof(fftw_complex) == sizeof(double_complex));
@@ -561,13 +556,18 @@ class MPI_FFT3D
             fftw_buffer_ = (double_complex*)fftw_alloc_complex(alloc_local_size);
 
             plan_backward_ = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)fftw_buffer_, (fftw_complex*)fftw_buffer_,
-                                                  comm__.mpi_comm(), 1, FFTW_ESTIMATE);
+                                                  comm__.mpi_comm(), FFTW_BACKWARD, FFTW_ESTIMATE);
         
             plan_forward_  = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)fftw_buffer_, (fftw_complex*)fftw_buffer_,
-                                                  comm__.mpi_comm(), -1, FFTW_ESTIMATE);
+                                                  comm__.mpi_comm(), FFTW_FORWARD, FFTW_ESTIMATE);
+
+            if (plan_backward_ == NULL || plan_forward_ == NULL)
+            {
+                TERMINATE("FFTW plan creation failed");
+            }
 
             #ifdef __FFTW_THREADED
-            //fftw_plan_with_nthreads(1);
+            fftw_plan_with_nthreads(1);
             #endif
         }
 
@@ -771,13 +771,16 @@ class MPI_FFT3D
             gv_desc.gvec_index_ = mdarray<int, 1>(gv_desc.num_gvec_);
             gv_desc.index_map_local_to_local_ = mdarray<int, 1>(gv_desc.num_gvec_loc_);
 
-            mdarray<int, 1> tmp(comm_.size());
-            tmp.zero();
-            tmp(comm_.rank()) = gv_desc.num_gvec_loc_;
-            comm_.allreduce(&tmp(0), comm_.size());
+            gv_desc.gvec_counts_ = std::vector<int>(comm_.size(), 0);
+            gv_desc.gvec_offsets_ = std::vector<int>(comm_.size(), 0);
 
-            gv_desc.gvec_offset_ = 0;
-            for (int i = 1; i <= comm_.rank(); i++) gv_desc.gvec_offset_ += tmp(i - 1);
+            /* get local sizes from all ranks */
+            gv_desc.gvec_counts_[comm_.rank()] = gv_desc.num_gvec_loc_;
+            comm_.allreduce(&gv_desc.gvec_counts_[0], comm_.size());
+
+            for (int i = 1; i < comm_.size(); i++) gv_desc.gvec_offsets_[i] = gv_desc.gvec_offsets_[i - 1] +
+                                                                              gv_desc.gvec_counts_[i - 1]; 
+            gv_desc.gvec_offset_ = gv_desc.gvec_offsets_[comm_.rank()];
 
             for (int igloc = 0; igloc < gv_desc.num_gvec_loc_; igloc++)
             {

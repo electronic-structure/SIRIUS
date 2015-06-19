@@ -141,9 +141,9 @@ class dmatrix
                     /* offset in the send buffer */
                     sdispls[rank] = (int)sub_spl_col.global_offset(rank) * num_rows_local();
     
-                    /* size of each recieved sub-panel */
+                    /* size of each received sub-panel */
                     recvcounts[rank] = (int)sub_spl_col.local_size() * num_rows_local(rank);
-                    /* offset in the recieved buffer */
+                    /* offset in the received buffer */
                     if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
                 
@@ -256,7 +256,7 @@ class dmatrix
             std::vector<int> sdispls(num_ranks_col_);
             std::vector<int> rdispls(num_ranks_col_);
 
-            /* rank sends or recieves this number of elements */
+            /* rank sends or receives this number of elements */
             mdarray<T, 1> buf(size__ * sub_spl_row.local_size());
 
             if (direction__ == _panel_to_slice_)
@@ -271,9 +271,9 @@ class dmatrix
                     /* offset in the send buffer */
                     sdispls[rank] = (int)sub_spl_row.global_offset(rank) * nloc;
     
-                    /* size of each recieved sub-panel */
+                    /* size of each received sub-panel */
                     recvcounts[rank] = (int)sub_spl_row.local_size() * n;
-                    /* offset in the recieved buffer */
+                    /* offset in the received buffer */
                     if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
                 
@@ -705,7 +705,7 @@ class dmatrix
                                                     dest_location.second, tag);
             }
 
-            /* blocking recieve */
+            /* blocking receive */
             if (dest_location.second == dest__.rank_col())
             {
                 int tag = icol_src__;

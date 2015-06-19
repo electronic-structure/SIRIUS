@@ -19,7 +19,7 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     auto& rlv = uc.reciprocal_lattice_vectors();
     auto dims = Utils::find_translation_limits(pw_cutoff, rlv);
 
-    MPI_FFT3D fft(dims, 1, blacs_grid.comm_row());
+    MPI_FFT3D fft(dims, Platform::max_num_threads(), blacs_grid.comm_row());
 
     auto gv_rho = fft.init_gvec(vector3d<double>(0, 0, 0), pw_cutoff, rlv);
     auto gv_wf = fft.init_gvec(vector3d<double>(0, 0, 0), wf_cutoff, rlv);
@@ -48,16 +48,101 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
         TERMINATE("wrong index splitting");
     }
 
-    mdarray<double_complex, 1> psi_slice(gv_wf.num_gvec_);
-    
+    mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc_);
+
+    //== auto scounts = spl_gv_wf.counts();
+    //== auto soffsets = spl_gv_wf.offsets();
+
+    //== auto rcounts = &gv_wf.counts_(0);
+    //== auto roffsets = &gv_wf.offsets_(0);
+
+    //== if (comm.rank() == 0)
+    //== {
+    //==     for (int i = 0; i < blacs_grid.comm_row().size(); i++)
+    //==     {
+    //==         printf("rank: %i, sc, so: %i %i, rc, ro: %i %i\n", i, scounts[i], soffsets[i], rcounts[i], roffsets[i]);
+
+    //==     }
+    //== }
+
+    auto a2a_desc = blacs_grid.comm_row().map_alltoall(spl_gv_wf.counts(), gv_wf.gvec_counts_); 
+
+
+    //std::vector<int> sendcounts(blacs_grid.comm_row().size(), 0);
+    //std::vector<int> sdispls(blacs_grid.comm_row().size(), -1);
+    //std::vector<int> recvcounts(blacs_grid.comm_row().size(), 0);
+    //std::vector<int> rdispls(blacs_grid.comm_row().size(), -1);
+    //
+    ///* loop over sending ranks */
+    //for (int sr = 0; sr < blacs_grid.comm_row().size(); sr++)
+    //{
+    //    if (!scounts[sr]) continue;
+
+    //    /* beginning of index */
+    //    int i0 = soffsets[sr];
+    //    /* end of index */
+    //    int i1 = soffsets[sr] + scounts[sr] - 1;
+
+    //    PRINT("--------------------");
+    //    PRINT("sending rank: %i", sr);
+    //    PRINT("i0, i1: %i %i", i0, i1);
+    //    PRINT("--------------------");
+
+    //    /* loop over receiving ranks */
+    //    for (int rr = 0; rr < blacs_grid.comm_row().size(); rr++)
+    //    {
+    //        if (!rcounts[rr]) continue;
+
+    //        int j0 = roffsets[rr];
+    //        int j1 = roffsets[rr] + rcounts[rr] - 1;
+    //        PRINT("j0, j1: %i %i", j0, j1);
+
+    //        /* rank rr recieves nothing from rank sr*/
+    //        if (j1 < i0 || i1 < j0) continue;
+
+    //        int s_ofs = std::max(j0 - i0, 0);
+    //        int r_ofs = std::max(i0 - j0, 0);
+    //        int sz = std::min(i1, j1) - std::max(i0, j0) + 1;
+    //        
+    //        PRINT("rank: %i receives %i elements to position %i", rr, sz, r_ofs);
+    //        if (blacs_grid.comm_row().rank() == sr)
+    //        {
+    //            sendcounts[rr] = sz;
+    //            sdispls[rr] = s_ofs;
+    //        }
+    //        if (blacs_grid.comm_row().rank() == rr)
+    //        {
+    //            recvcounts[sr] = sz;
+    //            rdispls[sr] = r_ofs;
+    //        }
+    //    }
+    //}
+
+    //int n1(0), n2(0);
+    //for (int i = 0; i < blacs_grid.comm_row().size(); i++)
+    //{
+    //    n1 += sendcounts[i];
+    //    n2 += recvcounts[i];
+    //}
+    //if (n1 != scounts[blacs_grid.rank_row()]) TERMINATE("wrong number of send counts");
+    //if (n2 != rcounts[blacs_grid.rank_row()]) TERMINATE("wrong number of receive counts");
+
+               
+
+
+
+
     Timer t2("sum_rho");
     for (int i = 0; i < psi.num_cols_local(); i++)
     {
-        blacs_grid.comm_row().allgather(&psi(0, i), &psi_slice(0), (int)spl_gv_wf.global_offset(), (int)spl_gv_wf.local_size());
+        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : nullptr;
+
+        //blacs_grid.comm_row().allgather(&psi(0, i), &psi_slice(0), (int)spl_gv_wf.global_offset(), (int)spl_gv_wf.local_size());
+        blacs_grid.comm_row().alltoall(&psi(0, i), &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], inp,
+                                       &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
         
         /* this is to make assert statements of mdarray happy */
         int* map = (gv_wf.num_gvec_loc_ != 0) ? &gv_wf.index_map_local_to_local_(0) : nullptr;
-        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &psi_slice(gv_wf.gvec_offset_) : nullptr;
         fft.input_pw(gv_wf.num_gvec_loc_, map, inp);
         fft.transform(1);
         for (int j = 0; j < (int)fft.local_size(); j++) rho(j) += (std::pow(std::real(fft.buffer(j)), 2) +
