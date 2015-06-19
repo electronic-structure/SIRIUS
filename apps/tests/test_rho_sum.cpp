@@ -51,7 +51,8 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
         TERMINATE("wrong index splitting");
     }
 
-    mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc_);
+    //mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc_);
+    mdarray<double_complex, 1> buf(gv_wf.gvec_counts_[0]);
 
     //== auto scounts = spl_gv_wf.counts();
     //== auto soffsets = spl_gv_wf.offsets();
