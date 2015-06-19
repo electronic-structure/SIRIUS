@@ -61,32 +61,30 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
 
     auto a2a_desc = blacs_grid.comm_row().map_alltoall(spl_gv_wf.counts(), gv_wf.gvec_counts_); 
 
-    for (int i = 0; i <  blacs_grid.comm_row().size(); i++)
-    {
-        if (blacs_grid.comm_row().rank() == i)
-        {
-            printf("-----------\n");
-            printf("rank: %i\n", i);
-            printf("-----------\n");
-            printf("sendcounts : ");
-            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-                printf("%5i ", a2a_desc.sendcounts[j]);
-            printf("\n");
-            printf("sdispls    : ");
-            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-                printf("%5i ", a2a_desc.sdispls[j]);
-            printf("\n");
-            printf("recvcounts : ");
-            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-                printf("%5i ", a2a_desc.recvcounts[j]);
-            printf("\n");
-            printf("rdispls    : ");
-            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-                printf("%5i ", a2a_desc.rdispls[j]);
-            printf("\n");
-        }
-        blacs_grid.comm_row().barrier();
-    }
+    pstdout pout(blacs_grid.comm_row());
+
+    pout.printf("-----------\n");
+    pout.printf("rank: %i\n", blacs_grid.comm_row().rank());
+    pout.printf("-----------\n");
+    pout.printf("sendcounts : ");
+    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+        pout.printf("%5i ", a2a_desc.sendcounts[j]);
+    pout.printf("\n");
+    pout.printf("sdispls    : ");
+    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+        pout.printf("%5i ", a2a_desc.sdispls[j]);
+    pout.printf("\n");
+    pout.printf("recvcounts : ");
+    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+        pout.printf("%5i ", a2a_desc.recvcounts[j]);
+    pout.printf("\n");
+    pout.printf("rdispls    : ");
+    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+        pout.printf("%5i ", a2a_desc.rdispls[j]);
+    pout.printf("\n");
+
+    pout.flush();
+    comm.barrier();
 
     PRINT(" ");
 
