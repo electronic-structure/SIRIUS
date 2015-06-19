@@ -36,14 +36,20 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     rho.zero();
 
     splindex<block> spl_gv_wf(gv_wf.num_gvec_, blacs_grid.num_ranks_row(), blacs_grid.rank_row());
-    DUMP("spl_gv_wf.local_size: %li, block_size: %li", spl_gv_wf.local_size(), spl_gv_wf.block_size());
-    DUMP("num_gvec_loc: %i", gv_wf.num_gvec_loc_);
-    DUMP("gvec_offset: %i", gv_wf.gvec_offset_);
+    //DUMP("spl_gv_wf.local_size: %li, block_size: %li", spl_gv_wf.local_size(), spl_gv_wf.block_size());
+    //DUMP("num_gvec_loc: %i", gv_wf.num_gvec_loc_);
+    //DUMP("gvec_offset: %i", gv_wf.gvec_offset_);
 
     dmatrix<double_complex> psi(gv_wf.num_gvec_, num_bands, blacs_grid, (int)spl_gv_wf.block_size(), 1);
     psi.zero();
 
-    for (int i = 0; i < num_bands; i++) psi.set(i, i, double_complex(1, 0));
+    for (int i = 0; i < num_bands; i++) 
+    {
+        for (int ig = 0; ig < gv_wf.num_gvec_; ig++)
+        {
+            psi.set(ig, i, double_complex(1, 0) / std::sqrt(double((gv_wf.num_gvec_))));
+        }
+    }
 
 
     if (psi.num_rows_local() != (int)spl_gv_wf.local_size())
@@ -51,98 +57,45 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
         TERMINATE("wrong index splitting");
     }
 
-    //mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc_);
-    mdarray<double_complex, 1> buf(gv_wf.gvec_counts_[0]);
-
-    //== auto scounts = spl_gv_wf.counts();
-    //== auto soffsets = spl_gv_wf.offsets();
-
-    //== auto rcounts = &gv_wf.counts_(0);
-    //== auto roffsets = &gv_wf.offsets_(0);
-
-    //== if (comm.rank() == 0)
-    //== {
-    //==     for (int i = 0; i < blacs_grid.comm_row().size(); i++)
-    //==     {
-    //==         printf("rank: %i, sc, so: %i %i, rc, ro: %i %i\n", i, scounts[i], soffsets[i], rcounts[i], roffsets[i]);
-
-    //==     }
-    //== }
+    mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc_);
 
     auto a2a_desc = blacs_grid.comm_row().map_alltoall(spl_gv_wf.counts(), gv_wf.gvec_counts_); 
 
+    for (int i = 0; i <  blacs_grid.comm_row().size(); i++)
+    {
+        if (blacs_grid.comm_row().rank() == i)
+        {
+            printf("-----------\n");
+            printf("rank: %i\n", i);
+            printf("-----------\n");
+            printf("sendcounts : ");
+            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+                printf("%5i ", a2a_desc.sendcounts[j]);
+            printf("\n");
+            printf("sdispls    : ");
+            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+                printf("%5i ", a2a_desc.sdispls[j]);
+            printf("\n");
+            printf("recvcounts : ");
+            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+                printf("%5i ", a2a_desc.recvcounts[j]);
+            printf("\n");
+            printf("rdispls    : ");
+            for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+                printf("%5i ", a2a_desc.rdispls[j]);
+            printf("\n");
+        }
+        blacs_grid.comm_row().barrier();
+    }
 
-    //std::vector<int> sendcounts(blacs_grid.comm_row().size(), 0);
-    //std::vector<int> sdispls(blacs_grid.comm_row().size(), -1);
-    //std::vector<int> recvcounts(blacs_grid.comm_row().size(), 0);
-    //std::vector<int> rdispls(blacs_grid.comm_row().size(), -1);
-    //
-    ///* loop over sending ranks */
-    //for (int sr = 0; sr < blacs_grid.comm_row().size(); sr++)
-    //{
-    //    if (!scounts[sr]) continue;
-
-    //    /* beginning of index */
-    //    int i0 = soffsets[sr];
-    //    /* end of index */
-    //    int i1 = soffsets[sr] + scounts[sr] - 1;
-
-    //    PRINT("--------------------");
-    //    PRINT("sending rank: %i", sr);
-    //    PRINT("i0, i1: %i %i", i0, i1);
-    //    PRINT("--------------------");
-
-    //    /* loop over receiving ranks */
-    //    for (int rr = 0; rr < blacs_grid.comm_row().size(); rr++)
-    //    {
-    //        if (!rcounts[rr]) continue;
-
-    //        int j0 = roffsets[rr];
-    //        int j1 = roffsets[rr] + rcounts[rr] - 1;
-    //        PRINT("j0, j1: %i %i", j0, j1);
-
-    //        /* rank rr recieves nothing from rank sr*/
-    //        if (j1 < i0 || i1 < j0) continue;
-
-    //        int s_ofs = std::max(j0 - i0, 0);
-    //        int r_ofs = std::max(i0 - j0, 0);
-    //        int sz = std::min(i1, j1) - std::max(i0, j0) + 1;
-    //        
-    //        PRINT("rank: %i receives %i elements to position %i", rr, sz, r_ofs);
-    //        if (blacs_grid.comm_row().rank() == sr)
-    //        {
-    //            sendcounts[rr] = sz;
-    //            sdispls[rr] = s_ofs;
-    //        }
-    //        if (blacs_grid.comm_row().rank() == rr)
-    //        {
-    //            recvcounts[sr] = sz;
-    //            rdispls[sr] = r_ofs;
-    //        }
-    //    }
-    //}
-
-    //int n1(0), n2(0);
-    //for (int i = 0; i < blacs_grid.comm_row().size(); i++)
-    //{
-    //    n1 += sendcounts[i];
-    //    n2 += recvcounts[i];
-    //}
-    //if (n1 != scounts[blacs_grid.rank_row()]) TERMINATE("wrong number of send counts");
-    //if (n2 != rcounts[blacs_grid.rank_row()]) TERMINATE("wrong number of receive counts");
-
-               
-
-
-
+    PRINT(" ");
 
     Timer t2("sum_rho");
     for (int i = 0; i < psi.num_cols_local(); i++)
     {
-        //double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : NULL;
-        double_complex* inp = &buf(0);
+        PRINT("band: %i", i);
+        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : NULL;
 
-        //blacs_grid.comm_row().allgather(&psi(0, i), &psi_slice(0), (int)spl_gv_wf.global_offset(), (int)spl_gv_wf.local_size());
         blacs_grid.comm_row().alltoall(&psi(0, i), &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], inp,
                                        &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
         
