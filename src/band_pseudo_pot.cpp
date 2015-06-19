@@ -23,9 +23,9 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
     Timer t("sirius::Band::add_non_local_contribution_parallel");
 
     /* beginning of the band index */
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     /* end of the band index */
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
     /* local number of states to which Hamiltonian has to be applied */
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
@@ -132,8 +132,8 @@ void Band::apply_h_local_parallel(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::apply_h_local_parallel", kp__->comm_row());
 
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
     splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
     
@@ -167,9 +167,9 @@ void Band::apply_h_parallel(K_point* kp__,
     Timer t("sirius::Band::apply_h_parallel", kp__->comm_row());
 
     /* beginning of the band index */
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     /* end of the band index */
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
     /* local number of states to which Hamiltonian has to be applied */
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
@@ -211,9 +211,9 @@ void Band::apply_h_o_parallel(K_point* kp__,
     Timer t("sirius::Band::apply_h_o_parallel", kp__->comm_row());
 
     /* beginning of the band index */
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     /* end of the band index */
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
     /* local number of states to which Hamiltonian has to be applied */
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
@@ -318,10 +318,10 @@ void Band::set_fv_h_o_parallel_simple(int N__,
 {
     Timer t("sirius::Band::set_fv_h_o_parallel_simple", kp__->comm());
 
-    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
 
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < (int)s0_col.local_size(); i++)
@@ -379,10 +379,10 @@ void Band::set_fv_h_o_fast_parallel(int N__,
 
     Timer t("sirius::Band::set_fv_h_o_fast_parallel", kp__->comm());
 
-    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
 
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < (int)s0_col.local_size(); i++)
@@ -515,10 +515,10 @@ void Band::set_fv_h_o_parallel(int N__,
     
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
 
-    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
-    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
 
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < (int)s0_col.local_size(); i++)
@@ -920,7 +920,7 @@ void Band::precondition_and_normalize_residuals_parallel(int num_bands__,
 
 {
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
-                                             blacs_grid_.cyclic_block_size());
+                                             parameters_.cyclic_block_size());
 
     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
     /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
@@ -1143,14 +1143,14 @@ void Band::residuals_parallel(int N__,
     auto pu = parameters_.processing_unit();
 
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
-                                             blacs_grid_.cyclic_block_size());
+                                             parameters_.cyclic_block_size());
     splindex<block_cyclic> spl_num_bands_row(num_bands__, kp__->num_ranks_row(), kp__->rank_row(),
-                                             blacs_grid_.cyclic_block_size());
+                                             parameters_.cyclic_block_size());
     
     /* transpose matrix of eigen-vectors;
      * row index of evec_t runs over bands, column index runs over basis functions 
      */ 
-    dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid());
+    dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     linalg<CPU>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
     
     /* local number of basis function |phi> */

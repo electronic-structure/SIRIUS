@@ -54,7 +54,9 @@ class dmatrix
 
         int rank_col_;
 
-        int bs_;
+        int bs_row_;
+
+        int bs_col_;
 
         BLACS_grid const* blacs_grid_;
 
@@ -74,17 +76,17 @@ class dmatrix
 
         void init()
         {
-            #ifdef __SCALAPACK
-            bs_ = blacs_grid_->cyclic_block_size();
-            #endif
+            //= #ifdef __SCALAPACK
+            //= bs_ = blacs_grid_->cyclic_block_size();
+            //= #endif
 
-            spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_);
-            spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs_);
+            spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_row_);
+            spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs_col_);
 
             matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef __SCALAPACK
-            linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
+            linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
             #endif
         }
 
@@ -103,8 +105,8 @@ class dmatrix
             }
 
             /* get local size of slice */
-            splindex<block_cyclic> s0(offset__,          num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(offset__ + size__, num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s0(offset__,          num_ranks_col_, rank_col_, bs_col_);
+            splindex<block_cyclic> s1(offset__ + size__, num_ranks_col_, rank_col_, bs_col_);
 
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             splindex<block> sub_spl_col(nloc, num_ranks_row_, rank_row_);
@@ -139,9 +141,9 @@ class dmatrix
                     /* offset in the send buffer */
                     sdispls[rank] = (int)sub_spl_col.global_offset(rank) * num_rows_local();
     
-                    /* size of each recieved sub-panel */
+                    /* size of each received sub-panel */
                     recvcounts[rank] = (int)sub_spl_col.local_size() * num_rows_local(rank);
-                    /* offset in the recieved buffer */
+                    /* offset in the received buffer */
                     if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
                 
@@ -225,8 +227,8 @@ class dmatrix
             //== }
 
             /* get position in the distributed matrix */
-            splindex<block_cyclic> s0(offs_in_panel__,          num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(offs_in_panel__ + size__, num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s0(offs_in_panel__,          num_ranks_col_, rank_col_, bs_col_);
+            splindex<block_cyclic> s1(offs_in_panel__ + size__, num_ranks_col_, rank_col_, bs_col_);
 
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             
@@ -254,7 +256,7 @@ class dmatrix
             std::vector<int> sdispls(num_ranks_col_);
             std::vector<int> rdispls(num_ranks_col_);
 
-            /* rank sends or recieves this number of elements */
+            /* rank sends or receives this number of elements */
             mdarray<T, 1> buf(size__ * sub_spl_row.local_size());
 
             if (direction__ == _panel_to_slice_)
@@ -269,9 +271,9 @@ class dmatrix
                     /* offset in the send buffer */
                     sdispls[rank] = (int)sub_spl_row.global_offset(rank) * nloc;
     
-                    /* size of each recieved sub-panel */
+                    /* size of each received sub-panel */
                     recvcounts[rank] = (int)sub_spl_row.local_size() * n;
-                    /* offset in the recieved buffer */
+                    /* offset in the received buffer */
                     if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
                 
@@ -362,44 +364,47 @@ class dmatrix
               rank_row_(0), 
               num_ranks_col_(1), 
               rank_col_(0),
-              bs_(1),
+              bs_row_(1),
+              bs_col_(1),
               blacs_grid_(nullptr)
         {
         }
         
-        dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__) 
+        dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__)
             : num_rows_(num_rows__),
               num_cols_(num_cols__),
               num_ranks_row_(blacs_grid__.num_ranks_row()), 
               rank_row_(blacs_grid__.rank_row()), 
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               rank_col_(blacs_grid__.rank_col()),
-              bs_(1),
+              bs_row_(bs_row__),
+              bs_col_(bs_col__),
               blacs_grid_(&blacs_grid__)
         {
             init();
             matrix_local_.allocate();
         }
 
-        dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__) 
+        dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__) 
             : num_rows_(num_rows__),
               num_cols_(num_cols__),
               num_ranks_row_(blacs_grid__.num_ranks_row()), 
               rank_row_(blacs_grid__.rank_row()), 
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               rank_col_(blacs_grid__.rank_col()),
-              bs_(1),
+              bs_row_(bs_row__),
+              bs_col_(bs_col__),
               blacs_grid_(&blacs_grid__)
         {
             init();
             matrix_local_ = matrix<T>(ptr__, spl_row_.local_size(), spl_col_.local_size());
         }
 
-        // forbid copy constructor
+        /* forbid copy constructor */
         dmatrix(dmatrix<T> const& src) = delete;
-        // forbid move constructor
+        /* forbid move constructor */
         dmatrix(dmatrix<T>&& src) = delete;
-        // forbid assigment operator
+        /* forbid assigment operator */
         dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
 
         inline dmatrix<T>& operator=(dmatrix<T>&& src)
@@ -412,7 +417,8 @@ class dmatrix
                 rank_row_      = src.rank_row_;
                 num_ranks_col_ = src.num_ranks_col_;
                 rank_col_      = src.rank_col_;
-                bs_            = src.bs_;
+                bs_row_        = src.bs_row_;
+                bs_col_        = src.bs_col_;
                 blacs_grid_    = src.blacs_grid_;
                 spl_row_       = src.spl_row_;
                 spl_col_       = src.spl_col_;
@@ -519,8 +525,8 @@ class dmatrix
 
         inline void copy_cols_to_device(int icol_fisrt, int icol_last)
         {
-            splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
+            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             if (nloc)
             {
@@ -531,8 +537,8 @@ class dmatrix
 
         inline void copy_cols_to_host(int icol_fisrt, int icol_last)
         {
-            splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
+            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             if (nloc)
             {
@@ -699,7 +705,7 @@ class dmatrix
                                                     dest_location.second, tag);
             }
 
-            /* blocking recieve */
+            /* blocking receive */
             if (dest_location.second == dest__.rank_col())
             {
                 int tag = icol_src__;
@@ -710,9 +716,14 @@ class dmatrix
             log_function_exit(__func__);
         }
 
-        inline int bs() const
+        inline int bs_row() const
         {
-            return bs_;
+            return bs_row_;
+        }
+
+        inline int bs_col() const
+        {
+            return bs_col_;
         }
 
 };

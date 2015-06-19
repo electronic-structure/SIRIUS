@@ -510,14 +510,14 @@ void Band::generate_fv_states_pp(K_point* kp__,
     auto pu = parameters_.processing_unit();
 
     splindex<block_cyclic> spl_num_bands_col(parameters_.num_fv_states(), kp__->num_ranks_col(), kp__->rank_col(),
-                                             blacs_grid_.cyclic_block_size());
+                                             parameters_.cyclic_block_size());
     splindex<block_cyclic> spl_num_bands_row(parameters_.num_fv_states(), kp__->num_ranks_row(), kp__->rank_row(),
-                                             blacs_grid_.cyclic_block_size());
+                                             parameters_.cyclic_block_size());
     
 
     int num_bands = parameters_.num_fv_states();
     /* transpose matrix of eigen-vectors */
-    dmatrix<double_complex> evec_t(num_bands, num_phi__, kp__->blacs_grid());
+    dmatrix<double_complex> evec_t(num_bands, num_phi__, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     linalg<CPU>::tranu(num_bands, num_phi__, evec__, 0, 0, evec_t, 0, 0);
     
     /* local number of basis function |phi> */

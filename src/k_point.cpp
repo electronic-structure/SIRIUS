@@ -57,10 +57,10 @@ K_point::K_point(Simulation_context& ctx__,
     rank_col_ = comm_col_.rank();
     
     /* distribue first-variational states along columns */
-    spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+    spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
     
     /* distribue spinor wave-functions along columns */
-    spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+    spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
     
     /* additionally split along rows */
     sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
@@ -87,13 +87,16 @@ void K_point::initialize()
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
         if (parameters_.num_mag_dims() == 3)
         {
-            sv_eigen_vectors_[0] = dmatrix<double_complex>(parameters_.num_bands(), parameters_.num_bands(), blacs_grid_);
+            sv_eigen_vectors_[0] = dmatrix<double_complex>(parameters_.num_bands(), parameters_.num_bands(), blacs_grid_,
+                                                           parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
         }
         else
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                sv_eigen_vectors_[ispn] = dmatrix<double_complex>(parameters_.num_fv_states(), parameters_.num_fv_states(), blacs_grid_);
+                sv_eigen_vectors_[ispn] = dmatrix<double_complex>(parameters_.num_fv_states(), parameters_.num_fv_states(), 
+                                                                  blacs_grid_, parameters_.cyclic_block_size(),
+                                                                  parameters_.cyclic_block_size());
             }
         }
     }
@@ -341,14 +344,17 @@ void K_point::update()
         /* allocate memory for first-variational eigen vectors */
         if (parameters_.full_potential())
         {
-            fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_);
+            fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(),
+                                                              blacs_grid_, parameters_.cyclic_block_size(),
+                                                              parameters_.cyclic_block_size());
             fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
 
         if (parameters_.full_potential())
         {
             // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
-            fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
+            fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_,
+                                                       parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
             fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
         }
         else
@@ -637,11 +643,12 @@ void K_point::generate_fv_states()
             /* total number of augmented-wave basis functions over all atoms */
             int naw = unit_cell_.mt_aw_basis_size();
 
-            dmatrix<double_complex> alm_panel(num_gkvec(), naw, blacs_grid_);
+            dmatrix<double_complex> alm_panel(num_gkvec(), naw, blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
             /* generate panel of matching coefficients, normal layout */
             alm_coeffs_row_->generate<true>(alm_panel);
 
-            dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), blacs_grid_);
+            dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+
             /* gnerate aw expansion coefficients */
             linalg<CPU>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
                               fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
@@ -772,7 +779,7 @@ void K_point::generate_spinor_wave_functions()
         else
         {
             /* spin component of spinor wave functions */
-            dmatrix<double_complex> spin_component_panel_(wf_size(), parameters_.num_bands(), blacs_grid_);
+            dmatrix<double_complex> spin_component_panel_(wf_size(), parameters_.num_bands(), blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
             
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
@@ -1053,19 +1060,19 @@ void K_point::distribute_basis_index()
     if (parameters_.wave_function_distribution() == block_cyclic_2d)
     {
         /* distribute Gk+lo basis between rows */
-        splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, blacs_grid_.cyclic_block_size());
+        splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
         gklo_basis_descriptors_row_.resize(spl_row.local_size());
         for (int i = 0; i < (int)spl_row.local_size(); i++)
             gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
         /* distribute Gk+lo basis between columns */
-        splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
+        splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
         gklo_basis_descriptors_col_.resize(spl_col.local_size());
         for (int i = 0; i < (int)spl_col.local_size(); i++)
             gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
 
         #ifdef __SCALAPACK
-        int bs = blacs_grid_.cyclic_block_size();
+        int bs = parameters_.cyclic_block_size();
         int nr = linalg_base::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
         
         if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");

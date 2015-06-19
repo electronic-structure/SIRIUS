@@ -48,12 +48,12 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     int num_gkvec_loc = kp__->num_gkvec_loc();
     
-    dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid());
-    dmatrix<double_complex> ovlp_old(num_phi, num_phi, kp__->blacs_grid());
+    dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> ovlp(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> hmlt_old(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> ovlp_old(num_phi, num_phi, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
-    dmatrix<double_complex> evec(num_phi, num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> evec(num_phi, num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
     matrix<double_complex> evec_full(num_phi, num_bands);
     matrix<double_complex> evec_full_tmp;

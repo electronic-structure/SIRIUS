@@ -22,9 +22,9 @@
  *  \brief Contains remaining implementation of Platform class.
  */
 
-#include "platform.h"
-#include <fftw3.h>
 #include <fftw3-mpi.h>
+#include <fftw3.h>
+#include "platform.h"
 
 int Platform::num_fft_threads_ = -1;
 
@@ -80,7 +80,6 @@ void Platform::initialize(bool call_mpi_init__)
         }
     }
     #endif
-
     fftw_mpi_init();
 
     assert(sizeof(int) == 4);

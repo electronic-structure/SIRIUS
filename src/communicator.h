@@ -37,6 +37,14 @@
     }                                                                               \
 }
 
+struct alltoall_descriptor
+{
+    std::vector<int> sendcounts;
+    std::vector<int> sdispls;
+    std::vector<int> recvcounts;
+    std::vector<int> rdispls;
+};
+
 /// MPI communicator wrapper.
 class Communicator
 {
@@ -266,6 +274,77 @@ class Communicator
         {
             CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, type_wrapper<T>::mpi_type_id(),
                                      recvbuf__, recvcounts__, rdispls__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
+
+        alltoall_descriptor map_alltoall(std::vector<int> local_sizes_in, std::vector<int> local_sizes_out) const
+        {
+            alltoall_descriptor a2a;
+            a2a.sendcounts = std::vector<int>(size(), 0);
+            a2a.sdispls    = std::vector<int>(size(), -1);
+            a2a.recvcounts = std::vector<int>(size(), 0);
+            a2a.rdispls    = std::vector<int>(size(), -1);
+
+            std::vector<int> offs_in(size(), 0);
+            std::vector<int> offs_out(size(), 0);
+
+            for (int i = 1; i < size(); i++)
+            {
+                offs_in[i] = offs_in[i - 1] + local_sizes_in[i - 1];
+                offs_out[i] = offs_out[i - 1] + local_sizes_out[i - 1];
+            }
+
+            /* loop over sending ranks */
+            for (int sr = 0; sr < size(); sr++)
+            {
+                if (!local_sizes_in[sr]) continue;
+
+                /* beginning of index */
+                int i0 = offs_in[sr];
+                /* end of index */
+                int i1 = offs_in[sr] + local_sizes_in[sr] - 1;
+
+                /* loop over receiving ranks */
+                for (int rr = 0; rr < size(); rr++)
+                {
+                    if (!local_sizes_out[rr]) continue;
+
+                    int j0 = offs_out[rr];
+                    int j1 = offs_out[rr] + local_sizes_out[rr] - 1;
+
+                    /* rank rr recieves nothing from rank sr*/
+                    if (j1 < i0 || i1 < j0) continue;
+
+                    int s_ofs = std::max(j0 - i0, 0);
+                    int r_ofs = std::max(i0 - j0, 0);
+                    int sz = std::min(i1, j1) - std::max(i0, j0) + 1;
+                    
+                    if (rank() == sr)
+                    {
+                        a2a.sendcounts[rr] = sz;
+                        a2a.sdispls[rr] = s_ofs;
+                    }
+                    if (rank() == rr)
+                    {
+                        a2a.recvcounts[sr] = sz;
+                        a2a.rdispls[sr] = r_ofs;
+                    }
+                }
+            }
+
+            int n1 = 0;
+            int n2 = 0;
+            for (int i = 0; i < size(); i++)
+            {
+                n1 += a2a.sendcounts[i];
+                n2 += a2a.recvcounts[i];
+            }
+            if (n1 != local_sizes_in[rank()] || n2 != local_sizes_out[rank()])
+            {
+                printf("wrong sizes");
+                MPI_Abort(MPI_COMM_WORLD, -1);
+            }
+
+            return a2a;
         }
 };
 

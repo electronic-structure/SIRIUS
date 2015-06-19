@@ -485,7 +485,7 @@ class Band
                 }
                 case ev_scalapack:
                 {
-                    std_evp_solver_ = new standard_evp_scalapack(blacs_grid_);
+                    std_evp_solver_ = new standard_evp_scalapack(blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
                     break;
                 }
                 case ev_plasma:
@@ -509,17 +509,17 @@ class Band
                 }
                 case ev_scalapack:
                 {
-                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 0.0);
+                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 0.0, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
                     break;
                 }
                 case ev_elpa1:
                 {
-                    gen_evp_solver_ = new generalized_evp_elpa1(blacs_grid_);
+                    gen_evp_solver_ = new generalized_evp_elpa1(blacs_grid_, parameters_.cyclic_block_size());
                     break;
                 }
                 case ev_elpa2:
                 {
-                    gen_evp_solver_ = new generalized_evp_elpa2(blacs_grid_);
+                    gen_evp_solver_ = new generalized_evp_elpa2(blacs_grid_, parameters_.cyclic_block_size());
                     break;
                 }
                 case ev_magma:
@@ -529,12 +529,12 @@ class Band
                 }
                 case ev_rs_gpu:
                 {
-                    gen_evp_solver_ = new generalized_evp_rs_gpu(blacs_grid_);
+                    gen_evp_solver_ = new generalized_evp_rs_gpu(blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
                     break;
                 }
                 case ev_rs_cpu:
                 {
-                    gen_evp_solver_ = new generalized_evp_rs_cpu(blacs_grid_);
+                    gen_evp_solver_ = new generalized_evp_rs_cpu(blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
                     break;
                 }
                 default:

@@ -61,10 +61,10 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
     std::vector< dmatrix<double_complex> > phi(order);
     for (int i = 0; i < order; i++)
     {
-        phi[i] = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
+        phi[i] = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     }
 
-    dmatrix<double_complex> hphi(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> hphi(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     hphi.allocate_ata_buffer((int)kp__->spl_fv_states().local_size(0));
 
     /* trial basis functions */
@@ -278,10 +278,10 @@ void Band::diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
         #endif
     }
 
-    dmatrix<double_complex> hmlt(num_bands, num_bands, kp__->blacs_grid());
-    dmatrix<double_complex> ovlp(num_bands, num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> hmlt(num_bands, num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> ovlp(num_bands, num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
 
-    dmatrix<double_complex> evec(num_bands, num_bands, kp__->blacs_grid());
+    dmatrix<double_complex> evec(num_bands, num_bands, kp__->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     std::vector<double> eval(num_bands);
 
     Timer t1("sirius::Band::diag_fv_pseudo_potential|set_h_o", kp__->comm());

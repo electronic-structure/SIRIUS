@@ -376,8 +376,7 @@ void sirius_global_initialize()
 
     blacs_grid = new BLACS_grid(sim_ctx->mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
                                 sim_ctx->mpi_grid().dimension_size(_dim_row_),
-                                sim_ctx->mpi_grid().dimension_size(_dim_col_),
-                                sim_param->cyclic_block_size());
+                                sim_ctx->mpi_grid().dimension_size(_dim_col_));
 
     log_function_exit(__func__);
 }
@@ -1480,7 +1479,7 @@ void sirius_get_matching_coefficients(int32_t const* kset_id__,
                                           sim_ctx->unit_cell().num_atoms());
 
 
-        dmatrix<double_complex> alm(kp->num_gkvec_row(), sim_ctx->unit_cell().mt_aw_basis_size(), *blacs_grid);
+        dmatrix<double_complex> alm(kp->num_gkvec_row(), sim_ctx->unit_cell().mt_aw_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
         kp->alm_coeffs_row()->generate<true>(alm);
 
         for (int i = 0; i < sim_ctx->unit_cell().mt_aw_basis_size(); i++)
@@ -1527,8 +1526,8 @@ void sirius_get_fv_h_o(int32_t const* kset_id__,
             error_local(__FILE__, __LINE__, "wrong matrix size");
         }
 
-        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid);
-        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid);
+        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
+        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
         kset_list[*kset_id__]->band()->set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
     }
 }

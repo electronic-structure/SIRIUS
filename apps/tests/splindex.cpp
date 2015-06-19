@@ -65,16 +65,24 @@ void test3()
 {
     printf("\n");
     printf("test3\n");
-    for (int num_ranks = 1; num_ranks < 17; num_ranks++)
+    for (int num_ranks = 1; num_ranks < 20; num_ranks++)
     {
-        for (int N = 0; N < 113; N++)
+        for (int N = 1; N < 1130; N++)
         {
             splindex<block> spl(N, num_ranks, 0);
             int sz = 0;
             for (int i = 0; i < num_ranks; i++) sz += (int)spl.local_size(i);
             if (sz != N) 
             {
-                std::cout << "wrong sum of local sizes" << std::endl;
+                std::cout << "Error: wrong sum of local sizes." << std::endl;
+
+                std::cout << "global index size: " << N << std::endl;
+                std::cout << "computed global index size: " << sz << std::endl;
+                std::cout << "number of ranks: " << num_ranks << std::endl;
+                std::cout << "block size: " << spl.block_size() << std::endl;
+                
+                for (int i = 0; i < num_ranks; i++) std::cout << "i, local_size(i): " << i << ", " << spl.local_size(i) << std::endl;
+
                 exit(0);
             }
             for (int i = 0; i < N; i++)
@@ -83,7 +91,13 @@ void test3()
                 int offset = (int)spl.local_index(i);
                 if (i != (int)spl.global_index(offset, rank))
                 {
-                    std::cout << "wrong index" << std::endl;
+                    std::cout << "Error: wrong index." << std::endl;
+                    std::cout << "global index size: " << N << std::endl;
+                    std::cout << "number of ranks: " << num_ranks << std::endl;
+                    std::cout << "global index: " << i << std::endl;
+                    std::cout << "rank, offset: " << rank << ", " << offset << std::endl;
+                    std::cout << "block size: " << spl.block_size() << std::endl;
+                    std::cout << "computed global index: " << spl.global_index(offset, rank) << std::endl;
                     exit(0);
                 }
             }
