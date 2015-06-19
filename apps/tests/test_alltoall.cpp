@@ -65,6 +65,46 @@ void test_alltoall(int num_gkvec, int num_bands)
     }
 }
 
+void test_alltoall_v2()
+{
+    Communicator comm(MPI_COMM_WORLD);
+
+    std::vector<int> counts_in(comm.size(), 16);
+    std::vector<double_complex> sbuf(10);
+
+    std::vector<int> counts_out(comm.size(), 0);
+    counts_out[0] = 16 * comm.size();
+
+    std::vector<double_complex> rbuf(counts_out[comm.rank()]);
+
+    auto a2a_desc = comm.map_alltoall(counts_in, counts_out);
+    comm.alltoall(&sbuf[0], &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], &rbuf[0], &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
+}
+
+void test_alltoall_v3()
+{
+    Communicator comm(MPI_COMM_WORLD);
+
+    std::vector<int> counts_in(comm.size(), 16);
+    std::vector<double_complex> sbuf(10);
+
+    std::vector<int> counts_out(comm.size(), 0);
+    if (comm.size() == 1)
+    {
+        counts_out[0] = 16 * comm.size();
+    }
+    else
+    {
+        counts_out[0] = 8 * comm.size();
+        counts_out[1] = 8 * comm.size();
+    }
+
+    std::vector<double_complex> rbuf(counts_out[comm.rank()]);
+
+    auto a2a_desc = comm.map_alltoall(counts_in, counts_out);
+    comm.alltoall(&sbuf[0], &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], &rbuf[0], &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -87,6 +127,9 @@ int main(int argn, char **argv)
     Platform::initialize(true);
 
     for (int i = 0; i < repeat; i++) test_alltoall(num_gkvec, num_bands);
+
+    test_alltoall_v2();
+    test_alltoall_v3();
 
     Platform::finalize();
 }
