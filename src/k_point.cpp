@@ -43,13 +43,13 @@ K_point::K_point(Simulation_context& ctx__,
     for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
     
     band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
-    band_energies_ = std::vector<double>(parameters_.num_bands(), 0);
+    band_energies_    = std::vector<double>(parameters_.num_bands(), 0);
     
-    comm_ = blacs_grid_.comm();
+    comm_     = blacs_grid_.comm();
     comm_row_ = blacs_grid_.comm_row();
     comm_col_ = blacs_grid_.comm_col();
     
-    num_ranks_ = comm_.size();
+    num_ranks_     = comm_.size();
     num_ranks_row_ = comm_row_.size();
     num_ranks_col_ = comm_col_.size();
     

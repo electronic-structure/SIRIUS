@@ -39,10 +39,11 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/generate_beta_gk.cpp \
        K_point/generate_beta_phi.cpp \
        K_point/distribute_basis_index.cpp \
-       K_point/build_gklo_basis_descriptors.cpp
-       
+       K_point/build_gklo_basis_descriptors.cpp \
+       K_point/generate_fv_states.cpp
+
 OBJ = $(SRC:.cpp=.o) 
-      
+
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	cuda_interface.o \
