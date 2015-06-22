@@ -37,7 +37,9 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/collect_all_bands.cpp \
        K_point/collect_all_gkvec.cpp \
        K_point/generate_beta_gk.cpp \
-       K_point/generate_beta_phi.cpp
+       K_point/generate_beta_phi.cpp \
+       K_point/distribute_basis_index.cpp \
+       K_point/build_gklo_basis_descriptors.cpp
        
 OBJ = $(SRC:.cpp=.o) 
       
