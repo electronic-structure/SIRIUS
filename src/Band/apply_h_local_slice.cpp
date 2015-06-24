@@ -60,6 +60,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     mdarray<double, 1> timers(Platform::max_num_threads());
     timers.zero();
     
+    Timer t1("fft_loop");
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
         if (thread_id == num_fft_threads - 1 && num_fft_threads > 1 && pu == GPU)
@@ -201,6 +202,8 @@ void Band::apply_h_local_slice(K_point* kp__,
         }
     }
     for (auto& thread: fft_threads) thread.join();
+    double tval = t1.stop();
+    printf("time: %f (sec.), performance: %f (FFTs/sec.) \n", 2 * num_phi__ / tval);
 
     //== if (kp__->comm().rank() == 0)
     //== {
