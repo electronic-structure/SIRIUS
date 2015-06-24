@@ -200,7 +200,7 @@ class K_set
         /// Initialize the k-point set
         void initialize();
 
-        void update();
+        //void update();
         
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
         void find_eigen_states(Potential* potential, bool precompute);

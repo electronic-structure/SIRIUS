@@ -35,6 +35,8 @@
 /* never turn this off unless you know what you are doing */
 #define __FFTW_THREADED
 
+//#define __FFTW_MPI
+
 //== #define __CACHE_GVEC_PHASE_FACTORS
 
 //== #define __PRINT_OBJECT_HASH

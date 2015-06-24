@@ -553,7 +553,7 @@ class MPI_FFT3D
 
             assert(sizeof(fftw_complex) == sizeof(double_complex));
 
-            fftw_buffer_ = (double_complex*)fftw_alloc_complex(alloc_local_size);
+            fftw_buffer_ = (double_complex*)fftw_malloc(alloc_local_size * sizeof(double_complex));
 
             plan_backward_ = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)fftw_buffer_, (fftw_complex*)fftw_buffer_,
                                                   comm__.mpi_comm(), FFTW_BACKWARD, FFTW_ESTIMATE);

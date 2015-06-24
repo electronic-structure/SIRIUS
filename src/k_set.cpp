@@ -37,11 +37,11 @@ void K_set::initialize()
     if (verbosity_level >= 2) print_info();
 }
 
-void K_set::update()
+/*void K_set::update()
 {
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->update();
-}
+}*/
 
 void K_set::sync_band_energies()
 {

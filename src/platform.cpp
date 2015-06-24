@@ -80,7 +80,9 @@ void Platform::initialize(bool call_mpi_init__)
         }
     }
     #endif
+    #ifdef __FFTW_MPI
     fftw_mpi_init();
+    #endif
 
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
@@ -100,7 +102,9 @@ void Platform::finalize()
     cuda_destroy_streams(max_num_threads() + 1);
     cuda_device_reset();
     #endif
+    #ifdef __FFTW_MPI
     fftw_mpi_cleanup();
+    #endif
     #ifdef __FFTW_THREADED
     fftw_cleanup_threads();
     #endif

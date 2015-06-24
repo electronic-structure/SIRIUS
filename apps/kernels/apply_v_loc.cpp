@@ -137,8 +137,11 @@ int main(int argn, char **argv)
     num_fft_workers = args.value<int>("num_fft_workers", num_fft_workers);
 
     Platform::initialize(1);
-
-    apply_v_loc(alat, wf_cutoff, num_bands, num_fft_threads, num_fft_workers);
+    
+    for (int i = 0; i < 10; i++)
+    {
+        apply_v_loc(alat, wf_cutoff, num_bands, num_fft_threads, num_fft_workers);
+    }
 
     Timer::print();
 
