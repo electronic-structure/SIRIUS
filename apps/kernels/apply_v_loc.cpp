@@ -3,7 +3,7 @@
 
 using namespace sirius;
 
-void apply_h_loc(double alat, double wf_cutoff, int num_bands, int num_fft_threads, int num_fft_workers)
+void apply_v_loc(double alat, double wf_cutoff, int num_bands, int num_fft_threads, int num_fft_workers)
 {
     Communicator comm(MPI_COMM_WORLD);
 
@@ -36,14 +36,24 @@ void apply_h_loc(double alat, double wf_cutoff, int num_bands, int num_fft_threa
     }
 
     splindex<block> spl_num_bands(num_bands, comm.size(), comm.rank());
-    matrix<double_complex> phi(num_gkvec, spl_num_bands.local_size());
+    int nbnd = (int)spl_num_bands.local_size();
 
-    for (int i = 0; i < (int)spl_num_bands.local_size(); i++) 
+    matrix<double_complex> phi(num_gkvec, nbnd);
+    matrix<double_complex> hphi;
+    if (false)
+    {
+        hphi = matrix<double_complex>(&phi(0, 0), num_gkvec, nbnd);
+    }
+    else
+    {
+        hphi = matrix<double_complex>(num_gkvec, nbnd);
+    }
+
+    for (int i = 0; i < nbnd; i++) 
     {
         for (int ig = 0; ig < num_gkvec; ig++) phi(ig, i) = type_wrapper<double_complex>::random();
     }
 
-    int nbnd = (int)spl_num_bands.local_size();
     std::atomic_int ibnd;
     ibnd.store(0);
 
@@ -53,7 +63,7 @@ void apply_h_loc(double alat, double wf_cutoff, int num_bands, int num_fft_threa
     std::vector<std::thread> fft_threads;
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
-        fft_threads.push_back(std::thread([thread_id, nbnd, &ibnd, &fft, &phi, num_gkvec]()
+        fft_threads.push_back(std::thread([thread_id, nbnd, &ibnd, &fft, &phi, &hphi, num_gkvec]()
         {
             while (true)
             {
@@ -79,7 +89,7 @@ void apply_h_loc(double alat, double wf_cutoff, int num_bands, int num_fft_threa
                 for (int ir = 0; ir < fft.size(); ir++) fft.buffer(ir, thread_id) += 1.0;
 
                 fft.transform(-1, thread_id);
-                fft.output(num_gkvec, fft.index_map(), &phi(0, i), thread_id);
+                fft.output(num_gkvec, fft.index_map(), &hphi(0, i), thread_id);
             }
         }));
     }
@@ -128,7 +138,7 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    apply_h_loc(alat, wf_cutoff, num_bands, num_fft_threads, num_fft_workers);
+    apply_v_loc(alat, wf_cutoff, num_bands, num_fft_threads, num_fft_workers);
 
     Timer::print();
 
