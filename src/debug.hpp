@@ -2,9 +2,75 @@
 #define __DEBUG_HPP__
 
 #include <fstream>
+#include "platform.h"
 
 namespace debug
 {
+
+class Profiler
+{
+    private:
+        std::string name_;
+        std::string file_;
+        int line_;
+
+        std::string timestamp()
+        {
+            timeval t;
+            gettimeofday(&t, NULL);
+        
+            char buf[100]; 
+        
+            tm* ptm = localtime(&t.tv_sec); 
+            //strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm); 
+            strftime(buf, sizeof(buf), "%H:%M:%S", ptm); 
+            return std::string(buf);
+        }
+
+        static std::vector<std::string>& call_stack()
+        {
+            static std::vector<std::string> call_stack_;
+            return call_stack_;
+        }
+
+    public:
+
+        Profiler(char const* name__, char const* file__, int line__)
+        {
+            name_ = std::string(name__);
+            file_ = std::string(file__);
+            line_ = line__;
+
+            call_stack().push_back(name_);
+
+            //if (verbosity_level >= 10) 
+            printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+        }
+
+        ~Profiler()
+        {
+            //if (verbosity_level >= 10) 
+            printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            call_stack().pop_back();
+        }
+
+        static void stack_trace()
+        {
+            int t = 0;
+            for (auto it = call_stack().rbegin(); it != call_stack().rend(); it++)
+            {
+                for (int i = 0; i < t; i++) printf(" ");
+                printf("[%s]\n", it->c_str());
+                t++;
+            }
+            //for (int i = 0; i < (int)call_stack().size(); i++)
+            //{
+            //    printf("%s\n", call_stack()[i].c_str());
+            //}
+        }
+};
+
+#define PROFILE() debug::Profiler profiler__(__func__, __FILE__, __LINE__);
 
 inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)
 {
