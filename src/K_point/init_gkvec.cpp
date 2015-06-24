@@ -60,7 +60,7 @@ void K_point::init_gkvec()
         }
     }
     
-    init_gkvec_ylm_and_len(lmax, num_gkvec_row(), gklo_basis_descriptors_row_);
+    //== init_gkvec_ylm_and_len(lmax, num_gkvec_row(), gklo_basis_descriptors_row_);
     init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
 }
 

@@ -216,6 +216,9 @@ class K_point
         void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
         void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
+        
+        /// Generate plane-wave coefficients for beta-projectors of atom types.
+        void generate_beta_gk_t();
 
     public:
 
@@ -229,15 +232,15 @@ class K_point
 
         ~K_point()
         {
-            if (alm_coeffs_row_) delete alm_coeffs_row_;
-            if (alm_coeffs_col_) delete alm_coeffs_col_;
+            if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
+            if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
         }
 
         /// Initialize the k-point related arrays and data
         void initialize();
 
         /// Update the relevant arrays in case of atom positions have been changed.
-        void update();
+        ///void update();
         
         /// Find G+k vectors within the cutoff
         void generate_gkvec(double gk_cutoff);
