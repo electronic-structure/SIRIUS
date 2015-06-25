@@ -29,17 +29,6 @@
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
 
-#ifdef __GPU
-extern "C" void create_beta_gk_gpu(int num_atoms,
-                                   int num_gkvec,
-                                   int const* beta_desc,
-                                   cuDoubleComplex const* beta_gk_t,
-                                   double const* gkvec,
-                                   double const* atom_pos,
-                                   cuDoubleComplex* beta_gk);
-#endif
-
-
 namespace sirius
 {
 
@@ -57,6 +46,9 @@ class K_point
         Unit_cell const& unit_cell_;
 
         BLACS_grid const& blacs_grid_;
+        
+        /// Auxiliary 1D BLACS grid for a "slab" data distribution.
+        BLACS_grid blacs_grid_aux_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
@@ -201,6 +193,10 @@ class K_point
         /// additional splitting of spinor wave-functions along rows of the MPI grid
         splindex<block> sub_spl_spinor_wf_;
 
+        #ifdef __FFTW_MPI
+        gvec_descriptor gkvec_desc_;
+        #endif
+
         /// Initialize G+k related data
         void init_gkvec();
         
@@ -311,9 +307,15 @@ class K_point
             }
         }
         
-        inline double_complex gkvec_phase_factor(int igk, int ia) const
+        inline double_complex gkvec_phase_factor(int igk__, int ia__) const
         {
-            return gkvec_phase_factors_(igk, ia);
+            STOP();
+            //double phase = twopi * (gkvec<fractional>(igk) * unit_cell_.atom(ia)->position());
+
+            //gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
+
+
+            //return gkvec_phase_factors_(igk, ia);
         }
 
         //== /// Return length of a G+k vector

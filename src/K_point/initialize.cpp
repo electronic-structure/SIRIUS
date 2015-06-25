@@ -194,24 +194,17 @@ void K_point::initialize()
                                                               blacs_grid_, parameters_.cyclic_block_size(),
                                                               parameters_.cyclic_block_size());
             fv_eigen_vectors_panel_.allocate(alloc_mode);
-        }
 
-        if (parameters_.full_potential())
-        {
             // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
             fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_,
                                                        parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
             fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
         }
-        else
+
+        if (!parameters_.full_potential())
         {
             fv_states_slab_ = matrix<double_complex>(num_gkvec_loc(), parameters_.num_fv_states());
             fv_states_ = matrix<double_complex>(num_gkvec(), spl_bands.local_size());
-        }
-
-        if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-            parameters_.esm_type() == norm_conserving_pseudopotential)
-        {
             fv_states_slab_.zero();
             
             for (int i = 0; i < parameters_.num_fv_states(); i++)

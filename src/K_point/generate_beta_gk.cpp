@@ -1,5 +1,15 @@
 #include "k_point.h"
 
+#ifdef __GPU
+extern "C" void create_beta_gk_gpu(int num_atoms,
+                                   int num_gkvec,
+                                   int const* beta_desc,
+                                   cuDoubleComplex const* beta_gk_t,
+                                   double const* gkvec,
+                                   double const* atom_pos,
+                                   cuDoubleComplex* beta_gk);
+#endif
+
 namespace sirius {
 
 void K_point:: generate_beta_gk(int num_atoms__,

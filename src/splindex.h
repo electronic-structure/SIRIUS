@@ -68,6 +68,11 @@ class splindex_base
         {
             return global_index_size_;
         }
+
+        static inline size_t block_size(size_t size__, int num_ranks__)
+        {
+            return size__ / num_ranks__ + std::min(size_t(1), size__ % num_ranks__);
+        }
 };
 
 template <splindex_t type> 

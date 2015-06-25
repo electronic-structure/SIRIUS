@@ -103,8 +103,6 @@ void dft_loop(cmd_args args)
     
     int num_mag_dims = parser["num_mag_dims"].get(0);
 
-    int bs = parameters.cyclic_block_size();
-    
     parameters.set_num_mag_dims(num_mag_dims);
 
     Communicator comm(MPI_COMM_WORLD);
@@ -115,7 +113,7 @@ void dft_loop(cmd_args args)
     
     BLACS_grid blacs_grid(ctx.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
                           ctx.mpi_grid().dimension_size(_dim_row_),
-                          ctx.mpi_grid().dimension_size(_dim_col_), bs);
+                          ctx.mpi_grid().dimension_size(_dim_col_));
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();

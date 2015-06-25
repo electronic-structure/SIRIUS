@@ -70,7 +70,6 @@ void Platform::initialize(bool call_mpi_init__)
     #ifdef __LIBSCI_ACC
     libsci_acc_init();
     #endif
-    #ifdef __FFTW_THREADED
     if (provided >= MPI_THREAD_FUNNELED)
     {
         if (!fftw_init_threads())
@@ -79,7 +78,6 @@ void Platform::initialize(bool call_mpi_init__)
             exit(0);
         }
     }
-    #endif
     #ifdef __FFTW_MPI
     fftw_mpi_init();
     #endif
@@ -105,9 +103,7 @@ void Platform::finalize()
     #ifdef __FFTW_MPI
     fftw_mpi_cleanup();
     #endif
-    #ifdef __FFTW_THREADED
     fftw_cleanup_threads();
-    #endif
     fftw_cleanup();
 }
 

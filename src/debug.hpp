@@ -43,14 +43,16 @@ class Profiler
 
             call_stack().push_back(name_);
 
-            //if (verbosity_level >= 10) 
+            #ifdef __LOG_FUNC
             printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            #endif
         }
 
         ~Profiler()
         {
-            //if (verbosity_level >= 10) 
+            #ifdef __LOG_FUNC
             printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            #endif
             call_stack().pop_back();
         }
 
@@ -70,7 +72,11 @@ class Profiler
         }
 };
 
-#define PROFILE() debug::Profiler profiler__(__func__, __FILE__, __LINE__);
+#ifdef __PROFILE
+  #define PROFILE() debug::Profiler profiler__(__func__, __FILE__, __LINE__);
+#else
+  #define PROFILE()
+#endif
 
 inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)
 {
