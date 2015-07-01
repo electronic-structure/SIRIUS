@@ -82,6 +82,8 @@ class Potential
 
         std::vector<int> l_by_lm_;
 
+        mdarray<double_complex, 2> gvec_ylm_;
+
         double energy_vha_;
         
         /// Electronic part of Hartree potential.

@@ -106,6 +106,14 @@ Potential::Potential(Simulation_context& ctx__)
                                        parameters_.mixer_input_section().beta_,
                                        weights,
                                        comm_);
+
+    gvec_ylm_ = mdarray<double_complex, 2>(parameters_.lmmax_pot(), ctx_.reciprocal_lattice()->spl_num_gvec().local_size());
+    for (int igloc = 0; igloc < (int)ctx_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+    {
+        int ig = (int)ctx_.reciprocal_lattice()->spl_num_gvec(igloc);
+        auto rtp = SHT::spherical_coordinates(ctx_.reciprocal_lattice()->gvec_cart(ig));
+        SHT::spherical_harmonics(parameters_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+    }
 }
 
 Potential::~Potential()
@@ -116,8 +124,7 @@ Potential::~Potential()
     delete hartree_potential_;
     delete xc_potential_;
     delete xc_energy_density_;
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential) delete local_potential_;
+    if (!parameters_.full_potential()) delete local_potential_;
     delete mixer_;
 }
 

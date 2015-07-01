@@ -570,14 +570,17 @@ void sirius_get_index_by_gvec(int32_t* index_by_gvec__)
 /// Get Ylm spherical harmonics of G-vectors.
 void sirius_get_gvec_ylm(double_complex* gvec_ylm__, int* ld__, int* lmax__)
 {
-    log_function_enter(__func__);
-    mdarray<double_complex, 2> gvec_ylm(gvec_ylm__, *ld__, sim_ctx->reciprocal_lattice()->num_gvec());
-    // TODO: can be parallelized
-    for (int ig = 0; ig < sim_ctx->reciprocal_lattice()->num_gvec(); ig++)
-    {
-        sim_ctx->reciprocal_lattice()->gvec_ylm_array<global>(ig, &gvec_ylm(0, ig), *lmax__);
-    }
-    log_function_exit(__func__);
+    //STOP()
+    TERMINATE("fis this");
+
+    //==log_function_enter(__func__);
+    //==mdarray<double_complex, 2> gvec_ylm(gvec_ylm__, *ld__, sim_ctx->reciprocal_lattice()->num_gvec());
+    //==// TODO: can be parallelized
+    //==for (int ig = 0; ig < sim_ctx->reciprocal_lattice()->num_gvec(); ig++)
+    //=={
+    //==    sim_ctx->reciprocal_lattice()->gvec_ylm_array<global>(ig, &gvec_ylm(0, ig), *lmax__);
+    //==}
+    //==log_function_exit(__func__);
 }
 
 void sirius_get_gvec_phase_factors(double_complex* sfacg__)

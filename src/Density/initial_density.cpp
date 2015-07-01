@@ -87,12 +87,20 @@ void Density::initial_density()
         auto l_by_lm = Utils::l_by_lm(lmax);
 
         std::vector<double_complex> zil(lmax + 1);
-        for (int l = 0; l <= lmax; l++) zil[l] = pow(double_complex(0, 1), l);
+        for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
 
         Timer t3("sirius::Density::initial_density|znulm");
 
         mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
         znulm.zero();
+
+        auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ngv_loc);
+        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        {
+            int ig = (int)rl->spl_num_gvec(igloc);
+            auto rtp = SHT::spherical_coordinates(rl->gvec_cart(ig));
+            SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
+        }
         
         #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -119,7 +127,7 @@ void Density::initial_density()
                         /* number of expansion coefficients */
                         int nqnu = sba.nqnu(l, iat);
 
-                        double_complex z2 = z1 * zil[l] * rl->gvec_ylm(lm, igloc);
+                        double_complex z2 = z1 * zil[l] * gvec_ylm(lm, igloc);
                     
                         for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z2 * sba.coeff(iq, i, l, iat);
                     }

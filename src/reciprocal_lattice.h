@@ -116,27 +116,27 @@ class Reciprocal_lattice
             }
         }
        
-        /// Ylm components of G-vector
-        template <index_domain_t index_domain>
-        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax) const
-        {
-            switch (index_domain)
-            {
-                case local:
-                {
-                    int lmmax = Utils::lmmax(lmax);
-                    assert(lmmax <= (int)gvec_ylm_.size(0));
-                    memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
-                    return;
-                }
-                case global:
-                {
-                    auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
-                    SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
-                    return;
-                }
-            }
-        }
+        //== /// Ylm components of G-vector
+        //== template <index_domain_t index_domain>
+        //== inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax) const
+        //== {
+        //==     switch (index_domain)
+        //==     {
+        //==         case local:
+        //==         {
+        //==             int lmmax = Utils::lmmax(lmax);
+        //==             assert(lmmax <= (int)gvec_ylm_.size(0));
+        //==             memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
+        //==             return;
+        //==         }
+        //==         case global:
+        //==         {
+        //==             auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
+        //==             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
+        //==             return;
+        //==         }
+        //==     }
+        //== }
 
         /// Number of G-vectors within plane-wave cutoff
         inline int num_gvec() const
@@ -244,10 +244,10 @@ class Reciprocal_lattice
             return static_cast<int>(spl_num_gvec_[igloc__]);
         }
         
-        inline double_complex gvec_ylm(int lm, int igloc) const
-        {
-            return gvec_ylm_(lm, igloc);
-        }
+        //== inline double_complex gvec_ylm(int lm, int igloc) const
+        //== {
+        //==     return gvec_ylm_(lm, igloc);
+        //== }
 
         void write_periodic_function()
         {

@@ -38,27 +38,27 @@ void K_point::init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_d
 
 void K_point::init_gkvec()
 {
-    int lmax = - 1;
-    switch (parameters_.esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            lmax = parameters_.lmax_apw();
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            lmax = parameters_.lmax_pw();
-            break;
-        }
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
-        {
-            if (num_gkvec() != wf_size()) TERMINATE("wrong size of wave-functions");
-            lmax = parameters_.lmax_beta();
-            break;
-        }
-    }
+    //== int lmax = - 1;
+    //== switch (parameters_.esm_type())
+    //== {
+    //==     case full_potential_lapwlo:
+    //==     {
+    //==         lmax = parameters_.lmax_apw();
+    //==         break;
+    //==     }
+    //==     case full_potential_pwlo:
+    //==     {
+    //==         lmax = parameters_.lmax_pw();
+    //==         break;
+    //==     }
+    //==     case ultrasoft_pseudopotential:
+    //==     case norm_conserving_pseudopotential:
+    //==     {
+    //==         if (num_gkvec() != wf_size()) TERMINATE("wrong size of wave-functions");
+    //==         lmax = parameters_.lmax_beta();
+    //==         break;
+    //==     }
+    //== }
     
     //== init_gkvec_ylm_and_len(lmax, num_gkvec_row(), gklo_basis_descriptors_row_);
     init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);

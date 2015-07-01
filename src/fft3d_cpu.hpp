@@ -402,7 +402,7 @@ class FFT3D<CPU>
             for (auto it = gsh.begin(); it != gsh.end(); it++)
             {
                 gv.gvec_shell_len_(n) = it->first * 1e-6;
-                for (int i = 0; i < (int)it->second.size(); i++) gv.gvec_shell_(it->second[i]) = n;
+                for (int ig: it->second) gv.gvec_shell_(ig) = n;
                 n++;
             }
 
