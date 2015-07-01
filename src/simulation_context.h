@@ -183,7 +183,7 @@ class Simulation_context
 
             /* create FFT interface */
             fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors()),
-                                  parameters_.num_fft_threads(), parameters_.num_fft_workers());
+                                  parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
             
             fft_->init_gvec(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
 
@@ -195,7 +195,7 @@ class Simulation_context
             {
                 /* create FFT interface for coarse grid */
                 fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors()),
-                                             parameters_.num_fft_threads(), parameters_.num_fft_workers());
+                                             parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
                 
                 fft_coarse_->init_gvec(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors());
 

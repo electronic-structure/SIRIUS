@@ -1631,8 +1631,11 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         //kp->fv_states_panel().panel().copy_to_device();
         #endif
     }
+
+    #ifdef __GPU
     double_complex alpha = complex_one;
     double_complex beta = complex_zero;
+    #endif
 
     if (parameters_.num_mag_dims() != 3)
     {
