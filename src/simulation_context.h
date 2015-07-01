@@ -68,14 +68,6 @@ class Simulation_context
         FFT3D<GPU>* fft_gpu_coarse_;
         #endif
 
-        #ifdef __FFTW_MPI
-        MPI_FFT3D* fft_mpi_;
-
-        gvec_descriptor gvec_;
-
-        MPI_FFT3D* fft_coarse_mpi_;
-        #endif
-
         Real_space_prj* real_space_prj_;
 
         /// Creation time of the context.
@@ -102,10 +94,6 @@ class Simulation_context
               fft_gpu_(nullptr),
               fft_gpu_coarse_(nullptr),
               #endif
-              #ifdef __FFTW_MPI
-              fft_mpi_(nullptr),
-              fft_coarse_mpi_(nullptr),
-              #endif
               real_space_prj_(nullptr),
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
               initialized_(false)
@@ -131,10 +119,6 @@ class Simulation_context
             #ifdef __GPU
             if (fft_gpu_ != nullptr) delete fft_gpu_;
             if (fft_gpu_coarse_ != nullptr) delete fft_gpu_coarse_;
-            #endif
-            #ifdef __FFTW_MPI
-            if (fft_mpi_ != nullptr) delete fft_mpi_;
-            if (fft_coarse_mpi_ != nullptr) delete fft_coarse_mpi_;
             #endif
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
@@ -219,13 +203,6 @@ class Simulation_context
                 fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
                 #endif
             }
-
-            #ifdef __FFTW_MPI
-            /* with mpi version only one FFT is executed, so tell all threads to work on single FFT */
-            int num_workers = parameters_.num_fft_threads();
-            fft_coarse_mpi_ = new MPI_FFT3D(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors()),
-                                            num_workers, mpi_grid_.communicator(1 << _dim_row_));
-            #endif
 
             #ifdef __PRINT_MEMORY_USAGE
             MEMORY_USAGE_INFO();
@@ -330,18 +307,6 @@ class Simulation_context
         inline FFT3D<GPU>* fft_gpu_coarse() const
         {
             return fft_gpu_coarse_;
-        }
-        #endif
-
-        #ifdef __FFTW_MPI
-        inline MPI_FFT3D* fft_mpi() const
-        {
-            return fft_mpi_;
-        }
-
-        inline MPI_FFT3D* fft_coarse_mpi() const
-        {
-            return fft_coarse_mpi_;
         }
         #endif
 

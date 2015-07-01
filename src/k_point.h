@@ -193,10 +193,6 @@ class K_point
         /// additional splitting of spinor wave-functions along rows of the MPI grid
         splindex<block> sub_spl_spinor_wf_;
 
-        #ifdef __FFTW_MPI
-        gvec_descriptor gkvec_desc_;
-        #endif
-
         /// Initialize G+k related data
         void init_gkvec();
         
@@ -309,13 +305,7 @@ class K_point
         
         inline double_complex gkvec_phase_factor(int igk__, int ia__) const
         {
-            STOP();
-            //double phase = twopi * (gkvec<fractional>(igk) * unit_cell_.atom(ia)->position());
-
-            //gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
-
-
-            //return gkvec_phase_factors_(igk, ia);
+            return gkvec_phase_factors_(igk__, ia__);
         }
 
         //== /// Return length of a G+k vector
