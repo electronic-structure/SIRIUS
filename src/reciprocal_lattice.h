@@ -201,10 +201,10 @@ class Reciprocal_lattice
             return fft_->gvec_shell_len(igs__);
         }
         
-        inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
-        {
-            return inverse_reciprocal_lattice_vectors_ * a__;
-        }
+        //== inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
+        //== {
+        //==     return inverse_reciprocal_lattice_vectors_ * a__;
+        //== }
         
         template <typename T>
         inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
