@@ -109,10 +109,10 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
 
     splindex<block> spl_ngv(ngv, comm_.size(), comm_.rank());
 
-    #pragma omp parallel
-    for (auto it = splindex_iterator<block>(spl_ngv); it.valid(); it++)
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < (int)spl_ngv.local_size(); igloc++)
     {
-        int ig = (int)it.idx();
+        int ig = (int)spl_ngv[igloc];
         int igs = gvec_shell(ig);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -162,9 +162,10 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
     #pragma omp parallel
     {
         sbessel_pw<double> jl(unit_cell_, lmax);
-        for (auto it = splindex_iterator<block>(spl_num_gvec_shells); it.valid(); it++)
+        #pragma omp for
+        for (int ishloc = 0; ishloc < (int)spl_num_gvec_shells.local_size(); ishloc++)
         {
-            int igs = (int)it.idx();
+            int igs = (int)spl_num_gvec_shells[ishloc];
             jl.load(gvec_shell_len(igs));
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
@@ -250,13 +251,14 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 #pragma omp parallel
                 {
                     std::vector<double_complex> v(lmmax);
-                    for (auto it = splindex_iterator<block>(spl_num_gvec_); it.valid(); it++)
+                    #pragma omp for
+                    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
                     {
-                        int igs = gvec_shell((int)it.idx());
-                        int igloc = (int)it.idx_local();
+                        int ig = (int)spl_num_gvec_[igloc];
+                        int igs = gvec_shell(ig);
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {
-                            v[lm3] = conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
                         }
 
                         atom_type->uspp().q_pw(igloc, idx12) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);

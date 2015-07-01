@@ -96,65 +96,65 @@ class splindex: public splindex_base
     }
     \endcode
  */ 
-template <splindex_t type> 
-class splindex_iterator
-{
-    private:
-        
-        /// current global index
-        size_t idx_;
-        
-        /// current local index
-        size_t idx_local_;
-
-        /// incremental step for operator++
-        int inc_;
-        
-        /// pointer to split index
-        splindex<type>& splindex_;
-
-    public:
-        
-        /// Constructor
-        splindex_iterator(splindex<type>& splindex__) 
-            : idx_(-1), 
-              idx_local_(Platform::thread_id()), 
-              inc_(Platform::num_threads()),
-              splindex_(splindex__)
-        {
-            valid();
-        }
-        
-        /// Incremental operator
-        splindex_iterator<type>& operator++(int)
-        {
-            this->idx_local_ += inc_;
-            return *this;
-        }
-
-        /// Update the global index and check if it is valid.
-        /** Global index is updated using the current value of the local index. 
-         *  Return true if the index is valid, otherwise return false. 
-         */
-        inline bool valid()
-        {
-            if (idx_local_ >= splindex_.local_size()) return false;
-            idx_ = splindex_[idx_local_];
-            return true;
-        }
-        
-        /// Return current global index.
-        inline size_t idx() const
-        {
-            return idx_;
-        }
-
-        /// Return current local index.
-        inline size_t idx_local() const
-        {
-            return idx_local_;
-        }
-};
+//== template <splindex_t type> 
+//== class splindex_iterator
+//== {
+//==     private:
+//==         
+//==         /// current global index
+//==         size_t idx_;
+//==         
+//==         /// current local index
+//==         size_t idx_local_;
+//== 
+//==         /// incremental step for operator++
+//==         int inc_;
+//==         
+//==         /// pointer to split index
+//==         splindex<type>& splindex_;
+//== 
+//==     public:
+//==         
+//==         /// Constructor
+//==         splindex_iterator(splindex<type>& splindex__) 
+//==             : idx_(-1), 
+//==               idx_local_(Platform::thread_id()), 
+//==               inc_(Platform::num_threads()),
+//==               splindex_(splindex__)
+//==         {
+//==             valid();
+//==         }
+//==         
+//==         /// Incremental operator
+//==         splindex_iterator<type>& operator++(int)
+//==         {
+//==             this->idx_local_ += inc_;
+//==             return *this;
+//==         }
+//== 
+//==         /// Update the global index and check if it is valid.
+//==         /** Global index is updated using the current value of the local index. 
+//==          *  Return true if the index is valid, otherwise return false. 
+//==          */
+//==         inline bool valid()
+//==         {
+//==             if (idx_local_ >= splindex_.local_size()) return false;
+//==             idx_ = splindex_[idx_local_];
+//==             return true;
+//==         }
+//==         
+//==         /// Return current global index.
+//==         inline size_t idx() const
+//==         {
+//==             return idx_;
+//==         }
+//== 
+//==         /// Return current local index.
+//==         inline size_t idx_local() const
+//==         {
+//==             return idx_local_;
+//==         }
+//== };
 
 #endif // __SPLINDEX_H__
 
