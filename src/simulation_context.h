@@ -59,6 +59,8 @@ class Simulation_context
         /// FFT wrapper for dense grid.
         FFT3D<CPU>* fft_;
 
+        Gvec gvec_;
+
         /// FFT wrapper for coarse grid.
         FFT3D<CPU>* fft_coarse_;
 
@@ -187,6 +189,8 @@ class Simulation_context
             
             fft_->init_gvec(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
 
+            gvec_ = fft_->init_gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
+
             #ifdef __GPU
             fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
             #endif
@@ -296,6 +300,11 @@ class Simulation_context
         inline FFT3D<CPU>* fft_coarse() const
         {
             return fft_coarse_;
+        }
+
+        Gvec const& gvec() const
+        {
+            return gvec_;
         }
 
         #ifdef __GPU
