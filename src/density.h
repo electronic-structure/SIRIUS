@@ -152,6 +152,8 @@ class Density
         Mixer<double_complex>* low_freq_mixer_;
         Mixer<double>* mixer_;
 
+        mdarray<double_complex, 2> gvec_phase_factors_;
+
         /// Get the local list of occupied bands
         /** Initially bands are distributed over k-points and columns of the MPI grid used 
          *  for the diagonalization. Additionaly bands are sub split over rows of the 2D MPI grid, 

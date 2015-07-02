@@ -590,7 +590,7 @@ void sirius_get_gvec_phase_factors(double_complex* sfacg__)
     for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
     {
         for (int ig = 0; ig < sim_ctx->reciprocal_lattice()->num_gvec(); ig++)
-            sfacg(ig, ia) = sim_ctx->reciprocal_lattice()->gvec_phase_factor<global>(ig, ia);
+            sfacg(ig, ia) = sim_ctx->reciprocal_lattice()->gvec_phase_factor(ig, ia);
     }
     log_function_exit(__func__);
 }

@@ -77,28 +77,30 @@ class DFT_ground_state
 
             auto rl = ctx_.reciprocal_lattice();
 
+            splindex<block> spl_num_gvec(rl->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+
             #pragma omp parallel
             {
                 double ewald_g_pt = 0;
 
                 #pragma omp for
-                for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+                for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
                 {
-                    int ig = rl->spl_num_gvec(igloc);
+                    int ig = (int)spl_num_gvec[igloc];
 
                     double_complex rho(0, 0);
                     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
                     {
-                        rho += rl->gvec_phase_factor<local>(igloc, ia) * double(unit_cell_.atom(ia)->zn());
+                        rho += rl->gvec_phase_factor(ig, ia) * double(unit_cell_.atom(ia)->zn());
                     }
-                    double g2 = pow(rl->gvec_len(ig), 2);
+                    double g2 = std::pow(rl->gvec_len(ig), 2);
                     if (ig)
                     {
-                        ewald_g_pt += pow(abs(rho), 2) * exp(-g2 / 4 / alpha) / g2;
+                        ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
                     }
                     else
                     {
-                        ewald_g_pt -= pow(unit_cell_.num_electrons(), 2) / alpha / 4; // constant term in QE comments
+                        ewald_g_pt -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4; // constant term in QE comments
                     }
                 }
 

@@ -23,7 +23,7 @@ void Potential::poisson_sum_G(int lmmax__,
     Timer t("sirius::Potential::poisson_sum_G");
     
     auto rl = ctx_.reciprocal_lattice();
-    int ngv_loc = (int)rl->spl_num_gvec().local_size();
+    int ngv_loc = (int)spl_num_gvec_.local_size();
 
     int na_max = 0;
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) na_max = std::max(na_max, unit_cell_.atom_type(iat)->num_atoms());
@@ -40,11 +40,11 @@ void Potential::poisson_sum_G(int lmmax__,
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
-                int ig = rl->spl_num_gvec(igloc);
+                int ig = (int)spl_num_gvec_[igloc];
                 for (int i = 0; i < na; i++)
                 {
                     int ia = unit_cell_.atom_type(iat)->atom_id(i);
-                    phase_factors(igloc, i) = rl->gvec_phase_factor<local>(igloc, ia);
+                    phase_factors(igloc, i) = gvec_phase_factors_(igloc, ia);
                 }
                 for (int lm = 0; lm < lmmax__; lm++)
                 {
@@ -142,7 +142,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     #pragma omp parallel default(shared)
     {
         int tid = Platform::thread_id();
-        splindex<block> spl_gv_t(rl->spl_num_gvec().local_size(), Platform::num_threads(), tid);
+        splindex<block> spl_gv_t(spl_num_gvec_.local_size(), Platform::num_threads(), tid);
         std::vector<double_complex> pseudo_pw_t(spl_gv_t.local_size(), complex_zero); 
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -156,17 +156,17 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
             {
                 for (int m = -l; m <= l; m++, lm++)
-                    zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * conj(zil_[l]) * gamma_factors_R_(l, iat);
+                    zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * std::conj(zil_[l]) * gamma_factors_R_(l, iat);
             }
 
             for (int igloc_t = 0; igloc_t < (int)spl_gv_t.local_size(); igloc_t++)
             {
                 int igloc = (int)spl_gv_t[igloc_t];
-                int ig = rl->spl_num_gvec(igloc);
+                int ig = (int)spl_num_gvec_[igloc];
 
                 double gR = rl->gvec_len(ig) * R;
                 
-                double_complex zt = fourpi * conj(rl->gvec_phase_factor<local>(igloc, ia)) / unit_cell_.omega();
+                double_complex zt = fourpi * std::conj(gvec_phase_factors_(igloc, ia)) / unit_cell_.omega();
 
                 if (ig)
                 {
@@ -193,12 +193,12 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
         for (int igloc_t = 0; igloc_t < (int)spl_gv_t.local_size(); igloc_t++)
         {
             int igloc = (int)spl_gv_t[igloc_t];
-            int ig = rl->spl_num_gvec(igloc);
+            int ig = (int)spl_num_gvec_[igloc];
             rho_pw[ig] += pseudo_pw_t[igloc_t];
         }
     }
 
-    ctx_.comm().allgather(&rho_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
+    ctx_.comm().allgather(&rho_pw[0], (int)spl_num_gvec_.global_offset(), (int)spl_num_gvec_.local_size());
 }
 
 void Potential::poisson_vmt(Periodic_function<double>* rho__, 

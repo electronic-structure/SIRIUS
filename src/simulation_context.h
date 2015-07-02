@@ -61,6 +61,9 @@ class Simulation_context
 
         Gvec gvec_;
 
+        /// Split index of G-vectors
+        splindex<block> spl_num_gvec_;
+
         /// FFT wrapper for coarse grid.
         FFT3D<CPU>* fft_coarse_;
 
@@ -130,7 +133,7 @@ class Simulation_context
         /// Initialize the similation (can only be called once).
         void initialize()
         {
-            LOG_FUNC_BEGIN();
+            PROFILE();
 
             if (initialized_) TERMINATE("Simulation context is already initialized.");
 
@@ -190,6 +193,9 @@ class Simulation_context
             fft_->init_gvec(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
 
             gvec_ = fft_->init_gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
+
+            /* create split index */
+            spl_num_gvec_ = splindex<block>(fft_->num_gvec(), comm_.size(), comm_.rank());
 
             #ifdef __GPU
             fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
@@ -268,8 +274,6 @@ class Simulation_context
             if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
 
             initialized_ = true;
-
-            LOG_FUNC_END();
         }
 
         Simulation_parameters const& parameters() const

@@ -61,10 +61,10 @@ class Reciprocal_lattice
         FFT3D<CPU>* fft_;
 
         /// Split index of G-vectors
-        splindex<block> spl_num_gvec_;
+        //splindex<block> spl_num_gvec_;
         
         /// Cached Ylm components of G-vectors
-        mdarray<double_complex, 2> gvec_ylm_;
+        //mdarray<double_complex, 2> gvec_ylm_;
         
         /// Cached values of G-vector phase factors 
         mdarray<double_complex, 2> gvec_phase_factors_;
@@ -94,26 +94,26 @@ class Reciprocal_lattice
         std::vector<double_complex> make_periodic_function(mdarray<double, 2>& ffac, int ngv) const;
         
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-        template <index_domain_t index_domain>
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            switch (index_domain)
-            {
-                case global:
-                {
-                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
-                    break;
-                }
-                case local:
-                {
-                    #ifdef __CACHE_GVEC_PHASE_FACTORS
-                    return gvec_phase_factors_(ig__, ia__);
-                    #else
-                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig__]) * unit_cell_.atom(ia__)->position())));
-                    #endif
-                    break;
-                }
-            }
+            return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
+            //== switch (index_domain)
+            //== {
+            //==     case global:
+            //==     {
+            //==         return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
+            //==         break;
+            //==     }
+            //==     case local:
+            //==     {
+            //==         #ifdef __CACHE_GVEC_PHASE_FACTORS
+            //==         return gvec_phase_factors_(ig__, ia__);
+            //==         #else
+            //==         return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig__]) * unit_cell_.atom(ia__)->position())));
+            //==         #endif
+            //==         break;
+            //==     }
+            //== }
         }
        
         //== /// Ylm components of G-vector
@@ -234,15 +234,15 @@ class Reciprocal_lattice
             }
         }
 
-        inline splindex<block> const& spl_num_gvec() const
-        {
-            return spl_num_gvec_;
-        }
-        
-        inline int spl_num_gvec(int igloc__) const
-        {
-            return static_cast<int>(spl_num_gvec_[igloc__]);
-        }
+        //== inline splindex<block> const& spl_num_gvec() const
+        //== {
+        //==     return spl_num_gvec_;
+        //== }
+        //== 
+        //== inline int spl_num_gvec(int igloc__) const
+        //== {
+        //==     return static_cast<int>(spl_num_gvec_[igloc__]);
+        //== }
         
         //== inline double_complex gvec_ylm(int lm, int igloc) const
         //== {

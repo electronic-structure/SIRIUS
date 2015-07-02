@@ -86,8 +86,7 @@ Potential::Potential(Simulation_context& ctx__)
     xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
     xc_energy_density_->allocate(false, false);
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         local_potential_ = new Periodic_function<double>(ctx_, 0);
         local_potential_->allocate(false, true);
@@ -107,12 +106,25 @@ Potential::Potential(Simulation_context& ctx__)
                                        weights,
                                        comm_);
 
-    gvec_ylm_ = mdarray<double_complex, 2>(parameters_.lmmax_pot(), ctx_.reciprocal_lattice()->spl_num_gvec().local_size());
-    for (int igloc = 0; igloc < (int)ctx_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+    spl_num_gvec_ = splindex<block>(fft_->num_gvec(), comm_.size(), comm_.rank());
+    
+    if (parameters_.full_potential())
     {
-        int ig = (int)ctx_.reciprocal_lattice()->spl_num_gvec(igloc);
-        auto rtp = SHT::spherical_coordinates(ctx_.reciprocal_lattice()->gvec_cart(ig));
-        SHT::spherical_harmonics(parameters_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+        gvec_ylm_ = mdarray<double_complex, 2>(parameters_.lmmax_pot(), spl_num_gvec_.local_size());
+        for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+        {
+            int ig = (int)spl_num_gvec_[igloc];
+            auto rtp = SHT::spherical_coordinates(ctx_.reciprocal_lattice()->gvec_cart(ig));
+            SHT::spherical_harmonics(parameters_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+        }
+    }
+
+    gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+    {
+        int ig = (int)spl_num_gvec_[igloc];
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = ctx_.reciprocal_lattice()->gvec_phase_factor(ig, ia);
     }
 }
 
@@ -602,8 +614,6 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     {
         zero();
 
-        auto rl = ctx_.reciprocal_lattice();
-
         /* create temporary function for rho + rho_core */
         Periodic_function<double>* rhovc = new Periodic_function<double>(ctx_, 0, false);
         rhovc->allocate(false, true);
@@ -636,23 +646,23 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         fft_->output(fft_->num_gvec(), fft_->index_map(), &rho->f_pw(0));
         t1.stop();
 
-        std::vector<double_complex> vtmp(rl->spl_num_gvec().local_size());
+        std::vector<double_complex> vtmp(spl_num_gvec_.local_size());
         
         energy_vha_ = 0.0;
-        for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
         {
-            int ig = rl->spl_num_gvec(igloc);
+            int ig = (int)spl_num_gvec_[igloc];
             vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / std::pow(ctx_.reciprocal_lattice()->gvec_len(ig), 2);
-            energy_vha_ += real(conj(rho->f_pw(ig)) * vtmp[igloc]);
+            energy_vha_ += std::real(std::conj(rho->f_pw(ig)) * vtmp[igloc]);
             vtmp[igloc] += effective_potential_->f_pw(ig);
         }
         comm_.allreduce(&energy_vha_, 1);
         energy_vha_ *= unit_cell_.omega();
 
-        auto offsets = rl->spl_num_gvec().offsets();
-        auto counts = rl->spl_num_gvec().counts();
-        //parameters_.comm().allgather(&vtmp[0], rl->spl_num_gvec().local_size(), &hartree_potential_->f_pw(0), &counts[0], &offsets[0]);
-        comm_.allgather(&vtmp[0], (int)rl->spl_num_gvec().local_size(), &effective_potential_->f_pw(0), &counts[0], &offsets[0]);
+        auto offsets = spl_num_gvec_.offsets();
+        auto counts = spl_num_gvec_.counts();
+        //parameters_.comm().allgather(&vtmp[0], spl_num_gvec_.local_size(), &hartree_potential_->f_pw(0), &counts[0], &offsets[0]);
+        comm_.allgather(&vtmp[0], (int)spl_num_gvec_.local_size(), &effective_potential_->f_pw(0), &counts[0], &offsets[0]);
 
         //for (int ig = 0; ig < rl->num_gvec(); ig++)
         //    effective_potential_->f_pw(ig) += hartree_potential_->f_pw(ig);
@@ -676,21 +686,20 @@ void Potential::generate_d_mtrx() // TODO: check the sign of phase factors
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
-        auto rl = ctx_.reciprocal_lattice();
-
         /* get plane-wave coefficients of effective potential */
         fft_->input(&effective_potential_->f_it<global>(0));
         fft_->transform(-1);
         fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
 
         #ifdef __GPU
+        auto rl = ctx_.reciprocal_lattice();
         mdarray<double_complex, 1> veff;
         mdarray<int, 2> gvec;
 
         if (parameters_.processing_unit() == GPU)
         {
-            veff = mdarray<double_complex, 1> (&effective_potential_->f_pw((int)rl->spl_num_gvec().global_offset()), 
-                                               rl->spl_num_gvec().local_size());
+            veff = mdarray<double_complex, 1> (&effective_potential_->f_pw((int)spl_num_gvec_.global_offset()), 
+                                               spl_num_gvec_.local_size());
             veff.allocate_on_device();
             veff.copy_to_device();
 
@@ -701,8 +710,8 @@ void Potential::generate_d_mtrx() // TODO: check the sign of phase factors
                  type->uspp().q_pw.copy_to_device();
             }
         
-            gvec = mdarray<int, 2>(3, rl->spl_num_gvec().local_size());
-            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+            gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
+            for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
             {
                 for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
             }
@@ -719,29 +728,29 @@ void Potential::generate_d_mtrx() // TODO: check the sign of phase factors
 
             if (parameters_.processing_unit() == CPU)
             {
-                matrix<double_complex> veff_a(rl->spl_num_gvec().local_size(), atom_type->num_atoms());
+                matrix<double_complex> veff_a(spl_num_gvec_.local_size(), atom_type->num_atoms());
 
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < atom_type->num_atoms(); i++)
                 {
                     int ia = atom_type->atom_id(i);
 
-                    for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+                    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
                     {
-                        int ig = rl->spl_num_gvec(igloc);
-                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * std::conj(rl->gvec_phase_factor<local>(igloc, ia));
+                        int ig = (int)spl_num_gvec_[igloc];
+                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * std::conj(gvec_phase_factors_(igloc, ia));
                     }
                 }
 
-                linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
-                                  &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),
-                                  &veff_a(0, 0), (int)rl->spl_num_gvec().local_size(),
+                linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
+                                  &atom_type->uspp().q_pw(0, 0), (int)spl_num_gvec_.local_size(),
+                                  &veff_a(0, 0), (int)spl_num_gvec_.local_size(),
                                   &d_tmp(0, 0), d_tmp.ld());
             }
             if (parameters_.processing_unit() == GPU)
             {
                 #ifdef __GPU
-                matrix<double_complex> veff_a(nullptr, rl->spl_num_gvec().local_size(), atom_type->num_atoms());
+                matrix<double_complex> veff_a(nullptr, spl_num_gvec_.local_size(), atom_type->num_atoms());
                 veff_a.allocate_on_device();
                 
                 d_tmp.allocate_on_device();
@@ -756,15 +765,15 @@ void Potential::generate_d_mtrx() // TODO: check the sign of phase factors
                 atom_pos.copy_to_device();
 
                 mul_veff_with_phase_factors_gpu(atom_type->num_atoms(),
-                                                (int)rl->spl_num_gvec().local_size(),
+                                                (int)spl_num_gvec_.local_size(),
                                                 veff.at<GPU>(),
                                                 gvec.at<GPU>(),
                                                 atom_pos.at<GPU>(),
                                                 veff_a.at<GPU>());
 
-                linalg<GPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)rl->spl_num_gvec().local_size(),
-                                  atom_type->uspp().q_pw.at<GPU>(), (int)rl->spl_num_gvec().local_size(),
-                                  veff_a.at<GPU>(), (int)rl->spl_num_gvec().local_size(), d_tmp.at<GPU>(), d_tmp.ld());
+                linalg<GPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
+                                  atom_type->uspp().q_pw.at<GPU>(), (int)spl_num_gvec_.local_size(),
+                                  veff_a.at<GPU>(), (int)spl_num_gvec_.local_size(), d_tmp.at<GPU>(), d_tmp.ld());
 
                 d_tmp.copy_to_host();
                 #else

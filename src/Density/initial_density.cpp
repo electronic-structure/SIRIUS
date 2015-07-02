@@ -17,6 +17,8 @@ void Density::initial_density()
 
     if (parameters_.full_potential())
     {
+        splindex<block> spl_num_gvec(rl->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+
         /* initialize smooth density of free atoms */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(true);
 
@@ -53,7 +55,7 @@ void Density::initial_density()
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
 
-        int ngv_loc = (int)rl->spl_num_gvec().local_size();
+        int ngv_loc = (int)spl_num_gvec.local_size();
 
         /* mapping between G-shell (global index) and a list of G-vectors (local index) */
         std::map<int, std::vector<int> > gsh_map;
@@ -61,7 +63,7 @@ void Density::initial_density()
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
             /* global index of the G-vector */
-            int ig = (int)rl->spl_num_gvec(igloc);
+            int ig = (int)spl_num_gvec[igloc];
             /* index of the G-vector shell */
             int igsh = rl->gvec_shell(ig);
             if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
@@ -97,7 +99,7 @@ void Density::initial_density()
         auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ngv_loc);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            int ig = (int)rl->spl_num_gvec(igloc);
+            int ig = (int)spl_num_gvec[igloc];
             auto rtp = SHT::spherical_coordinates(rl->gvec_cart(ig));
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
@@ -116,9 +118,9 @@ void Density::initial_density()
                 for (int igloc: gv)
                 {
                     /* global index of the G-vector */
-                    int ig = rl->spl_num_gvec(igloc);
+                    int ig = (int)spl_num_gvec[igloc];
 
-                    double_complex z1 = rl->gvec_phase_factor<local>(igloc, ia) * v[ig] * fourpi; 
+                    double_complex z1 = rl->gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
 
                     for (int lm = 0; lm < lmmax; lm++)
                     {

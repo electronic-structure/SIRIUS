@@ -51,22 +51,22 @@ void Reciprocal_lattice::init(int lmax)
     Timer t("sirius::Reciprocal_lattice::init");
     
     /* create split index */
-    spl_num_gvec_ = splindex<block>(num_gvec(), comm_.size(), comm_.rank());
+    //spl_num_gvec_ = splindex<block>(num_gvec(), comm_.size(), comm_.rank());
     
-    if (lmax >= 0)
-    {
-        /* precompute spherical harmonics of G-vectors */
-        gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
-        
-        Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
-        for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-        {
-            int ig = (int)spl_num_gvec_[igloc];
-            auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
-            SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
-        }
-        t2.stop();
-    }
+    //if (lmax >= 0)
+    //{
+    //    /* precompute spherical harmonics of G-vectors */
+    //    //gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
+    //    
+    //    //Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
+    //    //for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+    //    //{
+    //    //    int ig = (int)spl_num_gvec_[igloc];
+    //    //    auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
+    //    //    SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+    //    //}
+    //    //t2.stop();
+    //}
     
     if (esm_type_ == ultrasoft_pseudopotential)
     {
@@ -87,16 +87,16 @@ void Reciprocal_lattice::init(int lmax)
         generate_q_pw(lmax, q_radial_integrals);
     }
 
-    /* precompute G-vector phase factors */
-    #ifdef __CACHE_GVEC_PHASE_FACTORS
-    gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
-    #pragma omp parallel for
-    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-    {
-        int ig = (int)spl_num_gvec_[igloc];
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
-    }
-    #endif
+    //== /* precompute G-vector phase factors */
+    //== #ifdef __CACHE_GVEC_PHASE_FACTORS
+    //== gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
+    //== #pragma omp parallel for
+    //== for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+    //== {
+    //==     int ig = (int)spl_num_gvec_[igloc];
+    //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
+    //== }
+    //== #endif
 }
 
 std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv) const
@@ -118,7 +118,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {            
             int iat = unit_cell_.atom(ia)->type_id();
-            f_pw[ig] += fourpi_omega * conj(gvec_phase_factor<global>(ig, ia)) * form_factors(iat, igs);
+            f_pw[ig] += fourpi_omega * std::conj(gvec_phase_factor(ig, ia)) * form_factors(iat, igs);
         }
     }
 
@@ -214,11 +214,12 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
     {
         for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(double_complex(0, 1), l);
     }
-
-    mdarray<double, 2> gvec_rlm(Utils::lmmax(lmax), spl_num_gvec_.local_size());
-    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+    
+    splindex<block> spl_num_gvec(num_gvec(), comm_.size(), comm_.rank());
+    mdarray<double, 2> gvec_rlm(Utils::lmmax(lmax), spl_num_gvec.local_size());
+    for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
     {
-        int ig = (int)spl_num_gvec_[igloc];
+        int ig = (int)spl_num_gvec[igloc];
         auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
@@ -233,7 +234,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
 
         atom_type->uspp().q_mtrx.zero();
         
-        atom_type->uspp().q_pw = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), nbf * (nbf + 1) / 2);
+        atom_type->uspp().q_pw = mdarray<double_complex, 2>(spl_num_gvec.local_size(), nbf * (nbf + 1) / 2);
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
@@ -252,9 +253,9 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 {
                     std::vector<double_complex> v(lmmax);
                     #pragma omp for
-                    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+                    for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
                     {
-                        int ig = (int)spl_num_gvec_[igloc];
+                        int ig = (int)spl_num_gvec[igloc];
                         int igs = gvec_shell(ig);
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {

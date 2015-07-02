@@ -30,8 +30,10 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     std::vector<double_complex> f_pw(rl->num_gvec(), complex_zero);
 
+    splindex<block> spl_gvec(rl->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+
     /* split local fraction of G-vectors between threads */
-    splindex<block> spl_ngv_loc(rl->spl_num_gvec().local_size(), Platform::max_num_threads(), 0);
+    splindex<block> spl_ngv_loc(spl_gvec.local_size(), Platform::max_num_threads(), 0);
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
@@ -66,7 +68,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
                 {
                     int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
-                    phase_factors(igloc_t, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
+                    phase_factors(igloc_t, i) = std::conj(gvec_phase_factors_(igloc, ia));
                 }
             }
 
@@ -84,8 +86,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 {
                     int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
                     /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                    f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                                                     atom_type->uspp().q_pw(igloc, idx12 + xi2);
+                    f_pw[spl_gvec[igloc]] += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
+                                             atom_type->uspp().q_pw(igloc, idx12 + xi2);
 
                 }
                 /* add non-diagonal terms */
@@ -96,17 +98,17 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                         int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
                         
                         /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                        f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
+                        f_pw[spl_gvec[igloc]] += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
 
                         /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                        f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * conj(atom_type->uspp().q_pw(igloc, idx12));
+                        f_pw[spl_gvec[igloc]] += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type->uspp().q_pw(igloc, idx12));
                     }
                 }
             }
         }
     }
     
-    ctx_.comm().allgather(&f_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
+    ctx_.comm().allgather(&f_pw[0], (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
 
     for (int ig = 0; ig < rl->num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
 }

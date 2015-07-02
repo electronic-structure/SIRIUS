@@ -42,7 +42,7 @@ class splindex<block>: public splindex_base
             if (rank__ < 0 || rank__ >= num_ranks__) error_local(__FILE__, __LINE__, "wrong rank");
             rank_ = rank__;
 
-            block_size_ = block_size(global_index_size__, num_ranks__); //global_index_size_ / num_ranks_ + std::min(size_t(1), global_index_size_ % num_ranks_);
+            block_size_ = block_size(global_index_size__, num_ranks__);
         }
         
     public:

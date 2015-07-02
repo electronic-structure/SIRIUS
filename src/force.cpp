@@ -156,7 +156,7 @@ void Force::ibs_force(Simulation_context& ctx__,
                                          kp__->gklo_basis_descriptor_col(igk_col).ig);
                 int igs = rl->gvec_shell(ig12);
 
-                double_complex zt = std::conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
+                double_complex zt = std::conj(rl->gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
 
                 double t1 = 0.5 * (kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
                                    kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
