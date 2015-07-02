@@ -119,13 +119,13 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
-    #pragma omp parallel for
-    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-    {
-        int ig = (int)spl_num_gvec_[igloc];
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = ctx_.reciprocal_lattice()->gvec_phase_factor(ig, ia);
-    }
+    //== gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
+    //== #pragma omp parallel for
+    //== for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+    //== {
+    //==     int ig = (int)spl_num_gvec_[igloc];
+    //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = ctx_.reciprocal_lattice()->gvec_phase_factor(ig, ia);
+    //== }
 }
 
 Potential::~Potential()
@@ -691,8 +691,9 @@ void Potential::generate_d_mtrx() // TODO: check the sign of phase factors
         fft_->transform(-1);
         fft_->output(fft_->num_gvec(), fft_->index_map(), &effective_potential_->f_pw(0));
 
-        #ifdef __GPU
         auto rl = ctx_.reciprocal_lattice();
+
+        #ifdef __GPU
         mdarray<double_complex, 1> veff;
         mdarray<int, 2> gvec;
 
@@ -738,7 +739,7 @@ void Potential::generate_d_mtrx() // TODO: check the sign of phase factors
                     for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
                     {
                         int ig = (int)spl_num_gvec_[igloc];
-                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * std::conj(gvec_phase_factors_(igloc, ia));
+                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * std::conj(rl->gvec_phase_factor(ig, ia));
                     }
                 }
 

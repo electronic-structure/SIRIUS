@@ -86,7 +86,7 @@ class Potential
 
         splindex<block> spl_num_gvec_;
 
-        mdarray<double_complex, 2> gvec_phase_factors_;
+        //mdarray<double_complex, 2> gvec_phase_factors_;
 
         double energy_vha_;
         

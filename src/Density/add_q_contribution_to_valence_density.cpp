@@ -68,7 +68,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
                 {
                     int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
-                    phase_factors(igloc_t, i) = std::conj(gvec_phase_factors_(igloc, ia));
+                    int ig = (int)spl_gvec[igloc];
+                    phase_factors(igloc_t, i) = std::conj(rl->gvec_phase_factor(ig, ia));
                 }
             }
 
