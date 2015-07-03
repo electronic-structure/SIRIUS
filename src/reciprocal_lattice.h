@@ -206,11 +206,11 @@ class Reciprocal_lattice
         //==     return inverse_reciprocal_lattice_vectors_ * a__;
         //== }
         
-        template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
-        {
-            return reciprocal_lattice_vectors_ * a__;
-        }
+        //template <typename T>
+        //inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
+        //{
+        //    return reciprocal_lattice_vectors_ * a__;
+        //}
 
         /// Return global index of G1-G2 vector
         inline int index_g12(int ig1__, int ig2__) const

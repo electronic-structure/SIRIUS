@@ -287,7 +287,8 @@ class K_point
             {
                 case cartesian:
                 {
-                    return ctx_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
+                    return unit_cell_.reciprocal_lattice_vectors() * vector3d<double>(&gkvec_(0, igk__));
+                    //return ctx_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
                     break;
                 }
                 case fractional:

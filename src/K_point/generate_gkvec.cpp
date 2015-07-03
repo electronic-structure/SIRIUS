@@ -37,7 +37,7 @@ void K_point::generate_gkvec(double gk_cutoff)
         vector3d<double> vgk;
         for (int x = 0; x < 3; x++) vgk[x] = ctx_.reciprocal_lattice()->gvec(ig)[x] + vk_[x];
 
-        vector3d<double> v = ctx_.reciprocal_lattice()->get_cartesian_coordinates(vgk);
+        vector3d<double> v = ctx_.unit_cell().reciprocal_lattice_vectors() * vgk;
         double gklen = v.length();
 
         if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double, int>(gklen, ig));
