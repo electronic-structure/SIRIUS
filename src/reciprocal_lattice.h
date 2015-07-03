@@ -42,28 +42,8 @@ class Reciprocal_lattice
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
         
-        /// Reciprocal lattice vectors in column order.
-        /** The following convention is used:
-         *  \f[
-         *    \vec a_{i} \vec b_{j} = 2 \pi \delta_{ij}
-         *  \f]
-         *  or in matrix notation
-         *  \f[
-         *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
-         *  \f]
-         */
-        //matrix3d<double> reciprocal_lattice_vectors_;
-        
-        /// Inverse matrix or reciprocal vectors.
-        //matrix3d<double> inverse_reciprocal_lattice_vectors_;
-        
         /// FFT wrapper for dense grid.
         FFT3D<CPU>* fft_;
-
-        //Gvec const& gvec_;
-
-        /// Cached values of G-vector phase factors 
-        //mdarray<double_complex, 2> gvec_phase_factors_;
 
         Communicator const& comm_;
 
@@ -80,7 +60,6 @@ class Reciprocal_lattice
         Reciprocal_lattice(Unit_cell const& unit_cell__, 
                            electronic_structure_method_t esm_type__,
                            FFT3D<CPU>* fft__,
-                           Gvec const& gvec__,
                            int lmax__,
                            Communicator const& comm__);
 

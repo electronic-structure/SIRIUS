@@ -233,7 +233,7 @@ class Simulation_context
                 }
             }
             
-            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, gvec_, lmax, comm_);
+            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, lmax, comm_);
 
             #ifdef __PRINT_MEMORY_USAGE
             MEMORY_USAGE_INFO();
