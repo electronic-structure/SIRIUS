@@ -114,7 +114,7 @@ Potential::Potential(Simulation_context& ctx__)
         for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
         {
             int ig = (int)spl_num_gvec_[igloc];
-            auto rtp = SHT::spherical_coordinates(ctx_.reciprocal_lattice()->gvec_cart(ig));
+            auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
             SHT::spherical_harmonics(parameters_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
     }
@@ -652,7 +652,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
         {
             int ig = (int)spl_num_gvec_[igloc];
-            vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / std::pow(ctx_.reciprocal_lattice()->gvec_len(ig), 2);
+            vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / std::pow(fft_->gvec_len(ig), 2);
             energy_vha_ += std::real(std::conj(rho->f_pw(ig)) * vtmp[igloc]);
             vtmp[igloc] += effective_potential_->f_pw(ig);
         }
@@ -1065,7 +1065,7 @@ void Potential::generate_local_potential()
     comm_.allgather(vloc_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
                                  static_cast<int>(ld * spl_gshells.local_size()));
 
-    std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());
+    std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, fft_->num_gvec());
     fft_->input(fft_->num_gvec(), fft_->index_map(), &v[0]); 
     fft_->transform(1);
     fft_->output(&local_potential_->f_it<global>(0));

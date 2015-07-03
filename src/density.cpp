@@ -111,7 +111,7 @@ void Density::generate_pseudo_core_charge_density()
     auto rl = ctx_.reciprocal_lattice();
     auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
-    std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
+    std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, fft_->num_gvec());
 
     fft_->input(fft_->num_gvec(), fft_->index_map(), &v[0]);
     fft_->transform(1);

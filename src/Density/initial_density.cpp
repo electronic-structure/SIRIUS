@@ -17,7 +17,7 @@ void Density::initial_density()
 
     if (parameters_.full_potential())
     {
-        splindex<block> spl_num_gvec(rl->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+        splindex<block> spl_num_gvec(fft_->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
         /* initialize smooth density of free atoms */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(true);
@@ -27,15 +27,15 @@ void Density::initial_density()
         //auto rho_radial_integrals = generate_rho_radial_integrals(5);
 
         /* compute contribution from free atoms to the interstitial density */
-        auto v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        auto v = rl->make_periodic_function(rho_radial_integrals, fft_->num_gvec());
         
         #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z = mdarray<double_complex, 1>(&v[0], rl->num_gvec()).checksum();
+        double_complex z = mdarray<double_complex, 1>(&v[0], fft_->num_gvec()).checksum();
         DUMP("checksum(rho_pw): %18.10f %18.10f", std::real(z), std::imag(z));
         #endif
 
         /* set plane-wave coefficients of the charge density */
-        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
+        memcpy(&rho_->f_pw(0), &v[0], fft_->num_gvec() * sizeof(double_complex));
         /* convert charge deisnty to real space mesh */
         rho_->fft_transform(1);
 
@@ -100,7 +100,7 @@ void Density::initial_density()
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
             int ig = (int)spl_num_gvec[igloc];
-            auto rtp = SHT::spherical_coordinates(rl->gvec_cart(ig));
+            auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
         
@@ -265,12 +265,12 @@ void Density::initial_density()
         DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
         #endif
 
-        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, fft_->num_gvec());
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], rl->num_gvec() * sizeof(double_complex)));
         #endif
 
-        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
+        memcpy(&rho_->f_pw(0), &v[0], fft_->num_gvec() * sizeof(double_complex));
 
         double charge = real(rho_->f_pw(0) * unit_cell_.omega());
         if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)

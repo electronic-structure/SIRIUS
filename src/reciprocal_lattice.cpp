@@ -217,12 +217,12 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(double_complex(0, 1), l);
     }
     
-    splindex<block> spl_num_gvec(num_gvec(), comm_.size(), comm_.rank());
+    splindex<block> spl_num_gvec(fft_->num_gvec(), comm_.size(), comm_.rank());
     mdarray<double, 2> gvec_rlm(Utils::lmmax(lmax), spl_num_gvec.local_size());
     for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
     {
         int ig = (int)spl_num_gvec[igloc];
-        auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
+        auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
 

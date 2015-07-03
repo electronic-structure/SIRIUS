@@ -175,7 +175,7 @@ void Force::ibs_force(Simulation_context& ctx__,
                     int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
                                              kp__->gklo_basis_descriptor_col(igk_col).ig);
 
-                    vector3d<double> vg = rl->gvec_cart(ig12);
+                    vector3d<double> vg = ctx__.fft()->gvec_cart(ig12);
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
                     o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                 }

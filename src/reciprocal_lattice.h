@@ -62,12 +62,6 @@ class Reciprocal_lattice
 
         Gvec const& gvec_;
 
-        /// Split index of G-vectors
-        //splindex<block> spl_num_gvec_;
-        
-        /// Cached Ylm components of G-vectors
-        //mdarray<double_complex, 2> gvec_ylm_;
-        
         /// Cached values of G-vector phase factors 
         mdarray<double_complex, 2> gvec_phase_factors_;
 
@@ -99,71 +93,14 @@ class Reciprocal_lattice
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
-            //== switch (index_domain)
-            //== {
-            //==     case global:
-            //==     {
-            //==         return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
-            //==         break;
-            //==     }
-            //==     case local:
-            //==     {
-            //==         #ifdef __CACHE_GVEC_PHASE_FACTORS
-            //==         return gvec_phase_factors_(ig__, ia__);
-            //==         #else
-            //==         return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig__]) * unit_cell_.atom(ia__)->position())));
-            //==         #endif
-            //==         break;
-            //==     }
-            //== }
+            return std::exp(double_complex(0.0, twopi * (vector3d<int>(fft_->gvec(ig__)) * unit_cell_.atom(ia__)->position())));
         }
        
-        //== /// Ylm components of G-vector
-        //== template <index_domain_t index_domain>
-        //== inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax) const
+        //== /// Return length of G-vector.
+        //== inline double gvec_len(int ig__) const
         //== {
-        //==     switch (index_domain)
-        //==     {
-        //==         case local:
-        //==         {
-        //==             int lmmax = Utils::lmmax(lmax);
-        //==             assert(lmmax <= (int)gvec_ylm_.size(0));
-        //==             memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
-        //==             return;
-        //==         }
-        //==         case global:
-        //==         {
-        //==             auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
-        //==             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
-        //==             return;
-        //==         }
-        //==     }
+        //==     return fft_->gvec_len(ig__);
         //== }
-
-        /// Number of G-vectors within plane-wave cutoff
-        inline int num_gvec() const
-        {
-            return fft_->num_gvec();
-        }
-
-        /// G-vector in integer fractional coordinates
-        inline vector3d<int> gvec(int ig__) const
-        {
-            return fft_->gvec(ig__);
-        }
-
-        /// G-vector in Cartesian coordinates
-        inline vector3d<double> gvec_cart(int ig__) const
-        {
-            return fft_->gvec_cart(ig__);
-        }
-
-        /// Return length of G-vector.
-        inline double gvec_len(int ig__) const
-        {
-            return fft_->gvec_len(ig__);
-        }
         
         inline int gvec_index(vector3d<int> gvec__) const
         {
@@ -204,17 +141,6 @@ class Reciprocal_lattice
             return fft_->gvec_shell_len(igs__);
         }
         
-        //== inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
-        //== {
-        //==     return inverse_reciprocal_lattice_vectors_ * a__;
-        //== }
-        
-        //template <typename T>
-        //inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
-        //{
-        //    return reciprocal_lattice_vectors_ * a__;
-        //}
-
         /// Return global index of G1-G2 vector
         inline int index_g12(int ig1__, int ig2__) const
         {

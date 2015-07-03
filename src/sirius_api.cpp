@@ -463,7 +463,7 @@ void sirius_get_num_bands(int32_t* num_bands)
 void sirius_get_num_gvec(int32_t* num_gvec__)
 {
     log_function_enter(__func__);
-    *num_gvec__ = sim_ctx->reciprocal_lattice()->num_gvec();
+    *num_gvec__ = sim_ctx->fft()->num_gvec();
     log_function_exit(__func__);
 }
 
@@ -527,7 +527,7 @@ void sirius_get_gvec_cart(double* gvec_cart__)
     mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx->fft()->size());
     for (int ig = 0; ig < sim_ctx->fft()->size(); ig++)
     {
-        vector3d<double> gvc = sim_ctx->reciprocal_lattice()->gvec_cart(ig);
+        vector3d<double> gvc = sim_ctx->fft()->gvec_cart(ig);
         for (int x = 0; x < 3; x++) gvec_cart(x, ig) = gvc[x];
     }
     log_function_exit(__func__);
@@ -586,10 +586,10 @@ void sirius_get_gvec_ylm(double_complex* gvec_ylm__, int* ld__, int* lmax__)
 void sirius_get_gvec_phase_factors(double_complex* sfacg__)
 {
     log_function_enter(__func__);
-    mdarray<double_complex, 2> sfacg(sfacg__, sim_ctx->reciprocal_lattice()->num_gvec(), sim_ctx->unit_cell().num_atoms());
+    mdarray<double_complex, 2> sfacg(sfacg__, sim_ctx->fft()->num_gvec(), sim_ctx->unit_cell().num_atoms());
     for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
     {
-        for (int ig = 0; ig < sim_ctx->reciprocal_lattice()->num_gvec(); ig++)
+        for (int ig = 0; ig < sim_ctx->fft()->num_gvec(); ig++)
             sfacg(ig, ia) = sim_ctx->reciprocal_lattice()->gvec_phase_factor(ig, ia);
     }
     log_function_exit(__func__);
@@ -2174,15 +2174,14 @@ void sirius_symmetrize_density()
 
 void sirius_get_rho_pw(double_complex* rho_pw__)
 {
-    int num_gvec = sim_ctx->reciprocal_lattice()->num_gvec();
+    int num_gvec = sim_ctx->fft()->num_gvec();
     memcpy(rho_pw__, &density->rho()->f_pw(0), num_gvec * sizeof(double_complex));
 }
 
 void sirius_set_rho_pw(double_complex* rho_pw__)
 {
-    auto rl = sim_ctx->reciprocal_lattice();
     auto fft = sim_ctx->fft();
-    memcpy(&density->rho()->f_pw(0), rho_pw__, rl->num_gvec() * sizeof(double_complex));
+    memcpy(&density->rho()->f_pw(0), rho_pw__, fft->num_gvec() * sizeof(double_complex));
     fft->input(fft->num_gvec(), fft->index_map(), &density->rho()->f_pw(0));
     fft->transform(1);
     fft->output(&density->rho()->f_it<global>(0));
@@ -2349,7 +2348,7 @@ void sirius_get_beta_projectors_(int32_t* kset_id__, int32_t* ik__, int32_t* ngk
         {
             int ig = kp->gvec_index(i);
             /* G-vector of sirius ordering */
-            auto vg = sim_ctx->reciprocal_lattice()->gvec(ig);
+            auto vg = sim_ctx->fft()->gvec(ig);
             if (gvec_of_k(0, igk) == vg[0] &&
                 gvec_of_k(1, igk) == vg[1] &&
                 gvec_of_k(2, igk) == vg[2])
@@ -2578,7 +2577,7 @@ void sirius_get_h_o_diag_(int32_t* kset_id__, int32_t* ik__, double* h_diag__, d
         {
             int ig = kp->gvec_index(i);
             /* G-vector of sirius ordering */
-            auto vg = sim_ctx->reciprocal_lattice()->gvec(ig);
+            auto vg = sim_ctx->fft()->gvec(ig);
             if (gvec_of_k(0, igk) == vg[0] &&
                 gvec_of_k(1, igk) == vg[1] &&
                 gvec_of_k(2, igk) == vg[2])
@@ -2612,7 +2611,7 @@ void sirius_generate_augmented_density_(double* rhoit__)
 
 void sirius_get_q_pw_(int32_t* iat__, int32_t* num_gvec__, double_complex* q_pw__)
 {
-    if (*num_gvec__ != sim_ctx->reciprocal_lattice()->num_gvec())
+    if (*num_gvec__ != sim_ctx->fft()->num_gvec())
     {
         TERMINATE("wrong number of G-vectors");
     }
@@ -2705,7 +2704,7 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
         {
             int ig = kp->gvec_index(i);
             /* G-vector of sirius ordering */
-            auto vg = sim_ctx->reciprocal_lattice()->gvec(ig);
+            auto vg = sim_ctx->fft()->gvec(ig);
             if (gvec_of_k(0, igk) == vg[0] &&
                 gvec_of_k(1, igk) == vg[1] &&
                 gvec_of_k(2, igk) == vg[2])

@@ -164,7 +164,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                 int igloc = (int)spl_gv_t[igloc_t];
                 int ig = (int)spl_num_gvec_[igloc];
 
-                double gR = rl->gvec_len(ig) * R;
+                double gR = fft_->gvec_len(ig) * R;
                 
                 double_complex zt = fourpi * std::conj(rl->gvec_phase_factor(ig, ia)) / unit_cell_.omega();
 
@@ -329,8 +329,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
     #pragma omp parallel for schedule(static)
-    for (int ig = 1; ig < ctx_.reciprocal_lattice()->num_gvec(); ig++)
-        vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.reciprocal_lattice()->gvec_len(ig), 2));
+    for (int ig = 1; ig < fft_->num_gvec(); ig++)
+        vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(fft_->gvec_len(ig), 2));
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z4 = mdarray<double_complex, 1>(&vh->f_pw(0), fft_->num_gvec()).checksum();

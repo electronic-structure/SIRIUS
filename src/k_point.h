@@ -267,7 +267,7 @@ class K_point
         /// Return G-vector (in fractional coordinates) of the current G+k vector.
         inline vector3d<int> gvec(int igk__) const
         {
-            return ctx_.reciprocal_lattice()->gvec(gvec_index(igk__));
+            return fft_->gvec(gvec_index(igk__));
         }
         
         /// Global index of G-vector by the index of G+k vector

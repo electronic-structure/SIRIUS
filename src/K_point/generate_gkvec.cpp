@@ -32,10 +32,10 @@ void K_point::generate_gkvec(double gk_cutoff)
     std::vector< std::pair<double, int> > gkmap;
 
     /* find G-vectors for which |G+k| < cutoff */
-    for (int ig = 0; ig < ctx_.reciprocal_lattice()->num_gvec(); ig++)
+    for (int ig = 0; ig < fft_->num_gvec(); ig++)
     {
         vector3d<double> vgk;
-        for (int x = 0; x < 3; x++) vgk[x] = ctx_.reciprocal_lattice()->gvec(ig)[x] + vk_[x];
+        for (int x = 0; x < 3; x++) vgk[x] = fft_->gvec(ig)[x] + vk_[x];
 
         vector3d<double> v = ctx_.unit_cell().reciprocal_lattice_vectors() * vgk;
         double gklen = v.length();
@@ -54,7 +54,7 @@ void K_point::generate_gkvec(double gk_cutoff)
         gvec_index_[ig] = gkmap[ig].second;
         for (int x = 0; x < 3; x++)
         {
-            gkvec_(x, ig) = ctx_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
+            gkvec_(x, ig) = fft_->gvec(gkmap[ig].second)[x] + vk_[x];
         }
     }
     
@@ -69,7 +69,7 @@ void K_point::generate_gkvec(double gk_cutoff)
             /* G-vector index in the fine mesh */
             int ig = gvec_index_[igk];
             /* G-vector fractional coordinates */
-            vector3d<int> gvec = ctx_.reciprocal_lattice()->gvec(ig);
+            vector3d<int> gvec = fft_->gvec(ig);
 
             /* linear index inside coarse FFT buffer */
             fft_index_coarse_[igk] = ctx_.fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
