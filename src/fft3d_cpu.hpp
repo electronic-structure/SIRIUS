@@ -75,12 +75,12 @@ class Gvec
             return vector3d<int>(i0__, i1__, i2__);
         }
 
-        inline vector3d<int> gvec_by_full_index(int ig__) const // TODO: use bit masks and bit shifts
+        inline vector3d<int> gvec_by_full_index(int idx__) const // TODO: use bit masks and bit shifts
         {
-            int k = ig__ / (grid_size_[0] * grid_size_[1]);
-            ig__ -= k * grid_size_[0] * grid_size_[1];
-            int j = ig__ / grid_size_[0];
-            int i = ig__ -  j * grid_size_[0];
+            int k = idx__ / (grid_size_[0] * grid_size_[1]);
+            idx__ -= k * grid_size_[0] * grid_size_[1];
+            int j = idx__ / grid_size_[0];
+            int i = idx__ -  j * grid_size_[0];
             return gvec_by_grid_pos(i, j, k);
         }
 
