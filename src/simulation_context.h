@@ -61,9 +61,6 @@ class Simulation_context
 
         Gvec gvec_;
 
-        /// Split index of G-vectors
-        splindex<block> spl_num_gvec_;
-
         /// FFT wrapper for coarse grid.
         FFT3D<CPU>* fft_coarse_;
 
@@ -103,7 +100,7 @@ class Simulation_context
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
               initialized_(false)
         {
-            LOG_FUNC_BEGIN();
+            PROFILE();
 
             gettimeofday(&start_time_, NULL);
             
@@ -113,8 +110,6 @@ class Simulation_context
             start_time_tag_ = std::string(buf);
 
             unit_cell_.import(parameters_.unit_cell_input_section());
-
-            LOG_FUNC_END();
         }
 
         ~Simulation_context()
@@ -194,9 +189,6 @@ class Simulation_context
 
             gvec_ = fft_->init_gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
 
-            /* create split index */
-            spl_num_gvec_ = splindex<block>(fft_->num_gvec(), comm_.size(), comm_.rank());
-
             #ifdef __GPU
             fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
             #endif
@@ -241,7 +233,7 @@ class Simulation_context
                 }
             }
             
-            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, lmax, comm_);
+            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, gvec_, lmax, comm_);
 
             #ifdef __PRINT_MEMORY_USAGE
             MEMORY_USAGE_INFO();

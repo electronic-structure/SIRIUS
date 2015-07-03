@@ -60,6 +60,8 @@ class Reciprocal_lattice
         /// FFT wrapper for dense grid.
         FFT3D<CPU>* fft_;
 
+        Gvec const& gvec_;
+
         /// Split index of G-vectors
         //splindex<block> spl_num_gvec_;
         
@@ -84,6 +86,7 @@ class Reciprocal_lattice
         Reciprocal_lattice(Unit_cell const& unit_cell__, 
                            electronic_structure_method_t esm_type__,
                            FFT3D<CPU>* fft__,
+                           Gvec const& gvec__,
                            int lmax__,
                            Communicator const& comm__);
 
