@@ -35,12 +35,8 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell const& unit_cell__,
     : unit_cell_(unit_cell__), 
       esm_type_(esm_type__),
       fft_(fft__),
-      gvec_(gvec__),
       comm_(comm__)
 {
-    reciprocal_lattice_vectors_ = unit_cell_.reciprocal_lattice_vectors();
-    inverse_reciprocal_lattice_vectors_ = inverse(reciprocal_lattice_vectors_);
-
     init(lmax__);
 }
 
@@ -82,7 +78,7 @@ void Reciprocal_lattice::init(int lmax)
         // TODO: in principle, this can be distributed over G-shells (each mpi rank holds radial integrals only for
         //       G-shells of local fraction of G-vectors
         mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, lmax + 1, unit_cell_.num_atom_types(), 
-                                              num_gvec_shells_inner());
+                                              fft_->num_gvec_shells_inner());
 
         generate_q_radial_integrals(lmax, q_radial_functions, q_radial_integrals);
 
@@ -115,7 +111,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
     for (int igloc = 0; igloc < (int)spl_ngv.local_size(); igloc++)
     {
         int ig = (int)spl_ngv[igloc];
-        int igs = gvec_shell(ig);
+        int igs = fft_->gvec_shell(ig);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {            
@@ -159,7 +155,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
 
     qri.zero();
     
-    splindex<block> spl_num_gvec_shells(num_gvec_shells_inner(), comm_.size(), comm_.rank());
+    splindex<block> spl_num_gvec_shells(fft_->num_gvec_shells_inner(), comm_.size(), comm_.rank());
     
     #pragma omp parallel
     {
@@ -168,7 +164,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
         for (int ishloc = 0; ishloc < (int)spl_num_gvec_shells.local_size(); ishloc++)
         {
             int igs = (int)spl_num_gvec_shells[ishloc];
-            jl.load(gvec_shell_len(igs));
+            jl.load(fft_->gvec_shell_len(igs));
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
@@ -258,7 +254,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                     for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
                     {
                         int ig = (int)spl_num_gvec[igloc];
-                        int igs = gvec_shell(ig);
+                        int igs = fft_->gvec_shell(ig);
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);

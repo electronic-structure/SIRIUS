@@ -52,18 +52,18 @@ class Reciprocal_lattice
          *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
          *  \f]
          */
-        matrix3d<double> reciprocal_lattice_vectors_;
+        //matrix3d<double> reciprocal_lattice_vectors_;
         
         /// Inverse matrix or reciprocal vectors.
-        matrix3d<double> inverse_reciprocal_lattice_vectors_;
+        //matrix3d<double> inverse_reciprocal_lattice_vectors_;
         
         /// FFT wrapper for dense grid.
         FFT3D<CPU>* fft_;
 
-        Gvec const& gvec_;
+        //Gvec const& gvec_;
 
         /// Cached values of G-vector phase factors 
-        mdarray<double_complex, 2> gvec_phase_factors_;
+        //mdarray<double_complex, 2> gvec_phase_factors_;
 
         Communicator const& comm_;
 
@@ -96,51 +96,6 @@ class Reciprocal_lattice
             return std::exp(double_complex(0.0, twopi * (vector3d<int>(fft_->gvec(ig__)) * unit_cell_.atom(ia__)->position())));
         }
        
-        //== /// Return length of G-vector.
-        //== inline double gvec_len(int ig__) const
-        //== {
-        //==     return fft_->gvec_len(ig__);
-        //== }
-        
-        inline int gvec_index(vector3d<int> gvec__) const
-        {
-            return fft_->gvec_index(gvec__);
-        }
-
-        /// FFT index for a given G-vector index
-        inline int index_map(int ig__) const
-        {
-            return fft_->index_map(ig__);
-        }
-
-        /// Pointer to FFT index array
-        inline int const* index_map() const
-        {
-            return fft_->index_map();
-        }
-
-        /// Number of G-vector shells within plane-wave cutoff
-        inline int num_gvec_shells_inner() const
-        {
-            return fft_->num_gvec_shells_inner();
-        }
-
-        inline int num_gvec_shells_total() const
-        {
-            return fft_->num_gvec_shells_total();
-        }
-
-        /// Index of G-vector shell
-        inline int gvec_shell(int ig__) const
-        {
-            return fft_->gvec_shell(ig__);
-        }
-
-        inline double gvec_shell_len(int igs__) const
-        {
-            return fft_->gvec_shell_len(igs__);
-        }
-        
         /// Return global index of G1-G2 vector
         inline int index_g12(int ig1__, int ig2__) const
         {
@@ -162,21 +117,6 @@ class Reciprocal_lattice
                 return -1;
             }
         }
-
-        //== inline splindex<block> const& spl_num_gvec() const
-        //== {
-        //==     return spl_num_gvec_;
-        //== }
-        //== 
-        //== inline int spl_num_gvec(int igloc__) const
-        //== {
-        //==     return static_cast<int>(spl_num_gvec_[igloc__]);
-        //== }
-        
-        //== inline double_complex gvec_ylm(int lm, int igloc) const
-        //== {
-        //==     return gvec_ylm_(lm, igloc);
-        //== }
 
         void write_periodic_function()
         {
@@ -202,11 +142,6 @@ class Reciprocal_lattice
             //==     }
             //== }
             //== fclose(fout);
-        }
-
-        matrix3d<double> const& reciprocal_lattice_vectors() const
-        {
-            return reciprocal_lattice_vectors_;
         }
 };
 

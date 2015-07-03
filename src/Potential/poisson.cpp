@@ -50,7 +50,7 @@ void Potential::poisson_sum_G(int lmmax__,
                 {
                     int l = l_by_lm_[lm];
                     zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
-                                    fl__(l, iat, rl->gvec_shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
+                                    fl__(l, iat, fft_->gvec_shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
                 }
             }
             linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
@@ -176,7 +176,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                         double_complex zt1(0, 0);
                         for (int m = -l; m <= l; m++, lm++) zt1 += gvec_ylm_(lm, igloc) * zp[lm];
 
-                        zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, rl->gvec_shell(ig));
+                        zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, fft_->gvec_shell(ig));
                     }
 
                     pseudo_pw_t[igloc_t] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order + 1);

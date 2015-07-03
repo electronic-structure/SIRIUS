@@ -82,8 +82,10 @@ class Step_function
         std::vector<double> step_function_;
 
         Communicator const& comm_;
+
+        FFT3D<CPU>* fft_;
        
-        void init(FFT3D<CPU>* fft__);
+        void init();
 
     public:
         

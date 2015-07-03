@@ -32,9 +32,10 @@ Step_function::Step_function(Unit_cell const& unit_cell__,
                              Communicator const& comm__)
     : unit_cell_(unit_cell__),
       reciprocal_lattice_(reciprocal_lattice__),
-      comm_(comm__)
+      comm_(comm__),
+      fft_(fft__)
 {
-    init(fft__);
+    init();
 }
 
 mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) const
@@ -47,8 +48,8 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
     for (int igsloc = 0; igsloc < (int)spl_num_gvec_shells.local_size(); igsloc++)
     {
         int igs = (int)spl_num_gvec_shells[igsloc];
-        double G = reciprocal_lattice_->gvec_shell_len(igs);
-        double g3inv = (igs) ? 1.0 / pow(G, 3) : 0.0;
+        double G = fft_->gvec_shell_len(igs);
+        double g3inv = (igs) ? 1.0 / std::pow(G, 3) : 0.0;
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {            
@@ -65,27 +66,27 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
     return ffac;
 }
 
-void Step_function::init(FFT3D<CPU>* fft__)
+void Step_function::init()
 {
     Timer t("sirius::Step_function::init");
 
     if (unit_cell_.num_atoms() == 0) return;
     
-    auto ffac = get_step_function_form_factors(reciprocal_lattice_->num_gvec_shells_total());
+    auto ffac = get_step_function_form_factors(fft_->num_gvec_shells_total());
 
-    step_function_pw_.resize(fft__->size());
-    step_function_.resize(fft__->size());
+    step_function_pw_.resize(fft_->size());
+    step_function_.resize(fft_->size());
     
-    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft__->size());
-    for (int ig = 0; ig < fft__->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
+    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft_->size());
+    for (int ig = 0; ig < fft_->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
 
-    fft__->input(fft__->size(), fft__->index_map(), &step_function_pw_[0]);
-    fft__->transform(1);
-    fft__->output(&step_function_[0]);
+    fft_->input(fft_->size(), fft_->index_map(), &step_function_pw_[0]);
+    fft_->transform(1);
+    fft_->output(&step_function_[0]);
     
     double vit = 0.0;
-    for (int i = 0; i < fft__->size(); i++) vit += step_function_[i] * unit_cell_.omega() / fft__->size();
+    for (int i = 0; i < fft_->size(); i++) vit += step_function_[i] * unit_cell_.omega() / fft_->size();
     
     if (std::abs(vit - unit_cell_.volume_it()) > 1e-10)
     {

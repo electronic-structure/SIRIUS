@@ -144,18 +144,17 @@ void Potential::init()
 {
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        auto rl = ctx_.reciprocal_lattice();
         /* compute values of spherical Bessel functions at MT boundary */
         sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, unit_cell_.num_atom_types(), 
-                                         rl->num_gvec_shells_inner());
+                                         fft_->num_gvec_shells_inner());
         sbessel_mt_.allocate();
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+            for (int igs = 0; igs < fft_->num_gvec_shells_inner(); igs++)
             {
                 gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order + 1, 
-                                       rl->gvec_shell_len(igs) * unit_cell_.atom_type(iat)->mt_radius(), 
+                                       fft_->gvec_shell_len(igs) * unit_cell_.atom_type(iat)->mt_radius(), 
                                        &sbessel_mt_(0, iat, igs));
             }
         }
@@ -169,19 +168,19 @@ void Potential::init()
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
          */
         sbessel_mom_ = mdarray<double, 3>(parameters_.lmax_rho() + 1, unit_cell_.num_atom_types(), 
-                                          rl->num_gvec_shells_inner());
+                                          fft_->num_gvec_shells_inner());
         sbessel_mom_.allocate();
         sbessel_mom_.zero();
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             sbessel_mom_(0, iat, 0) = std::pow(unit_cell_.atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
-            for (int igs = 1; igs < rl->num_gvec_shells_inner(); igs++)
+            for (int igs = 1; igs < fft_->num_gvec_shells_inner(); igs++)
             {
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                 {
                     sbessel_mom_(l, iat, igs) = std::pow(unit_cell_.atom_type(iat)->mt_radius(), l + 2) * 
-                                                sbessel_mt_(l + 1, iat, igs) / rl->gvec_shell_len(igs);
+                                                sbessel_mt_(l + 1, iat, igs) / fft_->gvec_shell_len(igs);
                 }
             }
         }
@@ -1016,10 +1015,10 @@ void Potential::generate_local_potential()
 
     auto rl = ctx_.reciprocal_lattice();
 
-    mdarray<double, 2> vloc_radial_integrals(unit_cell_.num_atom_types(), rl->num_gvec_shells_inner());
+    mdarray<double, 2> vloc_radial_integrals(unit_cell_.num_atom_types(), fft_->num_gvec_shells_inner());
 
     /* split G-shells between MPI ranks */
-    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), comm_.size(), comm_.rank());
+    splindex<block> spl_gshells(fft_->num_gvec_shells_inner(), comm_.size(), comm_.rank());
 
     #pragma omp parallel
     {
@@ -1048,7 +1047,7 @@ void Potential::generate_local_potential()
                 }
                 else
                 {
-                    double g = rl->gvec_shell_len(igs);
+                    double g = fft_->gvec_shell_len(igs);
                     double g2 = std::pow(g, 2);
                     for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
                     {

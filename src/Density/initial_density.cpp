@@ -65,7 +65,7 @@ void Density::initial_density()
             /* global index of the G-vector */
             int ig = (int)spl_num_gvec[igloc];
             /* index of the G-vector shell */
-            int igsh = rl->gvec_shell(ig);
+            int igsh = fft_->gvec_shell(ig);
             if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
             gsh_map[igsh].push_back(igloc);
         }
@@ -77,12 +77,12 @@ void Density::initial_density()
         int lmax = parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         
-        sbessel_approx sba(&unit_cell_, lmax, rl->gvec_shell_len(1), rl->gvec_shell_len(rl->num_gvec_shells_inner() - 1), 1e-6);
+        sbessel_approx sba(&unit_cell_, lmax, fft_->gvec_shell_len(1), fft_->gvec_shell_len(fft_->num_gvec_shells_inner() - 1), 1e-6);
         
         std::vector<double> gvec_len(gsh_list.size());
         for (int i = 0; i < (int)gsh_list.size(); i++)
         {
-            gvec_len[i] = rl->gvec_shell_len(gsh_list[i].first);
+            gvec_len[i] = fft_->gvec_shell_len(gsh_list[i].first);
         }
         sba.approximate(gvec_len);
 

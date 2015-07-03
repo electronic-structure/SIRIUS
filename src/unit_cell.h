@@ -82,7 +82,16 @@ class Unit_cell
          */
         matrix3d<double> inverse_lattice_vectors_;
 
-        /// Vectors of reciprocal lattice in column order.
+        /// Reciprocal lattice vectors in column order.
+        /** The following convention is used:
+         *  \f[
+         *    \vec a_{i} \vec b_{j} = 2 \pi \delta_{ij}
+         *  \f]
+         *  or in matrix notation
+         *  \f[
+         *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
+         *  \f]
+         */
         matrix3d<double> reciprocal_lattice_vectors_;
         
         /// Volume \f$ \Omega \f$ of the unit cell. Volume of Brillouin zone is then \f$ (2\Pi)^3 / \Omega \f$.
