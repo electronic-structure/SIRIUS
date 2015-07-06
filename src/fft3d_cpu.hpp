@@ -624,14 +624,29 @@ class FFT3D<CPU>
                 {
                     TERMINATE("wrong G-vec indices");
                 }
+
+                int ig_new = gv_.index_by_gvec_(G[0], G[1], G[2]);
+
+                auto G_new = gv_[ig_new];
+                if (G[0] != G_new[0] || G[1] != G_new[1] || G[2] != G_new[2]) TERMINATE("wrong gvec");
+
+                auto Gcart = gvec_cart(ig);
+                auto Gcart_new = gv_.cart(ig_new);
+                if ((Gcart - Gcart_new).length() > 1e-10) TERMINATE("wrong gvec_cart");
+
+                if (std::abs(gvec_len(ig) - gv_.shell_len(gv_.shell(ig_new)))) TERMINATE("wrgon g-len");
+
+                if (gvec_shell(ig) != gv_.shell(ig_new)) TERMINATE("wrong g-shell");
+
+                if (index_map_[ig] != gv_.index_map_local_to_local_(ig_new)) TERMINATE("wrong index map");
             }
         }
         
         /// Return number of G-vectors within the cutoff.
         inline int num_gvec() const
         {
-            return num_gvec_;
-            //return gv_.num_gvec_;
+            //== return num_gvec_;
+            return gv_.num_gvec_;
         }
 
         /// Return G-vector in fractional coordinates (this are the three Miller indices).
