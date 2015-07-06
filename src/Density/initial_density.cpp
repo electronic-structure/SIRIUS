@@ -257,8 +257,7 @@ void Density::initial_density()
         }
     }
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential) 
+    if (!parameters_.full_potential())
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
         #ifdef __PRINT_OBJECT_HASH
