@@ -36,12 +36,12 @@ void Band::apply_h_local_slice(K_point* kp__,
     {
         case CPU:
         {
-            num_fft_threads = fft->num_fft_threads();
+            num_fft_threads = parameters_.num_fft_threads();
             break;
         }
         case GPU:
         {
-            num_fft_threads = std::min(fft->num_fft_threads() + 1, Platform::max_num_threads());
+            num_fft_threads = std::min(parameters_.num_fft_threads() + 1, Platform::max_num_threads());
             break;
         }
     }

@@ -79,8 +79,8 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     if (parameters_.processing_unit() == CPU && itso.real_space_prj_)
     {
         auto rsp = ctx_.real_space_prj();
-        size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
-        size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
+        size_t size = 2 * rsp->fft()->size() * parameters_.num_fft_threads();
+        size += rsp->max_num_points_ * parameters_.num_fft_threads();
 
         kappa_size = std::max(kappa_size, size);
     }

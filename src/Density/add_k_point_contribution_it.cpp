@@ -35,12 +35,12 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
     {
         case CPU:
         {
-            num_fft_threads = fft_->num_fft_threads();
+            num_fft_threads = parameters_.num_fft_threads();
             break;
         }
         case GPU:
         {
-            num_fft_threads = std::min(fft_->num_fft_threads() + 1, Platform::max_num_threads());
+            num_fft_threads = std::min(parameters_.num_fft_threads() + 1, Platform::max_num_threads());
             break;
         }
     }
