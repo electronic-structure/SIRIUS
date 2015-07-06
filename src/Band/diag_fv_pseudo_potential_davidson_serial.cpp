@@ -172,10 +172,10 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     int n = num_bands;
     
     #ifdef __PRINT_OBJECT_HASH
-    std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
+    //std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
     std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
     std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
-    std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
+    std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], ctx_.fft_coarse()->size() * sizeof(double)) << std::endl;
     #endif
 
     /* start iterative diagonalization */

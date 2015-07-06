@@ -266,9 +266,13 @@ void Density::initial_density()
 
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, fft_->num_gvec());
         #ifdef __PRINT_OBJECT_HASH
-        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], rl->num_gvec() * sizeof(double_complex)));
+        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], fft_->num_gvec() * sizeof(double_complex)));
         #endif
-
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        auto z1 = mdarray<double_complex, 1>(&v[0], fft_->num_gvec()).checksum();
+        DUMP("checksum(rho(G)) : %18.10f %18.10f", std::real(z1), std::imag(z1));
+        #endif
+        
         memcpy(&rho_->f_pw(0), &v[0], fft_->num_gvec() * sizeof(double_complex));
 
         double charge = real(rho_->f_pw(0) * unit_cell_.omega());
