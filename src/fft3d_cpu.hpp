@@ -54,6 +54,8 @@ class Gvec
 
         mdarray<double, 1> gvec_shell_len_;
 
+        mdarray<int, 3> index_by_gvec_;
+
     public:
 
         inline int num_gvec() const
@@ -188,6 +190,8 @@ class FFT3D<CPU>
         std::vector<int> index_map_;
         std::vector<int> gvec_shell_;
         std::vector<double> gvec_shell_len_;
+
+        Gvec gv_;
 
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
@@ -382,7 +386,7 @@ class FFT3D<CPU>
             if (g0[0] != 0 || g0[1] != 0 || g0[2] != 0) TERMINATE("first G-vector is not zero");
 
             
-            std::map<int, std::vector<int> > gsh;
+            std::map<size_t, std::vector<int> > gsh;
             for (int ig = 0; ig < gv.num_gvec_; ig++)
             {
                 auto G = gv[ig];
@@ -390,7 +394,7 @@ class FFT3D<CPU>
                 /* take G+q */
                 auto gq = M__ * (vector3d<double>(G[0], G[1], G[2]) + q__);
 
-                int len = int(gq.length() * 1e6);
+                size_t len = size_t(gq.length() * 1e10);
                 if (!gsh.count(len)) gsh[len] = std::vector<int>();
                 gsh[len].push_back(ig);
             }
@@ -401,9 +405,20 @@ class FFT3D<CPU>
             int n = 0;
             for (auto it = gsh.begin(); it != gsh.end(); it++)
             {
-                gv.gvec_shell_len_(n) = it->first * 1e-6;
+                gv.gvec_shell_len_(n) = double(it->first) * 1e-10;
                 for (int ig: it->second) gv.gvec_shell_(ig) = n;
                 n++;
+            }
+
+            gv.index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
+                                                mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
+                                                mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
+            memset(gv.index_by_gvec_.at<CPU>(), 0xFF, gv.index_by_gvec_.size() * sizeof(int));
+
+            for (int ig = 0; ig < gv.num_gvec_; ig++)
+            {
+                auto G = gv[ig];
+                gv.index_by_gvec_(G[0], G[1], G[2]) = ig;
             }
 
             return std::move(gv);
@@ -595,6 +610,8 @@ class FFT3D<CPU>
                 if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
                 gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
             }
+
+            gv_ = init_gvec(vector3d<double>(0, 0, 0), Gmax__, M__);
         }
         
         /// Return number of G-vectors within the cutoff.
@@ -626,7 +643,8 @@ class FFT3D<CPU>
         /** G-vectors with the same length belong to the same shell. */
         inline int num_gvec_shells_inner()
         {
-            return gvec_shell(num_gvec_);
+            //return gvec_shell(num_gvec_);
+            return gv_.num_shells();
         }
 
         /// Return total number of G-vector shells, including incomplete shells.
@@ -635,7 +653,8 @@ class FFT3D<CPU>
          */
         inline int num_gvec_shells_total()
         {
-            return (int)gvec_shell_len_.size();
+            //return (int)gvec_shell_len_.size();
+            return gv_.num_shells();
         }
 
         /// Return index of a G-vector shell for a given G-vector.
@@ -648,8 +667,9 @@ class FFT3D<CPU>
         /// Return length of a G-vector shell.
         inline double gvec_shell_len(int igsh__) const
         {
-            assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
-            return gvec_shell_len_[igsh__];
+            //assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
+            //return gvec_shell_len_[igsh__];
+            return gv_.shell_len(igsh__);
         }
 
         inline int const* index_map() const
@@ -661,11 +681,6 @@ class FFT3D<CPU>
         {
             assert(ig__ >= 0 && ig__ < (int)index_map_.size());
             return index_map_[ig__];
-        }
-
-        inline int num_fft_threads() const
-        {
-            return num_fft_threads_;
         }
 
         inline int gvec_index(vector3d<int> gvec__) const
