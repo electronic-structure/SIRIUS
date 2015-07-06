@@ -72,7 +72,7 @@ class Reciprocal_lattice
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            return std::exp(double_complex(0.0, twopi * (vector3d<int>(fft_->gvec(ig__)) * unit_cell_.atom(ia__)->position())));
+            return std::exp(double_complex(0.0, twopi * (fft_->gvec(ig__)* unit_cell_.atom(ia__)->position())));
         }
        
         /// Return global index of G1-G2 vector
