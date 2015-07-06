@@ -645,7 +645,6 @@ class FFT3D<CPU>
         /// Return number of G-vectors within the cutoff.
         inline int num_gvec() const
         {
-            //== return num_gvec_;
             return gv_.num_gvec_;
         }
 
@@ -667,15 +666,13 @@ class FFT3D<CPU>
         /// Return length of a G-vector.
         inline double gvec_len(int ig__) const
         {
-            return gvec_shell_len(gvec_shell(ig__));
-            //return gv_.shell_len(gv_.shell(ig__));
+            return gv_.shell_len(gvec_shell(ig__));
         }
 
         /// Return number of G-vector shells within the cutoff.
         /** G-vectors with the same length belong to the same shell. */
         inline int num_gvec_shells_inner()
         {
-            //return gvec_shell(num_gvec_);
             return gv_.num_shells();
         }
 
@@ -685,7 +682,6 @@ class FFT3D<CPU>
          */
         inline int num_gvec_shells_total()
         {
-            //return (int)gvec_shell_len_.size();
             return gv_.num_shells();
         }
 
@@ -720,7 +716,10 @@ class FFT3D<CPU>
 
         inline int gvec_index(vector3d<int> gvec__) const
         {
-            return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
+            int i = gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
+            assert(i >= 0 && i < num_gvec());
+            return i;
+
             //return gv_.index_by_gvec_(gvec__[0], gvec__[1], gvec__[2]);
         }
 };
