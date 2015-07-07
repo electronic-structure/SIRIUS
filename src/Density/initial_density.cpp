@@ -292,6 +292,9 @@ void Density::initial_density()
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
         #endif
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        DUMP("checksum(rho(r)) : %18.10f", rho_->f_it().checksum());
+        #endif
         
         /* remove possible negative noise */
         for (int ir = 0; ir < fft_->size(); ir++)
