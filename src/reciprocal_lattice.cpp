@@ -271,6 +271,10 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
             }
         }
         comm_.bcast(&atom_type->uspp().q_mtrx(0, 0), (int)atom_type->uspp().q_mtrx.size(), 0);
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        auto z = atom_type->uspp().q_pw.checksum();
+        DUMP("checksum(Q(G)) : %18.10f %18.10f", std::real(z), std::imag(z));
+        #endif
     }
 }
 

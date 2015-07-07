@@ -177,6 +177,14 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
     std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], ctx_.fft_coarse()->size() * sizeof(double)) << std::endl;
     #endif
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    auto c1 = d_mtrx_packed.checksum();
+    auto c2 = q_mtrx_packed.checksum();
+    auto c3 = mdarray<double,1>(&veff_it_coarse__[0], ctx_.fft_coarse()->size()).checksum();
+    DUMP("checksum(d_mtrx_packed) : %18.10f %18.10f", std::real(c1), std::imag(c1));
+    DUMP("checksum(q_mtrx_packed) : %18.10f %18.10f", std::real(c2), std::imag(c2));
+    DUMP("checksum(v_eff_coarse)  : %18.10f", c3);
+    #endif
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
