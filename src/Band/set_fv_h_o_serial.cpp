@@ -20,7 +20,11 @@ void Band::set_fv_h_o_serial(K_point* kp__,
                              matrix<double_complex>& o_old__,
                              mdarray<double_complex, 1>& kappa__)
 {
+    PROFILE();
+
     Timer t("sirius::Band::set_fv_h_o_serial");
+    
+    assert(n__ != 0);
 
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < N__; i++)

@@ -6,6 +6,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                                     double v0__,
                                                     std::vector<double>& veff_it_coarse__)
 {
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_pseudo_potential_davidson_serial");
 
     /* cache kinetic energy */
@@ -38,6 +40,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     matrix<double_complex>& psi = kp__->fv_states_slab();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
+    
+    assert(num_bands * 2 < ngk); // iterative subspace size can't be smaller than this
 
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, ngk);

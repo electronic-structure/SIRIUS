@@ -43,20 +43,24 @@ void K_point::generate_gkvec(double gk_cutoff)
         if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double, int>(gklen, ig));
     }
 
-    std::sort(gkmap.begin(), gkmap.end());
+    //std::sort(gkmap.begin(), gkmap.end());
 
     gkvec_ = mdarray<double, 2>(3, gkmap.size());
-
     gvec_index_.resize(gkmap.size());
 
-    for (int ig = 0; ig < (int)gkmap.size(); ig++)
+    for (int igk = 0; igk < (int)gkmap.size(); igk++)
     {
-        gvec_index_[ig] = gkmap[ig].second;
+        int ig = gkmap[igk].second;
+        gvec_index_[igk] = ig;
         for (int x = 0; x < 3; x++)
         {
-            gkvec_(x, ig) = fft_->gvec(gkmap[ig].second)[x] + vk_[x];
+            gkvec_(x, igk) = fft_->gvec(ig)[x] + vk_[x];
         }
     }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    DUMP("checksum(gkvec) : %18.10f", gkvec_.checksum());
+    #endif
     
     fft_index_.resize(num_gkvec());
     for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = fft_->index_map(gvec_index_[igk]);
@@ -70,7 +74,6 @@ void K_point::generate_gkvec(double gk_cutoff)
             int ig = gvec_index_[igk];
             /* G-vector fractional coordinates */
             vector3d<int> gvec = fft_->gvec(ig);
-
             /* linear index inside coarse FFT buffer */
             fft_index_coarse_[igk] = ctx_.fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
         }

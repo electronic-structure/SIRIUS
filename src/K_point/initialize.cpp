@@ -206,7 +206,9 @@ void K_point::initialize()
             fv_states_slab_ = matrix<double_complex>(num_gkvec_loc(), parameters_.num_fv_states());
             fv_states_ = matrix<double_complex>(num_gkvec(), spl_bands.local_size());
             fv_states_slab_.zero();
-            
+           
+            assert(parameters_.num_fv_states() < num_gkvec());
+
             for (int i = 0; i < parameters_.num_fv_states(); i++)
             {
                 auto location = spl_gkvec_.location(i);

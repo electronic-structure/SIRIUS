@@ -92,7 +92,7 @@ void K_point::generate_beta_gk_t()
                         int lm = atom_type->indexb(xi).lm;
                         int idxrf = atom_type->indexb(xi).idxrf;
 
-                        double_complex z = pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                        double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                         beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_[idxrf];
                     }
                 }
@@ -104,6 +104,13 @@ void K_point::generate_beta_gk_t()
     auto c1 = beta_gk_t_.checksum();
     DUMP("checksum(beta_gk_t) : %18.10f %18.10f", std::real(c1), std::imag(c1))
     #endif
+
+    //== for (int igk = 0; igk < num_gkvec(); igk++)
+    //== {
+    //==     printf("ig: %4i, igk: %4i, gkvec: %12.6f %12.6f %12.6f, beta_gk_t(igk, 0): %12.6f %12.6f\n",
+    //==            gvec_index_[igk], igk, gkvec_(0, igk), gkvec_(1, igk), gkvec_(2, igk),
+    //==            std::real(beta_gk_t_(igk, 0)), std::imag(beta_gk_t_(igk, 0)));
+    //== }
 }
 
 };
