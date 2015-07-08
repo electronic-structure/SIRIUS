@@ -288,7 +288,6 @@ class K_point
                 case cartesian:
                 {
                     return unit_cell_.reciprocal_lattice_vectors() * vector3d<double>(&gkvec_(0, igk__));
-                    //return ctx_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
                     break;
                 }
                 case fractional:
@@ -309,13 +308,6 @@ class K_point
             return gkvec_phase_factors_(igk__, ia__);
         }
 
-        //== /// Return length of a G+k vector
-        //== inline double gkvec_len(int igk)
-        //== {
-        //==     assert(igk >= 0 && igk < (int)gkvec_len_.size());
-        //==     return gkvec_len_[igk];
-        //== }
-                
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
         {
