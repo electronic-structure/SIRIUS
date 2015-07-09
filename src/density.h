@@ -152,6 +152,9 @@ class Density
         Mixer<double_complex>* low_freq_mixer_;
         Mixer<double>* mixer_;
 
+        std::vector<int> lf_gvec_;
+        std::vector<int> hf_gvec_;
+
         //mdarray<double_complex, 2> gvec_phase_factors_;
 
         /// Get the local list of occupied bands
@@ -371,15 +374,17 @@ class Density
             else
             {
                 int k = 0;
-                for (int ig = 0; ig < ctx_.fft_coarse()->num_gvec(); ig++)
+                for (int i = 0; i < ctx_.fft_coarse()->num_gvec(); i++)
                 {
-                    low_freq_mixer_->input(k++, rho_->f_pw(ig));
+                    //low_freq_mixer_->input(k++, rho_->f_pw(ig));
+                    low_freq_mixer_->input(k++, rho_->f_pw(lf_gvec_[i]));
                 }
 
                 k = 0;
-                for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
+                //for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
+                for (int i = 0; i < ctx_.fft()->num_gvec() - ctx_.fft_coarse()->num_gvec(); i++)
                 {
-                    high_freq_mixer_->input(k++, rho_->f_pw(ig));
+                    high_freq_mixer_->input(k++, rho_->f_pw(hf_gvec_[i]));
                 }
             }
         }
@@ -394,9 +399,18 @@ class Density
             {
                 int ngv = ctx_.fft()->num_gvec();
                 int ngvc = ctx_.fft_coarse()->num_gvec();
+                
+                for (int i = 0; i < ngvc; i++)
+                {
+                    rho_->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(i);
+                }
+                for (int i = 0; i < ngv - ngvc; i++)
+                {
+                    rho_->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(i);
+                }
 
-                memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
-                memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+                //memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
+                //memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
             }
         }
 
