@@ -64,6 +64,8 @@ class Simulation_context
         /// FFT wrapper for coarse grid.
         FFT3D<CPU>* fft_coarse_;
 
+        Gvec gvec_coarse_;
+
         #ifdef __GPU
         FFT3D<GPU>* fft_gpu_;
 
@@ -181,13 +183,15 @@ class Simulation_context
 
             parameters_.set_lmax_beta(unit_cell_.lmax_beta());
 
+            auto rlv = unit_cell_.reciprocal_lattice_vectors();
+
             /* create FFT interface */
-            fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors()),
+            fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
                                   parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
             
-            fft_->init_gvec(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
+            fft_->init_gvec(parameters_.pw_cutoff(), rlv);
 
-            gvec_ = fft_->init_gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
+            gvec_ = fft_->init_gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv);
 
             #ifdef __GPU
             fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
@@ -196,10 +200,12 @@ class Simulation_context
             if (!parameters_.full_potential())
             {
                 /* create FFT interface for coarse grid */
-                fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors()),
+                fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
                                              parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
                 
-                fft_coarse_->init_gvec(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors());
+                fft_coarse_->init_gvec(parameters_.gk_cutoff() * 2, rlv);
+
+                gvec_coarse_ = fft_coarse_->init_gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv);
 
                 #ifdef __GPU
                 fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
@@ -301,6 +307,11 @@ class Simulation_context
         Gvec const& gvec() const
         {
             return gvec_;
+        }
+
+        Gvec const& gvec_coarse() const
+        {
+            return gvec_coarse_;
         }
 
         #ifdef __GPU

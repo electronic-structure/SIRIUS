@@ -613,33 +613,33 @@ class FFT3D<CPU>
 
             gv_ = init_gvec(vector3d<double>(0, 0, 0), Gmax__, M__);
 
-            if (num_gvec_ != gv_.num_gvec_) TERMINATE("wrong num_gvec");
+            //if (num_gvec_ != gv_.num_gvec_) TERMINATE("wrong num_gvec");
 
-            for (int ig = 0; ig < num_gvec_; ig++)
-            {
-                auto G = gvec(ig);
-                int i = index_map(ig);
+            //for (int ig = 0; ig < num_gvec_; ig++)
+            //{
+            //    auto G = gvec(ig);
+            //    int i = index_map(ig);
 
-                if (gv_.index_map_local_to_local_(gv_.index_by_gvec_(G[0], G[1], G[2])) != i)
-                {
-                    TERMINATE("wrong G-vec indices");
-                }
+            //    if (gv_.index_map_local_to_local_(gv_.index_by_gvec_(G[0], G[1], G[2])) != i)
+            //    {
+            //        TERMINATE("wrong G-vec indices");
+            //    }
 
-                int ig_new = gv_.index_by_gvec_(G[0], G[1], G[2]);
+            //    int ig_new = gv_.index_by_gvec_(G[0], G[1], G[2]);
 
-                auto G_new = gv_[ig_new];
-                if (G[0] != G_new[0] || G[1] != G_new[1] || G[2] != G_new[2]) TERMINATE("wrong gvec");
+            //    auto G_new = gv_[ig_new];
+            //    if (G[0] != G_new[0] || G[1] != G_new[1] || G[2] != G_new[2]) TERMINATE("wrong gvec");
 
-                auto Gcart = gvec_cart(ig);
-                auto Gcart_new = gv_.cart(ig_new);
-                if ((Gcart - Gcart_new).length() > 1e-10) TERMINATE("wrong gvec_cart");
+            //    auto Gcart = gvec_cart(ig);
+            //    auto Gcart_new = gv_.cart(ig_new);
+            //    if ((Gcart - Gcart_new).length() > 1e-10) TERMINATE("wrong gvec_cart");
 
-                if (std::abs(gvec_len(ig) - gv_.shell_len(gv_.shell(ig_new)))) TERMINATE("wrgon g-len");
+            //    if (std::abs(gvec_len(ig) - gv_.shell_len(gv_.shell(ig_new)))) TERMINATE("wrgon g-len");
 
-                if (gvec_shell(ig) != gv_.shell(ig_new)) TERMINATE("wrong g-shell");
+            //    if (gvec_shell(ig) != gv_.shell(ig_new)) TERMINATE("wrong g-shell");
 
-                if (index_map_[ig] != gv_.index_map_local_to_local_(ig_new)) TERMINATE("wrong index map");
-            }
+            //    if (index_map_[ig] != gv_.index_map_local_to_local_(ig_new)) TERMINATE("wrong index map");
+            //}
         }
         
         /// Return number of G-vectors within the cutoff.
@@ -651,16 +651,16 @@ class FFT3D<CPU>
         /// Return G-vector in fractional coordinates (this are the three Miller indices).
         inline vector3d<int> gvec(int ig__) const
         {
-            return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
-            //return gv_[ig__];
+            //return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
+            return gv_[ig__];
         }
         
         /// Return G-vector in Cartesian coordinates.
         inline vector3d<double> gvec_cart(int ig__) const
         {
             //assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
-            return gvec_cart_[ig__];
-            //return gv_.cart(ig__);
+            //return gvec_cart_[ig__];
+            return gv_.cart(ig__);
         }
 
         /// Return length of a G-vector.
@@ -689,37 +689,36 @@ class FFT3D<CPU>
         inline int gvec_shell(int ig__) const
         {
             //assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
-            return gvec_shell_[ig__];
-            //return gv_.shell(ig__);
+            //return gvec_shell_[ig__];
+            return gv_.shell(ig__);
         }
 
         /// Return length of a G-vector shell.
         inline double gvec_shell_len(int igsh__) const
         {
             //assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
-            //return gvec_shell_len_[igsh__];
             return gv_.shell_len(igsh__);
         }
 
         inline int const* index_map() const
         {
-            return &index_map_[0];
-            //return &gv_.index_map_local_to_local_(0);
+            //return &index_map_[0];
+            return &gv_.index_map_local_to_local_(0);
         }
 
         inline int index_map(int ig__) const
         {
             //assert(ig__ >= 0 && ig__ < (int)index_map_.size());
-            return index_map_[ig__];
-            //return gv_.index_map_local_to_local_(ig__);
+            //return index_map_[ig__];
+            return gv_.index_map_local_to_local_(ig__);
         }
 
         inline int gvec_index(vector3d<int> gvec__) const
         {
-            int i = gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
-            assert(i >= 0 && i < num_gvec());
-            return i;
+            //int i = gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
+            //assert(i >= 0 && i < num_gvec());
+            //return i;
 
-            //return gv_.index_by_gvec_(gvec__[0], gvec__[1], gvec__[2]);
+            return gv_.index_by_gvec_(gvec__[0], gvec__[1], gvec__[2]);
         }
 };
