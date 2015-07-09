@@ -211,44 +211,9 @@ void K_point::initialize()
 
             for (int i = 0; i < parameters_.num_fv_states(); i++)
             {
-                auto location = spl_gkvec_.location(i);
-                if (location.second == comm_.rank()) fv_states_slab_(location.first, i) = complex_one;
+                //for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_slab_(igk, i) = beta_gk_(igk, i);
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_slab_(igk, i) = type_wrapper<double_complex>::random();
             }
-
-            fv_states_.zero();
-            for (size_t i = 0; i < spl_bands.local_size(); i++)
-            {
-                fv_states_(spl_bands[i], i) = complex_one;
-            }
-
-            //fv_states_panel_.zero();
-            //for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
-
-            //== fv_states_panel_.zero();
-            //== for (int i = 0; i < parameters_.num_fv_states(); i++)
-            //== {
-            //==     int n = 0;
-            //==     for (int i0 = -1; i0 <= 1; i0++)
-            //==     {
-            //==         for (int i1 = -1; i1 <= 1; i1++)
-            //==         {
-            //==             for (int i2 = -1; i2 <= 1; i2++)
-            //==             {
-            //==                 if (i == n)
-            //==                 {
-            //==                     int ig = parameters_.reciprocal_lattice()->gvec_index(vector3d<int>(i0, i1, i2));
-            //==                     for (int igk = 0; igk < num_gkvec(); igk++)
-            //==                     {
-            //==                         if (gklo_basis_descriptor_row(igk).ig == ig) fv_states_panel_.set(igk, i, complex_one);
-            //==                     }
-            //==                 }
-            //==                 n++;
-            //==             }
-            //==         }
-            //==     }
-            //== }
-
-            //fv_states_panel_.gather(fv_states_);
         }
         
         if (parameters_.need_sv())
