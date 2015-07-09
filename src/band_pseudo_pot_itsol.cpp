@@ -328,7 +328,7 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
     /* short notation for target wave-functions */
-    mdarray<double_complex, 2>& psi = kp__->fv_states();
+    mdarray<double_complex, 2>& psi = kp__->fv_states_slab();
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
@@ -379,7 +379,6 @@ void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
                             &eval[0], psi.at<CPU>(), psi.ld());
 
     kp__->set_fv_eigen_values(&eval[0]);
-    kp__->fv_states_panel().scatter(psi);
 }
 
 
