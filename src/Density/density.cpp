@@ -61,6 +61,21 @@ Density::Density(Simulation_context& ctx__)
 
     if (!parameters_.full_potential())
     {
+        for (int ig = 0; ig < ctx_.fft()->num_gvec(); ig++)
+        {
+            if (ctx_.fft()->gvec_cart(ig).length() <= 2 * parameters_.gk_cutoff())
+            {
+                lf_gvec_.push_back(ig);
+            }
+            else
+            {
+                hf_gvec_.push_back(ig);
+            }
+        }
+
+        assert((int)lf_gvec_.size() == ctx_.fft_coarse()->num_gvec());
+        assert((int)hf_gvec_.size() == (ctx_.fft()->num_gvec() - ctx_.fft_coarse()->num_gvec()));
+
         high_freq_mixer_ = new Linear_mixer<double_complex>((ctx_.fft()->num_gvec() - ctx_.fft_coarse()->num_gvec()),
                                                             parameters_.mixer_input_section().beta_, ctx_.comm());
 
