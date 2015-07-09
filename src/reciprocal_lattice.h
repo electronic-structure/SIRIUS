@@ -43,7 +43,9 @@ class Reciprocal_lattice
         electronic_structure_method_t esm_type_;
         
         /// FFT wrapper for dense grid.
-        FFT3D<CPU>* fft_;
+        //FFT3D<CPU>* fft_;
+
+        Gvec const& gvec_;
 
         Communicator const& comm_;
 
@@ -59,7 +61,8 @@ class Reciprocal_lattice
         
         Reciprocal_lattice(Unit_cell const& unit_cell__, 
                            electronic_structure_method_t esm_type__,
-                           FFT3D<CPU>* fft__,
+                           //FFT3D<CPU>* fft__,
+                           Gvec const& gvec__,
                            int lmax__,
                            Communicator const& comm__);
 
@@ -72,29 +75,31 @@ class Reciprocal_lattice
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            return std::exp(double_complex(0.0, twopi * (fft_->gvec(ig__)* unit_cell_.atom(ia__)->position())));
+            return std::exp(double_complex(0.0, twopi * (gvec_[ig__] * unit_cell_.atom(ia__)->position())));
         }
        
         /// Return global index of G1-G2 vector
         inline int index_g12(int ig1__, int ig2__) const
         {
-            vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
-            return fft_->gvec_index(v);
+            return gvec_.index_g12(ig1__, ig2__);
+            //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+            //return fft_->gvec_index(v);
         }
         
         inline int index_g12_safe(int ig1__, int ig2__) const
         {
-            vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
-            if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
-                v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
-                v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
-            {
-                return fft_->gvec_index(v);
-            }
-            else
-            {
-                return -1;
-            }
+            return gvec_.index_g12_safe(ig1__, ig2__);
+            //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+            //if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
+            //    v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
+            //    v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
+            //{
+            //    return fft_->gvec_index(v);
+            //}
+            //else
+            //{
+            //    return -1;
+            //}
         }
 
         void write_periodic_function()

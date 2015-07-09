@@ -483,7 +483,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     
     if (is_gga) 
     {
-        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it<global>(0), fft_);
+        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it<global>(0), fft_, &ctx_.gvec());
 
         /* get plane-wave coefficients of the density */
         Smooth_periodic_function<spectral> rho_pw = transform(rho_it);
@@ -573,7 +573,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     if (is_gga)
     {
         /* gather vsigma */
-        Smooth_periodic_function<spatial, double> vsigma_it(fft_);
+        Smooth_periodic_function<spatial, double> vsigma_it(fft_, &ctx_.gvec());
         ctx_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), (int)spl_fft_size.global_offset(), num_loc_points);
 
         /* forward transform vsigma to plane-wave domain */
@@ -626,8 +626,8 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     splindex<block> spl_fft_size(fft_->size(), ctx_.comm().size(), ctx_.comm().rank());
     int num_loc_points = (int)spl_fft_size.local_size();
     
-    Smooth_periodic_function<spatial, double> rho_up_it(fft_);
-    Smooth_periodic_function<spatial, double> rho_dn_it(fft_);
+    Smooth_periodic_function<spatial, double> rho_up_it(fft_, &ctx_.gvec());
+    Smooth_periodic_function<spatial, double> rho_dn_it(fft_, &ctx_.gvec());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin = 0.0;
@@ -797,9 +797,9 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     if (is_gga)
     {
         /* gather vsigma */
-        Smooth_periodic_function<spatial, double> vsigma_uu_it(fft_);
-        Smooth_periodic_function<spatial, double> vsigma_ud_it(fft_);
-        Smooth_periodic_function<spatial, double> vsigma_dd_it(fft_);
+        Smooth_periodic_function<spatial, double> vsigma_uu_it(fft_, &ctx_.gvec());
+        Smooth_periodic_function<spatial, double> vsigma_ud_it(fft_, &ctx_.gvec());
+        Smooth_periodic_function<spatial, double> vsigma_dd_it(fft_, &ctx_.gvec());
         int global_offset = (int)spl_fft_size.global_offset();
         ctx_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), global_offset, num_loc_points);
         ctx_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), global_offset, num_loc_points);

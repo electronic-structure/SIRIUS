@@ -39,6 +39,8 @@ class Real_space_prj
 
         FFT3D<CPU>* fft_;
 
+        Gvec gvec_;
+
         splindex<block> spl_num_gvec_;
 
         Communicator const& comm_;

@@ -85,6 +85,8 @@ class Periodic_function
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
 
+        Gvec const& gvec_;
+
         /// Local part of muffin-tin functions.
         mdarray<Spheric_function<spectral, T>, 1> f_mt_local_;
         
@@ -251,7 +253,7 @@ class Periodic_function
                 double p = 0.0;
                 for (int ig = 0; ig < num_gvec_; ig++)
                 {
-                    vector3d<double> vgc = fft_->gvec_cart(ig);
+                    vector3d<double> vgc = gvec_.cart(ig);
                     p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
@@ -271,7 +273,7 @@ class Periodic_function
             {
                 case 1:
                 {
-                    fft_->input(fft_->num_gvec(), fft_->index_map(), &f_pw(0));
+                    fft_->input(gvec_.num_gvec(), gvec_.index_map(), &f_pw(0));
                     fft_->transform(1);
                     fft_->output(&f_it<global>(0));
                     break;
@@ -280,7 +282,7 @@ class Periodic_function
                 {
                     fft_->input(&f_it<global>(0));
                     fft_->transform(-1);
-                    fft_->output(fft_->num_gvec(), fft_->index_map(), &f_pw(0));
+                    fft_->output(gvec_.num_gvec(), gvec_.index_map(), &f_pw(0));
                     break;
                 }
                 default:

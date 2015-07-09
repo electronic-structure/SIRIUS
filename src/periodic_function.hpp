@@ -31,6 +31,7 @@ Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
       step_function_(ctx__.step_function()),
       comm_(ctx__.comm()),
       fft_(ctx__.fft()),
+      gvec_(ctx__.gvec()),
       angular_domain_size_(angular_domain_size__),
       num_gvec_(0)
 {
@@ -38,8 +39,8 @@ Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
     
     if (alloc_pw__)
     {
-        num_gvec_ = fft_->num_gvec();
-        f_pw_ = mdarray<double_complex, 1>(fft_->num_gvec());
+        num_gvec_ = gvec_.num_gvec();
+        f_pw_ = mdarray<double_complex, 1>(num_gvec_);
     }
 
     if (parameters_.full_potential())

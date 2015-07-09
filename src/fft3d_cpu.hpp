@@ -58,11 +58,13 @@ class Gvec
 
     public:
 
+        /// Return number of G-vectors within the cutoff.
         inline int num_gvec() const
         {
             return num_gvec_;
         }
 
+        /// Return number of G-vector shells.
         inline int num_shells() const
         {
             return num_gvec_shells_;
@@ -108,6 +110,11 @@ class Gvec
             return gvec_shell_len_(igs__);
         }
 
+        inline double gvec_len(int ig__) const
+        {
+            return gvec_shell_len_(gvec_shell_(ig__));
+        }
+
         inline int index_g12(int ig1__, int ig2__) const
         {
             STOP();
@@ -125,9 +132,14 @@ class Gvec
             return &index_map_local_to_local_(0);
         }
 
-        inline const std::pair<int, int>& grid_limits(int idim)
+        inline const std::pair<int, int>& grid_limits(int idim) const
         {
             return grid_limits_[idim];
+        }
+
+        inline int index_by_gvec(vector3d<int>& G__) const
+        {
+            return index_by_gvec_(G__[0], G__[1], G__[2]);
         }
 };
 
@@ -167,17 +179,16 @@ class FFT3D<CPU>
 
         int offset_z_;
 
-        /// reciprocal space range
+        /// Reciprocal space range
         std::pair<int, int> grid_limits_[3];
         
-        /// backward transformation plan for each thread
+        /// Backward transformation plan for each thread
         std::vector<fftw_plan> plan_backward_;
         
-        /// forward transformation plan for each thread
+        /// Forward transformation plan for each thread
         std::vector<fftw_plan> plan_forward_;
     
-        /// inout buffer for each thread
-        //mdarray<double_complex, 2> fftw_buffer_;
+        /// In/out buffer for each thread
         std::vector<double_complex*> fftw_buffer_;
         
         int num_gvec_;
@@ -190,8 +201,6 @@ class FFT3D<CPU>
         std::vector<int> index_map_;
         std::vector<int> gvec_shell_;
         std::vector<double> gvec_shell_len_;
-
-        Gvec gv_;
 
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
@@ -541,184 +550,5 @@ class FFT3D<CPU>
         vector3d<int> grid_size() const
         {
             return vector3d<int>(grid_size_);
-        }
-
-        void init_gvec(double Gmax__, matrix3d<double> const& M__)
-        {
-            mdarray<int, 2> gvec_tmp(3, size());
-            std::vector< std::pair<double, int> > gvec_tmp_length;
-            
-            for (int i0 = grid_limits(0).first; i0 <= grid_limits(0).second; i0++)
-            {
-                for (int i1 = grid_limits(1).first; i1 <= grid_limits(1).second; i1++)
-                {
-                    for (int i2 = grid_limits(2).first; i2 <= grid_limits(2).second; i2++)
-                    {
-                        int ig = (int)gvec_tmp_length.size();
-
-                        gvec_tmp(0, ig) = i0;
-                        gvec_tmp(1, ig) = i1;
-                        gvec_tmp(2, ig) = i2;
-                        
-                        auto vc = M__ * vector3d<double>(i0, i1, i2);
-
-                        gvec_tmp_length.push_back(std::pair<double, int>(vc.length(), ig));
-                    }
-                }
-            }
-
-            /* sort G-vectors by length */
-            std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
-
-            /* create sorted list of G-vectors */
-            gvec_ = mdarray<int, 2>(3, size());
-            gvec_cart_ = std::vector< vector3d<double> >(size());
-
-            /* find number of G-vectors within the cutoff */
-            num_gvec_ = 0;
-            for (int i = 0; i < size(); i++)
-            {
-                for (int x = 0; x < 3; x++) gvec_(x, i) = gvec_tmp(x, gvec_tmp_length[i].second);
-
-                gvec_cart_[i] = M__ * vector3d<double>(gvec_(0, i), gvec_(1, i), gvec_(2, i));
-                
-                if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
-            }
-            
-            gvec_index_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
-                                          mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
-                                          mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
-            index_map_.resize(size());
-            
-            gvec_shell_.resize(size());
-            gvec_shell_len_.clear();
-            
-            for (int ig = 0; ig < size(); ig++)
-            {
-                int i0 = gvec_(0, ig);
-                int i1 = gvec_(1, ig);
-                int i2 = gvec_(2, ig);
-
-                /* mapping from G-vector to it's index */
-                gvec_index_(i0, i1, i2) = ig;
-
-                /* mapping of FFT buffer linear index */
-                index_map_[ig] = index(i0, i1, i2);
-
-                /* find G-shells */
-                double t = gvec_tmp_length[ig].first;
-                if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
-                gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
-            }
-
-            gv_ = init_gvec(vector3d<double>(0, 0, 0), Gmax__, M__);
-
-            //if (num_gvec_ != gv_.num_gvec_) TERMINATE("wrong num_gvec");
-
-            //for (int ig = 0; ig < num_gvec_; ig++)
-            //{
-            //    auto G = gvec(ig);
-            //    int i = index_map(ig);
-
-            //    if (gv_.index_map_local_to_local_(gv_.index_by_gvec_(G[0], G[1], G[2])) != i)
-            //    {
-            //        TERMINATE("wrong G-vec indices");
-            //    }
-
-            //    int ig_new = gv_.index_by_gvec_(G[0], G[1], G[2]);
-
-            //    auto G_new = gv_[ig_new];
-            //    if (G[0] != G_new[0] || G[1] != G_new[1] || G[2] != G_new[2]) TERMINATE("wrong gvec");
-
-            //    auto Gcart = gvec_cart(ig);
-            //    auto Gcart_new = gv_.cart(ig_new);
-            //    if ((Gcart - Gcart_new).length() > 1e-10) TERMINATE("wrong gvec_cart");
-
-            //    if (std::abs(gvec_len(ig) - gv_.shell_len(gv_.shell(ig_new)))) TERMINATE("wrgon g-len");
-
-            //    if (gvec_shell(ig) != gv_.shell(ig_new)) TERMINATE("wrong g-shell");
-
-            //    if (index_map_[ig] != gv_.index_map_local_to_local_(ig_new)) TERMINATE("wrong index map");
-            //}
-        }
-        
-        /// Return number of G-vectors within the cutoff.
-        inline int num_gvec() const
-        {
-            return gv_.num_gvec_;
-        }
-
-        /// Return G-vector in fractional coordinates (this are the three Miller indices).
-        inline vector3d<int> gvec(int ig__) const
-        {
-            //return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
-            return gv_[ig__];
-        }
-        
-        /// Return G-vector in Cartesian coordinates.
-        inline vector3d<double> gvec_cart(int ig__) const
-        {
-            //assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
-            //return gvec_cart_[ig__];
-            return gv_.cart(ig__);
-        }
-
-        /// Return length of a G-vector.
-        inline double gvec_len(int ig__) const
-        {
-            return gv_.shell_len(gvec_shell(ig__));
-        }
-
-        /// Return number of G-vector shells within the cutoff.
-        /** G-vectors with the same length belong to the same shell. */
-        inline int num_gvec_shells_inner()
-        {
-            return gv_.num_shells();
-        }
-
-        /// Return total number of G-vector shells, including incomplete shells.
-        /** Incomplete G-shells are formed by G-vectors outisde the cutoff radius (for example,
-         *  by G-vectors at corners of FFT grid).
-         */
-        inline int num_gvec_shells_total()
-        {
-            return gv_.num_shells();
-        }
-
-        /// Return index of a G-vector shell for a given G-vector.
-        inline int gvec_shell(int ig__) const
-        {
-            //assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
-            //return gvec_shell_[ig__];
-            return gv_.shell(ig__);
-        }
-
-        /// Return length of a G-vector shell.
-        inline double gvec_shell_len(int igsh__) const
-        {
-            //assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
-            return gv_.shell_len(igsh__);
-        }
-
-        inline int const* index_map() const
-        {
-            //return &index_map_[0];
-            return &gv_.index_map_local_to_local_(0);
-        }
-
-        inline int index_map(int ig__) const
-        {
-            //assert(ig__ >= 0 && ig__ < (int)index_map_.size());
-            //return index_map_[ig__];
-            return gv_.index_map_local_to_local_(ig__);
-        }
-
-        inline int gvec_index(vector3d<int> gvec__) const
-        {
-            //int i = gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
-            //assert(i >= 0 && i < num_gvec());
-            //return i;
-
-            return gv_.index_by_gvec_(gvec__[0], gvec__[1], gvec__[2]);
         }
 };

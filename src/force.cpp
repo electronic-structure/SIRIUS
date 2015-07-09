@@ -154,7 +154,7 @@ void Force::ibs_force(Simulation_context& ctx__,
             {
                 int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
                                          kp__->gklo_basis_descriptor_col(igk_col).ig);
-                int igs = ctx__.fft()->gvec_shell(ig12);
+                int igs = ctx__.gvec().shell(ig12);
 
                 double_complex zt = std::conj(rl->gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
 
@@ -175,7 +175,7 @@ void Force::ibs_force(Simulation_context& ctx__,
                     int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
                                              kp__->gklo_basis_descriptor_col(igk_col).ig);
 
-                    vector3d<double> vg = ctx__.fft()->gvec_cart(ig12);
+                    vector3d<double> vg = ctx__.gvec().cart(ig12);
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
                     o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                 }
@@ -244,7 +244,7 @@ void Force::total_force(Simulation_context& ctx__,
     auto param = ctx__.parameters();
     auto& uc = ctx__.unit_cell();
 
-    auto ffac = ctx__.step_function()->get_step_function_form_factors(ctx__.fft()->num_gvec_shells_inner());
+    auto ffac = ctx__.step_function()->get_step_function_form_factors(ctx__.gvec().num_shells());
 
     force__.zero();
 

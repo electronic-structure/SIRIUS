@@ -1217,7 +1217,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     Timer t("sirius::Band::set_fv_h_o_it");
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), fft_->num_gvec()).checksum();
+    double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
     DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
     #endif
 
@@ -1885,15 +1885,26 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 
     /* map effective potential to a corase grid */
     std::vector<double> veff_it_coarse(fft_coarse->size());
-    std::vector<double_complex> veff_pw_coarse(fft_coarse->num_gvec());
+    std::vector<double_complex> veff_pw_coarse(ctx_.gvec_coarse().num_gvec());
 
     /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
-    for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
+    auto& gv = ctx_.gvec();
+    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
     {
-        int ig = ctx_.fft()->gvec_index(fft_coarse->gvec(igc));
-        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+        if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
+        {
+            auto G = gv[ig];
+            veff_pw_coarse[ctx_.gvec_coarse().index_by_gvec(G)] = effective_potential__->f_pw(ig);
+        }
     }
-    fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);
+
+    //for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
+    //{
+    //    int ig = ctx_.fft()->gvec_index(fft_coarse->gvec(igc));
+    //    veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+    //}
+
+    fft_coarse->input(ctx_.gvec_coarse().num_gvec(), ctx_.gvec_coarse().index_map(), &veff_pw_coarse[0]);
     fft_coarse->transform(1);
     fft_coarse->output(&veff_it_coarse[0]);
 

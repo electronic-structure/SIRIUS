@@ -84,6 +84,8 @@ class Step_function
         Communicator const& comm_;
 
         FFT3D<CPU>* fft_;
+
+        Gvec const& gvec_;
        
         void init();
 
@@ -93,6 +95,7 @@ class Step_function
         Step_function(Unit_cell const& unit_cell_, 
                       Reciprocal_lattice const* reciprocal_lattice__,
                       FFT3D<CPU>* fft__,
+                      Gvec const& gvec__,
                       Communicator const& comm__);
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.

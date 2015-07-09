@@ -77,7 +77,7 @@ class DFT_ground_state
 
             auto rl = ctx_.reciprocal_lattice();
 
-            splindex<block> spl_num_gvec(ctx_.fft()->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+            splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
             #pragma omp parallel
             {
@@ -93,7 +93,7 @@ class DFT_ground_state
                     {
                         rho += rl->gvec_phase_factor(ig, ia) * double(unit_cell_.atom(ia)->zn());
                     }
-                    double g2 = std::pow(ctx_.fft()->gvec_len(ig), 2);
+                    double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
                     if (ig)
                     {
                         ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
@@ -300,7 +300,6 @@ class DFT_ground_state
 
         void symmetrize_density()
         {
-            auto fft = ctx_.fft();
             auto& comm = ctx_.comm();
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
@@ -309,14 +308,14 @@ class DFT_ground_state
                     density_->magnetization(j)->fft_transform(-1);
             }
 
-            unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), fft, comm);
+            unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), ctx_.gvec(), comm);
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
                 unit_cell_.symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
 
             if (parameters_.num_mag_dims() == 1)
             {
-                unit_cell_.symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), fft, comm);
+                unit_cell_.symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), ctx_.gvec(), comm);
                 unit_cell_.symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
             }
 

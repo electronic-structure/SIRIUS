@@ -28,9 +28,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     auto rl = ctx_.reciprocal_lattice();
 
-    std::vector<double_complex> f_pw(fft_->num_gvec(), complex_zero);
+    std::vector<double_complex> f_pw(ctx_.gvec().num_gvec(), complex_zero);
 
-    splindex<block> spl_gvec(fft_->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+    splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
     /* split local fraction of G-vectors between threads */
     splindex<block> spl_ngv_loc(spl_gvec.local_size(), Platform::max_num_threads(), 0);
@@ -111,7 +111,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     
     ctx_.comm().allgather(&f_pw[0], (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
 
-    for (int ig = 0; ig < fft_->num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
+    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
 }
 
 #ifdef __GPU

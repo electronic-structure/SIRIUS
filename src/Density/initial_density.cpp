@@ -17,25 +17,24 @@ void Density::initial_density()
 
     if (parameters_.full_potential())
     {
-        splindex<block> spl_num_gvec(fft_->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+        splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
         /* initialize smooth density of free atoms */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(true);
 
-        //== /* compute radial integrals */
+        /* compute radial integrals */
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
-        //auto rho_radial_integrals = generate_rho_radial_integrals(5);
 
         /* compute contribution from free atoms to the interstitial density */
-        auto v = rl->make_periodic_function(rho_radial_integrals, fft_->num_gvec());
+        auto v = rl->make_periodic_function(rho_radial_integrals, ctx_.gvec().num_gvec());
         
         #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z = mdarray<double_complex, 1>(&v[0], fft_->num_gvec()).checksum();
+        double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
         DUMP("checksum(rho_pw): %18.10f %18.10f", std::real(z), std::imag(z));
         #endif
 
         /* set plane-wave coefficients of the charge density */
-        memcpy(&rho_->f_pw(0), &v[0], fft_->num_gvec() * sizeof(double_complex));
+        memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
         /* convert charge deisnty to real space mesh */
         rho_->fft_transform(1);
 
@@ -65,7 +64,7 @@ void Density::initial_density()
             /* global index of the G-vector */
             int ig = (int)spl_num_gvec[igloc];
             /* index of the G-vector shell */
-            int igsh = fft_->gvec_shell(ig);
+            int igsh = ctx_.gvec().shell(ig);
             if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
             gsh_map[igsh].push_back(igloc);
         }
@@ -77,12 +76,12 @@ void Density::initial_density()
         int lmax = parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         
-        sbessel_approx sba(&unit_cell_, lmax, fft_->gvec_shell_len(1), fft_->gvec_shell_len(fft_->num_gvec_shells_inner() - 1), 1e-6);
+        sbessel_approx sba(&unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
         
         std::vector<double> gvec_len(gsh_list.size());
         for (int i = 0; i < (int)gsh_list.size(); i++)
         {
-            gvec_len[i] = fft_->gvec_shell_len(gsh_list[i].first);
+            gvec_len[i] = ctx_.gvec().shell_len(gsh_list[i].first);
         }
         sba.approximate(gvec_len);
 
@@ -100,7 +99,7 @@ void Density::initial_density()
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
             int ig = (int)spl_num_gvec[igloc];
-            auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
+            auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
         
@@ -264,16 +263,16 @@ void Density::initial_density()
         DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
         #endif
 
-        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, fft_->num_gvec());
+        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, ctx_.gvec().num_gvec());
         #ifdef __PRINT_OBJECT_HASH
-        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], fft_->num_gvec() * sizeof(double_complex)));
+        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
         #endif
         #ifdef __PRINT_OBJECT_CHECKSUM
-        auto z1 = mdarray<double_complex, 1>(&v[0], fft_->num_gvec()).checksum();
+        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
         DUMP("checksum(rho(G)) : %18.10f %18.10f", std::real(z1), std::imag(z1));
         #endif
         
-        memcpy(&rho_->f_pw(0), &v[0], fft_->num_gvec() * sizeof(double_complex));
+        memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
         double charge = real(rho_->f_pw(0) * unit_cell_.omega());
         if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
@@ -284,10 +283,7 @@ void Density::initial_density()
               << "  target number of electrons : " << unit_cell_.num_valence_electrons();
             warning_global(__FILE__, __LINE__, s);
         }
-
-        fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
-        fft_->transform(1);
-        fft_->output(&rho_->f_it<global>(0));
+        rho_->fft_transform(1);
 
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
@@ -456,10 +452,8 @@ void Density::initial_density()
         //==               "  </Domain>\n"
         //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fclose(fout);
-        
-        fft_->input(&rho_->f_it<global>(0));
-        fft_->transform(-1);
-        fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
+
+        rho_->fft_transform(-1);
     }
 
     rho_->sync(true, true);

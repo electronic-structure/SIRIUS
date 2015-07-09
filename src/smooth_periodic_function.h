@@ -41,13 +41,19 @@ class Smooth_periodic_function
 
         FFT3D<CPU>* fft_;
 
+        Gvec const* gvec_;
+
     public:
 
-        Smooth_periodic_function() : fft_(nullptr)
+        Smooth_periodic_function() 
+            : fft_(nullptr),
+              gvec_(nullptr)
         {
         }
         
-        Smooth_periodic_function(T* ptr__, FFT3D<CPU>* fft__) : fft_(fft__)
+        Smooth_periodic_function(T* ptr__, FFT3D<CPU>* fft__, Gvec const* gvec__) 
+            : fft_(fft__),
+              gvec_(gvec__)
         {
             if (domain_t == spatial)
             {
@@ -55,13 +61,15 @@ class Smooth_periodic_function
             }
         }
 
-        Smooth_periodic_function(FFT3D<CPU>* fft__) : fft_(fft__)
+        Smooth_periodic_function(FFT3D<CPU>* fft__, Gvec const* gvec__) 
+            : fft_(fft__),
+              gvec_(gvec__)
         {
             switch (domain_t)
             {
                 case spectral:
                 {
-                    data_ = mdarray<T, 1>(fft_->num_gvec());
+                    data_ = mdarray<T, 1>(gvec_->num_gvec());
                     break;
                 }
                 case spatial:
@@ -72,7 +80,9 @@ class Smooth_periodic_function
             }
         }
 
-        Smooth_periodic_function(FFT3D<CPU>* fft__, size_t size__) : fft_(fft__)
+        Smooth_periodic_function(FFT3D<CPU>* fft__, Gvec const* gvec__, size_t size__) 
+            : fft_(fft__),
+              gvec_(gvec__)
         {
             if (domain_t == spatial) data_ = mdarray<T, 1>(size__);
         }
@@ -96,6 +106,11 @@ class Smooth_periodic_function
         {
             return fft_;
         }
+
+        inline Gvec const* gvec() const
+        {
+            return gvec_;
+        }
 };
 
 /// Transform funciton from real-space grid to plane-wave harmonics. 
@@ -103,12 +118,13 @@ template<typename T>
 Smooth_periodic_function<spectral> transform(Smooth_periodic_function<spatial, T>& f)
 {
     auto fft = f.fft();
+    auto gvec = f.gvec();
 
-    Smooth_periodic_function<spectral> g(fft);
+    Smooth_periodic_function<spectral> g(fft, gvec);
         
     fft->input(&f(0));
     fft->transform(-1);
-    fft->output(fft->num_gvec(), fft->index_map(), &g(0));
+    fft->output(gvec->num_gvec(), gvec->index_map(), &g(0));
 
     return g;
 }
@@ -118,10 +134,11 @@ template<typename T>
 Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral>& f)
 {
     auto fft = f.fft();
+    auto gvec = f.gvec();
 
     Smooth_periodic_function<spatial, T> g(fft);
 
-    fft->input(fft->num_gvec(), fft->index_map(), &f(0));
+    fft->input(gvec->num_gvec(), gvec->index_map(), &f(0));
     fft->transform(1);
     fft->output(&g(0));
     
@@ -132,10 +149,11 @@ template<typename T>
 Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral>& f, splindex<block>& spl_fft_size__)
 {
     auto fft = f.fft();
+    auto gvec = f.gvec();
 
-    Smooth_periodic_function<spatial, T> g(fft, spl_fft_size__.local_size());
+    Smooth_periodic_function<spatial, T> g(fft, gvec, spl_fft_size__.local_size());
 
-    fft->input(fft->num_gvec(), fft->index_map(), &f(0));
+    fft->input(gvec->num_gvec(), gvec->index_map(), &f(0));
     fft->transform(1);
     for (int i = 0; i < (int)spl_fft_size__.local_size(); i++) 
         g(i) = type_wrapper<T>::sift(fft->buffer((int)spl_fft_size__.global_offset() + i));
@@ -146,12 +164,13 @@ Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral
 inline Smooth_periodic_function<spectral> laplacian(Smooth_periodic_function<spectral>& f)
 {
     auto fft = f.fft();
+    auto gvec = f.gvec();
 
-    Smooth_periodic_function<spectral> g(fft);
+    Smooth_periodic_function<spectral> g(fft, gvec);
 
-    for (int ig = 0; ig < fft->num_gvec(); ig++)
+    for (int ig = 0; ig < gvec->num_gvec(); ig++)
     {
-        auto G = fft->gvec_cart(ig);
+        auto G = gvec->cart(ig);
         g(ig) = f(ig) * double_complex(-std::pow(G.length(), 2), 0);
     }
     return g;
@@ -191,14 +210,15 @@ class Smooth_periodic_function_gradient
 inline Smooth_periodic_function_gradient<spectral> gradient(Smooth_periodic_function<spectral>& f)
 {
     auto fft = f.fft();
+    auto gvec = f.gvec();
 
     Smooth_periodic_function_gradient<spectral> g(fft);
 
-    for (int x = 0; x < 3; x++) g[x] = Smooth_periodic_function<spectral>(fft);
+    for (int x = 0; x < 3; x++) g[x] = Smooth_periodic_function<spectral>(fft, gvec);
 
-    for (int ig = 0; ig < fft->num_gvec(); ig++)
+    for (int ig = 0; ig < gvec->num_gvec(); ig++)
     {
-        auto G = fft->gvec_cart(ig);
+        auto G = gvec->cart(ig);
         for (int x = 0; x < 3; x++) g[x](ig) = f(ig) * double_complex(0, G[x]); 
     }
     return g;
@@ -217,7 +237,7 @@ Smooth_periodic_function<spatial, T> operator*(Smooth_periodic_function_gradient
         if (f[x].size() != size || g[x].size() != size) error_local(__FILE__, __LINE__, "wrong size");
     }
 
-    Smooth_periodic_function<spatial, T> result(f.fft(), size);
+    Smooth_periodic_function<spatial, T> result(f.fft(), f[0].gvec(), size);
     result.zero();
 
     for (int x = 0; x < 3; x++)

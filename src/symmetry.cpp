@@ -294,20 +294,20 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     return nknr;
 }
 
-void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
+void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
 {
     for (int isym = 0; isym < num_mag_sym(); isym++)
     {
         auto sm = magnetic_group_symmetry(isym).spg_op.R;
 
-        for (int ig = 0; ig < fft__->num_gvec(); ig++)
+        for (int ig = 0; ig < gvec__.num_gvec(); ig++)
         {
-            auto gv = fft__->gvec(ig);
+            auto gv = gvec__[ig];
             /* apply symmetry operation to the G-vector */
-            vector3d<int> gv_rot = transpose(sm) * gv;
+            auto gv_rot = transpose(sm) * gv;
             for (int x = 0; x < 3; x++)
             {
-                auto limits = fft__->grid_limits(x);
+                auto limits = gvec__.grid_limits(x);
                 /* check boundaries */
                 if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
                 {
@@ -322,8 +322,8 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
                       TERMINATE(s);
                 }
             }
-            int ig_rot = fft__->gvec_index(gv_rot);
-            if (ig_rot >= fft__->num_gvec())
+            int ig_rot = gvec__.index_by_gvec(gv_rot);
+            if (ig_rot >= gvec__.num_gvec())
             {
                 std::stringstream s;
                 s << "rotated G-vector index is wrong" << std::endl
@@ -334,7 +334,7 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
                   << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
                   << "rotated G-vector: " << gv_rot << std::endl
                   << "rotated G-vector index: " << ig_rot << std::endl
-                  << "number of G-vectors: " << fft__->num_gvec();
+                  << "number of G-vectors: " << gvec__.num_gvec();
                   TERMINATE(s);
             }
         }
@@ -342,13 +342,13 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
 }
 
 void Symmetry::symmetrize_function(double_complex* f_pw__,
-                                   FFT3D<CPU>* fft__,
+                                   Gvec const& gvec__,
                                    Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_function");
 
-    splindex<block> spl_gvec(fft__->num_gvec(), comm__.size(), comm__.rank());
-    mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
+    splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
+    mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
     sym_f_pw.zero();
     
     double* ptr = (double*)&sym_f_pw(0);
@@ -370,14 +370,14 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
              *                                         [.....]
              * which can also be written as matrix^{T}-vector operation
              */
-            vector3d<int> gv_rot = transpose(R) * fft__->gvec(ig);
+            auto gv_rot = transpose(R) * gvec__[ig];
 
             /* index of a rotated G-vector */
-            int ig_rot = fft__->gvec_index(gv_rot);
+            int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
+            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
-            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
+            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
             
             #pragma omp atomic update
             ptr[2 * ig_rot] += std::real(z);
@@ -386,19 +386,19 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
             ptr[2 * ig_rot + 1] += std::imag(z);
         }
     }
-    comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
+    comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 
-    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
 }
 
 void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
-                                   FFT3D<CPU>* fft__,
-                                   Communicator const& comm__) const
+                                             Gvec const& gvec__,
+                                             Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_vector_z_component");
     
-    splindex<block> spl_gvec(fft__->num_gvec(), comm__.size(), comm__.rank());
-    mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
+    splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
+    mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
     sym_f_pw.zero();
 
     double* ptr = (double*)&sym_f_pw(0);
@@ -415,14 +415,14 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
         {
             int ig = (int)spl_gvec[igloc];
 
-            vector3d<int> gv_rot = transpose(R) * fft__->gvec(ig);
+            auto gv_rot = transpose(R) * gvec__[ig];
 
             /* index of a rotated G-vector */
-            int ig_rot = fft__->gvec_index(gv_rot);
+            int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
+            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
-            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t))) * S(2, 2);
+            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t))) * S(2, 2);
             
             #pragma omp atomic update
             ptr[2 * ig_rot] += real(z);
@@ -431,9 +431,9 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
             ptr[2 * ig_rot + 1] += imag(z);
         }
     }
-    comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
+    comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 
-    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
 
 }
 

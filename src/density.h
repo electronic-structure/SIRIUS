@@ -374,7 +374,7 @@ class Density
             else
             {
                 int k = 0;
-                for (int i = 0; i < ctx_.fft_coarse()->num_gvec(); i++)
+                for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
                 {
                     //low_freq_mixer_->input(k++, rho_->f_pw(ig));
                     low_freq_mixer_->input(k++, rho_->f_pw(lf_gvec_[i]));
@@ -382,7 +382,7 @@ class Density
 
                 k = 0;
                 //for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
-                for (int i = 0; i < ctx_.fft()->num_gvec() - ctx_.fft_coarse()->num_gvec(); i++)
+                for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
                 {
                     high_freq_mixer_->input(k++, rho_->f_pw(hf_gvec_[i]));
                 }
@@ -397,8 +397,8 @@ class Density
             }
             else
             {
-                int ngv = ctx_.fft()->num_gvec();
-                int ngvc = ctx_.fft_coarse()->num_gvec();
+                int ngv = ctx_.gvec().num_gvec();
+                int ngvc = ctx_.gvec_coarse().num_gvec();
                 
                 for (int i = 0; i < ngvc; i++)
                 {

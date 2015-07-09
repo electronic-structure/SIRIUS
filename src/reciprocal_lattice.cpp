@@ -28,12 +28,13 @@ namespace sirius {
         
 Reciprocal_lattice::Reciprocal_lattice(Unit_cell const& unit_cell__, 
                                        electronic_structure_method_t esm_type__,
-                                       FFT3D<CPU>* fft__,
+                                       //FFT3D<CPU>* fft__,
+                                       Gvec const& gvec__,
                                        int lmax__,
                                        Communicator const& comm__)
     : unit_cell_(unit_cell__), 
       esm_type_(esm_type__),
-      fft_(fft__),
+      gvec_(gvec__),
       comm_(comm__)
 {
     init(lmax__);
@@ -77,23 +78,12 @@ void Reciprocal_lattice::init(int lmax)
         // TODO: in principle, this can be distributed over G-shells (each mpi rank holds radial integrals only for
         //       G-shells of local fraction of G-vectors
         mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, lmax + 1, unit_cell_.num_atom_types(), 
-                                              fft_->num_gvec_shells_inner());
+                                              gvec_.num_shells());
 
         generate_q_radial_integrals(lmax, q_radial_functions, q_radial_integrals);
 
         generate_q_pw(lmax, q_radial_integrals);
     }
-
-    //== /* precompute G-vector phase factors */
-    //== #ifdef __CACHE_GVEC_PHASE_FACTORS
-    //== gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
-    //== #pragma omp parallel for
-    //== for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-    //== {
-    //==     int ig = (int)spl_num_gvec_[igloc];
-    //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
-    //== }
-    //== #endif
 }
 
 std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv) const
@@ -110,7 +100,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
     for (int igloc = 0; igloc < (int)spl_ngv.local_size(); igloc++)
     {
         int ig = (int)spl_ngv[igloc];
-        int igs = fft_->gvec_shell(ig);
+        int igs = gvec_.shell(ig);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {            
@@ -154,7 +144,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
 
     qri.zero();
     
-    splindex<block> spl_num_gvec_shells(fft_->num_gvec_shells_inner(), comm_.size(), comm_.rank());
+    splindex<block> spl_num_gvec_shells(gvec_.num_shells(), comm_.size(), comm_.rank());
     
     #pragma omp parallel
     {
@@ -163,7 +153,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
         for (int ishloc = 0; ishloc < (int)spl_num_gvec_shells.local_size(); ishloc++)
         {
             int igs = (int)spl_num_gvec_shells[ishloc];
-            jl.load(fft_->gvec_shell_len(igs));
+            jl.load(gvec_.shell_len(igs));
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
@@ -212,12 +202,12 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(double_complex(0, 1), l);
     }
     
-    splindex<block> spl_num_gvec(fft_->num_gvec(), comm_.size(), comm_.rank());
+    splindex<block> spl_num_gvec(gvec_.num_gvec(), comm_.size(), comm_.rank());
     mdarray<double, 2> gvec_rlm(Utils::lmmax(lmax), spl_num_gvec.local_size());
     for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
     {
         int ig = (int)spl_num_gvec[igloc];
-        auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
+        auto rtp = SHT::spherical_coordinates(gvec_.cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
 
@@ -253,7 +243,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                     for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
                     {
                         int ig = (int)spl_num_gvec[igloc];
-                        int igs = fft_->gvec_shell(ig);
+                        int igs = gvec_.shell(ig);
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
