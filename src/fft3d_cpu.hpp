@@ -22,128 +22,6 @@
  *  \brief Contains CPU specialization.
  */
 
-class Gvec
-{
-    friend class FFT3D<CPU>;
-
-    private:
-
-        int num_gvec_;
-
-        mdarray<int, 1> gvec_index_;
-
-        mdarray<int, 1> gvec_shell_;
-
-        int num_gvec_loc_;
-
-        int gvec_offset_;
-
-        mdarray<int, 1> index_map_local_to_local_;
-
-        std::vector<int> gvec_counts_;
-
-        std::vector<int> gvec_offsets_;
-
-        int grid_size_[3];
-
-        std::pair<int, int> grid_limits_[3];
-
-        matrix3d<double> rl_;
-
-        int num_gvec_shells_;
-
-        mdarray<double, 1> gvec_shell_len_;
-
-        mdarray<int, 3> index_by_gvec_;
-
-    public:
-
-        /// Return number of G-vectors within the cutoff.
-        inline int num_gvec() const
-        {
-            return num_gvec_;
-        }
-
-        /// Return number of G-vector shells.
-        inline int num_shells() const
-        {
-            return num_gvec_shells_;
-        }
-
-        inline vector3d<int> gvec_by_grid_pos(int i0__, int i1__, int i2__) const
-        {
-            if (i0__ > grid_limits_[0].second) i0__ -= grid_size_[0];
-            if (i1__ > grid_limits_[1].second) i1__ -= grid_size_[1];
-            if (i2__ > grid_limits_[2].second) i2__ -= grid_size_[2];
-
-            return vector3d<int>(i0__, i1__, i2__);
-        }
-
-        inline vector3d<int> gvec_by_full_index(int idx__) const // TODO: use bit masks and bit shifts
-        {
-            int k = idx__ / (grid_size_[0] * grid_size_[1]);
-            idx__ -= k * grid_size_[0] * grid_size_[1];
-            int j = idx__ / grid_size_[0];
-            int i = idx__ -  j * grid_size_[0];
-            return gvec_by_grid_pos(i, j, k);
-        }
-
-        inline vector3d<int> operator[](int ig__) const
-        {
-            assert(ig__ >= 0 && ig__ < num_gvec_);
-            return gvec_by_full_index(gvec_index_(ig__));
-        }
-
-        inline vector3d<double> cart(int ig__) const
-        {
-            auto gv = gvec_by_full_index(gvec_index_(ig__));
-            return rl_ * vector3d<double>(gv[0], gv[1], gv[2]);
-        }
-
-        inline int shell(int ig__) const
-        {
-            return gvec_shell_(ig__);
-        }
-
-        inline double shell_len(int igs__) const
-        {
-            return gvec_shell_len_(igs__);
-        }
-
-        inline double gvec_len(int ig__) const
-        {
-            return gvec_shell_len_(gvec_shell_(ig__));
-        }
-
-        inline int index_g12(int ig1__, int ig2__) const
-        {
-            STOP();
-            return 0;
-        }
-
-        inline int index_g12_safe(int ig1__, int ig2__) const
-        {
-            STOP();
-            return 0;
-        }
-
-        inline int const* index_map() const
-        {
-            return &index_map_local_to_local_(0);
-        }
-
-        inline const std::pair<int, int>& grid_limits(int idim) const
-        {
-            return grid_limits_[idim];
-        }
-
-        inline int index_by_gvec(vector3d<int>& G__) const
-        {
-            return index_by_gvec_(G__[0], G__[1], G__[2]);
-        }
-};
-
-
 /// CPU specialization of FFT3D class.
 /** FFT convention:
  *  \f[
@@ -191,17 +69,6 @@ class FFT3D<CPU>
         /// In/out buffer for each thread
         std::vector<double_complex*> fftw_buffer_;
         
-        int num_gvec_;
-
-        mdarray<int, 2> gvec_;
-        std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
-
-        mdarray<int, 3> gvec_index_;
-
-        std::vector<int> index_map_;
-        std::vector<int> gvec_shell_;
-        std::vector<double> gvec_shell_len_;
-
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
         {    
@@ -329,108 +196,28 @@ class FFT3D<CPU>
             }
         }
 
-        Gvec init_gvec(vector3d<double> q__, double Gmax__, matrix3d<double> const& M__)
+        /// Execute the transformation for a given thread.
+        inline void transform(int direction, int thread_id = 0)
         {
-            Timer t("sirius::MPI_FFT3D::init_gvec");
+            assert(thread_id < num_fft_threads_);
 
-            Gvec gv;
-            for (int x = 0; x < 3; x++)
+            switch(direction)
             {
-                gv.grid_size_[x] = grid_size_[x];
-                gv.grid_limits_[x] = grid_limits_[x];
-            }
-            gv.rl_ = M__;
-
-            Timer t1("sirius::MPI_FFT3D::init_gvec|1");
-            /* find local number of G-vectors for each slab of FFT buffer */
-            std::vector< vector3d<int16_t> > pos;
-            for (int k = 0; k < local_size_z_; k++)
-            {
-                for (int j = 0; j < size(1); j++)
+                case 1:
                 {
-                    for (int i = 0; i < size(0); i++)
-                    {
-                        auto G = gv.gvec_by_grid_pos(i, j, k + offset_z_);
-                       
-                        /* take G+q */
-                        auto gq = M__ * (vector3d<double>(G[0], G[1], G[2]) + q__);
-
-                        if (gq.length() <= Gmax__) pos.push_back(vector3d<int16_t>((int16_t)i, (int16_t)j, (int16_t)k));
-                    }
+                    backward(thread_id);
+                    break;
+                }
+                case -1:
+                {
+                    forward(thread_id);
+                    break;
+                }
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "wrong FFT direction");
                 }
             }
-            t1.stop();
-
-            /* get total number of G-vectors */
-            gv.num_gvec_loc_ = (int)pos.size();
-            gv.num_gvec_ = gv.num_gvec_loc_;
-            comm_.allreduce(&gv.num_gvec_, 1);
-
-            gv.gvec_index_ = mdarray<int, 1>(gv.num_gvec_);
-            gv.index_map_local_to_local_ = mdarray<int, 1>(gv.num_gvec_loc_);
-
-            gv.gvec_counts_ = std::vector<int>(comm_.size(), 0);
-            gv.gvec_offsets_ = std::vector<int>(comm_.size(), 0);
-
-            /* get local sizes from all ranks */
-            gv.gvec_counts_[comm_.rank()] = gv.num_gvec_loc_;
-            comm_.allreduce(&gv.gvec_counts_[0], comm_.size());
-
-            for (int i = 1; i < comm_.size(); i++) 
-                gv.gvec_offsets_[i] = gv.gvec_offsets_[i - 1] + gv.gvec_counts_[i - 1]; 
-            gv.gvec_offset_ = gv.gvec_offsets_[comm_.rank()];
-
-            for (int igloc = 0; igloc < gv.num_gvec_loc_; igloc++)
-            {
-                auto p = pos[igloc];
-                gv.index_map_local_to_local_(igloc) = p[0] + p[1] * grid_size_[0] + p[2] * grid_size_[0] * grid_size_[1];
-
-                gv.gvec_index_(gv.gvec_offset_ + igloc) = gv.index_map_local_to_local_(igloc) +
-                                                          offset_z_ * grid_size_[0] * grid_size_[1];
-            }
-
-            comm_.allgather(&gv.gvec_index_(0), gv.gvec_offset_, gv.num_gvec_loc_); 
-
-            auto g0 = gv[0];
-            if (g0[0] != 0 || g0[1] != 0 || g0[2] != 0) TERMINATE("first G-vector is not zero");
-
-            
-            std::map<size_t, std::vector<int> > gsh;
-            for (int ig = 0; ig < gv.num_gvec_; ig++)
-            {
-                auto G = gv[ig];
-
-                /* take G+q */
-                auto gq = M__ * (vector3d<double>(G[0], G[1], G[2]) + q__);
-
-                size_t len = size_t(gq.length() * 1e10);
-                if (!gsh.count(len)) gsh[len] = std::vector<int>();
-                gsh[len].push_back(ig);
-            }
-            gv.num_gvec_shells_ = (int)gsh.size();
-            gv.gvec_shell_ = mdarray<int, 1>(gv.num_gvec_);
-            gv.gvec_shell_len_ = mdarray<double, 1>(gv.num_gvec_shells_);
-            
-            int n = 0;
-            for (auto it = gsh.begin(); it != gsh.end(); it++)
-            {
-                gv.gvec_shell_len_(n) = double(it->first) * 1e-10;
-                for (int ig: it->second) gv.gvec_shell_(ig) = n;
-                n++;
-            }
-
-            gv.index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
-                                                mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
-                                                mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
-            memset(gv.index_by_gvec_.at<CPU>(), 0xFF, gv.index_by_gvec_.size() * sizeof(int));
-
-            for (int ig = 0; ig < gv.num_gvec_; ig++)
-            {
-                auto G = gv[ig];
-                gv.index_by_gvec_(G[0], G[1], G[2]) = ig;
-            }
-
-            return std::move(gv);
         }
 
         template<typename T>
@@ -456,30 +243,6 @@ class FFT3D<CPU>
             memcpy(fftw_buffer_[thread_id], data, size() * sizeof(double_complex));
         }
         
-        /// Execute the transformation for a given thread.
-        inline void transform(int direction, int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads_);
-
-            switch(direction)
-            {
-                case 1:
-                {
-                    backward(thread_id);
-                    break;
-                }
-                case -1:
-                {
-                    forward(thread_id);
-                    break;
-                }
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong FFT direction");
-                }
-            }
-        }
-
         inline void output(double* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads_);
@@ -524,6 +287,16 @@ class FFT3D<CPU>
             return grid_size_[0] * grid_size_[1] * local_size_z_;
         }
 
+        inline int local_size_z() const
+        {
+            return local_size_z_;
+        }
+
+        inline int offset_z() const
+        {
+            return offset_z_;
+        }
+
         /// Size of a given dimension.
         inline int size(int d) const
         {
@@ -551,4 +324,236 @@ class FFT3D<CPU>
         {
             return vector3d<int>(grid_size_);
         }
+
+        inline vector3d<int> gvec_by_grid_pos(int i0__, int i1__, int i2__) const
+        {
+            if (i0__ > grid_limits_[0].second) i0__ -= grid_size_[0];
+            if (i1__ > grid_limits_[1].second) i1__ -= grid_size_[1];
+            if (i2__ > grid_limits_[2].second) i2__ -= grid_size_[2];
+
+            return vector3d<int>(i0__, i1__, i2__);
+        }
+
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
 };
+
+class Gvec
+{
+    private:
+        
+        FFT3D<CPU>* fft_;
+
+        matrix3d<double> lattice_vectors_;
+
+        /// Total number of G-vectors.
+        int num_gvec_;
+
+        /// Local number of G-vectors for a given slab.
+        int num_gvec_loc_;
+        
+        /// Offset of local part of G-vectors in the global index array.
+        int gvec_offset_;
+        
+        /// Mapping between G-vector index [0:num_gvec_) and a full index.
+        /** Full index is used to store x,y,z coordinates in a packed form in a single integer number. */
+        mdarray<int, 1> gvec_full_index_;
+    
+        /// Index of the shell to which the given G-vector belongs.
+        mdarray<int, 1> gvec_shell_;
+        
+        /// Position in the local slab of FFT buffer by local G-vec index.
+        mdarray<int, 1> index_map_local_to_local_;
+
+        std::vector<int> gvec_counts_;
+
+        std::vector<int> gvec_offsets_;
+
+        int num_gvec_shells_;
+
+        mdarray<double, 1> gvec_shell_len_;
+
+        mdarray<int, 3> index_by_gvec_;
+
+        Gvec(Gvec const& src__) = delete;
+
+        Gvec& operator=(Gvec const& src__) = delete;
+
+    public:
+
+        Gvec() : fft_(nullptr)
+        {
+        }
+
+        Gvec(vector3d<double> q__,
+             double Gmax__,
+             matrix3d<double> const& M__,
+             FFT3D<CPU>* fft__)
+            : fft_(fft__),
+              lattice_vectors_(M__)
+        {
+            /* find local number of G-vectors for each slab of FFT buffer */
+            std::vector< vector3d<int> > pos;
+            for (int k = 0; k < fft_->local_size_z(); k++)
+            {
+                for (int j = 0; j < fft_->size(1); j++)
+                {
+                    for (int i = 0; i < fft_->size(0); i++)
+                    {
+                        auto G = fft_->gvec_by_grid_pos(i, j, k + fft_->offset_z());
+                       
+                        /* take G+q */
+                        auto gq = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q__);
+
+                        if (gq.length() <= Gmax__) pos.push_back(vector3d<int>(i, j, k));
+                    }
+                }
+            }
+
+            /* get total number of G-vectors */
+            num_gvec_loc_ = (int)pos.size();
+            num_gvec_ = num_gvec_loc_;
+            fft_->comm().allreduce(&num_gvec_, 1);
+
+            gvec_full_index_ = mdarray<int, 1>(num_gvec_);
+            index_map_local_to_local_ = mdarray<int, 1>(num_gvec_loc_);
+
+            gvec_counts_ = std::vector<int>(fft_->comm().size(), 0);
+            gvec_offsets_ = std::vector<int>(fft_->comm().size(), 0);
+
+            /* get local sizes from all ranks */
+            gvec_counts_[fft_->comm().rank()] = num_gvec_loc_;
+            fft_->comm().allreduce(&gvec_counts_[0], fft_->comm().size());
+
+            for (int i = 1; i < fft_->comm().size(); i++) 
+                gvec_offsets_[i] = gvec_offsets_[i - 1] + gvec_counts_[i - 1]; 
+            gvec_offset_ = gvec_offsets_[fft_->comm().rank()];
+
+            for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
+            {
+                auto p = pos[igloc];
+                index_map_local_to_local_(igloc) = p[0] + p[1] * fft_->size(0) + p[2] * fft_->size(0) * fft_->size(1);
+                
+                /* this is only one way to pack coordinates into single integer */
+                gvec_full_index_(gvec_offset_ + igloc) = 
+                    p[0] + p[1] * fft_->size(0) + (p[2] + fft_->offset_z()) * fft_->size(0) * fft_->size(1);
+            }
+
+            fft_->comm().allgather(&gvec_full_index_(0), gvec_offset_, num_gvec_loc_); 
+
+            auto g0 = gvec_by_full_index(gvec_full_index_(0));
+            if (g0[0] != 0 || g0[1] != 0 || g0[2] != 0) TERMINATE("first G-vector is not zero");
+
+            std::map<size_t, std::vector<int> > gsh;
+            for (int ig = 0; ig < num_gvec_; ig++)
+            {
+                auto G = gvec_by_full_index(gvec_full_index_(ig));
+
+                /* take G+q */
+                auto gq = M__ * (vector3d<double>(G[0], G[1], G[2]) + q__);
+
+                size_t len = size_t(gq.length() * 1e10);
+
+                if (!gsh.count(len)) gsh[len] = std::vector<int>();
+                
+                gsh[len].push_back(ig);
+            }
+            num_gvec_shells_ = (int)gsh.size();
+            gvec_shell_ = mdarray<int, 1>(num_gvec_);
+            gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
+            
+            int n = 0;
+            for (auto it = gsh.begin(); it != gsh.end(); it++)
+            {
+                gvec_shell_len_(n) = double(it->first) * 1e-10;
+                for (int ig: it->second) gvec_shell_(ig) = n;
+                n++;
+            }
+
+            index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
+                                             mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
+                                             mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
+            memset(index_by_gvec_.at<CPU>(), 0xFF, index_by_gvec_.size() * sizeof(int));
+
+            for (int ig = 0; ig < num_gvec_; ig++)
+            {
+                auto G = gvec_by_full_index(gvec_full_index_(ig));
+                index_by_gvec_(G[0], G[1], G[2]) = ig;
+            }
+        }
+
+        Gvec& operator=(Gvec&& src__) = default;
+
+        /// Return number of G-vectors within the cutoff.
+        inline int num_gvec() const
+        {
+            return num_gvec_;
+        }
+
+        /// Return number of G-vector shells.
+        inline int num_shells() const
+        {
+            return num_gvec_shells_;
+        }
+
+        inline vector3d<int> gvec_by_full_index(int idx__) const // TODO: use bit masks and bit shifts
+        {
+            int k = idx__ / (fft_->size(0) * fft_->size(1));
+            idx__ -= k * fft_->size(0) * fft_->size(1);
+            int j = idx__ / fft_->size(0);
+            int i = idx__ -  j * fft_->size(0);
+            return fft_->gvec_by_grid_pos(i, j, k);
+        }
+
+        inline vector3d<int> operator[](int ig__) const
+        {
+            assert(ig__ >= 0 && ig__ < num_gvec_);
+            return gvec_by_full_index(gvec_full_index_(ig__));
+        }
+
+        inline vector3d<double> cart(int ig__) const
+        {
+            auto gv = gvec_by_full_index(gvec_full_index_(ig__));
+            return lattice_vectors_ * vector3d<double>(gv[0], gv[1], gv[2]);
+        }
+
+        inline int shell(int ig__) const
+        {
+            return gvec_shell_(ig__);
+        }
+
+        inline double shell_len(int igs__) const
+        {
+            return gvec_shell_len_(igs__);
+        }
+
+        inline double gvec_len(int ig__) const
+        {
+            return gvec_shell_len_(gvec_shell_(ig__));
+        }
+
+        inline int index_g12(int ig1__, int ig2__) const
+        {
+            STOP();
+            return 0;
+        }
+
+        inline int index_g12_safe(int ig1__, int ig2__) const
+        {
+            STOP();
+            return 0;
+        }
+
+        inline int const* index_map() const
+        {
+            return &index_map_local_to_local_(0);
+        }
+
+        inline int index_by_gvec(vector3d<int>& G__) const
+        {
+            return index_by_gvec_(G__[0], G__[1], G__[2]);
+        }
+};
+
