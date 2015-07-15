@@ -24,23 +24,14 @@ void K_point::generate_gkvec(double gk_cutoff)
           << "  doubled G+k cutoff : " << gk_cutoff * 2;
         error_local(__FILE__, __LINE__, s);
     }
-
-    if (parameters_.full_potential())
-    {
-        gkvec1_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_);
-    }
-    else
-    {
-        //gkvec1_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft_coarse());
-        gkvec1_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_);
-    }
+    
+    /* create G+k vectors using fine FFT grid; 
+     * this would provide a correct mapping between \psi(G) and \rho(r) */
+    gkvec1_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_);
         
-
-    //== Gvec gkvec2_(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft_coarse());
-    //== 
-
     if (!parameters_.full_potential())
     {
+        /* additionally create mapping between \psi(G) and a coarse FFT buffer in order to apply H_loc */
         fft_index_coarse_.resize(num_gkvec());
         for (int igk = 0; igk < num_gkvec(); igk++)
         {
@@ -49,16 +40,6 @@ void K_point::generate_gkvec(double gk_cutoff)
             fft_index_coarse_[igk] = ctx_.fft_coarse()->index(G[0], G[1], G[2]);
         }
     }
-
-    //== assert(gkvec1_.num_gvec() == gkvec2_.num_gvec());
-
-    //== for (int i = 0; i < num_gkvec(); i++)
-    //== {
-    //==     auto G1 = gkvec1_[i];
-    //==     auto G2 = gkvec2_[i];
-    //==     
-    //==     for (int x: {0, 1, 2}) if (G1[x] != G2[x]) TERMINATE("wrong G-vectors");
-    //== }
 
 
     //std::vector< std::pair<double, int> > gkmap;

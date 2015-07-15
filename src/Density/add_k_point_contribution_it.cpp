@@ -218,9 +218,9 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
                             }
                             for (int ir = 0; ir < fft->size(); ir++)
                             {
-                                double_complex z0 = psi_it(ir, 0) * conj(psi_it(ir, 0)) * w;
-                                double_complex z1 = psi_it(ir, 1) * conj(psi_it(ir, 1)) * w;
-                                double_complex z2 = psi_it(ir, 0) * conj(psi_it(ir, 1)) * w;
+                                auto z0 = psi_it(ir, 0) * std::conj(psi_it(ir, 0)) * w;
+                                auto z1 = psi_it(ir, 1) * std::conj(psi_it(ir, 1)) * w;
+                                auto z2 = psi_it(ir, 0) * std::conj(psi_it(ir, 1)) * w;
                                 it_density_matrix(ir, 0, thread_id) += std::real(z0);
                                 it_density_matrix(ir, 1, thread_id) += std::real(z1);
                                 it_density_matrix(ir, 2, thread_id) += 2.0 * std::real(z2);
@@ -237,7 +237,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
                             fft->output(&psi_it(0, ispn), thread_id);
 
                             for (int ir = 0; ir < fft->size(); ir++)
-                                it_density_matrix(ir, ispn, thread_id) += real(psi_it(ir, ispn) * conj(psi_it(ir, ispn))) * w;
+                                it_density_matrix(ir, ispn, thread_id) += std::real(psi_it(ir, ispn) * std::conj(psi_it(ir, ispn))) * w;
 
                         }
                     }
