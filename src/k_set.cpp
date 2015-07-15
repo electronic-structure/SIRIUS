@@ -71,6 +71,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         unit_cell_.generate_radial_integrals();
     }
 
+    // TODO: mapping to coarse effective potential is k-point independent
+
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
     {

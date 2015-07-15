@@ -1898,15 +1898,36 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
         }
     }
 
-    //for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
-    //{
-    //    int ig = ctx_.fft()->gvec_index(fft_coarse->gvec(igc));
-    //    veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
-    //}
+    std::vector<double> veff_it_coarse_p(ctx_.pfft_coarse()->local_size());
+    std::vector<double_complex> veff_pw_coarse_p(ctx_.pgvec_coarse().num_gvec());
+
+    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
+    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
+    {
+        if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
+        {
+            auto G = gv[ig];
+            veff_pw_coarse_p[ctx_.pgvec_coarse().index_by_gvec(G)] = effective_potential__->f_pw(ig);
+        }
+    }
+
+    ctx_.pfft_coarse()->input(ctx_.pgvec_coarse().num_gvec_loc(), ctx_.pgvec_coarse().index_map(), &veff_pw_coarse_p[ctx_.pgvec_coarse().gvec_offset()]);
+    ctx_.pfft_coarse()->transform(1);
+    ctx_.pfft_coarse()->output(&veff_it_coarse_p[0]);
 
     fft_coarse->input(ctx_.gvec_coarse().num_gvec(), ctx_.gvec_coarse().index_map(), &veff_pw_coarse[0]);
     fft_coarse->transform(1);
     fft_coarse->output(&veff_it_coarse[0]);
+    
+    if (blacs_grid_.comm().rank() == 0)
+    {
+        for (int i = 0; i < ctx_.pfft_coarse()->local_size(); i++)
+        {
+            printf("%18.10f %18.10f\n", veff_it_coarse_p[i], veff_it_coarse[i]);
+
+            if (std::abs(veff_it_coarse_p[i] - veff_it_coarse[i]) > 1e-10) TERMINATE("wrong pfft");
+        }
+    }
 
     double v0 = real(effective_potential__->f_pw(0));
 

@@ -64,6 +64,9 @@ class Simulation_context
         /// FFT wrapper for coarse grid.
         FFT3D<CPU>* fft_coarse_;
 
+        FFT3D<CPU>* pfft_coarse_;
+        Gvec pgvec_coarse_;
+
         Gvec gvec_coarse_;
 
         #ifdef __GPU
@@ -202,6 +205,12 @@ class Simulation_context
                                              parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
                 
                 gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv, fft_coarse_);
+                
+                /* create FFT interface for coarse grid */
+                pfft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
+                                              1, Platform::max_num_threads(), mpi_grid_.communicator(1 << _dim_row_));
+                
+                pgvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv, pfft_coarse_);
 
                 #ifdef __GPU
                 fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
@@ -300,6 +309,11 @@ class Simulation_context
             return fft_coarse_;
         }
 
+        inline FFT3D<CPU>* pfft_coarse() const
+        {
+            return pfft_coarse_;
+        }
+
         Gvec const& gvec() const
         {
             return gvec_;
@@ -308,6 +322,11 @@ class Simulation_context
         Gvec const& gvec_coarse() const
         {
             return gvec_coarse_;
+        }
+
+        Gvec const& pgvec_coarse() const
+        {
+            return pgvec_coarse_;
         }
 
         #ifdef __GPU

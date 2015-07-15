@@ -229,32 +229,26 @@ class FFT3D<CPU>
             for (int i = 0; i < n; i++) fftw_buffer_[thread_id][map[i]] = data[i];
         }
 
-        inline void input(double* data, int thread_id = 0)
+        template <typename T>
+        inline void input(T* data__, int thread_id__ = 0)
         {
-            assert(thread_id < num_fft_threads_);
+            assert(thread_id__ < num_fft_threads_);
             
-            for (int i = 0; i < size(); i++) fftw_buffer_[thread_id][i] = data[i];
-        }
-        
-        inline void input(double_complex* data, int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads_);
-            
-            memcpy(fftw_buffer_[thread_id], data, size() * sizeof(double_complex));
+            for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id__][i] = data__[i];
         }
         
         inline void output(double* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads_);
 
-            for (int i = 0; i < size(); i++) data[i] = std::real(fftw_buffer_[thread_id][i]);
+            for (int i = 0; i < local_size(); i++) data[i] = std::real(fftw_buffer_[thread_id][i]);
         }
         
         inline void output(double_complex* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads_);
 
-            memcpy(data, fftw_buffer_[thread_id], size() * sizeof(double_complex));
+            memcpy(data, fftw_buffer_[thread_id], local_size() * sizeof(double_complex));
         }
         
         inline void output(int n, int const* map, double_complex* data, int thread_id = 0)
@@ -444,7 +438,7 @@ class Gvec
             fft_->comm().allgather(&gvec_full_index_(0), gvec_offset_, num_gvec_loc_); 
 
             auto g0 = gvec_by_full_index(gvec_full_index_(0));
-            if (g0[0] != 0 || g0[1] != 0 || g0[2] != 0) TERMINATE("first G-vector is not zero");
+            if (g0[0] || g[1] || g[2]) TERMINATE("first G-vector is not zero");
 
             std::map<size_t, std::vector<int> > gsh;
             for (int ig = 0; ig < num_gvec_; ig++)
@@ -490,6 +484,16 @@ class Gvec
         inline int num_gvec() const
         {
             return num_gvec_;
+        }
+
+        inline int num_gvec_loc() const
+        {
+            return num_gvec_loc_;
+        }
+
+        inline int gvec_offset() const
+        {
+            return gvec_offset_;
         }
 
         /// Return number of G-vector shells.
