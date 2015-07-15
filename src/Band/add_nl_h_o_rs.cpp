@@ -25,9 +25,10 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     std::vector<int> fft_index(kp__->num_gkvec());
     for (int igk = 0; igk < kp__->num_gkvec(); igk++)
     {
-        vector3d<int> gvec = kp__->gvec(igk);
+        //vector3d<int> gvec = kp__->gvec(igk);
+        STOP();
         /* linear index inside coarse FFT buffer */
-        fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
+        //fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
     }
     
     std::vector<double_complex> k_phase(fft->size());

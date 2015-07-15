@@ -63,8 +63,8 @@ void K_point::initialize()
     build_gklo_basis_descriptors();
     /* distribute basis functions */
     distribute_basis_index();
-    /* initialize phase factors and Ylm arrays of G+k vectors */
-    init_gkvec();
+    /* initialize phase factors */
+    init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
     
     if (parameters_.full_potential())
     {

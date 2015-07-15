@@ -15,7 +15,7 @@ void K_point::build_gklo_basis_descriptors()
         gklo.igk        = igk;
         gklo.gkvec      = gkvec<fractional>(igk);
         gklo.gkvec_cart = gkvec<cartesian>(igk);
-        gklo.ig         = gvec_index(igk);
+        gklo.ig         = igk; //gvec_index(igk);
         gklo.ia         = -1;
         gklo.l          = -1;
         gklo.lm         = -1;

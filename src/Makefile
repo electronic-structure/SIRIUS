@@ -4,7 +4,7 @@ include ../make.inc
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
        radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp \
-       reciprocal_lattice.cpp step_function.cpp k_point.cpp band.cpp potential.cpp \
+       reciprocal_lattice.cpp step_function.cpp band.cpp potential.cpp \
        k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
        band_uspp_gpu_parallel.cpp band_pseudo_pot.cpp band_pseudo_pot_itsol.cpp real_space_prj.cpp \
        Density/density.cpp \
@@ -45,7 +45,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/generate_spinor_wave_functions.cpp \
        K_point/generate_gkvec.cpp \
        K_point/init_gkvec.cpp \
-       K_point/initialize.cpp
+       K_point/initialize.cpp \
+       K_point/k_point.cpp
 
 OBJ = $(SRC:.cpp=.o) 
 

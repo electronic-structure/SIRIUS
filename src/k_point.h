@@ -41,10 +41,13 @@ class K_point
         /// Simulation context.
         Simulation_context& ctx_;
 
+        /// Parameters of simulation.
         Simulation_parameters const& parameters_;
-
+        
+        /// Unit cell object.
         Unit_cell const& unit_cell_;
 
+        /// Primary 2D BLACS grid for diagonalization.
         BLACS_grid const& blacs_grid_;
         
         /// Auxiliary 1D BLACS grid for a "slab" data distribution.
@@ -59,13 +62,7 @@ class K_point
         /// Fractional k-point coordinates.
         vector3d<double> vk_;
         
-        /// G+k vectors
-        //mdarray<double, 2> gkvec_;
-
-        Gvec gkvec1_;
-
-        /// Global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
-        //std::vector<int> gvec_index_;
+        Gvec gkvec_;
 
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -83,9 +80,7 @@ class K_point
         /// Full-diagonalization eigen vectors.
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
-        /// Position of the G vector (from the G+k set) inside the FFT buffer.
-        //std::vector<int> fft_index_;
-
+        /// Position of the G vector (from the G+k set) inside the coarse FFT buffer.
         std::vector<int> fft_index_coarse_;
        
         /// first-variational states, distributed over all ranks of the 2D MPI grid
@@ -113,9 +108,6 @@ class K_point
 
         /// spherical harmonics of G+k vectors
         mdarray<double_complex, 2> gkvec_ylm_;
-
-        /// length of G+k vectors
-        //std::vector<double> gkvec_len_;
 
         Matching_coefficients* alm_coeffs_row_;
 
@@ -196,7 +188,7 @@ class K_point
         splindex<block> sub_spl_spinor_wf_;
 
         /// Initialize G+k related data
-        void init_gkvec();
+        //void init_gkvec();
         
         /// Build G+k and lo basis descriptors.
         void build_gklo_basis_descriptors();
@@ -207,7 +199,7 @@ class K_point
         /// Test orthonormalization of first-variational states
         void test_fv_states(int use_fft);
 
-        void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
+        //void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
         void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
@@ -233,9 +225,6 @@ class K_point
         /// Initialize the k-point related arrays and data
         void initialize();
 
-        /// Update the relevant arrays in case of atom positions have been changed.
-        ///void update();
-        
         /// Find G+k vectors within the cutoff
         void generate_gkvec(double gk_cutoff);
 
@@ -266,30 +255,11 @@ class K_point
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
         
-        /// Return G-vector (in fractional coordinates) of the current G+k vector.
-        inline vector3d<int> gvec(int igk__) const
-        {
-            STOP();
-            return vector3d<int>(0,0,0);
-            //return fft_->gvec(gvec_index(igk__));
-        }
-        
-        /// Global index of G-vector by the index of G+k vector
-        inline int gvec_index(int igk__) const
-        {
-            //assert(igk__ >= 0 && igk__ < (int)gvec_index_.size());
-            
-            //return gvec_index_[igk__];
-            auto G = gkvec1_[igk__];
-            return gkvec1_.index_by_gvec(G);
-        }
-
         ///// Return G+k vector in fractional or Cartesian coordinates
         template <coordinates_t coord__>
         inline vector3d<double> gkvec(int igk__) const
         {
-            //assert(igk__ >= 0 && igk__ < (int)gkvec_.size(1));
-            auto G = gkvec1_[igk__];
+            auto G = gkvec_[igk__];
             auto Gk = vector3d<double>(G[0], G[1], G[2]) + vk_;
             switch (coord__)
             {
@@ -319,9 +289,7 @@ class K_point
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
         {
-            //assert(gkvec_.size(1) == gvec_index_.size());
-            //return (int)gkvec_.size(1);
-            return gkvec1_.num_gvec();
+            return gkvec_.num_gvec();
         }
 
         /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
@@ -450,11 +418,6 @@ class K_point
         {
             return spinor_wave_functions_;
         }
-
-        //== inline int const* fft_index() const
-        //== {
-        //==     return &fft_index_[0];
-        //== }
 
         inline int const* fft_index_coarse() const
         {
@@ -616,13 +579,8 @@ class K_point
 
         inline Gvec const& gkvec() const
         {
-            return gkvec1_;
+            return gkvec_;
         }
-
-        //inline mdarray<double, 2>& gkvec()
-        //{
-        //    return gkvec_;
-        //}
 
         inline matrix<double_complex> const& beta_gk_t() const
         {

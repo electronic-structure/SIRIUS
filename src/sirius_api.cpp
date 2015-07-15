@@ -1438,7 +1438,8 @@ void sirius_get_gkvec_arrays(int32_t* kset_id,
 
         for (int igk = 0; igk < kp->num_gkvec(); igk++)
         {
-            gvec_index[igk] = kp->gvec_index(igk) + 1; //Fortran counts form 1
+            //gvec_index[igk] = kp->gvec_index(igk) + 1; // Fortran counts form 1
+            gvec_index[igk] = igk + 1; // Fortran counts from 1
             for (int x = 0; x < 3; x++) 
             {
                 gkvec(x, igk) = kp->gkvec<fractional>(igk)[x];

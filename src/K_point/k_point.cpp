@@ -470,7 +470,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                fft_->input(num_gkvec(), gkvec1_.index_map(),
+                fft_->input(num_gkvec(), gkvec_.index_map(),
                                        &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j1));
                 fft_->transform(1);
                 fft_->output(&v2[0]);
@@ -479,7 +479,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
                 
                 fft_->input(&v2[0]);
                 fft_->transform(-1);
-                fft_->output(num_gkvec(), gkvec1_.index_map(), &v1[ispn][0]); 
+                fft_->output(num_gkvec(), gkvec_.index_map(), &v1[ispn][0]); 
             }
         }
         
@@ -487,7 +487,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                fft_->input(num_gkvec(), gkvec1_.index_map(),
+                fft_->input(num_gkvec(), gkvec_.index_map(),
                                        &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j1));
                 fft_->transform(1);
                 fft_->output(&v1[ispn][0]);
@@ -537,12 +537,12 @@ void K_point::test_spinor_wave_functions(int use_fft)
             {
                 for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                 {
-                    fft_->input(num_gkvec(), gkvec1_.index_map(), &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
+                    fft_->input(num_gkvec(), gkvec_.index_map(), &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
                     fft_->transform(1);
                     fft_->output(&v2[0]);
 
                     for (int ir = 0; ir < fft_->size(); ir++)
-                        zsum += conj(v1[ispn][ir]) * v2[ir] * ctx_.step_function()->theta_r(ir) / double(fft_->size());
+                        zsum += std::conj(v1[ispn][ir]) * v2[ir] * ctx_.step_function()->theta_r(ir) / double(fft_->size());
                 }
             }
             
@@ -552,7 +552,8 @@ void K_point::test_spinor_wave_functions(int use_fft)
                 {
                     for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
                     {
-                        int ig3 = ctx_.reciprocal_lattice()->index_g12(gvec_index(ig1), gvec_index(ig2));
+                        //int ig3 = ctx_.reciprocal_lattice()->index_g12(gvec_index(ig1), gvec_index(ig2));
+                        int ig3 = ctx_.reciprocal_lattice()->index_g12(ig1, ig2);
                         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                         {
                             zsum += std::conj(spinor_wave_functions_(unit_cell_.mt_basis_size() + ig1, ispn, j1)) * 
