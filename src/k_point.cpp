@@ -470,7 +470,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                fft_->input(num_gkvec(), &fft_index_[0], 
+                fft_->input(num_gkvec(), gkvec1_.index_map(),
                                        &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j1));
                 fft_->transform(1);
                 fft_->output(&v2[0]);
@@ -479,7 +479,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
                 
                 fft_->input(&v2[0]);
                 fft_->transform(-1);
-                fft_->output(num_gkvec(), &fft_index_[0], &v1[ispn][0]); 
+                fft_->output(num_gkvec(), gkvec1_.index_map(), &v1[ispn][0]); 
             }
         }
         
@@ -487,7 +487,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                fft_->input(num_gkvec(), &fft_index_[0], 
+                fft_->input(num_gkvec(), gkvec1_.index_map(),
                                        &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j1));
                 fft_->transform(1);
                 fft_->output(&v1[ispn][0]);
@@ -537,7 +537,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
             {
                 for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                 {
-                    fft_->input(num_gkvec(), &fft_index_[0], &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
+                    fft_->input(num_gkvec(), gkvec1_.index_map(), &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
                     fft_->transform(1);
                     fft_->output(&v2[0]);
 

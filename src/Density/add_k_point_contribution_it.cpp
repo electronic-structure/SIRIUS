@@ -211,7 +211,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
                             /* transform both components of the spinor state */
                             for (int ispn = 0; ispn < num_spins; ispn++)
                             {
-                                fft->input(kp->num_gkvec(), kp->fft_index(), 
+                                fft->input(kp->num_gkvec(), kp->gkvec().index_map(), 
                                            &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn), thread_id);
                                 fft->transform(1, thread_id);
                                 fft->output(&psi_it(0, ispn), thread_id);
@@ -231,7 +231,7 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
                         {
                             /* transform only single compopnent */
                             int ispn = (j < num_fv_states) ? 0 : 1;
-                            fft->input(kp->num_gkvec(), kp->fft_index(), 
+                            fft->input(kp->num_gkvec(), kp->gkvec().index_map(), 
                                        &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn), thread_id);
                             fft->transform(1, thread_id);
                             fft->output(&psi_it(0, ispn), thread_id);

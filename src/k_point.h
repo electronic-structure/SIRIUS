@@ -60,10 +60,12 @@ class K_point
         vector3d<double> vk_;
         
         /// G+k vectors
-        mdarray<double, 2> gkvec_;
+        //mdarray<double, 2> gkvec_;
+
+        Gvec gkvec1_;
 
         /// Global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
-        std::vector<int> gvec_index_;
+        //std::vector<int> gvec_index_;
 
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -82,7 +84,7 @@ class K_point
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// Position of the G vector (from the G+k set) inside the FFT buffer.
-        std::vector<int> fft_index_;
+        //std::vector<int> fft_index_;
 
         std::vector<int> fft_index_coarse_;
        
@@ -275,26 +277,30 @@ class K_point
         /// Global index of G-vector by the index of G+k vector
         inline int gvec_index(int igk__) const
         {
-            assert(igk__ >= 0 && igk__ < (int)gvec_index_.size());
+            //assert(igk__ >= 0 && igk__ < (int)gvec_index_.size());
             
-            return gvec_index_[igk__];
+            //return gvec_index_[igk__];
+            auto G = gkvec1_[igk__];
+            return gkvec1_.index_by_gvec(G);
         }
 
         ///// Return G+k vector in fractional or Cartesian coordinates
         template <coordinates_t coord__>
         inline vector3d<double> gkvec(int igk__) const
         {
-            assert(igk__ >= 0 && igk__ < (int)gkvec_.size(1));
+            //assert(igk__ >= 0 && igk__ < (int)gkvec_.size(1));
+            auto G = gkvec1_[igk__];
+            auto Gk = vector3d<double>(G[0], G[1], G[2]) + vk_;
             switch (coord__)
             {
                 case cartesian:
                 {
-                    return unit_cell_.reciprocal_lattice_vectors() * vector3d<double>(&gkvec_(0, igk__));
+                    return unit_cell_.reciprocal_lattice_vectors() * Gk;
                     break;
                 }
                 case fractional:
                 {
-                    return vector3d<double>(&gkvec_(0, igk__));
+                    return Gk;
                     break;
                 }
                 default:
@@ -313,8 +319,9 @@ class K_point
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
         {
-            assert(gkvec_.size(1) == gvec_index_.size());
-            return (int)gkvec_.size(1);
+            //assert(gkvec_.size(1) == gvec_index_.size());
+            //return (int)gkvec_.size(1);
+            return gkvec1_.num_gvec();
         }
 
         /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
@@ -444,10 +451,10 @@ class K_point
             return spinor_wave_functions_;
         }
 
-        inline int const* fft_index() const
-        {
-            return &fft_index_[0];
-        }
+        //== inline int const* fft_index() const
+        //== {
+        //==     return &fft_index_[0];
+        //== }
 
         inline int const* fft_index_coarse() const
         {
@@ -607,10 +614,15 @@ class K_point
             return pw_ekin; 
         }
 
-        inline mdarray<double, 2>& gkvec()
+        inline Gvec const& gkvec() const
         {
-            return gkvec_;
+            return gkvec1_;
         }
+
+        //inline mdarray<double, 2>& gkvec()
+        //{
+        //    return gkvec_;
+        //}
 
         inline matrix<double_complex> const& beta_gk_t() const
         {
