@@ -129,24 +129,26 @@ void Band::apply_h_local_parallel(K_point* kp__,
                                   dmatrix<double_complex>& phi__,
                                   dmatrix<double_complex>& hphi__)
 {
-    log_function_enter(__func__);
-    Timer t("sirius::Band::apply_h_local_parallel", kp__->comm_row());
+    STOP();
 
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-
-    splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
-    
-    int nphi = (int)sub_spl_n.local_size();
-
-    memcpy(&hphi__(0, s0.local_size()), &phi__(0, s0.local_size()), 
-           kp__->num_gkvec_row() * (s1.local_size() - s0.local_size()) * sizeof(double_complex));
-    
-    hphi__.gather(n__, N__);
-    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, hphi__.slice(), hphi__.slice());
-    hphi__.scatter(n__, N__);
-
-    log_function_exit(__func__);
+//    log_function_enter(__func__);
+//    Timer t("sirius::Band::apply_h_local_parallel", kp__->comm_row());
+//
+//    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+//    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+//
+//    splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
+//    
+//    int nphi = (int)sub_spl_n.local_size();
+//
+//    memcpy(&hphi__(0, s0.local_size()), &phi__(0, s0.local_size()), 
+//           kp__->num_gkvec_row() * (s1.local_size() - s0.local_size()) * sizeof(double_complex));
+//    
+//    hphi__.gather(n__, N__);
+//    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, hphi__.slice(), hphi__.slice());
+//    hphi__.scatter(n__, N__);
+//
+//    log_function_exit(__func__);
 }
 
 /** \param [in] phi Input wave-function [storage: CPU && GPU].
@@ -366,9 +368,9 @@ void Band::set_fv_h_o_parallel_simple(int N__,
 void Band::set_fv_h_o_fast_parallel(int N__,
                                     int n__,
                                     K_point* kp__,
-                                    matrix<double_complex>& phi_slab__,
-                                    matrix<double_complex>& hphi_slab__,
-                                    matrix<double_complex>& ophi_slab__,
+                                    dmatrix<double_complex>& phi_slab__,
+                                    dmatrix<double_complex>& hphi_slab__,
+                                    dmatrix<double_complex>& ophi_slab__,
                                     dmatrix<double_complex>& h__,
                                     dmatrix<double_complex>& o__,
                                     dmatrix<double_complex>& h_old__,
@@ -1016,11 +1018,11 @@ void Band::residuals_fast_parallel(int N__,
                                    K_point* kp__,
                                    std::vector<double>& eval__,
                                    matrix<double_complex>& evec__,
-                                   matrix<double_complex>& hphi__,
-                                   matrix<double_complex>& ophi__,
-                                   matrix<double_complex>& hpsi__,
-                                   matrix<double_complex>& opsi__,
-                                   matrix<double_complex>& res__,
+                                   dmatrix<double_complex>& hphi__,
+                                   dmatrix<double_complex>& ophi__,
+                                   dmatrix<double_complex>& hpsi__,
+                                   dmatrix<double_complex>& opsi__,
+                                   dmatrix<double_complex>& res__,
                                    std::vector<double>& h_diag__,
                                    std::vector<double>& o_diag__,
                                    std::vector<double>& res_norm__,
@@ -1036,9 +1038,9 @@ void Band::residuals_fast_parallel(int N__,
     if (parameters_.processing_unit() == CPU)
     {
         /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
-        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, hphi__, evec__, hpsi__);
+        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, hphi__.panel(), evec__, hpsi__.panel());
         /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, ophi__, evec__, opsi__);
+        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands__, N__, ophi__.panel(), evec__, opsi__.panel());
     }
 
     if (parameters_.processing_unit() == GPU)

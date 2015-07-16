@@ -66,8 +66,11 @@ class Band
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int const* fft_index, 
-                                  Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi);
+        void apply_magnetic_field(dmatrix<double_complex>& fv_states__,
+                                  int num_gkvec__,
+                                  int const* fft_index__, 
+                                  Periodic_function<double>* effective_magnetic_field__[3],
+                                  std::vector< dmatrix<double_complex> >& hpsi__);
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -181,10 +184,10 @@ class Band
                                      std::vector<double> const& pw_ekin__,
                                      int N__,
                                      int n__,
-                                     matrix<double_complex>& phi_slice__,
-                                     matrix<double_complex>& phi_slab__,
-                                     matrix<double_complex>& hphi_slab__,
-                                     matrix<double_complex>& ophi_slab__,
+                                     dmatrix<double_complex>& phi_slice__,
+                                     dmatrix<double_complex>& phi_slab__,
+                                     dmatrix<double_complex>& hphi_slab__,
+                                     dmatrix<double_complex>& ophi_slab__,
                                      mdarray<int, 1>& packed_mtrx_offset__,
                                      mdarray<double_complex, 1>& d_mtrx_packed__,
                                      mdarray<double_complex, 1>& q_mtrx_packed__,
@@ -226,9 +229,9 @@ class Band
         void set_fv_h_o_fast_parallel(int N__,
                                       int n__,
                                       K_point* kp__,
-                                      matrix<double_complex>& phi_slab__,
-                                      matrix<double_complex>& hphi_slab__,
-                                      matrix<double_complex>& ophi_slab__,
+                                      dmatrix<double_complex>& phi_slab__,
+                                      dmatrix<double_complex>& hphi_slab__,
+                                      dmatrix<double_complex>& ophi_slab__,
                                       dmatrix<double_complex>& h__,
                                       dmatrix<double_complex>& o__,
                                       dmatrix<double_complex>& h_old__,
@@ -281,11 +284,11 @@ class Band
                                      K_point* kp__,
                                      std::vector<double>& eval__,
                                      matrix<double_complex>& evec__,
-                                     matrix<double_complex>& hphi__,
-                                     matrix<double_complex>& ophi__,
-                                     matrix<double_complex>& hpsi__,
-                                     matrix<double_complex>& opsi__,
-                                     matrix<double_complex>& res__,
+                                     dmatrix<double_complex>& hphi__,
+                                     dmatrix<double_complex>& ophi__,
+                                     dmatrix<double_complex>& hpsi__,
+                                     dmatrix<double_complex>& opsi__,
+                                     dmatrix<double_complex>& res__,
                                      std::vector<double>& h_diag__,
                                      std::vector<double>& o_diag__,
                                      std::vector<double>& res_norm__,

@@ -4,14 +4,20 @@
 
 namespace sirius {
 
-void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int const* fft_index, 
-                                Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi)
+void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
+                                int num_gkvec__,
+                                int const* fft_index__, 
+                                Periodic_function<double>* effective_magnetic_field__[3],
+                                std::vector< dmatrix<double_complex> >& hpsi__)
 {
-    assert(hpsi.size(2) >= 2);
-    assert(fv_states.size(0) == hpsi.size(0));
-    assert(fv_states.size(1) == hpsi.size(1));
+    assert(hpsi__.size() >= 2);
+    for (int i = 0; i < (int)hpsi__.size(); i++)
+    {
+        assert(fv_states__.num_rows_local() == hpsi__[i].num_rows_local());
+        assert(fv_states__.num_cols_local() == hpsi__[i].num_cols_local());
+    }
 
-    int nfv = (int)fv_states.size(1);
+    int nfv = fv_states__.num_cols_local();
 
     Timer t("sirius::Band::apply_magnetic_field");
 
@@ -26,7 +32,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
         
         zm.zero();
         
-        // only upper triangular part of zm is computed because it's a hermitian matrix
+        /* only upper triangular part of zm is computed because it is a hermitian matrix */
         #pragma omp parallel for default(shared)
         for (int j2 = 0; j2 < mt_basis_size; j2++)
         {
@@ -46,37 +52,37 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
         }
         /* compute bwf = B_z*|wf_j> */
         linalg<CPU>::hemm(0, 0, mt_basis_size, nfv, complex_one, &zm(0, 0, 0), zm.ld(), 
-                          &fv_states(offset, 0), fv_states.ld(), complex_zero, &hpsi(offset, 0, 0), hpsi.ld());
+                          &fv_states__(offset, 0), fv_states__.ld(), complex_zero, &hpsi__[0](offset, 0), hpsi__[0].ld());
         
-        // compute bwf = (B_x - iB_y)|wf_j>
-        if (hpsi.size(2) >= 3)
+        /* compute bwf = (B_x - iB_y)|wf_j> */
+        if (hpsi__.size() >= 3)
         {
-            // reuse first (z) component of zm matrix to store (Bx - iBy)
+            /* reuse first (z) component of zm matrix to store (Bx - iBy) */
             for (int j2 = 0; j2 < mt_basis_size; j2++)
             {
                 for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) - complex_i * zm(j1, j2, 2);
                 
-                // remember: zm is hermitian and we computed only the upper triangular part
+                /* remember: zm is hermitian and we computed only the upper triangular part */
                 for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - complex_i * conj(zm(j2, j1, 2));
             }
               
             linalg<CPU>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
-                              &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 2), hpsi.ld());
+                              &fv_states__(offset, 0), fv_states__.ld(), &hpsi__[2](offset, 0), hpsi__[2].ld());
         }
         
-        // compute bwf = (B_x + iB_y)|wf_j>
-        if (hpsi.size(2) == 4 && std_evp_solver()->parallel())
+        /* compute bwf = (B_x + iB_y)|wf_j> */
+        if (hpsi__.size() == 4 && std_evp_solver()->parallel())
         {
-            // reuse first (z) component of zm matrix to store (Bx + iBy)
+            /* reuse first (z) component of zm matrix to store (Bx + iBy) */
             for (int j2 = 0; j2 < mt_basis_size; j2++)
             {
                 for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) + complex_i * zm(j1, j2, 2);
                 
-                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + complex_i * conj(zm(j2, j1, 2));
+                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = std::conj(zm(j2, j1, 1)) + complex_i * std::conj(zm(j2, j1, 2));
             }
               
             linalg<CPU>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
-                              &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 3), hpsi.ld());
+                              &fv_states__(offset, 0), fv_states__.ld(), &hpsi__[2](offset, 0), hpsi__[2].ld());
         }
     }
     
@@ -189,16 +195,16 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
         }
         else
         {
-            thread_workers.push_back(std::thread([thread_id, &idx_psi, &idx_psi_mutex, nfv, num_gkvec, wf_pw_offset,
-                                                  fft, fft_index, &fv_states, &hpsi, step_function,
-                                                  effective_magnetic_field]()
+            thread_workers.push_back(std::thread([thread_id, &idx_psi, &idx_psi_mutex, nfv, num_gkvec__, wf_pw_offset,
+                                                  fft, fft_index__, &fv_states__, &hpsi__, step_function,
+                                                  effective_magnetic_field__]()
             {
                 bool done = false;
 
                 std::vector<double_complex> psi_it;
                 std::vector<double_complex> hpsi_it;
 
-                if (hpsi.size(2) >= 3)
+                if (hpsi__.size() >= 3)
                 {
                     psi_it.resize(fft->size());
                     hpsi_it.resize(fft->size());
@@ -221,46 +227,46 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 
                     if (!done)
                     {
-                        fft->input(num_gkvec, fft_index, &fv_states(wf_pw_offset, i), thread_id);
+                        fft->input(num_gkvec__, fft_index__, &fv_states__(wf_pw_offset, i), thread_id);
                         fft->transform(1, thread_id);
                                                     
                         for (int ir = 0; ir < fft->size(); ir++)
                         {
                             /* hpsi(r) = psi(r) * Bz(r) * Theta(r) */
-                            fft->buffer(ir, thread_id) *= (effective_magnetic_field[0]->f_it<global>(ir) * step_function->theta_r(ir));
+                            fft->buffer(ir, thread_id) *= (effective_magnetic_field__[0]->f_it<global>(ir) * step_function->theta_r(ir));
                         }
                         
                         fft->transform(-1, thread_id);
-                        fft->output(num_gkvec, fft_index, &hpsi(wf_pw_offset, i, 0), thread_id); 
+                        fft->output(num_gkvec__, fft_index__, &hpsi__[0](wf_pw_offset, i), thread_id); 
 
-                        if (hpsi.size(2) >= 3)
+                        if (hpsi__.size() >= 3)
                         {
                             for (int ir = 0; ir < fft->size(); ir++)
                             {
                                 /* hpsi(r) = psi(r) * (Bx(r) - iBy(r)) * Theta(r) */
                                 hpsi_it[ir] = psi_it[ir] * step_function->theta_r(ir) * 
-                                              (effective_magnetic_field[1]->f_it<global>(ir) - 
-                                               complex_i * effective_magnetic_field[2]->f_it<global>(ir));
+                                              (effective_magnetic_field__[1]->f_it<global>(ir) - 
+                                               complex_i * effective_magnetic_field__[2]->f_it<global>(ir));
                             }
                             
                             fft->input(&hpsi_it[0], thread_id);
                             fft->transform(-1, thread_id);
-                            fft->output(num_gkvec, fft_index, &hpsi(wf_pw_offset, i, 2), thread_id); 
+                            fft->output(num_gkvec__, fft_index__, &hpsi__[2](wf_pw_offset, i), thread_id); 
                         }
                         
-                        if (hpsi.size(2) == 4)
+                        if (hpsi__.size() == 4)
                         {
                             for (int ir = 0; ir < fft->size(); ir++)
                             {
                                 /* hpsi(r) = psi(r) * (Bx(r) + iBy(r)) * Theta(r) */
                                 hpsi_it[ir] = psi_it[ir] * step_function->theta_r(ir) *
-                                              (effective_magnetic_field[1]->f_it<global>(ir) + 
-                                               complex_i * effective_magnetic_field[2]->f_it<global>(ir));
+                                              (effective_magnetic_field__[1]->f_it<global>(ir) + 
+                                               complex_i * effective_magnetic_field__[2]->f_it<global>(ir));
                             }
                             
                             fft->input(&hpsi_it[0], thread_id);
                             fft->transform(-1, thread_id);
-                            fft->output(num_gkvec, fft_index, &hpsi(wf_pw_offset, i, 3), thread_id); 
+                            fft->output(num_gkvec__, fft_index__, &hpsi__[3](wf_pw_offset, i), thread_id); 
                         }
                     }
                 }
@@ -327,7 +333,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
     /* copy Bz|\psi> to -Bz|\psi> */
     for (int i = 0; i < nfv; i++)
     {
-        for (int j = 0; j < (int)fv_states.size(0); j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
+        for (int j = 0; j < (int)fv_states__.num_rows_local(); j++) hpsi__[1](j, i) = -hpsi__[0](j, i);
     }
 }
 

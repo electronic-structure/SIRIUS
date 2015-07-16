@@ -39,10 +39,10 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
                                    std::vector<double> const& pw_ekin__,
                                    int N__,
                                    int n__,
-                                   matrix<double_complex>& phi_slice__,
-                                   matrix<double_complex>& phi_slab__,
-                                   matrix<double_complex>& hphi_slab__,
-                                   matrix<double_complex>& ophi_slab__,
+                                   dmatrix<double_complex>& phi_slice__,
+                                   dmatrix<double_complex>& phi_slab__,
+                                   dmatrix<double_complex>& hphi_slab__,
+                                   dmatrix<double_complex>& ophi_slab__,
                                    mdarray<int, 1>& packed_mtrx_offset__,
                                    mdarray<double_complex, 1>& d_mtrx_packed__,
                                    mdarray<double_complex, 1>& q_mtrx_packed__,
@@ -61,16 +61,26 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
 
     //== kp__->collect_all_bands(spl_phi, &phi_slice__(0, 0),  &hphi_slab__(0, N__));
 
-    int bs1 = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks());
-    int bs2 = (int)splindex_base::block_size(n__, kp__->num_ranks());
-    dmatrix<double_complex> phi1(&phi_slab__(0, N__), kp__->num_gkvec(), n__, kp__->blacs_grid_slab(), bs1, 1);
-    dmatrix<double_complex> phi2(&phi_slice__(0, 0), kp__->num_gkvec(), n__, kp__->blacs_grid_slice(), 1, bs2);
-    dmatrix<double_complex> hphi1(&hphi_slab__(0, N__), kp__->num_gkvec(), n__, kp__->blacs_grid_slab(), bs1, 1);
+    //int bs1 = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks());
+    //int bs2 = (int)splindex_base::block_size(n__, kp__->num_ranks());
+    //dmatrix<double_complex> phi1(&phi_slab__(0, N__), kp__->num_gkvec(), n__, kp__->blacs_grid_slab(), bs1, 1);
+    //dmatrix<double_complex> phi2(&phi_slice__(0, 0), kp__->num_gkvec(), n__, kp__->blacs_grid_slice(), 1, bs2);
+    //dmatrix<double_complex> hphi1(&hphi_slab__(0, N__), kp__->num_gkvec(), n__, kp__->blacs_grid_slab(), bs1, 1);
 
-    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi1, 0, 0, phi2, 0, 0, kp__->blacs_grid().context());
-    if (phi2.num_cols_local())
-        apply_h_local_slice(kp__, effective_potential__, pw_ekin__, phi2.num_cols_local(), phi_slice__, phi_slice__);
-    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi2, 0, 0, hphi1, 0, 0, kp__->blacs_grid().context());
+    //linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi1, 0, 0, phi2, 0, 0, kp__->blacs_grid().context());
+    //if (phi2.num_cols_local())
+    //    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, phi2.num_cols_local(), phi_slice__.panel(), phi_slice__.panel());
+    //linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi2, 0, 0, hphi1, 0, 0, kp__->blacs_grid().context());
+    
+    
+    
+    
+    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_slice__, 0, 0, kp__->blacs_grid().context());
+    if (phi_slice__.num_cols_local())
+    {
+        apply_h_local_slice(kp__, effective_potential__, pw_ekin__, phi_slice__.num_cols_local(), phi_slice__.panel(), phi_slice__.panel());
+    }
+    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slice__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
 
     //== int bs1 = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks());
 
@@ -94,6 +104,8 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
         /* set intial ophi */
         memcpy(&ophi_slab__(0, N__), &phi_slab__(0, N__), kp__->num_gkvec_loc() * n__ * sizeof(double_complex));
     }
+
+    return;
 
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
@@ -140,13 +152,13 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
             }
         }
 
-        kp__->generate_beta_phi(nbeta, phi_slab__, n__, N__, beta_gk, beta_phi);
+        kp__->generate_beta_phi(nbeta, phi_slab__.panel(), n__, N__, beta_gk, beta_phi);
 
         kp__->add_non_local_contribution(natoms, nbeta, unit_cell_.beta_chunk(ib).desc_, beta_gk, d_mtrx_packed__,
-                                         packed_mtrx_offset__, beta_phi, hphi_slab__, n__, N__, complex_one, work);
+                                         packed_mtrx_offset__, beta_phi, hphi_slab__.panel(), n__, N__, complex_one, work);
         
         kp__->add_non_local_contribution(natoms, nbeta, unit_cell_.beta_chunk(ib).desc_, beta_gk, q_mtrx_packed__,
-                                         packed_mtrx_offset__, beta_phi, ophi_slab__, n__, N__, complex_one, work);
+                                         packed_mtrx_offset__, beta_phi, ophi_slab__.panel(), n__, N__, complex_one, work);
         
         offs += nbeta;
     }

@@ -84,19 +84,20 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
+                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_, 0, 0, 
                                       sv_eigen_vectors_[ispn], 0, 0, complex_zero, spin_component_panel_, 0, ispn * nfv);
                     
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_panel_, 0, 0, 
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_, 0, 0, 
                                       sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel_, 0, 0);
 
                 }
                 auto sm = spinor_wave_functions_.submatrix(ispn); 
-                spin_component_panel_.gather(sm);
+                //spin_component_panel_.gather(sm);
+                STOP();
             }
         }
     }

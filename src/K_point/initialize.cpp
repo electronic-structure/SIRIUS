@@ -187,6 +187,10 @@ void K_point::initialize()
 
     if (use_second_variation)
     {
+        fv_states_slice_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
+                                                   blacs_grid_slice_,
+                                                   1, (int)splindex_base::block_size(parameters_.num_fv_states(), num_ranks()));
+
         /* allocate memory for first-variational eigen vectors */
         if (parameters_.full_potential())
         {
@@ -196,23 +200,25 @@ void K_point::initialize()
             fv_eigen_vectors_panel_.allocate(alloc_mode);
 
             // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
-            fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_,
-                                                       parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
-            fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
+            fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
+                                                 blacs_grid_,
+                                                 parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
         }
 
         if (!parameters_.full_potential())
         {
-            fv_states_slab_ = matrix<double_complex>(num_gkvec_loc(), parameters_.num_fv_states());
-            fv_states_ = matrix<double_complex>(num_gkvec(), spl_bands.local_size());
-            fv_states_slab_.zero();
-           
+            fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
+                                                 blacs_grid_slab_,
+                                                 (int)splindex_base::block_size(wf_size(), num_ranks()), 1);
+
             assert(parameters_.num_fv_states() < num_gkvec());
+            assert(fv_states_.num_rows_local() == num_gkvec_loc());
+            assert(fv_states_.num_cols_local() == parameters_.num_fv_states());
 
             for (int i = 0; i < parameters_.num_fv_states(); i++)
             {
                 //for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_slab_(igk, i) = beta_gk_(igk, i);
-                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_slab_(igk, i) = type_wrapper<double_complex>::random();
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_(igk, i) = type_wrapper<double_complex>::random();
             }
         }
         

@@ -144,11 +144,13 @@ void K_point::generate_fv_states()
              */
             mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
             /* gather full first-variational eigen-vector array */
-            fv_eigen_vectors_panel_.gather(fv_eigen_vectors);
+            STOP();
+            //fv_eigen_vectors_panel_.gather(fv_eigen_vectors);
 
             mdarray<double_complex, 2> aw_coefs(naw, nfv_loc);
             /* gather aw coefficients */
-            aw_coefs_panel.gather(aw_coefs);
+            //aw_coefs_panel.gather(aw_coefs);
+            STOP();
 
             for (int i = 0; i < nfv_loc; i++)
             {
@@ -178,8 +180,12 @@ void K_point::generate_fv_states()
         //    fv_states_.allocate_on_device();
         //    fv_states_.copy_to_device();
         //}
-
-        fv_states_panel_.scatter(fv_states_);
+        
+        /* copy to slice storage */
+        linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(),
+                            fv_states_, 0, 0,
+                            fv_states_slice_, 0, 0,
+                            blacs_grid_.context());
     }
     else
     {

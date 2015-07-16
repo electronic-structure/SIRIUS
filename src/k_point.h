@@ -89,15 +89,15 @@ class K_point
         /// Position of the G vector (from the G+k set) inside the coarse FFT buffer.
         std::vector<int> fft_index_coarse_;
        
-        /// first-variational states, distributed over all ranks of the 2D MPI grid
-        matrix<double_complex> fv_states_;
+        /// First-variational states in "slice" storage.
+        dmatrix<double_complex> fv_states_slice_;
 
-        matrix<double_complex> fv_states_slab_;
+        //matrix<double_complex> fv_states_slab_;
         
         /// first-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
          *  over rows of the MPI grid. */
-        dmatrix<double_complex> fv_states_panel_;
+        dmatrix<double_complex> fv_states_;
 
         /// two-component (spinor) wave functions describing the bands
         mdarray<double_complex, 3> spinor_wave_functions_;
@@ -184,7 +184,7 @@ class K_point
         splindex<block_cyclic> spl_fv_states_;
         
         /// additional splitting of the first-variational states along rows of the MPI grid
-        splindex<block> sub_spl_fv_states_;
+        splindex<block> sub_spl_fv_states_; // TODO: remove this
 
         /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
         splindex<block_cyclic> spl_spinor_wf_;
@@ -548,14 +548,14 @@ class K_point
             return fv_eigen_vectors_panel_;
         }
         
-        inline mdarray<double_complex, 2>& fv_states()
+        inline dmatrix<double_complex>& fv_states()
         {
             return fv_states_;
         }
 
-        inline dmatrix<double_complex>& fv_states_panel()
+        inline dmatrix<double_complex>& fv_states_slice()
         {
-            return fv_states_panel_;
+            return fv_states_slice_;
         }
 
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
@@ -682,10 +682,10 @@ class K_point
             return (int)spl_gkvec_.local_size();
         }
 
-        inline matrix<double_complex>& fv_states_slab()
-        {
-            return fv_states_slab_;
-        }
+        //inline matrix<double_complex>& fv_states_slab()
+        //{
+        //    return fv_states_slab_;
+        //}
 
         void collect_all_gkvec(splindex<block>& spl_phi__,
                                double_complex const* phi_slab__,

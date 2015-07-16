@@ -57,7 +57,7 @@ void Density::add_k_point_contribution<CPU, ultrasoft_pseudopotential>(K_point* 
     Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
     matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
     linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
-                      kp__->beta_gk(), kp__->fv_states_slab(), complex_zero, beta_psi);
+                      kp__->beta_gk(), kp__->fv_states().panel(), complex_zero, beta_psi);
     kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
     t1.stop();
 

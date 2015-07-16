@@ -147,8 +147,13 @@ void Density::generate_valence(K_set& ks__)
         for (int ikloc = 0; ikloc < (int)ks__.spl_num_kpoints().local_size(); ikloc++)
         {
             int ik = ks__.spl_num_kpoints(ikloc);
-            splindex<block> spl_bands(num_occupied_bands(ks__[ik]), ks__[ik]->comm().size(), ks__[ik]->comm().rank());
-            ks__[ik]->collect_all_gkvec(spl_bands, ks__[ik]->fv_states_slab().at<CPU>(), ks__[ik]->fv_states().at<CPU>()); 
+            auto kp = ks__[ik];
+            //splindex<block> spl_bands(num_occupied_bands(ks__[ik]), ks__[ik]->comm().size(), ks__[ik]->comm().rank());
+            //ks__[ik]->collect_all_gkvec(spl_bands, ks__[ik]->fv_states_slab().at<CPU>(), ks__[ik]->fv_states().at<CPU>()); 
+            linalg<CPU>::gemr2d(kp->wf_size(),parameters_.num_fv_states(),
+                                kp->fv_states(), 0, 0,
+                                kp->fv_states_slice(), 0, 0,
+                                kp->blacs_grid().context());
         }
     }
 
