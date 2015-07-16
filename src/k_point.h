@@ -47,11 +47,16 @@ class K_point
         /// Unit cell object.
         Unit_cell const& unit_cell_;
 
-        /// Primary 2D BLACS grid for diagonalization.
+        /// 2D BLACS grid for diagonalization and 2D data distribution.
         BLACS_grid const& blacs_grid_;
         
-        /// Auxiliary 1D BLACS grid for a "slab" data distribution.
-        BLACS_grid blacs_grid_1d_;
+        /// 1D BLACS grid for a "slab" data distribution.
+        /** This grid is used to distribute G+k vector index and keep a whole band index */
+        BLACS_grid blacs_grid_slab_;
+        
+        /// 1D BLACS grid for a "slice" data distribution.
+        /** This grid is used to distribute band index and keep a whole G+k vector index */
+        BLACS_grid blacs_grid_slice_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
@@ -75,8 +80,7 @@ class K_point
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$ 
-         *  matrix in case of general non-collinear magnetism.
-         */
+         *  matrix in case of general non-collinear magnetism. */
         dmatrix<double_complex> sv_eigen_vectors_[2];
 
         /// Full-diagonalization eigen vectors.
@@ -92,8 +96,7 @@ class K_point
         
         /// first-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
-         *  over rows of the MPI grid. 
-         */
+         *  over rows of the MPI grid. */
         dmatrix<double_complex> fv_states_panel_;
 
         /// two-component (spinor) wave functions describing the bands
@@ -629,9 +632,14 @@ class K_point
             return blacs_grid_;
         }
 
-        inline BLACS_grid const& blacs_grid_1d() const
+        inline BLACS_grid const& blacs_grid_slab() const
         {
-            return blacs_grid_1d_;
+            return blacs_grid_slab_;
+        }
+
+        inline BLACS_grid const& blacs_grid_slice() const
+        {
+            return blacs_grid_slice_;
         }
 
         inline splindex<block_cyclic>& spl_fv_states()

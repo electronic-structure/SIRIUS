@@ -48,24 +48,6 @@ void Reciprocal_lattice::init(int lmax)
 {
     Timer t("sirius::Reciprocal_lattice::init");
     
-    /* create split index */
-    //spl_num_gvec_ = splindex<block>(num_gvec(), comm_.size(), comm_.rank());
-    
-    //if (lmax >= 0)
-    //{
-    //    /* precompute spherical harmonics of G-vectors */
-    //    //gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
-    //    
-    //    //Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
-    //    //for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-    //    //{
-    //    //    int ig = (int)spl_num_gvec_[igloc];
-    //    //    auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
-    //    //    SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
-    //    //}
-    //    //t2.stop();
-    //}
-    
     if (esm_type_ == ultrasoft_pseudopotential)
     {
         int nbeta = unit_cell_.max_mt_radial_basis_size();

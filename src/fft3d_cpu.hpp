@@ -560,7 +560,7 @@ class Gvec
             return index_by_gvec_(G__[0], G__[1], G__[2]);
         }
 
-        inline std::vector<int> const& gvec_counts() const
+        inline std::vector<int> const& counts() const
         {
             return gvec_counts_;
         }
