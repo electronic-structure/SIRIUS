@@ -554,8 +554,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
                 {
                     for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
                     {
-                        //int ig3 = ctx_.reciprocal_lattice()->index_g12(gvec_index(ig1), gvec_index(ig2));
-                        int ig3 = ctx_.reciprocal_lattice()->index_g12(ig1, ig2);
+                        int ig3 = ctx_.gvec().index_g12(ig1, ig2);
                         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                         {
                             zsum += std::conj(spinor_wave_functions_(unit_cell_.mt_basis_size() + ig1, ispn, j1)) * 

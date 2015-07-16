@@ -1226,8 +1226,8 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                             kp->gklo_basis_descriptor_col(igk_col).ig);
             
             /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
@@ -1475,8 +1475,8 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                             kp->gklo_basis_descriptor_col(igk_col).ig);
             
             o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }
@@ -1618,12 +1618,12 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     for (int i = 0; i < nhpsi; i++)
     {
         hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
-        // change data distribution of hpsi to panels
+        /* change data distribution of hpsi to panels */
         auto sm = hpsi.submatrix(i);
         hpsi_panel[i]->scatter(sm);
     }
-    hpsi.deallocate(); // we don't need full vectors anymore
-
+    /* we don't need full vectors anymore */
+    hpsi.deallocate(); 
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
         #ifdef __GPU

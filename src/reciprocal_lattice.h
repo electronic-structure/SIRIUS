@@ -78,29 +78,29 @@ class Reciprocal_lattice
             return std::exp(double_complex(0.0, twopi * (gvec_[ig__] * unit_cell_.atom(ia__)->position())));
         }
        
-        /// Return global index of G1-G2 vector
-        inline int index_g12(int ig1__, int ig2__) const
-        {
-            return gvec_.index_g12(ig1__, ig2__);
-            //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
-            //return fft_->gvec_index(v);
-        }
-        
-        inline int index_g12_safe(int ig1__, int ig2__) const
-        {
-            return gvec_.index_g12_safe(ig1__, ig2__);
-            //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
-            //if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
-            //    v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
-            //    v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
-            //{
-            //    return fft_->gvec_index(v);
-            //}
-            //else
-            //{
-            //    return -1;
-            //}
-        }
+        ///// Return global index of G1-G2 vector
+        //inline int index_g12(int ig1__, int ig2__) const
+        //{
+        //    return gvec_.index_g12(ig1__, ig2__);
+        //    //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+        //    //return fft_->gvec_index(v);
+        //}
+        //
+        //inline int index_g12_safe(int ig1__, int ig2__) const
+        //{
+        //    return gvec_.index_g12_safe(ig1__, ig2__);
+        //    //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+        //    //if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
+        //    //    v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
+        //    //    v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
+        //    //{
+        //    //    return fft_->gvec_index(v);
+        //    //}
+        //    //else
+        //    //{
+        //    //    return -1;
+        //    //}
+        //}
 
         void write_periodic_function()
         {
