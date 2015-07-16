@@ -170,6 +170,12 @@ class Band
                                 mdarray<double_complex, 1>& d_mtrx_packed__,
                                 mdarray<double_complex, 1>& q_mtrx_packed__);
 
+        void apply_h_local_parallel(K_point* kp__,
+                                    std::vector<double> const& effective_potential__,
+                                    std::vector<double> const& pw_ekin__,
+                                    dmatrix<double_complex>& phi__,
+                                    dmatrix<double_complex>& hphi__);
+
         void apply_h_o_fast_parallel(K_point* kp__,
                                      std::vector<double> const& effective_potential__,
                                      std::vector<double> const& pw_ekin__,

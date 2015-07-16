@@ -35,7 +35,7 @@ K_point::K_point(Simulation_context& ctx__,
       parameters_(ctx__.parameters()),
       unit_cell_(ctx_.unit_cell()),
       blacs_grid_(blacs_grid__),
-      blacs_grid_aux_(blacs_grid_.comm(), blacs_grid_.comm().size(), 1),
+      blacs_grid_1d_(blacs_grid_.comm(), blacs_grid_.comm().size(), 1),
       fft_(ctx__.fft()),
       weight_(weight__),
       alm_coeffs_row_(nullptr),
@@ -56,6 +56,8 @@ K_point::K_point(Simulation_context& ctx__,
     
     rank_row_ = comm_row_.rank();
     rank_col_ = comm_col_.rank();
+
+    if (comm_.rank() != blacs_grid_1d_.comm().rank()) TERMINATE("ranks don't match");
     
     /* distribue first-variational states along columns */
     spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());

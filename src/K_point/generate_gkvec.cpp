@@ -28,6 +28,8 @@ void K_point::generate_gkvec(double gk_cutoff)
     /* create G+k vectors using fine FFT grid; 
      * this would provide a correct mapping between \psi(G) and \rho(r) */
     gkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_);
+    
+    pgkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.pfft_coarse());
         
     if (!parameters_.full_potential())
     {

@@ -51,7 +51,7 @@ class K_point
         BLACS_grid const& blacs_grid_;
         
         /// Auxiliary 1D BLACS grid for a "slab" data distribution.
-        BLACS_grid blacs_grid_aux_;
+        BLACS_grid blacs_grid_1d_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
@@ -63,6 +63,8 @@ class K_point
         vector3d<double> vk_;
         
         Gvec gkvec_;
+
+        Gvec pgkvec_;
 
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -582,6 +584,11 @@ class K_point
             return gkvec_;
         }
 
+        inline Gvec const& pgkvec() const
+        {
+            return pgkvec_;
+        }
+
         inline matrix<double_complex> const& beta_gk_t() const
         {
             return beta_gk_t_;
@@ -620,6 +627,11 @@ class K_point
         inline BLACS_grid const& blacs_grid() const
         {
             return blacs_grid_;
+        }
+
+        inline BLACS_grid const& blacs_grid_1d() const
+        {
+            return blacs_grid_1d_;
         }
 
         inline splindex<block_cyclic>& spl_fv_states()

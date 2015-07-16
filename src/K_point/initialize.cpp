@@ -4,7 +4,7 @@ namespace sirius {
 
 void K_point::initialize()
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::K_point::initialize");
     
@@ -234,8 +234,6 @@ void K_point::initialize()
             spinor_wave_functions_.allocate();
         }
     }
-
-    LOG_FUNC_END();
 }
 
 };

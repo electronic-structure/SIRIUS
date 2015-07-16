@@ -438,7 +438,7 @@ class Gvec
             fft_->comm().allgather(&gvec_full_index_(0), gvec_offset_, num_gvec_loc_); 
 
             auto g0 = gvec_by_full_index(gvec_full_index_(0));
-            if (g0[0] || g[1] || g[2]) TERMINATE("first G-vector is not zero");
+            if (g0[0] || g0[1] || g0[2]) TERMINATE("first G-vector is not zero");
 
             std::map<size_t, std::vector<int> > gsh;
             for (int ig = 0; ig < num_gvec_; ig++)
@@ -558,6 +558,11 @@ class Gvec
         inline int index_by_gvec(vector3d<int>& G__) const
         {
             return index_by_gvec_(G__[0], G__[1], G__[2]);
+        }
+
+        inline std::vector<int> const& gvec_counts() const
+        {
+            return gvec_counts_;
         }
 };
 
