@@ -29,10 +29,10 @@ void K_point::generate_gkvec(double gk_cutoff)
      * this would provide a correct mapping between \psi(G) and \rho(r) */
     gkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_);
     
-    pgkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.pfft_coarse());
-        
     if (!parameters_.full_potential())
     {
+        pgkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.pfft_coarse());
+
         /* additionally create mapping between \psi(G) and a coarse FFT buffer in order to apply H_loc */
         fft_index_coarse_.resize(num_gkvec());
         for (int igk = 0; igk < num_gkvec(); igk++)

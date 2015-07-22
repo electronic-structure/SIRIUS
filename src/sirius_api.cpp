@@ -318,11 +318,14 @@ void sirius_add_atom(char* label__,
     log_function_enter(__func__);
     if (vector_field__ != NULL)
     {
-        sim_ctx->unit_cell().add_atom(std::string(label__), position__, vector_field__);
+        sim_ctx->unit_cell().add_atom(std::string(label__),
+                                      vector3d<double>(position__[0], position__[1], position__[2]),
+                                      vector3d<double>(vector_field__[0], vector_field__[1], vector_field__[2]));
     }
     else
     {
-        sim_ctx->unit_cell().add_atom(std::string(label__), position__);
+        sim_ctx->unit_cell().add_atom(std::string(label__),
+                                      vector3d<double>(position__[0], position__[1], position__[2]));
     }
     log_function_exit(__func__);
 }
@@ -1267,8 +1270,8 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
     sirius::K_set* new_kset = new sirius::K_set(*sim_ctx,
                                                 sim_ctx->mpi_grid().communicator(1 << _dim_k_),
                                                 *blacs_grid,
-                                                mesh__,
-                                                is_shift__,
+                                                vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
+                                                vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
                                                 *use_sym__);
 
     new_kset->initialize();
@@ -1979,7 +1982,7 @@ void sirius_forces(double* forces__)
 void sirius_set_atom_pos(int32_t* atom_id, double* pos)
 {
     log_function_enter(__func__);
-    sim_ctx->unit_cell().atom(*atom_id - 1)->set_position(pos);
+    sim_ctx->unit_cell().atom(*atom_id - 1)->set_position(vector3d<double>(pos[0], pos[1], pos[2]));
     log_function_exit(__func__);
 }
 
@@ -2019,7 +2022,7 @@ void sirius_test_spinor_wave_functions(int32_t* kset_id)
 
 void sirius_generate_gq_matrix_elements(int32_t* kset_id, double* vq)
 {
-     kset_list[*kset_id]->generate_Gq_matrix_elements(vq);
+     kset_list[*kset_id]->generate_Gq_matrix_elements(vector3d<double>(vq[0], vq[1], vq[2]));
 }
 
 void sirius_density_mixer_initialize(void)
@@ -2306,7 +2309,7 @@ void sirius_ylmr2_(int32_t* lmmax__, int32_t* nr__, double* vr__, double* rlm__)
     std::vector<double> rlm_tmp(*lmmax__);
     for (int i = 0; i < *nr__; i++)
     {
-        auto vs = sirius::SHT::spherical_coordinates(&vr(0, i));
+        auto vs = sirius::SHT::spherical_coordinates(vector3d<double>(vr(0, i), vr(1, i), vr(2, i)));
         sirius::SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm_tmp[0]);
         for (int lm = 0; lm < *lmmax__; lm++) rlm(i, lm) = rlm_tmp[idxlm[lm]] * phase[lm];
     }

@@ -99,7 +99,7 @@ void Force::ibs_force(Simulation_context& ctx__,
     dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
-    auto& fv_evec = kp__->fv_eigen_vectors_panel();
+    auto& fv_evec = kp__->fv_eigen_vectors();
 
     dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
@@ -152,8 +152,8 @@ void Force::ibs_force(Simulation_context& ctx__,
         {
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
             {
-                int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
-                                                  kp__->gklo_basis_descriptor_col(igk_col).ig);
+                int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
+                                                  kp__->gklo_basis_descriptor_col(igk_col).gvec);
                 int igs = ctx__.gvec().shell(ig12);
 
                 double_complex zt = std::conj(rl->gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
@@ -172,8 +172,8 @@ void Force::ibs_force(Simulation_context& ctx__,
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
                 {
-                    int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
-                                                      kp__->gklo_basis_descriptor_col(igk_col).ig);
+                    int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
+                                                      kp__->gklo_basis_descriptor_col(igk_col).gvec);
 
                     vector3d<double> vg = ctx__.gvec().cart(ig12);
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);

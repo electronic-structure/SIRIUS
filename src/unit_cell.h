@@ -254,10 +254,10 @@ class Unit_cell
         void add_atom_type(const std::string label, const std::string file_name);
         
         /// Add new atom to the list of atom types.
-        void add_atom(const std::string label, double* position, double* vector_field);
+        void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field);
 
         /// Add new atom without vector field to the list of atom types.
-        void add_atom(const std::string label, double* position);
+        void add_atom(const std::string label, vector3d<double> position);
         
         /// Print basic info.
         void print_info();
@@ -579,7 +579,9 @@ class Unit_cell
                     for (int ia = 0; ia < (int)inp__.coordinates_[iat].size(); ia++)
                     {
                         auto v = inp__.coordinates_[iat][ia];
-                        add_atom(label, &v[0], &v[3]);
+                        vector3d<double> p(v[0], v[1], v[2]);
+                        vector3d<double> f(v[3], v[4], v[5]);
+                        add_atom(label, p, f);
                     }
                 }
 

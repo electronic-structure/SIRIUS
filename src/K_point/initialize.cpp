@@ -104,6 +104,8 @@ void K_point::initialize()
                                                     gklo_basis_descriptors_row_);
         alm_coeffs_col_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
                                                     gklo_basis_descriptors_col_);
+        alm_coeffs_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec(),
+                                                gklo_basis_descriptors_);
     }
 
     /* compute |beta> projectors for atom types */
@@ -190,10 +192,10 @@ void K_point::initialize()
         /* allocate memory for first-variational eigen vectors */
         if (parameters_.full_potential())
         {
-            fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(),
-                                                              blacs_grid_, parameters_.cyclic_block_size(),
-                                                              parameters_.cyclic_block_size());
-            fv_eigen_vectors_panel_.allocate(alloc_mode);
+            fv_eigen_vectors_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(),
+                                                        blacs_grid_, parameters_.cyclic_block_size(),
+                                                        parameters_.cyclic_block_size());
+            fv_eigen_vectors_.allocate(alloc_mode);
 
             fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
                                                  blacs_grid_,

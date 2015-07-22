@@ -2,6 +2,7 @@
 #define __DEBUG_HPP__
 
 #include <fstream>
+#include <sys/time.h>
 #include "platform.h"
 
 namespace debug
@@ -41,7 +42,10 @@ class Profiler
             file_ = std::string(file__);
             line_ = line__;
 
-            call_stack().push_back(name_);
+            char str[1024];
+            snprintf(str, 1024, "%s at %s:%i", name__, file__, line__);
+
+            call_stack().push_back(std::string(str));
 
             #ifdef __LOG_FUNC
             printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
@@ -153,18 +157,18 @@ inline int get_num_threads()
     return num_threds;
 }
 
-template <typename T>
-inline T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
-{
-    T sum = 0;
-
-    for (int j = 0; j < ncol; j++)
-    {
-        for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
-    }
-
-    return sum;
-}
+//== template <typename T>
+//== inline T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
+//== {
+//==     T sum = 0;
+//== 
+//==     for (int j = 0; j < ncol; j++)
+//==     {
+//==         for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
+//==     }
+//== 
+//==     return sum;
+//== }
 
 #define MEMORY_USAGE_INFO()                                                                 \
 {                                                                                           \

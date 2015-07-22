@@ -1226,8 +1226,8 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                             kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
+                                             kp->gklo_basis_descriptor_col(igk_col).gvec);
             
             /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
@@ -1406,7 +1406,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     
         if (gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
                                     parameters_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                    &eval[0], kp->fv_eigen_vectors_panel().at<CPU>(), kp->fv_eigen_vectors_panel().ld()))
+                                    &eval[0], kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld()))
         {
             TERMINATE("error in generalized eigen-value problem");
         }
@@ -1475,8 +1475,8 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                             kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
+                                             kp->gklo_basis_descriptor_col(igk_col).gvec);
             
             o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }

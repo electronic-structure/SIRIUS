@@ -164,7 +164,9 @@ class Symmetry
 
         vector3d<double> origin_shift() const
         {
-            return vector3d<double>(spg_dataset_->origin_shift);
+            return vector3d<double>(spg_dataset_->origin_shift[0],
+                                    spg_dataset_->origin_shift[1],
+                                    spg_dataset_->origin_shift[2]);
         }
 
         inline int num_spg_sym() const

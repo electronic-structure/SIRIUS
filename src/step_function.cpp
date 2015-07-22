@@ -37,6 +37,8 @@ Step_function::Step_function(Unit_cell const& unit_cell__,
       fft_(fft__),
       gvec_(gvec__)
 {
+    PROFILE();
+
     init();
 }
 
@@ -70,6 +72,8 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
 
 void Step_function::init()
 {
+    PROFILE();
+
     Timer t("sirius::Step_function::init");
 
     if (unit_cell_.num_atoms() == 0) return;
@@ -79,11 +83,11 @@ void Step_function::init()
     step_function_pw_.resize(gvec_.num_gvec());
     step_function_.resize(fft_->size());
     
-    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft_->size());
-    for (int ig = 0; ig < fft_->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
+    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, gvec_.num_gvec());
+    for (int ig = 0; ig < gvec_.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
 
-    fft_->input(fft_->size(), gvec_.index_map(), &step_function_pw_[0]);
+    fft_->input(gvec_.num_gvec(), gvec_.index_map(), &step_function_pw_[0]);
     fft_->transform(1);
     fft_->output(&step_function_[0]);
     

@@ -4,6 +4,8 @@ namespace sirius {
 
 void Density::initial_density()
 {
+    PROFILE();
+
     Timer t("sirius::Density::initial_density");
 
     zero();

@@ -66,7 +66,9 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
         space_group_symmetry_descriptor sym_op;
 
         sym_op.R = matrix3d<int>(spg_dataset_->rotations[isym]);
-        sym_op.t = vector3d<double>(spg_dataset_->translations[isym]);
+        sym_op.t = vector3d<double>(spg_dataset_->translations[isym][0],
+                                    spg_dataset_->translations[isym][1],
+                                    spg_dataset_->translations[isym][2]);
         int p = sym_op.R.det(); 
         if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
         sym_op.proper = p;
@@ -185,7 +187,7 @@ matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
 
 vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
 {
-    vector3d<double> angles(0.0);
+    vector3d<double> angles(0, 0, 0);
     
     if (std::abs(rot__.det() - 1) > 1e-10)
     {

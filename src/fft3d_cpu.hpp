@@ -316,7 +316,7 @@ class FFT3D<CPU>
         
         vector3d<int> grid_size() const
         {
-            return vector3d<int>(grid_size_);
+            return vector3d<int>(grid_size_[0], grid_size_[1], grid_size_[2]);
         }
 
         inline vector3d<int> gvec_by_grid_pos(int i0__, int i1__, int i2__) const
@@ -538,10 +538,24 @@ class Gvec
             return gvec_shell_len_(gvec_shell_(ig__));
         }
 
-        inline int index_g12(int ig1__, int ig2__) const
+        //==inline int index_g12(int ig1__, int ig2__) const
+        //=={
+        //==    auto v = gvec_by_full_index(gvec_full_index_(ig1__)) - gvec_by_full_index(gvec_full_index_(ig2__));
+        //==    int idx = index_by_gvec_(v[0], v[1], v[2]);
+        //==    if (idx < 0 || idx >= num_gvec())
+        //==    {
+        //==        STOP();
+        //==    }
+        //==    assert(idx >= 0 && idx < num_gvec());
+        //==    return idx;
+        //==}
+
+        inline int index_g12(vector3d<int> const& g1, vector3d<int> const& g2) const
         {
-            STOP();
-            return 0;
+            auto v = g1 - g2;
+            int idx = index_by_gvec_(v[0], v[1], v[2]);
+            assert(idx >= 0 && idx < num_gvec());
+            return idx;
         }
 
         inline int index_g12_safe(int ig1__, int ig2__) const

@@ -74,8 +74,8 @@ class K_point
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
 
-        /// First-variational eigen vectors, distributed over rows and columns of the MPI grid.
-        dmatrix<double_complex> fv_eigen_vectors_panel_;
+        /// First-variational eigen vectors, distributed over 2D BLACS grid.
+        dmatrix<double_complex> fv_eigen_vectors_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -92,8 +92,6 @@ class K_point
         /// First-variational states in "slice" storage.
         dmatrix<double_complex> fv_states_slice_;
 
-        //matrix<double_complex> fv_states_slab_;
-        
         /// First-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
          *  over rows of the MPI grid. */
@@ -117,6 +115,8 @@ class K_point
         Matching_coefficients* alm_coeffs_row_;
 
         Matching_coefficients* alm_coeffs_col_;
+
+        Matching_coefficients* alm_coeffs_;
 
         /// number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_;
@@ -225,6 +225,7 @@ class K_point
         {
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
+            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
         }
 
         /// Initialize the k-point related arrays and data
@@ -543,9 +544,9 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline dmatrix<double_complex>& fv_eigen_vectors_panel()
+        inline dmatrix<double_complex>& fv_eigen_vectors()
         {
-            return fv_eigen_vectors_panel_;
+            return fv_eigen_vectors_;
         }
         
         inline dmatrix<double_complex>& fv_states()

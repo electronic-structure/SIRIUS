@@ -8,14 +8,17 @@ void K_point::build_gklo_basis_descriptors()
 
     gklo_basis_descriptor gklo;
 
+    int id = 0;
+
     /* G+k basis functions */
     for (int igk = 0; igk < num_gkvec(); igk++)
     {
-        gklo.id         = (int)gklo_basis_descriptors_.size();
+        gklo.id         = id++;
         gklo.igk        = igk;
+        gklo.gvec       = gkvec_[igk];
         gklo.gkvec      = gkvec<fractional>(igk);
         gklo.gkvec_cart = gkvec<cartesian>(igk);
-        gklo.ig         = igk; //gvec_index(igk);
+        gklo.ig         = igk;
         gklo.ia         = -1;
         gklo.l          = -1;
         gklo.lm         = -1;
@@ -41,10 +44,11 @@ void K_point::build_gklo_basis_descriptors()
                 int lm          = type->indexb(lo_index_offset + j).lm;
                 int order       = type->indexb(lo_index_offset + j).order;
                 int idxrf       = type->indexb(lo_index_offset + j).idxrf;
-                gklo.id         = (int)gklo_basis_descriptors_.size();
+                gklo.id         = id++;
                 gklo.igk        = -1;
-                gklo.gkvec      = vector3d<double>(0.0);
-                gklo.gkvec_cart = vector3d<double>(0.0);
+                gklo.gvec       = vector3d<int>(0, 0, 0);
+                gklo.gkvec      = vector3d<double>(0, 0, 0);
+                gklo.gkvec_cart = vector3d<double>(0, 0, 0);
                 gklo.ig         = -1;
                 gklo.ia         = ia;
                 gklo.l          = l;

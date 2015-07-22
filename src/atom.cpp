@@ -27,7 +27,7 @@
 
 namespace sirius {
 
-Atom::Atom(Atom_type* type__, double* position__, double* vector_field__) 
+Atom::Atom(Atom_type* type__, vector3d<double> position__, vector3d<double> vector_field__) 
     : type_(type__), 
       symmetry_class_(NULL), 
       offset_aw_(-1), 

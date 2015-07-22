@@ -46,7 +46,7 @@ void Unit_cell::add_atom_type(const std::string label, const std::string file_na
     atom_types_.push_back(new Atom_type(parameters_, id, label, file_name));
 }
 
-void Unit_cell::add_atom(const std::string label, double* position, double* vector_field)
+void Unit_cell::add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
 {
     if (atom_type_id_map_.count(label) == 0)
     {
@@ -67,9 +67,9 @@ void Unit_cell::add_atom(const std::string label, double* position, double* vect
     atom_type(label)->add_atom_id((int)atoms_.size() - 1);
 }
 
-void Unit_cell::add_atom(const std::string label, double* position)
+void Unit_cell::add_atom(const std::string label, vector3d<double> position)
 {
-    double vector_field[] = {0, 0, 0};
+    vector3d<double> vector_field(0, 0, 0);
     add_atom(label, position, vector_field);
 }
 
@@ -243,6 +243,8 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 
 void Unit_cell::initialize()
 {
+    PROFILE();
+
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
 

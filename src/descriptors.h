@@ -206,8 +206,7 @@ struct unit_cell_parameters_descriptor
 /** This data structure describes one of the following basis sets:
  *      - LAPW+lo basis, which consists of G+k labeled augmented plane-waves and of local orbitals
  *      - PW+lo basis, which consists of G+k plane-waves and of local orbitals
- *      - pure G+k plane-wave basis
- */
+ *      - pure G+k plane-wave basis */
 struct gklo_basis_descriptor
 {
     /// ID (global index) of the basis function.
@@ -215,6 +214,8 @@ struct gklo_basis_descriptor
 
     /// Global index of the G+k vector.
     int igk;
+
+    vector3d<int> gvec;
 
     /// G+k vector in fractional coordinates.
     vector3d<double> gkvec;
@@ -236,8 +237,7 @@ struct gklo_basis_descriptor
 
     /// Order of the local orbital radial function for the given orbital quantum number \f$ \ell \f$.
     /** All radial functions for the given orbital quantum number \f$ \ell \f$ are ordered in the following way: 
-     *  augmented radial functions come first followed by the local orbital radial function. 
-     */
+     *  augmented radial functions come first followed by the local orbital radial function. */
     int order;
 
     /// Index of the local orbital radial function.

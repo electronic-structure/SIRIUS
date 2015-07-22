@@ -33,8 +33,6 @@
 
 #define __FFTW_MPI
 
-//== #define __CACHE_GVEC_PHASE_FACTORS
-
 //== #define __PRINT_OBJECT_HASH
 
 //== #define __PRINT_OBJECT_CHECKSUM

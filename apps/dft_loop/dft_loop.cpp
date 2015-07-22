@@ -131,7 +131,7 @@ void dft_loop(cmd_args args)
     int use_symmetry = parser["use_symmetry"].get(0);
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
-             vector3d<int>(&ngridk[0]), vector3d<int>(0), use_symmetry);
+             vector3d<int>(ngridk[0], ngridk[1], ngridk[1]), vector3d<int>(0, 0, 0), use_symmetry);
 
     ks.initialize();
     

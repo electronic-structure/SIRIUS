@@ -59,7 +59,7 @@ class Matching_coefficients
         std::vector<double> gkvec_len_;
         
         /// Phase factors \f$ e^{i \bf{(G+k)\tau_{\alpha}}} \f$.
-        mdarray<double_complex, 2> gkvec_phase_factors_;
+        mdarray<double_complex, 2> gkvec_phase_factors_; // TODO: don't cache this
 
         /// Precomputed values for the linear equations for matching coefficients.
         mdarray<double_complex, 4> alm_b_;
@@ -155,7 +155,7 @@ class Matching_coefficients
                         break;
                     }
                 }
-                alm[igk] = gkvec_phase_factors_(offset + igk, ia) * conj(gkvec_ylm_(offset + igk, lm)) * zt;
+                alm[igk] = gkvec_phase_factors_(offset + igk, ia) * std::conj(gkvec_ylm_(offset + igk, lm)) * zt;
             }
         }
 

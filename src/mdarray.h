@@ -39,6 +39,7 @@
 #include "gpu_interface.h"
 #endif
 #include "typedefs.h"
+#include "debug.hpp"
 
 #ifdef __LIBSCI_ACC
 extern "C" int libsci_acc_HostAlloc(void**, size_t);
@@ -77,6 +78,7 @@ extern "C" int libsci_acc_HostFree(void*);
             printf("at line %i of file %s\n", __LINE__, __FILE__);              \
             for (int i = 0; i < N; i++)                                         \
                 printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+            debug::Profiler::stack_trace();                                     \
             raise(SIGTERM);                                                     \
             exit(-13);                                                          \
         }                                                                       \

@@ -23,6 +23,7 @@
  */
 
 #include "reciprocal_lattice.h"
+#include "debug.hpp"
 
 namespace sirius {
         
@@ -37,6 +38,8 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell const& unit_cell__,
       gvec_(gvec__),
       comm_(comm__)
 {
+    PROFILE();
+
     init(lmax__);
 }
 
@@ -46,6 +49,8 @@ Reciprocal_lattice::~Reciprocal_lattice()
 
 void Reciprocal_lattice::init(int lmax)
 {
+    PROFILE();
+
     Timer t("sirius::Reciprocal_lattice::init");
     
     if (esm_type_ == ultrasoft_pseudopotential)
@@ -70,6 +75,8 @@ void Reciprocal_lattice::init(int lmax)
 
 std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv) const
 {
+    PROFILE();
+
     assert((int)form_factors.size(0) == unit_cell_.num_atom_types());
     
     std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
@@ -99,6 +106,8 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
 
 void Reciprocal_lattice::fix_q_radial_functions(mdarray<double, 4>& qrf)
 {
+    PROFILE();
+
     Timer t("sirius::Reciprocal_lattice::fix_q_radial_functions");
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
@@ -122,6 +131,8 @@ void Reciprocal_lattice::fix_q_radial_functions(mdarray<double, 4>& qrf)
 
 void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4>& qrf, mdarray<double, 4>& qri)
 {
+    PROFILE();
+
     Timer t("sirius::Reciprocal_lattice::generate_q_radial_integrals");
 
     qri.zero();
