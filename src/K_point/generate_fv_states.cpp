@@ -128,24 +128,32 @@ void K_point::generate_fv_states()
             /* change from 2d block cyclic to slice storage */
             linalg<CPU>::gemr2d(gklo_basis_size(), parameters_.num_fv_states(), fv_eigen_vectors_, 0, 0, 
                                 fv_eigen_vectors_slice, 0, 0, blacs_grid_.context());
-
-            mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            
+            #pragma omp parallel
             {
-                int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-                int offset_wf = unit_cell_.atom(ia)->offset_wf();
-                alm_coeffs_->generate(ia, alm);
-                linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(),
-                                  alm.at<CPU>(), alm.ld(), fv_eigen_vectors_slice.at<CPU>(), fv_eigen_vectors_slice.ld(),
-                                  &fv_states_slice_(offset_wf, 0), fv_states_slice_.ld());
+                mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+                
+                #pragma omp for
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+                {
+                    int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
+                    int offset_wf = unit_cell_.atom(ia)->offset_wf();
+                    alm_coeffs_->generate(ia, alm);
+                    linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(),
+                                      alm.at<CPU>(), alm.ld(), fv_eigen_vectors_slice.at<CPU>(), fv_eigen_vectors_slice.ld(),
+                                      &fv_states_slice_(offset_wf, 0), fv_states_slice_.ld());
+                    for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
+                    {
+                        /* lo block */
+                        memcpy(&fv_states_slice_(offset_wf + mt_aw_size, i),
+                               &fv_eigen_vectors_slice(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), i),
+                               unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
+
+                    }
+                }
+                #pragma omp for
                 for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
                 {
-                    /* lo block */
-                    memcpy(&fv_states_slice_(offset_wf + mt_aw_size, i),
-                           &fv_eigen_vectors_slice(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), i),
-                           unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
-
                     /* G+k block */
                     memcpy(&fv_states_slice_(unit_cell_.mt_basis_size(), i), &fv_eigen_vectors_slice(0, i), 
                            num_gkvec() * sizeof(double_complex));
@@ -155,84 +163,8 @@ void K_point::generate_fv_states()
             /* change from slice storage to 2d block cyclic */
             linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(), fv_states_slice_, 0, 0, 
                                 fv_states_, 0, 0, blacs_grid_.context());
-
-
-
-
-
-
-
-
-
-            ///* local number of first-variational states, assigned to each MPI rank in the column */
-            //int nfv_loc = (int)sub_spl_fv_states_.local_size();
-
-            ///* total number of augmented-wave basis functions over all atoms */
-            //int naw = unit_cell_.mt_aw_basis_size();
-
-            //dmatrix<double_complex> alm_panel(num_gkvec(), naw, blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
-            ///* generate panel of matching coefficients, normal layout */
-            //alm_coeffs_row_->generate<true>(alm_panel);
-
-            //dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
-
-            ///* gnerate aw expansion coefficients */
-            //linalg<CPU>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
-            //                  fv_eigen_vectors_, complex_zero, aw_coefs_panel); 
-            //alm_panel.deallocate(); // we don't need alm any more
-
-            ///* We have a panel of aw coefficients and a panel of 
-            // * first-variational eigen-vectors. We need to collect
-            // * them as whole vectors and setup aw, lo and G+k parts
-            // * of the first-variational states.
-            // */
-            //mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
-            ///* gather full first-variational eigen-vector array */
-            //STOP();
-            ////fv_eigen_vectors_panel_.gather(fv_eigen_vectors);
-
-            //mdarray<double_complex, 2> aw_coefs(naw, nfv_loc);
-            ///* gather aw coefficients */
-            ////aw_coefs_panel.gather(aw_coefs);
-            //STOP();
-
-            //for (int i = 0; i < nfv_loc; i++)
-            //{
-            //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            //    {
-            //        int offset_wf = unit_cell_.atom(ia)->offset_wf();
-            //        int offset_aw = unit_cell_.atom(ia)->offset_aw();
-            //        int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-
-            //        /* apw block */
-            //        memcpy(&fv_states_(offset_wf, i), &aw_coefs(offset_aw, i), mt_aw_size * sizeof(double_complex));
-
-            //        /* lo block */
-            //        memcpy(&fv_states_(offset_wf + mt_aw_size, i),
-            //               &fv_eigen_vectors(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), i),
-            //               unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
-
-            //        /* G+k block */
-            //        memcpy(&fv_states_(unit_cell_.mt_basis_size(), i), &fv_eigen_vectors(0, i), 
-            //               num_gkvec() * sizeof(double_complex));
-            //    }
-            //}
         }
-
-        //if (parameters_.processing_unit() == GPU)
-        //{
-        //    fv_states_.allocate_on_device();
-        //    fv_states_.copy_to_device();
-        //}
-        
-        ///* copy to slice storage */
-        //linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(),
-        //                    fv_states_, 0, 0,
-        //                    fv_states_slice_, 0, 0,
-        //                    blacs_grid_.context());
     }
-
-    test_fv_states(0);
 }
 
 };

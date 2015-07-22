@@ -201,8 +201,8 @@ class K_point
         /// Distribute basis function index between rows and columns of MPI grid.
         void distribute_basis_index();
         
-        /// Test orthonormalization of first-variational states
-        void test_fv_states(int use_fft);
+        /// Test orthonormalization of first-variational states.
+        void test_fv_states();
 
         //void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
