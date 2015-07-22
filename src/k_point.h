@@ -94,7 +94,7 @@ class K_point
 
         //matrix<double_complex> fv_states_slab_;
         
-        /// first-variational states, distributed over rows and columns of the MPI grid
+        /// First-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
          *  over rows of the MPI grid. */
         dmatrix<double_complex> fv_states_;
@@ -664,7 +664,17 @@ class K_point
 
         inline int idxbandglob(int sub_index)
         {
-            return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
+            if (parameters_.full_potential())
+            {
+                return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
+            }
+            else
+            {
+                splindex<block_cyclic> spl_bands(parameters_.num_fv_states(), blacs_grid_slice_.comm().size(), 
+                                                 blacs_grid_slice_.comm().rank(), 1);
+                
+                return static_cast<int>(spl_bands[sub_index]);
+            }
         }
 
         inline double_complex p_mtrx(int xi1, int xi2, int iat) const
@@ -681,11 +691,6 @@ class K_point
         {
             return (int)spl_gkvec_.local_size();
         }
-
-        //inline matrix<double_complex>& fv_states_slab()
-        //{
-        //    return fv_states_slab_;
-        //}
 
         void collect_all_gkvec(splindex<block>& spl_phi__,
                                double_complex const* phi_slab__,

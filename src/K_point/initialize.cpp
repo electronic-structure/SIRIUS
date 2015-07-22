@@ -174,9 +174,9 @@ void K_point::initialize()
         }
     }
 
-    splindex<block> spl_bands(parameters_.num_fv_states(), comm_.size(), comm_.rank());
+    splindex<block_cyclic> spl_bands(parameters_.num_fv_states(), blacs_grid_slice_.comm().size(), blacs_grid_slice_.comm().rank(), 1);
     
-    if (parameters_.esm_type() == full_potential_lapwlo)
+    if (parameters_.full_potential())
     {
         spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
     }
@@ -187,10 +187,6 @@ void K_point::initialize()
 
     if (use_second_variation)
     {
-        fv_states_slice_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-                                                   blacs_grid_slice_,
-                                                   1, (int)splindex_base::block_size(parameters_.num_fv_states(), num_ranks()));
-
         /* allocate memory for first-variational eigen vectors */
         if (parameters_.full_potential())
         {
@@ -199,7 +195,6 @@ void K_point::initialize()
                                                               parameters_.cyclic_block_size());
             fv_eigen_vectors_panel_.allocate(alloc_mode);
 
-            // TODO: in case of one rank fv_states_ and fv_states_panel_ arrays are identical
             fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
                                                  blacs_grid_,
                                                  parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
@@ -217,11 +212,21 @@ void K_point::initialize()
 
             for (int i = 0; i < parameters_.num_fv_states(); i++)
             {
-                //for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_slab_(igk, i) = beta_gk_(igk, i);
                 for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_(igk, i) = type_wrapper<double_complex>::random();
             }
         }
-        
+
+        if (comm_.size() == 1)
+        {
+            fv_states_slice_ = dmatrix<double_complex>(fv_states_.at<CPU>(), wf_size(), parameters_.num_fv_states(),
+                                                       blacs_grid_slice_, 1, 1);
+        }
+        else
+        {
+            fv_states_slice_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
+                                                       blacs_grid_slice_, 1, 1);
+        }
+
         if (parameters_.need_sv())
         {
             spinor_wave_functions_.allocate();
@@ -229,7 +234,7 @@ void K_point::initialize()
         else
         {
             //spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
-            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), spl_bands.local_size(), parameters_.num_spins());
+            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_slice_.at<CPU>(), wf_size(), spl_bands.local_size(), parameters_.num_spins());
         }
     }
     else  /* use full diagonalziation */

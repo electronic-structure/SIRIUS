@@ -16,7 +16,8 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
     }
     else
     {
-        splindex<block> spl_bands(num_occupied_bands(kp), kp->comm().size(), kp->comm().rank());
+        splindex<block_cyclic> spl_bands(num_occupied_bands(kp), kp->blacs_grid_slice().comm().size(),
+                                         kp->blacs_grid_slice().comm().rank(), 1);
         for (int jsub = 0; jsub < (int)spl_bands.local_size(); jsub++)
         {
             int j = (int)spl_bands[jsub];

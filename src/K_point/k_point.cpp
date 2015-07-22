@@ -59,6 +59,7 @@ K_point::K_point(Simulation_context& ctx__,
     rank_col_ = comm_col_.rank();
 
     if (comm_.rank() != blacs_grid_slab_.comm().rank()) TERMINATE("ranks don't match");
+    if (comm_.rank() != blacs_grid_slice_.comm().rank()) TERMINATE("ranks don't match");
     
     /* distribue first-variational states along columns */
     spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());

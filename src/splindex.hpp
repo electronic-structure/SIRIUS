@@ -144,11 +144,6 @@ class splindex<block>: public splindex_base
             for (int i = 0; i < num_ranks_; i++) v[i] = (int)local_size(i);
             return v;
         }
-
-        //inline size_t block_size() const
-        //{
-        //    return block_size_;
-        //}
 };
 
 /// Specialization for the block-cyclic distribution.

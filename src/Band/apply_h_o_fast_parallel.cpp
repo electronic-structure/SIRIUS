@@ -74,11 +74,12 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
     
     
     
+    splindex<block_cyclic> spl_phi(n__, kp__->comm().size(), kp__->comm().rank(), 1);
     
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_slice__, 0, 0, kp__->blacs_grid().context());
-    if (phi_slice__.num_cols_local())
+    if (spl_phi.local_size())
     {
-        apply_h_local_slice(kp__, effective_potential__, pw_ekin__, phi_slice__.num_cols_local(), phi_slice__.panel(), phi_slice__.panel());
+        apply_h_local_slice(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_slice__.panel(), phi_slice__.panel());
     }
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slice__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
 
@@ -104,8 +105,6 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
         /* set intial ophi */
         memcpy(&ophi_slab__(0, N__), &phi_slab__(0, N__), kp__->num_gkvec_loc() * n__ * sizeof(double_complex));
     }
-
-    return;
 
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
