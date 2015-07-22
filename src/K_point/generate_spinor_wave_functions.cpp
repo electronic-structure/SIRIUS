@@ -4,7 +4,8 @@ namespace sirius {
 
 void K_point::generate_spinor_wave_functions()
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::K_point::generate_spinor_wave_functions");
 
     int nfv = parameters_.num_fv_states();
@@ -137,7 +138,6 @@ void K_point::generate_spinor_wave_functions()
     //== for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
     //==     Platform::allreduce(&spinor_wave_functions_(0, 0, i), wfld, parameters_.mpi_grid().communicator(1 << _dim_row_));
     //== 
-    log_function_exit(__func__);
 }
 
 };

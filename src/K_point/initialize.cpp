@@ -13,6 +13,8 @@ void K_point::initialize()
    
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
 
+    int bs = parameters_.cyclic_block_size();
+
     if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 
     if (use_second_variation && parameters_.need_sv())
@@ -20,16 +22,15 @@ void K_point::initialize()
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
         if (parameters_.num_mag_dims() == 3)
         {
-            sv_eigen_vectors_[0] = dmatrix<double_complex>(parameters_.num_bands(), parameters_.num_bands(), blacs_grid_,
-                                                           parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+            sv_eigen_vectors_[0] = dmatrix<double_complex>(parameters_.num_bands(), parameters_.num_bands(),
+                                                           blacs_grid_, bs, bs);
         }
         else
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 sv_eigen_vectors_[ispn] = dmatrix<double_complex>(parameters_.num_fv_states(), parameters_.num_fv_states(), 
-                                                                  blacs_grid_, parameters_.cyclic_block_size(),
-                                                                  parameters_.cyclic_block_size());
+                                                                  blacs_grid_, bs, bs);
             }
         }
     }
@@ -193,13 +194,11 @@ void K_point::initialize()
         if (parameters_.full_potential())
         {
             fv_eigen_vectors_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(),
-                                                        blacs_grid_, parameters_.cyclic_block_size(),
-                                                        parameters_.cyclic_block_size());
+                                                        blacs_grid_, bs, bs);
             fv_eigen_vectors_.allocate(alloc_mode);
 
             fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-                                                 blacs_grid_,
-                                                 parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+                                                 blacs_grid_, bs, bs);
         }
 
         if (!parameters_.full_potential())
