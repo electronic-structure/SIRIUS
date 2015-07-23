@@ -3,10 +3,14 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
-       radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp \
+       radial_solver.cpp sht.cpp \
        reciprocal_lattice.cpp step_function.cpp band.cpp potential.cpp \
        k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
        band_uspp_gpu_parallel.cpp band_pseudo_pot.cpp band_pseudo_pot_itsol.cpp real_space_prj.cpp \
+       Unit_cell/atom.cpp \
+       Unit_cell/atom_type.cpp \
+       Unit_cell/atom_symmetry_class.cpp \
+       Unit_cell/unit_cell.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \

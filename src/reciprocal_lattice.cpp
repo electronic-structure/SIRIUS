@@ -21,6 +21,7 @@
  *
  *  \brief Contains remaining implementation of sirius::Reciprocal_lattice class. 
  */
+// TODO: get rid of this class
 
 #include "reciprocal_lattice.h"
 #include "debug.hpp"
