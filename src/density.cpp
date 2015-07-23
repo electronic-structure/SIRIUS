@@ -238,7 +238,7 @@ void Density::augment(K_set& ks__)
 
 void Density::generate(K_set& ks__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Density::generate", ctx_.comm());
     
@@ -295,7 +295,6 @@ void Density::generate(K_set& ks__)
     #endif
 
     //if (debug_level > 1) check_density_continuity_at_mt();
-    LOG_FUNC_END();
 }
 
 //void Density::check_density_continuity_at_mt()

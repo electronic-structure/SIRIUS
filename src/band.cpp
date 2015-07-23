@@ -1547,7 +1547,8 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
                                              double v0__,
                                              std::vector<double>& veff_it_coarse__)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
     
     auto& itso = parameters_.iterative_solver_input_section();
@@ -1563,8 +1564,6 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
     {
         TERMINATE("unknown iterative solver type");
     }
-
-    log_function_exit(__func__);
 }
 #endif // __SCALAPACK
 
@@ -1572,7 +1571,8 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
                                            double v0__,
                                            std::vector<double>& veff_it_coarse__)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
     
     auto& itso = parameters_.iterative_solver_input_section();
@@ -1596,8 +1596,6 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
     {
         TERMINATE("unknown iterative solver type");
     }
-
-    log_function_exit(__func__);
 }
 
 void Band::diag_fv_pseudo_potential(K_point* kp__, 

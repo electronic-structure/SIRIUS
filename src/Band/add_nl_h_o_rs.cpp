@@ -12,7 +12,7 @@ void Band::add_nl_h_o_rs(K_point* kp__,
                          mdarray<double_complex, 1>& q_mtrx_packed__,
                          mdarray<double_complex, 1>& kappa__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     auto rsp = ctx_.real_space_prj();
     auto fft = rsp->fft();
@@ -216,8 +216,6 @@ void Band::add_nl_h_o_rs(K_point* kp__,
 
     //==     std::cout << "------------------------------------------------------------" << std::endl;
     //== }
-
-    LOG_FUNC_END();
 }
 
 };

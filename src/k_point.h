@@ -637,13 +637,13 @@ class K_point
             return (int)spl_gkvec_.local_size();
         }
 
-        void collect_all_gkvec(splindex<block>& spl_phi__,
-                               double_complex const* phi_slab__,
-                               double_complex* phi_slice__);
+        //void collect_all_gkvec(splindex<block>& spl_phi__,
+        //                       double_complex const* phi_slab__,
+        //                       double_complex* phi_slice__);
 
-        void collect_all_bands(splindex<block>& spl_phi__,
-                               double_complex const* phi_slice__,
-                               double_complex* phi_slab__);
+        //void collect_all_bands(splindex<block>& spl_phi__,
+        //                       double_complex const* phi_slice__,
+        //                       double_complex* phi_slab__);
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,

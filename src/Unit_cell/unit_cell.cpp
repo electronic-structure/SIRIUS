@@ -799,7 +799,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 
 void Unit_cell::generate_radial_functions()
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Unit_cell::generate_radial_functions");
    
@@ -828,13 +828,11 @@ void Unit_cell::generate_radial_functions()
             printf("Linearization energies\n");
         }
     }
-
-    LOG_FUNC_END();
 }
 
 void Unit_cell::generate_radial_integrals()
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Unit_cell::generate_radial_integrals");
     
@@ -858,8 +856,6 @@ void Unit_cell::generate_radial_integrals()
         int rank = spl_num_atoms().local_rank(ia);
         atom(ia)->sync_radial_integrals(comm_, rank);
     }
-
-    LOG_FUNC_END();
 }
 
 std::string Unit_cell::chemical_formula()

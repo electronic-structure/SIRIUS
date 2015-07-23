@@ -109,7 +109,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
 
 void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Atom::generate_radial_integrals");
     
@@ -354,8 +354,6 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
     #endif
-
-    LOG_FUNC_END();
 }
 
 }

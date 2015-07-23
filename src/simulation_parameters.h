@@ -214,10 +214,7 @@ class Simulation_parameters
               cyclic_block_size_(32),
               esm_type_(full_potential_lapwlo)
         {
-            LOG_FUNC_BEGIN();
-
-            /* get the starting time */
-            //gettimeofday(&start_time_, NULL);
+            PROFILE();
 
             str_to_ev_solver_t_["lapack"]    = ev_lapack;
             str_to_ev_solver_t_["scalapack"] = ev_scalapack;
@@ -229,8 +226,6 @@ class Simulation_parameters
             str_to_ev_solver_t_["rs_gpu"]    = ev_rs_gpu;
 
             import(iip__);
-
-            LOG_FUNC_END();
         }
 
         Simulation_parameters()

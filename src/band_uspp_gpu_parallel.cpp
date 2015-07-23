@@ -504,7 +504,8 @@ void Band::generate_fv_states_pp(K_point* kp__,
                                  dmatrix<double_complex>& psi__,
                                  matrix<double_complex>& kappa__)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::generate_fv_states_pp", kp__->comm());
 
     auto pu = parameters_.processing_unit();
@@ -681,8 +682,6 @@ void Band::generate_fv_states_pp(K_point* kp__,
                kp__->num_gkvec(), num_bands, num_phi__,
                tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands * num_phi__ / tval / kp__->num_ranks());
     }
-
-    log_function_exit(__func__);
 }
 #endif
 

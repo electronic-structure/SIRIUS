@@ -19,7 +19,7 @@ void Band::apply_h_o_serial(K_point* kp__,
                             mdarray<double_complex, 1>& d_mtrx_packed__,
                             mdarray<double_complex, 1>& q_mtrx_packed__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Band::apply_h_o_serial");
 
@@ -77,8 +77,6 @@ void Band::apply_h_o_serial(K_point* kp__,
     {
         add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
     }
-
-    LOG_FUNC_END();
 }
 
 };

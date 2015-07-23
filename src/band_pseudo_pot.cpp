@@ -19,7 +19,8 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
                                                mdarray<double_complex, 1>& op_mtrx_packed__,
                                                double_complex alpha)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::add_non_local_contribution_parallel");
 
     /* beginning of the band index */
@@ -88,8 +89,6 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
-
-    log_function_exit(__func__);
 }
 
 void Band::add_non_local_contribution_parallel(K_point* kp__,
@@ -165,7 +164,8 @@ void Band::apply_h_parallel(K_point* kp__,
                             mdarray<int, 1> const& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::apply_h_parallel", kp__->comm_row());
 
     /* beginning of the band index */
@@ -190,7 +190,6 @@ void Band::apply_h_parallel(K_point* kp__,
 
     add_non_local_contribution_parallel(kp__, N__, n__, phi__, hphi__, beta_gk__, packed_mtrx_offset__,
                                         d_mtrx_packed__, double_complex(1, 0));
-    log_function_exit(__func__);
 }
 
 /** \param [in] phi Input wave-function [storage: CPU && GPU].
@@ -209,7 +208,8 @@ void Band::apply_h_o_parallel(K_point* kp__,
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
+
     Timer t("sirius::Band::apply_h_o_parallel", kp__->comm_row());
 
     /* beginning of the band index */
@@ -298,7 +298,6 @@ void Band::apply_h_o_parallel(K_point* kp__,
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
-    LOG_FUNC_END();
 }
 
 void Band::set_fv_h_o_parallel_simple(int N__,
@@ -377,7 +376,7 @@ void Band::set_fv_h_o_fast_parallel(int N__,
                                     dmatrix<double_complex>& o_old__,
                                     mdarray<double_complex, 1>& kappa__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Band::set_fv_h_o_fast_parallel", kp__->comm());
 
@@ -491,8 +490,6 @@ void Band::set_fv_h_o_fast_parallel(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
-
-    LOG_FUNC_END();
 }
 
 void Band::set_fv_h_o_parallel(int N__,
@@ -512,7 +509,8 @@ void Band::set_fv_h_o_parallel(int N__,
                                mdarray<double_complex, 1>& d_mtrx_packed__,
                                mdarray<double_complex, 1>& q_mtrx_packed__)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::set_fv_h_o_parallel", kp__->comm());
     
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
@@ -906,8 +904,6 @@ void Band::set_fv_h_o_parallel(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
-    
-    log_function_exit(__func__);
 }
 
 void Band::precondition_and_normalize_residuals_parallel(int num_bands__,
@@ -1028,7 +1024,7 @@ void Band::residuals_fast_parallel(int N__,
                                    std::vector<double>& res_norm__,
                                    mdarray<double_complex, 1>& kappa__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     Timer t("sirius::Band::residuals_fast_parallel", kp__->comm());
 
@@ -1118,8 +1114,6 @@ void Band::residuals_fast_parallel(int N__,
         double d = 1.0 / std::sqrt(norm2[i]);
         for (int igk = 0; igk < num_gkvec_loc; igk++) res__(igk, i) *= d;
     }
-
-    LOG_FUNC_END();
 }
 
 void Band::residuals_parallel(int N__,
@@ -1137,7 +1131,8 @@ void Band::residuals_parallel(int N__,
                               std::vector<double>& res_norm__,
                               mdarray<double_complex, 2>& kappa__)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::residuals_parallel", kp__->comm());
 
     Timer t1("sirius::Band::residuals_parallel|zgemm_eff", kp__->comm());
@@ -1497,8 +1492,6 @@ void Band::residuals_parallel(int N__,
     //    TERMINATE_NO_GPU
     //    #endif
     //}
-
-    log_function_exit(__func__);
 }
 #endif // __SCALAPACK
 
@@ -1567,7 +1560,8 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
                                              mdarray<double_complex, 1>& op_mtrx_packed__,
                                              double_complex alpha)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::add_non_local_contribution_serial");
 
     matrix<double_complex> phi, op_phi, beta_gk;
@@ -1634,8 +1628,6 @@ void Band::add_non_local_contribution_serial(K_point* kp__,
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
-
-    log_function_exit(__func__);
 }
 
 };

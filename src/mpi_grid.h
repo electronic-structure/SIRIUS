@@ -80,7 +80,7 @@ class MPI_grid
         /// Initialize the grid.
         void initialize()
         {
-            log_function_enter(__func__);
+            PROFILE();
 
             if (dimensions_.size() == 0) TERMINATE("no dimensions provided for the MPI grid");
 
@@ -172,21 +172,17 @@ class MPI_grid
 
             if (communicator().cart_rank(coordinates_) != parent_communicator_.rank())
                 error_local(__FILE__, __LINE__, "cartesian and communicator ranks don't match");
-
-            log_function_exit(__func__);
         }
 
         void finalize()
         {
-            log_function_enter(__func__);
+            PROFILE();
 
             communicators_.clear();
             communicator_root_.clear();
             communicator_size_.clear();
             coordinates_.clear();
             dimensions_.clear();
-
-            log_function_exit(__func__);
         }
 
     public:

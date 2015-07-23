@@ -79,9 +79,9 @@ void warning_local(const char* file_name, int line_number, const std::string& me
 /// Local warning report for stringstream message
 void warning_local(const char* file_name, int line_number, const std::stringstream& message);
 
-void log_function_enter(const char* func_name);
-
-void log_function_exit(const char* func_name);
+//void log_function_enter(const char* func_name);
+//
+//void log_function_exit(const char* func_name);
 
 #define STOP()                                              \
 {                                                           \
@@ -112,22 +112,6 @@ void log_function_exit(const char* func_name);
     char str__[1024];                                 \
     snprintf(str__, 1024, __VA_ARGS__ );              \
     if (Platform::rank() == 0) printf("%s\n", str__); \
-}
-
-#if defined (__GNUC__)
-  #define LOG_FUNC_NAME __PRETTY_FUNCTION__ 
-#else
-  #define LOG_FUNC_NAME __func__
-#endif
-
-#define LOG_FUNC_BEGIN()                \
-{                                       \
-    log_function_enter(LOG_FUNC_NAME);  \
-}
-
-#define LOG_FUNC_END()                  \
-{                                       \
-    log_function_exit(LOG_FUNC_NAME);   \
 }
 
 #endif // __ERROR_HANDLING_H__

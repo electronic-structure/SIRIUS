@@ -4,7 +4,8 @@ namespace sirius {
 
 void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential)
 {
-    log_function_enter(__func__);
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_full_potential", kp->comm());
 
     if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
@@ -80,8 +81,6 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
 
     h.deallocate();
     o.deallocate();
-    
-    log_function_exit(__func__);
 }
 
 };
