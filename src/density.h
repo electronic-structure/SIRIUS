@@ -155,15 +155,6 @@ class Density
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
 
-        //mdarray<double_complex, 2> gvec_phase_factors_;
-
-        /// Get the local list of occupied bands
-        /** Initially bands are distributed over k-points and columns of the MPI grid used 
-         *  for the diagonalization. Additionaly bands are sub split over rows of the 2D MPI grid, 
-         *  so each MPI rank in the total MPI grid gets it's local fraction of the bands.
-         */
-        std::vector< std::pair<int, double> > get_occupied_bands_list(Band* band, K_point* kp);
-
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
          *  \f[
@@ -202,7 +193,7 @@ class Density
          */
         template <processing_unit_t pu, electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
-                                      std::vector< std::pair<int, double> >& occupied_bands__,
+                                      occupied_bands_descriptor const& occupied_bands__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
         /// Restore valence density by adding the Q-operator constribution
@@ -230,7 +221,7 @@ class Density
         void add_q_contribution_to_valence_density(K_set& kset);
 
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_k_point_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
+        void add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__);
 
         #ifdef __GPU
         void add_q_contribution_to_valence_density_gpu(K_set& ks);

@@ -20,9 +20,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = (int)ks.spl_num_kpoints(ikloc);
-        auto occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
-
-        add_k_point_contribution<CPU, ultrasoft_pseudopotential>(ks[ik], occupied_bands, pp_complex_density_matrix);
+        auto occupied_bands = ks[ik]->get_occupied_bands_list();
+        STOP();
+        //add_k_point_contribution<CPU, ultrasoft_pseudopotential>(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
     ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
 

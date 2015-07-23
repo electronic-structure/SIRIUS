@@ -212,13 +212,14 @@ void Force::ibs_force(Simulation_context& ctx__,
             /* zm1 = O * V */
             linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), param.num_fv_states(), kp__->gklo_basis_size(), 
                               complex_one, o1, fv_evec, complex_zero, zm1);
-
-            /* multiply by energy */
-            for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
-            {
-                int ist = kp__->spl_fv_states(i);
-                for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
-            }
+            
+            STOP();
+            ///* multiply by energy */
+            //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
+            //{
+            //    int ist = kp__->spl_fv_states(i);
+            //    for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
+            //}
 
             /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
             linalg<CPU>::gemm(2, 0, param.num_fv_states(), param.num_fv_states(), kp__->gklo_basis_size(),

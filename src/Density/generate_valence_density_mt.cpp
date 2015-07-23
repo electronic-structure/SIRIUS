@@ -20,7 +20,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+        auto occupied_bands = ks[ik]->get_occupied_bands_list();
         add_k_point_contribution<CPU, full_potential_lapwlo>(ks[ik], occupied_bands, mt_complex_density_matrix);
     }
     

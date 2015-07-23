@@ -250,4 +250,18 @@ struct mt_basis_descriptor
     int xi;
 };
 
+struct occupied_bands_descriptor
+{
+    std::vector<int> idx_bnd_loc;
+    std::vector<int> idx_bnd_glob;
+    std::vector<double> weight;
+
+    int size() const
+    {
+        assert(idx_bnd_loc.size() == idx_bnd_glob.size());
+        assert(idx_bnd_loc.size() == weight.size());
+        return (int)idx_bnd_loc.size();
+    }
+};
+
 #endif

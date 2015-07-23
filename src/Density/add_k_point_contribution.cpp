@@ -4,31 +4,52 @@ namespace sirius {
 
 template <>
 void Density::add_k_point_contribution<CPU, full_potential_lapwlo>(K_point* kp__,
-                                                                   std::vector< std::pair<int, double> >& occupied_bands__,
+                                                                   occupied_bands_descriptor const& occupied_bands__,
                                                                    mdarray<double_complex, 4>& density_matrix__)
 {
+    PROFILE();
+
     Timer t("sirius::Density::add_k_point_contribution");
     
     if (occupied_bands__.size() == 0) return;
    
-    mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), (int)occupied_bands__.size(), parameters_.num_spins());
-    mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), (int)occupied_bands__.size(), parameters_.num_spins());
+    mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), occupied_bands__.size(), parameters_.num_spins());
+    mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), occupied_bands__.size(), parameters_.num_spins());
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         int offset_wf = unit_cell_.atom(ia)->offset_wf();
         int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
-        
-        for (int i = 0; i < (int)occupied_bands__.size(); i++)
+
+        if (parameters_.num_mag_dims() == 3)
         {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                for (int j = 0; j < mt_basis_size; j++)
+            for (int i = 0; i < occupied_bands__.size(); i++)
+            {   
+                int ibnd_loc = occupied_bands__.idx_bnd_loc[i];
+                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                 {
-                    wf1(j, i, ispn) = conj(kp__->spinor_wave_function(offset_wf + j, occupied_bands__[i].first, ispn));
-                    wf2(j, i, ispn) = kp__->spinor_wave_function(offset_wf + j, occupied_bands__[i].first, ispn) * occupied_bands__[i].second;
+                    for (int j = 0; j < mt_basis_size; j++)
+                    {
+                        wf1(j, i, ispn) = std::conj(*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + j, ibnd_loc));
+                        wf2(j, i, ispn) = (*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + j, ibnd_loc)) * occupied_bands__.weight[i];
+                    }
                 }
             }
+        }
+        else
+        {
+            for (int i = 0; i < occupied_bands__.size(); i++)
+            {   
+                int ibnd_loc = occupied_bands__.idx_bnd_loc[i];
+                int ibnd = occupied_bands__.idx_bnd_glob[i];
+                int ispn = (ibnd < parameters_.num_fv_states()) ? 0 : 1;
+                for (int j = 0; j < mt_basis_size; j++)
+                {
+                    wf1(j, i, ispn) = std::conj(*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + j, ibnd_loc));
+                    wf2(j, i, ispn) = (*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + j, ibnd_loc)) * occupied_bands__.weight[i];
+                }
+            }
+
         }
 
         for (int j = 0; j < (int)density_matrix__.size(2); j++)
@@ -44,54 +65,56 @@ void Density::add_k_point_contribution<CPU, full_potential_lapwlo>(K_point* kp__
 
 template <>
 void Density::add_k_point_contribution<CPU, ultrasoft_pseudopotential>(K_point* kp__,
-                                                                       std::vector< std::pair<int, double> >& occupied_bands__,
+                                                                       occupied_bands_descriptor const& occupied_bands__,
                                                                        mdarray<double_complex, 4>& density_matrix__)
 {
-    Timer t("sirius::Density::add_k_point_contribution");
+    STOP();
 
-    int nbnd = num_occupied_bands(kp__);
-
-    if (nbnd == 0) return;
-
-    /* compute <beta|Psi> */
-    Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
-    matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
-    linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
-                      kp__->beta_gk(), kp__->fv_states().panel(), complex_zero, beta_psi);
-    kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
-    t1.stop();
-
-    splindex<block> spl_bands(nbnd, kp__->comm().size(), kp__->comm().rank());
-
-    if (spl_bands.local_size())
-    {
-        #pragma omp parallel
-        {
-            /* auxiliary arrays */
-            mdarray<double_complex, 2> bp1(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
-            mdarray<double_complex, 2> bp2(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
-            #pragma omp for
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            {   
-                /* number of beta functions for a given atom */
-                int nbf = unit_cell_.atom(ia)->mt_basis_size();
-
-                for (int i = 0; i < (int)spl_bands.local_size(); i++)
-                {
-                    int j = (int)spl_bands[i];
-                    for (int xi = 0; xi < nbf; xi++)
-                    {
-                        bp1(xi, i) = beta_psi(unit_cell_.atom(ia)->offset_lo() + xi, j);
-                        bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
-                    }
-                }
-
-                linalg<CPU>::gemm(0, 1, nbf, nbf, (int)spl_bands.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
-                                  &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ia), 
-                                  density_matrix__.ld());
-            }
-        }
-    }
+//    Timer t("sirius::Density::add_k_point_contribution");
+//
+//    int nbnd = num_occupied_bands(kp__);
+//
+//    if (nbnd == 0) return;
+//
+//    /* compute <beta|Psi> */
+//    Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
+//    matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
+//    linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
+//                      kp__->beta_gk(), kp__->fv_states().panel(), complex_zero, beta_psi);
+//    kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
+//    t1.stop();
+//
+//    splindex<block> spl_bands(nbnd, kp__->comm().size(), kp__->comm().rank());
+//
+//    if (spl_bands.local_size())
+//    {
+//        #pragma omp parallel
+//        {
+//            /* auxiliary arrays */
+//            mdarray<double_complex, 2> bp1(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
+//            mdarray<double_complex, 2> bp2(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
+//            #pragma omp for
+//            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+//            {   
+//                /* number of beta functions for a given atom */
+//                int nbf = unit_cell_.atom(ia)->mt_basis_size();
+//
+//                for (int i = 0; i < (int)spl_bands.local_size(); i++)
+//                {
+//                    int j = (int)spl_bands[i];
+//                    for (int xi = 0; xi < nbf; xi++)
+//                    {
+//                        bp1(xi, i) = beta_psi(unit_cell_.atom(ia)->offset_lo() + xi, j);
+//                        bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+//                    }
+//                }
+//
+//                linalg<CPU>::gemm(0, 1, nbf, nbf, (int)spl_bands.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
+//                                  &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ia), 
+//                                  density_matrix__.ld());
+//            }
+//        }
+//    }
 }
 
 #ifdef __GPU

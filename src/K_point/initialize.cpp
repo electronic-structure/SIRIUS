@@ -17,24 +17,25 @@ void K_point::initialize()
 
     if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 
+    /* in case of collinear magnetism we store only non-zero spinor components */
+    int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
+
     if (use_second_variation && parameters_.need_sv())
     {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
         if (parameters_.num_mag_dims() == 3)
         {
-            sv_eigen_vectors_[0] = dmatrix<double_complex>(parameters_.num_bands(), parameters_.num_bands(),
-                                                           blacs_grid_, bs, bs);
+            sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
         }
-        else
+        else /* store up-up and dn-dn components */
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                sv_eigen_vectors_[ispn] = dmatrix<double_complex>(parameters_.num_fv_states(), parameters_.num_fv_states(), 
-                                                                  blacs_grid_, bs, bs);
+                sv_eigen_vectors_[ispn] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
             }
         }
     }
-    
+
     /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
      * form the input whereas for full-potential calculations this is derived 
      * from rgkmax (aw_cutoff here) and minimal MT radius. */
@@ -177,17 +178,6 @@ void K_point::initialize()
         }
     }
 
-    splindex<block_cyclic> spl_bands(parameters_.num_fv_states(), blacs_grid_slice_.comm().size(), blacs_grid_slice_.comm().rank(), 1);
-    
-    if (parameters_.full_potential())
-    {
-        spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
-    }
-    else
-    {
-        spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), spl_bands.local_size(), parameters_.num_spins());
-    }
-
     if (use_second_variation)
     {
         /* allocate memory for first-variational eigen vectors */
@@ -228,23 +218,25 @@ void K_point::initialize()
                                                        blacs_grid_slice_, 1, 1);
         }
 
+        /* assume slice storage of spinor wave functions */
         if (parameters_.need_sv())
         {
-            spinor_wave_functions_.allocate();
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                spinor_wave_functions_[ispn] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_slice_, 1, 1);
         }
         else
         {
-            //spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_.at<CPU>(), wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
-            spinor_wave_functions_ = mdarray<double_complex, 3>(fv_states_slice_.at<CPU>(), wf_size(), spl_bands.local_size(), parameters_.num_spins());
+            spinor_wave_functions_[0] = dmatrix<double_complex>(fv_states_slice_.at<CPU>(), wf_size(), nst, blacs_grid_slice_, 1, 1);
         }
     }
     else  /* use full diagonalziation */
     {
-        if (parameters_.full_potential())
-        {
-            fd_eigen_vectors_ = mdarray<double_complex, 2>(gklo_basis_size_row(), spl_spinor_wf_.local_size());
-            spinor_wave_functions_.allocate();
-        }
+        STOP();
+        //if (parameters_.full_potential())
+        //{
+        //    fd_eigen_vectors_ = mdarray<double_complex, 2>(gklo_basis_size_row(), spl_spinor_wf_.local_size());
+        //    spinor_wave_functions_.allocate();
+        //}
     }
 }
 

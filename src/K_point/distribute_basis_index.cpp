@@ -4,7 +4,7 @@ namespace sirius {
 
 void K_point::distribute_basis_index()
 {
-    if (parameters_.wave_function_distribution() == block_cyclic_2d)
+    if (parameters_.full_potential())
     {
         /* distribute Gk+lo basis between rows */
         splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
@@ -36,8 +36,7 @@ void K_point::distribute_basis_index()
             if (gklo_basis_descriptor_col(i).igk != -1) num_gkvec_col_++;
         }
     }
-
-    if (parameters_.wave_function_distribution() == slab)
+    else
     {
         /* split G+k vectors between all available ranks and keep the split index */
         spl_gkvec_ = splindex<block>(gklo_basis_size(), comm_.size(), comm_.rank());

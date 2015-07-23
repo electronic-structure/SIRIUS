@@ -461,29 +461,29 @@ class Simulation_parameters
             return esm_type_;
         }
     
-        inline wave_function_distribution_t wave_function_distribution() const
-        {
-            switch (esm_type_)
-            {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
-                {
-                    return block_cyclic_2d;
-                    break;
-                }
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
-                {
-                    return slab;
-                    break;
-                }
-                default:
-                {
-                    TERMINATE("wrong method type");
-                }
-            }
-            return block_cyclic_2d;
-        }
+        //==inline wave_function_distribution_t wave_function_distribution() const
+        //=={
+        //==    switch (esm_type_)
+        //==    {
+        //==        case full_potential_lapwlo:
+        //==        case full_potential_pwlo:
+        //==        {
+        //==            return block_cyclic_2d;
+        //==            break;
+        //==        }
+        //==        case ultrasoft_pseudopotential:
+        //==        case norm_conserving_pseudopotential:
+        //==        {
+        //==            return slab;
+        //==            break;
+        //==        }
+        //==        default:
+        //==        {
+        //==            TERMINATE("wrong method type");
+        //==        }
+        //==    }
+        //==    return block_cyclic_2d;
+        //==}
     
         inline ev_solver_t std_evp_solver_type() const
         {

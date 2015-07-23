@@ -13,7 +13,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Density/add_k_point_contribution_it.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
-       Density/get_occupied_bands_list.cpp \
        Density/add_q_contribution_to_valence_density.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \

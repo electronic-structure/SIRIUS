@@ -97,8 +97,8 @@ class K_point
          *  over rows of the MPI grid. */
         dmatrix<double_complex> fv_states_;
 
-        /// two-component (spinor) wave functions describing the bands
-        mdarray<double_complex, 3> spinor_wave_functions_;
+        /// Two-component (spinor) wave functions describing the bands.
+        dmatrix<double_complex> spinor_wave_functions_[2];
 
         /// band occupation numbers
         std::vector<double> band_occupancies_;
@@ -180,17 +180,17 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator comm_col_;
 
-        /// block-cyclic distribution of the first-variational states along columns of the MPI grid
-        splindex<block_cyclic> spl_fv_states_;
-        
-        /// additional splitting of the first-variational states along rows of the MPI grid
-        splindex<block> sub_spl_fv_states_; // TODO: remove this
+        //== /// block-cyclic distribution of the first-variational states along columns of the MPI grid
+        //== splindex<block_cyclic> spl_fv_states_;
+        //== 
+        //== /// additional splitting of the first-variational states along rows of the MPI grid
+        //== splindex<block> sub_spl_fv_states_; // TODO: remove this
 
-        /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
-        splindex<block_cyclic> spl_spinor_wf_;
+        //== /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
+        //== splindex<block_cyclic> spl_spinor_wf_;
        
-        /// additional splitting of spinor wave-functions along rows of the MPI grid
-        splindex<block> sub_spl_spinor_wf_;
+        //== /// additional splitting of spinor wave-functions along rows of the MPI grid
+        //== splindex<block> sub_spl_spinor_wf_;
 
         /// Initialize G+k related data
         //void init_gkvec();
@@ -260,8 +260,11 @@ class K_point
         
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
-        
-        ///// Return G+k vector in fractional or Cartesian coordinates
+
+        /// Get the local list of occupied bands.
+        occupied_bands_descriptor get_occupied_bands_list();
+
+        /// Return G+k vector in fractional or Cartesian coordinates
         template <coordinates_t coord__>
         inline vector3d<double> gkvec(int igk__) const
         {
@@ -415,14 +418,14 @@ class K_point
             return weight_;
         }
 
-        inline double_complex& spinor_wave_function(int idxwf, int ispn, int j)
-        {
-            return spinor_wave_functions_(idxwf, ispn, j);
-        }
+        //inline double_complex& spinor_wave_function(int idxwf, int ispn, int j)
+        //{
+        //    return spinor_wave_functions_(idxwf, ispn, j);
+        //}
 
-        inline mdarray<double_complex, 3>& spinor_wave_functions()
+        inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
         {
-            return spinor_wave_functions_;
+            return spinor_wave_functions_[ispn__];
         }
 
         inline int const* fft_index_coarse() const
@@ -643,40 +646,40 @@ class K_point
             return blacs_grid_slice_;
         }
 
-        inline splindex<block_cyclic>& spl_fv_states()
-        {
-            return spl_fv_states_;
-        }
+        //inline splindex<block_cyclic>& spl_fv_states()
+        //{
+        //    return spl_fv_states_;
+        //}
 
-        inline int spl_fv_states(int icol_loc)
-        {
-            return static_cast<int>(spl_fv_states_[icol_loc]);
-        }
+        //inline int spl_fv_states(int icol_loc)
+        //{
+        //    return static_cast<int>(spl_fv_states_[icol_loc]);
+        //}
 
-        inline splindex<block>& sub_spl_fv_states()
-        {
-            return sub_spl_fv_states_;
-        }
+        //inline splindex<block>& sub_spl_fv_states()
+        //{
+        //    return sub_spl_fv_states_;
+        //}
 
-        inline int num_sub_bands()
-        {
-            return static_cast<int>(sub_spl_spinor_wf_.local_size());
-        }
+        //inline int num_sub_bands()
+        //{
+        //    return static_cast<int>(sub_spl_spinor_wf_.local_size());
+        //}
 
-        inline int idxbandglob(int sub_index)
-        {
-            if (parameters_.full_potential())
-            {
-                return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
-            }
-            else
-            {
-                splindex<block_cyclic> spl_bands(parameters_.num_fv_states(), blacs_grid_slice_.comm().size(), 
-                                                 blacs_grid_slice_.comm().rank(), 1);
-                
-                return static_cast<int>(spl_bands[sub_index]);
-            }
-        }
+        //inline int idxbandglob(int sub_index)
+        //{
+        //    if (parameters_.full_potential())
+        //    {
+        //        return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
+        //    }
+        //    else
+        //    {
+        //        splindex<block_cyclic> spl_bands(parameters_.num_fv_states(), blacs_grid_slice_.comm().size(), 
+        //                                         blacs_grid_slice_.comm().rank(), 1);
+        //        
+        //        return static_cast<int>(spl_bands[sub_index]);
+        //    }
+        //}
 
         inline double_complex p_mtrx(int xi1, int xi2, int iat) const
         {

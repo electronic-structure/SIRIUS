@@ -20,11 +20,13 @@ extern "C" void update_it_density_matrix_1_gpu(int fft_size,
                                                double* it_density_matrix);
 #endif
 
-void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands)
+void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__)
 {
+    PROFILE();
+
     Timer t("sirius::Density::add_k_point_contribution_it");
     
-    if (occupied_bands.size() == 0) return;
+    if (occupied_bands__.idx_bnd_loc.size() == 0) return;
     
     /* index of the occupied bands */
     int idx_band = 0;
@@ -178,21 +180,21 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
         }
         else
         {
-            fft_threads.push_back(std::thread([thread_id, kp, fft, &idx_band, &idx_band_mutex, num_spins, num_mag_dims,
-                                               num_fv_states, omega, &occupied_bands, &it_density_matrix]()
+            fft_threads.push_back(std::thread([thread_id, kp__, fft, &idx_band, &idx_band_mutex, num_spins, num_mag_dims,
+                                               num_fv_states, omega, &occupied_bands__, &it_density_matrix]()
             {
                 bool done = false;
 
-                int wf_pw_offset = kp->wf_pw_offset();
+                int wf_pw_offset = kp__->wf_pw_offset();
                 
                 mdarray<double_complex, 2> psi_it(fft->size(), num_spins);
 
                 while (!done)
                 {
-                    // increment the band index
+                    /* increment the band index */
                     idx_band_mutex.lock();
                     int i = idx_band;
-                    if (idx_band + 1 > (int)occupied_bands.size()) 
+                    if (idx_band >= (int)occupied_bands__.idx_bnd_loc.size()) 
                     {
                         done = true;
                     }
@@ -204,15 +206,17 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
 
                     if (!done)
                     {
-                        int j = kp->idxbandglob(occupied_bands[i].first);
-                        double w = occupied_bands[i].second / omega;
+                        int j    = occupied_bands__.idx_bnd_glob[i];
+                        int jloc = occupied_bands__.idx_bnd_loc[i];
+                        double w = occupied_bands__.weight[i] / omega;
+
                         if (num_mag_dims == 3)
                         {   
                             /* transform both components of the spinor state */
                             for (int ispn = 0; ispn < num_spins; ispn++)
                             {
-                                fft->input(kp->num_gkvec(), kp->gkvec().index_map(), 
-                                           &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn), thread_id);
+                                fft->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
+                                           kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc), thread_id);
                                 fft->transform(1, thread_id);
                                 fft->output(&psi_it(0, ispn), thread_id);
                             }
@@ -231,8 +235,8 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
                         {
                             /* transform only single compopnent */
                             int ispn = (j < num_fv_states) ? 0 : 1;
-                            fft->input(kp->num_gkvec(), kp->gkvec().index_map(), 
-                                       &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn), thread_id);
+                            fft->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
+                                       kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc), thread_id);
                             fft->transform(1, thread_id);
                             fft->output(&psi_it(0, ispn), thread_id);
 
@@ -248,11 +252,11 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
 
     for (auto& thread: fft_threads) thread.join();
 
-    if (idx_band != (int)occupied_bands.size()) 
+    if (idx_band != (int)occupied_bands__.idx_bnd_loc.size()) 
     {
         std::stringstream s;
         s << "not all FFTs are executed" << std::endl
-          << " number of wave-functions : " << occupied_bands.size() << ", number of executed FFTs : " << idx_band;
+          << " number of wave-functions : " << occupied_bands__.idx_bnd_loc.size() << ", number of executed FFTs : " << idx_band;
         error_local(__FILE__, __LINE__, s);
     }
 
@@ -299,6 +303,5 @@ void Density::add_k_point_contribution_it(K_point* kp, std::vector< std::pair<in
         }
     }
 }
-
 
 };
