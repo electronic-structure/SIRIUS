@@ -32,8 +32,11 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/residuals_serial.cpp \
        Band/solve_sv.cpp \
        Band/diag_fv_full_potential.cpp \
+       Potential/init.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
+       Potential/generate_d_mtrx.cpp \
+       Potential/generate_local_potential.cpp \
        K_point/add_non_local_contribution.cpp \
        K_point/collect_all_bands.cpp \
        K_point/collect_all_gkvec.cpp \
