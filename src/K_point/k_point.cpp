@@ -62,16 +62,6 @@ K_point::K_point(Simulation_context& ctx__,
     if (comm_.rank() != blacs_grid_slab_.comm().rank()) TERMINATE("ranks don't match");
     if (comm_.rank() != blacs_grid_slice_.comm().rank()) TERMINATE("ranks don't match");
     
-    ///* distribue first-variational states along columns */
-    //spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
-    //
-    ///* distribue spinor wave-functions along columns */
-    //spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
-    //
-    ///* additionally split along rows */
-    //sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
-    //sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
-    
     iterative_solver_input_section_ = parameters_.iterative_solver_input_section();
 }
 
@@ -118,49 +108,6 @@ K_point::K_point(Simulation_context& ctx__,
 //==     printf("atom : %i  absolute alm error : %e  average alm error : %e\n", 
 //==            ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
 //== }
-
-//== #ifdef __GPU
-//== void K_point::generate_fv_states_aw_mt_gpu()
-//== {
-//==     int num_fv_loc = parameters_.spl_fv_states_col().local_size();
-//== 
-//==     mdarray<double_complex, 2> fv_eigen_vectors_gpu_(NULL, num_gkvec_row(), num_fv_loc);
-//==     fv_eigen_vectors_gpu_.allocate_on_device();
-//== 
-//==     cublas_set_matrix(num_gkvec_row(), num_fv_loc, sizeof(double_complex),
-//==                       fv_eigen_vectors_panel_.ptr(), fv_eigen_vectors_panel_.ld(), 
-//==                       fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld());
-//== 
-//==     mdarray<double_complex, 2> fv_states_col_gpu_(NULL, unit_cell_.mt_basis_size(), num_fv_loc);
-//==     fv_states_col_gpu_.allocate_on_device();
-//==     fv_states_col_gpu_.zero_on_device();
-//== 
-//==     mdarray<double_complex, 2> alm(num_gkvec_row(), unit_cell_.max_mt_aw_basis_size());
-//==     alm.allocate_on_device();
-//==     
-//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-//==     {
-//==         Atom* atom = unit_cell_.atom(ia);
-//==         Atom_type* type = atom->type();
-//==         
-//==         generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
-//==         alm.copy_to_device(); // TODO: copy only necessary fraction of the data
-//== 
-//==         blas<GPU>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
-//==                         alm.ptr_device(), alm.ld(), 
-//==                         fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
-//==                         fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
-//==     }
-//== 
-//==     cublas_get_matrix(unit_cell_.mt_basis_size(), num_fv_loc, sizeof(double_complex), 
-//==                       fv_states_col_gpu_.ptr_device(), fv_states_col_gpu_.ld(),
-//==                       fv_states_col_.ptr(), fv_states_col_.ld());
-//== 
-//==     alm.deallocate_on_device();
-//==     fv_states_col_gpu_.deallocate_on_device();
-//==     fv_eigen_vectors_gpu_.deallocate_on_device();
-//== }
-//== #endif
 
 
 //Periodic_function<double_complex>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)

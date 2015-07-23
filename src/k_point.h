@@ -180,21 +180,6 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator comm_col_;
 
-        //== /// block-cyclic distribution of the first-variational states along columns of the MPI grid
-        //== splindex<block_cyclic> spl_fv_states_;
-        //== 
-        //== /// additional splitting of the first-variational states along rows of the MPI grid
-        //== splindex<block> sub_spl_fv_states_; // TODO: remove this
-
-        //== /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
-        //== splindex<block_cyclic> spl_spinor_wf_;
-       
-        //== /// additional splitting of spinor wave-functions along rows of the MPI grid
-        //== splindex<block> sub_spl_spinor_wf_;
-
-        /// Initialize G+k related data
-        //void init_gkvec();
-        
         /// Build G+k and lo basis descriptors.
         void build_gklo_basis_descriptors();
 
@@ -204,8 +189,6 @@ class K_point
         /// Test orthonormalization of first-variational states.
         void test_fv_states();
 
-        //void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
-        
         void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
         /// Generate plane-wave coefficients for beta-projectors of atom types.
@@ -418,11 +401,6 @@ class K_point
             return weight_;
         }
 
-        //inline double_complex& spinor_wave_function(int idxwf, int ispn, int j)
-        //{
-        //    return spinor_wave_functions_(idxwf, ispn, j);
-        //}
-
         inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
         {
             return spinor_wave_functions_[ispn__];
@@ -575,8 +553,6 @@ class K_point
         void bypass_sv()
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
-            //== sv_eigen_vectors_[0].zero();
-            //== for (int i = 0; i < parameters_.num_fv_states(); i++) sv_eigen_vectors_[0].set(i, i, complex_one);
         }
 
         std::vector<double> get_pw_ekin() const
@@ -645,41 +621,6 @@ class K_point
         {
             return blacs_grid_slice_;
         }
-
-        //inline splindex<block_cyclic>& spl_fv_states()
-        //{
-        //    return spl_fv_states_;
-        //}
-
-        //inline int spl_fv_states(int icol_loc)
-        //{
-        //    return static_cast<int>(spl_fv_states_[icol_loc]);
-        //}
-
-        //inline splindex<block>& sub_spl_fv_states()
-        //{
-        //    return sub_spl_fv_states_;
-        //}
-
-        //inline int num_sub_bands()
-        //{
-        //    return static_cast<int>(sub_spl_spinor_wf_.local_size());
-        //}
-
-        //inline int idxbandglob(int sub_index)
-        //{
-        //    if (parameters_.full_potential())
-        //    {
-        //        return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
-        //    }
-        //    else
-        //    {
-        //        splindex<block_cyclic> spl_bands(parameters_.num_fv_states(), blacs_grid_slice_.comm().size(), 
-        //                                         blacs_grid_slice_.comm().rank(), 1);
-        //        
-        //        return static_cast<int>(spl_bands[sub_index]);
-        //    }
-        //}
 
         inline double_complex p_mtrx(int xi1, int xi2, int iat) const
         {
