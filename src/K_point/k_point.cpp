@@ -593,6 +593,9 @@ occupied_bands_descriptor K_point::get_occupied_bands_list()
         }
     }
 
+    occupied_bands.num_occupied_bands_ = (int)occupied_bands.idx_bnd_loc.size();
+    comm().allreduce(&occupied_bands.num_occupied_bands_, 1);
+
     return occupied_bands;
 }
 

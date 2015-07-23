@@ -107,8 +107,7 @@ namespace sirius
  *  This is our final answer: radial components of density and magnetization are expressed as a linear combination of
  *  quadratic forms in radial functions. 
  *
- *  \note density and potential are allocated as global function because it's easier to load and save them.
- */
+ *  \note density and potential are allocated as global function because it's easier to load and save them. */
 class Density
 {
     private:
@@ -126,16 +125,14 @@ class Density
         
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
-         *  In the case of pseudopotential this is the valence charge density. 
-         */ 
+         *  In the case of pseudopotential this is the valence charge density. */ 
         Periodic_function<double>* rho_;
 
         /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
-         *  this density integrated does not reproduce the total number of core elctrons. 
-         */
+         *  this density integrated does not reproduce the total number of core elctrons. */
         Periodic_function<double>* rho_pseudo_core_;
         
         Periodic_function<double>* magnetization_[3];
@@ -161,7 +158,7 @@ class Density
          *      d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
          *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
          *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
-         *  \f]
+         *  \f] 
          */
         template <int num_mag_dims> 
         void reduce_density_matrix(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
@@ -189,8 +186,7 @@ class Density
          *        \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
          *  \f]
          *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
-         *  the occupancy operator written in spectral representation.
-         */
+         *  the occupancy operator written in spectral representation. */
         template <processing_unit_t pu, electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
                                       occupied_bands_descriptor const& occupied_bands__,
@@ -241,21 +237,6 @@ class Density
         void generate_core_charge_density();
 
         void generate_pseudo_core_charge_density();
-
-        int num_occupied_bands(K_point* kp__)
-        {
-            if (parameters_.num_spins() == 2)
-            {
-                STOP();
-            }
-            int n = 0;
-            for (int j = 0; j < parameters_.num_fv_states(); j++)
-            {
-                double wo = kp__->band_occupancy(j) * kp__->weight();
-                if (wo > 1e-14) n++;
-            }
-            return n;
-        }
 
     public:
 

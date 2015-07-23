@@ -7,8 +7,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     Timer t("sirius::Density::add_q_contribution_to_valence_density", ctx_.comm());
 
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
-     * because density matrix is symmetric.
-     */
+     * because density matrix is symmetric. */
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     /* complex density matrix */
@@ -21,8 +20,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     {
         int ik = (int)ks.spl_num_kpoints(ikloc);
         auto occupied_bands = ks[ik]->get_occupied_bands_list();
-        STOP();
-        //add_k_point_contribution<CPU, ultrasoft_pseudopotential>(ks[ik], occupied_bands, pp_complex_density_matrix);
+        add_k_point_contribution<CPU, ultrasoft_pseudopotential>(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
     ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
 
