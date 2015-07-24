@@ -23,8 +23,8 @@ void K_point::generate_spinor_wave_functions()
             if (parameters_.processing_unit() == GPU)
             {
                 #ifdef __GPU
-                spinor_wave_functions_.allocate_on_device();
-                spinor_wave_functions_.zero_on_device();
+                fv_states_.allocate_on_device();
+                fv_states_.copy_to_device();
                 #endif
             }
  
@@ -35,14 +35,17 @@ void K_point::generate_spinor_wave_functions()
                     if (parameters_.processing_unit() == GPU)
                     {
                         #ifdef __GPU
-                        sv_eigen_vectors_[ispn].panel().allocate_on_device();
-                        sv_eigen_vectors_[ispn].panel().copy_to_device();
+                        sv_eigen_vectors_[ispn].allocate_on_device();
+                        sv_eigen_vectors_[ispn].copy_to_device();
+                        spinor_wave_functions_[ispn].allocate_on_device();
  
                         linalg<GPU>::gemm(0, 0, wf_size(), nfv, nfv, &alpha, fv_states_.at<GPU>(), fv_states_.ld(), 
-                                          sv_eigen_vectors_[ispn].panel().at<GPU>(), sv_eigen_vectors_[ispn].panel().ld(),
-                                          &beta, spinor_wave_functions_.at<GPU>(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
+                                          sv_eigen_vectors_[ispn].at<GPU>(), sv_eigen_vectors_[ispn].ld(),
+                                          &beta, spinor_wave_functions_[ispn].at<GPU>(), spinor_wave_functions_[ispn].ld());
  
-                        sv_eigen_vectors_[ispn].panel().deallocate_on_device();
+                        sv_eigen_vectors_[ispn].deallocate_on_device();
+                        spinor_wave_functions_[ispn].copy_to_host();
+                        spinor_wave_functions_[ispn].deallocate_on_device();
                         #else
                         TERMINATE_NO_GPU
                         #endif
@@ -66,8 +69,6 @@ void K_point::generate_spinor_wave_functions()
             if (parameters_.processing_unit() == GPU)
             {
                 #ifdef __GPU
-                spinor_wave_functions_.copy_to_host();
-                spinor_wave_functions_.deallocate_on_device();
                 fv_states_.deallocate_on_device();
                 #endif
             }

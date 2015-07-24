@@ -79,10 +79,6 @@ void warning_local(const char* file_name, int line_number, const std::string& me
 /// Local warning report for stringstream message
 void warning_local(const char* file_name, int line_number, const std::stringstream& message);
 
-//void log_function_enter(const char* func_name);
-//
-//void log_function_exit(const char* func_name);
-
 #define STOP()                                              \
 {                                                           \
     Timer::print();                                         \

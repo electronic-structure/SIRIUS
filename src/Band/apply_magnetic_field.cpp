@@ -144,14 +144,14 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == GPU)
         {
             #ifdef __GPU
-            thread_workers.push_back(std::thread([thread_id, &idx_psi, &idx_psi_mutex, nfv, num_gkvec, wf_pw_offset,
-                                                  fft_gpu, fft_index, &fv_states, &hpsi, step_function,
-                                                  effective_magnetic_field]()
+            thread_workers.push_back(std::thread([thread_id, &idx_psi, &idx_psi_mutex, nfv, num_gkvec__, wf_pw_offset,
+                                                  fft_gpu, fft_index__, &fv_states__, &hpsi__, step_function,
+                                                  effective_magnetic_field__]()
             {
                 Timer t("sirius::Band::apply_magnetic_field|it_gpu");
 
                 /* move fft index to GPU */
-                mdarray<int, 1> fft_index_gpu(const_cast<int*>(fft_index), num_gkvec);
+                mdarray<int, 1> fft_index_gpu(const_cast<int*>(fft_index__), num_gkvec__);
                 fft_index_gpu.allocate_on_device();
                 fft_index_gpu.copy_to_device();
 
@@ -163,7 +163,7 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                 fft_gpu->set_work_area_ptr(work_area.at<GPU>());
                 
                 /* allocate space for plane-wave expansion coefficients */
-                mdarray<double_complex, 2> psi_pw_gpu(nullptr, num_gkvec, nfft_max); 
+                mdarray<double_complex, 2> psi_pw_gpu(nullptr, num_gkvec__, nfft_max); 
                 psi_pw_gpu.allocate_on_device();
                 
                 /* allocate space for real-space grid */
@@ -173,7 +173,7 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                 /* effecive field multiplied by step function */
                 mdarray<double, 1> beff_gpu(fft_gpu->size());
                 for (int ir = 0; ir < (int)fft_gpu->size(); ir++)
-                    beff_gpu(ir) = effective_magnetic_field[0]->f_it<global>(ir) * step_function->theta_r(ir);
+                    beff_gpu(ir) = effective_magnetic_field__[0]->f_it<global>(ir) * step_function->theta_r(ir);
                 beff_gpu.allocate_on_device();
                 beff_gpu.copy_to_device();
                 
@@ -195,11 +195,13 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
 
                     if (!done)
                     {
+                        if (hpsi__.size() >= 3) STOP(); // need to implement this
+
                         /* copy pw coeffs to GPU */
                         //mdarray<double_complex, 1>(&fv_states(wf_pw_offset, i), psi_pw_gpu.at<GPU>(), num_gkvec).copy_to_device();
-                        cuda_copy_device_to_device(psi_pw_gpu.at<GPU>(), fv_states.at<GPU>(wf_pw_offset, i), num_gkvec * sizeof(double_complex));
+                        cuda_copy_device_to_device(psi_pw_gpu.at<GPU>(), fv_states__.at<GPU>(wf_pw_offset, i), num_gkvec__ * sizeof(double_complex));
 
-                        fft_gpu->batch_load(num_gkvec, fft_index_gpu.at<GPU>(), psi_pw_gpu.at<GPU>(), psi_it_gpu.at<GPU>());
+                        fft_gpu->batch_load(num_gkvec__, fft_index_gpu.at<GPU>(), psi_pw_gpu.at<GPU>(), psi_it_gpu.at<GPU>());
 
                         fft_gpu->transform(1, psi_it_gpu.at<GPU>());
 
@@ -207,9 +209,9 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                         
                         fft_gpu->transform(-1, psi_it_gpu.at<GPU>());
 
-                        fft_gpu->batch_unload(num_gkvec, fft_index_gpu.at<GPU>(), psi_it_gpu.at<GPU>(), psi_pw_gpu.at<GPU>(), 0.0);
+                        fft_gpu->batch_unload(num_gkvec__, fft_index_gpu.at<GPU>(), psi_it_gpu.at<GPU>(), psi_pw_gpu.at<GPU>(), 0.0);
 
-                        mdarray<double_complex, 1>(&hpsi(wf_pw_offset, i, 0), psi_pw_gpu.at<GPU>(), num_gkvec).copy_to_host();
+                        mdarray<double_complex, 1>(&hpsi__[0](wf_pw_offset, i), psi_pw_gpu.at<GPU>(), num_gkvec__).copy_to_host();
                     }
                 }
             }));

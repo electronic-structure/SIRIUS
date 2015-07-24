@@ -63,6 +63,10 @@ K_point::K_point(Simulation_context& ctx__,
     if (comm_.rank() != blacs_grid_slice_.comm().rank()) TERMINATE("ranks don't match");
     
     iterative_solver_input_section_ = parameters_.iterative_solver_input_section();
+
+    #ifndef __GPU
+    if (parameters_.processing_unit() == GPU) TERMINATE_NO_GPU
+    #endif
 }
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)

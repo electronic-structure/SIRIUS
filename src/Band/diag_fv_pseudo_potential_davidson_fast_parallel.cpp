@@ -437,8 +437,8 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     if (parameters_.processing_unit() == GPU)
     {
         //if (!with_overlap) psi.deallocate_on_device();
-        psi_slab.copy_to_host();
-        psi_slab.deallocate_on_device();
+        psi_slab.panel().copy_to_host();
+        psi_slab.panel().deallocate_on_device();
     }
     #endif
 

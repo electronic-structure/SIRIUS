@@ -76,15 +76,15 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == GPU)
         {
             #ifdef __GPU
-            fft_threads.push_back(std::thread([thread_id, kp, fft_gpu, &idx_band, &idx_band_mutex, num_spins, num_mag_dims,
-                                               num_fv_states, omega, &occupied_bands, &it_density_matrix_gpu]()
+            fft_threads.push_back(std::thread([thread_id, kp__, fft_gpu, &idx_band, &idx_band_mutex, num_spins, num_mag_dims,
+                                               num_fv_states, omega, &occupied_bands__, &it_density_matrix_gpu]()
             {
                 Timer t("sirius::Density::add_k_point_contribution_it|gpu");
 
-                int wf_pw_offset = kp->wf_pw_offset();
+                int wf_pw_offset = kp__->wf_pw_offset();
                 
                 /* move fft index to GPU */
-                mdarray<int, 1> fft_index(const_cast<int*>(kp->fft_index()), kp->num_gkvec());
+                mdarray<int, 1> fft_index(const_cast<int*>(kp__->gkvec().index_map()), kp__->num_gkvec());
                 fft_index.allocate_on_device();
                 fft_index.copy_to_device();
 
@@ -96,7 +96,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 fft_gpu->set_work_area_ptr(work_area.at<GPU>());
                 
                 /* allocate space for plane-wave expansion coefficients */
-                mdarray<double_complex, 2> psi_pw_gpu(nullptr, kp->num_gkvec(), nfft_max); 
+                mdarray<double_complex, 2> psi_pw_gpu(nullptr, kp__->num_gkvec(), nfft_max); 
                 psi_pw_gpu.allocate_on_device();
                 
                 /* allocate space for spinor components */
@@ -113,7 +113,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 {
                     idx_band_mutex.lock();
                     int i = idx_band;
-                    if (idx_band + nfft_max > (int)occupied_bands.size()) 
+                    if (idx_band + nfft_max > occupied_bands__.num_occupied_bands_local())
                     {
                         done = true;
                     }
@@ -125,7 +125,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
 
                     if (!done)
                     {
-                        int j = kp->idxbandglob(occupied_bands[i].first);
+                        int j    = occupied_bands__.idx_bnd_glob[i];
+                        int jloc = occupied_bands__.idx_bnd_loc[i];
                         if (num_mag_dims == 3)
                         {
                             TERMINATE("this should be implemented");
@@ -133,11 +134,12 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                         else
                         {
                             int ispn = (j < num_fv_states) ? 0 : 1;
-                            w(0) = occupied_bands[i].second / omega;
-                            mdarray<double_complex, 1>(&kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn),
-                                                       psi_pw_gpu.at<GPU>(0, 0), kp->num_gkvec()).copy_to_device();
+                            w(0) = occupied_bands__.weight[i] / omega;
+
+                            mdarray<double_complex, 1>(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
+                                                       psi_pw_gpu.at<GPU>(), kp__->num_gkvec()).copy_to_device();
                             w.copy_to_device();
-                            fft_gpu->batch_load(kp->num_gkvec(), fft_index.at<GPU>(), psi_pw_gpu.at<GPU>(0, 0), 
+                            fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<GPU>(), psi_pw_gpu.at<GPU>(), 
                                                 psi_it_gpu.at<GPU>(0, 0, ispn));
                             fft_gpu->transform(1, psi_it_gpu.at<GPU>(0, 0, ispn));
                             
@@ -194,7 +196,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                     /* increment the band index */
                     idx_band_mutex.lock();
                     int i = idx_band;
-                    if (idx_band >= (int)occupied_bands__.idx_bnd_loc.size()) 
+                    if (idx_band >= occupied_bands__.num_occupied_bands_local())
                     {
                         done = true;
                     }

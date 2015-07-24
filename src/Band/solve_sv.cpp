@@ -26,15 +26,15 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     std::vector<double> band_energies(parameters_.num_bands());
 
     /* product of the second-variational Hamiltonian and a wave-function */
-    std::vector< dmatrix<double_complex> > hpsi(nhpsi);
+    std::vector< dmatrix<double_complex> > hpsi_slice(nhpsi);
     for (int i = 0; i < nhpsi; i++)
     {
-        hpsi[i] = dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid_slice(), 1, 1);
+        hpsi_slice[i] = dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid_slice(), 1, 1);
     }
 
     /* compute product of magnetic field and wave-function */
     if (parameters_.num_spins() == 2)
-        apply_magnetic_field(kp->fv_states_slice(), kp->num_gkvec(), kp->gkvec().index_map(), effective_magnetic_field, hpsi);
+        apply_magnetic_field(kp->fv_states_slice(), kp->num_gkvec(), kp->gkvec().index_map(), effective_magnetic_field, hpsi_slice);
 
     //== if (parameters_.uj_correction())
     //== {
@@ -49,26 +49,23 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
-    std::vector< dmatrix<double_complex> > hpsi_panel(nhpsi);
+    std::vector< dmatrix<double_complex> > hpsi(nhpsi);
     for (int i = 0; i < nhpsi; i++)
     {
-        hpsi_panel[i] = dmatrix<double_complex>(fvsz,
-                                                parameters_.num_fv_states(),
-                                                kp->blacs_grid(),
-                                                parameters_.cyclic_block_size(),
-                                                parameters_.cyclic_block_size());
+        hpsi[i] = dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid(),
+                                          parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
         /* change data distribution of hpsi to panels */
         linalg<CPU>::gemr2d(fvsz, parameters_.num_fv_states(),
-                            hpsi[i], 0, 0,
-                            hpsi_panel[i], 0, 0, kp->blacs_grid().context());
+                            hpsi_slice[i], 0, 0,
+                            hpsi[i], 0, 0, kp->blacs_grid().context());
 
     }
 
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
         #ifdef __GPU
-        //kp->fv_states_panel().panel().allocate_on_device();
-        //kp->fv_states_panel().panel().copy_to_device();
+        kp->fv_states().allocate_on_device();
+        kp->fv_states().copy_to_device();
         #endif
     }
 
@@ -83,7 +80,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
         {
             #ifdef __GPU
-            h.panel().allocate_on_device();
+            h.allocate_on_device();
             #endif
         }
 
@@ -94,14 +91,13 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             {
                 #ifdef __GPU
                 Timer t4("sirius::Band::solve_sv|zgemm");
-                hpsi_panel[ispn]->panel().allocate_on_device();
-                hpsi_panel[ispn]->panel().copy_to_device();
+                hpsi[ispn].panel().allocate_on_device();
+                hpsi[ispn].panel().copy_to_device();
                 linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
                                   kp->fv_states().at<GPU>(), kp->fv_states().ld(),
-                                  hpsi_panel[ispn]->panel().at<GPU>(), hpsi_panel[ispn]->panel().ld(), &beta,
-                                  h.panel().at<GPU>(), h.panel().ld());
-                h.panel().copy_to_host();
-                hpsi_panel[ispn]->panel().deallocate_on_device();
+                                  hpsi[ispn].at<GPU>(), hpsi[ispn].ld(), &beta, h.at<GPU>(), h.ld());
+                h.copy_to_host();
+                hpsi[ispn].deallocate_on_device();
                 double tval = t4.stop();
                 DUMP("effective zgemm performance: %12.6f GFlops", 
                      8e-9 * parameters_.num_fv_states() * parameters_.num_fv_states() * fvsz / tval);
@@ -113,7 +109,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             {
                 /* compute <wf_i | (h * wf_j)> for up-up or dn-dn block */
                 linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
-                                  kp->fv_states(), hpsi_panel[ispn], complex_zero, h);
+                                  kp->fv_states(), hpsi[ispn], complex_zero, h);
             }
             
             for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));

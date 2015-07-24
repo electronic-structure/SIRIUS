@@ -86,6 +86,7 @@ void cuda_check_last_error();
 }
 
 void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__);
+void cuda_memcpy2D_device_to_device_async(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__, int stream_id__);
 
 //==================
 // CUBLAS functions

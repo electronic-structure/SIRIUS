@@ -69,7 +69,7 @@ void Potential::poisson_sum_G(int lmmax__,
         auto gvec = mdarray<int, 2>(3, ngv_loc);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
+            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[(int)spl_num_gvec_[igloc]][x];
         }
         gvec.allocate_on_device();
         gvec.copy_to_device();
@@ -99,12 +99,12 @@ void Potential::poisson_sum_G(int lmmax__,
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
-                int ig = rl->spl_num_gvec(igloc);
+                int ig = (int)spl_num_gvec_[igloc];
                 for (int lm = 0; lm < lmmax__; lm++)
                 {
                     int l = l_by_lm_[lm];
                     zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
-                                    fl__(l, iat, rl->gvec_shell(ig)) * std::conj(rl->gvec_ylm(lm, igloc));
+                                    fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
                 }
             }
             zm.copy_to_device();

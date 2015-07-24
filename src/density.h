@@ -115,7 +115,6 @@ class Density
         Simulation_context& ctx_;
         
         /// Global set of parameters.
-        //Global& parameters_;
         Simulation_parameters const& parameters_;
 
         Unit_cell& unit_cell_;
@@ -187,7 +186,7 @@ class Density
          *  \f]
          *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
          *  the occupancy operator written in spectral representation. */
-        template <processing_unit_t pu, electronic_structure_method_t basis>
+        template <electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
                                       occupied_bands_descriptor const& occupied_bands__,
                                       mdarray<double_complex, 4>& density_matrix__);

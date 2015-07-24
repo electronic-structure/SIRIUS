@@ -241,6 +241,16 @@ class dmatrix
             matrix_local_.zero_on_device();
         }
 
+        inline void copy_to_device()
+        {
+            matrix_local_.copy_to_device();
+        }
+
+        inline void copy_to_host()
+        {
+            matrix_local_.copy_to_host();
+        }
+
         inline void copy_cols_to_device(int icol_fisrt, int icol_last)
         {
             splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);

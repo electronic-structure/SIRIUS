@@ -817,12 +817,6 @@ class mdarray: public mdarray_base<T, N>
             this->ptr_device_ = ptr_device__;
             #endif
         }
-
-        mdarray<T, 2> submatrix(int idx)
-        {
-            T* ptr = &(*this)(0, 0, idx);
-            return mdarray<T, 2>(ptr, this->dims_[0], this->dims_[1]);
-        }
 };
 
 // Alias for matrix
