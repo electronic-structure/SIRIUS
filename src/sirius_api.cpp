@@ -1396,39 +1396,41 @@ void sirius_get_matching_coefficients(int32_t const* kset_id__,
 {
     PROFILE();
 
-    int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
-    
-    if (rank == sim_ctx->mpi_grid().coordinate(0))
-    {
-        auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
-        
-        mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax__, *apwordmax__, sim_param->lmmax_apw(), 
-                                          sim_ctx->unit_cell().num_atoms());
+    TERMINATE_NOT_IMPLEMENTED;
+
+    //int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
+    //
+    //if (rank == sim_ctx->mpi_grid().coordinate(0))
+    //{
+    //    auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+    //    
+    //    mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax__, *apwordmax__, sim_param->lmmax_apw(), 
+    //                                      sim_ctx->unit_cell().num_atoms());
 
 
-        dmatrix<double_complex> alm(kp->num_gkvec_row(), sim_ctx->unit_cell().mt_aw_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
-        kp->alm_coeffs_row()->generate<true>(alm);
+    //    dmatrix<double_complex> alm(kp->num_gkvec_row(), sim_ctx->unit_cell().mt_aw_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
+    //    kp->alm_coeffs_row()->generate<true>(alm);
 
-        for (int i = 0; i < sim_ctx->unit_cell().mt_aw_basis_size(); i++)
-        {
-            int ia = sim_ctx->unit_cell().mt_aw_basis_descriptor(i).ia;
-            int xi = sim_ctx->unit_cell().mt_aw_basis_descriptor(i).xi;
-            
-            int lm = sim_ctx->unit_cell().atom(ia)->type()->indexb(xi).lm;
-            int order = sim_ctx->unit_cell().atom(ia)->type()->indexb(xi).order;
+    //    for (int i = 0; i < sim_ctx->unit_cell().mt_aw_basis_size(); i++)
+    //    {
+    //        int ia = sim_ctx->unit_cell().mt_aw_basis_descriptor(i).ia;
+    //        int xi = sim_ctx->unit_cell().mt_aw_basis_descriptor(i).xi;
+    //        
+    //        int lm = sim_ctx->unit_cell().atom(ia)->type()->indexb(xi).lm;
+    //        int order = sim_ctx->unit_cell().atom(ia)->type()->indexb(xi).order;
 
-            for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
-            {
-                int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
-                apwalm(igk, order, lm, ia) = alm(igkloc, i);
-            }
-        }
-        //== for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
-        //== {
-        //==     Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
-        //==                         sim_param->mpi_grid().communicator(1 << _dim_row_));
-        //== }
-    }
+    //        for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
+    //        {
+    //            int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
+    //            apwalm(igk, order, lm, ia) = alm(igkloc, i);
+    //        }
+    //    }
+    //    //== for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
+    //    //== {
+    //    //==     Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
+    //    //==                         sim_param->mpi_grid().communicator(1 << _dim_row_));
+    //    //== }
+    //}
 }
 
 /// Get first-variational matrices of Hamiltonian and overlap
