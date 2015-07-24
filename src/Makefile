@@ -61,8 +61,8 @@ OBJ = $(SRC:.cpp=.o)
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
-	cuda_interface.o \
-	cuda_uspp_kernels.o \
+	Kernels/cuda_interface.o \
+	Kernels/cuda_uspp_kernels.o \
 	Kernels/compute_residuals.o \
 	Kernels/apply_preconditioner.o \
 	Kernels/normalize_residuals.o \

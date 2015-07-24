@@ -25,7 +25,7 @@
 #include "linalg.h"
 #include "constants.h"
 #ifdef __GPU
-#include "gpu_interface.h"
+#include "gpu.h"
 #endif
 
 #if defined(__SCALAPACK) && defined(__PILAENV_BLOCKSIZE)

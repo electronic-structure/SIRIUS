@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <cufft.h>
-#include "Kernels/kernels_common.h"
+#include "kernels_common.h"
 
 inline void stack_backtrace()
 {

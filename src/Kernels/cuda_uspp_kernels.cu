@@ -1,4 +1,4 @@
-#include "Kernels/kernels_common.h"
+#include "kernels_common.h"
 
 extern cudaStream_t* streams;
 extern "C" void* cuda_malloc(size_t size);
