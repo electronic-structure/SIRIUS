@@ -1,5 +1,53 @@
-// This file must be compiled with nvcc
-#include "cuda_interface.h"
+#include <cuda.h>
+#include <cublas_v2.h>
+#include <execinfo.h>
+#include <unistd.h>
+#include <signal.h>
+#include <assert.h>
+#include <cufft.h>
+#include "Kernels/kernels_common.h"
+
+inline void stack_backtrace()
+{
+    void *array[10];
+    char **strings;
+    int size = backtrace(array, 10);
+    strings = backtrace_symbols(array, size);
+    printf ("Stack backtrace:\n");
+    for (size_t i = 0; i < size; i++) printf ("%s\n", strings[i]);
+    raise(SIGQUIT);
+}
+
+#ifdef NDEBUG
+#define CALL_CUDA(func__, args__)                                                                                  \
+{                                                                                                                  \
+    cudaError_t error = func__ args__;                                                                             \
+    if (error != cudaSuccess)                                                                                      \
+    {                                                                                                              \
+        char nm[1024];                                                                                             \
+        gethostname(nm, 1024);                                                                                     \
+        printf("hostname: %s\n", nm);                                                                              \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        stack_backtrace();                                                                                         \
+    }                                                                                                              \
+}
+#else
+#define CALL_CUDA(func__, args__)                                                                                  \
+{                                                                                                                  \
+    cudaError_t error;                                                                                             \
+    func__ args__;                                                                                                 \
+    cudaDeviceSynchronize();                                                                                       \
+    error = cudaGetLastError();                                                                                    \
+    if (error != cudaSuccess)                                                                                      \
+    {                                                                                                              \
+        char nm[1024];                                                                                             \
+        gethostname(nm, 1024);                                                                                     \
+        printf("hostname: %s\n", nm);                                                                              \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        stack_backtrace();                                                                                         \
+    }                                                                                                              \
+}
+#endif
 
 extern "C" void print_cuda_timers()
 {

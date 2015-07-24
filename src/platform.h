@@ -33,7 +33,7 @@
 #include <fstream>
 #include "config.h"
 #ifdef __GPU
-#include "gpu_interface.h"
+#include "cuda_interface.h"
 #endif
 #include "typedefs.h"
 #include "communicator.h"

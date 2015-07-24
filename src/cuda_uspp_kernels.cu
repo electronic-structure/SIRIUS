@@ -1,8 +1,11 @@
-#include <cuda.h>
-#include <cublas_v2.h>
-#include "cuda_interface.h"
+#include "Kernels/kernels_common.h"
 
 extern cudaStream_t* streams;
+extern "C" void* cuda_malloc(size_t size);
+extern "C" void cuda_free(void* ptr);
+extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                             cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
+                             int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
 
 __global__ void compute_chebyshev_order1_gpu_kernel
 (

@@ -21,7 +21,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         auto occupied_bands = ks[ik]->get_occupied_bands_list();
-        add_k_point_contribution<CPU, full_potential_lapwlo>(ks[ik], occupied_bands, mt_complex_density_matrix);
+        add_k_point_contribution<full_potential_lapwlo>(ks[ik], occupied_bands, mt_complex_density_matrix);
     }
     
     mdarray<double_complex, 4> mt_complex_density_matrix_loc(unit_cell_.max_mt_basis_size(), 

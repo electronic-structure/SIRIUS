@@ -36,7 +36,7 @@
 #include <cstring>
 #include <initializer_list>
 #ifdef __GPU
-#include "gpu_interface.h"
+#include "cuda_interface.h"
 #endif
 #include "typedefs.h"
 #include "debug.hpp"
