@@ -29,6 +29,8 @@ void K_point::generate_fv_states()
 
             double_complex alpha(1, 0);
             double_complex beta(0, 0);
+            
+            Timer t1("sirius::K_point::generate_fv_states|zgemm_eff");
             #pragma omp parallel
             {
                 int tid = Platform::thread_id();
@@ -57,6 +59,9 @@ void K_point::generate_fv_states()
                     cuda_stream_synchronize(tid);
                 }
             }
+            double tval = t1.stop();
+            DUMP("effective zgemm performance: %f GFlops / rank",
+                 8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * parameters_.num_fv_states() / tval / comm().size());
             /* copy block of pw coefficients */
             cuda_memcpy2D_device_to_device(fv_states_slice_.at<GPU>(unit_cell_.mt_basis_size(), 0),
                                            fv_states_slice_.ld(),

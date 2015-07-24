@@ -30,13 +30,15 @@ namespace sirius {
 K_point::K_point(Simulation_context& ctx__,
                  double* vk__,
                  double weight__,
-                 BLACS_grid const& blacs_grid__) 
+                 BLACS_grid const& blacs_grid__,
+                 BLACS_grid const& blacs_grid_slab__,
+                 BLACS_grid const& blacs_grid_slice__)
     : ctx_(ctx__),
       parameters_(ctx__.parameters()),
       unit_cell_(ctx_.unit_cell()),
       blacs_grid_(blacs_grid__),
-      blacs_grid_slab_(blacs_grid_.comm(), blacs_grid_.comm().size(), 1),
-      blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size()),
+      blacs_grid_slab_(blacs_grid_slab__),
+      blacs_grid_slice_(blacs_grid_slice__),
       fft_(ctx__.fft()),
       weight_(weight__),
       alm_coeffs_row_(nullptr),

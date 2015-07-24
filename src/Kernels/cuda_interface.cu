@@ -49,11 +49,6 @@ inline void stack_backtrace()
 }
 #endif
 
-extern "C" void print_cuda_timers()
-{
-    CUDA_timer::cuda_timers_wrapper().print();
-}
-
 //================
 // CUDA functions
 //================
@@ -61,6 +56,11 @@ extern "C" void print_cuda_timers()
 cudaStream_t* streams;
 
 extern "C" {
+
+void print_cuda_timers()
+{
+    CUDA_timer::cuda_timers_wrapper().print();
+}
 
 void cuda_initialize()
 {
@@ -235,9 +235,6 @@ void cuda_check_last_error()
     }
 }
 
-} // extern "C"
-
-
 void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__)
 {
     CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
@@ -248,6 +245,9 @@ void cuda_memcpy2D_device_to_device_async(void* dst__, size_t ld1__, const void*
     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
     CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice, stream));
 }
+
+} // extern "C"
+
 
 
 //==================
@@ -323,12 +323,6 @@ extern "C" void cublas_destroy_handles(int num_handles)
         CALL_CUBLAS(cublasDestroy, (cublas_stream_handles[i]));
     }
 }
-
-//== extern "C" void cublas_set_stream(int stream_id__)
-//== {
-//==     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-//==     cublasSetStream(cublas_handle(), stream);
-//== }
 
 extern "C" void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
                              cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 

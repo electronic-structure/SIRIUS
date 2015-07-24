@@ -52,11 +52,11 @@ class K_point
         
         /// 1D BLACS grid for a "slab" data distribution.
         /** This grid is used to distribute G+k vector index and keep a whole band index */
-        BLACS_grid blacs_grid_slab_;
+        BLACS_grid const& blacs_grid_slab_;
         
         /// 1D BLACS grid for a "slice" data distribution.
         /** This grid is used to distribute band index and keep a whole G+k vector index */
-        BLACS_grid blacs_grid_slice_;
+        BLACS_grid const& blacs_grid_slice_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
@@ -202,7 +202,9 @@ class K_point
         K_point(Simulation_context& ctx__,
                 double* vk__,
                 double weight__,
-                BLACS_grid const& blacs_grid__);
+                BLACS_grid const& blacs_grid__,
+                BLACS_grid const& blacs_grid_slab__,
+                BLACS_grid const& blacs_grid_slice__);
 
         ~K_point()
         {
@@ -304,8 +306,7 @@ class K_point
          *
          *  Thus, the total number of coefficients representing a wave-funstion is equal
          *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
-         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
-         */ 
+         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */ 
         inline int wf_size() const // TODO: better name for this
         {
             switch (ctx_.parameters().esm_type())
@@ -636,14 +637,6 @@ class K_point
         {
             return (int)spl_gkvec_.local_size();
         }
-
-        //void collect_all_gkvec(splindex<block>& spl_phi__,
-        //                       double_complex const* phi_slab__,
-        //                       double_complex* phi_slice__);
-
-        //void collect_all_bands(splindex<block>& spl_phi__,
-        //                       double_complex const* phi_slice__,
-        //                       double_complex* phi_slab__);
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,

@@ -42,8 +42,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Potential/generate_d_mtrx.cpp \
        Potential/generate_local_potential.cpp \
        K_point/add_non_local_contribution.cpp \
-       K_point/collect_all_bands.cpp \
-       K_point/collect_all_gkvec.cpp \
        K_point/generate_beta_gk.cpp \
        K_point/generate_beta_gk_t.cpp \
        K_point/generate_beta_phi.cpp \

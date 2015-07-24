@@ -34,6 +34,8 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                                 Periodic_function<double>* effective_magnetic_field__[3],
                                 std::vector< dmatrix<double_complex> >& hpsi__)
 {
+    PROFILE();
+
     assert(hpsi__.size() >= 2);
     for (int i = 0; i < (int)hpsi__.size(); i++)
     {
@@ -136,6 +138,14 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
     auto fft_gpu = ctx_.fft_gpu();
     #endif
     auto step_function = ctx_.step_function();
+    
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef __GPU
+        fv_states__.allocate_on_device();
+        fv_states__.copy_to_device();
+        #endif
+    }
 
     std::vector<std::thread> thread_workers;
 
@@ -306,6 +316,13 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
     for (int i = 0; i < nfv; i++)
     {
         for (int j = 0; j < (int)fv_states__.num_rows_local(); j++) hpsi__[1](j, i) = -hpsi__[0](j, i);
+    }
+
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef __GPU
+        fv_states__.deallocate_on_device();
+        #endif
     }
 }
 

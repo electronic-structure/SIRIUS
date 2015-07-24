@@ -91,8 +91,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             {
                 #ifdef __GPU
                 Timer t4("sirius::Band::solve_sv|zgemm");
-                hpsi[ispn].panel().allocate_on_device();
-                hpsi[ispn].panel().copy_to_device();
+                hpsi[ispn].allocate_on_device();
+                hpsi[ispn].copy_to_device();
                 linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
                                   kp->fv_states().at<GPU>(), kp->fv_states().ld(),
                                   hpsi[ispn].at<GPU>(), hpsi[ispn].ld(), &beta, h.at<GPU>(), h.ld());
@@ -123,6 +123,13 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     else
     {
         STOP();
+    }
+
+    if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+    {
+        #ifdef __GPU
+        kp->fv_states().deallocate_on_device();
+        #endif
     }
 
     kp->set_band_energies(&band_energies[0]);
