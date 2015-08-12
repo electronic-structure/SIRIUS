@@ -80,7 +80,7 @@ class FFT3D<CPU>
         {    
             fftw_execute(plan_forward_[thread_id]);
             double norm = 1.0 / size();
-            for (int i = 0; i < size(); i++) fftw_buffer_[thread_id][i] *= norm;
+            for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
         }
 
         /// Find smallest optimal grid size starting from n.
@@ -201,7 +201,7 @@ class FFT3D<CPU>
         {
             assert(thread_id < num_fft_threads_);
 
-            switch(direction)
+            switch (direction)
             {
                 case 1:
                 {
@@ -225,7 +225,7 @@ class FFT3D<CPU>
         {
             assert(thread_id < num_fft_threads_);
             
-            memset(fftw_buffer_[thread_id], 0, size() * sizeof(double_complex));
+            memset(fftw_buffer_[thread_id], 0, local_size() * sizeof(double_complex));
             for (int i = 0; i < n; i++) fftw_buffer_[thread_id][map[i]] = data[i];
         }
 
@@ -270,6 +270,13 @@ class FFT3D<CPU>
             return grid_limits_[idim];
         }
 
+        /// Size of a given dimension.
+        inline int size(int d) const
+        {
+            assert(d >= 0 && d < 3);
+            return grid_size_[d]; 
+        }
+
         /// Total size of the FFT grid.
         inline int size() const
         {
@@ -289,13 +296,6 @@ class FFT3D<CPU>
         inline int offset_z() const
         {
             return offset_z_;
-        }
-
-        /// Size of a given dimension.
-        inline int size(int d) const
-        {
-            assert(d >= 0 && d < 3);
-            return grid_size_[d]; 
         }
 
         /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside fft buffer.
@@ -331,6 +331,11 @@ class FFT3D<CPU>
         Communicator const& comm() const
         {
             return comm_;
+        }
+
+        inline bool parallel() const
+        {
+            return (comm_.size() != 1);
         }
 };
 
@@ -554,7 +559,7 @@ class Gvec
 
         inline int const* index_map() const
         {
-            return &index_map_local_to_local_(0);
+            return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_local_(0);
         }
 
         inline int index_by_gvec(vector3d<int>& G__) const

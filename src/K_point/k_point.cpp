@@ -54,7 +54,6 @@ K_point::K_point(Simulation_context& ctx__,
     comm_row_ = blacs_grid_.comm_row();
     comm_col_ = blacs_grid_.comm_col();
     
-    num_ranks_     = comm_.size();
     num_ranks_row_ = comm_row_.size();
     num_ranks_col_ = comm_col_.size();
     

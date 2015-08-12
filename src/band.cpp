@@ -1601,6 +1601,8 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
 void Band::diag_fv_pseudo_potential(K_point* kp__, 
                                     Periodic_function<double>* effective_potential__)
 {
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
     auto fft_coarse = ctx_.fft_coarse();
@@ -1618,8 +1620,8 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     {
         if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
         {
-            //auto G = gv[ig];
-            //veff_pw_coarse[ctx_.gvec_coarse().index_by_gvec(G)] = effective_potential__->f_pw(ig);
+            auto gvc = ctx_.gvec_coarse()[n];
+            for (int x: {0, 1, 2}) if (gv[ig][x] != gvc[x]) TERMINATE("wrong order of G-vectors");
             veff_pw_coarse[n++] = effective_potential__->f_pw(ig);
         }
     }
@@ -1632,10 +1634,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     {
         if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
         {
-            //auto G = gv[ig];
-            //veff_pw_coarse_p[ctx_.pgvec_coarse().index_by_gvec(G)] = effective_potential__->f_pw(ig);
             veff_pw_coarse_p[n++] = effective_potential__->f_pw(ig);
-            //printf("%i %i\n", n, ctx_.pgvec_coarse().index_by_gvec(G));
         }
     }
 

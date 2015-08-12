@@ -160,7 +160,7 @@ class K_point
 
         int num_ranks_row_;
 
-        int num_ranks_;
+        //int num_ranks_;
 
         /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
         matrix<double_complex> beta_gk_t_;
@@ -499,7 +499,12 @@ class K_point
         /// Number of MPI ranks for a given k-point
         inline int num_ranks() const
         {
-            return num_ranks_;
+            return comm_.size();
+        }
+
+        inline int rank() const
+        {
+            return comm_.rank();
         }
 
         /// Return number of lo columns for a given atom
