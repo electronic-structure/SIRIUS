@@ -31,7 +31,7 @@ void K_point::generate_gkvec(double gk_cutoff)
     
     if (!parameters_.full_potential())
     {
-        pgkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.pfft_coarse());
+        pgkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft_coarse());
 
         /* additionally create mapping between \psi(G) and a coarse FFT buffer in order to apply H_loc */
         fft_index_coarse_.resize(num_gkvec());

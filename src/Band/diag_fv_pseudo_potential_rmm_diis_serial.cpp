@@ -35,7 +35,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
 
-    auto& itso = kp__->iterative_solver_input_section_;
+    //auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
     matrix<double_complex>& psi = kp__->fv_states().panel();

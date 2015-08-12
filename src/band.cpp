@@ -1606,65 +1606,50 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
     auto fft_coarse = ctx_.fft_coarse();
-
-    //== /* map effective potential to a corase grid */
-    //== std::vector<double> veff_it_coarse(fft_coarse->size());
-    //== std::vector<double_complex> veff_pw_coarse(ctx_.gvec_coarse().num_gvec());
-
-    //== /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi;
-    //==  * use the fact that the G-vectors are not sorted by length - this allows for an easy mapping between
-    //==  * fine and coarse FFT grids */
-    //== auto& gv = ctx_.gvec();
-    //== int n = 0;
-    //== for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
-    //== {
-    //==     if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
-    //==     {
-    //==         auto gvc = ctx_.gvec_coarse()[n];
-    //==         for (int x: {0, 1, 2}) if (gv[ig][x] != gvc[x]) TERMINATE("wrong order of G-vectors");
-    //==         veff_pw_coarse[n++] = effective_potential__->f_pw(ig);
-    //==     }
-    //== }
-
-    std::vector<double> veff_it_coarse_p(ctx_.pfft_coarse()->local_size());
-    std::vector<double_complex> veff_pw_coarse_p(ctx_.pgvec_coarse().num_gvec_loc());
-
     auto& gv = ctx_.gvec();
+    auto& gvc = ctx_.gvec_coarse();
 
+    /* map effective potential to a corase grid */
+    std::vector<double> veff_it_coarse(fft_coarse->local_size());
+    std::vector<double_complex> veff_pw_coarse(gvc.num_gvec_loc());
+
+    /* loop over full set of G-vectors and take only first num_gvec_coarse plane-wave harmonics; 
+     * this is enough to apply V_eff to \Psi;
+     * use the fact that the G-vectors are not sorted by length - this allows for an easy mapping between
+     * fine and coarse FFT grids */
     int n = 0;
-    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
+    for (int ig = 0; ig < gv.num_gvec(); ig++)
     {
         if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
         {
-            if (n >= ctx_.pgvec_coarse().gvec_offset() && n <  ctx_.pgvec_coarse().gvec_offset() + ctx_.pgvec_coarse().num_gvec_loc())
+            auto v = gvc[n];
+            for (int x: {0, 1, 2}) if (gv[ig][x] != v[x]) TERMINATE("wrong order of G-vectors");
+
+            if (n >= gvc.gvec_offset() && n < gvc.gvec_offset() + gvc.num_gvec_loc())
             {
-                veff_pw_coarse_p[n - ctx_.pgvec_coarse().gvec_offset()] = effective_potential__->f_pw(ig);
+                veff_pw_coarse[n - gvc.gvec_offset()] = effective_potential__->f_pw(ig);
             }
             n++;
         }
     }
 
-    ctx_.pfft_coarse()->input(ctx_.pgvec_coarse().num_gvec_loc(), ctx_.pgvec_coarse().index_map(), &veff_pw_coarse_p[0]);
-    ctx_.pfft_coarse()->transform(1);
-    ctx_.pfft_coarse()->output(&veff_it_coarse_p[0]);
+    fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
+    fft_coarse->transform(1);
+    fft_coarse->output(&veff_it_coarse[0]);
 
-    //fft_coarse->input(ctx_.gvec_coarse().num_gvec(), ctx_.gvec_coarse().index_map(), &veff_pw_coarse[0]);
-    //fft_coarse->transform(1);
-    //fft_coarse->output(&veff_it_coarse[0]);
-    
     double v0 = real(effective_potential__->f_pw(0));
 
     if (gen_evp_solver()->parallel())
     {
         #ifdef __SCALAPACK
-        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse_p);
+        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
         #else
         TERMINATE_NO_SCALAPACK
         #endif
     }
     else
     {
-        diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse_p);
+        diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse);
     }
 }
 

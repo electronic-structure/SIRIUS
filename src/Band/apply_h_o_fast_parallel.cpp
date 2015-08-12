@@ -28,15 +28,15 @@ void Band::apply_h_local_parallel(K_point* kp__,
         kp__->comm_row().alltoall(&phi__(0, i), &a2a.sendcounts[0], &a2a.sdispls[0], &buf[0],
                                   &a2a.recvcounts[0], &a2a.rdispls[0]);
         /* load local part of coefficients into local part of FFT buffer */
-        ctx_.pfft_coarse()->input(kp__->pgkvec().num_gvec_loc(), kp__->pgkvec().index_map(), &buf[0]);
+        ctx_.fft_coarse()->input(kp__->pgkvec().num_gvec_loc(), kp__->pgkvec().index_map(), &buf[0]);
         /* transform to real space */
-        ctx_.pfft_coarse()->transform(1);
+        ctx_.fft_coarse()->transform(1);
         /* multiply by effective potential */
-        for (int ir = 0; ir < ctx_.pfft_coarse()->local_size(); ir++) ctx_.pfft_coarse()->buffer(ir) *= effective_potential__[ir];
+        for (int ir = 0; ir < ctx_.fft_coarse()->local_size(); ir++) ctx_.fft_coarse()->buffer(ir) *= effective_potential__[ir];
         /* transform back to reciprocal space */
-        ctx_.pfft_coarse()->transform(-1);
+        ctx_.fft_coarse()->transform(-1);
         /* gather pw coefficients in the temporary buffer */
-        ctx_.pfft_coarse()->output(kp__->pgkvec().num_gvec_loc(), kp__->pgkvec().index_map(), &buf[0]);
+        ctx_.fft_coarse()->output(kp__->pgkvec().num_gvec_loc(), kp__->pgkvec().index_map(), &buf[0]);
         /* redistribute uniformly local sets of coefficients */
         kp__->comm_row().alltoall(&buf[0], &a2a.recvcounts[0], &a2a.rdispls[0], &htmp[0], &a2a.sendcounts[0], &a2a.sdispls[0]);
         /* add kinetic energy */
@@ -62,7 +62,7 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
 
     Timer t("sirius::Band::apply_h_o_fast_parallel", kp__->comm());
 
-    if (ctx_.pfft_coarse()->parallel())
+    if (ctx_.fft_coarse()->parallel())
     {
         int bs = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks_row());
         dmatrix<double_complex> phi_tmp(kp__->num_gkvec(), n__, kp__->blacs_grid(), bs, 1);
