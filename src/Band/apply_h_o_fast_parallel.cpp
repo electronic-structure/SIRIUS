@@ -49,7 +49,7 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
                                    std::vector<double> const& pw_ekin__,
                                    int N__,
                                    int n__,
-                                   dmatrix<double_complex>& phi_slice__,
+                                   dmatrix<double_complex>& phi_tmp__,
                                    dmatrix<double_complex>& phi_slab__,
                                    dmatrix<double_complex>& hphi_slab__,
                                    dmatrix<double_complex>& ophi_slab__,
@@ -62,33 +62,28 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
 
     Timer t("sirius::Band::apply_h_o_fast_parallel", kp__->comm());
 
+    /* change data distribution from slab storage to slice or 2d block-cyclic */
+    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0, kp__->blacs_grid().context());
     if (ctx_.fft_coarse()->parallel())
     {
-        int bs = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks_row());
-        dmatrix<double_complex> phi_tmp(kp__->num_gkvec(), n__, kp__->blacs_grid(), bs, 1);
-        
-        linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp, 0, 0, kp__->blacs_grid().context());
         /* this is how n wave-functions are distributed */
         splindex<block_cyclic> spl_phi(n__, kp__->num_ranks_col(), kp__->rank_col(), 1);
         if (spl_phi.local_size())
         {
-            apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_tmp, phi_tmp);
+            apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_tmp__, phi_tmp__);
         }
-        linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_tmp, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
     }
     else
     {
         /* this is how n wave-functions are distributed */
         splindex<block_cyclic> spl_phi(n__, kp__->num_ranks(), kp__->rank(), 1);
-        /* collect slices of wave-functions */
-        linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_slice__, 0, 0, kp__->blacs_grid().context());
         if (spl_phi.local_size())
         {
-            apply_h_local_slice(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_slice__.panel(), phi_slice__.panel());
+            apply_h_local_slice(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_tmp__.panel(), phi_tmp__.panel());
         }
-        /* collect slabs of hphi */
-        linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slice__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
     }
+    /* change back to slab data distribution */
+    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_tmp__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
 
     if (parameters_.processing_unit() == CPU)
     {

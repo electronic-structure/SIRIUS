@@ -38,7 +38,19 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     auto& psi_slab = kp__->fv_states();
 
     /* use as a temporary buffer */
-    auto& phi_slice = kp__->fv_states_slice();
+    //auto& phi_slice = kp__->fv_states_slice();
+
+    /* temporary buffer */
+    dmatrix<double_complex> phi_tmp;
+    if (ctx_.fft_coarse()->parallel())
+    {
+        int bs = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks_row());
+        phi_tmp = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), bs, 1);
+    }
+    else
+    {
+        phi_tmp = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid_slice(), 1, 1);
+    }
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
@@ -190,7 +202,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         {
             if (!itso.real_space_prj_)
             {
-                apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, phi_slice, phi_slab, hphi_slab, ophi_slab,
+                apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, phi_tmp, phi_slab, hphi_slab, ophi_slab,
                                         packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
             }
             else

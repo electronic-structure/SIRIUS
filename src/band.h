@@ -185,7 +185,7 @@ class Band
                                      std::vector<double> const& pw_ekin__,
                                      int N__,
                                      int n__,
-                                     dmatrix<double_complex>& phi_slice__,
+                                     dmatrix<double_complex>& phi_tmp__,
                                      dmatrix<double_complex>& phi_slab__,
                                      dmatrix<double_complex>& hphi_slab__,
                                      dmatrix<double_complex>& ophi_slab__,
