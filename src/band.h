@@ -133,46 +133,7 @@ class Band
                                                  mdarray<double_complex, 1>& op_mtrx_packed__,
                                                  double_complex alpha);
 
-        void add_non_local_contribution_parallel(K_point* kp__,
-                                                 dmatrix<double_complex>& phi__,
-                                                 dmatrix<double_complex>& op_phi__,
-                                                 dmatrix<double_complex>& op__,
-                                                 double_complex alpha);
         
-        /// Apply local part of Hamiltonian (parallel version).
-        void apply_h_local_parallel(K_point* kp__,
-                                    std::vector<double> const& effective_potential__,
-                                    std::vector<double> const& pw_ekin__,
-                                    int N__,
-                                    int n__,
-                                    dmatrix<double_complex>& phi__,
-                                    dmatrix<double_complex>& hphi__);
-
-        /// Apply full Hamiltonian (local + non-local parts, parallel version).
-        void apply_h_parallel(K_point* kp__,
-                              std::vector<double> const& effective_potential__,
-                              std::vector<double> const& pw_ekin__,
-                              int N__,
-                              int n__,
-                              dmatrix<double_complex>& phi__,
-                              dmatrix<double_complex>& hphi__,
-                              matrix<double_complex>& kappa__,
-                              mdarray<int, 1> const& packed_mtrx_offset__,
-                              mdarray<double_complex, 1>& d_mtrx_packed__);
-
-        void apply_h_o_parallel(K_point* kp__,
-                                std::vector<double> const& effective_potential__,
-                                std::vector<double> const& pw_ekin__,
-                                int N__,
-                                int n__,
-                                dmatrix<double_complex>& phi__,
-                                dmatrix<double_complex>& hphi__,
-                                dmatrix<double_complex>& ophi__,
-                                matrix<double_complex>& kappa__,
-                                mdarray<int, 1>& packed_mtrx_offset__,
-                                mdarray<double_complex, 1>& d_mtrx_packed__,
-                                mdarray<double_complex, 1>& q_mtrx_packed__);
-
         void apply_h_local_parallel(K_point* kp__,
                                     std::vector<double> const& effective_potential__,
                                     std::vector<double> const& pw_ekin__,
@@ -210,23 +171,6 @@ class Band
                                         mdarray<double_complex, 1>& q_mtrx_packed__,
                                         mdarray<double_complex, 1>& kappa__);
 
-        void set_fv_h_o_parallel_simple(int N__,
-                                        int n__,
-                                        K_point* kp__,
-                                        std::vector<double> const& veff_it_coarse__,
-                                        std::vector<double> const& pw_ekin__,
-                                        dmatrix<double_complex>& phi__,
-                                        dmatrix<double_complex>& hphi__,
-                                        dmatrix<double_complex>& ophi__,
-                                        dmatrix<double_complex>& h__,
-                                        dmatrix<double_complex>& o__,
-                                        dmatrix<double_complex>& h_old__,
-                                        dmatrix<double_complex>& o_old__,
-                                        mdarray<double_complex, 2>& kappa__,
-                                        mdarray<int, 1>& packed_mtrx_offset__,
-                                        mdarray<double_complex, 1>& d_mtrx_packed__,
-                                        mdarray<double_complex, 1>& q_mtrx_packed__);
-
         void set_fv_h_o_fast_parallel(int N__,
                                       int n__,
                                       K_point* kp__,
@@ -238,47 +182,6 @@ class Band
                                       dmatrix<double_complex>& h_old__,
                                       dmatrix<double_complex>& o_old__,
                                       mdarray<double_complex, 1>& kappa__);
-
-        void set_fv_h_o_parallel(int N__,
-                                 int n__,
-                                 K_point* kp__,
-                                 std::vector<double>& veff_it_coarse__,
-                                 std::vector<double>& pw_ekin__,
-                                 dmatrix<double_complex>& phi__,
-                                 dmatrix<double_complex>& hphi__,
-                                 dmatrix<double_complex>& ophi__,
-                                 dmatrix<double_complex>& h__,
-                                 dmatrix<double_complex>& o__,
-                                 dmatrix<double_complex>& h_old__,
-                                 dmatrix<double_complex>& o_old__,
-                                 mdarray<double_complex, 2>& kappa__,
-                                 mdarray<int, 1>& packed_mtrx_offset__,
-                                 mdarray<double_complex, 1>& d_mtrx_packed__,
-                                 mdarray<double_complex, 1>& q_mtrx_packed__);
-
-        void precondition_and_normalize_residuals_parallel(int num_bands__,
-                                                           K_point* kp__,
-                                                           std::vector<double>& eval__,
-                                                           dmatrix<double_complex>& hpsi__,
-                                                           dmatrix<double_complex>& opsi__,
-                                                           dmatrix<double_complex>& res__,
-                                                           std::vector<double>& h_diag__,
-                                                           std::vector<double>& o_diag__,
-                                                           std::vector<double>& res_norm__);
-
-        void residuals_parallel_simple(int N__,
-                                       int num_bands__,
-                                       K_point* kp__,
-                                       std::vector<double>& eval__,
-                                       dmatrix<double_complex>& evec__,
-                                       dmatrix<double_complex>& hphi__,
-                                       dmatrix<double_complex>& ophi__,
-                                       dmatrix<double_complex>& hpsi__,
-                                       dmatrix<double_complex>& opsi__,
-                                       dmatrix<double_complex>& res__,
-                                       std::vector<double>& h_diag__,
-                                       std::vector<double>& o_diag__,
-                                       std::vector<double>& res_norm__);
 
         void residuals_fast_parallel(int N__,
                                      int num_bands__,
@@ -295,28 +198,9 @@ class Band
                                      std::vector<double>& res_norm__,
                                      mdarray<double_complex, 1>& kappa__);
 
-        void residuals_parallel(int N__,
-                                int num_bands__,
-                                K_point* kp__,
-                                std::vector<double>& eval__,
-                                dmatrix<double_complex>& evec__,
-                                dmatrix<double_complex>& hphi__,
-                                dmatrix<double_complex>& ophi__,
-                                dmatrix<double_complex>& hpsi__,
-                                dmatrix<double_complex>& opsi__,
-                                dmatrix<double_complex>& res__,
-                                std::vector<double>& h_diag__,
-                                std::vector<double>& o_diag__,
-                                std::vector<double>& res_norm__,
-                                mdarray<double_complex, 2>& kappa__);
-
         void diag_fv_pseudo_potential_parallel(K_point* kp__,
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
-
-        void diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
-                                                        double v0__,
-                                                        std::vector<double>& veff_it_coarse__);
 
         void diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                                                              double v0__,
