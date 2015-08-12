@@ -37,9 +37,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     /* short notation for target wave-functions */
     auto& psi_slab = kp__->fv_states();
 
-    /* use as a temporary buffer */
-    //auto& phi_slice = kp__->fv_states_slice();
-
     /* temporary buffer */
     dmatrix<double_complex> phi_tmp;
     if (ctx_.fft_coarse()->parallel())
@@ -56,8 +53,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
-
-    //splindex<block> spl_bands(num_bands, kp__->comm().size(), kp__->comm().rank());
 
     int num_gkvec_loc = kp__->num_gkvec_loc();
     
