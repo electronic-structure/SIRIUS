@@ -22,8 +22,6 @@ void Band::apply_h_local_parallel(K_point* kp__,
     std::vector<double_complex> buf(kp__->pgkvec().num_gvec_loc());
     std::vector<double_complex> htmp(hphi__.num_rows_local());
 
-    int offs = ctx_.pfft_coarse()->size(0) * ctx_.pfft_coarse()->size(1) * ctx_.pfft_coarse()->offset_z();
-
     for (int i = 0; i < nst__; i++)
     {
         /* redistribute plane-wave coefficients between slabs of FFT buffer */
@@ -34,19 +32,17 @@ void Band::apply_h_local_parallel(K_point* kp__,
         /* transform to real space */
         ctx_.pfft_coarse()->transform(1);
         /* multiply by effective potential */
-        for (int ir = 0; ir < ctx_.pfft_coarse()->local_size(); ir++) ctx_.pfft_coarse()->buffer(ir) *= effective_potential__[offs + ir];
+        for (int ir = 0; ir < ctx_.pfft_coarse()->local_size(); ir++) ctx_.pfft_coarse()->buffer(ir) *= effective_potential__[ir];
         /* transform back to reciprocal space */
         ctx_.pfft_coarse()->transform(-1);
         /* gather pw coefficients in the temporary buffer */
         ctx_.pfft_coarse()->output(kp__->pgkvec().num_gvec_loc(), kp__->pgkvec().index_map(), &buf[0]);
         /* redistribute uniformly local sets of coefficients */
         kp__->comm_row().alltoall(&buf[0], &a2a.recvcounts[0], &a2a.rdispls[0], &htmp[0], &a2a.sendcounts[0], &a2a.sdispls[0]);
-        
+        /* add kinetic energy */
         for (int igk = 0; igk < (int)spl_gkvec.local_size(); igk++) hphi__(igk, i) = htmp[igk] + phi__(igk, i) * pw_ekin__[spl_gkvec[igk]];
     }
 }
-
-
 
 void Band::apply_h_o_fast_parallel(K_point* kp__,
                                    std::vector<double> const& effective_potential__,
