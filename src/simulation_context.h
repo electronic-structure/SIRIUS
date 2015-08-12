@@ -189,7 +189,7 @@ class Simulation_context
             fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
                                   parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
             
-            gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_);
+            gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_, true);
 
             #ifdef __GPU
             fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
@@ -200,18 +200,19 @@ class Simulation_context
                 /* create FFT interface for coarse grid */
                 if (false)
                 {
+                    /* serial version */
                     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
                                                  parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
                 }
                 else
                 {
-                    /* create FFT interface for coarse grid */
+                    /* parallel version */
                     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
                                                  1, Platform::max_num_threads(), mpi_grid_.communicator(1 << _dim_row_));
                 }
                 
                 /* create a list of G-vectors for corase FFT grid */
-                gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv, fft_coarse_);
+                gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv, fft_coarse_, false);
 
                 #ifdef __GPU
                 fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);

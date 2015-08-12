@@ -69,9 +69,9 @@ class K_point
         
         Gvec gkvec_;
 
-        Gvec pgkvec_;
+        Gvec gkvec_coarse_;
 
-        /// first-variational eigen values
+        /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
@@ -573,9 +573,9 @@ class K_point
             return gkvec_;
         }
 
-        inline Gvec const& pgkvec() const
+        inline Gvec const& gkvec_coarse() const
         {
-            return pgkvec_;
+            return gkvec_coarse_;
         }
 
         inline matrix<double_complex> const& beta_gk_t() const

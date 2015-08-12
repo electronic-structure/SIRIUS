@@ -389,7 +389,8 @@ class Gvec
         Gvec(vector3d<double> q__,
              double Gmax__,
              matrix3d<double> const& M__,
-             FFT3D<CPU>* fft__)
+             FFT3D<CPU>* fft__,
+             bool build_reverse_mapping__)
             : fft_(fft__),
               lattice_vectors_(M__)
         {
@@ -471,15 +472,18 @@ class Gvec
                 n++;
             }
 
-            index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
-                                             mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
-                                             mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
-            memset(index_by_gvec_.at<CPU>(), 0xFF, index_by_gvec_.size() * sizeof(int));
-
-            for (int ig = 0; ig < num_gvec_; ig++)
+            if (build_reverse_mapping__)
             {
-                auto G = gvec_by_full_index(gvec_full_index_(ig));
-                index_by_gvec_(G[0], G[1], G[2]) = ig;
+                index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
+                                                 mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
+                                                 mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
+                memset(index_by_gvec_.at<CPU>(), 0xFF, index_by_gvec_.size() * sizeof(int));
+
+                for (int ig = 0; ig < num_gvec_; ig++)
+                {
+                    auto G = gvec_by_full_index(gvec_full_index_(ig));
+                    index_by_gvec_(G[0], G[1], G[2]) = ig;
+                }
             }
         }
 
@@ -543,10 +547,10 @@ class Gvec
             return gvec_shell_len_(gvec_shell_(ig__));
         }
 
-        inline int index_g12(vector3d<int> const& g1, vector3d<int> const& g2) const
+        inline int index_g12(vector3d<int> const& g1__, vector3d<int> const& g2__) const
         {
-            auto v = g1 - g2;
-            int idx = index_by_gvec_(v[0], v[1], v[2]);
+            auto v = g1__ - g2__;
+            int idx = index_by_gvec(v);
             assert(idx >= 0 && idx < num_gvec());
             return idx;
         }

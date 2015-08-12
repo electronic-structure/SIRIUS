@@ -27,19 +27,24 @@ void K_point::generate_gkvec(double gk_cutoff)
     
     /* create G+k vectors using fine FFT grid; 
      * this would provide a correct mapping between \psi(G) and \rho(r) */
-    gkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_);
+    gkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), fft_, false);
     
     if (!parameters_.full_potential())
     {
-        pgkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft_coarse());
-
-        /* additionally create mapping between \psi(G) and a coarse FFT buffer in order to apply H_loc */
-        fft_index_coarse_.resize(num_gkvec());
-        for (int igk = 0; igk < num_gkvec(); igk++)
+        if (ctx_.fft_coarse()->parallel())
         {
-            auto G = gkvec_[igk];
-            /* linear index inside coarse FFT buffer */
-            fft_index_coarse_[igk] = ctx_.fft_coarse()->index(G[0], G[1], G[2]);
+            gkvec_coarse_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft_coarse(), false);
+        }
+        else
+        {
+            /* additionally create mapping between \psi(G) and a coarse FFT buffer in order to apply H_loc */
+            fft_index_coarse_.resize(num_gkvec());
+            for (int igk = 0; igk < num_gkvec(); igk++)
+            {
+                auto G = gkvec_[igk];
+                /* linear index inside coarse FFT buffer */
+                fft_index_coarse_[igk] = ctx_.fft_coarse()->index(G[0], G[1], G[2]);
+            }
         }
     }
 }
