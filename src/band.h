@@ -141,19 +141,19 @@ class Band
                                     dmatrix<double_complex>& phi__,
                                     dmatrix<double_complex>& hphi__);
 
-        void apply_h_o_fast_parallel(K_point* kp__,
-                                     std::vector<double> const& effective_potential__,
-                                     std::vector<double> const& pw_ekin__,
-                                     int N__,
-                                     int n__,
-                                     dmatrix<double_complex>& phi_tmp__,
-                                     dmatrix<double_complex>& phi_slab__,
-                                     dmatrix<double_complex>& hphi_slab__,
-                                     dmatrix<double_complex>& ophi_slab__,
-                                     mdarray<int, 1>& packed_mtrx_offset__,
-                                     mdarray<double_complex, 1>& d_mtrx_packed__,
-                                     mdarray<double_complex, 1>& q_mtrx_packed__,
-                                     mdarray<double_complex, 1>& kappa__);
+        void apply_h_o_parallel(K_point* kp__,
+                                std::vector<double> const& effective_potential__,
+                                std::vector<double> const& pw_ekin__,
+                                int N__,
+                                int n__,
+                                dmatrix<double_complex>& phi_tmp__,
+                                dmatrix<double_complex>& phi_slab__,
+                                dmatrix<double_complex>& hphi_slab__,
+                                dmatrix<double_complex>& ophi_slab__,
+                                mdarray<int, 1>& packed_mtrx_offset__,
+                                mdarray<double_complex, 1>& d_mtrx_packed__,
+                                mdarray<double_complex, 1>& q_mtrx_packed__,
+                                mdarray<double_complex, 1>& kappa__);
 
         void apply_h_o_fast_parallel_rs(K_point* kp__,
                                         std::vector<double> const& effective_potential__,

@@ -197,8 +197,8 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         {
             if (!itso.real_space_prj_)
             {
-                apply_h_o_fast_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, phi_tmp, phi_slab, hphi_slab, ophi_slab,
-                                        packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
+                apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin, N, n, phi_tmp, phi_slab, hphi_slab, ophi_slab,
+                                   packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed, kappa);
             }
             else
             {

@@ -54,7 +54,7 @@ void Band::residuals_parallel(int N__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        DUMP("effective zgemm with M, N, K: %6i %6i %6i for hpsi and opsi: %12.4f sec, %12.4f GFlops/rank\n",
+        DUMP("effective zgemm with M, N, K: %6i %6i %6i for hpsi and opsi: %12.4f sec, %12.4f GFlops/rank",
              kp__->num_gkvec(), num_bands__, N__, tval,
              2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
     }

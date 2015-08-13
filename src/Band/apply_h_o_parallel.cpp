@@ -2,23 +2,23 @@
 
 namespace sirius {
 
-void Band::apply_h_o_fast_parallel(K_point* kp__,
-                                   std::vector<double> const& effective_potential__,
-                                   std::vector<double> const& pw_ekin__,
-                                   int N__,
-                                   int n__,
-                                   dmatrix<double_complex>& phi_tmp__,
-                                   dmatrix<double_complex>& phi_slab__,
-                                   dmatrix<double_complex>& hphi_slab__,
-                                   dmatrix<double_complex>& ophi_slab__,
-                                   mdarray<int, 1>& packed_mtrx_offset__,
-                                   mdarray<double_complex, 1>& d_mtrx_packed__,
-                                   mdarray<double_complex, 1>& q_mtrx_packed__,
-                                   mdarray<double_complex, 1>& kappa__)
+void Band::apply_h_o_parallel(K_point* kp__,
+                              std::vector<double> const& effective_potential__,
+                              std::vector<double> const& pw_ekin__,
+                              int N__,
+                              int n__,
+                              dmatrix<double_complex>& phi_tmp__,
+                              dmatrix<double_complex>& phi_slab__,
+                              dmatrix<double_complex>& hphi_slab__,
+                              dmatrix<double_complex>& ophi_slab__,
+                              mdarray<int, 1>& packed_mtrx_offset__,
+                              mdarray<double_complex, 1>& d_mtrx_packed__,
+                              mdarray<double_complex, 1>& q_mtrx_packed__,
+                              mdarray<double_complex, 1>& kappa__)
 {
     PROFILE();
 
-    Timer t("sirius::Band::apply_h_o_fast_parallel", kp__->comm());
+    Timer t("sirius::Band::apply_h_o_parallel", kp__->comm());
 
     /* change data distribution from slab storage to slice or 2d block-cyclic */
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0, kp__->blacs_grid().context());

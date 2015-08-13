@@ -30,15 +30,15 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/add_non_local_contribution_serial.cpp \
        Band/add_non_local_contribution_parallel.cpp \
        Band/apply_h_o_serial.cpp \
-       Band.apply_h_serial.cpp \
+       Band/apply_h_serial.cpp \
+       Band/apply_h_o_parallel.cpp \
+       Band/apply_h_o_fast_parallel_rs.cpp \
        Band/diag_fv_pseudo_potential_exact_serial.cpp \
        Band/diag_fv_pseudo_potential_rmm_diis_serial.cpp \
        Band/diag_fv_pseudo_potential_chebyshev_serial.cpp \
        Band/diag_fv_pseudo_potential_chebyshev_parallel.cpp \
        Band/diag_fv_pseudo_potential_davidson_serial.cpp \
        Band/diag_fv_pseudo_potential_davidson_parallel.cpp \
-       Band/apply_h_o_fast_parallel.cpp \
-       Band/apply_h_o_fast_parallel_rs.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_serial.cpp \
        Band/residuals_parallel.cpp \

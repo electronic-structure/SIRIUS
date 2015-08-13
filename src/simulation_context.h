@@ -198,7 +198,7 @@ class Simulation_context
             if (!parameters_.full_potential())
             {
                 /* create FFT interface for coarse grid */
-                if (false)
+                if (true)
                 {
                     /* serial version */
                     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
