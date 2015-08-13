@@ -3,9 +3,9 @@
 namespace sirius {
 
 #ifdef __SCALAPACK
-void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
-                                                           double v0__,
-                                                           std::vector<double>& veff_it_coarse__)
+void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
+                                                      double v0__,
+                                                      std::vector<double>& veff_it_coarse__)
 {
     PROFILE();
 

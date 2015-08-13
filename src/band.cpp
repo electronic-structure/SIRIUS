@@ -1554,7 +1554,7 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
     auto& itso = parameters_.iterative_solver_input_section();
     if (itso.type_ == "davidson")
     {
-        diag_fv_pseudo_potential_davidson_fast_parallel(kp__, v0__, veff_it_coarse__);
+        diag_fv_pseudo_potential_davidson_parallel(kp__, v0__, veff_it_coarse__);
     }
     else if (itso.type_ == "chebyshev")
     {
@@ -1578,7 +1578,7 @@ void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
     auto& itso = parameters_.iterative_solver_input_section();
     if (itso.type_ == "exact")
     {
-        diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse__);
+        diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse__);
     }
     else if (itso.type_ == "davidson")
     {

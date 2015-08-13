@@ -202,7 +202,7 @@ class Band
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
 
-        void diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
+        void diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                                                              double v0__,
                                                              std::vector<double>& veff_it_coarse__);
 
@@ -220,7 +220,7 @@ class Band
                                  matrix<double_complex>& hphi__);
         
         /// Exact (not iterative) diagonalization of the Hamiltonian.
-        void diag_fv_pseudo_potential_serial_exact(K_point* kp__,
+        void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
                                                    std::vector<double>& veff_it_coarse__);
 
         void diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
