@@ -86,9 +86,6 @@ class K_point
         /// Full-diagonalization eigen vectors.
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
-        /// Position of the G vector (from the G+k set) inside the coarse FFT buffer.
-        std::vector<int> fft_index_coarse_;
-       
         /// First-variational states in "slice" storage.
         dmatrix<double_complex> fv_states_slice_;
 
@@ -159,8 +156,6 @@ class K_point
         int rank_row_;
 
         int num_ranks_row_;
-
-        //int num_ranks_;
 
         /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
         matrix<double_complex> beta_gk_t_;
@@ -248,6 +243,32 @@ class K_point
 
         /// Get the local list of occupied bands.
         occupied_bands_descriptor get_occupied_bands_list();
+
+        /// Generate beta-proectors for a block of atoms.
+        void generate_beta_gk(int num_atoms__,
+                              mdarray<double, 2>& atom_pos__,
+                              mdarray<int, 2> const& beta_desc__,
+                              matrix<double_complex>& beta_gk__);
+
+        void generate_beta_phi(int nbeta__,
+                               matrix<double_complex>& phi__,
+                               int nphi__,
+                               int offs__,
+                               matrix<double_complex>& beta_gk__,
+                               matrix<double_complex>& beta_phi__);
+
+        void add_non_local_contribution(int num_atoms__,
+                                        int num_beta__,
+                                        mdarray<int, 2> const& beta_desc__,
+                                        matrix<double_complex>& beta_gk__,
+                                        mdarray<double_complex, 1>& op_mtrx_packed__,
+                                        mdarray<int, 1> const& packed_mtrx_offset__,
+                                        matrix<double_complex>& beta_phi__,
+                                        matrix<double_complex>& op_phi__,
+                                        int nphi__,
+                                        int offs__,
+                                        double_complex alpha,
+                                        matrix<double_complex>& work__);
 
         /// Return G+k vector in fractional or Cartesian coordinates
         template <coordinates_t coord__>
@@ -405,11 +426,6 @@ class K_point
         inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
         {
             return spinor_wave_functions_[ispn__];
-        }
-
-        inline int const* fft_index_coarse() const
-        {
-            return &fft_index_coarse_[0];
         }
 
         inline vector3d<double> vk() const
@@ -642,32 +658,6 @@ class K_point
         {
             return (int)spl_gkvec_.local_size();
         }
-
-        /// Generate beta-proectors for a block of atoms.
-        void generate_beta_gk(int num_atoms__,
-                              mdarray<double, 2>& atom_pos__,
-                              mdarray<int, 2> const& beta_desc__,
-                              matrix<double_complex>& beta_gk__);
-
-        void generate_beta_phi(int nbeta__,
-                               matrix<double_complex>& phi__,
-                               int nphi__,
-                               int offs__,
-                               matrix<double_complex>& beta_gk__,
-                               matrix<double_complex>& beta_phi__);
-
-        void add_non_local_contribution(int num_atoms__,
-                                        int num_beta__,
-                                        mdarray<int, 2> const& beta_desc__,
-                                        matrix<double_complex>& beta_gk__,
-                                        mdarray<double_complex, 1>& op_mtrx_packed__,
-                                        mdarray<int, 1> const& packed_mtrx_offset__,
-                                        matrix<double_complex>& beta_phi__,
-                                        matrix<double_complex>& op_phi__,
-                                        int nphi__,
-                                        int offs__,
-                                        double_complex alpha,
-                                        matrix<double_complex>& work__);
 };
 
 }

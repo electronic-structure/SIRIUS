@@ -72,7 +72,7 @@ void Band::apply_h_local_serial(K_point* kp__,
                 timers(thread_id) = -omp_get_wtime();
                 
                 /* move fft index to GPU */
-                mdarray<int, 1> fft_index(const_cast<int*>(kp__->fft_index_coarse()), kp__->num_gkvec());
+                mdarray<int, 1> fft_index(const_cast<int*>(kp__->gkvec_coarse().index_map()), kp__->num_gkvec());
                 fft_index.allocate_on_device();
                 fft_index.copy_to_device();
 
@@ -176,7 +176,7 @@ void Band::apply_h_local_serial(K_point* kp__,
                 
                     if (!done)
                     {
-                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi__(0, i), thread_id);
+                        fft->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i), thread_id);
                         /* phi(G) -> phi(r) */
                         fft->transform(1, thread_id);
                         /* multiply by effective potential */
@@ -187,11 +187,11 @@ void Band::apply_h_local_serial(K_point* kp__,
                         if (in_place)
                         {
                             for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) *= pw_ekin__[igk];
-                            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id, 1.0);
+                            fft->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), thread_id, 1.0);
                         }
                         else
                         {
-                            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id);
+                            fft->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), thread_id);
                             for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
                         }
                     }
