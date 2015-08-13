@@ -6,7 +6,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        radial_solver.cpp sht.cpp \
        reciprocal_lattice.cpp step_function.cpp band.cpp potential.cpp \
        k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
-       band_pseudo_pot.cpp real_space_prj.cpp \
+       real_space_prj.cpp \
        Unit_cell/atom.cpp \
        Unit_cell/atom_type.cpp \
        Unit_cell/atom_symmetry_class.cpp \
@@ -27,7 +27,10 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/set_fv_h_o_parallel.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
+       Band/add_non_local_contribution_serial.cpp \
+       Band/add_non_local_contribution_parallel.cpp \
        Band/apply_h_o_serial.cpp \
+       Band.apply_h_serial.cpp \
        Band/diag_fv_pseudo_potential_exact_serial.cpp \
        Band/diag_fv_pseudo_potential_rmm_diis_serial.cpp \
        Band/diag_fv_pseudo_potential_chebyshev_serial.cpp \
