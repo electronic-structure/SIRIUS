@@ -37,7 +37,7 @@ void Band::apply_h_o_fast_parallel(K_point* kp__,
         splindex<block_cyclic> spl_phi(n__, kp__->num_ranks(), kp__->rank(), 1);
         if (spl_phi.local_size())
         {
-            apply_h_local_slice(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_tmp__.panel(), phi_tmp__.panel());
+            apply_h_local_serial(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_tmp__.panel(), phi_tmp__.panel());
         }
     }
     /* change back to slab data distribution */

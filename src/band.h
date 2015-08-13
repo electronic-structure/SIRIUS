@@ -212,12 +212,12 @@ class Band
         #endif
         
         /// Apply local part of Hamiltonian to a slice of wave-functions.
-        void apply_h_local_slice(K_point* kp__,
-                                 std::vector<double> const& effective_potential__,
-                                 std::vector<double> const& pw_ekin__,
-                                 int num_phi__,
-                                 matrix<double_complex> const& phi__,
-                                 matrix<double_complex>& hphi__);
+        void apply_h_local_serial(K_point* kp__,
+                                  std::vector<double> const& effective_potential__,
+                                  std::vector<double> const& pw_ekin__,
+                                  int num_phi__,
+                                  matrix<double_complex> const& phi__,
+                                  matrix<double_complex>& hphi__);
         
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
