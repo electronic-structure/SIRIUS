@@ -38,6 +38,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/apply_h_o_fast_parallel_rs.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_serial.cpp \
+       Band/residuals_parallel.cpp \
        Band/solve_sv.cpp \
        Band/diag_fv_full_potential.cpp \
        Potential/init.cpp \

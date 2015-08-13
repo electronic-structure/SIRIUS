@@ -291,8 +291,8 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                                           evec_full_tmp.at<GPU>(), evec_full_tmp.ld());
                         #endif
                     }
-                    residuals_fast_parallel(N, n, kp__, eval_tmp, evec_full_tmp, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
-                                            res_slab, h_diag, o_diag, res_norm, kappa);
+                    residuals_parallel(N, n, kp__, eval_tmp, evec_full_tmp, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
+                                       res_slab, h_diag, o_diag, res_norm, kappa);
                 }
             }
             else
@@ -300,13 +300,13 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                 /* here we first compute all residuals, and only then estimate their norm */
                 if (with_overlap)
                 {
-                    residuals_fast_parallel(N, num_bands, kp__, eval, evec_full, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
-                                            res_slab, h_diag, o_diag, res_norm, kappa);
+                    residuals_parallel(N, num_bands, kp__, eval, evec_full, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
+                                       res_slab, h_diag, o_diag, res_norm, kappa);
                 }
                 else
                 {
-                    residuals_fast_parallel(N, num_bands, kp__, eval, evec_full, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
-                                            res_slab, h_diag, o_diag, res_norm, kappa);
+                    residuals_parallel(N, num_bands, kp__, eval, evec_full, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
+                                       res_slab, h_diag, o_diag, res_norm, kappa);
                 }
 
                 for (int i = 0; i < num_bands; i++)
