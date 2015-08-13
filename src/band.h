@@ -265,18 +265,6 @@ class Band
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__);
 
-        //== void apply_h_o_real_space_serial(K_point* kp__, 
-        //==                                  std::vector<double> const& effective_potential__, 
-        //==                                  std::vector<double> const& pw_ekin__, 
-        //==                                  int N__,
-        //==                                  int n__,
-        //==                                  matrix<double_complex>& phi__,
-        //==                                  matrix<double_complex>& hphi__,
-        //==                                  matrix<double_complex>& ophi__,
-        //==                                  mdarray<int, 1>& packed_mtrx_offset__,
-        //==                                  mdarray<double_complex, 1>& d_mtrx_packed__,
-        //==                                  mdarray<double_complex, 1>& q_mtrx_packed__);
-
         void set_fv_h_o_serial(K_point* kp__,
                                int N__,
                                int n__,
@@ -304,25 +292,6 @@ class Band
                               std::vector<double>& res_norm__,
                               mdarray<double_complex, 1>& kappa__);
 
-        //void apply_h_ncpp_parallel(K_point* kp__,
-        //                           std::vector<double> const& effective_potential__,
-        //                           std::vector<double> const& pw_ekin__,
-        //                           dmatrix<double_complex>& phi__,
-        //                           dmatrix<double_complex>& hphi__,
-        //                           int num_atoms_in_block__,
-        //                           matrix<double_complex>& kappa__,
-        //                           matrix<double_complex> const& beta_pw_t__,
-        //                           matrix<double>& gkvec_row__,
-        //                           mdarray<int, 1>& packed_mtrx_offset__,
-        //                           mdarray<double_complex, 1>& d_mtrx_packed__);
-        
-        //void set_fv_h_o_ncpp_parallel(K_point* kp__,
-        //                              dmatrix<double_complex>& phi__,
-        //                              dmatrix<double_complex>& hphi__,
-        //                              dmatrix<double_complex>& h__,
-        //                              dmatrix<double_complex>& o__,
-        //                              mdarray<double_complex, 2>& kappa__);
-
         void add_nl_h_o_pw(K_point* kp__,
                            int n__,
                            matrix<double_complex>& phi__,
@@ -343,13 +312,6 @@ class Band
                            mdarray<double_complex, 1>& q_mtrx_packed__,
                            mdarray<double_complex, 1>& kappa__);
 
-        void generate_fv_states_pp(K_point* kp__,
-                                   int num_phi__,
-                                   dmatrix<double_complex>& evec__,
-                                   dmatrix<double_complex>& phi__,
-                                   dmatrix<double_complex>& psi__,
-                                   matrix<double_complex>& kappa__);
-        
         void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
                                                        std::vector<double> const& veff_it_coarse__);
 
