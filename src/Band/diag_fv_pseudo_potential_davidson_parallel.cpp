@@ -215,7 +215,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         }
 
         /* set H and O for the variational subspace */
-        set_fv_h_o_fast_parallel(N, n, kp__, phi_slab, hphi_slab, ophi_slab, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
+        set_fv_h_o_parallel(N, n, kp__, phi_slab, hphi_slab, ophi_slab, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
 
         /* increase size of the variation space */
         N += n;

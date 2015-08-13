@@ -171,17 +171,17 @@ class Band
                                         mdarray<double_complex, 1>& q_mtrx_packed__,
                                         mdarray<double_complex, 1>& kappa__);
 
-        void set_fv_h_o_fast_parallel(int N__,
-                                      int n__,
-                                      K_point* kp__,
-                                      dmatrix<double_complex>& phi_slab__,
-                                      dmatrix<double_complex>& hphi_slab__,
-                                      dmatrix<double_complex>& ophi_slab__,
-                                      dmatrix<double_complex>& h__,
-                                      dmatrix<double_complex>& o__,
-                                      dmatrix<double_complex>& h_old__,
-                                      dmatrix<double_complex>& o_old__,
-                                      mdarray<double_complex, 1>& kappa__);
+        void set_fv_h_o_parallel(int N__,
+                                 int n__,
+                                 K_point* kp__,
+                                 dmatrix<double_complex>& phi_slab__,
+                                 dmatrix<double_complex>& hphi_slab__,
+                                 dmatrix<double_complex>& ophi_slab__,
+                                 dmatrix<double_complex>& h__,
+                                 dmatrix<double_complex>& o__,
+                                 dmatrix<double_complex>& h_old__,
+                                 dmatrix<double_complex>& o_old__,
+                                 mdarray<double_complex, 1>& kappa__);
 
         void residuals_fast_parallel(int N__,
                                      int num_bands__,
