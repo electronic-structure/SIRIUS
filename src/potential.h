@@ -458,8 +458,8 @@ class Potential
         
         void allocate()
         {
-            effective_potential_->allocate(true, true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate(true, true);
+            effective_potential_->allocate(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate(true);
         }
 
         inline double vh_el(int ia)

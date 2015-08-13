@@ -61,8 +61,8 @@
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
 
-//== #define __PROFILE
-//== #define __LOG_FUNC
+#define __PROFILE
+#define __LOG_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"

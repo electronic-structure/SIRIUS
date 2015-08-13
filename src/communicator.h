@@ -218,6 +218,7 @@ class Communicator
         template <typename T>
         void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
         {
+            // TODO: pack in one call
             std::vector<int> counts(size());
             counts[rank()] = count__;
             CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, type_wrapper<int>::mpi_type_id(), mpi_comm_));

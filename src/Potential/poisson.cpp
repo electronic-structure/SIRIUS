@@ -272,6 +272,8 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
 
 void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {
+    PROFILE();
+
     Timer t("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */

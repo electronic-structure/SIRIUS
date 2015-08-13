@@ -186,8 +186,16 @@ class Simulation_context
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
             /* create FFT interface */
-            fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                  parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
+            if (false)
+            {
+                fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
+                                      parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
+            }
+            else
+            {
+                fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
+                                      1, Platform::max_num_threads(), mpi_grid_.communicator(1 << _dim_row_));
+            }
             
             gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_, true);
 

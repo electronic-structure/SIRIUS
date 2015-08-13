@@ -218,6 +218,8 @@ class Density
         /// Add k-point contribution to the interstitial density and magnetization
         void add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__);
 
+        void add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_descriptor const& occupied_bands__);
+
         #ifdef __GPU
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
         #endif
@@ -332,8 +334,8 @@ class Density
 
         void allocate()
         {
-            rho_->allocate(true, true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true, true);
+            rho_->allocate(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true);
         }
 
         void mixer_input()

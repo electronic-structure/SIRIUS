@@ -19,7 +19,7 @@ Density::Density(Simulation_context& ctx__)
     if (!parameters_.full_potential())
     {
         rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
-        rho_pseudo_core_->allocate(false, true);
+        rho_pseudo_core_->allocate(false);
         rho_pseudo_core_->zero();
 
         generate_pseudo_core_charge_density();

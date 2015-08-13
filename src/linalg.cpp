@@ -451,8 +451,6 @@ template <>
 void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
                          dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
 {
-    PROFILE();
-
     ia++; ja++;
     ib++; jb++;
     FORTRAN(pzgemr2d)(&m, &n, A.at<CPU>(), &ia, &ja, A.descriptor(), B.at<CPU>(), &ib, &jb, B.descriptor(), &gcontext);

@@ -21,6 +21,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Density/generate_valence.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \
+       Density/generate_pseudo_core_charge_density.cpp \
        Band/apply_h_local_serial.cpp \
        Band/apply_h_local_parallel.cpp \
        Band/set_fv_h_o_serial.cpp \
@@ -61,7 +62,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/init_gkvec.cpp \
        K_point/initialize.cpp \
        K_point/k_point.cpp \
-       K_point/test_fv_states.cpp
+       K_point/test_fv_states.cpp \
+       K_point/get_occupied_bands_list.cpp
 
 OBJ = $(SRC:.cpp=.o) 
 

@@ -78,18 +78,18 @@ Potential::Potential(Simulation_context& ctx__)
         effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
     
     hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
-    hartree_potential_->allocate(false, true);
+    hartree_potential_->allocate(false);
     
     xc_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    xc_potential_->allocate(false, false);
+    xc_potential_->allocate(false);
     
     xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    xc_energy_density_->allocate(false, false);
+    xc_energy_density_->allocate(false);
 
     if (!parameters_.full_potential())
     {
         local_potential_ = new Periodic_function<double>(ctx_, 0);
-        local_potential_->allocate(false, true);
+        local_potential_->allocate(false);
         local_potential_->zero();
 
         generate_local_potential();
@@ -372,7 +372,7 @@ Potential::~Potential()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->size(); ir++)
-        fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * ctx_.step_function()->theta_r(ir);
+        fft_->buffer(ir) = effective_potential()->f_it(ir) * ctx_.step_function()->theta_r(ir);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
@@ -395,7 +395,7 @@ void Potential::generate_pw_coefs()
         for (int i = 0; i < parameters_.num_mag_dims(); i++)
         {
             for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * ctx_.step_function()->theta_r(ir);
+                fft_->buffer(ir) = effective_magnetic_field(i)->f_it(ir) * ctx_.step_function()->theta_r(ir);
     
             fft_->transform(-1);
             fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
@@ -465,6 +465,8 @@ void Potential::generate_pw_coefs()
 void Potential::generate_effective_potential(Periodic_function<double>* rho, 
                                              Periodic_function<double>* magnetization[3])
 {
+    PROFILE();
+
     Timer t("sirius::Potential::generate_effective_potential");
     
     /* zero effective potential and magnetic field */
@@ -490,6 +492,8 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
                                              Periodic_function<double>* rho_core, 
                                              Periodic_function<double>* magnetization[3])
 {
+    PROFILE();
+
     Timer t("sirius::Potential::generate_effective_potential", comm_);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
@@ -505,7 +509,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 
         /* create temporary function for rho + rho_core */
         Periodic_function<double>* rhovc = new Periodic_function<double>(ctx_, 0, false);
-        rhovc->allocate(false, true);
+        rhovc->allocate(false);
         rhovc->zero();
         rhovc->add(rho);
         rhovc->add(rho_core);

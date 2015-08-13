@@ -11,13 +11,16 @@ void Density::generate_valence_density_it(K_set& ks)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         auto occupied_bands = ks[ik]->get_occupied_bands_list();
-        add_k_point_contribution_it(ks[ik], occupied_bands);
+        //add_k_point_contribution_it(ks[ik], occupied_bands);
+        add_k_point_contribution_it_pfft(ks[ik], occupied_bands);
     }
+
+    STOP();
     
     /* reduce arrays; assume that each rank did it's own fraction of the density */
-    ctx_.comm().allreduce(&rho_->f_it<global>(0), fft_->size()); 
+    ctx_.comm().allreduce(&rho_->f_it(0), fft_->size()); 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        ctx_.comm().allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
+        ctx_.comm().allreduce(&magnetization_[j]->f_it(0), fft_->size()); 
 }
 
 };

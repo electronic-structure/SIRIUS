@@ -69,10 +69,6 @@ class Profiler
                 printf("[%s]\n", it->c_str());
                 t++;
             }
-            //for (int i = 0; i < (int)call_stack().size(); i++)
-            //{
-            //    printf("%s\n", call_stack()[i].c_str());
-            //}
         }
 };
 

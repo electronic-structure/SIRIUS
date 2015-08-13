@@ -4,6 +4,8 @@ namespace sirius {
 
 void Potential::generate_local_potential()
 {
+    PROFILE();
+
     Timer t("sirius::Potential::generate_local_potential");
 
     auto rl = ctx_.reciprocal_lattice();
@@ -55,12 +57,12 @@ void Potential::generate_local_potential()
 
     int ld = unit_cell_.num_atom_types();
     comm_.allgather(vloc_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
-                                 static_cast<int>(ld * spl_gshells.local_size()));
+                    static_cast<int>(ld * spl_gshells.local_size()));
 
     auto v = rl->make_periodic_function(vloc_radial_integrals, ctx_.gvec().num_gvec());
-    fft_->input(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &v[0]); 
+    fft_->input(ctx_.gvec().num_gvec_loc(), ctx_.gvec().index_map(), &v[ctx_.gvec().gvec_offset()]); 
     fft_->transform(1);
-    fft_->output(&local_potential_->f_it<global>(0));
+    fft_->output(&local_potential_->f_it(0));
 }
 
 };
