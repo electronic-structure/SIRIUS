@@ -326,6 +326,13 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
     
     mdarray<double_complex, 2> psi_it(fft_->local_size(), num_spins);
 
+    splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
+
+    assert(kp__->spinor_wave_functions(0).num_rows_local() == (int)spl_gkvec.local_size());
+
+    auto a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
+    std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
+
     for (int i = 0; i < occupied_bands__.num_occupied_bands_local(); i++)
     {
         int j    = occupied_bands__.idx_bnd_glob[i];
@@ -358,8 +365,13 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
         {
             /* transform only single compopnent */
             int ispn = (j < num_fv_states) ? 0 : 1;
-            fft_->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
-                       kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc));
+
+            kp__->comm_row().alltoall(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
+                                      &a2a.sendcounts[0], &a2a.sdispls[0],
+                                      &buf[0],
+                                      &a2a.recvcounts[0], &a2a.rdispls[0]);
+
+            fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
             fft_->transform(1);
             fft_->output(&psi_it(0, ispn));
 

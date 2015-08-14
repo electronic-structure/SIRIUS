@@ -92,9 +92,6 @@ class Periodic_function
         /// Global muffin-tin array 
         mdarray<T, 3> f_mt_;
 
-        /// local part of interstitial array
-        //mdarray<T, 1> f_it_local_;
-        
         /// Interstitial part of the function.
         mdarray<T, 1> f_it_;
 
@@ -118,12 +115,6 @@ class Periodic_function
             }
         }
         
-        ///// Set pointer to local part of interstitial array
-        //void set_local_it_ptr()
-        //{
-        //    f_it_local_ = mdarray<T, 1>(&f_it_(spl_fft_size_.global_offset()), spl_fft_size_.local_size());
-        //}
-
     public:
 
         /// Constructor
@@ -194,35 +185,12 @@ class Periodic_function
         inline T& f_it(int ir)
         {
             return f_it_(ir);
-
-            //switch (index_domain)
-            //{
-            //    case local:
-            //    {
-            //        return f_it_local_(ir);
-            //    }
-            //    case global:
-            //    {
-            //        return f_it_(ir);
-            //    }
-            //}
         }
 
         //template <index_domain_t index_domain>
         inline T const& f_it(int ir) const
         {
             return f_it_(ir);
-            //switch (index_domain)
-            //{
-            //    case local:
-            //    {
-            //        return f_it_local_(ir);
-            //    }
-            //    case global:
-            //    {
-            //        return f_it_(ir);
-            //    }
-            //}
         }
         
         inline complex_t& f_pw(int ig)

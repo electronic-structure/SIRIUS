@@ -187,12 +187,12 @@ void K_point::initialize()
                                                         blacs_grid_, bs, bs);
             fv_eigen_vectors_.allocate(alloc_mode);
 
-            fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-                                                 blacs_grid_, bs, bs);
+            fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_, bs, bs);
         }
 
         if (!parameters_.full_potential())
         {
+            /* in case of pseudopotential wave-functions are distributed in slabs */
             fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
                                                  blacs_grid_slab_,
                                                  (int)splindex_base::block_size(wf_size(), num_ranks()), 1);
@@ -218,7 +218,6 @@ void K_point::initialize()
                                                        blacs_grid_slice_, 1, 1);
         }
 
-        /* assume slice storage of spinor wave functions */
         if (parameters_.need_sv())
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
@@ -226,7 +225,17 @@ void K_point::initialize()
         }
         else
         {
-            spinor_wave_functions_[0] = dmatrix<double_complex>(fv_states_slice_.at<CPU>(), wf_size(), nst, blacs_grid_slice_, 1, 1);
+            if (ctx_.fft()->parallel())
+            {
+                /* assume 2d block-cyclic distribution */
+                int bs = (int)splindex_base::block_size(num_gkvec(), num_ranks_row());
+                spinor_wave_functions_[0] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_, bs, 1);
+            }
+            else
+            {
+                /* assume slice storage of spinor wave functions */
+                spinor_wave_functions_[0] = dmatrix<double_complex>(fv_states_slice_.at<CPU>(), wf_size(), nst, blacs_grid_slice_, 1, 1);
+            }
         }
     }
     else  /* use full diagonalziation */

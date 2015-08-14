@@ -19,7 +19,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = (int)ks.spl_num_kpoints(ikloc);
-        auto occupied_bands = ks[ik]->get_occupied_bands_list();
+        auto kp = ks[ik];
+        auto occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
         add_k_point_contribution<ultrasoft_pseudopotential>(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
     ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
@@ -146,9 +147,10 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        auto occupied_bands = ks[ik]->get_occupied_bands_list();
+        auto kp = ks[ik];
+        auto occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
 
-        add_k_point_contribution<ultrasoft_pseudopotential>(ks[ik], occupied_bands, pp_complex_density_matrix);
+        add_k_point_contribution<ultrasoft_pseudopotential>(kp, occupied_bands, pp_complex_density_matrix);
     }
 
     ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());

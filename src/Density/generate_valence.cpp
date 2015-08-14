@@ -26,24 +26,6 @@ void Density::generate_valence(K_set& ks__)
         warning_local(__FILE__, __LINE__, s);
     }
     
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        for (int ikloc = 0; ikloc < (int)ks__.spl_num_kpoints().local_size(); ikloc++)
-        {
-            int ik = ks__.spl_num_kpoints(ikloc);
-            auto kp = ks__[ik];
-            auto occupied_bands = kp->get_occupied_bands_list();
-            
-            if (kp->num_ranks() > 1)
-            {
-                linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                                    kp->fv_states(), 0, 0,
-                                    kp->fv_states_slice(), 0, 0,
-                                    kp->blacs_grid().context());
-            }
-        }
-    }
-
     /* zero density and magnetization */
     zero();
 

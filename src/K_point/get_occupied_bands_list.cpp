@@ -2,18 +2,22 @@
 
 namespace sirius {
 
-occupied_bands_descriptor K_point::get_occupied_bands_list()
+occupied_bands_descriptor K_point::get_occupied_bands_list(Communicator const& comm__)
 {
     /* explicitly index up and dn bands in case of spin-collinear case */
     int ns = (parameters_.num_mag_dims() == 1) ? 2 : 1;
+    /* this is how the spinor wave functions are counted */
+    int nb = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
 
     occupied_bands_descriptor occupied_bands;
 
+    splindex<block_cyclic> spl_nb(nb, comm__.size(), comm__.rank(), 1);
+
     for (int p = 0; p < ns ; p++)
     {
-        for (int jloc = 0; jloc < spinor_wave_functions_[p].num_cols_local(); jloc++)
+        for (int jloc = 0; jloc < (int)spl_nb.local_size(); jloc++)
         {
-            int j = spinor_wave_functions_[p].icol(jloc) + p * parameters_.num_fv_states();
+            int j = (int)spl_nb[jloc] + p * parameters_.num_fv_states();
             double w = band_occupancy(j) * weight();
             if (w > 1e-14)
             {
@@ -25,7 +29,7 @@ occupied_bands_descriptor K_point::get_occupied_bands_list()
     }
 
     occupied_bands.num_occupied_bands_ = (int)occupied_bands.idx_bnd_loc.size();
-    comm().allreduce(&occupied_bands.num_occupied_bands_, 1);
+    comm__.allreduce(&occupied_bands.num_occupied_bands_, 1);
 
     return occupied_bands;
 }

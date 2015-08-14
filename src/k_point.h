@@ -242,7 +242,7 @@ class K_point
         void test_spinor_wave_functions(int use_fft);
 
         /// Get the local list of occupied bands.
-        occupied_bands_descriptor get_occupied_bands_list();
+        occupied_bands_descriptor get_occupied_bands_list(Communicator const& comm__);
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,

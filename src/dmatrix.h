@@ -395,7 +395,6 @@ class dmatrix
         {
             return bs_col_;
         }
-
 };
 
 #endif // __DMATRIX_H__
