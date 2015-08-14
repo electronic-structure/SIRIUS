@@ -32,10 +32,13 @@ void Density::generate_valence_density_it(K_set& ks)
                                     kp->blacs_grid().context());
             }
 
-            linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                                kp->fv_states(), 0, 0,
-                                kp->spinor_wave_functions(0), 0, 0,
-                                kp->blacs_grid().context());
+            if (fft_->parallel())
+            {
+                linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+                                    kp->fv_states(), 0, 0,
+                                    kp->spinor_wave_functions(0), 0, 0,
+                                    kp->blacs_grid().context());
+            }
         }
 
         if (fft_->parallel())
