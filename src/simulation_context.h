@@ -186,7 +186,7 @@ class Simulation_context
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
             /* create FFT interface */
-            if (false)
+            if (parameters_.full_potential())
             {
                 fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
                                       parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
@@ -206,7 +206,7 @@ class Simulation_context
             if (!parameters_.full_potential())
             {
                 /* create FFT interface for coarse grid */
-                if (true)
+                if (parameters_.full_potential())
                 {
                     /* serial version */
                     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
