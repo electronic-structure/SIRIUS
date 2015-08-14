@@ -48,6 +48,12 @@ class FFT3D<CPU>
 
         Communicator comm_;
 
+        BLACS_grid blacs_grid_slab_;
+        BLACS_grid blacs_grid_slice_;
+
+        dmatrix<double_complex> data_slab_;
+        dmatrix<double_complex> data_slice_;
+
         /// Size of each dimension.
         int grid_size_[3];
 
@@ -112,7 +118,9 @@ class FFT3D<CPU>
               Communicator const& comm__)
             : num_fft_workers_(num_fft_workers__),
               num_fft_threads_(num_fft_threads__),
-              comm_(comm__)
+              comm_(comm__),
+              blacs_grid_slab_(comm_, comm_.size(), 1),
+              blacs_grid_slice_(comm_, 1, comm_.size())
         {
             Timer t("sirius::FFT3D<CPU>::FFT3D");
             for (int i = 0; i < 3; i++)
@@ -122,6 +130,10 @@ class FFT3D<CPU>
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
+
+            data_slab_ = dmatrix<double_complex>(grid_size_[2], grid_size_[0] * grid_size_[1], blacs_grid_slab_, 
+                                                 (int)splindex_base::block_size(grid_size_[2], comm_.size()), 1);
+            data_slice_ = dmatrix<double_complex>(grid_size_[2], grid_size_[0] * grid_size_[1], blacs_grid_slice_, 1, 1);
             
             fftw_plan_with_nthreads(num_fft_workers_);
 
@@ -147,6 +159,8 @@ class FFT3D<CPU>
                 offset_z_ = 0;
             }
 
+            assert(data_slab_.num_rows_local() == local_size_z_);
+
             fftw_buffer_   = std::vector<double_complex*>(num_fft_threads_);
             plan_backward_ = std::vector<fftw_plan>(num_fft_threads_);
             plan_forward_  = std::vector<fftw_plan>(num_fft_threads_);
@@ -159,14 +173,14 @@ class FFT3D<CPU>
                 {
                     #ifdef __FFTW_MPI
                     plan_backward_[i] = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), 
-                                                            (fftw_complex*)fftw_buffer_[i], 
-                                                            (fftw_complex*)fftw_buffer_[i],
-                                                            comm_.mpi_comm(), 1, FFTW_ESTIMATE);
+                                                             (fftw_complex*)fftw_buffer_[i], 
+                                                             (fftw_complex*)fftw_buffer_[i],
+                                                             comm_.mpi_comm(), FFTW_BACKWARD, FFTW_ESTIMATE);
 
                     plan_forward_[i] = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), 
-                                                           (fftw_complex*)fftw_buffer_[i], 
-                                                           (fftw_complex*)fftw_buffer_[i], comm_.mpi_comm(),
-                                                           -1, FFTW_ESTIMATE);
+                                                            (fftw_complex*)fftw_buffer_[i], 
+                                                            (fftw_complex*)fftw_buffer_[i],
+                                                            comm_.mpi_comm(), FFTW_FORWARD, FFTW_ESTIMATE);
 
                     #else
                     TERMINATE("not compiled with MPI support");
@@ -176,11 +190,11 @@ class FFT3D<CPU>
                 {
                     plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                          (fftw_complex*)fftw_buffer_[i], 
-                                                         (fftw_complex*)fftw_buffer_[i], 1, FFTW_ESTIMATE);
+                                                         (fftw_complex*)fftw_buffer_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
 
                     plan_forward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                         (fftw_complex*)fftw_buffer_[i], 
-                                                        (fftw_complex*)fftw_buffer_[i], -1, FFTW_ESTIMATE);
+                                                        (fftw_complex*)fftw_buffer_[i], FFTW_FORWARD, FFTW_ESTIMATE);
                 }
             }
             fftw_plan_with_nthreads(1);
@@ -218,6 +232,75 @@ class FFT3D<CPU>
                     error_local(__FILE__, __LINE__, "wrong FFT direction");
                 }
             }
+        }
+
+        void transform_custom(int direction, mdarray<int, 2> const& xy_mask__)
+        {
+            assert(direction == 1);
+
+            int n = 0;
+            for (int x = 0; x < grid_size_[0]; x++)
+            {
+                for (int y = 0; y < grid_size_[1]; y++)
+                {
+                    if (xy_mask__(x, y))
+                    {
+                        for (int z = 0; z < local_size_z_; z++)
+                            data_slab_(z, n) = fftw_buffer_[0][x + y * grid_size_[0] + z * grid_size_[0] * grid_size_[1]];
+                    }
+                    n++;
+                }
+            }
+
+            linalg<CPU>::gemr2d(grid_size_[2], n, data_slab_, 0, 0, data_slice_, 0, 0, blacs_grid_slab_.context());
+
+            double_complex* buf;
+            fftw_plan p;
+            buf = (double_complex*)fftw_malloc(sizeof(fftw_complex) * grid_size_[2]);
+            
+            p = fftw_plan_dft_1d(grid_size_[2], (fftw_complex*)buf, (fftw_complex*)buf, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+            splindex<block_cyclic> spl_n(n, comm_.size(), comm_.rank(), 1);
+
+            for (int i = 0; i < (int)spl_n.local_size(); i++)
+            {
+                memcpy(buf, &data_slice_(0, i), grid_size_[2] * sizeof(double_complex));
+                fftw_execute(p);
+                memcpy(&data_slice_(0, i), buf, grid_size_[2] * sizeof(double_complex));
+            }
+
+            fftw_destroy_plan(p);
+            fftw_free(buf);
+
+            linalg<CPU>::gemr2d(grid_size_[2], n, data_slice_, 0, 0, data_slab_, 0, 0, blacs_grid_slice_.context());
+
+            n = 0;
+            for (int x = 0; x < grid_size_[0]; x++)
+            {
+                for (int y = 0; y < grid_size_[1]; y++)
+                {
+                    if (xy_mask__(x, y))
+                    {
+                        for (int z = 0; z < local_size_z_; z++)
+                            fftw_buffer_[0][x + y * grid_size_[0] + z * grid_size_[0] * grid_size_[1]] = data_slab_(z, n);
+                    }
+                    n++;
+                }
+            }
+
+            buf = (double_complex*)fftw_malloc(sizeof(fftw_complex) * grid_size_[0] * grid_size_[1]);
+            
+            p = fftw_plan_dft_2d(grid_size_[1], grid_size_[0], (fftw_complex*)buf, (fftw_complex*)buf, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+            for (int i = 0; i < local_size_z_; i++)
+            {
+                memcpy(buf, &fftw_buffer_[0][i * grid_size_[0] * grid_size_[1]], sizeof(fftw_complex) * grid_size_[0] * grid_size_[1]);
+                fftw_execute(p);
+                memcpy(&fftw_buffer_[0][i * grid_size_[0] * grid_size_[1]], buf, sizeof(fftw_complex) * grid_size_[0] * grid_size_[1]);
+            }
+                
+            fftw_destroy_plan(p);
+            fftw_free(buf);
         }
 
         template<typename T>
@@ -376,6 +459,8 @@ class Gvec
 
         mdarray<int, 3> index_by_gvec_;
 
+        mdarray<int, 2> xy_mask_;
+
         Gvec(Gvec const& src__) = delete;
 
         Gvec& operator=(Gvec const& src__) = delete;
@@ -394,6 +479,9 @@ class Gvec
             : fft_(fft__),
               lattice_vectors_(M__)
         {
+            xy_mask_ = mdarray<int, 2>(fft_->size(0), fft_->size(1));
+            xy_mask_.zero();
+
             /* find local number of G-vectors for each slab of FFT buffer */
             std::vector< vector3d<int> > pos;
             for (int k = 0; k < fft_->local_size_z(); k++)
@@ -407,10 +495,15 @@ class Gvec
                         /* take G+q */
                         auto gq = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q__);
 
-                        if (gq.length() <= Gmax__) pos.push_back(vector3d<int>(i, j, k));
+                        if (gq.length() <= Gmax__)
+                        {
+                            pos.push_back(vector3d<int>(i, j, k));
+                            xy_mask_(i, j) = 1;
+                        }
                     }
                 }
             }
+            fft_->comm().allreduce<int, op_max>(xy_mask_.at<CPU>(), (int)xy_mask_.size());
 
             /* get total number of G-vectors */
             num_gvec_loc_ = (int)pos.size();
@@ -574,6 +667,11 @@ class Gvec
         inline std::vector<int> const& counts() const
         {
             return gvec_counts_;
+        }
+
+        mdarray<int, 2> const& xy_mask() const
+        {
+            return xy_mask_;
         }
 };
 
