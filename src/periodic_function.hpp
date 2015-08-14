@@ -35,8 +35,6 @@ Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
       angular_domain_size_(angular_domain_size__),
       num_gvec_(0)
 {
-    //spl_fft_size_ = splindex<block>(fft_->size(), comm_.size(), comm_.rank());
-    
     if (alloc_pw__)
     {
         num_gvec_ = gvec_.num_gvec();
@@ -173,7 +171,6 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
     {
         for (int irloc = 0; irloc < fft_->local_size(); irloc++)
         {
-            //int ir = (int)spl_fft_size_[irloc];
             it_val += f_it_(irloc) * step_function_->theta_r(irloc);
         }
     }
@@ -276,38 +273,3 @@ size_t Periodic_function<T>::unpack(T const* array__)
     return n;
 }
 
-//== template <typename T>
-//== T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
-//== {
-//==     auto fft = parameters_.fft();
-//==     splindex<block> spl_fft_size(fft->size(), parameters_.comm().size(), parameters_.comm().rank());
-//== 
-//==     T result = 0.0;
-//== 
-//==     if (parameters_.step_function() == nullptr)
-//==     {
-//==         for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
-//==             result += type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc);
-//==     }
-//==     else
-//==     {
-//==         for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
-//==         {
-//==             int ir = (int)spl_fft_size[irloc];
-//==             result += type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc) * 
-//==                       parameters_.step_function(ir);
-//==         }
-//==     }
-//==             
-//==     result *= (unit_cell_.omega() / fft->size());
-//==     
-//==     if (parameters_.unit_cell()->full_potential())
-//==     {
-//==         for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
-//==             result += inner(f1->f_mt(ialoc), f2->f_mt(ialoc));
-//==     }
-//== 
-//==     parameters_.comm().allreduce(&result, 1);
-//== 
-//==     return result;
-//== }
