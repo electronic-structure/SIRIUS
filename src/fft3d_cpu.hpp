@@ -68,12 +68,19 @@ class FFT3D<CPU>
         
         /// Backward transformation plan for each thread
         std::vector<fftw_plan> plan_backward_;
+
+        std::vector<fftw_plan> plan_backward_z_;
+
+        std::vector<fftw_plan> plan_backward_xy_;
         
         /// Forward transformation plan for each thread
         std::vector<fftw_plan> plan_forward_;
     
         /// In/out buffer for each thread
         std::vector<double_complex*> fftw_buffer_;
+
+        std::vector<double_complex*> fftw_buffer_z_;
+        std::vector<double_complex*> fftw_buffer_xy_;
         
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
@@ -122,6 +129,8 @@ class FFT3D<CPU>
               blacs_grid_slab_(comm_, comm_.size(), 1),
               blacs_grid_slice_(comm_, 1, comm_.size())
         {
+            PROFILE();
+
             Timer t("sirius::FFT3D<CPU>::FFT3D");
             for (int i = 0; i < 3; i++)
             {
@@ -132,8 +141,8 @@ class FFT3D<CPU>
             }
 
             data_slab_ = dmatrix<double_complex>(grid_size_[2], grid_size_[0] * grid_size_[1], blacs_grid_slab_, 
-                                                 (int)splindex_base::block_size(grid_size_[2], comm_.size()), 1);
-            data_slice_ = dmatrix<double_complex>(grid_size_[2], grid_size_[0] * grid_size_[1], blacs_grid_slice_, 1, 1);
+                                                 (int)splindex_base::block_size(grid_size_[2], comm_.size()), 8);
+            data_slice_ = dmatrix<double_complex>(grid_size_[2], grid_size_[0] * grid_size_[1], blacs_grid_slice_, 1, 8);
             
             fftw_plan_with_nthreads(num_fft_workers_);
 
@@ -198,6 +207,25 @@ class FFT3D<CPU>
                 }
             }
             fftw_plan_with_nthreads(1);
+
+
+
+            fftw_buffer_z_    = std::vector<double_complex*>(num_fft_workers_);
+            fftw_buffer_xy_   = std::vector<double_complex*>(num_fft_workers_);
+            plan_backward_z_  = std::vector<fftw_plan>(num_fft_workers_);
+            plan_backward_xy_ = std::vector<fftw_plan>(num_fft_workers_);
+
+            for (int i = 0; i < num_fft_workers_; i++)
+            {
+                fftw_buffer_z_[i] = (double_complex*)fftw_malloc(size(2) * sizeof(double_complex));
+                fftw_buffer_xy_[i] = (double_complex*)fftw_malloc(size(0) * size(1) * sizeof(double_complex));
+
+                plan_backward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i], 
+                                                       (fftw_complex*)fftw_buffer_z_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+                
+                plan_backward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i], 
+                                                        (fftw_complex*)fftw_buffer_xy_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+            }
         }
 
         ~FFT3D()
@@ -207,6 +235,14 @@ class FFT3D<CPU>
                 fftw_free(fftw_buffer_[i]);
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
+            }
+
+            for (int i = 0; i < num_fft_workers_; i++)
+            {
+                fftw_free(fftw_buffer_z_[i]);
+                fftw_free(fftw_buffer_xy_[i]);
+                fftw_destroy_plan(plan_backward_z_[i]);
+                fftw_destroy_plan(plan_backward_xy_[i]);
             }
         }
 
@@ -238,69 +274,77 @@ class FFT3D<CPU>
         {
             assert(direction == 1);
 
+            int size_xy = size(0) * size(1);
+
+            Timer t0("fft|load_col");
             int n = 0;
-            for (int x = 0; x < grid_size_[0]; x++)
+            for (int x = 0; x < size(0); x++)
             {
-                for (int y = 0; y < grid_size_[1]; y++)
+                for (int y = 0; y < size(1); y++)
                 {
                     if (xy_mask__(x, y))
                     {
                         for (int z = 0; z < local_size_z_; z++)
-                            data_slab_(z, n) = fftw_buffer_[0][x + y * grid_size_[0] + z * grid_size_[0] * grid_size_[1]];
+                            data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
                     }
                     n++;
                 }
             }
+            t0.stop();
 
-            linalg<CPU>::gemr2d(grid_size_[2], n, data_slab_, 0, 0, data_slice_, 0, 0, blacs_grid_slab_.context());
+            Timer t1("fft|swap_col");
+            linalg<CPU>::gemr2d(size(2), n, data_slab_, 0, 0, data_slice_, 0, 0, blacs_grid_slab_.context());
+            t1.stop();
 
-            double_complex* buf;
-            fftw_plan p;
-            buf = (double_complex*)fftw_malloc(sizeof(fftw_complex) * grid_size_[2]);
+            Timer t2("fft|transform_z");
+            splindex<block_cyclic> spl_n(n, comm_.size(), comm_.rank(), 8);
             
-            p = fftw_plan_dft_1d(grid_size_[2], (fftw_complex*)buf, (fftw_complex*)buf, FFTW_BACKWARD, FFTW_ESTIMATE);
-
-            splindex<block_cyclic> spl_n(n, comm_.size(), comm_.rank(), 1);
-
-            for (int i = 0; i < (int)spl_n.local_size(); i++)
+            #pragma omp parallel num_threads(num_fft_workers_)
             {
-                memcpy(buf, &data_slice_(0, i), grid_size_[2] * sizeof(double_complex));
-                fftw_execute(p);
-                memcpy(&data_slice_(0, i), buf, grid_size_[2] * sizeof(double_complex));
+                int tid = omp_get_thread_num();
+                
+                #pragma omp for
+                for (int i = 0; i < (int)spl_n.local_size(); i++)
+                {
+                    memcpy(fftw_buffer_z_[tid], &data_slice_(0, i), size(2) * sizeof(double_complex));
+                    fftw_execute(plan_backward_z_[tid]);
+                    memcpy(&data_slice_(0, i), fftw_buffer_z_[tid], size(2) * sizeof(double_complex));
+                }
             }
+            t2.stop();
 
-            fftw_destroy_plan(p);
-            fftw_free(buf);
-
-            linalg<CPU>::gemr2d(grid_size_[2], n, data_slice_, 0, 0, data_slab_, 0, 0, blacs_grid_slice_.context());
+            Timer t3("fft|unload_and_swap_col");
+            linalg<CPU>::gemr2d(size(2), n, data_slice_, 0, 0, data_slab_, 0, 0, blacs_grid_slice_.context());
 
             n = 0;
-            for (int x = 0; x < grid_size_[0]; x++)
+            for (int x = 0; x < size(0); x++)
             {
-                for (int y = 0; y < grid_size_[1]; y++)
+                for (int y = 0; y < size(1); y++)
                 {
                     if (xy_mask__(x, y))
                     {
                         for (int z = 0; z < local_size_z_; z++)
-                            fftw_buffer_[0][x + y * grid_size_[0] + z * grid_size_[0] * grid_size_[1]] = data_slab_(z, n);
+                            fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
                     }
                     n++;
                 }
             }
+            t3.stop();
 
-            buf = (double_complex*)fftw_malloc(sizeof(fftw_complex) * grid_size_[0] * grid_size_[1]);
-            
-            p = fftw_plan_dft_2d(grid_size_[1], grid_size_[0], (fftw_complex*)buf, (fftw_complex*)buf, FFTW_BACKWARD, FFTW_ESTIMATE);
-
-            for (int i = 0; i < local_size_z_; i++)
+            Timer t4("fft|transform_xy");
+            #pragma omp parallel num_threads(num_fft_workers_)
             {
-                memcpy(buf, &fftw_buffer_[0][i * grid_size_[0] * grid_size_[1]], sizeof(fftw_complex) * grid_size_[0] * grid_size_[1]);
-                fftw_execute(p);
-                memcpy(&fftw_buffer_[0][i * grid_size_[0] * grid_size_[1]], buf, sizeof(fftw_complex) * grid_size_[0] * grid_size_[1]);
-            }
+                int tid = omp_get_thread_num();
                 
-            fftw_destroy_plan(p);
-            fftw_free(buf);
+                #pragma omp for
+                for (int i = 0; i < local_size_z_; i++)
+                {
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][i * size_xy], sizeof(fftw_complex) * size_xy);
+                    fftw_execute(plan_backward_xy_[tid]);
+                    memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                }
+            }
+            t4.stop();
         }
 
         template<typename T>
@@ -482,7 +526,9 @@ class Gvec
             xy_mask_ = mdarray<int, 2>(fft_->size(0), fft_->size(1));
             xy_mask_.zero();
 
-            /* find local number of G-vectors for each slab of FFT buffer */
+            /* find local number of G-vectors for each slab of FFT buffer;
+             * at the same time, create the xy mask that tells which columns in 3d buffer are zero when
+             * wave-functions are loaded into buffer */
             std::vector< vector3d<int> > pos;
             for (int k = 0; k < fft_->local_size_z(); k++)
             {

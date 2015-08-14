@@ -37,7 +37,7 @@
 
 //== #define __PRINT_OBJECT_CHECKSUM
 
-#define __PRINT_MEMORY_USAGE
+//== #define __PRINT_MEMORY_USAGE
 
 //== #define __SCALAPACK
 
