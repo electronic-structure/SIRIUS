@@ -375,12 +375,13 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
             }
             {
             Timer t1("add_k_point_contribution_it_pfft|input");
-            fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
+            //fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
+            fft_->input_custom(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map_xy(), &buf[0]);
             }
             {
             Timer t1("add_k_point_contribution_it_pfft|transform");
             //fft_->transform(1);
-            fft_->transform_custom(1, kp__->gkvec().xy_mask());
+            fft_->transform_custom(1, kp__->gkvec().num_xy_packed(), kp__->gkvec().xy_packed_idx());
             }
             {
             Timer t1("add_k_point_contribution_it_pfft|output");

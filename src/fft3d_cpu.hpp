@@ -91,7 +91,15 @@ class FFT3D<CPU>
         {    
             fftw_execute(plan_forward_[thread_id]);
             double norm = 1.0 / size();
-            for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
+            if (num_fft_threads_ == 1)
+            {
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
+            }
+            else
+            {
+                for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
+            }
         }
 
         /// Find smallest optimal grid size starting from n.
@@ -162,7 +170,7 @@ class FFT3D<CPU>
 
             /* split z-direction */
             spl_z_ = splindex<block>(size(2), comm_.size(), comm_.rank());
-            assert(spl_z_.local_size() == local_size_z_);
+            assert((int)spl_z_.local_size() == local_size_z_);
 
             data_slab_  = mdarray<double_complex, 2>(local_size_z_, size(0) * size(1));
             data_slice_ = mdarray<double_complex, 1>(size(2) * splindex_base::block_size(size(0) * size(1), comm_.size()));
@@ -267,33 +275,15 @@ class FFT3D<CPU>
             }
         }
 
-        void transform_custom(int direction, mdarray<int, 2> const& xy_mask__)
+        void transform_custom(int direction__, int num_xy_packed__, mdarray<int, 2> const& xy_packed_idx__)
         {
-            assert(direction == 1);
+            assert(direction__ == 1);
 
             int size_xy = size(0) * size(1);
 
-            Timer t0("fft|load_col");
-            int n = 0;
-            for (int x = 0; x < size(0); x++)
-            {
-                for (int y = 0; y < size(1); y++)
-                {
-                    if (xy_mask__(x, y))
-                    {
-                        for (int z = 0; z < local_size_z_; z++)
-                        {
-                            data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
-                        }
-                        n++;
-                    }
-                }
-            }
-            t0.stop();
-
             Timer t1("fft|swap_col");
 
-            splindex<block> spl_n(n, comm_.size(), comm_.rank());
+            splindex<block> spl_n(num_xy_packed__, comm_.size(), comm_.rank());
 
             std::vector<int> sendcounts(comm_.size());
             std::vector<int> sdispls(comm_.size());
@@ -349,19 +339,15 @@ class FFT3D<CPU>
             comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
                            data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
 
-            n = 0;
-            for (int x = 0; x < size(0); x++)
+            memset(fftw_buffer_[0], 0, local_size() * sizeof(double_complex));
+
+            for (int n = 0; n < num_xy_packed__; n++)
             {
-                for (int y = 0; y < size(1); y++)
+                int x = xy_packed_idx__(0, n);
+                int y = xy_packed_idx__(1, n);
+                for (int z = 0; z < local_size_z_; z++)
                 {
-                    if (xy_mask__(x, y))
-                    {
-                        for (int z = 0; z < local_size_z_; z++)
-                        {
-                            fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
-                        }
-                        n++;
-                    }
+                    fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
                 }
             }
             t3.stop();
@@ -389,6 +375,15 @@ class FFT3D<CPU>
             
             memset(fftw_buffer_[thread_id], 0, local_size() * sizeof(double_complex));
             for (int i = 0; i < n; i++) fftw_buffer_[thread_id][map[i]] = data[i];
+        }
+
+        template<typename T>
+        inline void input_custom(int n, int const* map, T* data)
+        {
+            data_slab_.zero();
+
+            T* ptr = data_slab_.at<CPU>();
+            for (int i = 0; i < n; i++) ptr[map[i]] = data[i];
         }
 
         template <typename T>
@@ -528,6 +523,8 @@ class Gvec
         /// Position in the local slab of FFT buffer by local G-vec index.
         mdarray<int, 1> index_map_local_to_local_;
 
+        mdarray<int, 1> index_map_local_to_xy_packed_;
+
         std::vector<int> gvec_counts_;
 
         std::vector<int> gvec_offsets_;
@@ -539,6 +536,10 @@ class Gvec
         mdarray<int, 3> index_by_gvec_;
 
         mdarray<int, 2> xy_mask_;
+
+        mdarray<int, 2> xy_packed_idx_;
+
+        int num_xy_packed_;
 
         Gvec(Gvec const& src__) = delete;
 
@@ -562,8 +563,8 @@ class Gvec
             xy_mask_.zero();
 
             /* find local number of G-vectors for each slab of FFT buffer;
-             * at the same time, create the xy mask that tells which columns in 3d buffer are zero when
-             * wave-functions are loaded into buffer */
+             * at the same time, create the xy mask that tells which columns in 3D buffer are zero when
+             * wave-functions are loaded into the buffer */
             std::vector< vector3d<int> > pos;
             for (int k = 0; k < fft_->local_size_z(); k++)
             {
@@ -585,6 +586,24 @@ class Gvec
                 }
             }
             fft_->comm().allreduce<int, op_max>(xy_mask_.at<CPU>(), (int)xy_mask_.size());
+            
+            /* build a linear index of xy coordinates of non-zero z-columns */
+            mdarray<int, 2> xy_idx(fft_->size(0), fft_->size(1));
+            xy_packed_idx_ = mdarray<int, 2>(2, fft_->size(0) * fft_->size(1));
+            num_xy_packed_ = 0;
+            for (int x = 0; x < fft_->size(0); x++)
+            {
+                for (int y = 0; y < fft_->size(1); y++)
+                {
+                    if (xy_mask_(x, y))
+                    {
+                        xy_idx(x, y) = num_xy_packed_;
+                        xy_packed_idx_(0, num_xy_packed_) = x;
+                        xy_packed_idx_(1, num_xy_packed_) = y;
+                        num_xy_packed_++;
+                    }
+                }
+            }
 
             /* get total number of G-vectors */
             num_gvec_loc_ = (int)pos.size();
@@ -593,6 +612,8 @@ class Gvec
 
             gvec_full_index_ = mdarray<int, 1>(num_gvec_);
             index_map_local_to_local_ = mdarray<int, 1>(num_gvec_loc_);
+
+            index_map_local_to_xy_packed_ = mdarray<int, 1>(num_gvec_loc_);
 
             gvec_counts_ = std::vector<int>(fft_->comm().size(), 0);
             gvec_offsets_ = std::vector<int>(fft_->comm().size(), 0);
@@ -609,6 +630,8 @@ class Gvec
             {
                 auto p = pos[igloc];
                 index_map_local_to_local_(igloc) = p[0] + p[1] * fft_->size(0) + p[2] * fft_->size(0) * fft_->size(1);
+
+                index_map_local_to_xy_packed_(igloc) = p[2] + fft_->local_size_z() * xy_idx(p[0], p[1]);
                 
                 /* this is only one way to pack coordinates into single integer */
                 gvec_full_index_(gvec_offset_ + igloc) = 
@@ -740,6 +763,11 @@ class Gvec
             return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_local_(0);
         }
 
+        inline int const* index_map_xy() const
+        {
+            return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_xy_packed_(0);
+        }
+
         inline int index_by_gvec(vector3d<int>& G__) const
         {
             return index_by_gvec_(G__[0], G__[1], G__[2]);
@@ -753,6 +781,16 @@ class Gvec
         mdarray<int, 2> const& xy_mask() const
         {
             return xy_mask_;
+        }
+
+        mdarray<int, 2> const& xy_packed_idx() const
+        {
+            return xy_packed_idx_;
+        }
+
+        int num_xy_packed() const
+        {
+            return num_xy_packed_;
         }
 };
 

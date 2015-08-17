@@ -33,12 +33,13 @@ void Band::apply_h_local_parallel(K_point* kp__,
         {
         Timer t1("apply_h_local_parallel|input");
         /* load local part of coefficients into local part of FFT buffer */
-        ctx_.fft_coarse()->input(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map(), &buf[0]);
+        ctx_.fft_coarse()->input_custom(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map_xy(), &buf[0]);
+        //ctx_.fft_coarse()->input(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map(), &buf[0]);
         }
         {
         Timer t1("apply_h_local_parallel|transform_custom");
         /* transform to real space */
-        ctx_.fft_coarse()->transform_custom(1, kp__->gkvec_coarse().xy_mask());
+        ctx_.fft_coarse()->transform_custom(1, kp__->gkvec_coarse().num_xy_packed(), kp__->gkvec_coarse().xy_packed_idx());
         }
         //ctx_.fft_coarse()->transform(1);
         /* multiply by effective potential */
