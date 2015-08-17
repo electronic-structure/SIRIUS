@@ -379,7 +379,8 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
             }
             {
             Timer t1("add_k_point_contribution_it_pfft|transform");
-            fft_->transform(1);
+            //fft_->transform(1);
+            fft_->transform_custom(1, kp__->gkvec().xy_mask());
             }
             {
             Timer t1("add_k_point_contribution_it_pfft|output");
