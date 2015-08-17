@@ -103,7 +103,7 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
         kp__->beta_gk().deallocate_on_device();
         kp__->fv_states().panel().deallocate_on_device();
         #else
-        TERMINATE_NO_GPU();
+        TERMINATE_NO_GPU
         #endif
     }
     else
