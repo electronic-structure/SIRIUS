@@ -365,18 +365,32 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
         {
             /* transform only single compopnent */
             int ispn = (j < num_fv_states) ? 0 : 1;
-
+            
+            {
+            Timer t1("add_k_point_contribution_it_pfft|a2a");
             kp__->comm_row().alltoall(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
                                       &a2a.sendcounts[0], &a2a.sdispls[0],
                                       &buf[0],
                                       &a2a.recvcounts[0], &a2a.rdispls[0]);
-
+            }
+            {
+            Timer t1("add_k_point_contribution_it_pfft|input");
             fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
+            }
+            {
+            Timer t1("add_k_point_contribution_it_pfft|transform");
             fft_->transform(1);
+            }
+            {
+            Timer t1("add_k_point_contribution_it_pfft|output");
             fft_->output(&psi_it(0, ispn));
-
+            }
+            
+            {
+            Timer t1("add_k_point_contribution_it_pfft|update");
             for (int ir = 0; ir < fft_->local_size(); ir++)
                 it_density_matrix(ir, ispn) += std::real(psi_it(ir, ispn) * std::conj(psi_it(ir, ispn))) * w;
+            }
 
         }
     }
