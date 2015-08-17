@@ -285,8 +285,8 @@ class FFT3D<CPU>
                         {
                             data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
                         }
+                        n++;
                     }
-                    n++;
                 }
             }
             t0.stop();
@@ -360,8 +360,8 @@ class FFT3D<CPU>
                         {
                             fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
                         }
+                        n++;
                     }
-                    n++;
                 }
             }
             t3.stop();
