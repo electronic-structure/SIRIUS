@@ -388,8 +388,12 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
             
             {
             Timer t1("add_k_point_contribution_it_pfft|update");
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft_->local_size(); ir++)
-                it_density_matrix(ir, ispn) += std::real(psi_it(ir, ispn) * std::conj(psi_it(ir, ispn))) * w;
+            {
+                double_complex z = psi_it(ir, ispn);
+                it_density_matrix(ir, ispn) += w * (std::pow(std::real(z), 2) + std::pow(std::imag(z), 2));
+            }
             }
 
         }
