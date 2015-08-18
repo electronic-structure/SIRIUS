@@ -110,9 +110,9 @@ void Band::set_fv_h_o_parallel(int N__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("effective zgemm with M, N, K: %6i %6i %6i for H and O: %12.4f sec, %12.4f GFlops/rank\n",
-               N__ + n__, n__, kp__->num_gkvec(), tval,
-               2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
+        DUMP("effective zgemm with M, N, K: %6i %6i %6i for H and O: %12.4f sec, %12.4f GFlops/rank",
+             N__ + n__, n__, kp__->num_gkvec(), tval,
+             2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
     
     /* restore the bottom block of the matrix */

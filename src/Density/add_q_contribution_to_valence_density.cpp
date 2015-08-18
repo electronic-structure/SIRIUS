@@ -27,8 +27,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     auto rl = ctx_.reciprocal_lattice();
 
-    std::vector<double_complex> f_pw(ctx_.gvec().num_gvec(), complex_zero);
-
+    /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
     /* split local fraction of G-vectors between threads */
@@ -86,8 +85,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 {
                     int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
                     /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                    f_pw[spl_gvec[igloc]] += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                                             atom_type->uspp().q_pw(igloc, idx12 + xi2);
+                    rho_->f_pw((int)spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
+                                                        atom_type->uspp().q_pw(igloc, idx12 + xi2);
 
                 }
                 /* add non-diagonal terms */
@@ -98,20 +97,17 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                         int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
                         
                         /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                        f_pw[spl_gvec[igloc]] += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
+                        rho_->f_pw((int)spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
 
                         /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                        f_pw[spl_gvec[igloc]] += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type->uspp().q_pw(igloc, idx12));
+                        rho_->f_pw((int)spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type->uspp().q_pw(igloc, idx12));
                     }
                 }
             }
         }
     }
     
-    ctx_.comm().allgather(&f_pw[0], (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
-    
-    #pragma omp parallel for schedule(static)
-    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
+    ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
 }
 
 #ifdef __GPU
@@ -163,6 +159,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
          type->uspp().q_pw.copy_to_device();
     }
 
+    /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
     mdarray<int, 2> gvec(3, spl_gvec.local_size());
@@ -173,8 +170,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     gvec.allocate_on_device();
     gvec.copy_to_device();
 
-    std::vector<double_complex> rho_pw(ctx_.gvec().num_gvec(), double_complex(0, 0));
-    mdarray<double_complex, 1> rho_pw_gpu(&rho_pw[spl_gvec.global_offset()], spl_gvec.local_size());
+    mdarray<double_complex, 1> rho_pw_gpu(spl_gvec.local_size());
     rho_pw_gpu.allocate_on_device();
     rho_pw_gpu.zero_on_device();
 
@@ -224,10 +220,10 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     }
 
     rho_pw_gpu.copy_to_host();
+    for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+        rho_->f_pw((int)spl_gvec[igloc]) += rho_pw_gpu(igloc);
 
-    ctx_.comm().allgather(&rho_pw[0], (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
-    
-    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) rho_->f_pw(ig) += rho_pw[ig];
+    ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
     
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->uspp().q_pw.deallocate_on_device();
 }

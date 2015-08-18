@@ -19,9 +19,9 @@ void K_point::generate_beta_phi(int nbeta__,
     #endif
     #endif
 
+    double wt = -MPI_Wtime();
     if (parameters_.processing_unit() == CPU)
     {
-        double wt = -MPI_Wtime();
         /* compute <beta|phi> */
         linalg<CPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_loc(), 
                           beta_gk__.at<CPU>(), beta_gk__.ld(), 
@@ -29,8 +29,6 @@ void K_point::generate_beta_phi(int nbeta__,
                           beta_phi__.at<CPU>(), beta_phi__.ld());
 
         comm().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
-        wt += MPI_Wtime();
-        PRINT("effective zgemm performance for <beta|phi> %f GFlops", 8e-9 * nbeta__ * nphi__ * num_gkvec() / wt);
     }
 
     if (parameters_.processing_unit() == GPU)
@@ -60,6 +58,12 @@ void K_point::generate_beta_phi(int nbeta__,
         #else
         TERMINATE_NO_GPU
         #endif
+    }
+    wt += MPI_Wtime();
+    if (comm().rank() == 0)
+    {
+        DUMP("effective zgemm performance: %12.4f GFlops/rank",
+             8e-9 * nbeta__ * nphi__ * num_gkvec() / wt / comm().size());
     }
 }
 
