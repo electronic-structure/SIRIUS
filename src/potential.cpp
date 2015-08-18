@@ -521,13 +521,13 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         /* destroy temporary function */
         delete rhovc;
         
-        // add XC potential to the effective potential
+        /* add XC potential to the effective potential */
         effective_potential_->add(xc_potential_);
         
-        // add local ionic potential to the effective potential
+        /* add local ionic potential to the effective potential */
         effective_potential_->add(local_potential_);
 
-        // synchronize effective potential
+        /* synchronize effective potential */
         effective_potential_->sync(false, true);
         for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
     }

@@ -290,12 +290,7 @@ class DFT_ground_state
                 }
             }
 
-            if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-                parameters_.esm_type() == norm_conserving_pseudopotential)
-            {
-                potential_->generate_d_mtrx();
-            }
-
+            if (!parameters_.full_potential()) potential_->generate_d_mtrx();
         }
 
         void symmetrize_density()
