@@ -48,14 +48,16 @@ class Profiler
             call_stack().push_back(std::string(str));
 
             #ifdef __LOG_FUNC
-            printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            //printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            printf("rank%04i + %s\n", Platform::rank(), name_.c_str());
             #endif
         }
 
         ~Profiler()
         {
             #ifdef __LOG_FUNC
-            printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            //printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            printf("rank%04i - %s\n", Platform::rank(), name_.c_str());
             #endif
             call_stack().pop_back();
         }

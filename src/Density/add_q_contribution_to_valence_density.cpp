@@ -109,7 +109,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     }
     
     ctx_.comm().allgather(&f_pw[0], (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
-
+    
+    #pragma omp parallel for schedule(static)
     for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
 }
 
@@ -172,7 +173,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     gvec.allocate_on_device();
     gvec.copy_to_device();
 
-    std::vector<double_complex> rho_pw(spl_gvec.local_size(), double_complex(0, 0));
+    std::vector<double_complex> rho_pw(ctx_.gvec().num_gvec(), double_complex(0, 0));
     mdarray<double_complex, 1> rho_pw_gpu(&rho_pw[spl_gvec.global_offset()], spl_gvec.local_size());
     rho_pw_gpu.allocate_on_device();
     rho_pw_gpu.zero_on_device();
