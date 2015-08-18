@@ -24,41 +24,25 @@ void Band::apply_h_local_parallel(K_point* kp__,
     
     for (int i = 0; i < nst__; i++)
     {
-        {
-        Timer t1("apply_h_local_parallel|a2a");
+        Timer t1("fft|comm");
         /* redistribute plane-wave coefficients between slabs of FFT buffer */
         kp__->comm_row().alltoall(&phi__(0, i), &a2a.sendcounts[0], &a2a.sdispls[0], &buf[0],
                                   &a2a.recvcounts[0], &a2a.rdispls[0]);
-        }
-        {
-        Timer t1("apply_h_local_parallel|input");
+        t1.stop();
         /* load local part of coefficients into local part of FFT buffer */
         ctx_.fft_coarse()->input_custom(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map_xy(), &buf[0]);
-        //ctx_.fft_coarse()->input(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map(), &buf[0]);
-        }
-        {
-        Timer t1("apply_h_local_parallel|transform_custom");
         /* transform to real space */
         ctx_.fft_coarse()->transform_custom(1, kp__->gkvec_coarse().num_xy_packed(), kp__->gkvec_coarse().xy_packed_idx());
-        }
-        //ctx_.fft_coarse()->transform(1);
         /* multiply by effective potential */
         for (int ir = 0; ir < ctx_.fft_coarse()->local_size(); ir++) ctx_.fft_coarse()->buffer(ir) *= effective_potential__[ir];
-        {
-        Timer t1("apply_h_local_parallel|transform");
         /* transform back to reciprocal space */
-        ctx_.fft_coarse()->transform(-1);
-        }
-        {
-        Timer t1("apply_h_local_parallel|output");
+        ctx_.fft_coarse()->transform_custom(-1, kp__->gkvec_coarse().num_xy_packed(), kp__->gkvec_coarse().xy_packed_idx());
         /* gather pw coefficients in the temporary buffer */
-        ctx_.fft_coarse()->output(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map(), &buf[0]);
-        }
-        {
-        Timer t1("apply_h_local_parallel|a2a");
+        ctx_.fft_coarse()->output_custom(kp__->gkvec_coarse().num_gvec_loc(), kp__->gkvec_coarse().index_map_xy(), &buf[0]);
+        t1.start();
         /* redistribute uniformly local sets of coefficients */
         kp__->comm_row().alltoall(&buf[0], &a2a.recvcounts[0], &a2a.rdispls[0], &htmp[0], &a2a.sendcounts[0], &a2a.sdispls[0]);
-        }
+        t1.stop();
         /* add kinetic energy */
         for (int igk = 0; igk < (int)spl_gkvec.local_size(); igk++) hphi__(igk, i) = htmp[igk] + phi__(igk, i) * pw_ekin__[spl_gkvec[igk]];
     }

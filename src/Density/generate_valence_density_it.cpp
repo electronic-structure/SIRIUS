@@ -34,10 +34,12 @@ void Density::generate_valence_density_it(K_set& ks)
 
             if (fft_->parallel())
             {
+                Timer t1("fft|comm");
                 linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
                                     kp->fv_states(), 0, 0,
                                     kp->spinor_wave_functions(0), 0, 0,
                                     kp->blacs_grid().context());
+                t1.stop();
             }
         }
 

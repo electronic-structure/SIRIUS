@@ -366,38 +366,22 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
             /* transform only single compopnent */
             int ispn = (j < num_fv_states) ? 0 : 1;
             
-            {
-            Timer t1("add_k_point_contribution_it_pfft|a2a");
+            Timer t1("fft|comm");
             kp__->comm_row().alltoall(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
                                       &a2a.sendcounts[0], &a2a.sdispls[0],
                                       &buf[0],
                                       &a2a.recvcounts[0], &a2a.rdispls[0]);
-            }
-            {
-            Timer t1("add_k_point_contribution_it_pfft|input");
-            //fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
+            t1.stop();
             fft_->input_custom(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map_xy(), &buf[0]);
-            }
-            {
-            Timer t1("add_k_point_contribution_it_pfft|transform");
-            //fft_->transform(1);
             fft_->transform_custom(1, kp__->gkvec().num_xy_packed(), kp__->gkvec().xy_packed_idx());
-            }
-            {
-            Timer t1("add_k_point_contribution_it_pfft|output");
             fft_->output(&psi_it(0, ispn));
-            }
             
-            {
-            Timer t1("add_k_point_contribution_it_pfft|update");
             #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft_->local_size(); ir++)
             {
                 double_complex z = psi_it(ir, ispn);
                 it_density_matrix(ir, ispn) += w * (std::pow(std::real(z), 2) + std::pow(std::imag(z), 2));
             }
-            }
-
         }
     }
 

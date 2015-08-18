@@ -20,8 +20,10 @@ void Band::apply_h_o_parallel(K_point* kp__,
 
     Timer t("sirius::Band::apply_h_o_parallel", kp__->comm());
 
+    Timer t1("fft|comm");
     /* change data distribution from slab storage to slice or 2d block-cyclic */
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0, kp__->blacs_grid().context());
+    t1.stop();
     if (ctx_.fft_coarse()->parallel())
     {
         /* this is how n wave-functions are distributed */
@@ -40,8 +42,10 @@ void Band::apply_h_o_parallel(K_point* kp__,
             apply_h_local_serial(kp__, effective_potential__, pw_ekin__, (int)spl_phi.local_size(), phi_tmp__.panel(), phi_tmp__.panel());
         }
     }
+    t1.start();
     /* change back to slab data distribution */
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_tmp__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
+    t1.stop();
 
     if (parameters_.processing_unit() == CPU)
     {
