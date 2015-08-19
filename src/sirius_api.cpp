@@ -2049,25 +2049,20 @@ void sirius_symmetrize_density()
 
 void sirius_get_rho_pw(double_complex* rho_pw__)
 {
-    TERMINATE("fix this");
-    //int num_gvec = sim_ctx->fft()->num_gvec();
-    //memcpy(rho_pw__, &density->rho()->f_pw(0), num_gvec * sizeof(double_complex));
+    int num_gvec = sim_ctx->gvec().num_gvec();
+    memcpy(rho_pw__, &density->rho()->f_pw(0), num_gvec * sizeof(double_complex));
 }
 
 void sirius_set_rho_pw(double_complex* rho_pw__)
 {
-    TERMINATE("fix this");
-    //auto fft = sim_ctx->fft();
-    //memcpy(&density->rho()->f_pw(0), rho_pw__, fft->num_gvec() * sizeof(double_complex));
-    //fft->input(fft->num_gvec(), fft->index_map(), &density->rho()->f_pw(0));
-    //fft->transform(1);
-    //fft->output(&density->rho()->f_it<global>(0));
+    memcpy(&density->rho()->f_pw(0), rho_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
+    density->rho()->fft_transform(1);
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 {
-    TERMINATE("fix this");
-    //*ig__ = sim_ctx->fft()->gvec_index(vector3d<int>(gvec__[0], gvec__[1], gvec__[2])) + 1;
+    vector3d<int> gv(gvec__[0], gvec__[1], gvec__[2]);
+    *ig__ = sim_ctx->gvec().index_by_gvec(gv) + 1;
 }
 
 void sirius_use_internal_mixer(int32_t* use_internal_mixer__)

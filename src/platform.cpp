@@ -48,7 +48,7 @@ void Platform::initialize(bool call_mpi_init__)
     }
 
     MPI_Query_thread(&provided);
-    if (provided != MPI_THREAD_FUNNELED && rank() == 0)
+    if (provided < MPI_THREAD_FUNNELED && rank() == 0)
     {
         printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
     }
