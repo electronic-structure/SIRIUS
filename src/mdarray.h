@@ -36,9 +36,10 @@
 #include <cstring>
 #include <initializer_list>
 #ifdef __GPU
-#include "gpu_interface.h"
+#include "gpu.h"
 #endif
 #include "typedefs.h"
+#include "debug.hpp"
 
 #ifdef __LIBSCI_ACC
 extern "C" int libsci_acc_HostAlloc(void**, size_t);
@@ -77,6 +78,7 @@ extern "C" int libsci_acc_HostFree(void*);
             printf("at line %i of file %s\n", __LINE__, __FILE__);              \
             for (int i = 0; i < N; i++)                                         \
                 printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+            debug::Profiler::stack_trace();                                     \
             raise(SIGTERM);                                                     \
             exit(-13);                                                          \
         }                                                                       \
@@ -276,43 +278,43 @@ class mdarray_base
 
         inline int64_t idx(int64_t const i0) const
         {
-            assert(N == 1);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(N == 1);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
             size_t i = offsets_[0] + i0;
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
         inline int64_t idx(int64_t const i0, int64_t const i1) const
         {
-            assert(N == 2);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+            mdarray_assert(N == 2);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
             size_t i = offsets_[0] + i0 + i1 * offsets_[1];
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
         inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2) const
         {
-            assert(N == 3);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-            assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+            mdarray_assert(N == 3);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+            mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
             size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2];
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
         inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
         {
-            assert(N == 4);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-            assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-            assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
+            mdarray_assert(N == 4);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+            mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+            mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
             size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3];
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
@@ -435,13 +437,13 @@ class mdarray_base
 
         inline T& operator()(int64_t const i0) 
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0)];
         }
 
         inline T const& operator()(int64_t const i0) const
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0)];
         }
 
@@ -459,25 +461,25 @@ class mdarray_base
 
         inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2) 
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2)];
         }
 
         inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2) const
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2)];
         }
 
         inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3)
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2, i3)];
         }
 
         inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2, i3)];
         }
 
@@ -542,14 +544,14 @@ class mdarray_base
         /// Return size of particular dimension.
         inline size_t size(int i) const
         {
-           assert(i < N);
+           mdarray_assert(i < N);
            return dims_[i].size();
         }
         
         /// Return leading dimension size.
         inline uint32_t ld() const
         {
-            assert(dims_[0].size() < size_t(1 << 31));
+            mdarray_assert(dims_[0].size() < size_t(1 << 31));
 
             return (int32_t)dims_[0].size();
         }
@@ -613,7 +615,7 @@ class mdarray_base
         {
             if (size() > 0)
             {
-                assert(ptr_ != nullptr);
+                mdarray_assert(ptr_ != nullptr);
                 memset(ptr_, 0, size() * sizeof(T));
             }
         }
@@ -674,16 +676,16 @@ class mdarray_base
 
         void copy_to_device() 
         {
-            assert(ptr_ != nullptr);
-            assert(ptr_device_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
 
             cuda_copy_to_device(ptr_device_, ptr_, size() * sizeof(T));
         }
 
         void copy_to_host() 
         {
-            assert(ptr_ != nullptr);
-            assert(ptr_device_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
             
             cuda_copy_to_host(ptr_, ptr_device_, size() * sizeof(T));
         }
@@ -814,12 +816,6 @@ class mdarray: public mdarray_base<T, N>
             #ifdef __GPU
             this->ptr_device_ = ptr_device__;
             #endif
-        }
-
-        mdarray<T, 2> submatrix(int idx)
-        {
-            T* ptr = &(*this)(0, 0, idx);
-            return mdarray<T, 2>(ptr, this->dims_[0], this->dims_[1]);
         }
 };
 

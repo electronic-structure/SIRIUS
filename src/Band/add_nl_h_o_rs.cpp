@@ -12,12 +12,12 @@ void Band::add_nl_h_o_rs(K_point* kp__,
                          mdarray<double_complex, 1>& q_mtrx_packed__,
                          mdarray<double_complex, 1>& kappa__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
     auto rsp = ctx_.real_space_prj();
     auto fft = rsp->fft();
 
-    if (kappa__.size() < size_t(2 * fft->size() + rsp->max_num_points_) * fft->num_fft_threads())
+    if (kappa__.size() < size_t(2 * fft->size() + rsp->max_num_points_) * parameters_.num_fft_threads())
     {
         TERMINATE("wrong size of work array");
     }
@@ -25,9 +25,10 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     std::vector<int> fft_index(kp__->num_gkvec());
     for (int igk = 0; igk < kp__->num_gkvec(); igk++)
     {
-        vector3d<int> gvec = kp__->gvec(igk);
+        //vector3d<int> gvec = kp__->gvec(igk);
+        STOP();
         /* linear index inside coarse FFT buffer */
-        fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
+        //fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
     }
     
     std::vector<double_complex> k_phase(fft->size());
@@ -61,33 +62,33 @@ void Band::add_nl_h_o_rs(K_point* kp__,
         }
     }
 
-    mdarray<double_complex, 2> hphi_rs(kappa__.at<CPU>(),               fft->size(), fft->num_fft_threads());
-    mdarray<double_complex, 2> ophi_rs(kappa__.at<CPU>(hphi_rs.size()), fft->size(), fft->num_fft_threads());
+    mdarray<double_complex, 2> hphi_rs(kappa__.at<CPU>(),               fft->size(), parameters_.num_fft_threads());
+    mdarray<double_complex, 2> ophi_rs(kappa__.at<CPU>(hphi_rs.size()), fft->size(), parameters_.num_fft_threads());
     
     mdarray<double, 2> timers(4, Platform::max_num_threads());
     timers.zero();
 
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> beta_phi_re(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> beta_phi_im(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> beta_phi_re(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
+    mdarray<double, 2> beta_phi_im(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
 
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> d_beta_phi_re(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> d_beta_phi_im(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> q_beta_phi_re(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
-    mdarray<double, 2> q_beta_phi_im(unit_cell_.max_mt_basis_size(), fft->num_fft_threads());
+    mdarray<double, 2> d_beta_phi_re(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
+    mdarray<double, 2> d_beta_phi_im(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
+    mdarray<double, 2> q_beta_phi_re(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
+    mdarray<double, 2> q_beta_phi_im(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
     
     double* ptr = (double*)kappa__.at<CPU>(2 * hphi_rs.size());
-    mdarray<double, 2> phi_tmp_re(ptr,                     rsp->max_num_points_, fft->num_fft_threads());
-    mdarray<double, 2> phi_tmp_im(ptr + phi_tmp_re.size(), rsp->max_num_points_, fft->num_fft_threads());
+    mdarray<double, 2> phi_tmp_re(ptr,                     rsp->max_num_points_, parameters_.num_fft_threads());
+    mdarray<double, 2> phi_tmp_im(ptr + phi_tmp_re.size(), rsp->max_num_points_, parameters_.num_fft_threads());
 
-    mdarray<double_complex, 2> phase(rsp->max_num_points_, fft->num_fft_threads());
+    mdarray<double_complex, 2> phase(rsp->max_num_points_, parameters_.num_fft_threads());
     
     double w1 = std::sqrt(unit_cell_.omega()) / fft->size();
     double w2 = std::sqrt(unit_cell_.omega());
 
     Timer t5("sirius::Band::apply_h_o_serial|real_space_kernel");
-    #pragma omp parallel num_threads(fft->num_fft_threads())
+    #pragma omp parallel num_threads(parameters_.num_fft_threads())
     {
         int thread_id = Platform::thread_id();
 
@@ -215,8 +216,6 @@ void Band::add_nl_h_o_rs(K_point* kp__,
 
     //==     std::cout << "------------------------------------------------------------" << std::endl;
     //== }
-
-    LOG_FUNC_END();
 }
 
 };

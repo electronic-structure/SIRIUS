@@ -6,6 +6,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                                     double v0__,
                                                     std::vector<double>& veff_it_coarse__)
 {
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_pseudo_potential_davidson_serial");
 
     /* cache kinetic energy */
@@ -35,9 +37,11 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    matrix<double_complex>& psi = kp__->fv_states_slab();
+    matrix<double_complex>& psi = kp__->fv_states().panel();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
+    
+    assert(num_bands * 2 < ngk); // iterative subspace size can't be smaller than this
 
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, ngk);
@@ -108,8 +112,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU && itso.real_space_prj_) 
     {
         auto rsp = ctx_.real_space_prj();
-        size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
-        size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
+        size_t size = 2 * rsp->fft()->size() * parameters_.num_fft_threads();
+        size += rsp->max_num_points_ * parameters_.num_fft_threads();
 
         kappa = mdarray<double_complex, 1>(size);
     }
@@ -172,10 +176,18 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     int n = num_bands;
     
     #ifdef __PRINT_OBJECT_HASH
-    std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
+    //std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
     std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
     std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
-    std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
+    std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], ctx_.fft_coarse()->size() * sizeof(double)) << std::endl;
+    #endif
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    auto c1 = d_mtrx_packed.checksum();
+    auto c2 = q_mtrx_packed.checksum();
+    auto c3 = mdarray<double,1>(&veff_it_coarse__[0], ctx_.fft_coarse()->size()).checksum();
+    DUMP("checksum(d_mtrx_packed) : %18.10f %18.10f", std::real(c1), std::imag(c1));
+    DUMP("checksum(q_mtrx_packed) : %18.10f %18.10f", std::real(c2), std::imag(c2));
+    DUMP("checksum(v_eff_coarse)  : %18.10f", c3);
     #endif
 
     /* start iterative diagonalization */

@@ -20,8 +20,9 @@ void Density::generate_valence_density_mt(K_set& ks)
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
-        add_k_point_contribution<CPU, full_potential_lapwlo>(ks[ik], occupied_bands, mt_complex_density_matrix);
+        auto kp = ks[ik];
+        auto occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
+        add_k_point_contribution<full_potential_lapwlo>(ks[ik], occupied_bands, mt_complex_density_matrix);
     }
     
     mdarray<double_complex, 4> mt_complex_density_matrix_loc(unit_cell_.max_mt_basis_size(), 

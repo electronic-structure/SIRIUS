@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -29,17 +29,6 @@
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
 
-#ifdef __GPU
-extern "C" void create_beta_gk_gpu(int num_atoms,
-                                   int num_gkvec,
-                                   int const* beta_desc,
-                                   cuDoubleComplex const* beta_gk_t,
-                                   double const* gkvec,
-                                   double const* atom_pos,
-                                   cuDoubleComplex* beta_gk);
-#endif
-
-
 namespace sirius
 {
 
@@ -52,11 +41,22 @@ class K_point
         /// Simulation context.
         Simulation_context& ctx_;
 
+        /// Parameters of simulation.
         Simulation_parameters const& parameters_;
-
+        
+        /// Unit cell object.
         Unit_cell const& unit_cell_;
 
+        /// 2D BLACS grid for diagonalization and 2D data distribution.
         BLACS_grid const& blacs_grid_;
+        
+        /// 1D BLACS grid for a "slab" data distribution.
+        /** This grid is used to distribute G+k vector index and keep a whole band index */
+        BLACS_grid const& blacs_grid_slab_;
+        
+        /// 1D BLACS grid for a "slice" data distribution.
+        /** This grid is used to distribute band index and keep a whole G+k vector index */
+        BLACS_grid const& blacs_grid_slice_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
@@ -67,46 +67,35 @@ class K_point
         /// Fractional k-point coordinates.
         vector3d<double> vk_;
         
-        /// G+k vectors
-        mdarray<double, 2> gkvec_;
+        Gvec gkvec_;
 
-        /// Global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
-        std::vector<int> gvec_index_;
+        Gvec gkvec_coarse_;
 
-        /// first-variational eigen values
+        /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
-        /// First-variational eigen vectors, distributed over rows and columns of the MPI grid.
-        dmatrix<double_complex> fv_eigen_vectors_panel_;
+        /// First-variational eigen vectors, distributed over 2D BLACS grid.
+        dmatrix<double_complex> fv_eigen_vectors_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$ 
-         *  matrix in case of general non-collinear magnetism.
-         */
+         *  matrix in case of general non-collinear magnetism. */
         dmatrix<double_complex> sv_eigen_vectors_[2];
 
         /// Full-diagonalization eigen vectors.
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
-        /// Position of the G vector (from the G+k set) inside the FFT buffer.
-        std::vector<int> fft_index_;
+        /// First-variational states in "slice" storage.
+        dmatrix<double_complex> fv_states_slice_;
 
-        std::vector<int> fft_index_coarse_;
-       
-        /// first-variational states, distributed over all ranks of the 2D MPI grid
-        matrix<double_complex> fv_states_;
-
-        matrix<double_complex> fv_states_slab_;
-        
-        /// first-variational states, distributed over rows and columns of the MPI grid
+        /// First-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
-         *  over rows of the MPI grid. 
-         */
-        dmatrix<double_complex> fv_states_panel_;
+         *  over rows of the MPI grid. */
+        dmatrix<double_complex> fv_states_;
 
-        /// two-component (spinor) wave functions describing the bands
-        mdarray<double_complex, 3> spinor_wave_functions_;
+        /// Two-component (spinor) wave functions describing the bands.
+        dmatrix<double_complex> spinor_wave_functions_[2];
 
         /// band occupation numbers
         std::vector<double> band_occupancies_;
@@ -120,12 +109,11 @@ class K_point
         /// spherical harmonics of G+k vectors
         mdarray<double_complex, 2> gkvec_ylm_;
 
-        /// length of G+k vectors
-        //std::vector<double> gkvec_len_;
-
         Matching_coefficients* alm_coeffs_row_;
 
         Matching_coefficients* alm_coeffs_col_;
+
+        Matching_coefficients* alm_coeffs_;
 
         /// number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_;
@@ -169,8 +157,6 @@ class K_point
 
         int num_ranks_row_;
 
-        int num_ranks_;
-
         /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
         matrix<double_complex> beta_gk_t_;
 
@@ -189,33 +175,19 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator comm_col_;
 
-        /// block-cyclic distribution of the first-variational states along columns of the MPI grid
-        splindex<block_cyclic> spl_fv_states_;
-        
-        /// additional splitting of the first-variational states along rows of the MPI grid
-        splindex<block> sub_spl_fv_states_;
-
-        /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
-        splindex<block_cyclic> spl_spinor_wf_;
-       
-        /// additional splitting of spinor wave-functions along rows of the MPI grid
-        splindex<block> sub_spl_spinor_wf_;
-
-        /// Initialize G+k related data
-        void init_gkvec();
-        
         /// Build G+k and lo basis descriptors.
         void build_gklo_basis_descriptors();
 
         /// Distribute basis function index between rows and columns of MPI grid.
         void distribute_basis_index();
         
-        /// Test orthonormalization of first-variational states
-        void test_fv_states(int use_fft);
+        /// Test orthonormalization of first-variational states.
+        void test_fv_states();
 
-        void init_gkvec_ylm_and_len(int lmax__, int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
-        
         void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
+        
+        /// Generate plane-wave coefficients for beta-projectors of atom types.
+        void generate_beta_gk_t();
 
     public:
 
@@ -225,20 +197,20 @@ class K_point
         K_point(Simulation_context& ctx__,
                 double* vk__,
                 double weight__,
-                BLACS_grid const& blacs_grid__);
+                BLACS_grid const& blacs_grid__,
+                BLACS_grid const& blacs_grid_slab__,
+                BLACS_grid const& blacs_grid_slice__);
 
         ~K_point()
         {
-            if (alm_coeffs_row_) delete alm_coeffs_row_;
-            if (alm_coeffs_col_) delete alm_coeffs_col_;
+            if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
+            if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
+            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
         }
 
         /// Initialize the k-point related arrays and data
         void initialize();
 
-        /// Update the relevant arrays in case of atom positions have been changed.
-        void update();
-        
         /// Find G+k vectors within the cutoff
         void generate_gkvec(double gk_cutoff);
 
@@ -268,36 +240,52 @@ class K_point
         
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
-        
-        /// Return G-vector (in fractional coordinates) of the current G+k vector.
-        inline vector3d<int> gvec(int igk__) const
-        {
-            return ctx_.reciprocal_lattice()->gvec(gvec_index(igk__));
-        }
-        
-        /// Global index of G-vector by the index of G+k vector
-        inline int gvec_index(int igk__) const
-        {
-            assert(igk__ >= 0 && igk__ < (int)gvec_index_.size());
-            
-            return gvec_index_[igk__];
-        }
 
-        ///// Return G+k vector in fractional or Cartesian coordinates
+        /// Get the local list of occupied bands.
+        occupied_bands_descriptor get_occupied_bands_list(Communicator const& comm__);
+
+        /// Generate beta-proectors for a block of atoms.
+        void generate_beta_gk(int num_atoms__,
+                              mdarray<double, 2>& atom_pos__,
+                              mdarray<int, 2> const& beta_desc__,
+                              matrix<double_complex>& beta_gk__);
+
+        void generate_beta_phi(int nbeta__,
+                               matrix<double_complex>& phi__,
+                               int nphi__,
+                               int offs__,
+                               matrix<double_complex>& beta_gk__,
+                               matrix<double_complex>& beta_phi__);
+
+        void add_non_local_contribution(int num_atoms__,
+                                        int num_beta__,
+                                        mdarray<int, 2> const& beta_desc__,
+                                        matrix<double_complex>& beta_gk__,
+                                        mdarray<double_complex, 1>& op_mtrx_packed__,
+                                        mdarray<int, 1> const& packed_mtrx_offset__,
+                                        matrix<double_complex>& beta_phi__,
+                                        matrix<double_complex>& op_phi__,
+                                        int nphi__,
+                                        int offs__,
+                                        double_complex alpha,
+                                        matrix<double_complex>& work__);
+
+        /// Return G+k vector in fractional or Cartesian coordinates
         template <coordinates_t coord__>
         inline vector3d<double> gkvec(int igk__) const
         {
-            assert(igk__ >= 0 && igk__ < (int)gkvec_.size(1));
+            auto G = gkvec_[igk__];
+            auto Gk = vector3d<double>(G[0], G[1], G[2]) + vk_;
             switch (coord__)
             {
                 case cartesian:
                 {
-                    return ctx_.reciprocal_lattice()->get_cartesian_coordinates(vector3d<double>(&gkvec_(0, igk__)));
+                    return unit_cell_.reciprocal_lattice_vectors() * Gk;
                     break;
                 }
                 case fractional:
                 {
-                    return vector3d<double>(&gkvec_(0, igk__));
+                    return Gk;
                     break;
                 }
                 default:
@@ -308,23 +296,15 @@ class K_point
             }
         }
         
-        inline double_complex gkvec_phase_factor(int igk, int ia) const
+        inline double_complex gkvec_phase_factor(int igk__, int ia__) const
         {
-            return gkvec_phase_factors_(igk, ia);
+            return gkvec_phase_factors_(igk__, ia__);
         }
 
-        //== /// Return length of a G+k vector
-        //== inline double gkvec_len(int igk)
-        //== {
-        //==     assert(igk >= 0 && igk < (int)gkvec_len_.size());
-        //==     return gkvec_len_[igk];
-        //== }
-                
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
         {
-            assert(gkvec_.size(1) == gvec_index_.size());
-            return (int)gkvec_.size(1);
+            return gkvec_.num_gvec();
         }
 
         /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
@@ -347,8 +327,7 @@ class K_point
          *
          *  Thus, the total number of coefficients representing a wave-funstion is equal
          *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
-         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
-         */ 
+         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */ 
         inline int wf_size() const // TODO: better name for this
         {
             switch (ctx_.parameters().esm_type())
@@ -444,24 +423,9 @@ class K_point
             return weight_;
         }
 
-        inline double_complex& spinor_wave_function(int idxwf, int ispn, int j)
+        inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
         {
-            return spinor_wave_functions_(idxwf, ispn, j);
-        }
-
-        inline mdarray<double_complex, 3>& spinor_wave_functions()
-        {
-            return spinor_wave_functions_;
-        }
-
-        inline int const* fft_index() const
-        {
-            return &fft_index_[0];
-        }
-
-        inline int const* fft_index_coarse() const
-        {
-            return &fft_index_coarse_[0];
+            return spinor_wave_functions_[ispn__];
         }
 
         inline vector3d<double> vk() const
@@ -551,7 +515,12 @@ class K_point
         /// Number of MPI ranks for a given k-point
         inline int num_ranks() const
         {
-            return num_ranks_;
+            return comm_.size();
+        }
+
+        inline int rank() const
+        {
+            return comm_.rank();
         }
 
         /// Return number of lo columns for a given atom
@@ -578,19 +547,19 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline dmatrix<double_complex>& fv_eigen_vectors_panel()
+        inline dmatrix<double_complex>& fv_eigen_vectors()
         {
-            return fv_eigen_vectors_panel_;
+            return fv_eigen_vectors_;
         }
         
-        inline mdarray<double_complex, 2>& fv_states()
+        inline dmatrix<double_complex>& fv_states()
         {
             return fv_states_;
         }
 
-        inline dmatrix<double_complex>& fv_states_panel()
+        inline dmatrix<double_complex>& fv_states_slice()
         {
-            return fv_states_panel_;
+            return fv_states_slice_;
         }
 
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
@@ -606,8 +575,6 @@ class K_point
         void bypass_sv()
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
-            //== sv_eigen_vectors_[0].zero();
-            //== for (int i = 0; i < parameters_.num_fv_states(); i++) sv_eigen_vectors_[0].set(i, i, complex_one);
         }
 
         std::vector<double> get_pw_ekin() const
@@ -617,9 +584,14 @@ class K_point
             return pw_ekin; 
         }
 
-        inline mdarray<double, 2>& gkvec()
+        inline Gvec const& gkvec() const
         {
             return gkvec_;
+        }
+
+        inline Gvec const& gkvec_coarse() const
+        {
+            return gkvec_coarse_;
         }
 
         inline matrix<double_complex> const& beta_gk_t() const
@@ -662,29 +634,14 @@ class K_point
             return blacs_grid_;
         }
 
-        inline splindex<block_cyclic>& spl_fv_states()
+        inline BLACS_grid const& blacs_grid_slab() const
         {
-            return spl_fv_states_;
+            return blacs_grid_slab_;
         }
 
-        inline int spl_fv_states(int icol_loc)
+        inline BLACS_grid const& blacs_grid_slice() const
         {
-            return static_cast<int>(spl_fv_states_[icol_loc]);
-        }
-
-        inline splindex<block>& sub_spl_fv_states()
-        {
-            return sub_spl_fv_states_;
-        }
-
-        inline int num_sub_bands()
-        {
-            return static_cast<int>(sub_spl_spinor_wf_.local_size());
-        }
-
-        inline int idxbandglob(int sub_index)
-        {
-            return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
+            return blacs_grid_slice_;
         }
 
         inline double_complex p_mtrx(int xi1, int xi2, int iat) const
@@ -701,45 +658,6 @@ class K_point
         {
             return (int)spl_gkvec_.local_size();
         }
-
-        inline matrix<double_complex>& fv_states_slab()
-        {
-            return fv_states_slab_;
-        }
-
-        void collect_all_gkvec(splindex<block>& spl_phi__,
-                               double_complex const* phi_slab__,
-                               double_complex* phi_slice__);
-
-        void collect_all_bands(splindex<block>& spl_phi__,
-                               double_complex const* phi_slice__,
-                               double_complex* phi_slab__);
-
-        /// Generate beta-proectors for a block of atoms.
-        void generate_beta_gk(int num_atoms__,
-                              mdarray<double, 2>& atom_pos__,
-                              mdarray<int, 2> const& beta_desc__,
-                              matrix<double_complex>& beta_gk__);
-
-        void generate_beta_phi(int nbeta__,
-                               matrix<double_complex>& phi__,
-                               int nphi__,
-                               int offs__,
-                               matrix<double_complex>& beta_gk__,
-                               matrix<double_complex>& beta_phi__);
-
-        void add_non_local_contribution(int num_atoms__,
-                                        int num_beta__,
-                                        mdarray<int, 2> const& beta_desc__,
-                                        matrix<double_complex>& beta_gk__,
-                                        mdarray<double_complex, 1>& op_mtrx_packed__,
-                                        mdarray<int, 1> const& packed_mtrx_offset__,
-                                        matrix<double_complex>& beta_phi__,
-                                        matrix<double_complex>& op_phi__,
-                                        int nphi__,
-                                        int offs__,
-                                        double_complex alpha,
-                                        matrix<double_complex>& work__);
 };
 
 }

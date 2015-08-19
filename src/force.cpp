@@ -43,7 +43,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
     {
         if (parameters__.num_mag_dims() != 3)
         {
-            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
+            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
             for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
             {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
@@ -62,7 +62,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
         }
         else
         {
-            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid());
+            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
             for (int j = 0; j < ev.num_cols_local(); j++)
@@ -96,19 +96,19 @@ void Force::ibs_force(Simulation_context& ctx__,
 
     forcek__.zero();
 
-    dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
-    auto& fv_evec = kp__->fv_eigen_vectors_panel();
+    auto& fv_evec = kp__->fv_eigen_vectors();
 
-    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
-    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
+    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
-    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
-    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
+    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
-    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), param.num_fv_states(), kp__->blacs_grid());
-    dmatrix<double_complex> zf(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> zf(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
@@ -152,11 +152,11 @@ void Force::ibs_force(Simulation_context& ctx__,
         {
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
             {
-                int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
-                                         kp__->gklo_basis_descriptor_col(igk_col).ig);
-                int igs = rl->gvec_shell(ig12);
+                int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
+                                                  kp__->gklo_basis_descriptor_col(igk_col).gvec);
+                int igs = ctx__.gvec().shell(ig12);
 
-                double_complex zt = std::conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
+                double_complex zt = std::conj(rl->gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
 
                 double t1 = 0.5 * (kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
                                    kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
@@ -172,10 +172,10 @@ void Force::ibs_force(Simulation_context& ctx__,
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
                 {
-                    int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
-                                             kp__->gklo_basis_descriptor_col(igk_col).ig);
+                    int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
+                                                      kp__->gklo_basis_descriptor_col(igk_col).gvec);
 
-                    vector3d<double> vg = rl->gvec_cart(ig12);
+                    vector3d<double> vg = ctx__.gvec().cart(ig12);
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
                     o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                 }
@@ -212,13 +212,14 @@ void Force::ibs_force(Simulation_context& ctx__,
             /* zm1 = O * V */
             linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), param.num_fv_states(), kp__->gklo_basis_size(), 
                               complex_one, o1, fv_evec, complex_zero, zm1);
-
-            /* multiply by energy */
-            for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
-            {
-                int ist = kp__->spl_fv_states(i);
-                for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
-            }
+            
+            STOP();
+            ///* multiply by energy */
+            //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
+            //{
+            //    int ist = kp__->spl_fv_states(i);
+            //    for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
+            //}
 
             /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
             linalg<CPU>::gemm(2, 0, param.num_fv_states(), param.num_fv_states(), kp__->gklo_basis_size(),
@@ -243,9 +244,8 @@ void Force::total_force(Simulation_context& ctx__,
 
     auto param = ctx__.parameters();
     auto& uc = ctx__.unit_cell();
-    auto rl = ctx__.reciprocal_lattice();
 
-    auto ffac = ctx__.step_function()->get_step_function_form_factors(rl->num_gvec_shells_inner());
+    auto ffac = ctx__.step_function()->get_step_function_form_factors(ctx__.gvec().num_shells());
 
     force__.zero();
 

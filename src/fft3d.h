@@ -26,6 +26,7 @@
 #define __FFT3D_H__
 
 #include <fftw3.h>
+#include <fftw3-mpi.h>
 #include <vector>
 #include <algorithm> 
 #include "typedefs.h"
@@ -33,6 +34,9 @@
 #include "splindex.h"
 #include "vector3d.h"
 #include "timer.h"
+#include "blacs_grid.h"
+#include "linalg.h"
+#include "dmatrix.h"
 
 namespace sirius
 {

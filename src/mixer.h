@@ -139,6 +139,11 @@ class Mixer
             return output_buffer_.template at<CPU>();
         }
 
+        inline T output_buffer(int idx) const
+        {
+            return output_buffer_(idx);
+        }
+
         inline void initialize()
         {
             memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(T));

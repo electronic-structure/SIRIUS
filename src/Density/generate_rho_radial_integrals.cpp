@@ -11,12 +11,10 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 {
     Timer t("sirius::Density::generate_rho_radial_integrals");
 
-    auto rl = ctx_.reciprocal_lattice();
-
-    mdarray<double, 2> rho_radial_integrals(unit_cell_.num_atom_types(), rl->num_gvec_shells_inner());
+    mdarray<double, 2> rho_radial_integrals(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
 
     /* split G-shells between MPI ranks */
-    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), ctx_.comm().size(), ctx_.comm().rank());
+    splindex<block> spl_gshells(ctx_.gvec().num_shells(), ctx_.comm().size(), ctx_.comm().rank());
 
     if (type__ == 5)
     {
@@ -36,9 +34,9 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
         #endif
 
         double b = 8;
-        for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+        for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++)
         {
-            double G = rl->gvec_shell_len(igs);
+            double G = ctx_.gvec().shell_len(igs);
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
             {
@@ -74,9 +72,9 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
          * Out[] = (b^4 Z)/(4 (b^2 + G^2)^2 \[Pi])
          */
         double b = 4;
-        for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+        for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++)
         {
-            double G = rl->gvec_shell_len(igs);
+            double G = ctx_.gvec().shell_len(igs);
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
             {
@@ -112,7 +110,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
             int igs = (int)spl_gshells[igsloc];
 
             /* for pseudopotential valence or core charge density */
-            if (type__ == 1 || type__ == 2) jl.load(rl->gvec_shell_len(igs));
+            if (type__ == 1 || type__ == 2) jl.load(ctx_.gvec().shell_len(igs));
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
@@ -127,7 +125,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                     }
                     else
                     {
-                        double G = rl->gvec_shell_len(igs);
+                        double G = ctx_.gvec().shell_len(igs);
                         for (int ir = 0; ir < sa[iat].num_points(); ir++) 
                         {
                             sa[iat][ir] = atom_type->free_atom_density(ir) *

@@ -32,6 +32,11 @@ void Band::add_nl_h_o_pw(K_point* kp__,
     {
         /* compute <beta|phi> */
         kp__->generate_beta_phi(unit_cell_.mt_basis_size(), phi__, n__, 0, beta_gk__, beta_phi);
+        
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        auto c1 = beta_phi.checksum();
+        DUMP("checksum(beta_phi) : %18.10f %18.10f", std::real(c1), std::imag(c1));
+        #endif
        
         /* add |beta>D<beta|phi> to |hphi> */
         kp__->add_non_local_contribution(unit_cell_.num_atoms(), unit_cell_.mt_basis_size(), unit_cell_.beta_chunk(0).desc_,

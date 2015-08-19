@@ -30,15 +30,7 @@ class splindex<block>: public splindex_base
 {
     private:
         
-        /// Minimum number of elements for each rank.
-        size_t min_num_elements_;
-
-        /// Number of ranks with one extra element.
-        int num_ranks_with_extra_element_;
-
-        /// Size of the prime chunk of the global index.
-        /** This is the part of the global index stored by the number of ranks with an extra element. */
-        size_t prime_chunk_size_; 
+        size_t block_size_;
 
         void init(size_t global_index_size__, int num_ranks__, int rank__)
         {
@@ -50,11 +42,7 @@ class splindex<block>: public splindex_base
             if (rank__ < 0 || rank__ >= num_ranks__) error_local(__FILE__, __LINE__, "wrong rank");
             rank_ = rank__;
 
-            min_num_elements_ = global_index_size_ / num_ranks_;
-
-            num_ranks_with_extra_element_ = static_cast<int>(global_index_size_ % num_ranks_); 
-
-            prime_chunk_size_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
+            block_size_ = block_size(global_index_size__, num_ranks__);
         }
         
     public:
@@ -75,22 +63,8 @@ class splindex<block>: public splindex_base
         {
             assert(idxglob__ < global_index_size_);
 
-            int rank;
-            size_t idxloc;
-
-            if (idxglob__ < prime_chunk_size_)
-            {
-                rank = static_cast<int>(idxglob__ / (min_num_elements_ + 1));
-                idxloc = idxglob__ % (min_num_elements_ + 1);
-            }
-            else
-            {
-                assert(min_num_elements_ != 0);
-
-                size_t k = idxglob__ - prime_chunk_size_;
-                idxloc = k % min_num_elements_;
-                rank = static_cast<int>(num_ranks_with_extra_element_ + k / min_num_elements_);
-            }
+            int rank = int(idxglob__ / block_size_);
+            size_t idxloc = idxglob__ - rank * block_size_;
 
             return std::pair<size_t, int>(idxloc, rank);
         }
@@ -99,8 +73,17 @@ class splindex<block>: public splindex_base
         inline size_t local_size(int rank__) const
         {
             assert(rank__ >= 0 && rank__ < num_ranks_);
-            /* minimum number of elements +1 if rank < m */
-            return min_num_elements_ + (rank__ < num_ranks_with_extra_element_ ? 1 : 0);
+            
+            int n = int(global_index_size_ / block_size_);
+            if (rank__ < n)
+            {
+                return block_size_;
+            }
+            else if (rank__ == n)
+            {
+                return global_index_size_ - rank__ * block_size_;
+            }
+            else return 0;
         }
 
         /// Return local size of the split index for a current rank.
@@ -130,8 +113,7 @@ class splindex<block>: public splindex_base
 
             assert(idxloc__ < local_size(rank__));
 
-            return (rank__ < num_ranks_with_extra_element_) ? (min_num_elements_+ 1) * rank__ + idxloc__ : 
-                rank__ * min_num_elements_ + num_ranks_with_extra_element_ + idxloc__; 
+            return rank__ * block_size_ + idxloc__;
         }
 
         inline size_t global_offset() const
@@ -272,34 +254,5 @@ class splindex<block_cyclic>: public splindex_base
         inline size_t operator[](size_t idxloc__) const
         {
             return global_index(idxloc__, rank_);
-        }
-};
-
-template<> 
-class splindex<dyadic>
-{
-    private:
-        splindex<block_cyclic> spl1_;
-        splindex<block> spl2_;
-    
-    public:
-        splindex()
-        {
-        }
-
-        splindex(size_t global_index_size__, int num_ranks1__, int rank1__, int bs__, int num_ranks2__, int rank2__)
-        {
-            spl1_ = splindex<block_cyclic>(global_index_size__, num_ranks1__, rank1__, bs__);
-            spl2_ = splindex<block>(spl1_.local_size(), num_ranks2__, rank2__);
-        }
-
-        inline size_t local_size() const
-        {
-            return spl2_.local_size();
-        }
-
-        inline size_t operator[](size_t idxloc2__) const
-        {
-            return spl2_[idxloc2__];
         }
 };

@@ -144,13 +144,3 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
     error_message(file_name, line_number, message.str(), 0);
 }
 
-void log_function_enter(const char* func_name)
-{
-    if (verbosity_level >= 10) printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), func_name);
-}
-
-void log_function_exit(const char* func_name)
-{
-    if (verbosity_level >= 10) printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), func_name);
-}
-

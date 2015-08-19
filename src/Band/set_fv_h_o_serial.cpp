@@ -20,7 +20,11 @@ void Band::set_fv_h_o_serial(K_point* kp__,
                              matrix<double_complex>& o_old__,
                              mdarray<double_complex, 1>& kappa__)
 {
+    PROFILE();
+
     Timer t("sirius::Band::set_fv_h_o_serial");
+    
+    assert(n__ != 0);
 
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < N__; i++)
@@ -42,8 +46,8 @@ void Band::set_fv_h_o_serial(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        bool economize_gpu_memory = (kappa__.size() != 0);
         #ifdef __GPU
+        bool economize_gpu_memory = (kappa__.size() != 0);
         if (!economize_gpu_memory)
         {
             linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi__.at<GPU>(0, 0), phi__.ld(),

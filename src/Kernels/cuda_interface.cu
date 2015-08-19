@@ -1,10 +1,53 @@
-// This file must be compiled with nvcc
-#include "cuda_interface.h"
+#include <cuda.h>
+#include <cublas_v2.h>
+#include <execinfo.h>
+#include <unistd.h>
+#include <signal.h>
+#include <assert.h>
+#include <cufft.h>
+#include "kernels_common.h"
 
-extern "C" void print_cuda_timers()
+inline void stack_backtrace()
 {
-    CUDA_timer::cuda_timers_wrapper().print();
+    void *array[10];
+    char **strings;
+    int size = backtrace(array, 10);
+    strings = backtrace_symbols(array, size);
+    printf ("Stack backtrace:\n");
+    for (size_t i = 0; i < size; i++) printf ("%s\n", strings[i]);
+    raise(SIGQUIT);
 }
+
+#ifdef NDEBUG
+#define CALL_CUDA(func__, args__)                                                                                  \
+{                                                                                                                  \
+    cudaError_t error = func__ args__;                                                                             \
+    if (error != cudaSuccess)                                                                                      \
+    {                                                                                                              \
+        char nm[1024];                                                                                             \
+        gethostname(nm, 1024);                                                                                     \
+        printf("hostname: %s\n", nm);                                                                              \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        stack_backtrace();                                                                                         \
+    }                                                                                                              \
+}
+#else
+#define CALL_CUDA(func__, args__)                                                                                  \
+{                                                                                                                  \
+    cudaError_t error;                                                                                             \
+    func__ args__;                                                                                                 \
+    cudaDeviceSynchronize();                                                                                       \
+    error = cudaGetLastError();                                                                                    \
+    if (error != cudaSuccess)                                                                                      \
+    {                                                                                                              \
+        char nm[1024];                                                                                             \
+        gethostname(nm, 1024);                                                                                     \
+        printf("hostname: %s\n", nm);                                                                              \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        stack_backtrace();                                                                                         \
+    }                                                                                                              \
+}
+#endif
 
 //================
 // CUDA functions
@@ -13,6 +56,11 @@ extern "C" void print_cuda_timers()
 cudaStream_t* streams;
 
 extern "C" {
+
+void print_cuda_timers()
+{
+    CUDA_timer::cuda_timers_wrapper().print();
+}
 
 void cuda_initialize()
 {
@@ -187,13 +235,19 @@ void cuda_check_last_error()
     }
 }
 
-} // extern "C"
-
-
 void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__)
 {
     CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
 }
+
+void cuda_memcpy2D_device_to_device_async(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__, int stream_id__)
+{
+    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice, stream));
+}
+
+} // extern "C"
+
 
 
 //==================
@@ -269,12 +323,6 @@ extern "C" void cublas_destroy_handles(int num_handles)
         CALL_CUBLAS(cublasDestroy, (cublas_stream_handles[i]));
     }
 }
-
-//== extern "C" void cublas_set_stream(int stream_id__)
-//== {
-//==     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-//==     cublasSetStream(cublas_handle(), stream);
-//== }
 
 extern "C" void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
                              cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 

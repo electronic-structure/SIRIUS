@@ -46,32 +46,44 @@ class FFT3D<CPU>
         /// Number of threads doing individual FFTs.
         int num_fft_threads_;
 
+        Communicator comm_;
+
+        mdarray<double_complex, 2> data_slab_;
+        mdarray<double_complex, 1> data_slice_;
+        splindex<block> spl_z_;
+
         /// Size of each dimension.
         int grid_size_[3];
 
-        /// reciprocal space range
+        int local_size_;
+
+        int local_size_z_;
+
+        int offset_z_;
+
+        /// Reciprocal space range
         std::pair<int, int> grid_limits_[3];
         
-        /// backward transformation plan for each thread
+        /// Backward transformation plan for each thread
         std::vector<fftw_plan> plan_backward_;
+
+        std::vector<fftw_plan> plan_backward_z_;
+
+        std::vector<fftw_plan> plan_backward_xy_;
         
-        /// forward transformation plan for each thread
+        /// Forward transformation plan for each thread
         std::vector<fftw_plan> plan_forward_;
+
+        std::vector<fftw_plan> plan_forward_z_;
+
+        std::vector<fftw_plan> plan_forward_xy_;
     
-        /// inout buffer for each thread
-        mdarray<double_complex, 2> fftw_buffer_;
+        /// In/out buffer for each thread
+        std::vector<double_complex*> fftw_buffer_;
+
+        std::vector<double_complex*> fftw_buffer_z_;
+        std::vector<double_complex*> fftw_buffer_xy_;
         
-        int num_gvec_;
-
-        mdarray<int, 2> gvec_;
-        std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
-
-        mdarray<int, 3> gvec_index_;
-
-        std::vector<int> index_map_;
-        std::vector<int> gvec_shell_;
-        std::vector<double> gvec_shell_len_;
-
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
         {    
@@ -83,7 +95,15 @@ class FFT3D<CPU>
         {    
             fftw_execute(plan_forward_[thread_id]);
             double norm = 1.0 / size();
-            for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) *= norm;
+            if (num_fft_threads_ == 1)
+            {
+                #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+                for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
+            }
+            else
+            {
+                for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
+            }
         }
 
         /// Find smallest optimal grid size starting from n.
@@ -105,16 +125,206 @@ class FFT3D<CPU>
                     n++;
                 }
             }
-        } 
+        }
+
+        void backward_custom(int num_xy_packed__, mdarray<int, 2> const& xy_packed_idx__)
+        {
+            Timer t0("sirius::FFT3D<CPU>::backward_custom");
+
+            int size_xy = size(0) * size(1);
+
+            splindex<block> spl_n(num_xy_packed__, comm_.size(), comm_.rank());
+
+            std::vector<int> sendcounts(comm_.size());
+            std::vector<int> sdispls(comm_.size());
+            std::vector<int> recvcounts(comm_.size());
+            std::vector<int> rdispls(comm_.size());
+
+            for (int rank = 0; rank < comm_.size(); rank++)
+            {
+                sendcounts[rank] = (int)spl_z_.local_size() * (int)spl_n.local_size(rank);
+                sdispls[rank]    = (int)spl_z_.local_size() * (int)spl_n.global_offset(rank);
+
+                recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
+                rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
+            }
+
+            Timer t1("fft|comm");
+            comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
+                           data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
+            t1.stop();
+
+            Timer t2("fft|comp");
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                
+                #pragma omp for
+                for (int i = 0; i < (int)spl_n.local_size(); i++)
+                {
+                    for (int rank = 0; rank < comm_.size(); rank++)
+                    {
+                        int lsz = (int)spl_z_.local_size(rank);
+
+                        memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                               &data_slice_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                               lsz * sizeof(double_complex));
+                    }
+
+                    fftw_execute(plan_backward_z_[tid]);
+
+                    for (int rank = 0; rank < comm_.size(); rank++)
+                    {
+                        int lsz = (int)spl_z_.local_size(rank);
+
+                        memcpy(&data_slice_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                               &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                               lsz * sizeof(double_complex));
+                    }
+                }
+            }
+            t2.stop();
+
+            t1.start();
+            comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
+                           data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
+            t1.stop();
+
+            t2.start();
+            memset(fftw_buffer_[0], 0, local_size() * sizeof(double_complex));
+
+            for (int n = 0; n < num_xy_packed__; n++)
+            {
+                int x = xy_packed_idx__(0, n);
+                int y = xy_packed_idx__(1, n);
+                for (int z = 0; z < local_size_z_; z++)
+                {
+                    fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
+                }
+            }
+
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                
+                #pragma omp for
+                for (int i = 0; i < local_size_z_; i++)
+                {
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][i * size_xy], sizeof(fftw_complex) * size_xy);
+                    fftw_execute(plan_backward_xy_[tid]);
+                    memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                }
+            }
+            t2.stop();
+        }
+        
+        void forward_custom(int num_xy_packed__, mdarray<int, 2> const& xy_packed_idx__)
+        {
+            Timer t0("sirius::FFT3D<CPU>::forward_custom");
+
+            int size_xy = size(0) * size(1);
+
+            Timer t1("fft|comp");
+
+            splindex<block> spl_n(num_xy_packed__, comm_.size(), comm_.rank());
+
+            std::vector<int> sendcounts(comm_.size());
+            std::vector<int> sdispls(comm_.size());
+            std::vector<int> recvcounts(comm_.size());
+            std::vector<int> rdispls(comm_.size());
+
+            for (int rank = 0; rank < comm_.size(); rank++)
+            {
+                sendcounts[rank] = (int)spl_z_.local_size() * (int)spl_n.local_size(rank);
+                sdispls[rank]    = (int)spl_z_.local_size() * (int)spl_n.global_offset(rank);
+
+                recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
+                rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
+            }
+
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                
+                #pragma omp for
+                for (int i = 0; i < local_size_z_; i++)
+                {
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][i * size_xy], sizeof(fftw_complex) * size_xy);
+                    fftw_execute(plan_forward_xy_[tid]);
+                    memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                }
+            }
+
+            for (int n = 0; n < num_xy_packed__; n++)
+            {
+                int x = xy_packed_idx__(0, n);
+                int y = xy_packed_idx__(1, n);
+                for (int z = 0; z < local_size_z_; z++)
+                {
+                    data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
+                }
+            }
+            t1.stop();
+
+            Timer t2("fft|comm");
+            comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
+                           data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
+            t2.stop();
+
+            t1.start();
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                
+                #pragma omp for
+                for (int i = 0; i < (int)spl_n.local_size(); i++)
+                {
+                    for (int rank = 0; rank < comm_.size(); rank++)
+                    {
+                        int lsz = (int)spl_z_.local_size(rank);
+
+                        memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                               &data_slice_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                               lsz * sizeof(double_complex));
+                    }
+
+                    fftw_execute(plan_forward_z_[tid]);
+
+                    for (int rank = 0; rank < comm_.size(); rank++)
+                    {
+                        int lsz = (int)spl_z_.local_size(rank);
+
+                        memcpy(&data_slice_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                               &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                               lsz * sizeof(double_complex));
+                    }
+                }
+            }
+            t1.stop();
+
+            t2.start();
+            comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
+                           data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
+            t2.stop();
+
+            double norm = 1.0 / size();
+            double_complex* ptr = data_slab_.at<CPU>();
+            #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+            for (int i = 0; i < local_size_z_ * num_xy_packed__; i++) ptr[i] *= norm;
+        }
         
     public:
 
         FFT3D(vector3d<int> dims__,
               int num_fft_threads__,
-              int num_fft_workers__)
+              int num_fft_workers__,
+              Communicator const& comm__)
             : num_fft_workers_(num_fft_workers__),
-              num_fft_threads_(num_fft_threads__)
+              num_fft_threads_(num_fft_threads__),
+              comm_(comm__)
         {
+            PROFILE();
+
             Timer t("sirius::FFT3D<CPU>::FFT3D");
             for (int i = 0; i < 3; i++)
             {
@@ -123,68 +333,128 @@ class FFT3D<CPU>
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
-            
-            #ifdef __FFTW_THREADED
+
             fftw_plan_with_nthreads(num_fft_workers_);
-            #endif
 
-            fftw_buffer_ = mdarray<double_complex, 2>(size(), num_fft_threads_);
+            if (comm_.size() > 1 && num_fft_threads_ != 1) TERMINATE("distributed FFT can't be used inside multiple threads");
 
-            plan_backward_.resize(num_fft_threads_);
-            plan_forward_.resize(num_fft_threads_);
+            size_t alloc_local_size = 0;
+            if (comm_.size() > 1)
+            {
+                #ifdef __FFTW_MPI
+                ptrdiff_t sz, offs;
+                alloc_local_size = fftw_mpi_local_size_3d(size(2), size(1), size(0), comm__.mpi_comm(), &sz, &offs);
+
+                local_size_z_ = (int)sz;
+                offset_z_ = (int)offs;
+                #else
+                TERMINATE("not compiled with MPI support");
+                #endif
+            }
+            else
+            {
+                alloc_local_size = size();
+                local_size_z_ = size(2);
+                offset_z_ = 0;
+            }
+
+            /* split z-direction */
+            spl_z_ = splindex<block>(size(2), comm_.size(), comm_.rank());
+            assert((int)spl_z_.local_size() == local_size_z_);
+
+            data_slab_  = mdarray<double_complex, 2>(local_size_z_, size(0) * size(1));
+            data_slice_ = mdarray<double_complex, 1>(size(2) * splindex_base::block_size(size(0) * size(1), comm_.size()));
+
+            fftw_buffer_   = std::vector<double_complex*>(num_fft_threads_);
+            plan_backward_ = std::vector<fftw_plan>(num_fft_threads_);
+            plan_forward_  = std::vector<fftw_plan>(num_fft_threads_);
 
             for (int i = 0; i < num_fft_threads_; i++)
             {
-                plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
-                                                     (fftw_complex*)&fftw_buffer_(0, i), 
-                                                     (fftw_complex*)&fftw_buffer_(0, i), 1, FFTW_ESTIMATE);
-                plan_forward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
-                                                    (fftw_complex*)&fftw_buffer_(0, i), 
-                                                    (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_ESTIMATE);
+                fftw_buffer_[i] = (double_complex*)fftw_malloc(alloc_local_size * sizeof(double_complex));
+
+                if (comm_.size() > 1)
+                {
+                    #ifdef __FFTW_MPI
+                    plan_backward_[i] = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), 
+                                                             (fftw_complex*)fftw_buffer_[i], 
+                                                             (fftw_complex*)fftw_buffer_[i],
+                                                             comm_.mpi_comm(), FFTW_BACKWARD, FFTW_ESTIMATE);
+
+                    plan_forward_[i] = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), 
+                                                            (fftw_complex*)fftw_buffer_[i], 
+                                                            (fftw_complex*)fftw_buffer_[i],
+                                                            comm_.mpi_comm(), FFTW_FORWARD, FFTW_ESTIMATE);
+
+                    #else
+                    TERMINATE("not compiled with MPI support");
+                    #endif
+                }
+                else
+                {
+                    plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
+                                                         (fftw_complex*)fftw_buffer_[i], 
+                                                         (fftw_complex*)fftw_buffer_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+
+                    plan_forward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
+                                                        (fftw_complex*)fftw_buffer_[i], 
+                                                        (fftw_complex*)fftw_buffer_[i], FFTW_FORWARD, FFTW_ESTIMATE);
+                }
             }
-            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(1);
-            #endif
+
+            fftw_buffer_z_    = std::vector<double_complex*>(num_fft_workers_);
+            fftw_buffer_xy_   = std::vector<double_complex*>(num_fft_workers_);
+            plan_forward_z_   = std::vector<fftw_plan>(num_fft_workers_);
+            plan_forward_xy_  = std::vector<fftw_plan>(num_fft_workers_);
+            plan_backward_z_  = std::vector<fftw_plan>(num_fft_workers_);
+            plan_backward_xy_ = std::vector<fftw_plan>(num_fft_workers_);
+
+            for (int i = 0; i < num_fft_workers_; i++)
+            {
+                fftw_buffer_z_[i] = (double_complex*)fftw_malloc(size(2) * sizeof(double_complex));
+                fftw_buffer_xy_[i] = (double_complex*)fftw_malloc(size(0) * size(1) * sizeof(double_complex));
+
+                plan_forward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i], 
+                                                      (fftw_complex*)fftw_buffer_z_[i], FFTW_FORWARD, FFTW_ESTIMATE);
+
+                plan_backward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i], 
+                                                       (fftw_complex*)fftw_buffer_z_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+                
+                plan_forward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i], 
+                                                       (fftw_complex*)fftw_buffer_xy_[i], FFTW_FORWARD, FFTW_ESTIMATE);
+
+                plan_backward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i], 
+                                                        (fftw_complex*)fftw_buffer_xy_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+            }
         }
 
         ~FFT3D()
         {
             for (int i = 0; i < num_fft_threads_; i++)
             {
+                fftw_free(fftw_buffer_[i]);
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
             }
+
+            for (int i = 0; i < num_fft_workers_; i++)
+            {
+                fftw_free(fftw_buffer_z_[i]);
+                fftw_free(fftw_buffer_xy_[i]);
+                fftw_destroy_plan(plan_forward_z_[i]);
+                fftw_destroy_plan(plan_forward_xy_[i]);
+                fftw_destroy_plan(plan_backward_z_[i]);
+                fftw_destroy_plan(plan_backward_xy_[i]);
+            }
         }
 
-        template<typename T>
-        inline void input(int n, int const* map, T* data, int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads());
-            
-            memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
-            for (int i = 0; i < n; i++) fftw_buffer_(map[i], thread_id) = data[i];
-        }
-
-        inline void input(double* data, int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads());
-            
-            for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) = data[i];
-        }
-        
-        inline void input(double_complex* data, int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads());
-            
-            memcpy(&fftw_buffer_(0, thread_id), data, size() * sizeof(double_complex));
-        }
-        
         /// Execute the transformation for a given thread.
         inline void transform(int direction, int thread_id = 0)
         {
-            assert(thread_id < num_fft_threads());
+            assert(thread_id < num_fft_threads_);
 
-            switch(direction)
+            switch (direction)
             {
                 case 1:
                 {
@@ -203,43 +473,90 @@ class FFT3D<CPU>
             }
         }
 
+        void transform_custom(int direction__, int num_xy_packed__, mdarray<int, 2> const& xy_packed_idx__)
+        {
+            switch (direction__)
+            {
+                case 1:
+                {
+                    backward_custom(num_xy_packed__, xy_packed_idx__);
+                    break;
+                }
+                case -1:
+                {
+                    forward_custom(num_xy_packed__, xy_packed_idx__);
+                    break;
+                }
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "wrong FFT direction");
+                }
+            }
+        }
+
+        template<typename T>
+        inline void input(int n__, int const* map__, T* data__, int thread_id__ = 0)
+        {
+            assert(thread_id__ < num_fft_threads_);
+            
+            memset(fftw_buffer_[thread_id__], 0, local_size() * sizeof(double_complex));
+            for (int i = 0; i < n__; i++) fftw_buffer_[thread_id__][map__[i]] = data__[i];
+        }
+
+        template<typename T>
+        inline void input_custom(int n__, int const* map__, T* data__)
+        {
+            data_slab_.zero();
+
+            T* ptr = data_slab_.at<CPU>();
+            for (int i = 0; i < n__; i++) ptr[map__[i]] = data__[i];
+        }
+
+        template <typename T>
+        inline void input(T* data__, int thread_id__ = 0)
+        {
+            assert(thread_id__ < num_fft_threads_);
+            
+            for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id__][i] = data__[i];
+        }
+        
         inline void output(double* data, int thread_id = 0)
         {
-            assert(thread_id < num_fft_threads());
+            assert(thread_id < num_fft_threads_);
 
-            for (int i = 0; i < size(); i++) data[i] = real(fftw_buffer_(i, thread_id));
+            for (int i = 0; i < local_size(); i++) data[i] = std::real(fftw_buffer_[thread_id][i]);
         }
         
         inline void output(double_complex* data, int thread_id = 0)
         {
-            assert(thread_id < num_fft_threads());
+            assert(thread_id < num_fft_threads_);
 
-            memcpy(data, &fftw_buffer_(0, thread_id), size() * sizeof(double_complex));
+            memcpy(data, fftw_buffer_[thread_id], local_size() * sizeof(double_complex));
         }
         
         inline void output(int n, int const* map, double_complex* data, int thread_id = 0)
         {
-            assert(thread_id < num_fft_threads());
+            assert(thread_id < num_fft_threads_);
 
-            for (int i = 0; i < n; i++) data[i] = fftw_buffer_(map[i], thread_id);
+            for (int i = 0; i < n; i++) data[i] = fftw_buffer_[thread_id][map[i]];
+        }
+
+        inline void output_custom(int n, int const* map, double_complex* data)
+        {
+            double_complex* ptr = data_slab_.at<CPU>();
+            for (int i = 0; i < n; i++) data[i] = ptr[map[i]];
         }
 
         inline void output(int n, int const* map, double_complex* data, int thread_id, double alpha)
         {
-            assert(thread_id < num_fft_threads());
+            assert(thread_id < num_fft_threads_);
 
-            for (int i = 0; i < n; i++) data[i] += alpha * fftw_buffer_(map[i], thread_id);
+            for (int i = 0; i < n; i++) data[i] += alpha * fftw_buffer_[thread_id][map[i]];
         }
         
         inline const std::pair<int, int>& grid_limits(int idim)
         {
             return grid_limits_[idim];
-        }
-
-        /// Total size of the FFT grid.
-        inline int size() const
-        {
-            return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
         }
 
         /// Size of a given dimension.
@@ -249,7 +566,28 @@ class FFT3D<CPU>
             return grid_size_[d]; 
         }
 
-        /// Return linear index of a plane-wave harmonic with fractional coordinates (10, i1, i2) inside fft buffer.
+        /// Total size of the FFT grid.
+        inline int size() const
+        {
+            return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
+        }
+
+        inline int local_size() const
+        {
+            return grid_size_[0] * grid_size_[1] * local_size_z_;
+        }
+
+        inline int local_size_z() const
+        {
+            return local_size_z_;
+        }
+
+        inline int offset_z() const
+        {
+            return offset_z_;
+        }
+
+        /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside fft buffer.
         inline int index(int i0, int i1, int i2) const
         {
             if (i0 < 0) i0 += grid_size_[0];
@@ -262,157 +600,329 @@ class FFT3D<CPU>
         /// Direct access to the fft buffer
         inline double_complex& buffer(int i, int thread_id = 0)
         {
-            return fftw_buffer_(i, thread_id);
+            return fftw_buffer_[thread_id][i];
         }
         
         vector3d<int> grid_size() const
         {
-            return vector3d<int>(grid_size_);
+            return vector3d<int>(grid_size_[0], grid_size_[1], grid_size_[2]);
         }
 
-        void init_gvec(double Gmax__, matrix3d<double> const& M__)
+        inline vector3d<int> gvec_by_grid_pos(int i0__, int i1__, int i2__) const
         {
-            mdarray<int, 2> gvec_tmp(3, size());
-            std::vector< std::pair<double, int> > gvec_tmp_length;
-            
-            for (int i0 = grid_limits(0).first; i0 <= grid_limits(0).second; i0++)
+            if (i0__ > grid_limits_[0].second) i0__ -= grid_size_[0];
+            if (i1__ > grid_limits_[1].second) i1__ -= grid_size_[1];
+            if (i2__ > grid_limits_[2].second) i2__ -= grid_size_[2];
+
+            return vector3d<int>(i0__, i1__, i2__);
+        }
+
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
+
+        inline bool parallel() const
+        {
+            return (comm_.size() != 1);
+        }
+};
+
+class Gvec
+{
+    private:
+        
+        FFT3D<CPU>* fft_;
+
+        matrix3d<double> lattice_vectors_;
+
+        /// Total number of G-vectors.
+        int num_gvec_;
+
+        /// Local number of G-vectors for a given slab.
+        int num_gvec_loc_;
+        
+        /// Offset of local part of G-vectors in the global index array.
+        int gvec_offset_;
+        
+        /// Mapping between G-vector index [0:num_gvec_) and a full index.
+        /** Full index is used to store x,y,z coordinates in a packed form in a single integer number. */
+        mdarray<int, 1> gvec_full_index_;
+    
+        /// Index of the shell to which the given G-vector belongs.
+        mdarray<int, 1> gvec_shell_;
+        
+        /// Position in the local slab of FFT buffer by local G-vec index.
+        mdarray<int, 1> index_map_local_to_local_;
+
+        mdarray<int, 1> index_map_local_to_xy_packed_;
+
+        std::vector<int> gvec_counts_;
+
+        std::vector<int> gvec_offsets_;
+
+        int num_gvec_shells_;
+
+        mdarray<double, 1> gvec_shell_len_;
+
+        mdarray<int, 3> index_by_gvec_;
+
+        mdarray<int, 2> xy_mask_;
+
+        mdarray<int, 2> xy_packed_idx_;
+
+        int num_xy_packed_;
+
+        Gvec(Gvec const& src__) = delete;
+
+        Gvec& operator=(Gvec const& src__) = delete;
+
+    public:
+
+        Gvec() : fft_(nullptr)
+        {
+        }
+
+        Gvec(vector3d<double> q__,
+             double Gmax__,
+             matrix3d<double> const& M__,
+             FFT3D<CPU>* fft__,
+             bool build_reverse_mapping__)
+            : fft_(fft__),
+              lattice_vectors_(M__)
+        {
+            xy_mask_ = mdarray<int, 2>(fft_->size(0), fft_->size(1));
+            xy_mask_.zero();
+
+            /* find local number of G-vectors for each slab of FFT buffer;
+             * at the same time, create the xy mask that tells which columns in 3D buffer are zero when
+             * wave-functions are loaded into the buffer */
+            std::vector< vector3d<int> > pos;
+            for (int k = 0; k < fft_->local_size_z(); k++)
             {
-                for (int i1 = grid_limits(1).first; i1 <= grid_limits(1).second; i1++)
+                for (int j = 0; j < fft_->size(1); j++)
                 {
-                    for (int i2 = grid_limits(2).first; i2 <= grid_limits(2).second; i2++)
+                    for (int i = 0; i < fft_->size(0); i++)
                     {
-                        int ig = (int)gvec_tmp_length.size();
+                        auto G = fft_->gvec_by_grid_pos(i, j, k + fft_->offset_z());
+                       
+                        /* take G+q */
+                        auto gq = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q__);
 
-                        gvec_tmp(0, ig) = i0;
-                        gvec_tmp(1, ig) = i1;
-                        gvec_tmp(2, ig) = i2;
-                        
-                        auto vc = M__ * vector3d<double>(i0, i1, i2);
-
-                        gvec_tmp_length.push_back(std::pair<double, int>(vc.length(), ig));
+                        if (gq.length() <= Gmax__)
+                        {
+                            pos.push_back(vector3d<int>(i, j, k));
+                            xy_mask_(i, j) = 1;
+                        }
+                    }
+                }
+            }
+            fft_->comm().allreduce<int, op_max>(xy_mask_.at<CPU>(), (int)xy_mask_.size());
+            
+            /* build a linear index of xy coordinates of non-zero z-columns */
+            mdarray<int, 2> xy_idx(fft_->size(0), fft_->size(1));
+            xy_packed_idx_ = mdarray<int, 2>(2, fft_->size(0) * fft_->size(1));
+            num_xy_packed_ = 0;
+            for (int x = 0; x < fft_->size(0); x++)
+            {
+                for (int y = 0; y < fft_->size(1); y++)
+                {
+                    if (xy_mask_(x, y))
+                    {
+                        xy_idx(x, y) = num_xy_packed_;
+                        xy_packed_idx_(0, num_xy_packed_) = x;
+                        xy_packed_idx_(1, num_xy_packed_) = y;
+                        num_xy_packed_++;
                     }
                 }
             }
 
-            /* sort G-vectors by length */
-            std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
+            /* get total number of G-vectors */
+            num_gvec_loc_ = (int)pos.size();
+            num_gvec_ = num_gvec_loc_;
+            fft_->comm().allreduce(&num_gvec_, 1);
 
-            /* create sorted list of G-vectors */
-            gvec_ = mdarray<int, 2>(3, size());
-            gvec_cart_ = std::vector< vector3d<double> >(size());
+            gvec_full_index_              = mdarray<int, 1>(num_gvec_);
+            index_map_local_to_local_     = mdarray<int, 1>(num_gvec_loc_);
+            index_map_local_to_xy_packed_ = mdarray<int, 1>(num_gvec_loc_);
 
-            /* find number of G-vectors within the cutoff */
-            num_gvec_ = 0;
-            for (int i = 0; i < size(); i++)
+            gvec_counts_  = std::vector<int>(fft_->comm().size(), 0);
+            gvec_offsets_ = std::vector<int>(fft_->comm().size(), 0);
+
+            /* get local sizes from all ranks */
+            gvec_counts_[fft_->comm().rank()] = num_gvec_loc_;
+            fft_->comm().allreduce(&gvec_counts_[0], fft_->comm().size());
+            
+            /* compute offsets in global G-vector index */
+            for (int i = 1; i < fft_->comm().size(); i++) 
+                gvec_offsets_[i] = gvec_offsets_[i - 1] + gvec_counts_[i - 1]; 
+            gvec_offset_ = gvec_offsets_[fft_->comm().rank()];
+
+            for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
             {
-                for (int x = 0; x < 3; x++) gvec_(x, i) = gvec_tmp(x, gvec_tmp_length[i].second);
+                auto p = pos[igloc];
+                index_map_local_to_local_(igloc) = p[0] + p[1] * fft_->size(0) + p[2] * fft_->size(0) * fft_->size(1);
 
-                gvec_cart_[i] = M__ * vector3d<double>(gvec_(0, i), gvec_(1, i), gvec_(2, i));
+                index_map_local_to_xy_packed_(igloc) = p[2] + fft_->local_size_z() * xy_idx(p[0], p[1]);
                 
-                if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
+                /* this is only one way to pack coordinates into single integer */
+                gvec_full_index_(gvec_offset_ + igloc) = 
+                    p[0] + p[1] * fft_->size(0) + (p[2] + fft_->offset_z()) * fft_->size(0) * fft_->size(1);
             }
-            
-            gvec_index_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
-                                          mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
-                                          mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
-            index_map_.resize(size());
-            
-            gvec_shell_.resize(size());
-            gvec_shell_len_.clear();
-            
-            for (int ig = 0; ig < size(); ig++)
+
+            fft_->comm().allgather(&gvec_full_index_(0), gvec_offset_, num_gvec_loc_); 
+
+            auto g0 = gvec_by_full_index(gvec_full_index_(0));
+            if (g0[0] || g0[1] || g0[2]) TERMINATE("first G-vector is not zero");
+
+            std::map<size_t, std::vector<int> > gsh;
+            for (int ig = 0; ig < num_gvec_; ig++)
             {
-                int i0 = gvec_(0, ig);
-                int i1 = gvec_(1, ig);
-                int i2 = gvec_(2, ig);
+                auto G = gvec_by_full_index(gvec_full_index_(ig));
 
-                /* mapping from G-vector to it's index */
-                gvec_index_(i0, i1, i2) = ig;
+                /* take G+q */
+                auto gq = M__ * (vector3d<double>(G[0], G[1], G[2]) + q__);
 
-                /* mapping of FFT buffer linear index */
-                index_map_[ig] = index(i0, i1, i2);
+                size_t len = size_t(gq.length() * 1e10);
 
-                /* find G-shells */
-                double t = gvec_tmp_length[ig].first;
-                if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
-                gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
+                if (!gsh.count(len)) gsh[len] = std::vector<int>();
+                
+                gsh[len].push_back(ig);
+            }
+            num_gvec_shells_ = (int)gsh.size();
+            gvec_shell_ = mdarray<int, 1>(num_gvec_);
+            gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
+            
+            int n = 0;
+            for (auto it = gsh.begin(); it != gsh.end(); it++)
+            {
+                gvec_shell_len_(n) = double(it->first) * 1e-10;
+                for (int ig: it->second) gvec_shell_(ig) = n;
+                n++;
+            }
+
+            if (build_reverse_mapping__)
+            {
+                index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
+                                                 mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
+                                                 mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
+                memset(index_by_gvec_.at<CPU>(), 0xFF, index_by_gvec_.size() * sizeof(int));
+
+                for (int ig = 0; ig < num_gvec_; ig++)
+                {
+                    auto G = gvec_by_full_index(gvec_full_index_(ig));
+                    index_by_gvec_(G[0], G[1], G[2]) = ig;
+                }
             }
         }
-        
+
+        Gvec& operator=(Gvec&& src__) = default;
+
         /// Return number of G-vectors within the cutoff.
         inline int num_gvec() const
         {
             return num_gvec_;
         }
 
-        /// Return G-vector in fractional coordinates (this are the three Miller indices).
-        inline vector3d<int> gvec(int ig__) const
+        inline int num_gvec_loc() const
         {
-            return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
-        }
-        
-        /// Return G-vector in Cartesian coordinates.
-        inline vector3d<double> gvec_cart(int ig__) const
-        {
-            assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
-            return gvec_cart_[ig__];
+            return num_gvec_loc_;
         }
 
-        /// Return length of a G-vector.
+        inline int gvec_offset() const
+        {
+            return gvec_offset_;
+        }
+
+        /// Return number of G-vector shells.
+        inline int num_shells() const
+        {
+            return num_gvec_shells_;
+        }
+
+        inline vector3d<int> gvec_by_full_index(int idx__) const // TODO: use bit masks and bit shifts
+        {
+            int k = idx__ / (fft_->size(0) * fft_->size(1));
+            idx__ -= k * fft_->size(0) * fft_->size(1);
+            int j = idx__ / fft_->size(0);
+            int i = idx__ -  j * fft_->size(0);
+            return fft_->gvec_by_grid_pos(i, j, k);
+        }
+
+        inline vector3d<int> operator[](int ig__) const
+        {
+            assert(ig__ >= 0 && ig__ < num_gvec_);
+            return gvec_by_full_index(gvec_full_index_(ig__));
+        }
+
+        inline vector3d<double> cart(int ig__) const
+        {
+            auto gv = gvec_by_full_index(gvec_full_index_(ig__));
+            return lattice_vectors_ * vector3d<double>(gv[0], gv[1], gv[2]);
+        }
+
+        inline int shell(int ig__) const
+        {
+            return gvec_shell_(ig__);
+        }
+
+        inline double shell_len(int igs__) const
+        {
+            return gvec_shell_len_(igs__);
+        }
+
         inline double gvec_len(int ig__) const
         {
-            return gvec_shell_len(gvec_shell(ig__));
+            return gvec_shell_len_(gvec_shell_(ig__));
         }
 
-        /// Return number of G-vector shells within the cutoff.
-        /** G-vectors with the same length belong to the same shell. */
-        inline int num_gvec_shells_inner()
+        inline int index_g12(vector3d<int> const& g1__, vector3d<int> const& g2__) const
         {
-            return gvec_shell(num_gvec_);
+            auto v = g1__ - g2__;
+            int idx = index_by_gvec(v);
+            assert(idx >= 0 && idx < num_gvec());
+            return idx;
         }
 
-        /// Return total number of G-vector shells, including incomplete shells.
-        /** Incomplete G-shells are formed by G-vectors outisde the cutoff radius (for example,
-         *  by G-vectors at corners of FFT grid).
-         */
-        inline int num_gvec_shells_total()
+        inline int index_g12_safe(int ig1__, int ig2__) const
         {
-            return (int)gvec_shell_len_.size();
-        }
-
-        /// Return index of a G-vector shell for a given G-vector.
-        inline int gvec_shell(int ig__) const
-        {
-            assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
-            return gvec_shell_[ig__];
-        }
-
-        /// Return length of a G-vector shell.
-        inline double gvec_shell_len(int igsh__) const
-        {
-            assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
-            return gvec_shell_len_[igsh__];
+            STOP();
+            return 0;
         }
 
         inline int const* index_map() const
         {
-            return &index_map_[0];
+            return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_local_(0);
         }
 
-        inline int index_map(int ig__) const
+        inline int const* index_map_xy() const
         {
-            assert(ig__ >= 0 && ig__ < (int)index_map_.size());
-            return index_map_[ig__];
+            return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_xy_packed_(0);
         }
 
-        inline int num_fft_threads() const
+        inline int index_by_gvec(vector3d<int>& G__) const
         {
-            return num_fft_threads_;
+            return index_by_gvec_(G__[0], G__[1], G__[2]);
         }
 
-        inline int gvec_index(vector3d<int> gvec__) const
+        inline std::vector<int> const& counts() const
         {
-            return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
+            return gvec_counts_;
+        }
+
+        mdarray<int, 2> const& xy_mask() const
+        {
+            return xy_mask_;
+        }
+
+        mdarray<int, 2> const& xy_packed_idx() const
+        {
+            return xy_packed_idx_;
+        }
+
+        int num_xy_packed() const
+        {
+            return num_xy_packed_;
         }
 };
 

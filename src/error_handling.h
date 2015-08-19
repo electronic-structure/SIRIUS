@@ -79,10 +79,6 @@ void warning_local(const char* file_name, int line_number, const std::string& me
 /// Local warning report for stringstream message
 void warning_local(const char* file_name, int line_number, const std::stringstream& message);
 
-void log_function_enter(const char* func_name);
-
-void log_function_exit(const char* func_name);
-
 #define STOP()                                              \
 {                                                           \
     Timer::print();                                         \
@@ -99,28 +95,19 @@ void log_function_exit(const char* func_name);
 
 #define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
 
-#define DUMP(...)                                                                \
-{                                                                                \
-    char str__[1024];                                                            \
-    int x__ = snprintf(str__, 1024, "[%s:%i] ", __func__, Platform::rank()); \
-    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                            \
-    printf("%s\n", str__);                                                       \
+#define DUMP(...)                                                               \
+{                                                                               \
+    char str__[1024];                                                           \
+    int x__ = snprintf(str__, 1024, "[%s:%04i] ", __func__, Platform::rank()) ; \
+    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                           \
+    printf("%s\n", str__);                                                      \
 }
 
-#if defined (__GNUC__)
-  #define LOG_FUNC_NAME __PRETTY_FUNCTION__ 
-#else
-  #define LOG_FUNC_NAME __func__
-#endif
-
-#define LOG_FUNC_BEGIN()                \
-{                                       \
-    log_function_enter(LOG_FUNC_NAME);  \
-}
-
-#define LOG_FUNC_END()                  \
-{                                       \
-    log_function_exit(LOG_FUNC_NAME);   \
+#define PRINT(...)                                    \
+{                                                     \
+    char str__[1024];                                 \
+    snprintf(str__, 1024, __VA_ARGS__ );              \
+    if (Platform::rank() == 0) printf("%s\n", str__); \
 }
 
 #endif // __ERROR_HANDLING_H__

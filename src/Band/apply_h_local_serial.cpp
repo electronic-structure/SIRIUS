@@ -8,16 +8,16 @@ namespace sirius {
 /** \param [in] phi Input wave-functions [storage: CPU].
  *  \param [out] hphi Result of application of operator to the wave-functions [storage: CPU].
  */
-void Band::apply_h_local_slice(K_point* kp__,
-                               std::vector<double> const& effective_potential__,
-                               std::vector<double> const& pw_ekin__,
-                               int num_phi__,
-                               matrix<double_complex> const& phi__,
-                               matrix<double_complex>& hphi__)
+void Band::apply_h_local_serial(K_point* kp__,
+                                std::vector<double> const& effective_potential__,
+                                std::vector<double> const& pw_ekin__,
+                                int num_phi__,
+                                matrix<double_complex> const& phi__,
+                                matrix<double_complex>& hphi__)
 {
-    LOG_FUNC_BEGIN();
+    PROFILE();
 
-    Timer t("sirius::Band::apply_h_local_slice");
+    Timer t("sirius::Band::apply_h_local_serial");
 
     assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
     assert(phi__.size(1) >= (size_t)num_phi__ && hphi__.size(1) >= (size_t)num_phi__);
@@ -36,12 +36,12 @@ void Band::apply_h_local_slice(K_point* kp__,
     {
         case CPU:
         {
-            num_fft_threads = fft->num_fft_threads();
+            num_fft_threads = parameters_.num_fft_threads();
             break;
         }
         case GPU:
         {
-            num_fft_threads = std::min(fft->num_fft_threads() + 1, Platform::max_num_threads());
+            num_fft_threads = std::min(parameters_.num_fft_threads() + 1, Platform::max_num_threads());
             break;
         }
     }
@@ -69,11 +69,11 @@ void Band::apply_h_local_slice(K_point* kp__,
             fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
                                                &hphi__, &effective_potential__, &pw_ekin__, &count_fft_gpu, &timers]()
             {
-                Timer t("sirius::Band::apply_h_local_slice|gpu");
+                Timer t("sirius::Band::apply_h_local_serial|gpu");
                 timers(thread_id) = -omp_get_wtime();
                 
                 /* move fft index to GPU */
-                mdarray<int, 1> fft_index(const_cast<int*>(kp__->fft_index_coarse()), kp__->num_gkvec());
+                mdarray<int, 1> fft_index(const_cast<int*>(kp__->gkvec_coarse().index_map()), kp__->num_gkvec());
                 fft_index.allocate_on_device();
                 fft_index.copy_to_device();
 
@@ -98,7 +98,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 pw_ekin_gpu.allocate_on_device();
                 pw_ekin_gpu.copy_to_device();
 
-                Timer t1("sirius::Band::apply_h_local_slice|gpu_loop");
+                Timer t1("sirius::Band::apply_h_local_serial|gpu_loop");
                 bool done = false;
                 while (!done)
                 {
@@ -177,7 +177,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 
                     if (!done)
                     {
-                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi__(0, i), thread_id);
+                        fft->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i), thread_id);
                         /* phi(G) -> phi(r) */
                         fft->transform(1, thread_id);
                         /* multiply by effective potential */
@@ -188,11 +188,11 @@ void Band::apply_h_local_slice(K_point* kp__,
                         if (in_place)
                         {
                             for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) *= pw_ekin__[igk];
-                            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id, 1.0);
+                            fft->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), thread_id, 1.0);
                         }
                         else
                         {
-                            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id);
+                            fft->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), thread_id);
                             for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
                         }
                     }
@@ -218,8 +218,6 @@ void Band::apply_h_local_slice(K_point* kp__,
     //== }
     
     //== if (kp__->comm().rank() == 0) DUMP("CPU / GPU fft count : %i %i", count_fft_cpu, count_fft_gpu);
-
-    LOG_FUNC_END();
 }
 
 };

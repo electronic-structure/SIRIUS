@@ -46,7 +46,9 @@ void Band::residuals_serial(K_point* kp__,
     Timer t("sirius::Band::residuals_serial");
 
     auto pu = parameters_.processing_unit();
+    #ifdef __GPU
     bool economize_gpu_memory = (kappa__.size() != 0);
+    #endif
 
     if (pu == CPU)
     {

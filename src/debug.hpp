@@ -2,9 +2,83 @@
 #define __DEBUG_HPP__
 
 #include <fstream>
+#include <sys/time.h>
+#include "platform.h"
 
 namespace debug
 {
+
+class Profiler
+{
+    private:
+        std::string name_;
+        std::string file_;
+        int line_;
+
+        std::string timestamp()
+        {
+            timeval t;
+            gettimeofday(&t, NULL);
+        
+            char buf[100]; 
+        
+            tm* ptm = localtime(&t.tv_sec); 
+            //strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm); 
+            strftime(buf, sizeof(buf), "%H:%M:%S", ptm); 
+            return std::string(buf);
+        }
+
+        static std::vector<std::string>& call_stack()
+        {
+            static std::vector<std::string> call_stack_;
+            return call_stack_;
+        }
+
+    public:
+
+        Profiler(char const* name__, char const* file__, int line__)
+        {
+            name_ = std::string(name__);
+            file_ = std::string(file__);
+            line_ = line__;
+
+            char str[1024];
+            snprintf(str, 1024, "%s at %s:%i", name__, file__, line__);
+
+            call_stack().push_back(std::string(str));
+
+            #ifdef __LOG_FUNC
+            //printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            printf("rank%04i + %s\n", Platform::rank(), name_.c_str());
+            #endif
+        }
+
+        ~Profiler()
+        {
+            #ifdef __LOG_FUNC
+            //printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), name_.c_str());
+            printf("rank%04i - %s\n", Platform::rank(), name_.c_str());
+            #endif
+            call_stack().pop_back();
+        }
+
+        static void stack_trace()
+        {
+            int t = 0;
+            for (auto it = call_stack().rbegin(); it != call_stack().rend(); it++)
+            {
+                for (int i = 0; i < t; i++) printf(" ");
+                printf("[%s]\n", it->c_str());
+                t++;
+            }
+        }
+};
+
+#ifdef __PROFILE
+  #define PROFILE() debug::Profiler profiler__(__func__, __FILE__, __LINE__);
+#else
+  #define PROFILE()
+#endif
 
 inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)
 {
@@ -81,18 +155,18 @@ inline int get_num_threads()
     return num_threds;
 }
 
-template <typename T>
-inline T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
-{
-    T sum = 0;
-
-    for (int j = 0; j < ncol; j++)
-    {
-        for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
-    }
-
-    return sum;
-}
+//== template <typename T>
+//== inline T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
+//== {
+//==     T sum = 0;
+//== 
+//==     for (int j = 0; j < ncol; j++)
+//==     {
+//==         for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
+//==     }
+//== 
+//==     return sum;
+//== }
 
 #define MEMORY_USAGE_INFO()                                                                 \
 {                                                                                           \

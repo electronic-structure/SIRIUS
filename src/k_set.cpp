@@ -37,12 +37,6 @@ void K_set::initialize()
     if (verbosity_level >= 2) print_info();
 }
 
-void K_set::update()
-{
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
-        kpoints_[spl_num_kpoints_[ikloc]]->update();
-}
-
 void K_set::sync_band_energies()
 {
     mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
@@ -70,6 +64,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
+
+    // TODO: mapping to coarse effective potential is k-point independent
 
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)

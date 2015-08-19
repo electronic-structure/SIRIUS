@@ -42,32 +42,10 @@ class Reciprocal_lattice
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
         
-        /// Reciprocal lattice vectors in column order.
-        /** The following convention is used:
-         *  \f[
-         *    \vec a_{i} \vec b_{j} = 2 \pi \delta_{ij}
-         *  \f]
-         *  or in matrix notation
-         *  \f[
-         *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
-         *  \f]
-         */
-        matrix3d<double> reciprocal_lattice_vectors_;
-        
-        /// Inverse matrix or reciprocal vectors.
-        matrix3d<double> inverse_reciprocal_lattice_vectors_;
-        
         /// FFT wrapper for dense grid.
-        FFT3D<CPU>* fft_;
+        //FFT3D<CPU>* fft_;
 
-        /// Split index of G-vectors
-        splindex<block> spl_num_gvec_;
-        
-        /// Cached Ylm components of G-vectors
-        mdarray<double_complex, 2> gvec_ylm_;
-        
-        /// Cached values of G-vector phase factors 
-        mdarray<double_complex, 2> gvec_phase_factors_;
+        Gvec const& gvec_;
 
         Communicator const& comm_;
 
@@ -83,7 +61,8 @@ class Reciprocal_lattice
         
         Reciprocal_lattice(Unit_cell const& unit_cell__, 
                            electronic_structure_method_t esm_type__,
-                           FFT3D<CPU>* fft__,
+                           //FFT3D<CPU>* fft__,
+                           Gvec const& gvec__,
                            int lmax__,
                            Communicator const& comm__);
 
@@ -94,160 +73,34 @@ class Reciprocal_lattice
         std::vector<double_complex> make_periodic_function(mdarray<double, 2>& ffac, int ngv) const;
         
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-        template <index_domain_t index_domain>
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            switch (index_domain)
-            {
-                case global:
-                {
-                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
-                    break;
-                }
-                case local:
-                {
-                    #ifdef __CACHE_GVEC_PHASE_FACTORS
-                    return gvec_phase_factors_(ig__, ia__);
-                    #else
-                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig__]) * unit_cell_.atom(ia__)->position())));
-                    #endif
-                    break;
-                }
-            }
+            return std::exp(double_complex(0.0, twopi * (gvec_[ig__] * unit_cell_.atom(ia__)->position())));
         }
        
-        /// Ylm components of G-vector
-        template <index_domain_t index_domain>
-        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax) const
-        {
-            switch (index_domain)
-            {
-                case local:
-                {
-                    int lmmax = Utils::lmmax(lmax);
-                    assert(lmmax <= (int)gvec_ylm_.size(0));
-                    memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
-                    return;
-                }
-                case global:
-                {
-                    auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
-                    SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
-                    return;
-                }
-            }
-        }
-
-        /// Number of G-vectors within plane-wave cutoff
-        inline int num_gvec() const
-        {
-            return fft_->num_gvec();
-        }
-
-        /// G-vector in integer fractional coordinates
-        inline vector3d<int> gvec(int ig__) const
-        {
-            return fft_->gvec(ig__);
-        }
-
-        /// G-vector in Cartesian coordinates
-        inline vector3d<double> gvec_cart(int ig__) const
-        {
-            return fft_->gvec_cart(ig__);
-        }
-
-        /// Return length of G-vector.
-        inline double gvec_len(int ig__) const
-        {
-            return fft_->gvec_len(ig__);
-        }
-        
-        inline int gvec_index(vector3d<int> gvec__) const
-        {
-            return fft_->gvec_index(gvec__);
-        }
-
-        /// FFT index for a given G-vector index
-        inline int index_map(int ig__) const
-        {
-            return fft_->index_map(ig__);
-        }
-
-        /// Pointer to FFT index array
-        inline int const* index_map() const
-        {
-            return fft_->index_map();
-        }
-
-        /// Number of G-vector shells within plane-wave cutoff
-        inline int num_gvec_shells_inner() const
-        {
-            return fft_->num_gvec_shells_inner();
-        }
-
-        inline int num_gvec_shells_total() const
-        {
-            return fft_->num_gvec_shells_total();
-        }
-
-        /// Index of G-vector shell
-        inline int gvec_shell(int ig__) const
-        {
-            return fft_->gvec_shell(ig__);
-        }
-
-        inline double gvec_shell_len(int igs__) const
-        {
-            return fft_->gvec_shell_len(igs__);
-        }
-        
-        inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
-        {
-            return inverse_reciprocal_lattice_vectors_ * a__;
-        }
-        
-        template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
-        {
-            return reciprocal_lattice_vectors_ * a__;
-        }
-
-        /// Return global index of G1-G2 vector
-        inline int index_g12(int ig1__, int ig2__) const
-        {
-            vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
-            return fft_->gvec_index(v);
-        }
-        
-        inline int index_g12_safe(int ig1__, int ig2__) const
-        {
-            vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
-            if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
-                v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
-                v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
-            {
-                return fft_->gvec_index(v);
-            }
-            else
-            {
-                return -1;
-            }
-        }
-
-        inline splindex<block> const& spl_num_gvec() const
-        {
-            return spl_num_gvec_;
-        }
-        
-        inline int spl_num_gvec(int igloc__) const
-        {
-            return static_cast<int>(spl_num_gvec_[igloc__]);
-        }
-        
-        inline double_complex gvec_ylm(int lm, int igloc) const
-        {
-            return gvec_ylm_(lm, igloc);
-        }
+        ///// Return global index of G1-G2 vector
+        //inline int index_g12(int ig1__, int ig2__) const
+        //{
+        //    return gvec_.index_g12(ig1__, ig2__);
+        //    //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+        //    //return fft_->gvec_index(v);
+        //}
+        //
+        //inline int index_g12_safe(int ig1__, int ig2__) const
+        //{
+        //    return gvec_.index_g12_safe(ig1__, ig2__);
+        //    //vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
+        //    //if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
+        //    //    v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
+        //    //    v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
+        //    //{
+        //    //    return fft_->gvec_index(v);
+        //    //}
+        //    //else
+        //    //{
+        //    //    return -1;
+        //    //}
+        //}
 
         void write_periodic_function()
         {
@@ -273,11 +126,6 @@ class Reciprocal_lattice
             //==     }
             //== }
             //== fclose(fout);
-        }
-
-        matrix3d<double> const& reciprocal_lattice_vectors() const
-        {
-            return reciprocal_lattice_vectors_;
         }
 };
 

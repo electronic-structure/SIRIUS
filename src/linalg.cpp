@@ -25,7 +25,7 @@
 #include "linalg.h"
 #include "constants.h"
 #ifdef __GPU
-#include "gpu_interface.h"
+#include "gpu.h"
 #endif
 
 #if defined(__SCALAPACK) && defined(__PILAENV_BLOCKSIZE)
@@ -411,7 +411,7 @@ ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_com
 template<>
 void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
-    std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs());
+    std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
     ftn_int info = getrf(n, n, A, 0, 0, &ipiv[0]);
     if (info)
     {
@@ -449,7 +449,7 @@ void linalg<CPU>::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
 
 template <>
 void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
-                   dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
+                         dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
 {
     ia++; ja++;
     ib++; jb++;

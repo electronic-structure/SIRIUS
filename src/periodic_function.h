@@ -32,7 +32,6 @@
 
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
-// TODO: template parameter to flag that the G-vectors are not used
 namespace sirius
 {
 
@@ -85,16 +84,15 @@ class Periodic_function
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
 
+        Gvec const& gvec_;
+
         /// Local part of muffin-tin functions.
         mdarray<Spheric_function<spectral, T>, 1> f_mt_local_;
         
-        /// global muffin-tin array 
+        /// Global muffin-tin array 
         mdarray<T, 3> f_mt_;
 
-        /// local part of interstitial array
-        mdarray<T, 1> f_it_local_;
-        
-        /// global interstitial array
+        /// Interstitial part of the function.
         mdarray<T, 1> f_it_;
 
         /// plane-wave expansion coefficients
@@ -105,7 +103,7 @@ class Periodic_function
         /// number of plane-wave expansion coefficients
         int num_gvec_;
 
-        splindex<block> spl_fft_size_;
+        //splindex<block> spl_fft_size_;
 
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
@@ -117,12 +115,6 @@ class Periodic_function
             }
         }
         
-        /// Set pointer to local part of interstitial array
-        void set_local_it_ptr()
-        {
-            f_it_local_ = mdarray<T, 1>(&f_it_(spl_fft_size_.global_offset()), spl_fft_size_.local_size());
-        }
-
     public:
 
         /// Constructor
@@ -134,7 +126,7 @@ class Periodic_function
         ~Periodic_function();
         
         /// Allocate memory
-        void allocate(bool allocate_global_mt, bool allocate_global_it);
+        void allocate(bool allocate_global_mt);
 
         /// Zero the function.
         void zero();
@@ -175,8 +167,8 @@ class Periodic_function
         /// Set the global pointer to the interstitial part
         void set_it_ptr(T* it_ptr__)
         {
-            f_it_ = mdarray<T, 1>(it_ptr__, fft_->size());
-            set_local_it_ptr();
+            f_it_ = mdarray<T, 1>(it_ptr__, fft_->local_size());
+            //set_local_it_ptr();
         }
 
         inline Spheric_function<spectral, T>& f_mt(int ialoc)
@@ -189,36 +181,16 @@ class Periodic_function
             return f_mt_local_(ialoc);
         }
 
-        template <index_domain_t index_domain>
+        //template <index_domain_t index_domain>
         inline T& f_it(int ir)
         {
-            switch (index_domain)
-            {
-                case local:
-                {
-                    return f_it_local_(ir);
-                }
-                case global:
-                {
-                    return f_it_(ir);
-                }
-            }
+            return f_it_(ir);
         }
 
-        template <index_domain_t index_domain>
+        //template <index_domain_t index_domain>
         inline T const& f_it(int ir) const
         {
-            switch (index_domain)
-            {
-                case local:
-                {
-                    return f_it_local_(ir);
-                }
-                case global:
-                {
-                    return f_it_(ir);
-                }
-            }
+            return f_it_(ir);
         }
         
         inline complex_t& f_pw(int ig)
@@ -251,7 +223,7 @@ class Periodic_function
                 double p = 0.0;
                 for (int ig = 0; ig < num_gvec_; ig++)
                 {
-                    vector3d<double> vgc = fft_->gvec_cart(ig);
+                    vector3d<double> vgc = gvec_.cart(ig);
                     p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
@@ -260,7 +232,9 @@ class Periodic_function
 
         int64_t hash()
         {
-            int64_t h = Utils::hash(&f_it_(0), fft_->size() * sizeof(T));
+            STOP();
+
+            int64_t h = Utils::hash(&f_it_(0), fft_->local_size() * sizeof(T));
             h += Utils::hash(&f_pw_(0), num_gvec_ * sizeof(double_complex), h);
             return h;
         }
@@ -271,16 +245,17 @@ class Periodic_function
             {
                 case 1:
                 {
-                    fft_->input(fft_->num_gvec(), fft_->index_map(), &f_pw(0));
+                    fft_->input(gvec_.num_gvec_loc(), gvec_.index_map(), &f_pw(gvec_.gvec_offset()));
                     fft_->transform(1);
-                    fft_->output(&f_it<global>(0));
+                    fft_->output(&f_it(0));
                     break;
                 }
                 case -1:
                 {
-                    fft_->input(&f_it<global>(0));
+                    fft_->input(&f_it(0));
                     fft_->transform(-1);
-                    fft_->output(fft_->num_gvec(), fft_->index_map(), &f_pw(0));
+                    fft_->output(gvec_.num_gvec_loc(), gvec_.index_map(), &f_pw(gvec_.gvec_offset()));
+                    fft_->comm().allgather(&f_pw(0), gvec_.gvec_offset(), gvec_.num_gvec_loc());
                     break;
                 }
                 default:
@@ -312,26 +287,30 @@ class Periodic_function
             assert(&f__->unit_cell_ == &g__->unit_cell_);
             assert(&f__->comm_ == &g__->comm_);
             
-            splindex<block> spl_fft_size(f__->fft_->size(), f__->comm_.size(), f__->comm_.rank());
+            //splindex<block> spl_fft_size(f__->fft_->size(), f__->comm_.size(), f__->comm_.rank());
         
             T result = 0.0;
+            T ri = 0.0;
         
             if (f__->step_function_ == nullptr)
             {
-                for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
-                    result += type_wrapper<T>::conjugate(f__->f_it<local>(irloc)) * g__->f_it<local>(irloc);
+                //for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
+                for (int irloc = 0; irloc < f__->fft_->local_size(); irloc++)
+                    ri += type_wrapper<T>::conjugate(f__->f_it(irloc)) * g__->f_it(irloc);
             }
             else
             {
-                for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
+                //for (int irloc = 0; irloc < (int)spl_fft_size.local_size(); irloc++)
+                for (int irloc = 0; irloc < f__->fft_->local_size(); irloc++)
                 {
-                    int ir = (int)spl_fft_size[irloc];
-                    result += type_wrapper<T>::conjugate(f__->f_it<local>(irloc)) * g__->f_it<local>(irloc) * 
-                              f__->step_function_->theta_r(ir);
+                    //int ir = (int)spl_fft_size[irloc];
+                    ri += type_wrapper<T>::conjugate(f__->f_it(irloc)) * g__->f_it(irloc) * 
+                          f__->step_function_->theta_r(irloc);
                 }
             }
                     
-            result *= (f__->unit_cell_.omega() / f__->fft_->size());
+            ri *= (f__->unit_cell_.omega() / f__->fft_->size());
+            f__->fft_->comm().allreduce(&ri, 1);
             
             if (f__->parameters_.full_potential())
             {
@@ -341,7 +320,7 @@ class Periodic_function
         
             f__->comm_.allreduce(&result, 1);
         
-            return result;
+            return result + ri;
         }
 };
 

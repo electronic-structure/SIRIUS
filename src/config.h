@@ -31,17 +31,13 @@
 //== #define __TIMER_MPI_WTIME
 #define __TIMER_CHRONO
 
-/* use threaded version of FFT */
-/* never turn this off unless you know what you are doing */
-#define __FFTW_THREADED
-
-//== #define __CACHE_GVEC_PHASE_FACTORS
+#define __FFTW_MPI
 
 //== #define __PRINT_OBJECT_HASH
 
 //== #define __PRINT_OBJECT_CHECKSUM
 
-#define __PRINT_MEMORY_USAGE
+//== #define __PRINT_MEMORY_USAGE
 
 //== #define __SCALAPACK
 
@@ -64,6 +60,9 @@
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
+
+//== #define __PROFILE
+//== #define __LOG_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"

@@ -238,41 +238,78 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> c
 {
     sirius::Timer t("sirius::Utils::find_translation_limits");
 
-    vector3d<int> limits;
+    double theta = pi;
+    double phi = 0;
 
-    int n = 0;
-    while(true)
+    auto minv = inverse(lattice_vectors__);
+    vector3d<int> limits(0, 0, 0);
+
+    auto test_point = [&minv, radius__, &limits](double th, double ph)
     {
-        bool found = false;
-        for (int i0 = -n; i0 <= n; i0++)
-        {
-            for (int i1 = -n; i1 <= n; i1++)
-            {
-                for (int i2 = -n; i2 <= n; i2++)
-                {
-                    if (std::abs(i0) == n || std::abs(i1) == n || std::abs(i2) == n)
-                    {
-                        vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
-                        if (vc.length() <= radius__)
-                        {
-                            found = true;
-                            limits[0] = std::max(2 * abs(i0) + 1, limits[0]);
-                            limits[1] = std::max(2 * abs(i1) + 1, limits[1]);
-                            limits[2] = std::max(2 * abs(i2) + 1, limits[2]);
-                        }
-                    }
-                }
-            }
-        }
+        vector3d<double> pos(radius__ * std::sin(th) * std::cos(ph),
+                             radius__ * std::sin(th) * std::sin(ph),
+                             radius__ * std::cos(th));
+        auto f = minv * pos;
+        limits[0] = std::max(limits[0], 2 * int(f[0]) + 1);
+        limits[1] = std::max(limits[1], 2 * int(f[1]) + 1);
+        limits[2] = std::max(limits[2], 2 * int(f[2]) + 1);
+    };
 
-        if (found) 
-        {
-            n++;
-        }
-        else 
-        {
-            return limits;
-        }
+    int num_points = 500;
+
+    test_point(0, 0);
+    test_point(theta, phi);
+    for (int k = 1; k < num_points - 1; k++)
+    {
+        double hk = -1.0 + double(2 * k) / double(num_points - 1);
+        theta = std::acos(hk);
+        double t = phi + 3.80925122745582 / std::sqrt(double(num_points)) / std::sqrt(1 - hk * hk);
+        phi = std::fmod(t, twopi);
+        test_point(theta, phi);
     }
+    
+
+
+
+    //vector3d<int> limits;
+
+    //int n = 1;
+    //while(true)
+    //{
+    //    bool found = false;
+    //    //for (int i0 = -n; i0 <= n; i0++)
+    //    for (int i0: {-n, 0, n})
+    //    {
+    //        //for (int i1 = -n; i1 <= n; i1++)
+    //        for (int i1: {-n, 0, n})
+    //        {
+    //            //for (int i2 = -n; i2 <= n; i2++)
+    //            for (int i2: {-n, 0, n})
+    //            {
+    //                //if (std::abs(i0) == n || std::abs(i1) == n || std::abs(i2) == n)
+    //                //{
+    //                    vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
+    //                    if (vc.length() <= radius__)
+    //                    {
+    //                        found = true;
+    //                        limits[0] = std::max(2 * abs(i0) + 1, limits[0]);
+    //                        limits[1] = std::max(2 * abs(i1) + 1, limits[1]);
+    //                        limits[2] = std::max(2 * abs(i2) + 1, limits[2]);
+    //                    }
+    //                //}
+    //            }
+    //        }
+    //    }
+
+    //    if (found) 
+    //    {
+    //        n++;
+    //    }
+    //    else 
+    //    {
+    //        return limits;
+    //    }
+    //}
+    return limits;
 }
 

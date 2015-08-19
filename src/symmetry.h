@@ -81,8 +81,6 @@ class Symmetry
 
         SpglibDataset* spg_dataset_;
 
-        //std::vector< std::pair<int, int> > mag_sym_;
-
         mdarray<int, 2> sym_table_;
         
         std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
@@ -90,11 +88,6 @@ class Symmetry
         std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
 
         /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.
-        /** 
-
-        */
-        //vector3d<double> euler_angles(int isym__);
-
         vector3d<double> euler_angles(matrix3d<double> const& rot__) const;
 
         /// Generate rotation matrix from three Euler angles
@@ -171,7 +164,9 @@ class Symmetry
 
         vector3d<double> origin_shift() const
         {
-            return vector3d<double>(spg_dataset_->origin_shift);
+            return vector3d<double>(spg_dataset_->origin_shift[0],
+                                    spg_dataset_->origin_shift[1],
+                                    spg_dataset_->origin_shift[2]);
         }
 
         inline int num_spg_sym() const
@@ -195,23 +190,7 @@ class Symmetry
             return magnetic_group_symmetry_[isym__];
         }
 
-        //int proper_rotation(int isym);
-
-        /// Rotation matrix in Cartesian coordinates.
-        //matrix3d<double> rot_mtrx_cart(int isym__);
-
-        /// Rotation matrix in fractional coordinates.
-        //matrix3d<int> rot_mtrx(int isym__);
-        
-        
-        //vector3d<double> fractional_translation(int isym__)
-        //{
-        //    vector3d<double> t;
-        //    for (int x = 0; x < 3; x++) t[x] =  spg_dataset_->translations[isym__][x];
-        //    return t;
-        //}
-
-        void check_gvec_symmetry(FFT3D<CPU>* fft__) const;
+        void check_gvec_symmetry(Gvec const& gvec__) const;
 
         /// Symmetrize scalar function.
         /** The following operation is performed:
@@ -231,14 +210,14 @@ class Symmetry
          *  \f]
          */
         void symmetrize_function(double_complex* f_pw__,
-                                 FFT3D<CPU>* fft__,
+                                 Gvec const& gvec__,
                                  Communicator const& comm__) const;
         
         void symmetrize_function(mdarray<double, 3>& frlm__,
                                  Communicator const& comm__) const;
         
         void symmetrize_vector_z_component(double_complex* f_pw__,
-                                           FFT3D<CPU>* fft__,
+                                           Gvec const& gvec__,
                                            Communicator const& comm__) const;
 
         void symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
