@@ -47,7 +47,7 @@ class linalg<CPU>: public linalg_base
          *  y = alpha * A^{+} * x + beta * y (trans = 2)
          */
         template<typename T>
-        static void gemv(int trans, ftn_int m, ftn_int n, T alpha, T* A, ftn_int lda, T* x, ftn_int incx, 
+        static void gemv(int trans, ftn_int m, ftn_int n, T alpha, T const* A, ftn_int lda, T const* x, ftn_int incx, 
                          T beta, T* y, ftn_int incy);
         
         /// Hermitian matrix times a general matrix or vice versa.
@@ -153,9 +153,13 @@ class linalg<CPU>: public linalg_base
         
         template <typename T>
         static void tranu(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic, ftn_int jc);
+
+        template <typename T>
+        static void gemr2d(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja,
+                           dmatrix<T>& B, ftn_int ib, ftn_int jb, ftn_int gcontext); 
 };
 
-#ifdef _GPU_
+#ifdef __GPU
 template<> 
 class linalg<GPU>: public linalg_base
 {

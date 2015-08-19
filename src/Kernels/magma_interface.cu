@@ -7,7 +7,6 @@
 #include <magma_z.h>
 #include <magma_zbulge.h>
 #include <magma_threadsetting.h>
-#include "gpu_interface.h"
 
 extern "C" void magma_init_wrapper()
 {
@@ -25,15 +24,22 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int m;
     int info;
 
-    int lwork = magma_zbulge_get_lq2(matrix_size, magma_get_numthreads()) + 2 * matrix_size + matrix_size * matrix_size;
+    int lwork = magma_zbulge_get_lq2(matrix_size, magma_get_parallel_numthreads()) + 2 * matrix_size + matrix_size * matrix_size;
     int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
     int liwork = 3 + 5 * matrix_size;
             
-    cuDoubleComplex* h_work;
-    cuda_malloc_host((void**)&h_work, lwork * sizeof(cuDoubleComplex));
-
+    magmaDoubleComplex* h_work;
+    if (cudaMallocHost((void**)&h_work, lwork * sizeof(magmaDoubleComplex)) != cudaSuccess)
+    {
+        printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
+        exit(-1);
+    }
     double* rwork;
-    cuda_malloc_host((void**)&rwork, lrwork * sizeof(double));
+    if (cudaMallocHost((void**)&rwork, lrwork * sizeof(double)) != cudaSuccess)
+    {
+        printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
+        exit(-1);
+    }
     
     magma_int_t *iwork;
     if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
@@ -49,13 +55,13 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
         exit(-1);
     }
 
-    magma_zhegvdx_2stage(1, 'V', 'I', 'L', matrix_size, (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, 0.0, 0.0, 
+    magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size, (magmaDoubleComplex*)a, lda, (magmaDoubleComplex*)b, ldb, 0.0, 0.0, 
                          1, nv, &m, w, h_work, lwork, rwork, lrwork, iwork, liwork, &info);
 
     memcpy(eval, &w[0], nv * sizeof(double));
     
-    cuda_free_host((void**)&h_work);
-    cuda_free_host((void**)&rwork);
+    cudaFreeHost(h_work);
+    cudaFreeHost(rwork);
     free(iwork);
     free(w);
 

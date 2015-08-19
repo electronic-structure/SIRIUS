@@ -27,23 +27,49 @@
 
 #include "typedefs.h"
 
-//#define FORTRAN(x) x##_
+//== #define __TIMER_TIMEOFDAY
+//== #define __TIMER_MPI_WTIME
+#define __TIMER_CHRONO
 
-//== #define _TIMER_TIMEOFDAY_
-//== #define _TIMER_MPI_WTIME_
-#define _TIMER_CHRONO_
+/* use threaded version of FFT */
+/* never turn this off unless you know what you are doing */
+#define __FFTW_THREADED
 
-//== #define _CACHE_GVEC_PHASE_FACTORS_
+//== #define __CACHE_GVEC_PHASE_FACTORS
+
+//== #define __PRINT_OBJECT_HASH
+
+//== #define __PRINT_OBJECT_CHECKSUM
+
+#define __PRINT_MEMORY_USAGE
+
+//== #define __SCALAPACK
+
+//== #define __PILAENV_BLOCKSIZE=2048
+
+//== #define __ELPA
+
+//== #define __PLASMA
+
+//== #define __MAGMA
+
+//== #definr __LIBSCI_ACC
+
+//== #define __GPU
+
+//== #define __GPU_DIRECT
+
+//== #definr __RS_GEN_EIG
 
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
 
-#if defined(_LIBSCI_ACC_) && !defined(_GPU_)
+#if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 
-#ifdef _LIBSCI_ACC_
+#if defined(__LIBSCI_ACC) || defined(__MAGMA)
 const int alloc_mode = 1;
 #else
 const int alloc_mode = 0;
@@ -77,15 +103,15 @@ const int debug_level = 0;
  *  verbosity_level >= 6 : print forces contributions \n
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
-#ifdef _VERBOSITY_
-const int verbosity_level = _VERBOSITY_;
+#ifdef __VERBOSITY
+const int verbosity_level = __VERBOSITY;
 #else
 const int verbosity_level = 6;
 #endif
 
 const bool fix_apwlo_linear_dependence = false;
 
-const radial_grid_t default_radial_grid_t = scaled_pow_grid;
+const radial_grid_t default_radial_grid_t = exponential_grid;
 
 const bool use_second_variation = true;
 

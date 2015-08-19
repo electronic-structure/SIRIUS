@@ -2,68 +2,7 @@
 #include <cublas_v2.h>
 #include "cuda_interface.h"
 
-const double twopi = 6.2831853071795864769;
-
 extern cudaStream_t* streams;
-
-__global__ void create_beta_gk_gpu_kernel
-(
-    int num_gkvec__, 
-    int const* beta_desc__,
-    cuDoubleComplex const* beta_gk_t, 
-    double const* gkvec, 
-    double const* atom_pos,
-    cuDoubleComplex* beta_gk
-)
-{
-    int igk = blockDim.x * blockIdx.x + threadIdx.x;
-    int ia = blockIdx.y;
-
-    int nbf              = beta_desc__[array2D_offset(0, ia, 4)];
-    int offset_beta_gk   = beta_desc__[array2D_offset(1, ia, 4)];
-    int offset_beta_gk_t = beta_desc__[array2D_offset(2, ia, 4)];
-
-    if (igk < num_gkvec__)
-    {
-        double p = 0;
-        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
-        p *= twopi;
-
-        double sinp = sin(p);
-        double cosp = cos(p);
-
-        for (int xi = 0; xi < nbf; xi++)
-        {
-            beta_gk[array2D_offset(igk, offset_beta_gk + xi, num_gkvec__)] =
-                cuCmul(beta_gk_t[array2D_offset(igk, offset_beta_gk_t + xi, num_gkvec__)],
-                       make_cuDoubleComplex(cosp, -sinp));
-        }
-    }
-}
-
-extern "C" void create_beta_gk_gpu(int num_atoms,
-                                   int num_gkvec,
-                                   int const* beta_desc,
-                                   cuDoubleComplex const* beta_gk_t,
-                                   double const* gkvec,
-                                   double const* atom_pos,
-                                   cuDoubleComplex* beta_gk)
-{
-    CUDA_timer t("create_beta_gk_gpu");
-
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gkvec, grid_t.x), num_atoms);
-
-    create_beta_gk_gpu_kernel <<<grid_b, grid_t>>> 
-    (
-        num_gkvec,
-        beta_desc,
-        beta_gk_t,
-        gkvec,
-        atom_pos,
-        beta_gk
-    );
-}
 
 __global__ void compute_chebyshev_order1_gpu_kernel
 (
@@ -501,7 +440,7 @@ __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
             
-        veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] = cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), sin(p)));
+        veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] = cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), -sin(p)));
     }
 }
  
@@ -614,11 +553,18 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
 //== 
 //== }
 
-__global__ void generate_phase_factors_gpu_kernel(int num_gvec_loc, 
-                                                  int num_atoms, 
-                                                  double* atom_pos, 
-                                                  int* gvec, 
-                                                  cuDoubleComplex* phase_factors)
+
+
+// TODO: proper order of indices for atom_pos
+
+__global__ void generate_phase_factors_conj_gpu_kernel
+(
+    int num_gvec_loc, 
+    int num_atoms, 
+    double* atom_pos, 
+    int* gvec, 
+    cuDoubleComplex* phase_factors
+)
 {
     int ia = blockIdx.y;
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
@@ -642,6 +588,36 @@ __global__ void generate_phase_factors_gpu_kernel(int num_gvec_loc,
     }
 }
 
+__global__ void generate_phase_factors_gpu_kernel
+(
+    int num_gvec_loc, 
+    double const* atom_pos, 
+    int const* gvec, 
+    cuDoubleComplex* phase_factors
+)
+{
+    int ia = blockIdx.y;
+    int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (igloc < num_gvec_loc)
+    {
+        int gvx = gvec[array2D_offset(0, igloc, 3)];
+        int gvy = gvec[array2D_offset(1, igloc, 3)];
+        int gvz = gvec[array2D_offset(2, igloc, 3)];
+    
+        double ax = atom_pos[array2D_offset(0, ia, 3)];
+        double ay = atom_pos[array2D_offset(1, ia, 3)];
+        double az = atom_pos[array2D_offset(2, ia, 3)];
+
+        double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        phase_factors[array2D_offset(igloc, ia, num_gvec_loc)] = make_cuDoubleComplex(cosp, sinp);
+    }
+}
+
 
 extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
                                        int num_gvec_loc,
@@ -659,11 +635,14 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_atoms);
 
-    generate_phase_factors_gpu_kernel<<<grid_b, grid_t>>>(num_gvec_loc, 
-                                                          num_atoms, 
-                                                          atom_pos, 
-                                                          gvec, 
-                                                          phase_factors);
+    generate_phase_factors_conj_gpu_kernel<<<grid_b, grid_t>>>
+    (
+        num_gvec_loc, 
+        num_atoms, 
+        atom_pos, 
+        gvec, 
+        phase_factors
+    );
     
     cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
     cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
@@ -673,6 +652,25 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
                  d_mtrx_pw, num_gvec_loc, -1);
 
     cuda_free(phase_factors);
+}
+
+extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
+                                           int num_atoms__,
+                                           int const* gvec__,
+                                           double const* atom_pos__,
+                                           cuDoubleComplex* phase_factors__)
+
+{
+    dim3 grid_t(32);
+    dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
+
+    generate_phase_factors_gpu_kernel<<<grid_b, grid_t>>>
+    (
+        num_gvec_loc__, 
+        atom_pos__, 
+        gvec__, 
+        phase_factors__
+    );
 }
 
 __global__ void sum_q_pw_d_mtrx_pw_gpu_kernel
@@ -774,95 +772,6 @@ extern "C" void copy_beta_psi_gpu(int nbf,
     );
 }
 
-__global__ void compute_residuals_gpu_kernel
-(
-    int const num_gkvec_row,
-    int const* res_idx,
-    double const* eval,
-    cuDoubleComplex const* hpsi,
-    cuDoubleComplex const* opsi,
-    cuDoubleComplex* res
-)
-{
-    int igk = blockIdx.x * blockDim.x + threadIdx.x;
-    int ibnd = res_idx[blockIdx.y];
-
-    if (igk < num_gkvec_row)
-    {
-        int k = array2D_offset(igk, blockIdx.y, num_gkvec_row);
-        /* res = hpsi_j - e_j * opsi_j */
-        res[k] = cuCsub(hpsi[k], cuCmul(make_cuDoubleComplex(eval[ibnd], 0), opsi[k]));
-    }
-}
-
-__global__ void compute_residuals_norm_gpu_kernel
-(
-    int num_gkvec_row,
-    int* res_idx,
-    cuDoubleComplex const* res,
-    double* res_norm
-)
-{
-    int N = num_blocks(num_gkvec_row, blockDim.x);
-
-    extern __shared__ char sdata_ptr[];
-    double* sdata = (double*)&sdata_ptr[0];
-
-    sdata[threadIdx.x] = 0.0;
-
-    for (int n = 0; n < N; n++)
-    {
-        int igk = n * blockDim.x + threadIdx.x;
-        if (igk < num_gkvec_row)
-        {
-            int k = array2D_offset(igk, blockIdx.x, num_gkvec_row);
-            sdata[threadIdx.x] += res[k].x * res[k].x + res[k].y * res[k].y;
-        }
-    }
-
-    __syncthreads();
-
-    for (int s = 1; s < blockDim.x; s *= 2) 
-    {
-        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] = sdata[threadIdx.x] + sdata[threadIdx.x + s];
-        __syncthreads();
-    }
-    
-    res_norm[res_idx[blockIdx.x]] = sdata[0];
-}
-
-extern "C" void compute_residuals_gpu(int num_gkvec_row,
-                                      int num_res_local,
-                                      int* res_idx,
-                                      double* eval,
-                                      cuDoubleComplex const* hpsi,
-                                      cuDoubleComplex const* opsi,
-                                      cuDoubleComplex* res,
-                                      double* res_norm)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gkvec_row, grid_t.x), num_res_local);
-
-    compute_residuals_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        num_gkvec_row,
-        res_idx,
-        eval,
-        hpsi,
-        opsi,
-        res
-    );
-
-    grid_b = dim3(num_res_local);
-    compute_residuals_norm_gpu_kernel <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
-    (
-        num_gkvec_row,
-        res_idx,
-        res,
-        res_norm
-    );
-}
-
 __global__ void compute_inner_product_gpu_kernel
 (
     int num_gkvec_row,
@@ -914,96 +823,6 @@ extern "C" void compute_inner_product_gpu(int num_gkvec_row,
         f1,
         f2,
         prod
-    );
-}
-
-__global__ void apply_preconditioner_gpu_kernel
-(
-    int const num_gkvec_row,
-    int const* res_idx,
-    double const* eval,
-    double const* h_diag,
-    double const* o_diag,
-    cuDoubleComplex* res
-)
-{
-    int igk = blockIdx.x * blockDim.x + threadIdx.x;
-    int ibnd = res_idx[blockIdx.y];
-
-    if (igk < num_gkvec_row)
-    {
-        double p = 2 * (h_diag[igk] - eval[ibnd] * o_diag[igk]); // QE formula is in Ry; here we convert to Ha
-        p = 0.25 * (1 + p + sqrt(1.0 + (p - 1) * (p - 1)));
-        int k = array2D_offset(igk, blockIdx.y, num_gkvec_row);
-        res[k] = cuCdiv(res[k], make_cuDoubleComplex(p, 0.0));
-    }
-}
-
-extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
-                                         int num_res_local,
-                                         int* res_idx,
-                                         double* eval,
-                                         double const* h_diag,
-                                         double const* o_diag,
-                                         cuDoubleComplex* res,
-                                         double* res_norm)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gkvec_row, grid_t.x), num_res_local);
-
-    apply_preconditioner_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        num_gkvec_row,
-        res_idx,
-        eval,
-        h_diag,
-        o_diag,
-        res
-    );
-
-    grid_b = dim3(num_res_local);
-    compute_residuals_norm_gpu_kernel <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
-    (
-        num_gkvec_row,
-        res_idx,
-        res,
-        res_norm
-    );
-}
-
-__global__ void normalize_residuals_gpu_kernel
-(
-    int const num_gkvec_row,
-    int const* res_idx,
-    double const* norm2,
-    cuDoubleComplex* res
-)
-{
-    int igk = blockIdx.x * blockDim.x + threadIdx.x;
-    int ibnd = res_idx[blockIdx.y];
-
-    if (igk < num_gkvec_row)
-    {
-        int k = array2D_offset(igk, blockIdx.y, num_gkvec_row);
-        res[k] = cuCdiv(res[k], make_cuDoubleComplex(sqrt(norm2[ibnd]), 0.0));
-    }
-}
-
-extern "C" void normalize_residuals_gpu(int num_gkvec_row,
-                                        int num_res_local,
-                                        int* res_idx,
-                                        double* norm2,
-                                        cuDoubleComplex* res)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gkvec_row, grid_t.x), num_res_local);
-
-    normalize_residuals_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        num_gkvec_row,
-        res_idx,
-        norm2,
-        res
     );
 }
 

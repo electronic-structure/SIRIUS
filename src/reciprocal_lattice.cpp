@@ -26,17 +26,17 @@
 
 namespace sirius {
         
-Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__, 
+Reciprocal_lattice::Reciprocal_lattice(Unit_cell const& unit_cell__, 
                                        electronic_structure_method_t esm_type__,
                                        FFT3D<CPU>* fft__,
                                        int lmax__,
-                                       Communicator& comm__)
+                                       Communicator const& comm__)
     : unit_cell_(unit_cell__), 
       esm_type_(esm_type__),
       fft_(fft__),
       comm_(comm__)
 {
-    reciprocal_lattice_vectors_ = unit_cell_->reciprocal_lattice_vectors();
+    reciprocal_lattice_vectors_ = unit_cell_.reciprocal_lattice_vectors();
     inverse_reciprocal_lattice_vectors_ = inverse(reciprocal_lattice_vectors_);
 
     init(lmax__);
@@ -70,16 +70,16 @@ void Reciprocal_lattice::init(int lmax)
     
     if (esm_type_ == ultrasoft_pseudopotential)
     {
-        int nbeta = unit_cell_->max_mt_radial_basis_size();
+        int nbeta = unit_cell_.max_mt_radial_basis_size();
 
-        mdarray<double, 4> q_radial_functions(unit_cell_->max_num_mt_points(), lmax + 1, nbeta * (nbeta + 1) / 2, 
-                                              unit_cell_->num_atom_types());
+        mdarray<double, 4> q_radial_functions(unit_cell_.max_num_mt_points(), lmax + 1, nbeta * (nbeta + 1) / 2, 
+                                              unit_cell_.num_atom_types());
 
         fix_q_radial_functions(q_radial_functions);
 
         // TODO: in principle, this can be distributed over G-shells (each mpi rank holds radial integrals only for
         //       G-shells of local fraction of G-vectors
-        mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, lmax + 1, unit_cell_->num_atom_types(), 
+        mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, lmax + 1, unit_cell_.num_atom_types(), 
                                               num_gvec_shells_inner());
 
         generate_q_radial_integrals(lmax, q_radial_functions, q_radial_integrals);
@@ -87,32 +87,25 @@ void Reciprocal_lattice::init(int lmax)
         generate_q_pw(lmax, q_radial_integrals);
     }
 
-    update();
-}
-
-void Reciprocal_lattice::update()
-{
-    Timer t2("sirius::Reciprocal_lattice::update");
-    /* Precompute G-vector phase factors */
-    #ifdef _CACHE_GVEC_PHASE_FACTORS_
-    gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), unit_cell_->num_atoms());
-    gvec_phase_factors_.allocate();
+    /* precompute G-vector phase factors */
+    #ifdef __CACHE_GVEC_PHASE_FACTORS
+    gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
     #pragma omp parallel for
     for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
     {
         int ig = (int)spl_num_gvec_[igloc];
-        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
     }
     #endif
 }
 
-std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv)
+std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv) const
 {
-    assert((int)form_factors.size(0) == unit_cell_->num_atom_types());
+    assert((int)form_factors.size(0) == unit_cell_.num_atom_types());
     
     std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
-    double fourpi_omega = fourpi / unit_cell_->omega();
+    double fourpi_omega = fourpi / unit_cell_.omega();
 
     splindex<block> spl_ngv(ngv, comm_.size(), comm_.rank());
 
@@ -122,9 +115,9 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
         int ig = (int)it.idx();
         int igs = gvec_shell(ig);
 
-        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {            
-            int iat = unit_cell_->atom(ia)->type_id();
+            int iat = unit_cell_.atom(ia)->type_id();
             f_pw[ig] += fourpi_omega * conj(gvec_phase_factor<global>(ig, ia)) * form_factors(iat, igs);
         }
     }
@@ -139,9 +132,9 @@ void Reciprocal_lattice::fix_q_radial_functions(mdarray<double, 4>& qrf)
 {
     Timer t("sirius::Reciprocal_lattice::fix_q_radial_functions");
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
         for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
         {
             for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
@@ -174,9 +167,9 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
             int igs = (int)it.idx();
             jl.load(gvec_shell_len(igs));
 
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = unit_cell_->atom_type(iat);
+                auto atom_type = unit_cell_.atom_type(iat);
                 Spline<double> s(atom_type->radial_grid());
 
                 for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
@@ -211,7 +204,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
 {
     Timer t("sirius::Reciprocal_lattice::generate_q_pw");
 
-    double fourpi_omega = fourpi / unit_cell_->omega();
+    double fourpi_omega = fourpi / unit_cell_.omega();
     
     std::vector<int> l_by_lm = Utils::l_by_lm(lmax);
 
@@ -229,9 +222,9 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_->atom_type(iat);
+        auto atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type->mt_basis_size();
         int lmax_beta = atom_type->indexr().lmax();
         int lmmax = Utils::lmmax(lmax_beta * 2);
@@ -270,8 +263,8 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
 
                         if (igs == 0)
                         {
-                            atom_type->uspp().q_mtrx(xi1, xi2) = unit_cell_->omega() * atom_type->uspp().q_pw(0, idx12);
-                            atom_type->uspp().q_mtrx(xi2, xi1) = conj(atom_type->uspp().q_mtrx(xi1, xi2));
+                            atom_type->uspp().q_mtrx(xi1, xi2) = unit_cell_.omega() * atom_type->uspp().q_pw(0, idx12);
+                            atom_type->uspp().q_mtrx(xi2, xi1) = std::conj(atom_type->uspp().q_mtrx(xi1, xi2));
                         }
                     }
                 }

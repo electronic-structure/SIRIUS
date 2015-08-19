@@ -23,8 +23,6 @@ void Band::apply_h_o_serial(K_point* kp__,
 
     Timer t("sirius::Band::apply_h_o_serial");
 
-    auto uc = parameters_.unit_cell();
-
     matrix<double_complex> phi, hphi, ophi, beta_gk;
     
     /* if temporary array is allocated, this would be the only big array on GPU */
@@ -35,18 +33,18 @@ void Band::apply_h_o_serial(K_point* kp__,
         phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
         ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
-        beta_gk = matrix<double_complex>(kp__->beta_gk().at<CPU>(), kp__->num_gkvec(), uc->mt_basis_size());
+        beta_gk = matrix<double_complex>(kp__->beta_gk().at<CPU>(), kp__->num_gkvec(), unit_cell_.mt_basis_size());
     }
     if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
     {
         phi  = matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
         ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), ophi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
-        beta_gk = matrix<double_complex>(kp__->beta_gk().at<CPU>(), kp__->beta_gk().at<GPU>(), kp__->num_gkvec(), uc->mt_basis_size());
+        beta_gk = matrix<double_complex>(kp__->beta_gk().at<CPU>(), kp__->beta_gk().at<GPU>(), kp__->num_gkvec(), unit_cell_.mt_basis_size());
     }
     if (parameters_.processing_unit() == GPU && economize_gpu_memory)
     {
-        beta_gk = matrix<double_complex>(nullptr, kappa__.at<GPU>(), kp__->num_gkvec(), uc->mt_basis_size());
+        beta_gk = matrix<double_complex>(nullptr, kappa__.at<GPU>(), kp__->num_gkvec(), unit_cell_.mt_basis_size());
         double_complex* gpu_ptr = kappa__.at<GPU>(beta_gk.size());
         phi  = matrix<double_complex>( phi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
         hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
@@ -60,7 +58,7 @@ void Band::apply_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory)) 
         phi >> ophi;
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
     {
         /* copy hphi do device */

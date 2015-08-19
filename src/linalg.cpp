@@ -24,14 +24,14 @@
 
 #include "linalg.h"
 #include "constants.h"
-#ifdef _GPU_
+#ifdef __GPU
 #include "gpu_interface.h"
 #endif
 
-#if defined(_SCALAPACK_) && defined(_PILAENV_BLOCKSIZE_)
+#if defined(__SCALAPACK) && defined(__PILAENV_BLOCKSIZE)
 extern "C" int pilaenv_(int* ctxt, char* prec) 
 {
-    return _PILAENV_BLOCKSIZE_;
+    return __PILAENV_BLOCKSIZE;
 }
 #endif
 
@@ -43,9 +43,9 @@ void linalg<CPU>::gemv<ftn_double_complex>(int trans,
                                            ftn_int m,
                                            ftn_int n,
                                            ftn_double_complex alpha,
-                                           ftn_double_complex* A,
+                                           ftn_double_complex const* A,
                                            ftn_int lda,
-                                           ftn_double_complex* x,
+                                           ftn_double_complex const* x,
                                            ftn_int incx,
                                            ftn_double_complex beta,
                                            ftn_double_complex* y,
@@ -61,9 +61,9 @@ void linalg<CPU>::gemv<ftn_double>(int trans,
                                    ftn_int m,
                                    ftn_int n,
                                    ftn_double alpha,
-                                   ftn_double* A,
+                                   ftn_double const* A,
                                    ftn_int lda,
-                                   ftn_double* x,
+                                   ftn_double const* x,
                                    ftn_int incx,
                                    ftn_double beta,
                                    ftn_double* y,
@@ -372,7 +372,7 @@ ftn_int linalg<CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_doubl
     return info;
 }
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 template<>
 ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
                                                ftn_int ia, ftn_int ja, ftn_int* ipiv)
@@ -447,6 +447,15 @@ void linalg<CPU>::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
     pztranu(m, n, zone, A.at<CPU>(), ia, ja, A.descriptor(), zzero, C.at<CPU>(), ic, jc, C.descriptor());
 }
 
+template <>
+void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                   dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
+{
+    ia++; ja++;
+    ib++; jb++;
+    FORTRAN(pzgemr2d)(&m, &n, A.at<CPU>(), &ia, &ja, A.descriptor(), B.at<CPU>(), &ib, &jb, B.descriptor(), &gcontext);
+}
+
 template<> 
 void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                    ftn_double alpha, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
@@ -519,7 +528,7 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 }
 #endif
 
-#ifdef _GPU_
+#ifdef __GPU
 template<>
 void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int n, ftn_double_complex* alpha,
                                            ftn_double_complex* A, ftn_int lda, ftn_double_complex* x, ftn_int incx,

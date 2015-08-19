@@ -22,8 +22,8 @@
  *  \brief CUDA related functions.
  */
 
-#ifndef _GPU_INTERFACE_H_
-#define _GPU_INTERFACE_H_
+#ifndef __GPUINTERFACE_H_
+#define __GPUINTERFACE_H_
 
 #include <complex>
 #include <cstdlib>
@@ -56,6 +56,12 @@ void cuda_copy_to_host(void *target, void *source, size_t size);
 
 void cuda_copy_device_to_device(void* target, void* source, size_t size);
 
+void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
+
+void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
+
+void cuda_async_copy_device_to_device(void* target, void const* source, size_t size, int stream_id);
+
 void cuda_memset(void *ptr, int value, size_t size);
 
 void cuda_host_register(void* ptr, size_t size);
@@ -70,9 +76,6 @@ void cuda_destroy_streams(int num_streams);
 
 void cuda_stream_synchronize(int stream_id);
 
-void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
-
-void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
 
 size_t cuda_get_free_mem();
 
@@ -81,6 +84,8 @@ void cuda_device_reset();
 void cuda_check_last_error();
 
 }
+
+void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__);
 
 //==================
 // CUBLAS functions
@@ -153,7 +158,7 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
 // MAGMA functions
 //=================
 
-#ifdef _MAGMA_
+#ifdef __MAGMA
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
                                              void* b, int32_t ldb, double* eval);
 
@@ -197,5 +202,5 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
                                    double* atom_pos,
                                    void* beta_pw);
 
-#endif // _GPU_INTERFACE_H_
+#endif // __GPUINTERFACE_H_
 

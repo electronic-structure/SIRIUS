@@ -36,8 +36,8 @@ class Reciprocal_lattice
 {
     private:
 
-        /// Pointer to the corresponding Unit_cell class instance. // TODO: is this logical to have unit cell class inside reciprocal lattice?
-        Unit_cell* unit_cell_;
+        /// Corresponding Unit_cell class instance. 
+        Unit_cell const& unit_cell_;
 
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
@@ -69,7 +69,7 @@ class Reciprocal_lattice
         /// Cached values of G-vector phase factors 
         mdarray<double_complex, 2> gvec_phase_factors_;
 
-        Communicator comm_;
+        Communicator const& comm_;
 
         void init(int lmax);
 
@@ -81,37 +81,35 @@ class Reciprocal_lattice
 
     public:
         
-        Reciprocal_lattice(Unit_cell* unit_cell__, 
+        Reciprocal_lattice(Unit_cell const& unit_cell__, 
                            electronic_structure_method_t esm_type__,
                            FFT3D<CPU>* fft__,
                            int lmax__,
-                           Communicator& comm__);
+                           Communicator const& comm__);
 
         ~Reciprocal_lattice();
   
-        void update();
-
         /// Make periodic function out of form factors
         /** Return vector of plane-wave coefficients */
-        std::vector<double_complex> make_periodic_function(mdarray<double, 2>& ffac, int ngv);
+        std::vector<double_complex> make_periodic_function(mdarray<double, 2>& ffac, int ngv) const;
         
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         template <index_domain_t index_domain>
-        inline double_complex gvec_phase_factor(int ig, int ia)
+        inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
             switch (index_domain)
             {
                 case global:
                 {
-                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig)) * unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (vector3d<int>(gvec(ig__)) * unit_cell_.atom(ia__)->position())));
                     break;
                 }
                 case local:
                 {
-                    #ifdef _CACHE_GVEC_PHASE_FACTORS_
-                    return gvec_phase_factors_(ig, ia);
+                    #ifdef __CACHE_GVEC_PHASE_FACTORS
+                    return gvec_phase_factors_(ig__, ia__);
                     #else
-                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig]) * unit_cell_->atom(ia)->position())));
+                    return std::exp(double_complex(0.0, twopi * (gvec((int)spl_num_gvec_[ig__]) * unit_cell_.atom(ia__)->position())));
                     #endif
                     break;
                 }
@@ -120,7 +118,7 @@ class Reciprocal_lattice
        
         /// Ylm components of G-vector
         template <index_domain_t index_domain>
-        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax)
+        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax) const
         {
             switch (index_domain)
             {
@@ -141,87 +139,87 @@ class Reciprocal_lattice
         }
 
         /// Number of G-vectors within plane-wave cutoff
-        inline int num_gvec()
+        inline int num_gvec() const
         {
             return fft_->num_gvec();
         }
 
         /// G-vector in integer fractional coordinates
-        inline vector3d<int> gvec(int ig__)
+        inline vector3d<int> gvec(int ig__) const
         {
             return fft_->gvec(ig__);
         }
 
         /// G-vector in Cartesian coordinates
-        inline vector3d<double> gvec_cart(int ig__)
+        inline vector3d<double> gvec_cart(int ig__) const
         {
             return fft_->gvec_cart(ig__);
         }
 
         /// Return length of G-vector.
-        inline double gvec_len(int ig__)
+        inline double gvec_len(int ig__) const
         {
             return fft_->gvec_len(ig__);
         }
         
-        inline int gvec_index(vector3d<int> gvec__)
+        inline int gvec_index(vector3d<int> gvec__) const
         {
             return fft_->gvec_index(gvec__);
         }
 
         /// FFT index for a given G-vector index
-        inline int index_map(int ig__)
+        inline int index_map(int ig__) const
         {
             return fft_->index_map(ig__);
         }
 
         /// Pointer to FFT index array
-        inline int* index_map()
+        inline int const* index_map() const
         {
             return fft_->index_map();
         }
 
         /// Number of G-vector shells within plane-wave cutoff
-        inline int num_gvec_shells_inner()
+        inline int num_gvec_shells_inner() const
         {
             return fft_->num_gvec_shells_inner();
         }
 
-        inline int num_gvec_shells_total()
+        inline int num_gvec_shells_total() const
         {
             return fft_->num_gvec_shells_total();
         }
 
         /// Index of G-vector shell
-        inline int gvec_shell(int ig__)
+        inline int gvec_shell(int ig__) const
         {
             return fft_->gvec_shell(ig__);
         }
 
-        inline double gvec_shell_len(int igs__)
+        inline double gvec_shell_len(int igs__) const
         {
             return fft_->gvec_shell_len(igs__);
         }
         
-        inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
         {
-            return inverse_reciprocal_lattice_vectors_ * a;
+            return inverse_reciprocal_lattice_vectors_ * a__;
         }
         
         template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
         {
-            return reciprocal_lattice_vectors_ * a;
+            return reciprocal_lattice_vectors_ * a__;
         }
 
         /// Return global index of G1-G2 vector
-        inline int index_g12(int ig1__, int ig2__)
+        inline int index_g12(int ig1__, int ig2__) const
         {
             vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
             return fft_->gvec_index(v);
         }
         
-        inline int index_g12_safe(int ig1__, int ig2__)
+        inline int index_g12_safe(int ig1__, int ig2__) const
         {
             vector3d<int> v = fft_->gvec(ig1__) - fft_->gvec(ig2__);
             if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
@@ -236,17 +234,17 @@ class Reciprocal_lattice
             }
         }
 
-        inline splindex<block>& spl_num_gvec()
+        inline splindex<block> const& spl_num_gvec() const
         {
             return spl_num_gvec_;
         }
         
-        inline int spl_num_gvec(int igloc)
+        inline int spl_num_gvec(int igloc__) const
         {
-            return static_cast<int>(spl_num_gvec_[igloc]);
+            return static_cast<int>(spl_num_gvec_[igloc__]);
         }
         
-        inline double_complex gvec_ylm(int lm, int igloc)
+        inline double_complex gvec_ylm(int lm, int igloc) const
         {
             return gvec_ylm_(lm, igloc);
         }
@@ -277,12 +275,7 @@ class Reciprocal_lattice
             //== fclose(fout);
         }
 
-        inline Unit_cell* unit_cell()
-        {
-            return unit_cell_;
-        }
-
-        matrix3d<double>& reciprocal_lattice_vectors()
+        matrix3d<double> const& reciprocal_lattice_vectors() const
         {
             return reciprocal_lattice_vectors_;
         }

@@ -158,7 +158,7 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
 
 /// Inner product of two spherical functions.
 template <function_domain_t domain_t, typename T>
-T inner(Spheric_function<domain_t, T>& f1, Spheric_function<domain_t, T>& f2)
+T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
 {
     /* check radial grid */
     if (f1.radial_grid().hash() != f2.radial_grid().hash())

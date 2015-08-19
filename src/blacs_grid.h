@@ -48,7 +48,7 @@ class BLACS_grid
             rank_col_ = mpi_grid_.coordinate(0);
             rank_row_ = mpi_grid_.coordinate(1);
             
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             /* create handler first */
             blacs_handler_ = linalg_base::create_blacs_handler(comm_.mpi_comm());
 
@@ -85,7 +85,7 @@ class BLACS_grid
 
         ~BLACS_grid()
         {
-            #ifdef _SCALAPACK_
+            #ifdef __SCALAPACK
             linalg_base::gridexit(blacs_context_);
             linalg_base::free_blacs_handler(blacs_handler_);
             #endif

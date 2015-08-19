@@ -137,114 +137,85 @@ void Atom_symmetry_class::generate_lo_radial_functions()
 
             int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
 
-            if (lo_descriptor(idxlo).type == lo_rs)
+            /* number of radial solutions */
+            int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
+
+            std::vector< std::vector<double> > p(num_rs);
+            std::vector< std::vector<double> > rdudr(num_rs);
+
+            for (int order = 0; order < num_rs; order++)
             {
-                /* number of radial solutions */
-                int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
-
-                std::vector< std::vector<double> > p(num_rs);
-                std::vector< std::vector<double> > rdudr(num_rs);
-
-                for (int order = 0; order < num_rs; order++)
-                {
-                    auto rsd = lo_descriptor(idxlo).rsd_set[order];
-                    
-                    double dpdr;
-                    solver.solve(rsd.l, rsd.dme, rsd.enu, spherical_potential_, p[order], rdudr[order], &dpdr); 
-                    /* save last value */
-                    double p_at_R = p[order][nmtp - 1];
-                    
-                    /* find norm of the radial solution */
-                    for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(p[order][ir], 2);
-                    double norm = 1.0 / sqrt(s.interpolate().integrate(0));
-
-                    /* normalize radial solution and divide by r */
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        p[order][ir] *= (norm * atom_type_->radial_grid().x_inv(ir));
-                        /* don't divide rdudr by r */
-                        rdudr[order][ir] *= norm;
-                        s[ir] = p[order][ir];
-                    }
-                    dpdr *= norm;
-                    p_at_R *= norm;
-
-                    s.interpolate();
-                    
-                    /* compute radial derivatives */
-                    for (int dm = 0; dm < num_rs; dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
-                    /* replace 1st derivative with more precise value */
-                    a[order][1] = (dpdr - p_at_R / R) / R;
-
-                }
-
-                double b[] = {0.0, 0.0, 0.0, 0.0};
-                b[num_rs - 1] = 1.0;
-
-                int info = linalg<CPU>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
-
-                if (info) 
-                {
-                    std::stringstream s;
-                    s << "gesv returned " << info;
-                    error_local(__FILE__, __LINE__, s);
-                }
+                auto rsd = lo_descriptor(idxlo).rsd_set[order];
                 
-                /* take linear combination of radial solutions */
-                for (int order = 0; order < num_rs; order++)
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
-                        radial_functions_(ir, idxrf, 1) += b[order] * rdudr[order][ir];
-                    }
-                }
+                double dpdr;
+                solver.solve(rsd.l, rsd.dme, rsd.enu, spherical_potential_, p[order], rdudr[order], &dpdr); 
+                /* save last value */
+                double p_at_R = p[order][nmtp - 1];
+                
+                /* find norm of the radial solution */
+                for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(p[order][ir], 2);
+                double norm = 1.0 / sqrt(s.interpolate().integrate(0));
 
-                /* find norm of constructed local orbital */
-                for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
-                double norm = 1.0 / sqrt(s.interpolate().integrate(2));
-
-                /* normalize */
+                /* normalize radial solution and divide by r */
                 for (int ir = 0; ir < nmtp; ir++)
                 {
-                    radial_functions_(ir, idxrf, 0) *= norm;
-                    radial_functions_(ir, idxrf, 1) *= norm;
+                    p[order][ir] *= (norm * atom_type_->radial_grid().x_inv(ir));
+                    /* don't divide rdudr by r */
+                    rdudr[order][ir] *= norm;
+                    s[ir] = p[order][ir];
                 }
+                dpdr *= norm;
+                p_at_R *= norm;
+
+                s.interpolate();
                 
-                if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
+                /* compute radial derivatives */
+                for (int dm = 0; dm < num_rs; dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
+                /* replace 1st derivative with more precise value */
+                a[order][1] = (dpdr - p_at_R / R) / R;
+
+            }
+
+            double b[] = {0.0, 0.0, 0.0, 0.0};
+            b[num_rs - 1] = 1.0;
+
+            int info = linalg<CPU>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
+
+            if (info) 
+            {
+                std::stringstream s;
+                s << "gesv returned " << info;
+                error_local(__FILE__, __LINE__, s);
+            }
+            
+            /* take linear combination of radial solutions */
+            for (int order = 0; order < num_rs; order++)
+            {
+                for (int ir = 0; ir < nmtp; ir++)
                 {
-                    std::stringstream s;
-                    s << "atom symmetry class id : " << id() << " (" << atom_type()->symbol() << ")" << std::endl
-                      << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
-                      << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
-                    warning_local(__FILE__, __LINE__, s);
+                    radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
+                    radial_functions_(ir, idxrf, 1) += b[order] * rdudr[order][ir];
                 }
             }
 
-            if (lo_descriptor(idxlo).type == lo_cp)
+            /* find norm of constructed local orbital */
+            for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+            double norm = 1.0 / std::sqrt(s.interpolate().integrate(2));
+
+            /* normalize */
+            for (int ir = 0; ir < nmtp; ir++)
             {
-                STOP(); // need to compute rdudr instead of Hu
-                int l = lo_descriptor(idxlo).l;
-                int p1 = lo_descriptor(idxlo).p1;
-                int p2 = lo_descriptor(idxlo).p2;
-                double R = atom_type_->mt_radius();
-
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    double r = atom_type_->radial_grid(ir);
-                    radial_functions_(ir, idxrf, 0) = Utils::confined_polynomial(r, R, p1, p2, 0);
-                    radial_functions_(ir, idxrf, 1) = -0.5 * Utils::confined_polynomial(r, R, p1 + 1, p2, 2) +
-                        (0.5 * l * (l + 1) / pow(r, 2) + spherical_potential_[ir]) * (radial_functions_(ir, idxrf, 0) * r);
-                }
-                
-                for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
-                double norm = 1.0 / sqrt(s.interpolate().integrate(2));
-
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    radial_functions_(ir, idxrf, 0) *= norm;
-                    radial_functions_(ir, idxrf, 1) *= norm;
-                }
+                radial_functions_(ir, idxrf, 0) *= norm;
+                radial_functions_(ir, idxrf, 1) *= norm;
+            }
+            
+            if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
+            {
+                std::stringstream s;
+                s << "atom symmetry class id : " << id() << " (" << atom_type()->symbol() << ")" << std::endl
+                  << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
+                  << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
+                warning_local(__FILE__, __LINE__, s);
             }
         }
     }
@@ -530,27 +501,21 @@ void Atom_symmetry_class::find_enu()
     /* find which lo functions need auto enu */
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
     {
-        if (lo_descriptor(idxlo).type == lo_rs)
-        {
-            /* number of radial solutions */
-            int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
+        /* number of radial solutions */
+        int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
 
-            for (int order = 0; order < num_rs; order++)
-            {
-                radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
-                if (rsd.auto_enu) rs_with_auto_enu.push_back(&rsd);
-            }
+        for (int order = 0; order < num_rs; order++)
+        {
+            radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
+            if (rsd.auto_enu) rs_with_auto_enu.push_back(&rsd);
         }
     }
 
-    //Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     #pragma omp parallel for
     for (int i = 0; i < (int)rs_with_auto_enu.size(); i++)
     {
         radial_solution_descriptor* rsd = rs_with_auto_enu[i];
         rsd->enu = Enu_finder(atom_type_->zn(), rsd->n, rsd->l, atom_type_->radial_grid(), spherical_potential_, rsd->enu).enu();
-
-        //rsd->enu = solver.find_enu(rsd->n, rsd->l, spherical_potential_, rsd->enu);
     }
 }
 
@@ -558,13 +523,36 @@ void Atom_symmetry_class::generate_radial_functions()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
 
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(spherical_potential): %16llX", mdarray<double, 1>(&spherical_potential_[0], atom_type_->num_mt_points()).hash());
+    #endif
+
     radial_functions_.zero();
 
     find_enu();
 
     generate_aw_radial_functions();
+
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(aw_radial_functions): %16llX", radial_functions_.hash());
+    #endif
+
     generate_lo_radial_functions();
+
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(aw_and_lo_radial_functions): %16llX", radial_functions_.hash());
+    #endif
+
     transform_radial_functions(false, false);
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(&spherical_potential_[0], atom_type_->num_mt_points()).checksum());
+    DUMP("checksum(radial_functions): %18.10f", radial_functions_.checksum());
+    #endif
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(radial_functions): %16llX", radial_functions_.hash());
+    #endif
+
     
     //** if (verbosity_level > 0)
     //** {
@@ -818,13 +806,10 @@ void Atom_symmetry_class::write_enu(pstdout& pout)
     pout.printf("local orbitals\n");
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
     {
-        if (lo_descriptor(idxlo).type == lo_rs)
+        for (int order = 0; order < (int)lo_descriptor(idxlo).rsd_set.size(); order++)
         {
-            for (int order = 0; order < (int)lo_descriptor(idxlo).rsd_set.size(); order++)
-            {
-                radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
-                if (rsd.auto_enu) pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
-            }
+            radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
+            if (rsd.auto_enu) pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
         }
     }
     pout.printf("\n");
@@ -862,52 +847,61 @@ void Atom_symmetry_class::generate_core_charge_density()
     
     /* nothing to do */
     if (atom_type_->num_core_electrons() == 0.0) return;
+
+    int nmtp = atom_type_->num_mt_points();
+
+    std::vector<double> free_atom_grid(nmtp);
+    for (int i = 0; i < nmtp; i++) free_atom_grid[i] = atom_type_->radial_grid(i);
     
+    /* extend radial grid */
+    double x = atom_type_->radial_grid(nmtp - 1);
+    double dx = atom_type_->radial_grid().dx(nmtp - 2);
+    while (x < 30.0 + atom_type_->zn() / 4.0)
+    {
+        x += dx;
+        free_atom_grid.push_back(x);
+        dx *= 1.025;
+    }
+    Radial_grid rgrid(free_atom_grid);
+
     /* radial solver with a grid of a free atom */
-    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->free_atom_radial_grid());
+    Radial_solver solver(false, -1.0 * atom_type_->zn(), rgrid);
         
-    /* find point on the grid close to the muffin-tin radius */
-    int irmt = atom_type_->idx_rmt_free_atom();
-    
     /* interpolate spherical potential inside muffin-tin */
     Spline<double> svmt(atom_type_->radial_grid());
-    
     /* remove nucleus contribution from Vmt */
-    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
-        svmt[ir] = spherical_potential_[ir] + atom_type_->zn() / atom_type_->radial_grid(ir);
+    for (int ir = 0; ir < nmtp; ir++)
+        svmt[ir] = spherical_potential_[ir] + atom_type_->zn() * atom_type_->radial_grid().x_inv(ir);
     svmt.interpolate();
+    /* fit tail to alpha/r + beta */
+    double alpha = -(std::pow(atom_type_->mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + atom_type_->zn());
+    double beta = svmt[nmtp - 1] - (atom_type_->zn() + alpha) / atom_type_->mt_radius();
 
-    /* cook an effective potential from muffin-tin part and free atom tail */
-    std::vector<double> veff = atom_type_->free_atom_potential().values();
-    for (int ir = 0; ir <= irmt; ir++)
-    {
-        double x = atom_type_->free_atom_radial_grid(ir);
-        veff[ir] = svmt(x) - atom_type_->zn() / x;
-    }
-    for (int ir = irmt + 1; ir < atom_type_->free_atom_radial_grid().num_points(); ir++)
-    {
-        veff[ir] -= (atom_type_->free_atom_potential(irmt) - veff[irmt]);
-    }
+    /* cook an effective potential from muffin-tin part and a tail */
+    std::vector<double> veff(rgrid.num_points());
+    for (int ir = 0; ir < nmtp; ir++) veff[ir] = spherical_potential_[ir];
 
+    for (int ir = nmtp; ir < rgrid.num_points(); ir++) veff[ir] = alpha * rgrid.x_inv(ir) + beta;
+    
     //== /* write spherical potential */
     //== std::stringstream sstr;
     //== sstr << "spheric_potential_" << id_ << ".dat";
     //== FILE* fout = fopen(sstr.str().c_str(), "w");
 
-    //== for (int ir = 0; ir < atom_type_->free_atom_radial_grid().num_points(); ir++)
+    //== for (int ir = 0; ir < rgrid.num_points(); ir++)
     //== {
-    //==     fprintf(fout, "%f %f \n", atom_type_->free_atom_radial_grid(ir), veff[ir]);
+    //==     fprintf(fout, "%18.10f %18.10f\n", rgrid[ir], veff[ir]);
     //== }
     //== fclose(fout);
 
     /* charge density */
-    Spline<double> rho(atom_type_->free_atom_radial_grid());
+    Spline<double> rho(rgrid);
     
     /* atomic level energies */
     std::vector<double> level_energy(atom_type_->num_atomic_levels());
 
     for (int ist = 0; ist < atom_type_->num_atomic_levels(); ist++)
-        level_energy[ist] = -1.0 * atom_type_->zn() / 2 / pow(double(atom_type_->atomic_level(ist).n), 2);
+        level_energy[ist] = -1.0 * atom_type_->zn() / 2 / std::pow(double(atom_type_->atomic_level(ist).n), 2);
     
     #pragma omp parallel default(shared)
     {
@@ -923,10 +917,9 @@ void Atom_symmetry_class::generate_core_charge_density()
                 level_energy[ist] = solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
                                                        level_energy[ist], veff, p);
         
-                for (int i = 0; i < atom_type_->free_atom_radial_grid().num_points(); i++)
+                for (int i = 0; i < rgrid.num_points(); i++)
                 {
-                    rho_t[i] += atom_type_->atomic_level(ist).occupancy * 
-                                pow(y00 * p[i] / atom_type_->free_atom_radial_grid(i), 2);
+                    rho_t[i] += atom_type_->atomic_level(ist).occupancy * std::pow(y00 * p[i] * rgrid.x_inv(i), 2);
                 }
             }
         }
@@ -935,20 +928,13 @@ void Atom_symmetry_class::generate_core_charge_density()
         for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
     }
 
-    /* interpolate charge density */
-    rho.interpolate();
-
-    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
-    {
-        double x = atom_type_->radial_grid(ir);
-        core_charge_density_[ir] = rho(x);
-    }
+    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++) core_charge_density_[ir] = rho[ir];
     
     /* interpolate muffin-tin part of core density */
     Spline<double> rho_mt(atom_type_->radial_grid(), core_charge_density_);
     
     /* compute core leakage */
-    core_leakage_ = fourpi * (rho.integrate(2) - rho_mt.integrate(2));
+    core_leakage_ = fourpi * (rho.interpolate().integrate(2) - rho_mt.integrate(2));
     
     /* compute eigen-value sum of core states */
     core_eval_sum_ = 0.0;

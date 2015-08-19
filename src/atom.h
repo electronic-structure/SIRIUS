@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -38,7 +38,7 @@ namespace sirius {
 class Atom
 {
     private:
-    
+
         /// Type of the given atom.
         Atom_type* type_;
 
@@ -115,7 +115,7 @@ class Atom
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
          */
-        void generate_radial_integrals(Communicator const& comm__);
+        void generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__);
         
         /// Return pointer to corresponding atom type class.
         inline Atom_type* type()
@@ -215,18 +215,18 @@ class Atom
             return offset_wf_;  
         }
 
-        inline double* h_radial_integrals(int idxrf1, int idxrf2)
+        inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
         
-        inline double* b_radial_integrals(int idxrf1, int idxrf2, int x)
+        inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
         
         template <spin_block_t sblock>
-        inline double_complex hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<double_complex> >& gnt)
+        inline double_complex hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<double_complex> > const& gnt) const
         {
             double_complex zsum(0, 0);
 
@@ -254,13 +254,13 @@ class Atom
                     case ud:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                       -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                                                            -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                     case du:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                        b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                 }
@@ -274,7 +274,7 @@ class Atom
             return type_->num_mt_points();
         }
 
-        inline Radial_grid& radial_grid()
+        inline Radial_grid const& radial_grid() const
         {
             return type_->radial_grid();
         }

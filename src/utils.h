@@ -132,7 +132,7 @@ class Utils
 
         static inline double phi_by_sin_cos(double sinp, double cosp)
         {
-            double phi = atan2(sinp, cosp);
+            double phi = std::atan2(sinp, cosp);
             if (phi < 0) phi += twopi;
             return phi;
         }
@@ -170,7 +170,7 @@ class Utils
 
         static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
 
-        static vector3d<int> find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__);
+        static vector3d<int> find_translation_limits(double radius__, matrix3d<double> const& lattice_vectors__);
 
         static std::vector< std::pair<int, int> > l_m_by_lm(int lmax)
         {
@@ -185,6 +185,13 @@ class Utils
                 }
             }
             return l_m;
+        }
+
+        inline static double round(double a__, int n__)
+        {
+            double a0 = std::floor(a__);
+            double b = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
+            return a0 + b;
         }
 };
 

@@ -116,6 +116,10 @@ class SHT // TODO: better name
         /// Convert from Ylm to Rlm representation.
         void convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g);
 
+        static void convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__);
+
+        static void convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__);
+
         template <typename T>
         Spheric_function<spectral, T> transform(Spheric_function<spatial, T>& f)
         {
@@ -310,10 +314,8 @@ class SHT // TODO: better name
             return lmmax_;
         }
 
-        static void wigner_d_matrix(int l, double beta, double* d_mtrx__, int ld)
+        static void wigner_d_matrix(int l, double beta, mdarray<double, 2>& d_mtrx__)
         {
-            mdarray<double, 2> d_mtrx(d_mtrx__, ld, 2 * l + 1);
-
             long double cos_b2 = std::cos((long double)beta / 2.0L);
             long double sin_b2 = std::sin((long double)beta / 2.0L);
             
@@ -330,10 +332,10 @@ class SHT // TODO: better name
                                             (std::sqrt(Utils::factorial(l - m1)) / Utils::factorial(l + m1 - j)) * 
                                             (std::sqrt(Utils::factorial(l - m2)) / Utils::factorial(j + m2 - m1)) * 
                                             (std::sqrt(Utils::factorial(l + m2)) / Utils::factorial(j));
-                            d += g * pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
+                            d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
                         }
                     }
-                    d_mtrx(m1 + l, m2 + l) = (double)d;
+                    d_mtrx__(m1 + l, m2 + l) = (double)d;
                 }
             }
         }
@@ -344,21 +346,69 @@ class SHT // TODO: better name
             mdarray<double_complex, 2> rot_mtrx(rot_mtrx__, ld, 2 * l + 1);
 
             mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
-            wigner_d_matrix(l, euler_angles[1], &d_mtrx(0, 0), 2 * l + 1);
+            wigner_d_matrix(l, euler_angles[1], d_mtrx);
 
-            double p = (proper_rotation == -1) ? pow(-1.0, l) : 1.0; 
             for (int m1 = -l; m1 <= l; m1++)
             {
                 for (int m2 = -l; m2 <= l; m2++)
                 {
-                    rot_mtrx(m1 + l, m2 + l) = exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
-                                               d_mtrx(m1 + l, m2 + l) * p;
+                    rot_mtrx(m1 + l, m2 + l) = std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
+                                               d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
+                }
+            }
+        }
+
+        static void rotation_matrix_l(int l, vector3d<double> euler_angles, int proper_rotation, 
+                                      double* rot_mtrx__, int ld)
+        {
+            mdarray<double, 2> rot_mtrx_rlm(rot_mtrx__, ld, 2 * l + 1);
+            mdarray<double_complex, 2> rot_mtrx_ylm(2 * l + 1, 2 * l + 1);
+
+            mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
+            wigner_d_matrix(l, euler_angles[1], d_mtrx);
+
+            for (int m1 = -l; m1 <= l; m1++)
+            {
+                for (int m2 = -l; m2 <= l; m2++)
+                {
+                    rot_mtrx_ylm(m1 + l, m2 + l) = std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
+                                                   d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
+                }
+            }
+            for (int m1 = -l; m1 <= l; m1++)
+            {
+                auto i13 = (m1 == 0) ? std::vector<int>({0}) : std::vector<int>({-m1, m1});
+
+                for (int m2 = -l; m2 <= l; m2++)
+                {
+                    auto i24 = (m2 == 0) ? std::vector<int>({0}) : std::vector<int>({-m2, m2});
+
+                    for (int m3: i13)
+                    {
+                        for (int m4: i24)
+                        {
+                            rot_mtrx_rlm(m1 + l, m2 + l) += std::real(rlm_dot_ylm(l, m1, m3) *
+                                                                      rot_mtrx_ylm(m3 + l, m4 + l) *
+                                                                      ylm_dot_rlm(l, m4, m2));
+                        }
+                    }
                 }
             }
         }
 
         static void rotation_matrix(int lmax, vector3d<double> euler_angles, int proper_rotation, 
                                     mdarray<double_complex, 2>& rotm)
+        {
+            rotm.zero();
+
+            for (int l = 0; l <= lmax; l++)
+            {
+                rotation_matrix_l(l, euler_angles, proper_rotation, &rotm(l * l, l * l), rotm.ld());
+            }
+        }
+
+        static void rotation_matrix(int lmax, vector3d<double> euler_angles, int proper_rotation, 
+                                    mdarray<double, 2>& rotm)
         {
             rotm.zero();
 

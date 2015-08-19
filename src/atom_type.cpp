@@ -26,13 +26,15 @@
 
 namespace sirius {
 
-Atom_type::Atom_type(const char* symbol__, 
+Atom_type::Atom_type(Simulation_parameters const& parameters__,
+                     const char* symbol__, 
                      const char* name__, 
                      int zn__, 
                      double mass__, 
                      std::vector<atomic_level_descriptor>& levels__,
                      radial_grid_t grid_type__) 
-    : symbol_(std::string(symbol__)), 
+    : parameters_(parameters__),
+      symbol_(std::string(symbol__)), 
       name_(std::string(name__)), 
       zn_(zn__), 
       mass_(mass__), 
@@ -40,23 +42,22 @@ Atom_type::Atom_type(const char* symbol__,
       num_mt_points_(2000 + zn__ * 50), 
       atomic_levels_(levels__), 
       offset_lo_(-1),
-      esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
     radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(const int id__, 
+Atom_type::Atom_type(Simulation_parameters const& parameters__,
+                     const int id__, 
                      const std::string label__, 
-                     const std::string file_name__, 
-                     const electronic_structure_method_t esm_type__) 
-    : id_(id__), 
+                     const std::string file_name__)
+    : parameters_(parameters__),
+      id_(id__), 
       label_(label__),
       zn_(0), 
       mass_(0), 
       num_mt_points_(0), 
       offset_lo_(-1),
-      esm_type_(esm_type__), 
       file_name_(file_name__),
       initialized_(false)
 {
@@ -66,7 +67,7 @@ Atom_type::~Atom_type()
 {
 }
 
-void Atom_type::init(int lmax__, int offset_lo__)
+void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_lo__)
 {
     /* check if the class instance was already initialized */
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
@@ -89,7 +90,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
     }
 
     /* add valence levels to the list of core levels */
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         atomic_level_descriptor level;
         for (int ist = 0; ist < 28; ist++)
@@ -120,7 +121,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
     /* set default radial grid if it was not done by user */
     if (radial_grid_.num_points() == 0) set_radial_grid();
     
-    if (esm_type_ == full_potential_lapwlo)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         /* initialize free atom density and potential */
         init_free_atom(false);
@@ -137,7 +138,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
         if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
     }
 
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         local_orbital_descriptor lod;
         for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
@@ -155,7 +156,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
     indexb_.init(indexr_);
     
     /* allocate Q matrix */
-    if (esm_type_ == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
 
@@ -164,7 +165,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
    
     /* get the number of core electrons */
     num_core_electrons_ = 0;
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         for (int i = 0; i < (int)atomic_levels_.size(); i++) 
         {
@@ -174,14 +175,66 @@ void Atom_type::init(int lmax__, int offset_lo__)
 
     /* get number of valence electrons */
     num_valence_electrons_ = zn_ - num_core_electrons_;
+
+    int lmmax_pot = Utils::lmmax(lmax_pot__);
+    auto l_by_lm = Utils::l_by_lm(lmax_pot__);
+
+    /* flag the non-zero radial integrals */
+    std::vector< std::pair<int, int> > non_zero_elements;
+
+    for (int lm = 0; lm < lmmax_pot; lm++)
+    {
+        int l = l_by_lm[lm];
+
+        for (int i2 = 0; i2 < indexr().size(); i2++)
+        {
+            int l2 = indexr(i2).l;
+            
+            for (int i1 = 0; i1 <= i2; i1++)
+            {
+                int l1 = indexr(i1).l;
+                if ((l + l1 + l2) % 2 == 0)
+                {
+                    if (lm) non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1));
+                    for (int j = 0; j < num_mag_dims__; j++)
+                    {
+                        int offs = (j + 1) * lmmax_pot * indexr().size();
+                        non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1 + offs));
+                    }
+                }
+            }
+        }
+    }
+    idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
+    for (int j = 0; j < (int)non_zero_elements.size(); j++)
+    {
+        idx_radial_integrals_(0, j) = non_zero_elements[j].first;
+        idx_radial_integrals_(1, j) = non_zero_elements[j].second;
+    }
+
+    if (parameters_.processing_unit() == GPU && parameters_.full_potential())
+    {
+        #ifdef __GPU
+        idx_radial_integrals_.allocate_on_device();
+        idx_radial_integrals_.copy_to_device();
+        rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
+        rf_coef_.allocate(1);
+        rf_coef_.allocate_on_device();
+        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (num_mag_dims__ + 1)); 
+        vrf_coef_.allocate(1);
+        vrf_coef_.allocate_on_device();
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
     
     initialized_ = true;
 }
 
-void Atom_type::set_radial_grid(int num_points, double* points)
+void Atom_type::set_radial_grid(int num_points, double const* points)
 {
     if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
-    if (num_points < 0 && points == NULL)
+    if (num_points < 0 && points == nullptr)
     {
         radial_grid_ = Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_); 
     }
@@ -190,15 +243,21 @@ void Atom_type::set_radial_grid(int num_points, double* points)
         assert(num_points == num_mt_points_);
         radial_grid_ = Radial_grid(num_points, points);
     }
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef __GPU
+        radial_grid_.copy_to_device();
+        #endif
+    }
 }
 
-void Atom_type::set_free_atom_radial_grid(int num_points__, double* points__)
+void Atom_type::set_free_atom_radial_grid(int num_points__, double const* points__)
 {
     if (num_mt_points_ <= 0) error_local(__FILE__, __LINE__, "wrong number of radial points");
     free_atom_radial_grid_ = Radial_grid(num_points__, points__);
 }
 
-void Atom_type::set_free_atom_potential(int num_points__, double* vs__)
+void Atom_type::set_free_atom_potential(int num_points__, double const* vs__)
 {
     free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
     for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
@@ -259,12 +318,21 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     if ((int)lo_descriptors_.size() == ilo) 
     {
         lo_descriptors_.push_back(local_orbital_descriptor());
-        lo_descriptors_[ilo].type = lo_rs;
         lo_descriptors_[ilo].l = l;
     }
     else
     {
-        if (l != lo_descriptors_[ilo].l) error_local(__FILE__, __LINE__, "wrong angular quantum number");
+        if (l != lo_descriptors_[ilo].l)
+        {
+            std::stringstream s;
+            s << "wrong angular quantum number" << std::endl
+              << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
+              << "idxlo: " << ilo << std::endl
+              << "n: " << l << std::endl
+              << "l: " << n << std::endl
+              << "expected l: " <<  lo_descriptors_[ilo].l << std::endl;
+            TERMINATE(s);
+        }
     }
     
     radial_solution_descriptor rsd;
@@ -387,7 +455,7 @@ void Atom_type::print_info()
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
 
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         printf("\n");
         printf("atomic levels (n, l, k, occupancy, core)\n");
@@ -400,35 +468,21 @@ void Atom_type::print_info()
         printf("local orbitals\n");
         for (int j = 0; j < (int)lo_descriptors_.size(); j++)
         {
-            switch (lo_descriptors_[j].type)
+            printf("[");
+            for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
             {
-                case lo_rs:
-                {
-                    printf("radial solutions   [");
-                    for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
-                    {
-                        if (order) printf(", ");
-                        printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
-                                                                                    lo_descriptors_[j].rsd_set[order].n,
-                                                                                    lo_descriptors_[j].rsd_set[order].enu,
-                                                                                    lo_descriptors_[j].rsd_set[order].dme,
-                                                                                    lo_descriptors_[j].rsd_set[order].auto_enu);
-                    }
-                    printf("]\n");
-                    break;
-                }
-                case lo_cp:
-                {
-                    printf("confined polynomial {l : %2i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
-                                                                                lo_descriptors_[j].p1, 
-                                                                                lo_descriptors_[j].p2);
-                    break;
-                }
+                if (order) printf(", ");
+                printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
+                                                                            lo_descriptors_[j].rsd_set[order].n,
+                                                                            lo_descriptors_[j].rsd_set[order].enu,
+                                                                            lo_descriptors_[j].rsd_set[order].dme,
+                                                                            lo_descriptors_[j].rsd_set[order].auto_enu);
             }
+            printf("]\n");
         }
     }
 
-    if (esm_type_ == full_potential_lapwlo)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         printf("\n");
         printf("augmented wave basis\n");
@@ -577,7 +631,6 @@ void Atom_type::read_input_lo(JSON_tree& parser)
         if (parser["lo"][j].exist("basis"))
         {
             local_orbital_descriptor lod;
-            lod.type = lo_rs;
             lod.l = l;
             rsd.l = l;
             rsd_set.clear();
@@ -592,36 +645,6 @@ void Atom_type::read_input_lo(JSON_tree& parser)
             lod.rsd_set = rsd_set;
             lo_descriptors_.push_back(lod);
         }
-        if (parser["lo"][j].exist("polynom"))
-        {
-            local_orbital_descriptor lod;
-            lod.type = lo_cp;
-            lod.l = l;
-
-            std::vector<int> p1;
-            std::vector<int> p2;
-            
-            parser["lo"][j]["polynom"]["p1"] >> p1;
-            if (parser["lo"][j]["polynom"].exist("p2")) 
-            {
-                parser["lo"][j]["polynom"]["p2"] >> p2;
-            }
-            else
-            {
-                p2.push_back(2);
-            }
-
-            for (int i = 0; i < (int)p2.size(); i++)
-            {
-                for (int j = 0; j < (int)p1.size(); j++)
-                {
-                    lod.p1 = p1[j];
-                    lod.p2 = p2[i];
-                    lo_descriptors_.push_back(lod);
-                }
-            }
-        }
-
     }
 }
     
@@ -629,7 +652,7 @@ void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
 
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    if (!parameters_.full_potential())
     {
         parser["uspp"]["header"]["element"] >> symbol_;
 
@@ -754,7 +777,7 @@ void Atom_type::read_input(const std::string& fname)
         
     }
 
-    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
+    if (parameters_.full_potential())
     {
         parser["name"] >> name_;
         parser["symbol"] >> symbol_;

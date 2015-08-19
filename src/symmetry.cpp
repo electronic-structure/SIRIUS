@@ -23,12 +23,14 @@
  */
 
 #include "symmetry.h"
+#include "sht.h"
 
 namespace sirius {
 
 Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,  
                    int num_atoms__,
                    mdarray<double, 2>& positions__,
+                   mdarray<double, 2>& spins__,
                    std::vector<int>& types__,
                    double tolerance__)
     : lattice_vectors_(lattice_vectors__),
@@ -58,6 +60,85 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
     }
 
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
+
+    for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+    {
+        space_group_symmetry_descriptor sym_op;
+
+        sym_op.R = matrix3d<int>(spg_dataset_->rotations[isym]);
+        sym_op.t = vector3d<double>(spg_dataset_->translations[isym]);
+        int p = sym_op.R.det(); 
+        if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
+        sym_op.proper = p;
+        sym_op.rotation = lattice_vectors_ * matrix3d<double>(sym_op.R * p) * inverse_lattice_vectors_;
+        sym_op.euler_angles = euler_angles(sym_op.rotation);
+
+        space_group_symmetry_.push_back(sym_op);
+    }
+
+    sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
+    /* loop over spatial symmetries */
+    for (int isym = 0; isym < num_spg_sym(); isym++)
+    {
+        for (int ia = 0; ia < num_atoms_; ia++)
+        {
+            auto R = space_group_symmetry(isym).R;
+            auto t = space_group_symmetry(isym).t;
+            /* spatial transform */
+            vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
+            auto v = Utils::reduce_coordinates(R * pos + t);
+
+            int ja = -1;
+            /* check for equivalent atom */
+            for (int k = 0; k < num_atoms_; k++)
+            {
+                vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
+                if ((v.first - pos1).length() < 1e-6)
+                {
+                    ja = k;
+                    break;
+                }
+            }
+
+            if (ja == -1) TERMINATE("equivalent atom not found");
+            sym_table_(ia, isym) = ja;
+        }
+    }
+    
+    /* loop over spatial symmetries */
+    for (int isym = 0; isym < num_spg_sym(); isym++)
+    {
+        /* loop over spin symmetries */
+        for (int jsym = 0; jsym < num_spg_sym(); jsym++)
+        {
+            /* take proper part of rotation matrix */
+            auto Rspin = space_group_symmetry(jsym).rotation;
+            
+            int n = 0;
+            /* check if all atoms transfrom under spatial and spin symmetries */
+            for (int ia = 0; ia < num_atoms_; ia++)
+            {
+                int ja = sym_table_(ia, isym);
+
+                /* now check tha vector filed transforms from atom ia to atom ja */
+                /* vector field of atom is expected to be in Cartesian coordinates */
+                auto vd = Rspin * vector3d<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia)) -
+                          vector3d<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
+
+                if (vd.length() < 1e-10) n++;
+            }
+            /* if all atoms transform under spin rotaion, add it to a list */
+            if (n == num_atoms_)
+            {
+                magnetic_group_symmetry_descriptor mag_op;
+                mag_op.spg_op = space_group_symmetry(isym);
+                mag_op.isym = isym;
+                mag_op.spin_rotation = Rspin;
+                magnetic_group_symmetry_.push_back(mag_op);
+                break;
+            }
+        }
+    }
 }
 
 Symmetry::~Symmetry()
@@ -65,85 +146,86 @@ Symmetry::~Symmetry()
     spg_free_dataset(spg_dataset_);
 }
 
-matrix3d<int> Symmetry::rot_mtrx(int isym__)
-{
-    return matrix3d<int>(spg_dataset_->rotations[isym__]);
-}
+//matrix3d<int> Symmetry::rot_mtrx(int isym__)
+//{
+//    int rot_mtrx_lat[3][3];
+//    for (int i = 0; i < 3; i++)
+//    {
+//        for (int j = 0; j < 3; j++) rot_mtrx_lat[i][j] = spg_dataset_->rotations[isym__][i][j];
+//    }
+//
+//    return matrix3d<int>(rot_mtrx_lat);
+//}
+//
+//matrix3d<double> Symmetry::rot_mtrx_cart(int isym__)
+//{
+//    return lattice_vectors_ * matrix3d<double>(rot_mtrx(isym__)) * inverse_lattice_vectors_;
+//}
+//
 
-matrix3d<double> Symmetry::rot_mtrx_cart(int isym__)
-{
-    double rot_mtrx_lat[3][3];
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++) rot_mtrx_lat[i][j] = spg_dataset_->rotations[isym__][i][j];
-    }
-
-    return lattice_vectors_ * matrix3d<double>(rot_mtrx_lat) * inverse_lattice_vectors_;
-}
-
-
-matrix3d<double> Symmetry::rot_mtrx(vector3d<double> euler_angles)
+matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
 {
     double alpha = euler_angles[0];
     double beta = euler_angles[1];
     double gamma = euler_angles[2];
 
     matrix3d<double> rm;
-    rm(0, 0) = cos(alpha) * cos(beta) * cos(gamma) - sin(alpha) * sin(gamma);
-    rm(0, 1) = -cos(gamma) * sin(alpha) - cos(alpha) * cos(beta) * sin(gamma);
-    rm(0, 2) = cos(alpha) * sin(beta);
-    rm(1, 0) = cos(beta) * cos(gamma) * sin(alpha) + cos(alpha) * sin(gamma);
-    rm(1, 1) = cos(alpha) * cos(gamma) - cos(beta) * sin(alpha) * sin(gamma);
-    rm(1, 2) = sin(alpha) * sin(beta);
-    rm(2, 0) = -cos(gamma) * sin(beta);
-    rm(2, 1) = sin(beta) * sin(gamma);
-    rm(2, 2) = cos(beta);
+    rm(0, 0) = std::cos(alpha) * std::cos(beta) * std::cos(gamma) - std::sin(alpha) * std::sin(gamma);
+    rm(0, 1) = -std::cos(gamma) * std::sin(alpha) - std::cos(alpha) * std::cos(beta) * std::sin(gamma);
+    rm(0, 2) = std::cos(alpha) * std::sin(beta);
+    rm(1, 0) = std::cos(beta) * std::cos(gamma) * std::sin(alpha) + std::cos(alpha) * std::sin(gamma);
+    rm(1, 1) = std::cos(alpha) * std::cos(gamma) - std::cos(beta) * std::sin(alpha) * std::sin(gamma);
+    rm(1, 2) = std::sin(alpha) * std::sin(beta);
+    rm(2, 0) = -std::cos(gamma) * std::sin(beta);
+    rm(2, 1) = std::sin(beta) * std::sin(gamma);
+    rm(2, 2) = std::cos(beta);
 
     return rm;
 }
 
-vector3d<double> Symmetry::euler_angles(int isym)
+vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
 {
-    const double eps = 1e-10;
-
     vector3d<double> angles(0.0);
     
-    int p = proper_rotation(isym);
-
-    auto rm = rot_mtrx(isym) * p;
-
-    if (std::abs(rm(2, 2) - 1.0) < eps) // cos(beta) == 1, beta = 0
+    if (std::abs(rot__.det() - 1) > 1e-10)
     {
-        angles[0] = Utils::phi_by_sin_cos(rm(1, 0), rm(0, 0));
+        std::stringstream s;
+        s << "determinant of rotation matrix is " << rot__.det();
+        TERMINATE(s);
     }
-    else if (std::abs(rm(2, 2) + 1.0) < eps) // cos(beta) == -1, beta = Pi
+
+    if (std::abs(rot__(2, 2) - 1.0) < 1e-10) // cos(beta) == 1, beta = 0
     {
-        angles[0] = Utils::phi_by_sin_cos(-rm(0, 1), rm(1, 1));
+        angles[0] = Utils::phi_by_sin_cos(rot__(1, 0), rot__(0, 0));
+    }
+    else if (std::abs(rot__(2, 2) + 1.0) < 1e-10) // cos(beta) == -1, beta = Pi
+    {
+        angles[0] = Utils::phi_by_sin_cos(-rot__(0, 1), rot__(1, 1));
         angles[1] = pi;
     }
     else             
     {
-        double beta = acos(rm(2, 2));
-        angles[0] = Utils::phi_by_sin_cos(rm(1, 2) / sin(beta), rm(0, 2) / sin(beta));
+        double beta = std::acos(rot__(2, 2));
+        angles[0] = Utils::phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
         angles[1] = beta;
-        angles[2] = Utils::phi_by_sin_cos(rm(2, 1) / sin(beta), -rm(2, 0) / sin(beta));
+        angles[2] = Utils::phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
     }
 
-    auto rm1 = rot_mtrx(angles);
+    auto rm1 = rot_mtrx_cart(angles);
 
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
         {
-            if (std::abs(rm(i, j) - rm1(i, j)) > eps)
+            if (std::abs(rot__(i, j) - rm1(i, j)) > 1e-10)
             {
                 std::stringstream s;
-                s << "matrices don't match for symmetry operation " << isym << std::endl
-                  << "initial symmetry matrix : " << std::endl
-                  << rm(0, 0) << " " << rm(0, 1) << " " << rm(0, 2) << std::endl
-                  << rm(1, 0) << " " << rm(1, 1) << " " << rm(1, 2) << std::endl
-                  << rm(2, 0) << " " << rm(2, 1) << " " << rm(2, 2) << std::endl
-                  << "euler angles : " << angles[0] << " " << angles[1] << " " << angles[2] << std::endl
+                s << "matrices don't match" << std::endl
+                  << "initial symmetry matrix: " << std::endl
+                  << rot__(0, 0) << " " << rot__(0, 1) << " " << rot__(0, 2) << std::endl
+                  << rot__(1, 0) << " " << rot__(1, 1) << " " << rot__(1, 2) << std::endl
+                  << rot__(2, 0) << " " << rot__(2, 1) << " " << rot__(2, 2) << std::endl
+                  << "euler angles : " << angles[0] / pi << " " << angles[1] / pi << " " << angles[2] / pi << std::endl
                   << "computed symmetry matrix : " << std::endl
                   << rm1(0, 0) << " " << rm1(0, 1) << " " << rm1(0, 2) << std::endl
                   << rm1(1, 0) << " " << rm1(1, 1) << " " << rm1(1, 2) << std::endl
@@ -156,20 +238,19 @@ vector3d<double> Symmetry::euler_angles(int isym)
     return angles;
 }
 
-int Symmetry::proper_rotation(int isym)
-{
-    matrix3d<int> rot_mtrx(spg_dataset_->rotations[isym]);
-    int p = rot_mtrx.det();
-
-    if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
-
-    return p;
-}
+//int Symmetry::proper_rotation(int isym__)
+//{
+//    int p = rot_mtrx(isym__).det();
+//
+//    if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
+//
+//    return p;
+//}
 
 int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                               vector3d<int> is_shift__,
                                               mdarray<double, 2>& kp__,
-                                              std::vector<double>& wk__)
+                                              std::vector<double>& wk__) const
 {
     int nktot = k_mesh__[0] * k_mesh__[1] * k_mesh__[2];
 
@@ -213,11 +294,11 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     return nknr;
 }
 
-void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
+void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__) const
 {
-    for (int isym = 0; isym < num_sym_op(); isym++)
+    for (int isym = 0; isym < num_mag_sym(); isym++)
     {
-        auto sm = rot_mtrx(isym);
+        auto sm = magnetic_group_symmetry(isym).spg_op.R;
 
         for (int ig = 0; ig < fft__->num_gvec(); ig++)
         {
@@ -262,24 +343,26 @@ void Symmetry::check_gvec_symmetry(FFT3D<CPU>* fft__)
 
 void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    FFT3D<CPU>* fft__,
-                                   splindex<block>& spl_num_gvec__,
-                                   Communicator& comm__)
+                                   Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_function");
+
+    splindex<block> spl_gvec(fft__->num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
     sym_f_pw.zero();
+    
     double* ptr = (double*)&sym_f_pw(0);
 
     #pragma omp parallel for
-    for (int isym = 0; isym < num_sym_op(); isym++)
+    for (int i = 0; i < num_mag_sym(); i++)
     {
-        /* full symmetry operation is {R|t} */
-        auto R = rot_mtrx(isym);
-        auto t = fractional_translation(isym);
+        /* full space-group symmetry operation is {R|t} */
+        auto R = magnetic_group_symmetry(i).spg_op.R;
+        auto t = magnetic_group_symmetry(i).spg_op.t;
 
-        for (int igloc = 0; igloc < (int)spl_num_gvec__.local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
         {
-            int ig = (int)spl_num_gvec__[igloc];
+            int ig = (int)spl_gvec[igloc];
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
              * GR is a vector-matrix multiplication [G][.....]
@@ -294,9 +377,52 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
 
             assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
 
-            //sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
-
             double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t)));
+            
+            #pragma omp atomic update
+            ptr[2 * ig_rot] += std::real(z);
+
+            #pragma omp atomic update
+            ptr[2 * ig_rot + 1] += std::imag(z);
+        }
+    }
+    comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
+
+    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+}
+
+void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
+                                   FFT3D<CPU>* fft__,
+                                   Communicator const& comm__) const
+{
+    Timer t("sirius::Symmetry::symmetrize_vector_z_component");
+    
+    splindex<block> spl_gvec(fft__->num_gvec(), comm__.size(), comm__.rank());
+    mdarray<double_complex, 1> sym_f_pw(fft__->num_gvec());
+    sym_f_pw.zero();
+
+    double* ptr = (double*)&sym_f_pw(0);
+
+    #pragma omp parallel for
+    for (int i = 0; i < num_mag_sym(); i++)
+    {
+        /* full space-group symmetry operation is {R|t} */
+        auto R = magnetic_group_symmetry(i).spg_op.R;
+        auto t = magnetic_group_symmetry(i).spg_op.t;
+        auto S = magnetic_group_symmetry(i).spin_rotation;
+
+        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+        {
+            int ig = (int)spl_gvec[igloc];
+
+            vector3d<int> gv_rot = transpose(R) * fft__->gvec(ig);
+
+            /* index of a rotated G-vector */
+            int ig_rot = fft__->gvec_index(gv_rot);
+
+            assert(ig_rot >= 0 && ig_rot < fft__->num_gvec());
+
+            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (fft__->gvec(ig) * t))) * S(2, 2);
             
             #pragma omp atomic update
             ptr[2 * ig_rot] += real(z);
@@ -307,7 +433,101 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
     }
     comm__.allreduce(&sym_f_pw(0), fft__->num_gvec());
 
-    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
+    for (int ig = 0; ig < fft__->num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+
+}
+
+void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
+                                   Communicator const& comm__) const
+{
+    Timer t("sirius::Symmetry::symmetrize_function_mt");
+
+    int lmmax = (int)frlm__.size(0);
+    int nrmax = (int)frlm__.size(1);
+    if (num_atoms_ != (int)frlm__.size(2)) TERMINATE("wrong number of atoms");
+
+    splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
+
+    int lmax = Utils::lmax_by_lmmax(lmmax);
+
+    mdarray<double, 2> rotm(lmmax, lmmax);
+
+    mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
+    fsym.zero();
+
+    double alpha = 1.0 / double(num_mag_sym());
+
+    for (int i = 0; i < num_mag_sym(); i++)
+    {
+        /* full space-group symmetry operation is {R|t} */
+        int pr = magnetic_group_symmetry(i).spg_op.proper;
+        auto eang = magnetic_group_symmetry(i).spg_op.euler_angles;
+        int isym = magnetic_group_symmetry(i).isym;
+        SHT::rotation_matrix(lmax, eang, pr, rotm);
+
+        for (int ia = 0; ia < num_atoms_; ia++)
+        {
+            int ja = sym_table_(ia, isym);
+            auto location = spl_atoms.location(ja);
+            if (location.second == comm__.rank())
+            {
+                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(), 
+                                  frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
+                                  fsym.at<CPU>(0, 0, location.first), fsym.ld());
+            }
+        }
+    }
+    comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
+                     (int)(lmmax * nrmax * spl_atoms.global_offset()), 
+                     (int)(lmmax * nrmax * spl_atoms.local_size()));
+}
+
+void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
+                                             Communicator const& comm__) const
+{
+    Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
+
+    int lmmax = (int)frlm__.size(0);
+    int nrmax = (int)frlm__.size(1);
+
+    splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
+
+    if (num_atoms_ != (int)frlm__.size(2)) TERMINATE("wrong number of atoms");
+
+    int lmax = Utils::lmax_by_lmmax(lmmax);
+
+    mdarray<double, 2> rotm(lmmax, lmmax);
+
+    mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
+    fsym.zero();
+
+    double alpha = 1.0 / double(num_mag_sym());
+
+    for (int i = 0; i < num_mag_sym(); i++)
+    {
+        /* full space-group symmetry operation is {R|t} */
+        int pr = magnetic_group_symmetry(i).spg_op.proper;
+        auto eang = magnetic_group_symmetry(i).spg_op.euler_angles;
+        int isym = magnetic_group_symmetry(i).isym;
+        auto S = magnetic_group_symmetry(i).spin_rotation;
+        SHT::rotation_matrix(lmax, eang, pr, rotm);
+
+        for (int ia = 0; ia < num_atoms_; ia++)
+        {
+            int ja = sym_table_(ia, isym);
+            auto location = spl_atoms.location(ja);
+            if (location.second == comm__.rank())
+            {
+                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at<CPU>(), rotm.ld(), 
+                                  frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
+                                  fsym.at<CPU>(0, 0, location.first), fsym.ld());
+            }
+        }
+    }
+
+    comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
+                     (int)(lmmax * nrmax * spl_atoms.global_offset()), 
+                     (int)(lmmax * nrmax * spl_atoms.local_size()));
 }
 
 };

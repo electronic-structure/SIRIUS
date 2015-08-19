@@ -59,7 +59,8 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         }
         case pow3_grid:
         {
-            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), 3);
+            //for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), 3);
+            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + std::pow(double(i) / double(num_points - 1), 3.0) * (rmax - rmin);
             break; 
         }
         case scaled_pow_grid:
@@ -182,13 +183,15 @@ void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, d
     }
 }
 
-void Radial_grid::set_radial_points(int num_points__, double* x__)
+void Radial_grid::set_radial_points(int num_points__, double const* x__)
 {
     assert(num_points__ > 0);
     
     /* set points */
     x_ = mdarray<double, 1>(num_points__);
     memcpy(&x_(0), x__, num_points__ * sizeof(double));
+
+    for (int i = 0; i < num_points__; i++) x_(i) = Utils::round(x_(i), 13);
     
     /* set x^{-1} */
     x_inv_ = mdarray<double, 1>(num_points__);
@@ -198,12 +201,12 @@ void Radial_grid::set_radial_points(int num_points__, double* x__)
     dx_ = mdarray<double, 1>(num_points__ - 1);
     for (int i = 0; i < num_points__ - 1; i++) dx_(i) = x_(i + 1) - x_(i);
     
-    if (dx_(0) < 1e-7)
-    {
-        std::stringstream s;
-        s << "dx step near origin is small : " << Utils::double_to_string(dx_(0));
-        warning_global(__FILE__, __LINE__, s);
-    }
+    //== if (dx_(0) < 1e-7)
+    //== {
+    //==     std::stringstream s;
+    //==     s << "dx step near origin is small : " << Utils::double_to_string(dx_(0));
+    //==     warning_global(__FILE__, __LINE__, s);
+    //== }
 }
 
 };

@@ -25,9 +25,9 @@
 #ifndef __POTENTIAL_H__
 #define __POTENTIAL_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "spheric_function.h"
+#include "simulation_context.h"
 
 namespace sirius {
 
@@ -39,7 +39,16 @@ class Potential
 {
     private:
         
-        Global& parameters_;
+        Simulation_context& ctx_;
+
+        Simulation_parameters const& parameters_;
+        //Global& parameters_;
+
+        Unit_cell const& unit_cell_;
+
+        Step_function const* step_function_;
+
+        Communicator const& comm_;
 
         /// alias for FFT driver
         FFT3D<CPU>* fft_;
@@ -79,14 +88,14 @@ class Potential
         /** Used to compute electron-nuclear contribution to the total energy */
         mdarray<double, 1> vh_el_;
 
-        /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
-                         std::vector< Spheric_function<spectral, double_complex> >& vh, 
-                         mdarray<double_complex, 2>& qmt);
+        Mixer<double>* mixer_;
 
-        /// Compute multipole momenst of the interstitial charge density
-        /** Also, compute the MT boundary condition 
-        */
+        /// Compute MT part of the potential and MT multipole moments
+        void poisson_vmt(Periodic_function<double>* rho__, 
+                         Periodic_function<double>* vh__,
+                         mdarray<double_complex, 2>& qmt__);
+
+        /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         void poisson_sum_G(int lmmax__, 
                            double_complex* fpw__, 
                            mdarray<double, 3>& fl__, 
@@ -97,14 +106,14 @@ class Potential
 
         void generate_local_potential();
         
-        void xc_mt_nonmagnetic(Radial_grid& rgrid,
+        void xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                std::vector<XC_functional*>& xc_func,
                                Spheric_function<spectral, double>& rho_lm,
                                Spheric_function<spatial, double>& rho_tp,
                                Spheric_function<spatial, double>& vxc_tp, 
                                Spheric_function<spatial, double>& exc_tp);
 
-        void xc_mt_magnetic(Radial_grid& rgrid, 
+        void xc_mt_magnetic(Radial_grid const& rgrid, 
                             std::vector<XC_functional*>& xc_func,
                             Spheric_function<spectral, double>& rho_up_lm, 
                             Spheric_function<spatial, double>& rho_up_tp, 
@@ -132,14 +141,15 @@ class Potential
                             Periodic_function<double>* vxc, 
                             Periodic_function<double>* bxc[3], 
                             Periodic_function<double>* exc);
+
+        void init();
+
     public:
 
         /// Constructor
-        Potential(Global& parameters__);
+        Potential(Simulation_context& ctx__);
 
         ~Potential();
-
-        void update();
 
         void set_effective_potential_ptr(double* veffmt, double* veffit);
         
@@ -390,7 +400,7 @@ class Potential
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);
         }
 
-        inline void unpack(double* buffer)
+        inline void unpack(double const* buffer)
         {
             size_t n = effective_potential_->unpack(buffer);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->unpack(&buffer[n]);
@@ -454,6 +464,25 @@ class Potential
         inline double energy_vha()
         {
             return energy_vha_;
+        }
+
+        void mixer_init()
+        {
+            pack(mixer_);
+            mixer_->initialize();
+        }
+
+        double mix()
+        {
+            pack(mixer_);
+            double rms = mixer_->mix();
+            unpack(mixer_->output_buffer());
+            return rms;
+        }
+
+        inline void checksum()
+        {
+            DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
         }
 };
 

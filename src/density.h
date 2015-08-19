@@ -25,10 +25,10 @@
 #ifndef __DENSITY_H__
 #define __DENSITY_H__
 
-#include "global.h"
 #include "periodic_function.h"
 #include "band.h"
 #include "k_set.h"
+#include "simulation_context.h"
 
 namespace sirius
 {
@@ -112,9 +112,14 @@ namespace sirius
 class Density
 {
     private:
+
+        Simulation_context& ctx_;
         
         /// Global set of parameters.
-        Global& parameters_;
+        //Global& parameters_;
+        Simulation_parameters const& parameters_;
+
+        Unit_cell& unit_cell_;
 
         /// Alias for FFT driver.
         FFT3D<CPU>* fft_;
@@ -222,7 +227,7 @@ class Density
         /// Add k-point contribution to the interstitial density and magnetization
         void add_k_point_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
         #endif
 
@@ -259,7 +264,7 @@ class Density
     public:
 
         /// Constructor
-        Density(Global& parameters__);
+        Density(Simulation_context& ctx_);
         
         /// Destructor
         ~Density();
@@ -318,7 +323,7 @@ class Density
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
         }
 
-        inline void unpack(double* buffer__)
+        inline void unpack(double const* buffer__)
         {
             size_t n = rho_->unpack(buffer__);
             for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
@@ -364,13 +369,13 @@ class Density
             else
             {
                 int k = 0;
-                for (int ig = 0; ig < parameters_.fft_coarse()->num_gvec(); ig++)
+                for (int ig = 0; ig < ctx_.fft_coarse()->num_gvec(); ig++)
                 {
                     low_freq_mixer_->input(k++, rho_->f_pw(ig));
                 }
 
                 k = 0;
-                for (int ig = parameters_.fft_coarse()->num_gvec(); ig < parameters_.fft()->num_gvec(); ig++)
+                for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
                 {
                     high_freq_mixer_->input(k++, rho_->f_pw(ig));
                 }
@@ -385,8 +390,8 @@ class Density
             }
             else
             {
-                int ngv = parameters_.fft()->num_gvec();
-                int ngvc = parameters_.fft_coarse()->num_gvec();
+                int ngv = ctx_.fft()->num_gvec();
+                int ngvc = ctx_.fft_coarse()->num_gvec();
 
                 memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
                 memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
@@ -410,27 +415,27 @@ class Density
 
         double mix()
         {
+            double rms;
+
             if (mixer_ != nullptr)
             {
+                /* mix in real-space in case of FP-LAPW */
                 mixer_input();
-                double rms = mixer_->mix();
+                rms = mixer_->mix();
                 mixer_output();
-
-                return rms;
+                rho_->fft_transform(-1);
             }
             else
             {
+                /* mix in G-space in case of PP */
                 mixer_input();
-                double rms = low_freq_mixer_->mix();
+                rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                
-                fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
-                fft_->transform(1);
-                fft_->output(&rho_->f_it<global>(0));
-
-                return rms;
+                rho_->fft_transform(1);
             }
+
+            return rms;
         }
 
         inline double dr2()

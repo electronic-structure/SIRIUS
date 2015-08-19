@@ -27,51 +27,54 @@
 
 int Platform::num_fft_threads_ = -1;
 
-#ifdef _PLASMA_
+#ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
 #endif
 
-#ifdef _LIBSCI_ACC_
+#ifdef __LIBSCI_ACC
 extern "C" void libsci_acc_init();
+extern "C" void libsci_acc_finalize();
 #endif
 
-void Platform::initialize(bool call_mpi_init)
+void Platform::initialize(bool call_mpi_init__)
 {
-    //if (call_mpi_init) MPI_Init(NULL, NULL);
-    int provided;
-    if (call_mpi_init) 
-    {
-        MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
-    }
+    if (call_mpi_init__) MPI_Init(NULL, NULL);
+    //== int provided;
+    //== if (call_mpi_init) 
+    //== {
+    //==     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
+    //== }
 
-    MPI_Query_thread(&provided);
-    if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
-    {
-        printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
-    }
+    //== MPI_Query_thread(&provided);
+    //== if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
+    //== {
+    //==     printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
+    //== }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     //cuda_initialize();
-    #if defined(_VERBOSITY_) && (_VERBOSITY_ > 0)
+    #if defined(__VERBOSITY) && (__VERBOSITY > 0)
     if (rank() == 0) cuda_device_info();
     #endif
-    cuda_create_streams(max_num_threads());
-    cublas_create_handles(max_num_threads());
+    cuda_create_streams(max_num_threads() + 1);
+    cublas_create_handles(max_num_threads() + 1);
     #endif
-    #ifdef _MAGMA_
+    #ifdef __MAGMA
     magma_init_wrapper();
     #endif
-    #ifdef _PLASMA_
+    #ifdef __PLASMA
     plasma_init(max_num_threads());
     #endif
-    #ifdef _LIBSCI_ACC_
+    #ifdef __LIBSCI_ACC
     libsci_acc_init();
     #endif
+    #ifdef __FFTW_THREADED
     if (!fftw_init_threads())
     {
         printf("error in fftw_init_threads()\n");
         exit(0);
     }
+    #endif
 
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
@@ -80,12 +83,15 @@ void Platform::initialize(bool call_mpi_init)
 void Platform::finalize()
 {
     MPI_Finalize();
-    #ifdef _MAGMA_
+    #ifdef __MAGMA
     magma_finalize_wrapper();
     #endif
-    #ifdef _GPU_
-    cublas_destroy_handles(max_num_threads());
-    cuda_destroy_streams(max_num_threads());
+    #ifdef __LIBSCI_ACC
+    libsci_acc_finalize();
+    #endif
+    #ifdef __GPU
+    cublas_destroy_handles(max_num_threads() + 1);
+    cuda_destroy_streams(max_num_threads() + 1);
     cuda_device_reset();
     #endif
     fftw_cleanup_threads();

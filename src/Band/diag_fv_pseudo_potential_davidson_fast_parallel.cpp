@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                                                            double v0__,
                                                            std::vector<double>& veff_it_coarse__)
@@ -66,11 +66,9 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     
     std::vector<double> res_norm(num_bands);
 
-    auto uc = parameters_.unit_cell();
-
     /* find maximum number of beta-projectors across chunks */
     int nbmax = 0;
-    for (int ib = 0; ib < uc->num_beta_chunks(); ib++) nbmax = std::max(nbmax, uc->beta_chunk(ib).num_beta_);
+    for (int ib = 0; ib < unit_cell_.num_beta_chunks(); ib++) nbmax = std::max(nbmax, unit_cell_.beta_chunk(ib).num_beta_);
     
     /* size of <beta|phi>, D*<beta|phi> and <Gk|beta> */
     size_t kappa_size = 2 * nbmax * num_bands + num_gkvec_loc * nbmax;
@@ -80,7 +78,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == CPU && itso.real_space_prj_)
     {
-        auto rsp = parameters_.real_space_prj_;
+        auto rsp = ctx_.real_space_prj();
         size_t size = 2 * rsp->fft()->size() * rsp->fft()->num_fft_threads();
         size += rsp->max_num_points_ * rsp->fft()->num_fft_threads();
 
@@ -103,11 +101,11 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     }
     
     /* offset in the packed array of on-site matrices */
-    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    mdarray<int, 1> packed_mtrx_offset(unit_cell_.num_atoms());
     int packed_mtrx_size = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {   
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         packed_mtrx_offset(ia) = packed_mtrx_size;
         packed_mtrx_size += nbf * nbf;
     }
@@ -117,15 +115,15 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
     mdarray<double_complex, 1> q_mtrx_packed;
     if (with_overlap) q_mtrx_packed = mdarray<double_complex, 1>(packed_mtrx_size);
 
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int nbf = uc->atom(ia)->mt_basis_size();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
-                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
             }
         }
     }
@@ -150,7 +148,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
     if (parameters_.processing_unit() == GPU)
     {
-        #ifdef _GPU_
+        #ifdef __GPU
         phi_slab.allocate_on_device();
         hphi_slab.allocate_on_device();
         d_mtrx_packed.allocate_on_device();
@@ -236,7 +234,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cublas_set_matrix(N, num_bands, sizeof(double_complex), evec_full.at<CPU>(), evec_full.ld(),
                               evec_full.at<GPU>(), evec_full.ld());
             #endif
@@ -246,8 +244,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i) > 1e-2 && 
-                std::abs(eval_old[i] - eval[i]) > parameters_.iterative_solver_input_section_.tolerance_ / 2) 
+            if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
             {
                 occ_band_converged = false;
             }
@@ -260,7 +257,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
             if (converge_by_energy)
             {
                 /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-                double tol = parameters_.iterative_solver_input_section_.tolerance_ / 2;
+                double tol = ctx_.iterative_solver_tolerance();
                 n = 0;
                 for (int i = 0; i < num_bands; i++)
                 {
@@ -277,7 +274,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                 {
                     if (parameters_.processing_unit() == GPU)
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         cublas_set_matrix(N, n, sizeof(double_complex), evec_full_tmp.at<CPU>(), evec_full_tmp.ld(),
                                           evec_full_tmp.at<GPU>(), evec_full_tmp.ld());
                         #endif
@@ -285,7 +282,6 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                     residuals_fast_parallel(N, n, kp__, eval_tmp, evec_full_tmp, hphi_slab, ophi_slab, hpsi_slab, opsi_slab,
                                             res_slab, h_diag, o_diag, res_norm, kappa);
                 }
-                parameters_.work_load_ += n;
             }
             else
             {
@@ -304,7 +300,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                 for (int i = 0; i < num_bands; i++)
                 {
                     /* take the residual if it's norm is above the threshold */
-                    if (kp__->band_occupancy(i) > 1e-10 && res_norm[i] > itso.tolerance_)
+                    if (kp__->band_occupancy(i) > 1e-10 && res_norm[i] > ctx_.iterative_solver_tolerance())
                     {
                         res_list.push_back(i);
                     }
@@ -332,7 +328,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                     }
                     case GPU:
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab.at<GPU>(), phi_slab.ld(),
                                           evec_full.at<GPU>(), evec_full.ld(), psi_slab.at<GPU>(), psi_slab.ld()); 
                         #endif
@@ -371,7 +367,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                     }
                     case GPU:
                     {
-                        #ifdef _GPU_
+                        #ifdef __GPU
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, hphi_slab.at<GPU>(), hphi_slab.ld(),
                                           evec_full.at<GPU>(), evec_full.ld(), hpsi_slab.at<GPU>(), hpsi_slab.ld()); 
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, ophi_slab.at<GPU>(), ophi_slab.ld(),
@@ -396,7 +392,7 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
                 }
                 case GPU:
                 {
-                    #ifdef _GPU_
+                    #ifdef __GPU
                     cuda_copy_device_to_device(phi_slab.at<GPU>(),  psi_slab.at<GPU>(),  num_gkvec_loc * num_bands * sizeof(double_complex));
                     cuda_copy_device_to_device(hphi_slab.at<GPU>(), hpsi_slab.at<GPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
                     cuda_copy_device_to_device(ophi_slab.at<GPU>(), opsi_slab.at<GPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
@@ -426,13 +422,13 @@ void Band::diag_fv_pseudo_potential_davidson_fast_parallel(K_point* kp__,
 
         if (parameters_.processing_unit() == GPU)
         {
-            #ifdef _GPU_
+            #ifdef __GPU
             cuda_copy_to_device(phi_slab.at<GPU>(0, N), phi_slab.at<CPU>(0, N), n * num_gkvec_loc * sizeof(double_complex));
             #endif
         }
     }
 
-    #ifdef _GPU_
+    #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
         //if (!with_overlap) psi.deallocate_on_device();

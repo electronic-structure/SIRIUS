@@ -40,11 +40,10 @@ int Unit_cell::next_atom_type_id(const std::string label)
     return atom_type_id_map_[label];
 }
 
-void Unit_cell::add_atom_type(const std::string label, const std::string file_name, 
-                              electronic_structure_method_t esm_type)
+void Unit_cell::add_atom_type(const std::string label, const std::string file_name)
 {
     int id = next_atom_type_id(label);
-    atom_types_.push_back(new Atom_type(id, label, file_name, esm_type));
+    atom_types_.push_back(new Atom_type(parameters_, id, label, file_name));
 }
 
 void Unit_cell::add_atom(const std::string label, double* position, double* vector_field)
@@ -94,116 +93,20 @@ void Unit_cell::get_symmetry()
     }
 
     mdarray<double, 2> positions(3, num_atoms());
+    mdarray<double, 2> spins(3, num_atoms());
     std::vector<int> types(num_atoms());
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        for (int x = 0; x < 3; x++) positions(x, ia) = atom(ia)->position(x);
+        auto vf = atom(ia)->vector_field();
+        for (int x = 0; x < 3; x++)
+        {
+            positions(x, ia) = atom(ia)->position(x);
+            spins(x, ia) = vf[x];
+        }
         types[ia] = atom(ia)->type_id();
     }
     
-    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, types, 1e-4);
-
-
-
-
-
-    //== for (int isym = 0; isym < s.num_sym_op(); isym++)
-    //== {
-    //==     std::cout << std::endl;
-    //==     std::cout << "symmetry operation : " << isym << std::endl;
-
-    //==     vector3d<double> ang = s.euler_angles(isym);
-
-    //==     std::cout << "Euler angles : " << ang[0] / pi << " " << ang[1] / pi << " " << ang[2] / pi << std::endl;
-
-    //==     //ang[0] = -ang[0];
-    //==     //ang[1] = -ang[1];
-    //==     //ang[2] = -ang[2];
-    //==     int proper_rotation = s.proper_rotation(isym);
-
-    //==     
-    //==     vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
-    //==     vector3d<double> scoord;
-    //==     SHT::spherical_coordinates(coord, &scoord[0]);
-
-    //==     int lmax = 10;
-    //==     mdarray<double_complex, 1> ylm(Utils::lmmax(lmax));
-    //==     SHT::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
-
-    //==     matrix3d<double> rotm = inverse(s.rot_mtrx(isym));
-    //==     printf("3x3 rotation matrix\n");
-    //==     for (int i = 0; i < 3; i++)
-    //==     {
-    //==         for (int j = 0; j < 3; j++) printf("%8.4f ", rotm(i, j));
-    //==         printf("\n");
-    //==     }
-
-    //==     vector3d<double> coord2;
-    //==     for (int i = 0; i < 3; i++)
-    //==     {
-    //==         for (int j = 0; j < 3; j++) coord2[i] += rotm(i, j) * coord[j];
-    //==     }
-
-    //==     //std::cout << "initial coordinates : " << coord[0] << " " << coord[1] << " " << coord[2] << std::endl;
-    //==     //std::cout << "rotated coordinates : " << coord2[0] << " " << coord2[1] << " " << coord2[2] << std::endl;
-
-    //==     vector3d<double> scoord2;
-    //==     SHT::spherical_coordinates(coord2, &scoord2[0]);
-
-    //==     mdarray<double_complex, 1> ylm2(Utils::lmmax(lmax));
-    //==     SHT::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
-
-    //==     mdarray<double_complex, 2> ylm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
-    //==     SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx); 
-
-    //==     //== printf("Ylm rotation matrix\n");
-    //==     //== for (int i = 0; i < Utils::lmmax(lmax); i++)
-    //==     //== {
-    //==     //==     for (int j = 0; j < Utils::lmmax(lmax); j++) 
-    //==     //==         printf("(%12.6f, %12.6f)  ", real(ylm_rot_mtrx(i, j)), imag(ylm_rot_mtrx(i, j)));
-    //==     //==     printf("\n");
-    //==     //== }
-    //==         
-
-
-
-
-
-    //==     mdarray<double_complex, 1> ylm1(Utils::lmmax(lmax));
-    //==     ylm1.zero();
-
-    //==     for (int i = 0; i < Utils::lmmax(lmax); i++)
-    //==     {
-    //==         for (int j = 0; j < Utils::lmmax(lmax); j++) ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
-    //==     }
-
-    //==     double d = 0;
-    //==     for (int i = 0; i < Utils::lmmax(lmax); i++) d += abs(ylm1(i) - ylm2(i));
-
-    //==     std::cout << "symmetry op : " << isym << ", defference of Ylm : " << d << ", proper_rotation : " << proper_rotation << std::endl;
-
-
-    //==         
-    //==             
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //== }
+    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, 1e-4);
 
     Atom_symmetry_class* atom_symmetry_class;
     
@@ -338,7 +241,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
+void Unit_cell::initialize()
 {
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
@@ -366,7 +269,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(iat)->init(lmax_apw__, offs_lo);
+        atom_type(iat)->init(parameters_.lmax_apw(), parameters_.lmax_pot(), parameters_.num_mag_dims(), offs_lo);
         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
         max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
@@ -393,91 +296,14 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        atom(ia)->init(lmax_pot__, num_mag_dims__, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        atom(ia)->init(parameters_.lmax_pot(), parameters_.num_mag_dims(), mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
         mt_basis_size_ += atom(ia)->type()->mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-
-    update();
-
-    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
-    {
-        /* split beta-projectors into chunks */
-        int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
-        int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
-        splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
-        beta_chunks_.resize(num_beta_chunks);
-        
-        for (int ib = 0; ib < num_beta_chunks; ib++)
-        {
-            /* number of atoms in chunk */
-            int na = (int)spl_beta_chunks.local_size(ib);
-            beta_chunks_[ib].num_atoms_ = na;
-            beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
-            beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
-
-            int num_beta = 0;
     
-            for (int i = 0; i < na; i++)
-            {
-                int ia = (int)spl_beta_chunks.global_index(i, ib);
-                auto type = atom(ia)->type();
-                /* atom fractional coordinates */
-                for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
-                /* number of beta functions for atom */
-                beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
-                /* offset in beta_gk*/
-                beta_chunks_[ib].desc_(1, i) = num_beta;
-                /* offset in beta_gk_t */
-                beta_chunks_[ib].desc_(2, i) = type->offset_lo();
-                beta_chunks_[ib].desc_(3, i) = ia;
-    
-                num_beta += type->mt_basis_size();
-            }
-            beta_chunks_[ib].num_beta_ = num_beta;
-
-            if (pu_ == GPU)
-            {
-                #ifdef _GPU_
-                beta_chunks_[ib].desc_.allocate_on_device();
-                beta_chunks_[ib].desc_.copy_to_device();
-
-                beta_chunks_[ib].atom_pos_.allocate_on_device();
-                beta_chunks_[ib].atom_pos_.copy_to_device();
-                #endif
-            }
-        }
-
-        num_beta_t_ = 0;
-        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
-    }
-            
-    mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia)->mt_aw_basis_size(); xi++, n++)
-        {
-            mt_aw_basis_descriptors_[n].ia = ia;
-            mt_aw_basis_descriptors_[n].xi = xi;
-        }
-    }
-
-    mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia)->mt_lo_basis_size(); xi++, n++)
-        {
-            mt_lo_basis_descriptors_[n].ia = ia;
-            mt_lo_basis_descriptors_[n].xi = xi;
-        }
-    }
-}
-
-void Unit_cell::update()
-{
     vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
     vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
     vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
@@ -486,7 +312,7 @@ void Unit_cell::update()
     double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
     find_nearest_neighbours(r);
 
-    if (full_potential())
+    if (parameters_.full_potential())
     {
         /* find new MT radii and initialize radial grid */
         if (auto_rmt())
@@ -525,7 +351,7 @@ void Unit_cell::update()
     spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
     
     volume_mt_ = 0.0;
-    if (full_potential())
+    if (parameters_.full_potential())
     {
         for (int ia = 0; ia < num_atoms(); ia++)
         {
@@ -534,26 +360,78 @@ void Unit_cell::update()
     }
     
     volume_it_ = omega() - volume_mt_;
-}
 
-void Unit_cell::clear()
-{
-    delete symmetry_;
+    if (!parameters_.full_potential())
+    {
+        /* split beta-projectors into chunks */
+        int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
+        int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
+        splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
+        beta_chunks_.resize(num_beta_chunks);
+        
+        for (int ib = 0; ib < num_beta_chunks; ib++)
+        {
+            /* number of atoms in chunk */
+            int na = (int)spl_beta_chunks.local_size(ib);
+            beta_chunks_[ib].num_atoms_ = na;
+            beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
+            beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
 
-    /* delete atom types */
-    for (int i = 0; i < (int)atom_types_.size(); i++) delete atom_types_[i];
-    atom_types_.clear();
-    atom_type_id_map_.clear();
+            int num_beta = 0;
+    
+            for (int i = 0; i < na; i++)
+            {
+                int ia = (int)spl_beta_chunks.global_index(i, ib);
+                auto type = atom(ia)->type();
+                /* atom fractional coordinates */
+                for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
+                /* number of beta functions for atom */
+                beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
+                /* offset in beta_gk*/
+                beta_chunks_[ib].desc_(1, i) = num_beta;
+                /* offset in beta_gk_t */
+                beta_chunks_[ib].desc_(2, i) = type->offset_lo();
+                beta_chunks_[ib].desc_(3, i) = ia;
+    
+                num_beta += type->mt_basis_size();
+            }
+            beta_chunks_[ib].num_beta_ = num_beta;
 
-    /* delete atom classes */
-    for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++) delete atom_symmetry_classes_[i];
-    atom_symmetry_classes_.clear();
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef __GPU
+                beta_chunks_[ib].desc_.allocate_on_device();
+                beta_chunks_[ib].desc_.copy_to_device();
 
-    /* delete atoms */
-    for (int i = 0; i < num_atoms(); i++) delete atoms_[i];
-    atoms_.clear();
+                beta_chunks_[ib].atom_pos_.allocate_on_device();
+                beta_chunks_[ib].atom_pos_.copy_to_device();
+                #endif
+            }
+        }
 
-    equivalent_atoms_.clear();
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
+    }
+            
+    mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < atom(ia)->mt_aw_basis_size(); xi++, n++)
+        {
+            mt_aw_basis_descriptors_[n].ia = ia;
+            mt_aw_basis_descriptors_[n].xi = xi;
+        }
+    }
+
+    mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < atom(ia)->mt_lo_basis_size(); xi++, n++)
+        {
+            mt_lo_basis_descriptors_[n].ia = ia;
+            mt_lo_basis_descriptors_[n].xi = xi;
+        }
+    }
 }
 
 void Unit_cell::print_info()
@@ -621,12 +499,11 @@ void Unit_cell::print_info()
         printf("space group number   : %i\n", symmetry_->spacegroup_number());
         printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
         printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-        printf("number of operations : %i\n", symmetry_->num_sym_op());
+        printf("number of operations : %i\n", symmetry_->num_mag_sym());
         printf("transformation matrix : \n");
         auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++)
         {
-
             for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
             printf("\n");
         }
@@ -635,10 +512,12 @@ void Unit_cell::print_info()
         printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
 
         printf("symmetry operations  : \n");
-        for (int isym = 0; isym < symmetry_->num_sym_op(); isym++)
+        for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++)
         {
-            auto R = symmetry_->rot_mtrx(isym);
-            auto t = symmetry_->fractional_translation(isym);
+            auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+            auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+            auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+
             printf("isym : %i\n", isym);
             printf("R : ");
             for (int i = 0; i < 3; i++)
@@ -648,7 +527,15 @@ void Unit_cell::print_info()
                 printf("\n");
             }
             printf("T : ");
-            for (int j = 0; j < 3; j++) printf("%f8.4 ", t[j]);
+            for (int j = 0; j < 3; j++) printf("%8.4f ", t[j]);
+            printf("\n");
+            printf("S : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%8.4f ", S(i, j));
+                printf("\n");
+            }
             printf("\n");
         }
     }
@@ -754,7 +641,7 @@ void Unit_cell::write_json()
     }
 }
 
-void Unit_cell::set_lattice_vectors(double* a0__, double* a1__, double* a2__)
+void Unit_cell::set_lattice_vectors(double const* a0__, double const* a1__, double const* a2__)
 {
     for (int x = 0; x < 3; x++)
     {
@@ -848,7 +735,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     //== }
 }
 
-bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2])
+bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
 {
     vector3d<int> ntr;
     
@@ -908,8 +795,10 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
     return false;
 }
 
-void Unit_cell::generate_radial_functions() 
+void Unit_cell::generate_radial_functions()
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Unit_cell::generate_radial_functions");
    
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
@@ -937,10 +826,14 @@ void Unit_cell::generate_radial_functions()
             printf("Linearization energies\n");
         }
     }
+
+    LOG_FUNC_END();
 }
 
 void Unit_cell::generate_radial_integrals()
 {
+    LOG_FUNC_BEGIN();
+
     Timer t("sirius::Unit_cell::generate_radial_integrals");
     
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
@@ -955,7 +848,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
     {
         int ia = (int)spl_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(comm_bundle_atoms_.comm());
+        atom(ia)->generate_radial_integrals(parameters_.processing_unit(), comm_bundle_atoms_.comm());
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
@@ -963,6 +856,8 @@ void Unit_cell::generate_radial_integrals()
         int rank = spl_num_atoms().local_rank(ia);
         atom(ia)->sync_radial_integrals(comm_, rank);
     }
+
+    LOG_FUNC_END();
 }
 
 std::string Unit_cell::chemical_formula()

@@ -25,7 +25,7 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
 
-#ifdef _GPU_
+#ifdef __GPU
 #include "gpu_interface.h"
 #endif
 #include "platform.h"
@@ -54,7 +54,6 @@
 #include "unit_cell.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
-#include "global.h"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "band.h"
@@ -63,6 +62,7 @@
 #include "density.h"
 #include "force.h"
 #include "dft_ground_state.h"
+#include "simulation_context.h"
 
 #endif // __SIRIUS_H__
 

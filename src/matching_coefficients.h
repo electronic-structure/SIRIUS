@@ -25,8 +25,6 @@
 #ifndef __MATCHING_COEFFICIENTS_H__
 #define __MATCHING_COEFFICIENTS_H__
 
-#include "global.h"
-
 namespace sirius {
 
 /** The following matching conditions must be fulfilled:
@@ -52,7 +50,7 @@ class Matching_coefficients
 {
     private:
 
-        Global& parameters_;
+        Unit_cell const* unit_cell_;
 
         int num_gkvec_;
 
@@ -86,14 +84,14 @@ class Matching_coefficients
                              int lm, 
                              int nu, 
                              matrix3d<double>& A, 
-                             double_complex* alm)
+                             double_complex* alm) const
         {
             /* invert matrix of radial derivatives */
             switch (N)
             {
                 case 1:
                 {
-                    if (debug_level >= 1 && fabs(A(0, 0)) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
+                    if (debug_level >= 1 && std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_->omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
@@ -109,7 +107,7 @@ class Matching_coefficients
                 {
                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
 
-                    if (debug_level >= 1 && fabs(det) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
+                    if (debug_level >= 1 && std::abs(det) < 1.0 / std::sqrt(unit_cell_->omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
@@ -163,25 +161,25 @@ class Matching_coefficients
 
     public:
 
-        Matching_coefficients(Global& parameters__, 
+        Matching_coefficients(Unit_cell const* unit_cell__,
+                              int lmax_apw__,
                               int num_gkvec__, 
                               std::vector<gklo_basis_descriptor>& gklo_basis_descriptors)
-            : parameters_(parameters__),
+            : unit_cell_(unit_cell__),
               num_gkvec_(num_gkvec__)
         {
-            int lmax = parameters_.lmax_apw();
-            int lmmax = Utils::lmmax(lmax);
+            int lmmax_apw = Utils::lmmax(lmax_apw__);
 
-            gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec_, parameters_.unit_cell()->num_atoms());
+            gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec_, unit_cell_->num_atoms());
 
-            gkvec_ylm_ = mdarray<double_complex, 2>(num_gkvec_, lmmax);
+            gkvec_ylm_ = mdarray<double_complex, 2>(num_gkvec_, lmmax_apw);
             
             gkvec_len_.resize(num_gkvec_);
 
             /* get length and Ylm harmonics of G+k vectors */
             #pragma omp parallel
             {
-                std::vector<double_complex> ylm(lmmax);
+                std::vector<double_complex> ylm(lmmax_apw);
 
                 #pragma omp for
                 for (int igk = 0; igk < num_gkvec_; igk++)
@@ -190,37 +188,37 @@ class Matching_coefficients
                     auto vs = SHT::spherical_coordinates(gklo_basis_descriptors[igk].gkvec_cart);
 
                     /* get spherical harmonics */
-                    SHT::spherical_harmonics(lmax, vs[1], vs[2], &ylm[0]);
+                    SHT::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
                     gkvec_len_[igk] = vs[0];
 
-                    for (int lm = 0; lm < lmmax; lm++) gkvec_ylm_(igk, lm) = ylm[lm];
+                    for (int lm = 0; lm < lmmax_apw; lm++) gkvec_ylm_(igk, lm) = ylm[lm];
 
                     /* get phase factors of G+k vectors */
-                    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                    for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
                     {
-                        double phase = twopi * (gklo_basis_descriptors[igk].gkvec * parameters_.unit_cell()->atom(ia)->position());
+                        double phase = twopi * (gklo_basis_descriptors[igk].gkvec * unit_cell_->atom(ia)->position());
 
-                        gkvec_phase_factors_(igk, ia) = exp(complex_i * phase);
+                        gkvec_phase_factors_(igk, ia) = std::exp(complex_i * phase);
                     }
                 }
             }
             
-            alm_b_ = mdarray<double_complex, 4>(3, num_gkvec_, lmax + 1, parameters_.unit_cell()->num_atom_types());
+            alm_b_ = mdarray<double_complex, 4>(3, num_gkvec_, lmax_apw__ + 1, unit_cell_->num_atom_types());
             alm_b_.zero();
             
             /* value and first two derivatives of spherical Bessel functions */
-            mdarray<double, 2> sbessel_mt(lmax + 2, 3);
+            mdarray<double, 2> sbessel_mt(lmax_apw__ + 2, 3);
 
             for (int igk = 0; igk < num_gkvec_; igk++)
             {
-                for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+                for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
                 {
-                    double R = parameters_.unit_cell()->atom_type(iat)->mt_radius();
+                    double R = unit_cell_->atom_type(iat)->mt_radius();
 
                     double RGk = R * gkvec_len_[igk];
 
                     /* compute values and first and second derivatives of the spherical Bessel functions at the MT boundary */
-                    gsl_sf_bessel_jl_array(lmax + 1, RGk, &sbessel_mt(0, 0));
+                    gsl_sf_bessel_jl_array(lmax_apw__ + 1, RGk, &sbessel_mt(0, 0));
                     
                     /* Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
                      *
@@ -230,17 +228,17 @@ class Matching_coefficients
                      * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
                      * Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
                      */
-                    for (int l = 0; l <= lmax; l++)
+                    for (int l = 0; l <= lmax_apw__; l++)
                     {
                         sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igk] + (l / R) * sbessel_mt(l, 0);
                         sbessel_mt(l, 2) = 2 * gkvec_len_[igk] * sbessel_mt(l + 1, 0) / R + 
                                            ((l - 1) * l - pow(RGk, 2)) * sbessel_mt(l, 0) / pow(R, 2);
                     }
                     
-                    for (int l = 0; l <= lmax; l++)
+                    for (int l = 0; l <= lmax_apw__; l++)
                     {
                         double_complex z = std::pow(complex_i, l);
-                        double f = fourpi / sqrt(parameters_.unit_cell()->omega());
+                        double f = fourpi / std::sqrt(unit_cell_->omega());
                         alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0); 
                         alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);
                         alm_b_(2, igk, l, iat) = z * f * sbessel_mt(l, 2);
@@ -253,61 +251,55 @@ class Matching_coefficients
         /** \param [in] ia Index of atom.
          *  \param [out] alm Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
          */
-        void generate(int ia, mdarray<double_complex, 2>& alm)
+        void generate(int ia, mdarray<double_complex, 2>& alm) const
         {
-            Timer t("sirius::Matching_coefficients::generate:atom");
-
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
+            auto atom = unit_cell_->atom(ia);
+            auto type = atom->type();
 
             assert(type->max_aw_order() <= 3);
 
             int iat = type->id();
                 
-            #pragma omp parallel
+            matrix3d<double> A;
+
+            for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
             {
-                matrix3d<double> A;
+                int l = type->indexb(xi).l;
+                int lm = type->indexb(xi).lm;
+                int nu = type->indexb(xi).order; 
 
-                #pragma omp for
-                for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+                /* order of augmentation for a given orbital quantum number */
+                int num_aw = (int)type->aw_descriptor(l).size();
+                
+                /* create matrix of radial derivatives */
+                for (int order = 0; order < num_aw; order++)
                 {
-                    int l = type->indexb(xi).l;
-                    int lm = type->indexb(xi).lm;
-                    int nu = type->indexb(xi).order; 
+                    for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                }
 
-                    /* order of augmentation for a given orbital quantum number */
-                    int num_aw = (int)type->aw_descriptor(l).size();
-                    
-                    /* create matrix of radial derivatives */
-                    for (int order = 0; order < num_aw; order++)
+                switch (num_aw)
+                {
+                    /* APW */
+                    case 1:
                     {
-                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                        generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                        break;
                     }
-
-                    switch (num_aw)
+                    /* LAPW */
+                    case 2:
                     {
-                        /* APW */
-                        case 1:
-                        {
-                            generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
-                            break;
-                        }
-                        /* LAPW */
-                        case 2:
-                        {
-                            generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
-                            break;
-                        }
-                        /* Super LAPW */
-                        case 3:
-                        {
-                            generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
-                            break;
-                        }
-                        default:
-                        {
-                            error_local(__FILE__, __LINE__, "wrong order of augmented wave");
-                        }
+                        generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                        break;
+                    }
+                    /* Super LAPW */
+                    case 3:
+                    {
+                        generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                        break;
+                    }
+                    default:
+                    {
+                        error_local(__FILE__, __LINE__, "wrong order of augmented wave");
                     }
                 }
             }
@@ -320,7 +312,7 @@ class Matching_coefficients
          *  is used to setup Hamiltonian and overlap matrices.
          */
         template <bool normal_layout>
-        void generate(dmatrix<double_complex>& alm)
+        void generate(dmatrix<double_complex>& alm) const
         {
             Timer t("sirius::Matching_coefficients::generate:panel");
 
@@ -340,9 +332,9 @@ class Matching_coefficients
                 {
                     /* global composite index of atom and xi */
                     int j = normal_layout ? alm.icol(i) : alm.irow(i);
-                    int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-                    int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-                    Atom* atom = parameters_.unit_cell()->atom(ia);
+                    int ia = unit_cell_->mt_aw_basis_descriptor(j).ia;
+                    int xi = unit_cell_->mt_aw_basis_descriptor(j).xi;
+                    Atom* atom = unit_cell_->atom(ia);
                     Atom_type* type = atom->type();
                     int iat = type->id();
                     int l = type->indexb(xi).l;
@@ -408,11 +400,11 @@ class Matching_coefficients
         }
 
         void generate(splindex<block>& sspl_gkvec_col, 
-                      mdarray<double_complex, 2>& alm_v)
+                      mdarray<double_complex, 2>& alm_v) const
         {
             Timer t("sirius::Matching_coefficients::generate:slice");
 
-            int naw = parameters_.unit_cell()->mt_aw_basis_size();
+            int naw = unit_cell_->mt_aw_basis_size();
 
             #pragma omp parallel
             {
@@ -422,9 +414,9 @@ class Matching_coefficients
                 #pragma omp for
                 for (int j = 0; j < naw; j++)
                 {
-                    int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-                    int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-                    Atom* atom = parameters_.unit_cell()->atom(ia);
+                    int ia = unit_cell_->mt_aw_basis_descriptor(j).ia;
+                    int xi = unit_cell_->mt_aw_basis_descriptor(j).xi;
+                    Atom* atom = unit_cell_->atom(ia);
                     Atom_type* type = atom->type();
                     int iat = type->id();
                     int l = type->indexb(xi).l;

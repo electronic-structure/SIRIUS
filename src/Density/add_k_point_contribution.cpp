@@ -11,13 +11,13 @@ void Density::add_k_point_contribution<CPU, full_potential_lapwlo>(K_point* kp__
     
     if (occupied_bands__.size() == 0) return;
    
-    mdarray<double_complex, 3> wf1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands__.size(), parameters_.num_spins());
-    mdarray<double_complex, 3> wf2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands__.size(), parameters_.num_spins());
+    mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), (int)occupied_bands__.size(), parameters_.num_spins());
+    mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), (int)occupied_bands__.size(), parameters_.num_spins());
 
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        int offset_wf = parameters_.unit_cell()->atom(ia)->offset_wf();
-        int mt_basis_size = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        int offset_wf = unit_cell_.atom(ia)->offset_wf();
+        int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
         
         for (int i = 0; i < (int)occupied_bands__.size(); i++)
         {
@@ -53,12 +53,10 @@ void Density::add_k_point_contribution<CPU, ultrasoft_pseudopotential>(K_point* 
 
     if (nbnd == 0) return;
 
-    auto uc = parameters_.unit_cell();
-
     /* compute <beta|Psi> */
     Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
-    matrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd);
-    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
+    matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
+    linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
                       kp__->beta_gk(), kp__->fv_states_slab(), complex_zero, beta_psi);
     kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
     t1.stop();
@@ -70,20 +68,20 @@ void Density::add_k_point_contribution<CPU, ultrasoft_pseudopotential>(K_point* 
         #pragma omp parallel
         {
             /* auxiliary arrays */
-            mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), spl_bands.local_size());
-            mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), spl_bands.local_size());
+            mdarray<double_complex, 2> bp1(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
+            mdarray<double_complex, 2> bp2(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
             #pragma omp for
-            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {   
                 /* number of beta functions for a given atom */
-                int nbf = uc->atom(ia)->mt_basis_size();
+                int nbf = unit_cell_.atom(ia)->mt_basis_size();
 
                 for (int i = 0; i < (int)spl_bands.local_size(); i++)
                 {
                     int j = (int)spl_bands[i];
                     for (int xi = 0; xi < nbf; xi++)
                     {
-                        bp1(xi, i) = beta_psi(uc->atom(ia)->offset_lo() + xi, j);
+                        bp1(xi, i) = beta_psi(unit_cell_.atom(ia)->offset_lo() + xi, j);
                         bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
                     }
                 }
@@ -96,7 +94,7 @@ void Density::add_k_point_contribution<CPU, ultrasoft_pseudopotential>(K_point* 
     }
 }
 
-#ifdef _GPU_
+#ifdef __GPU
 extern "C" void copy_beta_psi_gpu(int nbf,
                                   int nloc,
                                   double_complex const* beta_psi,
@@ -117,12 +115,10 @@ void Density::add_k_point_contribution<GPU, ultrasoft_pseudopotential>(K_point* 
 
     if (nbnd == 0) return;
 
-    auto uc = parameters_.unit_cell();
-
     /* compute <beta|Psi> */
     Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
     
-    matrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd);
+    matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
     beta_psi.allocate_on_device();
 
     kp__->beta_gk().allocate_on_device();
@@ -131,7 +127,7 @@ void Density::add_k_point_contribution<GPU, ultrasoft_pseudopotential>(K_point* 
     kp__->fv_states_slab().allocate_on_device();
     kp__->fv_states_slab().copy_to_device();
 
-    linalg<GPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec_loc(),
+    linalg<GPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(),
                       kp__->beta_gk().at<GPU>(), kp__->beta_gk().ld(),
                       kp__->fv_states_slab().at<GPU>(), kp__->fv_states_slab().ld(),
                       beta_psi.at<GPU>(), beta_psi.ld()); 
@@ -150,20 +146,20 @@ void Density::add_k_point_contribution<GPU, ultrasoft_pseudopotential>(K_point* 
         #pragma omp parallel
         {
             /* auxiliary arrays */
-            mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), spl_bands.local_size());
-            mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), spl_bands.local_size());
+            mdarray<double_complex, 2> bp1(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
+            mdarray<double_complex, 2> bp2(unit_cell_.max_mt_basis_size(), spl_bands.local_size());
             #pragma omp for
-            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {   
                 /* number of beta functions for a given atom */
-                int nbf = uc->atom(ia)->mt_basis_size();
+                int nbf = unit_cell_.atom(ia)->mt_basis_size();
 
                 for (int i = 0; i < (int)spl_bands.local_size(); i++)
                 {
                     int j = (int)spl_bands[i];
                     for (int xi = 0; xi < nbf; xi++)
                     {
-                        bp1(xi, i) = beta_psi(uc->atom(ia)->offset_lo() + xi, j);
+                        bp1(xi, i) = beta_psi(unit_cell_.atom(ia)->offset_lo() + xi, j);
                         bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
                     }
                 }
@@ -211,8 +207,8 @@ void Density::add_k_point_contribution<GPU, ultrasoft_pseudopotential>(K_point* 
     //== 
     //== /* allocate space for <beta|psi> array */
     //== int nbf_max = 0;
-    //== for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
-    //==     nbf_max  = std::max(nbf_max, uc->beta_chunk(ib).num_beta_);
+    //== for (int ib = 0; ib < unit_cell_.num_beta_chunks(); ib++)
+    //==     nbf_max  = std::max(nbf_max, unit_cell_.beta_chunk(ib).num_beta_);
 
     //== mdarray<double_complex, 1> beta_psi_tmp(nbf_max * nloc);
     //== beta_psi_tmp.allocate_on_device();
@@ -224,26 +220,26 @@ void Density::add_k_point_contribution<GPU, ultrasoft_pseudopotential>(K_point* 
     //== psi_occ.allocate_on_device();
     //== psi_occ.copy_to_device();
 
-    //== mdarray<double_complex, 3> tmp(nullptr, uc->max_mt_basis_size(), nloc, Platform::max_num_threads());
+    //== mdarray<double_complex, 3> tmp(nullptr, unit_cell_.max_mt_basis_size(), nloc, Platform::max_num_threads());
     //== tmp.allocate_on_device();
 
-    //== for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    //== for (int ib = 0; ib < unit_cell_.num_beta_chunks(); ib++)
     //== {
     //==     /* wrapper for <beta|psi> with required dimensions */
-    //==     matrix<double_complex> beta_psi(beta_psi_tmp.at<CPU>(), beta_psi_tmp.at<GPU>(), uc->beta_chunk(ib).num_beta_, nloc);
+    //==     matrix<double_complex> beta_psi(beta_psi_tmp.at<CPU>(), beta_psi_tmp.at<GPU>(), unit_cell_.beta_chunk(ib).num_beta_, nloc);
 
-    //==     kp__->generate_beta_gk(uc->beta_chunk(ib).num_atoms_, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk);
-    //==     kp__->generate_beta_phi(uc->beta_chunk(ib).num_beta_, psi_occ, nloc, 0, beta_gk, beta_psi);
+    //==     kp__->generate_beta_gk(unit_cell_.beta_chunk(ib).num_atoms_, unit_cell_.beta_chunk(ib).atom_pos_, unit_cell_.beta_chunk(ib).desc_, beta_gk);
+    //==     kp__->generate_beta_phi(unit_cell_.beta_chunk(ib).num_beta_, psi_occ, nloc, 0, beta_gk, beta_psi);
 
     //==     double_complex alpha(1, 0);
 
     //==     #pragma omp parallel for
-    //==     for (int i = 0; i < uc->beta_chunk(ib).num_atoms_; i++)
+    //==     for (int i = 0; i < unit_cell_.beta_chunk(ib).num_atoms_; i++)
     //==     {
     //==         /* number of beta functions for a given atom */
-    //==         int nbf = uc->beta_chunk(ib).desc_(0, i);
-    //==         int ofs = uc->beta_chunk(ib).desc_(1, i);
-    //==         int ia = uc->beta_chunk(ib).desc_(3, i);
+    //==         int nbf = unit_cell_.beta_chunk(ib).desc_(0, i);
+    //==         int ofs = unit_cell_.beta_chunk(ib).desc_(1, i);
+    //==         int ia = unit_cell_.beta_chunk(ib).desc_(3, i);
     //==         int thread_id = Platform::thread_id();
     //==         
     //==         copy_beta_psi_gpu(nbf,

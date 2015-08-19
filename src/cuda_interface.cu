@@ -1,16 +1,4 @@
 // This file must be compiled with nvcc
-#include <execinfo.h>
-#include <unistd.h>
-#include <signal.h>
-#include <stdio.h>
-#include <assert.h>
-#include <cuda.h>
-#include <cublas_v2.h>
-#include <cufft.h>
-#include <map>
-#include <string>
-#include <vector>
-#include <stdint.h>
 #include "cuda_interface.h"
 
 extern "C" void print_cuda_timers()
@@ -21,47 +9,6 @@ extern "C" void print_cuda_timers()
 //================
 // CUDA functions
 //================
-void stack_backtrace()
-{
-    void *array[10];
-    char **strings;
-    int size = backtrace(array, 10);
-    strings = backtrace_symbols(array, size);
-    printf ("Stack backtrace:\n");
-    for (size_t i = 0; i < size; i++) printf ("%s\n", strings[i]);
-    raise(SIGQUIT);
-}
-
-#ifdef NDEBUG
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error = func__ args__;                                                                             \
-    if (error != cudaSuccess)                                                                                      \
-    {                                                                                                              \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
-#else
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error;                                                                                             \
-    func__ args__;                                                                                                 \
-    cudaDeviceSynchronize();                                                                                       \
-    error = cudaGetLastError();                                                                                    \
-    if (error != cudaSuccess)                                                                                      \
-    {                                                                                                              \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
-#endif
 
 cudaStream_t* streams;
 
@@ -159,6 +106,13 @@ void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream
     CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToHost, stream));
 }
 
+void cuda_async_copy_device_to_device(void* target, void const* source, size_t size, int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToDevice, stream));
+}
+
 void cuda_memset(void* ptr, int value, size_t size)
 {
     CALL_CUDA(cudaMemset, (ptr, value, size));
@@ -233,7 +187,14 @@ void cuda_check_last_error()
     }
 }
 
+} // extern "C"
+
+
+void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__)
+{
+    CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
 }
+
 
 //==================
 // CUBLAS functions
@@ -1083,76 +1044,28 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
     
 
 
-__global__ void scale_matrix_columns_gpu_kernel
-(
-    int nrow,
-    cuDoubleComplex* mtrx,
-    double* a
-)
-{
-    int icol = blockIdx.y;
-    int irow = blockIdx.x * blockDim.x + threadIdx.x;
-    if (irow < nrow) 
-    {
-        mtrx[array2D_offset(irow, icol, nrow)] =
-            cuCmul(mtrx[array2D_offset(irow, icol, nrow)], make_cuDoubleComplex(a[icol], 0));
-    }
-}
+//== __global__ void update_it_density_matrix_0_gpu_kernel(int fft_size, 
+//==                                                       int nfft_max, 
+//==                                                       cuDoubleComplex* psi_it, 
+//==                                                       double* wt,
+//==                                                       double* it_density_matrix)
+//== {
+//==     int ir = blockIdx.x * blockDim.x + threadIdx.x;
+//==     for (int i = 0; i < nfft_max; i++)
+//==     {
+//==         if (ir < fft_size)
+//==         {
+//==             cuDoubleComplex z = psi_it[array3D_offset(ir, i, 0, fft_size, nfft_max)];
+//==             it_density_matrix[array2D_offset(ir, 0, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
+//==         }
+//==     }
+//== }
 
-// scale each column of the matrix by a column-dependent constant
-extern "C" void scale_matrix_columns_gpu(int nrow,
-                                        int ncol,
-                                        cuDoubleComplex* mtrx,
-                                        double* a)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
-
-    scale_matrix_columns_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        nrow,
-        mtrx,
-        a
-    );
-}
-
-__global__ void scale_matrix_rows_gpu_kernel
-(
-    int nrow,
-    cuDoubleComplex* mtrx,
-    double* v
-)
-{
-    int icol = blockIdx.y;
-    int irow = blockDim.x * blockIdx.x + threadIdx.x;
-    if (irow < nrow) 
-    {
-        mtrx[array2D_offset(irow, icol, nrow)] = 
-            cuCmul(mtrx[array2D_offset(irow, icol, nrow)], make_cuDoubleComplex(v[irow], 0));
-    }
-}
-
-// scale each row of the matrix by a row-dependent constant
-extern "C" void scale_matrix_rows_gpu(int nrow,
-                                      int ncol,
-                                      cuDoubleComplex* mtrx,
-                                      double* v)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
-
-    scale_matrix_rows_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        nrow,
-        mtrx,
-        v
-    );
-}
-
-__global__ void update_it_density_matrix_0_gpu_kernel(int fft_size, 
-                                                      int nfft_max, 
-                                                      cuDoubleComplex* psi_it, 
-                                                      double* wt,
+__global__ void update_it_density_matrix_1_gpu_kernel(int fft_size,
+                                                      int nfft_max,
+                                                      int ispn,
+                                                      cuDoubleComplex const* psi_it,
+                                                      double const* wt,
                                                       double* it_density_matrix)
 {
     int ir = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1160,78 +1073,119 @@ __global__ void update_it_density_matrix_0_gpu_kernel(int fft_size,
     {
         if (ir < fft_size)
         {
-            cuDoubleComplex z = psi_it[array3D_offset(ir, i, 0, fft_size, nfft_max)];
-            it_density_matrix[array2D_offset(ir, 0, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
-        }
-    }
-}
-
-__global__ void update_it_density_matrix_1_gpu_kernel(int fft_size, 
-                                                      int nfft_max, 
-                                                      cuDoubleComplex* psi_it, 
-                                                      double* wt,
-                                                      double* it_density_matrix)
-{
-    int ir = blockIdx.x * blockDim.x + threadIdx.x;
-    for (int i = 0; i < nfft_max; i++)
-    {
-        if (ir < fft_size)
-        {
-            cuDoubleComplex z = psi_it[array3D_offset(ir, i, 1, fft_size, nfft_max)];
-            it_density_matrix[array2D_offset(ir, 1, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
+            cuDoubleComplex z = psi_it[array3D_offset(ir, i, ispn, fft_size, nfft_max)];
+            it_density_matrix[array2D_offset(ir, ispn, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
         }
     }
 }
 
 
-extern "C" void update_it_density_matrix_gpu(int fft_size, 
-                                             int nfft_max, 
-                                             int num_spins, 
-                                             int num_mag_dims, 
-                                             cuDoubleComplex* psi_it, 
-                                             double* wt, 
-                                             double* it_density_matrix)
+//extern "C" void update_it_density_matrix_gpu(int fft_size, 
+//                                             int nfft_max, 
+//                                             int num_spins, 
+//                                             int num_mag_dims, 
+//                                             cuDoubleComplex* psi_it, 
+//                                             double* wt, 
+//                                             double* it_density_matrix)
+//{
+//    CUDA_timer t("update_it_density_matrix_gpu");
+//
+//    dim3 grid_t(64);
+//    dim3 grid_b(num_blocks(fft_size, grid_t.x));
+//
+//    switch (num_mag_dims)
+//    {
+//        //== case 3:
+//        //== {
+//        //==     for (int ir = 0; ir < fft_->size(); ir++)
+//        //==     {
+//        //==         double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+//        //==         it_density_matrix(ir, 2) += 2.0 * real(z);
+//        //==         it_density_matrix(ir, 3) -= 2.0 * imag(z);
+//        //==     }
+//        //== }
+//        case 1:
+//        {
+//            update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
+//            (
+//                fft_size,
+//                nfft_max,
+//                psi_it,
+//                wt,
+//                it_density_matrix
+//            );
+//        }
+//        case 0:
+//        {
+//            update_it_density_matrix_0_gpu_kernel <<<grid_b, grid_t>>>
+//            (
+//                fft_size,
+//                nfft_max,
+//                psi_it,
+//                wt,
+//                it_density_matrix
+//            );
+//        }
+//    }
+//}
+
+extern "C" void update_it_density_matrix_1_gpu(int fft_size, 
+                                               int ispin,
+                                               cuDoubleComplex const* psi_it, 
+                                               double const* wt, 
+                                               double* it_density_matrix)
 {
     CUDA_timer t("update_it_density_matrix_gpu");
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(fft_size, grid_t.x));
 
-    switch (num_mag_dims)
-    {
-        //== case 3:
-        //== {
-        //==     for (int ir = 0; ir < fft_->size(); ir++)
-        //==     {
-        //==         double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
-        //==         it_density_matrix(ir, 2) += 2.0 * real(z);
-        //==         it_density_matrix(ir, 3) -= 2.0 * imag(z);
-        //==     }
-        //== }
-        case 1:
-        {
-            update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
-            (
-                fft_size,
-                nfft_max,
-                psi_it,
-                wt,
-                it_density_matrix
-            );
-        }
-        case 0:
-        {
-            update_it_density_matrix_0_gpu_kernel <<<grid_b, grid_t>>>
-            (
-                fft_size,
-                nfft_max,
-                psi_it,
-                wt,
-                it_density_matrix
-            );
-        }
-    }
+    update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        fft_size,
+        1,
+        ispin,
+        psi_it,
+        wt,
+        it_density_matrix
+    );
+
+//==     switch (num_mag_dims)
+//==     {
+//==         //== case 3:
+//==         //== {
+//==         //==     for (int ir = 0; ir < fft_->size(); ir++)
+//==         //==     {
+//==         //==         double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+//==         //==         it_density_matrix(ir, 2) += 2.0 * real(z);
+//==         //==         it_density_matrix(ir, 3) -= 2.0 * imag(z);
+//==         //==     }
+//==         //== }
+//==         case 1:
+//==         {
+//==             update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
+//==             (
+//==                 fft_size,
+//==                 nfft_max,
+//==                 psi_it,
+//==                 wt,
+//==                 it_density_matrix
+//==             );
+//==         }
+//==         case 0:
+//==         {
+//==             update_it_density_matrix_0_gpu_kernel <<<grid_b, grid_t>>>
+//==             (
+//==                 fft_size,
+//==                 nfft_max,
+//==                 psi_it,
+//==                 wt,
+//==                 it_density_matrix
+//==             );
+//==         }
+//==     }
 }
+
 inline __device__ uint32_t random(size_t seed)
 {
     uint32_t h = 5381;

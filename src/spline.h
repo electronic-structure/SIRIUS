@@ -128,17 +128,6 @@ class Spline
             return radial_grid_->dx(i__);
         }
 
-
-
-
-
-
-
-
-
-
-
-
         inline T operator()(double x) const
         {
             int np = num_points();
@@ -342,7 +331,7 @@ class Spline
             return coefs_.hash();
         }
 
-        #ifdef _GPU_
+        #ifdef __GPU
         void copy_to_device()
         {
             coefs_.allocate_on_device();
@@ -356,6 +345,27 @@ class Spline
         }
         #endif
 };
+
+template <typename T>
+inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
+{
+    assert(a__.radial_grid().hash() == b__.radial_grid().hash());
+    Spline<double> s12(a__.radial_grid());
+
+    auto& coefs_a = a__.coefs();
+    auto& coefs_b = b__.coefs();
+    auto& coefs = const_cast<mdarray<double, 2>&>(s12.coefs());
+
+    for (int ir = 0; ir < a__.radial_grid().num_points(); ir++)
+    {
+        coefs(ir, 0) = coefs_a(ir, 0) * coefs_b(ir, 0);
+        coefs(ir, 1) = coefs_a(ir, 1) * coefs_b(ir, 0) + coefs_a(ir, 0) * coefs_b(ir, 1);
+        coefs(ir, 2) = coefs_a(ir, 2) * coefs_b(ir, 0) + coefs_a(ir, 1) * coefs_b(ir, 1) + coefs_a(ir, 0) * coefs_b(ir, 2);
+        coefs(ir, 3) = coefs_a(ir, 3) * coefs_b(ir, 0) + coefs_a(ir, 2) * coefs_b(ir, 1) + coefs_a(ir, 1) * coefs_b(ir, 2) + coefs_a(ir, 0) * coefs_b(ir, 3);
+    }
+
+    return std::move(s12);
+}
 
 //extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double* f__, double* g__, int stream_id__);
 //
@@ -440,27 +450,68 @@ T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
                 auto f = f__.coefs(i);
                 auto g = g__.coefs(i);
 
-                T faga = f[0] * g[0];
-                T fdgd = f[3] * g[3];
-                
+                T k0 = f[0] * g[0];
                 T k1 = f[3] * g[1] + f[2] * g[2] + f[1] * g[3];
                 T k2 = f[3] * g[0] + f[2] * g[1] + f[1] * g[2] + f[0] * g[3];
                 T k3 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
                 T k4 = f[3] * g[2] + f[2] * g[3];
                 T k5 = f[1] * g[0] + f[0] * g[1];
+                T k6 = f[3] * g[3]; // 25 OPS
 
-                result += dx * ((faga * x0 * x0) + 
-                          dx * ((x0 * (2.0 * faga + x0 * k5)) / 2.0 +
-                          dx * ((faga + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
-                          dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
-                          dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
-                          dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
-                          dx * ((k1 + x0 * (2.0 * k4 + fdgd * x0)) / 7.0 + 
-                          dx * ((k4 + 2.0 * fdgd * x0) / 8.0 + 
-                          dx * fdgd / 9.0)))))))); 
+                T r1 = k4 * 0.125 + k6 * x0 * 0.25;
+                T r2 = (k1 + x0 * (2.0 * k4 + k6 * x0)) * 0.14285714285714285714;
+                T r3 = (k2 + x0 * (2.0 * k1 + k4 * x0)) * 0.16666666666666666667;
+                T r4 = (k3 + x0 * (2.0 * k2 + k1 * x0)) * 0.2;
+                T r5 = (k5 + x0 * (2.0 * k3 + k2 * x0)) * 0.25;
+                T r6 = (k0 + x0 * (2.0 * k5 + k3 * x0)) * 0.33333333333333333333;
+                T r7 = (x0 * (2.0 * k0 + x0 * k5)) * 0.5;
+
+                T v = dx * k6 * 0.11111111111111111111;
+                v = dx * (r1 + v);
+                v = dx * (r2 + v);
+                v = dx * (r3 + v);
+                v = dx * (r4 + v);
+                v = dx * (r5 + v); 
+                v = dx * (r6 + v);
+                v = dx * (r7 + v);
+
+                result += dx * (k0 * x0 * x0 + v);
             }
             break;
         }
+        /* canonical formula derived with Mathematica */
+        /*case 2:
+        {
+            for (int i = 0; i < num_points__ - 1; i++)
+            {
+                double x0 = f__.x(i);
+                double dx = f__.dx(i);
+
+                auto f = f__.coefs(i);
+                auto g = g__.coefs(i);
+
+                T k0 = f[0] * g[0];
+                T k1 = f[3] * g[1] + f[2] * g[2] + f[1] * g[3];
+                T k2 = f[3] * g[0] + f[2] * g[1] + f[1] * g[2] + f[0] * g[3];
+                T k3 = f[2] * g[0] + f[1] * g[1] + f[0] * g[2];
+                T k4 = f[3] * g[2] + f[2] * g[3];
+                T k5 = f[1] * g[0] + f[0] * g[1];
+                T k6 = f[3] * g[3]; // 25 OPS
+
+                result += dx * (k0 * x0 * x0 +
+                          dx * ((x0 * (2.0 * k0 + x0 * k5)) / 2.0 +
+                          dx * ((k0 + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
+                          dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
+                          dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 +
+                          dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
+                          dx * ((k1 + x0 * (2.0 * k4 + k6 * x0)) / 7.0 +
+                          dx * ((k4 + 2.0 * k6 * x0) / 8.0 + 
+                          dx * k6 / 9.0))))))));
+            }
+            break;
+
+        }*/
+        
         default:
         {
             TERMINATE("wrong r^m prefactor");

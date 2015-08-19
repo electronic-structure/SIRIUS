@@ -123,8 +123,10 @@ class FFT3D<CPU>
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
-
+            
+            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(num_fft_workers_);
+            #endif
 
             fftw_buffer_ = mdarray<double_complex, 2>(size(), num_fft_threads_);
 
@@ -140,7 +142,9 @@ class FFT3D<CPU>
                                                     (fftw_complex*)&fftw_buffer_(0, i), 
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_ESTIMATE);
             }
+            #ifdef __FFTW_THREADED
             fftw_plan_with_nthreads(1);
+            #endif
         }
 
         ~FFT3D()
@@ -152,20 +156,12 @@ class FFT3D<CPU>
             }
         }
 
-        /// Zero the input buffer for a given thread.
-        inline void zero(int thread_id = 0)
-        {
-            assert(thread_id < num_fft_threads());
-
-            memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
-        }
-
         template<typename T>
         inline void input(int n, int const* map, T* data, int thread_id = 0)
         {
             assert(thread_id < num_fft_threads());
             
-            zero(thread_id);
+            memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
             for (int i = 0; i < n; i++) fftw_buffer_(map[i], thread_id) = data[i];
         }
 
@@ -241,20 +237,20 @@ class FFT3D<CPU>
         }
 
         /// Total size of the FFT grid.
-        inline int size()
+        inline int size() const
         {
             return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
         }
 
         /// Size of a given dimension.
-        inline int size(int d)
+        inline int size(int d) const
         {
             assert(d >= 0 && d < 3);
             return grid_size_[d]; 
         }
 
         /// Return linear index of a plane-wave harmonic with fractional coordinates (10, i1, i2) inside fft buffer.
-        inline int index(int i0, int i1, int i2)
+        inline int index(int i0, int i1, int i2) const
         {
             if (i0 < 0) i0 += grid_size_[0];
             if (i1 < 0) i1 += grid_size_[1];
@@ -269,12 +265,12 @@ class FFT3D<CPU>
             return fftw_buffer_(i, thread_id);
         }
         
-        vector3d<int> grid_size()
+        vector3d<int> grid_size() const
         {
             return vector3d<int>(grid_size_);
         }
 
-        void init_gvec(double Gmax__, matrix3d<double>& M__)
+        void init_gvec(double Gmax__, matrix3d<double> const& M__)
         {
             mdarray<int, 2> gvec_tmp(3, size());
             std::vector< std::pair<double, int> > gvec_tmp_length;
@@ -344,26 +340,26 @@ class FFT3D<CPU>
         }
         
         /// Return number of G-vectors within the cutoff.
-        inline int num_gvec()
+        inline int num_gvec() const
         {
             return num_gvec_;
         }
 
         /// Return G-vector in fractional coordinates (this are the three Miller indices).
-        inline vector3d<int> gvec(int ig__)
+        inline vector3d<int> gvec(int ig__) const
         {
             return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
         }
         
         /// Return G-vector in Cartesian coordinates.
-        inline vector3d<double>gvec_cart(int ig__)
+        inline vector3d<double> gvec_cart(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)gvec_cart_.size());
             return gvec_cart_[ig__];
         }
 
         /// Return length of a G-vector.
-        inline double gvec_len(int ig__)
+        inline double gvec_len(int ig__) const
         {
             return gvec_shell_len(gvec_shell(ig__));
         }
@@ -385,36 +381,36 @@ class FFT3D<CPU>
         }
 
         /// Return index of a G-vector shell for a given G-vector.
-        inline int gvec_shell(int ig__)
+        inline int gvec_shell(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)gvec_shell_.size());
             return gvec_shell_[ig__];
         }
 
         /// Return length of a G-vector shell.
-        inline double gvec_shell_len(int igsh__)
+        inline double gvec_shell_len(int igsh__) const
         {
             assert(igsh__ >= 0 && igsh__ < (int)gvec_shell_len_.size());
             return gvec_shell_len_[igsh__];
         }
 
-        inline int* index_map()
+        inline int const* index_map() const
         {
             return &index_map_[0];
         }
 
-        inline int index_map(int ig__)
+        inline int index_map(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)index_map_.size());
             return index_map_[ig__];
         }
 
-        inline int num_fft_threads()
+        inline int num_fft_threads() const
         {
             return num_fft_threads_;
         }
 
-        inline int gvec_index(vector3d<int> gvec__)
+        inline int gvec_index(vector3d<int> gvec__) const
         {
             return gvec_index_(gvec__[0], gvec__[1], gvec__[2]);
         }

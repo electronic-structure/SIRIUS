@@ -35,7 +35,7 @@ class Real_space_prj
 {
     private:
 
-        Unit_cell* unit_cell_;
+        Unit_cell& unit_cell_;
 
         FFT3D<CPU>* fft_;
 
@@ -90,8 +90,7 @@ class Real_space_prj
 
         mdarray<double, 3> generate_beta_radial_integrals(mdarray<Spline<double>, 2>& beta_rf__, int m__);
 
-        mdarray<double_complex, 2> generate_beta_pw_t(Unit_cell* uc__,
-                                                      mdarray<double, 3>& beta_radial_integrals__);
+        mdarray<double_complex, 2> generate_beta_pw_t(mdarray<double, 3>& beta_radial_integrals__);
 
         void filter_radial_functions(double pw_cutoff__);
         void filter_radial_functions_v2(double pw_cutoff__);
@@ -108,7 +107,7 @@ class Real_space_prj
 
         int num_points_;
 
-        Real_space_prj(Unit_cell* unit_cell__,
+        Real_space_prj(Unit_cell& unit_cell__,
                        Communicator const& comm__,
                        double R_mask_scale__,
                        double mask_alpha__,
@@ -121,7 +120,7 @@ class Real_space_prj
             delete fft_;
         }
 
-        FFT3D<CPU>* fft()
+        FFT3D<CPU>* fft() const
         {
             return fft_;
         }

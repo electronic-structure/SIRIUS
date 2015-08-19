@@ -208,7 +208,7 @@ std::vector<int> Utils::l_by_lm(int lmax)
 
 std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<double> coord)
 {
-    const double eps = 1e-10;
+    const double eps = 1e-6;
 
     std::pair< vector3d<double>, vector3d<int> > v; 
     
@@ -234,7 +234,7 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     return v;
 }
 
-vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double>& lattice_vectors__)
+vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> const& lattice_vectors__)
 {
     sirius::Timer t("sirius::Utils::find_translation_limits");
 
@@ -250,7 +250,7 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double>& 
             {
                 for (int i2 = -n; i2 <= n; i2++)
                 {
-                    if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
+                    if (std::abs(i0) == n || std::abs(i1) == n || std::abs(i2) == n)
                     {
                         vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
                         if (vc.length() <= radius__)
