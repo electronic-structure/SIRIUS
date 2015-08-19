@@ -118,14 +118,6 @@ Potential::Potential(Simulation_context& ctx__)
             SHT::spherical_harmonics(parameters_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
     }
-
-    //== gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), unit_cell_.num_atoms());
-    //== #pragma omp parallel for
-    //== for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-    //== {
-    //==     int ig = (int)spl_num_gvec_[igloc];
-    //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = ctx_.reciprocal_lattice()->gvec_phase_factor(ig, ia);
-    //== }
 }
 
 Potential::~Potential()
@@ -376,7 +368,7 @@ void Potential::generate_pw_coefs()
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
-    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it<global>(0) , fft_->size()).checksum());
+    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it(0) , fft_->size()).checksum());
     //DUMP("checksum(step_function): %18.10f", mdarray<double, 1>(&parameters_.step_function(0), fft_->size()).checksum();
     DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
@@ -589,6 +581,8 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 
 
     }
+
+    generate_D_operator_matrix();
 }
 
 void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)

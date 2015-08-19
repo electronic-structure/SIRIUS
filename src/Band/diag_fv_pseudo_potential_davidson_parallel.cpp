@@ -222,17 +222,15 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
 
         eval_old = eval;
         /* solve generalized eigen-value problem */
-        {
         Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp", kp__->comm());
 
         gen_evp_solver()->solve(N, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
                                 hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
                                 &eval[0], evec.at<CPU>(), evec.ld());
-        }
-        //if (kp__->comm().rank() == 0) DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
+        t1.stop();
+        //== DUMP("step: %i, eval: %18.12f %18.12f", k, eval[0], eval[num_bands - 1]);
         
-        {
-        Timer t1("sirius::Band::diag_fv_pseudo_potential|collect_evec");
+        Timer t2("sirius::Band::diag_fv_pseudo_potential|collect_evec");
         evec_full.zero();
         for (int i = 0; i < evec.num_cols_local(); i++)
         {
@@ -242,9 +240,9 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
             }
         }
         kp__->comm().allreduce(evec_full.at<CPU>(), (int)evec_full.size());
-        }
+        t2.stop();
 
-        if (parameters_.processing_unit() == GPU)
+        if (parameters_.processing_unit() == GPU && !converge_by_energy)
         {
             #ifdef __GPU
             cublas_set_matrix(N, num_bands, sizeof(double_complex), evec_full.at<CPU>(), evec_full.ld(),
@@ -275,7 +273,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                 {
                     if (kp__->band_occupancy(i) > 1e-10 && std::abs(eval[i] - eval_old[i]) > tol)
                     {
-                        memcpy(&evec_full_tmp(0, n), &evec_full(0, i), num_phi * sizeof(double_complex));
+                        memcpy(&evec_full_tmp(0, n), &evec_full(0, i), N * sizeof(double_complex));
                         eval_tmp[n] = eval[i];
                         res_list.push_back(n);
                         n++;
@@ -341,6 +339,12 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                     case GPU:
                     {
                         #ifdef __GPU
+                        if (converge_by_energy)
+                        {
+                            /* copy all eigen-vectors to GPU */
+                            cublas_set_matrix(N, num_bands, sizeof(double_complex), evec_full.at<CPU>(), evec_full.ld(),
+                                              evec_full.at<GPU>(), evec_full.ld());
+                        }
                         linalg<GPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab.at<GPU>(), phi_slab.ld(),
                                           evec_full.at<GPU>(), evec_full.ld(), psi_slab.at<GPU>(), psi_slab.ld()); 
                         #endif

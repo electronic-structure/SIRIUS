@@ -69,6 +69,13 @@ void Band::set_fv_h_o_parallel(int N__,
     }
     kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
 
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+    auto z = tmp.checksum();
+    DUMP("checksum(h): %18.10f %18.10f", std::real(z), std::imag(z));
+    }
+    #endif
+
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < (int)(s1_col.local_size() - col_offs); i++)
     {
@@ -98,6 +105,13 @@ void Band::set_fv_h_o_parallel(int N__,
     }
     kp__->comm().allreduce(tmp.at<CPU>(), (int)tmp.size());
 
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+    auto z = tmp.checksum();
+    DUMP("checksum(o): %18.10f %18.10f", std::real(z), std::imag(z));
+    }
+    #endif
+
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < (int)(s1_col.local_size() - col_offs); i++)
     {
@@ -114,7 +128,7 @@ void Band::set_fv_h_o_parallel(int N__,
              N__ + n__, n__, kp__->num_gkvec(), tval,
              2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
-    
+
     /* restore the bottom block of the matrix */
     if (N__ != 0)
     {

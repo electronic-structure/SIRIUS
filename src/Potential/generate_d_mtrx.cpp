@@ -11,11 +11,11 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 double_complex* veff_a__);
 #endif
 
-void Potential::generate_d_mtrx()
+void Potential::generate_D_operator_matrix()
 {
     PROFILE();
 
-    Timer t("sirius::Potential::generate_d_mtrx");
+    Timer t("sirius::Potential::generate_D_operator_matrix");
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
@@ -45,7 +45,7 @@ void Potential::generate_d_mtrx()
             gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
             for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
             {
-                for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[igloc][x];
+                for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[(int)spl_num_gvec_[igloc]][x];
             }
             gvec.allocate_on_device();
             gvec.copy_to_device();
@@ -75,9 +75,8 @@ void Potential::generate_d_mtrx()
                 }
 
                 linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
-                                  &atom_type->uspp().q_pw(0, 0), (int)spl_num_gvec_.local_size(),
-                                  &veff_a(0, 0), (int)spl_num_gvec_.local_size(),
-                                  &d_tmp(0, 0), d_tmp.ld());
+                                  atom_type->uspp().q_pw.at<CPU>(), (int)spl_num_gvec_.local_size(),
+                                  veff_a.at<CPU>(), (int)spl_num_gvec_.local_size(), d_tmp.at<CPU>(), d_tmp.ld());
             }
             if (parameters_.processing_unit() == GPU)
             {
@@ -115,6 +114,11 @@ void Potential::generate_d_mtrx()
 
             comm_.allreduce(d_tmp.at<CPU>(), (int)d_tmp.size());
 
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            auto z = d_tmp.checksum();
+            DUMP("checksum(d_mtrx): %18.10f %18.10f", std::real(z), std::imag(z));
+            #endif
+
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type->num_atoms(); i++)
             {
@@ -132,13 +136,13 @@ void Potential::generate_d_mtrx()
 
                         if (xi1 == xi2)
                         {
-                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = real(d_tmp(idx12, i)) * unit_cell_.omega() +
-                                                             atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = std::real(d_tmp(idx12, i)) * unit_cell_.omega() +
+                                                                    atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
                         }
                         else
                         {
                             unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i) * unit_cell_.omega();
-                            unit_cell_.atom(ia)->d_mtrx(xi2, xi1) = conj(d_tmp(idx12, i)) * unit_cell_.omega();
+                            unit_cell_.atom(ia)->d_mtrx(xi2, xi1) = std::conj(d_tmp(idx12, i)) * unit_cell_.omega();
                             if (lm1 == lm2)
                             {
                                 unit_cell_.atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);

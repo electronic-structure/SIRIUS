@@ -289,8 +289,6 @@ class DFT_ground_state
                     break;
                 }
             }
-
-            if (!parameters_.full_potential()) potential_->generate_d_mtrx();
         }
 
         void symmetrize_density()

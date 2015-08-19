@@ -47,6 +47,15 @@ void Band::apply_h_o_parallel(K_point* kp__,
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_tmp__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
     t1.stop();
 
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+    auto z1 = mdarray<double_complex, 2>(&phi_slab__(0, N__),  kp__->num_gkvec_loc(), n__).checksum();
+    auto z2 = mdarray<double_complex, 2>(&hphi_slab__(0, N__), kp__->num_gkvec_loc(), n__).checksum();
+    DUMP("checksum(phi_slab): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    DUMP("checksum(hphi_slab): %18.10f %18.10f", std::real(z2), std::imag(z2));
+    }
+    #endif
+
     if (parameters_.processing_unit() == CPU)
     {
         /* set intial ophi */
@@ -81,16 +90,16 @@ void Band::apply_h_o_parallel(K_point* kp__,
         {
             case CPU:
             {
-                beta_phi = matrix<double_complex>(kappa__.at<CPU>(),            nbeta, n__);
-                work     = matrix<double_complex>(kappa__.at<CPU>(nbeta * n__), nbeta, n__);
+                beta_phi = matrix<double_complex>(kappa__.at<CPU>(),                nbeta,                 n__);
+                work     = matrix<double_complex>(kappa__.at<CPU>(nbeta * n__),     nbeta,                 n__);
                 beta_gk  = matrix<double_complex>(kp__->beta_gk().at<CPU>(0, offs), kp__->num_gkvec_loc(), nbeta);
                 break;
             }
             case GPU:
             {
                 #ifdef __GPU
-                beta_phi = matrix<double_complex>(kappa__.at<CPU>(),            kappa__.at<GPU>(),            nbeta, n__);
-                work     = matrix<double_complex>(kappa__.at<CPU>(nbeta * n__), kappa__.at<GPU>(nbeta * n__), nbeta, n__);
+                beta_phi = matrix<double_complex>(kappa__.at<CPU>(),                kappa__.at<GPU>(),                nbeta, n__);
+                work     = matrix<double_complex>(kappa__.at<CPU>(nbeta * n__),     kappa__.at<GPU>(nbeta * n__),     nbeta, n__);
                 beta_gk  = matrix<double_complex>(kp__->beta_gk().at<CPU>(0, offs), kappa__.at<GPU>(2 * nbeta * n__), kp__->num_gkvec_loc(), nbeta);
                 beta_gk.copy_to_device();
                 #endif
@@ -99,6 +108,15 @@ void Band::apply_h_o_parallel(K_point* kp__,
         }
 
         kp__->generate_beta_phi(nbeta, phi_slab__.panel(), n__, N__, beta_gk, beta_phi);
+
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        {
+        auto z1 = beta_gk.checksum();
+        auto z2 = beta_phi.checksum();
+        DUMP("checksum(beta_gk) : %18.10f %18.10f", std::real(z1), std::imag(z1));
+        DUMP("checksum(beta_phi) : %18.10f %18.10f", std::real(z2), std::imag(z2));
+        }
+        #endif
 
         kp__->add_non_local_contribution(natoms, nbeta, unit_cell_.beta_chunk(ib).desc_, beta_gk, d_mtrx_packed__,
                                          packed_mtrx_offset__, beta_phi, hphi_slab__.panel(), n__, N__, complex_one, work);

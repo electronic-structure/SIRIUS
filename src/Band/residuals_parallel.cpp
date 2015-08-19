@@ -51,6 +51,14 @@ void Band::residuals_parallel(int N__,
     }
     double tval = t2.stop();
 
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto z1 = mdarray<double_complex, 2>(&hpsi__(0, 0), num_gkvec_loc, num_bands__).checksum();
+        auto z2 = mdarray<double_complex, 2>(&opsi__(0, 0), num_gkvec_loc, num_bands__).checksum();
+        DUMP("checksum(hpsi): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        DUMP("checksum(opsi): %18.10f %18.10f", std::real(z2), std::imag(z2));
+    }
+    #endif
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
@@ -68,11 +76,18 @@ void Band::residuals_parallel(int N__,
         for (int igk = 0; igk < num_gkvec_loc; igk++) 
         {
             res__(igk, i) = hpsi__(igk, i) - eval__[i] * opsi__(igk, i);
-            norm2 += real(conj(res__(igk, i)) * res__(igk, i));
+            norm2 += std::real(std::conj(res__(igk, i)) * res__(igk, i));
         }
         res_norm__[i] = norm2;
     }
     kp__->comm().allreduce(res_norm__);
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+    auto z = mdarray<double_complex, 2>(&res__(0, 0), num_gkvec_loc, num_bands__).checksum();
+    DUMP("checksum(res#1): %18.10f %18.10f", std::real(z), std::imag(z));
+    }
+    #endif
     
     /* compute norm */
     for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
@@ -90,15 +105,28 @@ void Band::residuals_parallel(int N__,
             res__(igk, i) /= p;
         }
     }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+    auto z = mdarray<double_complex, 2>(&res__(0, 0), num_gkvec_loc, num_bands__).checksum();
+    DUMP("checksum(res#2): %18.10f %18.10f", std::real(z), std::imag(z));
+    auto d1 = mdarray<double, 1>(&h_diag__[0], num_gkvec_loc).checksum();
+    auto d2 = mdarray<double, 1>(&o_diag__[0], num_gkvec_loc).checksum();
+    auto d3 = mdarray<double, 1>(&eval__[0], num_bands__).checksum();
+    DUMP("checksum(h_diag): %18.10f", d1);
+    DUMP("checksum(o_diag): %18.10f", d2);
+    DUMP("checksum(eval): %18.10f", d3);
+    }
+    #endif
     
     std::vector<double> norm2(num_bands__, 0);
-    /* Normalize new basis functions */
+    /* normalize new basis functions */
     #pragma omp parallel for
     for (int i = 0; i < num_bands__; i++)
     {
         double d = 0;
         for (int igk = 0; igk < num_gkvec_loc; igk++) 
-            d += real(conj(res__(igk, i)) * res__(igk, i));
+            d += std::real(std::conj(res__(igk, i)) * res__(igk, i));
         norm2[i] = d;
     }
     kp__->comm().allreduce(norm2);
@@ -108,6 +136,13 @@ void Band::residuals_parallel(int N__,
         double d = 1.0 / std::sqrt(norm2[i]);
         for (int igk = 0; igk < num_gkvec_loc; igk++) res__(igk, i) *= d;
     }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+    auto z = mdarray<double_complex, 2>(&res__(0, 0), num_gkvec_loc, num_bands__).checksum();
+    DUMP("checksum(res#3): %18.10f %18.10f", std::real(z), std::imag(z));
+    }
+    #endif
 }
 #endif // __SCALAPACK
 
