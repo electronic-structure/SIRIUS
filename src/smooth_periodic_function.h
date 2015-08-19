@@ -57,7 +57,7 @@ class Smooth_periodic_function
         {
             if (domain_t == spatial)
             {
-                data_ = mdarray<T, 1>(ptr__, fft_->size());
+                data_ = mdarray<T, 1>(ptr__, fft_->local_size());
             }
         }
 
@@ -74,7 +74,7 @@ class Smooth_periodic_function
                 }
                 case spatial:
                 {
-                    data_ = mdarray<T, 1>(fft_->size());
+                    data_ = mdarray<T, 1>(fft_->local_size());
                     break;
                 }
             }

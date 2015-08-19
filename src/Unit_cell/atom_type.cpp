@@ -179,7 +179,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     int lmmax_pot = Utils::lmmax(lmax_pot__);
     auto l_by_lm = Utils::l_by_lm(lmax_pot__);
 
-    /* flag the non-zero radial integrals */
+    /* index the non-zero radial integrals */
     std::vector< std::pair<int, int> > non_zero_elements;
 
     for (int lm = 0; lm < lmmax_pot; lm++)
