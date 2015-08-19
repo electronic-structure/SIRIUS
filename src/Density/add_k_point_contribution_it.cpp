@@ -380,7 +380,7 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
             for (int ir = 0; ir < fft_->local_size(); ir++)
             {
                 double_complex z = psi_it(ir, ispn);
-                it_density_matrix(ir, ispn) += w * (std::pow(std::real(z), 2) + std::pow(std::imag(z), 2));
+                it_density_matrix(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
             }
         }
     }
