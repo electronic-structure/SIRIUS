@@ -22,24 +22,12 @@ void Density::generate_valence_density_it(K_set& ks__)
             occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
         }
 
-        if (!parameters_.full_potential())
+        if (!parameters_.full_potential() && kp->num_ranks() > 1)
         {
-            if (kp->num_ranks() > 1 && !fft_->parallel())
-            {
-                linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                                    kp->fv_states(), 0, 0,
-                                    kp->fv_states_slice(), 0, 0,
-                                    kp->blacs_grid().context());
-            }
-            if (fft_->parallel())
-            {
-                Timer t1("fft|comm");
-                linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                                    kp->fv_states(), 0, 0,
-                                    kp->spinor_wave_functions(0), 0, 0,
-                                    kp->blacs_grid().context());
-                t1.stop();
-            }
+            linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+                                kp->fv_states(), 0, 0,
+                                kp->spinor_wave_functions(0), 0, 0,
+                                kp->blacs_grid().context());
         }
 
         if (fft_->parallel())
