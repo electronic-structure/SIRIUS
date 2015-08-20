@@ -55,7 +55,7 @@
 
 //== #define __GPU_DIRECT
 
-//== #definr __RS_GEN_EIG
+//== #define __RS_GEN_EIG
 
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
@@ -82,14 +82,11 @@ const bool check_pseudo_charge = false;
 
 //** const bool full_relativistic_core = false;
 
-/// level of internal debugging and checking
-/** debug_level = 0 : nothing to do \n
- *  debug_level >= 1 : check symmetry of Hamiltonian radial integrals, check hermiticity of the Hamiltonian matrix, 
- *                     check plane wave matching condition, check local orbital linear independence \n
- *  debug_level >= 2 : check orthonormaliztion of the wave-functions \n
- *  debug_level >= 3 : check scalapack vs. lapack diagonalization   
- */
-const int debug_level = 0;
+
+/// Level of internal verification
+/** __VERIFICATION = 0 : nothing to do \n
+ *  __VERIFICATION = 1 : basic checkes \n */
+#define __VERIFICATION 0
 
 /// Verbosity level.
 /** Controls the ammount of information printed to standard output. 
@@ -102,11 +99,12 @@ const int debug_level = 0;
  *  verbosity_level >= 6 : print forces contributions \n
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
-#ifdef __VERBOSITY
-const int verbosity_level = __VERBOSITY;
-#else
-const int verbosity_level = 6;
-#endif
+#define __VERBOSITY 0
+//#ifdef __VERBOSITY
+//const int verbosity_level = __VERBOSITY;
+//#else
+//const int verbosity_level = 6;
+//#endif
 
 const bool fix_apwlo_linear_dependence = false;
 

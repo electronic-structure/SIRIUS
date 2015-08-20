@@ -54,7 +54,6 @@ void terminate(const char* file_name, int line_number, const std::stringstream& 
 void error_message(const char* file_name, int line_number, const std::string& message, int flags)
 {
     bool verbose = (flags & _global_message_) ? (Platform::rank() == 0) : true;
-    if (verbosity_level >= 10) verbose = true;
 
     std::vector<char> buffer(message.size() + 1000);
 

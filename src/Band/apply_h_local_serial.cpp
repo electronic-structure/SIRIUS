@@ -203,7 +203,7 @@ void Band::apply_h_local_serial(K_point* kp__,
     }
     for (auto& thread: fft_threads) thread.join();
     double tval = t1.stop();
-    printf("time: %f (sec.), performance: %f (FFTs/sec.) \n", tval, 2 * num_phi__ / tval);
+    DUMP("time: %f (sec.), performance: %f (FFTs/sec.)", tval, 2 * num_phi__ / tval);
 
     //== if (kp__->comm().rank() == 0)
     //== {

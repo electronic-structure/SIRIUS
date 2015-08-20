@@ -40,11 +40,13 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     }
 
     // TODO: move debug code to a separate function
-    if (debug_level > 0 && !gen_evp_solver()->parallel())
+    #if (__VERIFICATION > 0)
+    if (!gen_evp_solver()->parallel())
     {
         Utils::check_hermitian("h", h.panel());
         Utils::check_hermitian("o", o.panel());
     }
+    #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = h.panel().checksum();

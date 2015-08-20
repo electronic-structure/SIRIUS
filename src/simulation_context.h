@@ -283,8 +283,10 @@ class Simulation_context
             
             /* total number of bands */
             parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
-            
-            if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
+
+            #if (__VERBOSITY > 0)
+            if (comm_.rank() == 0) print_info();
+            #endif
 
             initialized_ = true;
         }

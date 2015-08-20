@@ -103,10 +103,10 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
 
     /* large temporary array */
     mdarray<double_complex, 1> kappa(kappa_size);
-
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    
+    if (kp__->comm().rank() == 0)
     {
-        printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
+        DUMP("size of kappa array: %f GB", 16 * double(kappa.size()) / 1073741824);
     }
     
     /* offset in the packed array of on-site matrices */

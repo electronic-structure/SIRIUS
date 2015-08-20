@@ -53,7 +53,7 @@ class Platform
 
         static void abort();
 
-        static int rank()
+        static int rank() // TODO: global rank should never be referenced; all calculations "live" inside thier own communicator
         {
             int r;
             CALL_MPI(MPI_Comm_rank, (MPI_COMM_WORLD, &r));

@@ -108,11 +108,11 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 aw_surface_derivatives_(order, l, 1) = (2 * radial_functions_(nmtp - 1, idxrf, 0) / R / R - 
                                                         2 * rderiv / R + s.deriv(2, nmtp - 1)) / R;  
                 
-                if (debug_level > 1)
-                {
-                    printf("atom class id : %i  l : %i  order : %i  radial function value at MT : %f\n", 
-                           id_, l, order, radial_functions_(nmtp - 1, idxrf, 0));
-                }
+                //==if (debug_level > 1)
+                //=={
+                //==    printf("atom class id : %i  l : %i  order : %i  radial function value at MT : %f\n", 
+                //==           id_, l, order, radial_functions_(nmtp - 1, idxrf, 0));
+                //==}
             }
         }
     }
@@ -220,7 +220,9 @@ void Atom_symmetry_class::generate_lo_radial_functions()
         }
     }
     
-    if (debug_level >= 1 && num_lo_descriptors() > 0) check_lo_linear_independence();
+    #if (__VERIFICATION > 0)
+    if (num_lo_descriptors() > 0) check_lo_linear_independence();
+    #endif
 
     //if (verbosity_level > 0) dump_lo();
 }
@@ -643,7 +645,7 @@ void Atom_symmetry_class::generate_radial_integrals()
 
             double diff = h_spherical_integrals_(idxrf1, idxrf2) - h_spherical_integrals_(idxrf2, idxrf1);
 
-            if (debug_level >= 1 && fabs(diff) > 1e-8)
+            if (std::abs(diff) > 1e-8)
             {
                 int l = atom_type_->indexr(idxrf2).l;
                 std::stringstream s;
@@ -687,8 +689,8 @@ void Atom_symmetry_class::generate_radial_integrals()
                 double v1 = y00 * h_spherical_integrals_(i1, i2);
                 double v2 = y00 * h_spherical_integrals_(i2, i1);
 
-                double diff = fabs(v1 - v2);
-                if (debug_level >= 1 && diff > 1e-8)
+                double diff = std::abs(v1 - v2);
+                if (diff > 1e-8)
                 {
                     std::stringstream s;
                     s << "Wrong augmented wave radial integrals for atom class " << id() << ", l = " << l << std::endl

@@ -93,14 +93,21 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
 
 #define TERMINATE_NOT_IMPLEMENTED terminate(__FILE__, __LINE__, "feature is not implemented");
 
-#define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
+//#define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
 
-#define DUMP(...)                                                               \
-{                                                                               \
-    char str__[1024];                                                           \
-    int x__ = snprintf(str__, 1024, "[%s:%04i] ", __func__, Platform::rank()) ; \
-    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                           \
-    printf("%s\n", str__);                                                      \
+#if (__VERBOSITY > 1)
+const bool enable_dump_ = true;
+#else
+const bool enable_dump_ = false;
+#endif
+
+#define DUMP(...)                                                              \
+if (enable_dump_)                                                              \
+{                                                                              \
+    char str__[1024];                                                          \
+    int x__ = snprintf(str__, 1024, "[%s:%04i] ", __func__, Platform::rank()); \
+    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                          \
+    printf("%s\n", str__);                                                     \
 }
 
 #define PRINT(...)                                    \

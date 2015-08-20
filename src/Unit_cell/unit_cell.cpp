@@ -811,23 +811,22 @@ void Unit_cell::generate_radial_functions()
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic)->sync_radial_functions(comm_, rank);
     }
-    
-    if (verbosity_level >= 4)
-    {
-        pstdout pout(comm_);
-        
-        for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
-        {
-            int ic = spl_num_atom_symmetry_classes(icloc);
-            atom_symmetry_class(ic)->write_enu(pout);
-        }
 
-        if (comm_.rank() == 0)
-        {
-            printf("\n");
-            printf("Linearization energies\n");
-        }
+    #if (__VERBOSITY > 0) 
+    pstdout pout(comm_);
+    
+    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
+    {
+        int ic = spl_num_atom_symmetry_classes(icloc);
+        atom_symmetry_class(ic)->write_enu(pout);
     }
+
+    if (comm_.rank() == 0)
+    {
+        printf("\n");
+        printf("Linearization energies\n");
+    }
+    #endif
 }
 
 void Unit_cell::generate_radial_integrals()

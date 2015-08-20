@@ -68,7 +68,7 @@ double SHT::gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3)
     assert(m2 >= -l2 && m2 <= l2);
     assert(m3 >= -l3 && m3 <= l3);
     
-    return pow(-1.0, abs(m1)) * sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
+    return pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
 }
@@ -189,7 +189,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         linalg<CPU>::geinv(lmmax_, rlm_forward_);
     }
     
-    if (debug_level > 0)
+    #if (__VERIFICATION > 0)
     {
         double dr = 0;
         double dy = 0;
@@ -211,8 +211,8 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
                     zt -= 1.0;
                     t -= 1.0;
                 }
-                dr += fabs(t);
-                dy += abs(zt);
+                dr += std::abs(t);
+                dy += std::abs(zt);
             }
         }
         dr = dr / lmmax_ / lmmax_;
@@ -238,7 +238,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             flm[lm] -= 1.0;
 
             double t = 0.0;
-            for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
+            for (int lm1 = 0; lm1 < lmmax_; lm1++) t += std::abs(flm[lm1]);
 
             t /= lmmax_;
 
@@ -251,6 +251,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             }
         }
     }
+    #endif
 }
 
 vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
@@ -268,11 +269,11 @@ vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
     } 
     else
     {
-        vs[1] = acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
+        vs[1] = std::acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
 
-        if (fabs(vc[0]) > eps || fabs(vc[1]) > eps)
+        if (std::abs(vc[0]) > eps || std::abs(vc[1]) > eps)
         {
-            vs[2] = atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
+            vs[2] = std::atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
             if (vs[2] < 0.0) vs[2] += twopi;
         }
         else
@@ -336,7 +337,7 @@ double_complex SHT::ylm_dot_rlm(int l, int m1, int m2)
 {
     const double isqrt2 = 0.70710678118654752440;
 
-    assert(l >= 0 && abs(m1) <= l && abs(m2) <= l);
+    assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
 
     if (!((m1 == m2) || (m1 == -m2))) return double_complex(0, 0);
 

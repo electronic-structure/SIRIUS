@@ -261,7 +261,8 @@ void Force::total_force(Simulation_context& ctx__,
     }
     ctx__.comm().allreduce(&force__(0, 0), (int)force__.size());
     
-    if (verbosity_level >= 6 && ctx__.comm().rank() == 0)
+    #if (__VERBOSITY > 0)
+    if (ctx__.comm().rank() == 0)
     {
         printf("\n");
         printf("Forces\n");
@@ -271,6 +272,7 @@ void Force::total_force(Simulation_context& ctx__,
             printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, force__(0, ia), force__(1, ia), force__(2, ia));
         }
     }
+    #endif
 
     mdarray<double, 2> forcehf(3, uc.num_atoms());
 
@@ -283,7 +285,8 @@ void Force::total_force(Simulation_context& ctx__,
     }
     ctx__.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
 
-    if (verbosity_level >= 6 && ctx__.comm().rank() == 0)
+    #if (__VERBOSITY > 0)
+    if (ctx__.comm().rank() == 0)
     {
         printf("\n");
         for (int ia = 0; ia < uc.num_atoms(); ia++)
@@ -291,6 +294,7 @@ void Force::total_force(Simulation_context& ctx__,
             printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
         }
     }
+    #endif
     
     mdarray<double, 2> forcerho(3, uc.num_atoms());
     forcerho.zero();
@@ -301,8 +305,9 @@ void Force::total_force(Simulation_context& ctx__,
         for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
     }
     ctx__.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
-
-    if (verbosity_level >= 6 && ctx__.comm().rank() == 0)
+    
+    #if (__VERBOSITY > 0)
+    if (ctx__.comm().rank() == 0)
     {
         printf("\n");
         printf("rho force\n");
@@ -311,6 +316,7 @@ void Force::total_force(Simulation_context& ctx__,
             printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
         }
     }
+    #endif
     
     for (int ia = 0; ia < uc.num_atoms(); ia++)
     {

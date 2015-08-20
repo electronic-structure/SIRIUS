@@ -121,8 +121,8 @@ void Band::set_fv_h_o_parallel(int N__,
         }
     }
     double tval = t2.stop();
-
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    
+    if (kp__->comm().rank() == 0)
     {
         DUMP("effective zgemm with M, N, K: %6i %6i %6i for H and O: %12.4f sec, %12.4f GFlops/rank",
              N__ + n__, n__, kp__->num_gkvec(), tval,

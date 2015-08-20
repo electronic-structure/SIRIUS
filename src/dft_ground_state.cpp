@@ -58,7 +58,8 @@ void DFT_ground_state::move_atoms(int istep)
 {
     mdarray<double, 2> atom_force(3, unit_cell_.num_atoms());
     forces(atom_force);
-    if (verbosity_level >= 6 && ctx_.comm().rank() == 0)
+    #if (__VERBOSITY > 0)
+    if (ctx_.comm().rank() == 0)
     {
         printf("\n");
         printf("Atomic forces\n");
@@ -67,6 +68,7 @@ void DFT_ground_state::move_atoms(int istep)
             printf("ia : %i, force : %12.6f %12.6f %12.6f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
         }
     }
+    #endif
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
@@ -80,13 +82,6 @@ void DFT_ground_state::move_atoms(int istep)
         unit_cell_.atom(ia)->set_position(pos);
     }
 }
-
-//void DFT_ground_state::update()
-//{
-//    parameters_.update();
-//    potential_->update();
-//    kset_->update();
-//}
 
 void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {
