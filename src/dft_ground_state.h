@@ -223,6 +223,11 @@ class DFT_ground_state
             return (eval_sum() - energy_veff() - energy_bxc());
         }
 
+        double energy_ewald() const
+        {
+            return ewald_energy_;
+        }
+
         /// Total energy of the electronic subsystem.
         /** From the definition of the density functional we have:
          *  

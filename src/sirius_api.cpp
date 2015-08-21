@@ -1101,6 +1101,12 @@ void sirius_get_energy_tot(double* total_energy__)
     *total_energy__ = dft_ground_state->total_energy();
 }
 
+void sirius_get_energy_ewald(double* ewald_energy__)
+{
+    PROFILE();
+    *ewald_energy__ = dft_ground_state->energy_ewald();
+}
+
 
 void sirius_add_atom_type_aw_descriptor(char const* label__,
                                         int32_t const* n__,
@@ -2333,8 +2339,7 @@ void sirius_get_q_mtrx_(int32_t* itype__, double* q_mtrx__, int32_t* ld__)
         {
             for (int m2 = -l; m2 <= l; m2++) // this runs over Rlm index of sirius
             {
-                int i; // index of QE Rlm
-                if (m2 == 0) i = 0;
+                int i = 0; // index of QE Rlm
                 if (m2 > 0) i = m2 * 2 - 1;
                 if (m2 < 0) i = (-m2) * 2;
                 double phase = 1;
@@ -2388,8 +2393,7 @@ void sirius_get_d_mtrx_(int32_t* ia__, double* d_mtrx__, int32_t* ld__)
         {
             for (int m2 = -l; m2 <= l; m2++) // this runs over Rlm index of sirius
             {
-                int i; // index of QE Rlm
-                if (m2 == 0) i = 0;
+                int i = 0; // index of QE Rlm
                 if (m2 > 0) i = m2 * 2 - 1;
                 if (m2 < 0) i = (-m2) * 2;
                 double phase = 1;
