@@ -99,12 +99,9 @@ const bool check_pseudo_charge = false;
  *  verbosity_level >= 6 : print forces contributions \n
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
+#ifndef __VERBOSITY
 #define __VERBOSITY 0
-//#ifdef __VERBOSITY
-//const int verbosity_level = __VERBOSITY;
-//#else
-//const int verbosity_level = 6;
-//#endif
+#endif
 
 const bool fix_apwlo_linear_dependence = false;
 
