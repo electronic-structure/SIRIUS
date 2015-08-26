@@ -81,6 +81,11 @@ interface
         character, dimension(*), intent(in) :: xc_name
     end subroutine
 
+    subroutine sirius_set_esm_type(esm_name)&
+       &bind(C, name="sirius_set_esm_type")
+        character, dimension(*), intent(in) :: esm_name
+    end subroutine
+
     subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
        &bind(C, name="sirius_set_atom_type_properties")
         character, dimension(*), intent(in) :: label

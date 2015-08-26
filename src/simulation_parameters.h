@@ -108,8 +108,6 @@ class Simulation_parameters
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
-        //XC_functionals_input_section xc_functionals_input_section_;
-        
         Mixer_input_section mixer_input_section_;
 
         Unit_cell_input_section unit_cell_input_section_;
@@ -154,26 +152,7 @@ class Simulation_parameters
 
             std::string esm = iip__.common_input_section_.electronic_structure_method_;
             std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
-            if (esm == "full_potential_lapwlo")
-            {
-                esm_type_ = full_potential_lapwlo;
-            }
-            else if (esm == "full_potential_pwlo")
-            {
-                esm_type_ = full_potential_pwlo;
-            }
-            else if (esm == "ultrasoft_pseudopotential")
-            {
-                esm_type_ = ultrasoft_pseudopotential;
-            } 
-            else if (esm == "norm_conserving_pseudopotential")
-            {
-                esm_type_ = norm_conserving_pseudopotential;
-            }
-            else
-            {
-                TERMINATE("wrong type of electronic structure method");
-            }
+            set_esm_type(esm);
 
             iterative_solver_input_section_ = iip__.iterative_solver_input_section();
             //xc_functionals_input_section_   = iip__.xc_functionals_input_section();
@@ -322,6 +301,30 @@ class Simulation_parameters
         inline void add_xc_functional(std::string name__)
         {
             xc_functionals_.push_back(name__);
+        }
+
+        inline void set_esm_type(std::string name__)
+        {
+            if (name__ == "full_potential_lapwlo")
+            {
+                esm_type_ = full_potential_lapwlo;
+            }
+            else if (name__ == "full_potential_pwlo")
+            {
+                esm_type_ = full_potential_pwlo;
+            }
+            else if (name__ == "ultrasoft_pseudopotential")
+            {
+                esm_type_ = ultrasoft_pseudopotential;
+            } 
+            else if (name__ == "norm_conserving_pseudopotential")
+            {
+                esm_type_ = norm_conserving_pseudopotential;
+            }
+            else
+            {
+                TERMINATE("wrong type of electronic structure method");
+            }
         }
     
         inline int lmax_apw() const

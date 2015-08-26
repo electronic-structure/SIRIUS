@@ -70,19 +70,19 @@ enum ev_solver_t
 
 enum splindex_t {block, block_cyclic};
 
-/// Type of electronic structure methods
+/// Type of electronic structure methods.
 enum electronic_structure_method_t 
 {
-    /// full potential linearized augmented plane waves with local orbitals
+    /// Full potential linearized augmented plane waves with local orbitals.
     full_potential_lapwlo, 
 
-    /// full potential plane waves with local orbitals (heavily experimental and not completely implemented)
+    /// Full potential plane waves with local orbitals (heavily experimental and not completely implemented).
     full_potential_pwlo, 
 
-    /// ultrasoft pseudopotential with plane wave basis (experimental)
+    /// Ultrasoft pseudopotential with plane wave basis (experimental).
     ultrasoft_pseudopotential,
 
-    /// norm-conserving pseudopotential with plane wave basis (experimental)
+    /// Norm-conserving pseudopotential with plane wave basis (experimental).
     norm_conserving_pseudopotential
 };
 

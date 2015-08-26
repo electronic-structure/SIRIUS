@@ -363,6 +363,12 @@ void sirius_add_xc_functional(char const* name__)
     sim_param->add_xc_functional(name__);
 }
 
+void sirius_set_esm_type(char const* name__)
+{
+    assert(name__ != NULL);
+    sim_param->set_esm_type(name__);
+}
+
 /// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
  *  atom types and atoms into the unit cell.
