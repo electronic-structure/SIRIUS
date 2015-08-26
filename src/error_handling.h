@@ -93,8 +93,6 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
 
 #define TERMINATE_NOT_IMPLEMENTED terminate(__FILE__, __LINE__, "feature is not implemented");
 
-//#define INFO std::cout << "[" << __func__ << ":" << Platform::rank() << "] "
-
 #if (__VERBOSITY > 1)
 const bool enable_dump_ = true;
 #else

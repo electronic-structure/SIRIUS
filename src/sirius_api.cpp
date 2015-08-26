@@ -184,8 +184,8 @@ void sirius_set_auto_rmt(int32_t* auto_rmt__)
     enddo
     \endcode
  */
-void sirius_add_atom_type(char* label__,
-                          char* fname__)
+void sirius_add_atom_type(char const* label__,
+                          char const* fname__)
 {
     PROFILE();
     std::string fname = (fname__ == NULL) ? std::string("") : std::string(fname__);
@@ -211,8 +211,8 @@ void sirius_add_atom_type(char* label__,
     enddo
     \endcode
  */ 
-void sirius_set_atom_type_properties(char* label__,
-                                     char* symbol__,
+void sirius_set_atom_type_properties(char const* label__,
+                                     char const* symbol__,
                                      int32_t* zn__,
                                      double* mass__,
                                      double* mt_radius__,
@@ -355,6 +355,12 @@ void sirius_set_aw_cutoff(double* aw_cutoff__)
 {
     PROFILE();
     sim_param->set_aw_cutoff(*aw_cutoff__);
+}
+
+void sirius_add_xc_functional(char const* name__)
+{
+    assert(name__ != NULL);
+    sim_param->add_xc_functional(name__);
 }
 
 /// Initialize the global variables.

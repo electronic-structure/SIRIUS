@@ -108,13 +108,15 @@ class Simulation_parameters
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
-        XC_functionals_input_section xc_functionals_input_section_;
+        //XC_functionals_input_section xc_functionals_input_section_;
         
         Mixer_input_section mixer_input_section_;
 
         Unit_cell_input_section unit_cell_input_section_;
 
         std::map<std::string, ev_solver_t> str_to_ev_solver_t_;
+
+        std::vector<std::string> xc_functionals_;
         
         /// Import data from initial input parameters.
         void import(Input_parameters const& iip__)
@@ -174,7 +176,7 @@ class Simulation_parameters
             }
 
             iterative_solver_input_section_ = iip__.iterative_solver_input_section();
-            xc_functionals_input_section_   = iip__.xc_functionals_input_section();
+            //xc_functionals_input_section_   = iip__.xc_functionals_input_section();
             mixer_input_section_            = iip__.mixer_input_section();
             unit_cell_input_section_        = iip__.unit_cell_input_section();
 
@@ -182,6 +184,8 @@ class Simulation_parameters
 
             num_fft_threads_                = iip__.common_input_section_.num_fft_threads_;
             num_fft_workers_                = iip__.common_input_section_.num_fft_workers_;
+
+            xc_functionals_                 = iip__.xc_functionals_input_section().xc_functional_names_;
         }
     
     public:
@@ -313,6 +317,11 @@ class Simulation_parameters
         inline void set_mpi_grid_dims(std::vector<int> const& mpi_grid_dims__)
         {
             mpi_grid_dims_ = mpi_grid_dims__;
+        }
+
+        inline void add_xc_functional(std::string name__)
+        {
+            xc_functionals_.push_back(name__);
         }
     
         inline int lmax_apw() const
@@ -495,10 +504,10 @@ class Simulation_parameters
             return mixer_input_section_;
         }
 
-        inline XC_functionals_input_section const& xc_functionals_input_section() const
-        {
-            return xc_functionals_input_section_;
-        }
+        //inline XC_functionals_input_section const& xc_functionals_input_section() const
+        //{
+        //    return xc_functionals_input_section_;
+        //}
 
         inline Iterative_solver_input_section const& iterative_solver_input_section() const
         {
@@ -513,6 +522,11 @@ class Simulation_parameters
         inline bool full_potential() const
         {
             return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
+        }
+
+        inline std::vector<std::string> const& xc_functionals() const
+        {
+            return xc_functionals_;
         }
 };
 

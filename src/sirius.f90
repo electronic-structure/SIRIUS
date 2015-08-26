@@ -76,6 +76,11 @@ interface
         integer,                 intent(in) :: num_mag_dims
     end subroutine
 
+    subroutine sirius_add_xc_functional(xc_name)&
+       &bind(C, name="sirius_add_xc_functional")
+        character, dimension(*), intent(in) :: xc_name
+    end subroutine
+
     subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
        &bind(C, name="sirius_set_atom_type_properties")
         character, dimension(*), intent(in) :: label

@@ -876,7 +876,7 @@ void Potential::xc(Periodic_function<double>* rho,
 
     Timer t("sirius::Potential::xc", ctx_.comm());
 
-    if (parameters_.xc_functionals_input_section().xc_functional_names_.size() == 0)
+    if (parameters_.xc_functionals().size() == 0)
     {
         vxc->zero();
         exc->zero();
@@ -886,9 +886,8 @@ void Potential::xc(Periodic_function<double>* rho,
 
     /* create list of XC functionals */
     std::vector<XC_functional*> xc_func;
-    for (int i = 0; i < (int)parameters_.xc_functionals_input_section().xc_functional_names_.size(); i++)
+    for (auto& xc_label: parameters_.xc_functionals())
     {
-        std::string xc_label = parameters_.xc_functionals_input_section().xc_functional_names_[i];
         xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
     }
    

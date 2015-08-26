@@ -505,9 +505,11 @@ class Simulation_context
             
             printf("\n");
             printf("XC functionals : \n");
-            for (int i = 0; i < (int)parameters_.xc_functionals_input_section().xc_functional_names_.size(); i++)
+            for (auto& xc_label: parameters_.xc_functionals())
             {
-                std::string xc_label = parameters_.xc_functionals_input_section().xc_functional_names_[i];
+            //for (int i = 0; i < (int)parameters_.xc_functionals_input_section().xc_functional_names_.size(); i++)
+            //{
+                //std::string xc_label = parameters_.xc_functionals_input_section().xc_functional_names_[i];
                 XC_functional xc(xc_label, parameters_.num_spins());
                 printf("\n");
                 printf("%s\n", xc_label.c_str());

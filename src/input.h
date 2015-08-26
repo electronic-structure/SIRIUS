@@ -150,6 +150,12 @@ struct Mixer_input_section
     }
 };
 
+/// Parse XC functionals input section.
+/** The following part of the input file is parsed:
+ *  \code{.json}
+ *      "xc_functionals" : ["name1", "name2", ...]
+ *  \endcode
+ */
 struct XC_functionals_input_section
 {
     /// List of XC functionals.
@@ -158,8 +164,8 @@ struct XC_functionals_input_section
     /// Set default variables.
     XC_functionals_input_section()
     {
-        xc_functional_names_.push_back("XC_LDA_X");
-        xc_functional_names_.push_back("XC_LDA_C_VWN");
+        //== xc_functional_names_.push_back("XC_LDA_X");
+        //== xc_functional_names_.push_back("XC_LDA_C_VWN");
     }
 
     void read(JSON_tree const& parser)
