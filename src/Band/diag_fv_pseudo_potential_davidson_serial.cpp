@@ -118,8 +118,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         kappa = mdarray<double_complex, 1>(size);
     }
     
-    #ifdef __GPU
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
+    #if defined(__GPU) && (__VERBOSITY > 1)
+    if (kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
     {
         printf("size of kappa array: %f GB\n", sizeof(double_complex) * double(kappa.size() >> 30));
     }
