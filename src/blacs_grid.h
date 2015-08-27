@@ -10,7 +10,7 @@ class BLACS_grid
 
         Communicator comm_;
 
-        MPI_grid mpi_grid_;
+        MPI_grid* mpi_grid_;
 
         int num_ranks_row_;
 
@@ -42,10 +42,10 @@ class BLACS_grid
             xy[0] = num_ranks_col__;
             xy[1] = num_ranks_row__;
 
-            mpi_grid_ = MPI_grid(xy, comm__);
+            mpi_grid_ = new MPI_grid(xy, comm__);
 
-            rank_col_ = mpi_grid_.coordinate(0);
-            rank_row_ = mpi_grid_.coordinate(1);
+            rank_col_ = mpi_grid_->coordinate(0);
+            rank_row_ = mpi_grid_->coordinate(1);
             
             #ifdef __SCALAPACK
             /* create handler first */
@@ -58,7 +58,7 @@ class BLACS_grid
                 {
                     xy[0] = j;
                     xy[1] = i;
-                    map_ranks(i, j) = mpi_grid_.communicator().cart_rank(xy);
+                    map_ranks(i, j) = mpi_grid_->communicator().cart_rank(xy);
                 }
             }
 
@@ -88,6 +88,7 @@ class BLACS_grid
             linalg_base::gridexit(blacs_context_);
             linalg_base::free_blacs_handler(blacs_handler_);
             #endif
+            delete mpi_grid_;
         }
 
         inline int context() const
@@ -102,12 +103,12 @@ class BLACS_grid
 
         inline Communicator const& comm_row() const
         {
-            return mpi_grid_.communicator(1 << 1);
+            return mpi_grid_->communicator(1 << 1);
         }
 
         inline Communicator const& comm_col() const
         {
-            return mpi_grid_.communicator(1 << 0);
+            return mpi_grid_->communicator(1 << 0);
         }
 
         inline int num_ranks_row() const

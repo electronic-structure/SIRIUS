@@ -332,7 +332,7 @@ class Band
                                                                   SHT::gaunt_hybrid);
 
             /* create standard eigen-value solver */
-            switch (parameters_.std_evp_solver_type())
+            switch (ctx_.std_evp_solver_type())
             {
                 case ev_lapack:
                 {
@@ -356,7 +356,7 @@ class Band
             }
             
             /* create generalized eign-value solver */
-            switch (parameters_.gen_evp_solver_type())
+            switch (ctx_.gen_evp_solver_type())
             {
                 case ev_lapack:
                 {

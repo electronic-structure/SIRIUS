@@ -196,11 +196,11 @@ struct Iterative_solver_input_section
     double mask_alpha_;
 
     Iterative_solver_input_section() 
-        : num_steps_(4),
+        : num_steps_(10),
           subspace_size_(4),
           tolerance_(1e-5),
           type_("davidson"),
-          converge_by_energy_(0),
+          converge_by_energy_(1),
           real_space_prj_(0),
           R_mask_scale_(1.5),
           mask_alpha_(3)
@@ -293,9 +293,13 @@ class Input_parameters
                   cyclic_block_size_(64),
                   num_fv_states_(-1),
                   smearing_width_(0.001),
-                  std_evp_solver_type_("lapack"),
-                  gen_evp_solver_type_("lapack"),
+                  std_evp_solver_type_(""),
+                  gen_evp_solver_type_(""),
+                  #ifdef __GPU
+                  processing_unit_("gpu"),
+                  #else
                   processing_unit_("cpu"),
+                  #endif
                   electronic_structure_method_("full_potential_lapwlo")
             {
             }

@@ -95,15 +95,8 @@ class FFT3D<CPU>
         {    
             fftw_execute(plan_forward_[thread_id]);
             double norm = 1.0 / size();
-            if (num_fft_threads_ == 1)
-            {
-                #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-                for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
-            }
-            else
-            {
-                for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
-            }
+            #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+            for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
         }
 
         /// Find smallest optimal grid size starting from n.

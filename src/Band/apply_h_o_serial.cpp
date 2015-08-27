@@ -69,6 +69,8 @@ void Band::apply_h_o_serial(K_point* kp__,
     }
     #endif
 
+    return;
+
     if (!kp__->iterative_solver_input_section_.real_space_prj_)
     {
         add_nl_h_o_pw(kp__, n__, phi, hphi, ophi, beta_gk, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__);

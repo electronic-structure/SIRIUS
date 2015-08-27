@@ -74,9 +74,6 @@ class MPI_grid
             return (directions__ & ((1 << dimensions_.size()) - 1));
         }
 
-        // Forbid copy constructor
-        MPI_grid(MPI_grid const& src) = delete;
-
         /// Initialize the grid.
         void initialize()
         {
@@ -185,12 +182,17 @@ class MPI_grid
             dimensions_.clear();
         }
 
+        /* forbid copy constructor */
+        MPI_grid(MPI_grid const& src) = delete;
+        /* forbid assigment operator */
+        MPI_grid& operator=(MPI_grid const& src) = delete;
+
     public:
 
-        // Default constructor
-        MPI_grid() 
-        {
-        }
+        //== // Default constructor
+        //== MPI_grid() 
+        //== {
+        //== }
 
         MPI_grid(std::vector<int> const& dimensions__,
                  Communicator const& parent_communicator__) 

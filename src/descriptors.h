@@ -117,7 +117,9 @@ class uspp_descriptor
         std::vector<double> q_functions_inner_radii;
         
         /// Radial functions of Q-operator.
-        mdarray<double, 2> q_radial_functions;
+        //mdarray<double, 2> q_radial_functions;
+
+        mdarray<double, 3> q_radial_functions_l;
 
         std::vector<double> core_charge_density;
 

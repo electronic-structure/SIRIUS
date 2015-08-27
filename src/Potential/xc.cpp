@@ -487,23 +487,20 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         Smooth_periodic_function<spatial, double> rho_it(&rho->f_it(0), fft_, &ctx_.gvec());
 
         /* get plane-wave coefficients of the density */
-        Smooth_periodic_function<spectral> rho_pw = transform(rho_it);
+        Smooth_periodic_function<spectral, double_complex> rho_pw = transform(rho_it);
 
         /* generate pw coeffs of the gradient and laplacian */
         auto grad_rho_pw = gradient(rho_pw);
         auto lapl_rho_pw = laplacian(rho_pw);
 
-        STOP();
+        /* gradient in real space */
+        grad_rho_it = transform<double>(grad_rho_pw);
 
-        ///* gradient in real space */
-        //for (int x = 0; x < 3; x++) 
-        //    grad_rho_it[x] = transform<double>(grad_rho_pw[x], spl_fft_size);
-
-        ///* product of gradients */
-        //grad_rho_grad_rho_it = grad_rho_it * grad_rho_it;
-        //
-        ///* Laplacian in real space */
-        //lapl_rho_it = transform<double>(lapl_rho_pw, spl_fft_size);
+        /* product of gradients */
+        grad_rho_grad_rho_it = grad_rho_it * grad_rho_it;
+        
+        /* Laplacian in real space */
+        lapl_rho_it = transform<double>(lapl_rho_pw);
     }
 
     mdarray<double, 1> exc_tmp(num_loc_points);
@@ -575,30 +572,26 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
 
     if (is_gga)
     {
-        STOP();
+        /* gather vsigma */
+        Smooth_periodic_function<spatial, double> vsigma_it(&vsigma_tmp(0), fft_, &ctx_.gvec());
 
-        ///* gather vsigma */
-        //Smooth_periodic_function<spatial, double> vsigma_it(fft_, &ctx_.gvec());
-        //ctx_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), (int)spl_fft_size.global_offset(), num_loc_points);
+        /* forward transform vsigma to plane-wave domain */
+        Smooth_periodic_function<spectral, double_complex> vsigma_pw = transform(vsigma_it);
+        
+        /* gradient of vsigma in plane-wave domain */
+        auto grad_vsigma_pw = gradient(vsigma_pw);
 
-        ///* forward transform vsigma to plane-wave domain */
-        //Smooth_periodic_function<spectral> vsigma_pw = transform(vsigma_it);
-        //
-        ///* gradient of vsigma in plane-wave domain */
-        //auto grad_vsigma_pw = gradient(vsigma_pw);
+        /* backward transform gradient from pw to real space */
+        auto grad_vsigma_it = transform<double>(grad_vsigma_pw);
 
-        ///* backward transform gradient from pw to real space */
-        //Smooth_periodic_function_gradient<spatial, double> grad_vsigma_it;
-        //for (int x = 0; x < 3; x++) grad_vsigma_it[x] = transform<double>(grad_vsigma_pw[x], spl_fft_size);
+        /* compute scalar product of two gradients */
+        auto grad_vsigma_grad_rho_it = grad_vsigma_it * grad_rho_it;
 
-        ///* compute scalar product of two gradients */
-        //auto grad_vsigma_grad_rho_it = grad_vsigma_it * grad_rho_it;
-
-        ///* add remaining term to Vxc */
-        //for (int ir = 0; ir < num_loc_points; ir++)
-        //{
-        //    vxc_tmp(ir) -= 2 * grad_vsigma_grad_rho_it(ir);
-        //}
+        /* add remaining term to Vxc */
+        for (int ir = 0; ir < num_loc_points; ir++)
+        {
+            vxc_tmp(ir) -= 2 * grad_vsigma_grad_rho_it(ir);
+        }
     }
 
     for (int irloc = 0; irloc < num_loc_points; irloc++)

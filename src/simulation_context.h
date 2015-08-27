@@ -45,7 +45,7 @@ class Simulation_context
         Communicator comm_;
 
         /// MPI grid for this simulation.
-        MPI_grid mpi_grid_;
+        MPI_grid* mpi_grid_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -81,6 +81,10 @@ class Simulation_context
 
         double iterative_solver_tolerance_;
 
+        ev_solver_t std_evp_solver_type_;
+
+        ev_solver_t gen_evp_solver_type_;
+        
         bool initialized_;
 
     public:
@@ -100,6 +104,8 @@ class Simulation_context
               #endif
               real_space_prj_(nullptr),
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
+              std_evp_solver_type_(ev_lapack),
+              gen_evp_solver_type_(ev_lapack),
               initialized_(false)
         {
             PROFILE();
@@ -112,6 +118,7 @@ class Simulation_context
             start_time_tag_ = std::string(buf);
 
             unit_cell_.import(parameters_.unit_cell_input_section());
+
         }
 
         ~Simulation_context()
@@ -125,6 +132,7 @@ class Simulation_context
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
+            delete mpi_grid_;
         }
 
         /// Initialize the similation (can only be called once).
@@ -166,7 +174,7 @@ class Simulation_context
             parameters_.set_mpi_grid_dims(mpi_grid_dims);
 
             /* setup MPI grid */
-            mpi_grid_ = MPI_grid(mpi_grid_dims, comm_);
+            mpi_grid_ = new MPI_grid(mpi_grid_dims, comm_);
 
             /* initialize variables, related to the unit cell */
             unit_cell_.initialize();
@@ -186,7 +194,7 @@ class Simulation_context
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
             /* create FFT interface */
-            if (parameters_.full_potential() || mpi_grid_.dimension_size(_dim_row_) == 1)
+            if (parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
             {
                 fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
                                       parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
@@ -194,7 +202,7 @@ class Simulation_context
             else
             {
                 fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                      1, Platform::max_num_threads(), mpi_grid_.communicator(1 << _dim_row_));
+                                      1, Platform::max_num_threads(), mpi_grid_->communicator(1 << _dim_row_));
             }
             
             gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_, true);
@@ -206,7 +214,7 @@ class Simulation_context
             if (!parameters_.full_potential())
             {
                 /* create FFT interface for coarse grid */
-                if (parameters_.full_potential() || mpi_grid_.dimension_size(_dim_row_) == 1)
+                if (parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
                 {
                     /* serial version */
                     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
@@ -216,7 +224,7 @@ class Simulation_context
                 {
                     /* parallel version */
                     fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
-                                                 1, Platform::max_num_threads(), mpi_grid_.communicator(1 << _dim_row_));
+                                                 1, Platform::max_num_threads(), mpi_grid_->communicator(1 << _dim_row_));
                 }
                 
                 /* create a list of G-vectors for corase FFT grid */
@@ -284,6 +292,58 @@ class Simulation_context
             /* total number of bands */
             parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
 
+            std::map<std::string, ev_solver_t> str_to_ev_solver_t;
+
+            str_to_ev_solver_t["lapack"]    = ev_lapack;
+            str_to_ev_solver_t["scalapack"] = ev_scalapack;
+            str_to_ev_solver_t["elpa1"]     = ev_elpa1;
+            str_to_ev_solver_t["elpa2"]     = ev_elpa2;
+            str_to_ev_solver_t["magma"]     = ev_magma;
+            str_to_ev_solver_t["plasma"]    = ev_plasma;
+            str_to_ev_solver_t["rs_cpu"]    = ev_rs_cpu;
+            str_to_ev_solver_t["rs_gpu"]    = ev_rs_gpu;
+
+            std::string evsn[] = {parameters_.std_evp_solver_name(), parameters_.gen_evp_solver_name()};
+
+            if (evsn[0] == "")
+            {
+                if (mpi_grid_->size(1 << _dim_row_ | 1 << _dim_col_) == 1)
+                {
+                    evsn[0] = "lapack";
+                }
+                else
+                {
+                    evsn[0] = "scalapack";
+                }
+            }
+
+            if (evsn[1] == "")
+            {
+                if (mpi_grid_->size(1 << _dim_row_ | 1 << _dim_col_) == 1)
+                {
+                    evsn[1] = "lapack";
+                }
+                else
+                {
+                    evsn[1] = "elpa1";
+                }
+            }
+
+            ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
+
+            for (int i = 0; i < 2; i++)
+            {
+                auto name = evsn[i];
+
+                if (str_to_ev_solver_t.count(name) == 0)
+                {
+                    std::stringstream s;
+                    s << "wrong eigen value solver " << name;
+                    TERMINATE(s);
+                }
+                *evst[i] = str_to_ev_solver_t[name];
+            }
+
             #if (__VERBOSITY > 0)
             if (comm_.rank() == 0) print_info();
             #endif
@@ -350,7 +410,7 @@ class Simulation_context
 
         MPI_grid const& mpi_grid() const
         {
-            return mpi_grid_;
+            return *mpi_grid_;
         }
         
         void create_storage_file() const
@@ -387,7 +447,7 @@ class Simulation_context
             printf("\n");
             printf("number of MPI ranks           : %i\n", comm_.size());
             printf("MPI grid                      :");
-            for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
+            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->size(1 << i));
             printf("\n");
             printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
             printf("number of OMP threads for FFT   : %i\n", parameters_.num_fft_threads()); 
@@ -405,8 +465,7 @@ class Simulation_context
                                                                 fft_->grid_limits(1).first, fft_->grid_limits(1).second,
                                                                 fft_->grid_limits(2).first, fft_->grid_limits(2).second);
             
-            if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-                parameters_.esm_type() == norm_conserving_pseudopotential)
+            if (!parameters_.full_potential())
             {
                 printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
                 printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2), fft_coarse_->size());
@@ -507,9 +566,6 @@ class Simulation_context
             printf("XC functionals : \n");
             for (auto& xc_label: parameters_.xc_functionals())
             {
-            //for (int i = 0; i < (int)parameters_.xc_functionals_input_section().xc_functional_names_.size(); i++)
-            //{
-                //std::string xc_label = parameters_.xc_functionals_input_section().xc_functional_names_[i];
                 XC_functional xc(xc_label, parameters_.num_spins());
                 printf("\n");
                 printf("%s\n", xc_label.c_str());
@@ -531,6 +587,16 @@ class Simulation_context
         inline double iterative_solver_tolerance() const
         {
             return iterative_solver_tolerance_;
+        }
+
+        inline ev_solver_t std_evp_solver_type() const
+        {
+            return std_evp_solver_type_;
+        }
+    
+        inline ev_solver_t gen_evp_solver_type() const
+        {
+            return gen_evp_solver_type_;
         }
 
         //== void write_json_output()

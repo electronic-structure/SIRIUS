@@ -700,7 +700,7 @@ void Atom_type::read_input(const std::string& fname)
             uspp_.q_coefs = mdarray<double, 4>(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
                                                uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
 
-            uspp_.q_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
+            uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * uspp_.lmax + 1);
 
             for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
             {
@@ -735,7 +735,9 @@ void Atom_type::read_input(const std::string& fname)
                     std::vector<double> qfunc;
                     parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_radial_function"] >> qfunc;
                     if ((int)qfunc.size() != num_mt_points_) error_local(__FILE__, __LINE__, "wrong size of qfunc");
-                    memcpy(&uspp_.q_radial_functions(0, idx), &qfunc[0], num_mt_points_ * sizeof(double)); 
+                    
+                    for (int l = 0; l <= 2 * uspp_.lmax; l++)
+                        memcpy(&uspp_.q_radial_functions_l(0, idx, l), &qfunc[0], num_mt_points_ * sizeof(double)); 
                 }
             }
         }
@@ -756,10 +758,6 @@ void Atom_type::read_input(const std::string& fname)
             memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
  
             parser["uspp"]["non_local"]["beta"][i]["lll"] >> uspp_.beta_l[i];
-            
-            ///* think of |beta> functions as of local orbitals */
-            //lod.l = uspp_.beta_l[i];
-            //lo_descriptors_.push_back(lod);
         }
 
         uspp_.d_mtrx_ion = mdarray<double, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);

@@ -74,8 +74,14 @@ class Profiler
         }
 };
 
+#ifdef __GNUC__
+#define function_name__ __PRETTY_FUNCTION__
+#else
+#define function_name__ __func__
+#endif
+
 #ifdef __PROFILE
-  #define PROFILE() debug::Profiler profiler__(__func__, __FILE__, __LINE__);
+  #define PROFILE() debug::Profiler profiler__(function_name__, __FILE__, __LINE__);
 #else
   #define PROFILE()
 #endif

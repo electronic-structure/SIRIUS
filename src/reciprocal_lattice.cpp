@@ -120,9 +120,11 @@ void Reciprocal_lattice::fix_q_radial_functions(mdarray<double, 4>& qrf)
                 for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
                 {
                     int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                    memcpy(&qrf(0, l3, idx, iat), &atom_type->uspp().q_radial_functions(0, idx), 
+                    memcpy(&qrf(0, l3, idx, iat), &atom_type->uspp().q_radial_functions_l(0, idx, l3), 
                            atom_type->num_mt_points() * sizeof(double));
-                    atom_type->fix_q_radial_function(l3, idxrf1, idxrf2, &qrf(0, l3, idx, iat));
+                    
+                    if (atom_type->uspp().num_q_coefs)
+                        atom_type->fix_q_radial_function(l3, idxrf1, idxrf2, &qrf(0, l3, idx, iat));
                 }
             }
         }

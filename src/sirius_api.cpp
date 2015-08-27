@@ -1974,7 +1974,8 @@ void sirius_set_atom_type_dion(char* label__,
     matrix<double> d_mtrx_ion(dion__, *num_beta__, *num_beta__);
     type->set_d_mtrx_ion(d_mtrx_ion);
 }
-    
+
+// This must be called prior to sirius_set_atom_type_q_rf
 void sirius_set_atom_type_beta_rf(char* label__,
                                   int32_t* num_beta__,
                                   int32_t* beta_l__,
@@ -1986,12 +1987,14 @@ void sirius_set_atom_type_beta_rf(char* label__,
     sirius::Atom_type* type = sim_ctx->unit_cell().atom_type(std::string(label__));
 
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
+    type->uspp().lmax = 0;
     type->uspp().num_beta_radial_functions = *num_beta__;
     type->uspp().beta_l = std::vector<int>(*num_beta__);
     type->uspp().num_beta_radial_points = std::vector<int>(*num_beta__);
     for (int i = 0; i < *num_beta__; i++)
     {
         type->uspp().beta_l[i] = beta_l__[i];
+        type->uspp().lmax = std::max(type->uspp().lmax, 2 * beta_l__[i]);
         type->uspp().num_beta_radial_points[i] = num_mesh_points__[i];
     }
     type->uspp().beta_radial_functions = mdarray<double, 2>(type->num_mt_points(), *num_beta__);
@@ -2003,7 +2006,8 @@ void sirius_set_atom_type_q_rf(char* label__,
                                int32_t* lmax_q__,
                                double* q_coefs__,
                                double* rinner__,
-                               double* q_rf__)
+                               double* q_rf__,
+                               int32_t* lmax__)
 {
     PROFILE();
     sirius::Atom_type* type = sim_ctx->unit_cell().atom_type(std::string(label__));
@@ -2011,15 +2015,22 @@ void sirius_set_atom_type_q_rf(char* label__,
     type->uspp().num_q_coefs = *num_q_coefs__;
     int nbeta = type->uspp().num_beta_radial_functions;
     
-    mdarray<double, 4> q_coefs(q_coefs__, *num_q_coefs__, *lmax_q__ + 1, nbeta, nbeta);
-    type->uspp().q_coefs = mdarray<double, 4>(*num_q_coefs__, *lmax_q__ + 1, nbeta, nbeta);
-    q_coefs >> type->uspp().q_coefs;
+    /* copy interpolating coefficients */
+    if (*num_q_coefs__ > 0)
+    {
+        mdarray<double, 4> q_coefs(q_coefs__, *num_q_coefs__, *lmax_q__ + 1, nbeta, nbeta);
+        type->uspp().q_coefs = mdarray<double, 4>(*num_q_coefs__, *lmax_q__ + 1, nbeta, nbeta);
+        q_coefs >> type->uspp().q_coefs;
+    }
     
     type->uspp().q_functions_inner_radii = std::vector<double>(*lmax_q__ + 1);
     for (int l = 0; l <= *lmax_q__; l++) type->uspp().q_functions_inner_radii[l] = rinner__[l];
     
-    mdarray<double, 2> q_rf(q_rf__, type->num_mt_points(), nbeta * (nbeta + 1) / 2);
-    type->uspp().q_radial_functions = mdarray<double, 2>(type->num_mt_points(), nbeta * (nbeta + 1) / 2);
+    /* temporary wrapper */
+    mdarray<double, 3> q_rf(q_rf__, type->num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * (*lmax__) + 1);
+
+    /* allocate space for radial functions of Q operator */
+    type->uspp().q_radial_functions_l = mdarray<double, 3>(type->num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type->uspp().lmax + 1);
 
     for (int nb = 0; nb < nbeta; nb++)
     {
@@ -2028,7 +2039,24 @@ void sirius_set_atom_type_q_rf(char* label__,
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
 
-            memcpy(&type->uspp().q_radial_functions(0, ijv), &q_rf(0, ijv), type->num_mt_points() * sizeof(double));
+            if (*lmax__ == 0)
+            {
+                for (int l = 0; l <= 2 * type->uspp().lmax; l++)
+                    memcpy(&type->uspp().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, 0), type->num_mt_points() * sizeof(double));
+            } 
+            else if (*lmax__ ==  type->uspp().lmax)
+            {
+                for (int l = 0; l <= 2 * type->uspp().lmax; l++)
+                    memcpy(&type->uspp().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type->num_mt_points() * sizeof(double));
+            }
+            else
+            {
+                std::stringstream s;
+                s << "wrong lmax" << std::endl
+                  << "lmax: " << *lmax__ << std::endl 
+                  << "lmax_beta: " << type->uspp().lmax;
+                TERMINATE(s);
+            }
         }
     }
 }
@@ -2633,5 +2661,14 @@ void FORTRAN(sirius_potential_checksum)()
 {
     potential->checksum();
 }
+
+void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
+{
+    assert(*ndims__ > 0);
+    std::vector<int> dims(*ndims__);
+    for (int i = 0; i < *ndims__; i++) dims[i] = dims__[i];
+    sim_param->set_mpi_grid_dims(dims);
+}
+
 
 } // extern "C"
