@@ -424,6 +424,8 @@ class FFT3D<CPU>
 
         ~FFT3D()
         {
+            PROFILE();
+
             for (int i = 0; i < num_fft_threads_; i++)
             {
                 fftw_free(fftw_buffer_[i]);

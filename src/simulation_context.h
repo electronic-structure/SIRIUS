@@ -123,6 +123,8 @@ class Simulation_context
 
         ~Simulation_context()
         {
+            PROFILE();
+
             if (fft_ != nullptr) delete fft_;
             if (fft_coarse_ != nullptr) delete fft_coarse_;
             #ifdef __GPU
