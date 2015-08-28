@@ -70,11 +70,11 @@ void Potential::generate_D_operator_matrix()
                     for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
                     {
                         int ig = (int)spl_num_gvec_[igloc];
-                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * std::conj(rl->gvec_phase_factor(ig, ia));
+                        veff_a(igloc, i) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor(ig, ia);
                     }
                 }
 
-                linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
+                linalg<CPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
                                   atom_type->uspp().q_pw.at<CPU>(), (int)spl_num_gvec_.local_size(),
                                   veff_a.at<CPU>(), (int)spl_num_gvec_.local_size(), d_tmp.at<CPU>(), d_tmp.ld());
             }
@@ -102,7 +102,7 @@ void Potential::generate_D_operator_matrix()
                                                 atom_pos.at<GPU>(),
                                                 veff_a.at<GPU>());
 
-                linalg<GPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
+                linalg<GPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
                                   atom_type->uspp().q_pw.at<GPU>(), (int)spl_num_gvec_.local_size(),
                                   veff_a.at<GPU>(), (int)spl_num_gvec_.local_size(), d_tmp.at<GPU>(), d_tmp.ld());
 
@@ -136,7 +136,8 @@ void Potential::generate_D_operator_matrix()
 
                         if (xi1 == xi2)
                         {
-                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = std::real(d_tmp(idx12, i)) * unit_cell_.omega() +
+                            assert(std::abs(d_tmp(idx12, i).imag()) < 1e-10);
+                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2) = d_tmp(idx12, i).real() * unit_cell_.omega() +
                                                                     atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
                         }
                         else

@@ -386,7 +386,18 @@ class Potential
 
         /// Generate plane-wave coefficients of the potential in the interstitial region
         void generate_pw_coefs();
-
+        
+        /// Calculate D operator from potential and augmentation charge.
+        /** The following matrix is computed:
+         *  \f[
+         *      D_{ij}^{\alpha} = \int Q_{ij}^{\alpha}({\bf r}) V({\bf r}) d{\bf r}
+         *  \f]
+         *  In the plane-wave domain this integrals transforms to a sum:
+         *  \f[
+         *      D_{ij}^{\alpha} = \sum_{\bf G} \langle Q_{ij}^{\alpha}|{\bf G}\rangle \langle{\bf G}|V \rangle = 
+         *        \sum_{\bf G} e^{i{\bf r}_{\alpha}{\bf G}} Q_{ij}^{A *}({\bf G}) V({\bf G})
+         *  \f]
+         */
         void generate_D_operator_matrix();
 
         void check_potential_continuity_at_mt();

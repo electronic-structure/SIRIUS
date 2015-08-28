@@ -19,7 +19,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     mdarray<double_complex, 2> phi(ngk, ngk);
     mdarray<double_complex, 2> hphi(ngk, ngk);
     mdarray<double_complex, 2> ophi(ngk, ngk);
-    mdarray<double_complex, 1> kappa(ngk * ngk);
+    mdarray<double_complex, 1> kappa;
     
     std::vector<double> eval(ngk);
 
@@ -56,6 +56,15 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, ngk, phi, hphi, ophi, kappa, packed_mtrx_offset,
                      d_mtrx_packed, q_mtrx_packed);
         
+    Utils::check_hermitian("h", hphi, ngk);
+    Utils::check_hermitian("o", ophi, ngk);
+
+    auto z1 = hphi.checksum();
+    auto z2 = ophi.checksum();
+
+    printf("checksum(h): %18.10f %18.10f\n", z1.real(), z1.imag());
+    printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
+
     if (gen_evp_solver()->solve(ngk, ngk, ngk, num_bands, hphi.at<CPU>(), hphi.ld(), ophi.at<CPU>(), ophi.ld(), 
                                 &eval[0], psi.at<CPU>(), psi.ld()))
     {

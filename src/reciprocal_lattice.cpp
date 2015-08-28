@@ -166,7 +166,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
 
                             int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                             
-                            if (l3 >= abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
+                            if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
                             {
                                 for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
                                     s[ir] = jl(ir, l3, iat) * qrf(ir, l3, idx, iat);
@@ -255,6 +255,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 }
             }
         }
+
         comm_.bcast(&atom_type->uspp().q_mtrx(0, 0), (int)atom_type->uspp().q_mtrx.size(), 0);
         #ifdef __PRINT_OBJECT_CHECKSUM
         auto z = atom_type->uspp().q_pw.checksum();
