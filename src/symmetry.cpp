@@ -148,23 +148,6 @@ Symmetry::~Symmetry()
     spg_free_dataset(spg_dataset_);
 }
 
-//matrix3d<int> Symmetry::rot_mtrx(int isym__)
-//{
-//    int rot_mtrx_lat[3][3];
-//    for (int i = 0; i < 3; i++)
-//    {
-//        for (int j = 0; j < 3; j++) rot_mtrx_lat[i][j] = spg_dataset_->rotations[isym__][i][j];
-//    }
-//
-//    return matrix3d<int>(rot_mtrx_lat);
-//}
-//
-//matrix3d<double> Symmetry::rot_mtrx_cart(int isym__)
-//{
-//    return lattice_vectors_ * matrix3d<double>(rot_mtrx(isym__)) * inverse_lattice_vectors_;
-//}
-//
-
 matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
 {
     double alpha = euler_angles[0];
@@ -240,15 +223,6 @@ vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
     return angles;
 }
 
-//int Symmetry::proper_rotation(int isym__)
-//{
-//    int p = rot_mtrx(isym__).det();
-//
-//    if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
-//
-//    return p;
-//}
-
 int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                               vector3d<int> is_shift__,
                                               mdarray<double, 2>& kp__,
@@ -298,6 +272,8 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
 
 void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
 {
+    PROFILE();
+
     for (int isym = 0; isym < num_mag_sym(); isym++)
     {
         auto sm = magnetic_group_symmetry(isym).spg_op.R;

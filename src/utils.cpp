@@ -250,12 +250,12 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> c
                              radius__ * std::sin(th) * std::sin(ph),
                              radius__ * std::cos(th));
         auto f = minv * pos;
-        limits[0] = std::max(limits[0], 2 * int(f[0]) + 1);
-        limits[1] = std::max(limits[1], 2 * int(f[1]) + 1);
-        limits[2] = std::max(limits[2], 2 * int(f[2]) + 1);
+        limits[0] = std::max(limits[0], 2 * int(f[0] + 1));
+        limits[1] = std::max(limits[1], 2 * int(f[1] + 1));
+        limits[2] = std::max(limits[2], 2 * int(f[2] + 1));
     };
 
-    int num_points = 500;
+    int num_points = 5000;
 
     test_point(0, 0);
     test_point(theta, phi);
