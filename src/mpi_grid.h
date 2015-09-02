@@ -189,11 +189,6 @@ class MPI_grid
 
     public:
 
-        //== // Default constructor
-        //== MPI_grid() 
-        //== {
-        //== }
-
         MPI_grid(std::vector<int> const& dimensions__,
                  Communicator const& parent_communicator__) 
             : dimensions_(dimensions__),

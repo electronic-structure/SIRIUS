@@ -7,7 +7,7 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--enable-mpi", "--enable-openmp", "--enable-threads"]
+              ["--enable-mpi", "--enable-openmp", "--enable-threads", "--enable-debug", "--enable-debug-malloc"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
               ["--disable-shared"]

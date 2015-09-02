@@ -83,7 +83,7 @@ class FFT3D<CPU>
 
         std::vector<double_complex*> fftw_buffer_z_;
         std::vector<double_complex*> fftw_buffer_xy_;
-        
+
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
         {    
@@ -388,7 +388,7 @@ class FFT3D<CPU>
                     plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                          (fftw_complex*)fftw_buffer_[i], 
                                                          (fftw_complex*)fftw_buffer_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
-
+                    
                     plan_forward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                         (fftw_complex*)fftw_buffer_[i], 
                                                         (fftw_complex*)fftw_buffer_[i], FFTW_FORWARD, FFTW_ESTIMATE);
@@ -495,7 +495,11 @@ class FFT3D<CPU>
             assert(thread_id__ < num_fft_threads_);
             
             memset(fftw_buffer_[thread_id__], 0, local_size() * sizeof(double_complex));
-            for (int i = 0; i < n__; i++) fftw_buffer_[thread_id__][map__[i]] = data__[i];
+            for (int i = 0; i < n__; i++)
+            {
+                assert(map__[i] < local_size());
+                fftw_buffer_[thread_id__][map__[i]] = data__[i];
+            }
         }
 
         template<typename T>

@@ -2093,15 +2093,24 @@ void sirius_symmetrize_density()
     dft_ground_state->symmetrize_density();
 }
 
-void sirius_get_rho_pw(double_complex* rho_pw__)
+void sirius_get_rho_pw(int32_t* num_gvec__, 
+                       double_complex* rho_pw__)
 {
+    PROFILE();
+
     int num_gvec = sim_ctx->gvec().num_gvec();
+    assert(*num_gvec__ == num_gvec);
     memcpy(rho_pw__, &density->rho()->f_pw(0), num_gvec * sizeof(double_complex));
 }
 
-void sirius_set_rho_pw(double_complex* rho_pw__)
+void sirius_set_rho_pw(int32_t* num_gvec__,
+                       double_complex* rho_pw__)
 {
-    memcpy(&density->rho()->f_pw(0), rho_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
+    PROFILE();
+
+    int num_gvec = sim_ctx->gvec().num_gvec();
+    assert(*num_gvec__ == num_gvec);
+    memcpy(&density->rho()->f_pw(0), rho_pw__, num_gvec * sizeof(double_complex));
     density->rho()->fft_transform(1);
 }
 
