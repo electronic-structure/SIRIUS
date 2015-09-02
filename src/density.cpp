@@ -30,8 +30,7 @@ namespace sirius {
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 {
-    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-        rho_->set_mt_ptr(rhomt);
+    if (parameters_.full_potential()) rho_->set_mt_ptr(rhomt);
     rho_->set_it_ptr(rhoir);
 }
 

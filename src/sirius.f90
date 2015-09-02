@@ -264,6 +264,7 @@ interface
 
     subroutine sirius_augment_density(kset_id)&
        &bind(C, name="sirius_augment_density")
+        integer,                 intent(in) :: kset_id
     end subroutine
 
     subroutine sirius_density_mixer_initialize()&
@@ -577,6 +578,10 @@ interface
         complex(8),              intent(out) :: apwalm
         integer,                 intent(in)  :: ngkmax
         integer,                 intent(in)  :: apwordmax
+    end subroutine
+
+    subroutine sirius_write_json_output()&
+       &bind(C, name="sirius_write_json_output")
     end subroutine
 
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&

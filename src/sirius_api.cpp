@@ -447,7 +447,7 @@ void sirius_get_mt_points(char* label__, double* mt_points__)
 void sirius_get_num_fft_grid_points(int32_t* num_grid_points__)
 {
     PROFILE();
-    *num_grid_points__ = sim_ctx->fft()->size();
+    *num_grid_points__ = sim_ctx->fft()->local_size();
 }
 
 void sirius_get_num_bands(int32_t* num_bands)
@@ -1024,11 +1024,69 @@ void FORTRAN(sirius_plot_potential)(void)
 //**     sim_param->print_rti();
 //** }
 
-void FORTRAN(sirius_write_json_output)(void)
+void sirius_write_json_output(void)
 {
     PROFILE();
-    TERMINATE("aaa");
-    //sim_param->write_json_output();
+
+    auto ts = sirius::Timer::collect_timer_stats();
+    if (Platform::rank() == 0)
+    {
+        std::string fname = std::string("output_") + sim_ctx->start_time_tag() + std::string(".json");
+        JSON_write jw(fname);
+        
+        //== jw.single("git_hash", git_hash);
+        //== jw.single("build_date", build_date);
+        //== jw.single("num_ranks", ctx.comm().size());
+        //== jw.single("max_num_threads", Platform::max_num_threads());
+        //== //jw.single("cyclic_block_size", p->cyclic_block_size());
+        //== jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
+        //== std::vector<int> fftgrid(3);
+        //== for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft()->size(i);
+        //== jw.single("fft_grid", fftgrid);
+        //== jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
+        //== jw.single("num_atoms", ctx.unit_cell().num_atoms());
+        //== jw.single("num_fv_states", ctx.parameters().num_fv_states());
+        //== jw.single("num_bands", ctx.parameters().num_bands());
+        //== jw.single("aw_cutoff", ctx.parameters().aw_cutoff());
+        //== jw.single("pw_cutoff", ctx.parameters().pw_cutoff());
+        //== jw.single("omega", ctx.unit_cell().omega());
+
+        //== jw.begin_set("energy");
+        //== jw.single("total", etot, 8);
+        //== jw.single("evxc", evxc, 8);
+        //== jw.single("eexc", eexc, 8);
+        //== jw.single("evha", evha, 8);
+        //== jw.single("enuc", enuc, 8);
+        //== jw.end_set();
+        //== 
+        //== //** if (num_mag_dims())
+        //== //** {
+        //== //**     std::vector<double> v(3, 0);
+        //== //**     v[2] = rti().total_magnetization[0];
+        //== //**     if (num_mag_dims() == 3)
+        //== //**     {
+        //== //**         v[0] = rti().total_magnetization[1];
+        //== //**         v[1] = rti().total_magnetization[2];
+        //== //**     }
+        //== //**     jw.single("total_moment", v);
+        //== //**     jw.single("total_moment_len", Utils::vector_length(&v[0]));
+        //== //** }
+        //== 
+        //== //** jw.single("total_energy", total_energy());
+        //== //** jw.single("kinetic_energy", kinetic_energy());
+        //== //** jw.single("energy_veff", rti_.energy_veff);
+        //== //** jw.single("energy_vha", rti_.energy_vha);
+        //== //** jw.single("energy_vxc", rti_.energy_vxc);
+        //== //** jw.single("energy_bxc", rti_.energy_bxc);
+        //== //** jw.single("energy_exc", rti_.energy_exc);
+        //== //** jw.single("energy_enuc", rti_.energy_enuc);
+        //== //** jw.single("core_eval_sum", rti_.core_eval_sum);
+        //== //** jw.single("valence_eval_sum", rti_.valence_eval_sum);
+        //== //** jw.single("band_gap", rti_.band_gap);
+        //== //** jw.single("energy_fermi", rti_.energy_fermi);
+        
+        jw.single("timers", ts);
+    }
 }
 
 void FORTRAN(sirius_get_occupation_matrix)(int32_t* atom_id, double_complex* occupation_matrix)
