@@ -142,7 +142,7 @@ class FFT3D<CPU>
                 rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
             }
 
-            Timer t1("fft|comm");
+            Timer t1("fft|comm_inner");
             comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
                            data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
             t1.stop();
@@ -259,7 +259,7 @@ class FFT3D<CPU>
             }
             t1.stop();
 
-            Timer t2("fft|comm");
+            Timer t2("fft|comm_inner");
             comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
                            data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
             t2.stop();
@@ -812,6 +812,28 @@ class Gvec
                     auto G = gvec_by_full_index(gvec_full_index_(ig));
                     index_by_gvec_(G[0], G[1], G[2]) = ig;
                 }
+            }
+
+            if (build_reverse_mapping__ && true)
+            {
+                int num_gvec_reduced_ = 0;
+                mdarray<int, 1> flg(num_gvec_);
+                flg.zero();
+
+                for (int ig = 0; ig < num_gvec_; ig++)
+                {
+                    if (!flg(ig))
+                    {
+                        flg(ig) = 1;
+                        num_gvec_reduced_++;
+                    }
+
+                    auto G = gvec_by_full_index(gvec_full_index_(ig));
+                    auto mG = G * (-1);
+                    int igm = index_by_gvec_(mG[0], mG[1], mG[2]);
+                    flg(igm) = 1;
+                }
+                printf("num_gvec_ : %i, num_gvec_reduced_ : %i\n", num_gvec_, num_gvec_reduced_);
             }
         }
 

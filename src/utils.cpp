@@ -272,7 +272,7 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> c
         test_point(theta, phi);
     }
     
-    for (int x: {0, 1, 2}) limits[x] = int(max_lim[x] - min_lim[x] + 0.001);
+    for (int x: {0, 1, 2}) limits[x] = int(max_lim[x] - min_lim[x] + 0.001) + 1;
 
 
     //vector3d<int> limits;
