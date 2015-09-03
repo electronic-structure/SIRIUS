@@ -235,6 +235,12 @@ class Simulation_context
                 #ifdef __GPU
                 fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
                 #endif
+
+                if (Platform::rank() == 0)
+                {
+                    printf("fft_grid        : %i %i %i\n", fft_->size(0), fft_->size(1), fft_->size(2));
+                    printf("fft_grid_coarse : %i %i %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2));
+                }
             }
 
             #ifdef __PRINT_MEMORY_USAGE

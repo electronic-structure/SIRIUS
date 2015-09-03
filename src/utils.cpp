@@ -243,16 +243,20 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> c
 
     auto minv = inverse(lattice_vectors__);
     vector3d<int> limits(0, 0, 0);
+    double max_lim[] = {0, 0, 0};
+    double min_lim[] = {0, 0, 0};
 
-    auto test_point = [&minv, radius__, &limits](double th, double ph)
+    auto test_point = [&minv, radius__, &limits, &max_lim, &min_lim](double th, double ph)
     {
         vector3d<double> pos(radius__ * std::sin(th) * std::cos(ph),
                              radius__ * std::sin(th) * std::sin(ph),
                              radius__ * std::cos(th));
         auto f = minv * pos;
-        limits[0] = std::max(limits[0], int(2 * std::abs(f[0])) + 1);
-        limits[1] = std::max(limits[1], int(2 * std::abs(f[1])) + 1);
-        limits[2] = std::max(limits[2], int(2 * std::abs(f[2])) + 1);
+        for (int x: {0, 1, 2})
+        {
+            max_lim[x] = std::max(max_lim[x], std::floor(f[x]));
+            min_lim[x] = std::min(min_lim[x], std::ceil(f[x]));
+        }
     };
 
     int num_points = 5000;
@@ -268,7 +272,7 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> c
         test_point(theta, phi);
     }
     
-
+    for (int x: {0, 1, 2}) limits[x] = int(max_lim[x] - min_lim[x] + 0.001);
 
 
     //vector3d<int> limits;
