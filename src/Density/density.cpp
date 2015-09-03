@@ -73,7 +73,16 @@ Density::Density(Simulation_context& ctx__)
             }
         }
 
-        assert((int)lf_gvec_.size() == ctx_.gvec_coarse().num_gvec());
+        if ((int)lf_gvec_.size() != ctx_.gvec_coarse().num_gvec())
+        {
+            std::stringstream s;
+            s << "Wrong count of low-frequency G-vectors" << std::endl
+              << "number of found low-frequency G-vectors: " << lf_gvec_.size() << std::endl
+              << "number of coarse G-vectors: " << ctx_.gvec_coarse().num_gvec() << std::endl
+              << "G-vector cutoff: " <<  parameters_.gk_cutoff();
+            TERMINATE(s);
+        }
+
         assert((int)hf_gvec_.size() == (ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()));
 
         high_freq_mixer_ = new Linear_mixer<double_complex>((ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()),

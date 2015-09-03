@@ -802,8 +802,8 @@ void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf)
         if (x < uspp_.q_functions_inner_radii[l])
         {
             qrf[ir] = uspp_.q_coefs(0, l, i, j);
-            for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * pow(x2, n);
-            qrf[ir] *= pow(x, l + 2);
+            for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * std::pow(x2, n);
+            qrf[ir] *= std::pow(x, l + 2);
         }
     }
 }

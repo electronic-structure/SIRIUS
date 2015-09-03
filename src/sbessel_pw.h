@@ -107,34 +107,29 @@ class Spherical_Bessel_functions
 {
     private:
 
-        std::vector< Spline<double>* > sbessel_;
+        std::vector< Spline<double> > sbessel_;
 
     public:
 
         Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double nu__)
         {
-            sbessel_ = std::vector< Spline<double>* >(lmax__ + 1);
-            for (int l = 0; l <= lmax__; l++) sbessel_[l] = new Spline<double>(rgrid__);
+            sbessel_ = std::vector< Spline<double> >(lmax__ + 1);
+            for (int l = 0; l <= lmax__; l++) sbessel_[l] = Spline<double>(rgrid__);
 
             std::vector<double> jl(lmax__ + 1);
             for (int ir = 0; ir < rgrid__.num_points(); ir++)
             {
                 double v = rgrid__[ir] * nu__;
                 gsl_sf_bessel_jl_array(lmax__, v, &jl[0]);
-                for (int l = 0; l <= lmax__; l++) (*sbessel_[l])[ir] = jl[l];
+                for (int l = 0; l <= lmax__; l++) sbessel_[l][ir] = jl[l];
             }
             
-            for (int l = 0; l < lmax__; l++) sbessel_[l]->interpolate();
-        }
-
-        ~Spherical_Bessel_functions()
-        {
-            for (auto s: sbessel_) delete s;
+            for (int l = 0; l < lmax__; l++) sbessel_[l].interpolate();
         }
 
         Spline<double> const& operator()(int i__) const
         {
-            return *sbessel_[i__];
+            return sbessel_[i__];
         }
 };
 

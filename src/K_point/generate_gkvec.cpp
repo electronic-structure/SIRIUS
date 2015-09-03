@@ -6,8 +6,7 @@ void K_point::generate_gkvec(double gk_cutoff)
 {
     PROFILE();
 
-    if ((gk_cutoff * unit_cell_.max_mt_radius() > double(parameters_.lmax_apw())) && 
-        parameters_.full_potential())
+    if (parameters_.full_potential() && (gk_cutoff * unit_cell_.max_mt_radius() > parameters_.lmax_apw()))
     {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 

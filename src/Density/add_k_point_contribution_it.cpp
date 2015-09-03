@@ -5,13 +5,6 @@
 namespace sirius {
 
 #ifdef __GPU
-//extern "C" void update_it_density_matrix_gpu(int fft_size, 
-//                                             int nfft_max, 
-//                                             int num_spins, 
-//                                             int num_mag_dims, 
-//                                             void* psi_it, 
-//                                             double* wt, 
-//                                             void* it_density_matrix);
 
 extern "C" void update_it_density_matrix_1_gpu(int fft_size, 
                                                int ispin,

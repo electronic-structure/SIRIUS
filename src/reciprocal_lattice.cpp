@@ -140,45 +140,91 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
     qri.zero();
     
     splindex<block> spl_num_gvec_shells(gvec_.num_shells(), comm_.size(), comm_.rank());
-    
-    #pragma omp parallel
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        sbessel_pw<double> jl(unit_cell_, lmax);
-        #pragma omp for
+        auto atom_type = unit_cell_.atom_type(iat);
+        int nrf = atom_type->mt_radial_basis_size();
+
+        mdarray<Spline<double>, 2> qrf_spline(2 * atom_type->indexr().lmax() + 1, nrf * (nrf + 1) / 2);
+        
+        for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
+        {
+            #pragma omp parallel for
+            for (int idx = 0; idx < nrf * (nrf + 1) / 2; idx++)
+            {
+                qrf_spline(l3, idx) = Spline<double>(atom_type->radial_grid());
+
+                for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
+                    qrf_spline(l3, idx)[ir] = qrf(ir, l3, idx, iat);
+                qrf_spline(l3, idx).interpolate();
+            }
+        }
+        #pragma omp parallel for
         for (int ishloc = 0; ishloc < (int)spl_num_gvec_shells.local_size(); ishloc++)
         {
             int igs = (int)spl_num_gvec_shells[ishloc];
-            jl.load(gvec_.shell_len(igs));
+            Spherical_Bessel_functions jl(2 * atom_type->indexr().lmax(), atom_type->radial_grid(), gvec_.shell_len(igs));
 
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
             {
-                auto atom_type = unit_cell_.atom_type(iat);
-                Spline<double> s(atom_type->radial_grid());
-
-                for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
+                for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
                 {
-                    for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
+                    int l2 = atom_type->indexr(idxrf2).l;
+                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
                     {
-                        int l2 = atom_type->indexr(idxrf2).l;
-                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                        int l1 = atom_type->indexr(idxrf1).l;
+
+                        int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                        
+                        if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
                         {
-                            int l1 = atom_type->indexr(idxrf1).l;
-
-                            int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                            
-                            if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
-                            {
-                                for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
-                                    s[ir] = jl(ir, l3, iat) * qrf(ir, l3, idx, iat);
-
-                                qri(idx, l3, iat, igs) = s.interpolate().integrate(0);
-                            }
+                            qri(idx, l3, iat, igs) = inner(jl(l3), qrf_spline(l3, idx), 0, atom_type->num_mt_points());
                         }
                     }
                 }
             }
         }
     }
+              
+    //#pragma omp parallel
+    //{
+    //    sbessel_pw<double> jl(unit_cell_, lmax);
+    //    #pragma omp for
+    //    for (int ishloc = 0; ishloc < (int)spl_num_gvec_shells.local_size(); ishloc++)
+    //    {
+    //        int igs = (int)spl_num_gvec_shells[ishloc];
+    //        jl.load(gvec_.shell_len(igs));
+
+    //        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    //        {
+    //            auto atom_type = unit_cell_.atom_type(iat);
+    //            Spline<double> s(atom_type->radial_grid());
+
+    //            for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
+    //            {
+    //                for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
+    //                {
+    //                    int l2 = atom_type->indexr(idxrf2).l;
+    //                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+    //                    {
+    //                        int l1 = atom_type->indexr(idxrf1).l;
+
+    //                        int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+    //                        
+    //                        if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
+    //                        {
+    //                            for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
+    //                                s[ir] = jl(ir, l3, iat) * qrf(ir, l3, idx, iat);
+
+    //                            qri(idx, l3, iat, igs) = s.interpolate().integrate(0);
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
     int ld = (int)(qri.size(0) * qri.size(1) * qri.size(2));
     comm_.allgather(&qri(0, 0, 0, 0), ld * (int)spl_num_gvec_shells.global_offset(), ld * (int)spl_num_gvec_shells.local_size());
 }
