@@ -1,16 +1,12 @@
 #include <sirius.h>
 
-void test_alltoall(int num_gkvec, int num_bands)
+double test_alltoall(int num_gkvec, int num_bands)
 {
     Communicator comm(MPI_COMM_WORLD);
-
 
     splindex<block> spl_gkvec(num_gkvec, comm.size(), comm.rank());
     splindex<block> spl_bands(num_bands, comm.size(), comm.rank());
 
-
-
-    
     matrix<double_complex> a(spl_gkvec.local_size(), num_bands);
     matrix<double_complex> b(num_gkvec, spl_bands.local_size());
 
@@ -55,14 +51,13 @@ void test_alltoall(int num_gkvec, int num_bands)
 
     t.start();
     comm.alltoall(&b(0, 0), &sendcounts[0], &sdispls[0], &a(0, 0), &recvcounts[0], &rdispls[0]);
-    tval = t.stop();
+    tval += t.stop();
 
     if (a.hash() != h) printf("wrong hash\n");
 
-    if (Platform::rank() == 0)
-    {
-        printf("alltoall time (sec) : %12.6f\n", tval);
-    }
+    double perf = 2 * num_gkvec * num_bands * sizeof(double_complex) / tval / (1 << 30);
+
+    return perf;
 }
 
 void test_alltoall_v2()
@@ -132,10 +127,26 @@ int main(int argn, char **argv)
 
     Platform::initialize(true);
 
-    for (int i = 0; i < repeat; i++) test_alltoall(num_gkvec, num_bands);
+    std::vector<double> perf(repeat);
+    double avg = 0;
+    for (int i = 0; i < repeat; i++)
+    {
+        perf[i] = test_alltoall(num_gkvec, num_bands);
+        avg += perf[i];
+    }
+    avg /= repeat;
+    double variance = 0;
+    for (int i = 0; i < repeat; i++) variance += std::pow(perf[i] - avg, 2);
+    variance /= repeat;
+    double sigma = std::sqrt(variance);
+    if (Platform::rank() == 0)
+    {
+        printf("average performance: %12.4f GB/sec.\n", avg);
+        printf("sigma: %12.4f GB/sec.\n", sigma);
+    }
 
-    test_alltoall_v2();
-    test_alltoall_v3();
+    //test_alltoall_v2();
+    //test_alltoall_v3();
 
     Platform::finalize();
 }
