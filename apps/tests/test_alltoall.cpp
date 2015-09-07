@@ -1,14 +1,31 @@
 #include <sirius.h>
 
-double test_alltoall(int num_gkvec, int num_bands)
+double test_alltoall(int num_gkvec__, int num_bands__, int num_groups__)
 {
-    Communicator comm(MPI_COMM_WORLD);
+    Communicator comm_world(MPI_COMM_WORLD);
 
-    splindex<block> spl_gkvec(num_gkvec, comm.size(), comm.rank());
+    int np = comm_world.size() / num_groups__;
+    if (np * num_groups__ != comm_world.size())
+    {
+        TERMINATE("wrong number of MPI ranks");
+    }
+
+    int num_bands = num_bands__ / num_groups__;
+    if (num_bands * num_groups__ != num_bands__)
+    {
+        TERMINATE("wrong number of bands");
+    }
+
+    std::vector<int> mpi_grid_dims = {np, num_groups__};
+    MPI_grid* mpi_grid = new MPI_grid(mpi_grid_dims, comm_world);
+
+    Communicator comm = mpi_grid->communicator(1 << 0);
+
+    splindex<block> spl_gkvec(num_gkvec__, comm.size(), comm.rank());
     splindex<block> spl_bands(num_bands, comm.size(), comm.rank());
 
     matrix<double_complex> a(spl_gkvec.local_size(), num_bands);
-    matrix<double_complex> b(num_gkvec, spl_bands.local_size());
+    matrix<double_complex> b(num_gkvec__, spl_bands.local_size());
 
     for (int i = 0; i < num_bands; i++)
     {
@@ -55,7 +72,9 @@ double test_alltoall(int num_gkvec, int num_bands)
 
     if (a.hash() != h) printf("wrong hash\n");
 
-    double perf = 2 * num_gkvec * num_bands * sizeof(double_complex) / tval / (1 << 30);
+    double perf = 2 * num_gkvec__ * num_bands__ * sizeof(double_complex) / tval / (1 << 30);
+
+    delete mpi_grid;
 
     return perf;
 }
@@ -112,6 +131,7 @@ int main(int argn, char **argv)
     args.register_key("--num_gkvec=", "{int} number of Gk-vectors");
     args.register_key("--num_bands=", "{int} number of bands");
     args.register_key("--repeat=", "{int} repeat test number of times");
+    args.register_key("--num_groups=", "{int} number of MPI groups");
 
     args.parse_args(argn, argv);
     if (argn == 1)
@@ -124,6 +144,7 @@ int main(int argn, char **argv)
     int num_gkvec = args.value<int>("num_gkvec");
     int num_bands = args.value<int>("num_bands");
     int repeat = args.value<int>("repeat", 1);
+    int num_groups = args.value<int>("num_groups", 1);
 
     Platform::initialize(true);
 
@@ -131,7 +152,7 @@ int main(int argn, char **argv)
     double avg = 0;
     for (int i = 0; i < repeat; i++)
     {
-        perf[i] = test_alltoall(num_gkvec, num_bands);
+        perf[i] = test_alltoall(num_gkvec, num_bands, num_groups);
         avg += perf[i];
     }
     avg /= repeat;
