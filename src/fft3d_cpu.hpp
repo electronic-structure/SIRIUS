@@ -147,10 +147,10 @@ class FFT3D<CPU>
                            data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
             t1.stop();
 
-            std::vector<double> z_times(num_fft_workers_, 0.0);
-            std::vector<int> z_counts(num_fft_workers_, 0);
-            std::vector<double> xy_times(num_fft_workers_, 0.0);
-            std::vector<int> xy_counts(num_fft_workers_, 0);
+            //std::vector<double> z_times(num_fft_workers_, 0.0);
+            //std::vector<int> z_counts(num_fft_workers_, 0);
+            //std::vector<double> xy_times(num_fft_workers_, 0.0);
+            //std::vector<int> xy_counts(num_fft_workers_, 0);
 
             Timer t2("fft|comp");
             #pragma omp parallel num_threads(num_fft_workers_)
@@ -170,10 +170,10 @@ class FFT3D<CPU>
                                lsz * sizeof(double_complex));
                     }
 
-                    double tt = omp_get_wtime();
+                    //double tt = omp_get_wtime();
                     fftw_execute(plan_backward_z_[tid]);
-                    z_times[tid] += (omp_get_wtime() - tt);
-                    z_counts[tid]++;
+                    //z_times[tid] += (omp_get_wtime() - tt);
+                    //z_counts[tid]++;
 
                     for (int rank = 0; rank < comm_.size(); rank++)
                     {
@@ -213,28 +213,28 @@ class FFT3D<CPU>
                 for (int i = 0; i < local_size_z_; i++)
                 {
                     memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][i * size_xy], sizeof(fftw_complex) * size_xy);
-                    double tt = omp_get_wtime();
+                    //double tt = omp_get_wtime();
                     fftw_execute(plan_backward_xy_[tid]);
-                    xy_times[tid] += (omp_get_wtime() - tt);
-                    xy_counts[tid]++;
+                    //xy_times[tid] += (omp_get_wtime() - tt);
+                    //xy_counts[tid]++;
                     memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
                 }
             }
             t2.stop();
 
-            if (Platform::rank() == 0)
-            {
-                std::cout << "----------------------------------------------------------------" << std::endl;
-                std::cout << "thread_id  | fft_z (num, throughput) | fft_xy (num, throughput) " << std::endl;
-                std::cout << "----------------------------------------------------------------" << std::endl;
-                for (int i = 0; i < num_fft_workers_; i++)
-                {
-                    double d1 = (z_counts[i] == 0) ? 0 : z_counts[i] / z_times[i];
-                    double d2 = (xy_counts[i] == 0) ? 0 : xy_counts[i] / xy_times[i];
-                    printf("   %2i      | %5i  %10.4e       |  %5i   %10.4e \n", i, z_counts[i], d1, xy_counts[i], d2);
-                }
-                std::cout << "----------------------------------------------------------------" << std::endl;
-            }
+            //if (Platform::rank() == 0)
+            //{
+            //    std::cout << "----------------------------------------------------------------" << std::endl;
+            //    std::cout << "thread_id  | fft_z (num, throughput) | fft_xy (num, throughput) " << std::endl;
+            //    std::cout << "----------------------------------------------------------------" << std::endl;
+            //    for (int i = 0; i < num_fft_workers_; i++)
+            //    {
+            //        double d1 = (z_counts[i] == 0) ? 0 : z_counts[i] / z_times[i];
+            //        double d2 = (xy_counts[i] == 0) ? 0 : xy_counts[i] / xy_times[i];
+            //        printf("   %2i      | %5i  %10.4e       |  %5i   %10.4e \n", i, z_counts[i], d1, xy_counts[i], d2);
+            //    }
+            //    std::cout << "----------------------------------------------------------------" << std::endl;
+            //}
         }
         
         void forward_custom(int num_xy_packed__, mdarray<int, 2> const& xy_packed_idx__)
