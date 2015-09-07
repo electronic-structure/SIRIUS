@@ -779,7 +779,9 @@ void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_oc
 void sirius_print_timers(void)
 {
     PROFILE();
+#ifdef __TIMER
     sirius::Timer::print();
+#endif
 }   
 
 void sirius_start_timer(char const* name__)
@@ -1028,6 +1030,7 @@ void sirius_write_json_output(void)
 {
     PROFILE();
 
+#ifdef __TIMER
     auto ts = sirius::Timer::collect_timer_stats();
     if (Platform::rank() == 0)
     {
@@ -1087,6 +1090,7 @@ void sirius_write_json_output(void)
         
         jw.single("timers", ts);
     }
+#endif
 }
 
 void FORTRAN(sirius_get_occupation_matrix)(int32_t* atom_id, double_complex* occupation_matrix)

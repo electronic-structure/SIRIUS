@@ -27,6 +27,7 @@
 
 #include "typedefs.h"
 
+//== #define __TIMER
 //== #define __TIMER_TIMEOFDAY
 //== #define __TIMER_MPI_WTIME
 #define __TIMER_CHRONO

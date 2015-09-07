@@ -57,6 +57,7 @@ class Timer
 {
     private:
         
+        #ifdef __TIMER
         /// string label of the timer
         std::string label_;
         
@@ -80,9 +81,11 @@ class Timer
         static std::map< std::string, std::vector<double> > timers_;
 
         static std::map< std::string, std::vector<double> > global_timers_;
+        #endif
     
     public:
         
+        #ifdef __TIMER
         Timer(std::string const& label__) 
             : label_(label__),
               comm_(nullptr),
@@ -93,8 +96,14 @@ class Timer
 
             start();
         }
-
-        Timer(std::string const& label__, int timer_type__) 
+        #else
+        Timer(std::string const& label__)
+        {
+        }
+        #endif
+        
+        #ifdef __TIMER
+        Timer(std::string const& label__, int timer_type__)
             : label_(label__),
               comm_(nullptr),
               active_(false),
@@ -116,7 +125,13 @@ class Timer
 
             start();
         }
+        #else
+        Timer(std::string const& label__, int timer_type__)
+        {
+        }
+        #endif
 
+        #ifdef __TIMER
         Timer(std::string const& label__, Communicator const& comm__) 
             : label_(label__),
               comm_(&comm__),
@@ -127,10 +142,17 @@ class Timer
 
             start();
         }
+        #else
+        Timer(std::string const& label__, Communicator const& comm__)
+        {
+        }
+        #endif
 
         ~Timer()
         {
+            #ifdef __TIMER
             if (active_) stop();
+            #endif
         }
 
         void start();
@@ -141,9 +163,12 @@ class Timer
 
         static void clear()
         {
+            #ifdef __TIMER
             timers_.clear();
+            #endif
         }
-
+        
+        #ifdef __TIMER
         static std::map< std::string, std::vector<double> >& timers()
         {
             return timers_;
@@ -163,6 +188,7 @@ class Timer
         static void print();
 
         static void delay(double dsec);
+        #endif
 };
 
 };

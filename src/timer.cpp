@@ -31,11 +31,14 @@ std::map<std::string, sirius::Timer*> ftimers;
 namespace sirius
 {
 
+#ifdef __TIMER
 std::map<std::string, std::vector<double> > Timer::timers_;
 std::map<std::string, std::vector<double> > Timer::global_timers_;
+#endif
 
 void Timer::start()
 {
+#ifdef __TIMER
     #ifndef NDEBUG
     if (omp_get_num_threads() != 1)
     {
@@ -59,10 +62,12 @@ void Timer::start()
     starting_time_ = std::chrono::high_resolution_clock::now();
     #endif
     active_ = true;
+#endif
 }
 
 double Timer::stop()
 {
+#ifdef __TIMER
     if (!active_)
     {
         printf("timer %s was not running\n", label_.c_str());
@@ -100,10 +105,14 @@ double Timer::stop()
     active_ = false;
 
     return val;
+#else
+    return 0;
+#endif
 }
 
 double Timer::value()
 {
+#ifdef __TIMER
     if (active_)
     {
         std::cout << "timer " << label_ << " is active";
@@ -126,10 +135,14 @@ double Timer::value()
     double d = 0;
     for (int i = 0; i < (int)values.size(); i++) d += values[i];
     return d;
+#else
+    return 0;
+#endif
 }
 
 extern "C" void print_cuda_timers();
 
+#ifdef __TIMER
 void Timer::print()
 {
     std::map< std::string, timer_stats> tstats = collect_timer_stats();
@@ -328,6 +341,7 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
 
     return tstats;
 }
+#endif
 
 };
 

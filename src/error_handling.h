@@ -81,7 +81,6 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
 
 #define STOP()                                              \
 {                                                           \
-    Timer::print();                                         \
     terminate(__FILE__, __LINE__, "terminated by request"); \
 }
 
