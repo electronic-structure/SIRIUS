@@ -142,19 +142,24 @@ class FFT3D<CPU>
                 rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
             }
 
-            Timer t1("fft|comm_inner");
-            comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
-                           data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
-            t1.stop();
+            memset(fftw_buffer_[0], 0, local_size() * sizeof(double_complex));
 
-            Timer t2("fft|comp");
             #pragma omp parallel num_threads(num_fft_workers_)
             {
                 int tid = omp_get_thread_num();
+
+                #pragma omp master
+                {
+                    Timer t1("fft|comm_inner");
+                    comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
+                                   data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
+                }
+                #pragma omp barrier
                 
                 #pragma omp for
                 for (int i = 0; i < (int)spl_n.local_size(); i++)
                 {
+                    /* collect z-column from temporary data_slice_ buffer */
                     for (int rank = 0; rank < comm_.size(); rank++)
                     {
                         int lsz = (int)spl_z_.local_size(rank);
@@ -175,30 +180,27 @@ class FFT3D<CPU>
                                lsz * sizeof(double_complex));
                     }
                 }
-            }
-            t2.stop();
+                #pragma omp barrier
 
-            t1.start();
-            comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
-                           data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
-            t1.stop();
-
-            t2.start();
-            memset(fftw_buffer_[0], 0, local_size() * sizeof(double_complex));
-
-            for (int n = 0; n < num_xy_packed__; n++)
-            {
-                int x = xy_packed_idx__(0, n);
-                int y = xy_packed_idx__(1, n);
-                for (int z = 0; z < local_size_z_; z++)
+                #pragma omp master
                 {
-                    fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
+                    Timer t1("fft|comm_inner");
+                    comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
+                                   data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
                 }
-            }
+                #pragma omp barrier
 
-            #pragma omp parallel num_threads(num_fft_workers_)
-            {
-                int tid = omp_get_thread_num();
+                #pragma omp parallel for
+                for (int n = 0; n < num_xy_packed__; n++)
+                {
+                    int x = xy_packed_idx__(0, n);
+                    int y = xy_packed_idx__(1, n);
+                    for (int z = 0; z < local_size_z_; z++)
+                    {
+                        fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
+                    }
+                }
+                #pragma omp barrier
                 
                 #pragma omp for
                 for (int i = 0; i < local_size_z_; i++)
@@ -208,7 +210,6 @@ class FFT3D<CPU>
                     memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
                 }
             }
-            t2.stop();
         }
         
         void forward_custom(int num_xy_packed__, mdarray<int, 2> const& xy_packed_idx__)
@@ -216,8 +217,6 @@ class FFT3D<CPU>
             Timer t0("sirius::FFT3D<CPU>::forward_custom");
 
             int size_xy = size(0) * size(1);
-
-            Timer t1("fft|comp");
 
             splindex<block> spl_n(num_xy_packed__, comm_.size(), comm_.rank());
 
@@ -246,28 +245,27 @@ class FFT3D<CPU>
                     fftw_execute(plan_forward_xy_[tid]);
                     memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
                 }
-            }
+                #pragma omp barrier
 
-            for (int n = 0; n < num_xy_packed__; n++)
-            {
-                int x = xy_packed_idx__(0, n);
-                int y = xy_packed_idx__(1, n);
-                for (int z = 0; z < local_size_z_; z++)
+                #pragma omp for
+                for (int n = 0; n < num_xy_packed__; n++)
                 {
-                    data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
+                    int x = xy_packed_idx__(0, n);
+                    int y = xy_packed_idx__(1, n);
+                    for (int z = 0; z < local_size_z_; z++)
+                    {
+                        data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
+                    }
                 }
-            }
-            t1.stop();
-
-            Timer t2("fft|comm_inner");
-            comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
-                           data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
-            t2.stop();
-
-            t1.start();
-            #pragma omp parallel num_threads(num_fft_workers_)
-            {
-                int tid = omp_get_thread_num();
+                #pragma omp barrier
+                
+                #pragma omp master
+                {
+                    Timer t1("fft|comm_inner");
+                    comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
+                                   data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
+                }
+                #pragma omp barrier
                 
                 #pragma omp for
                 for (int i = 0; i < (int)spl_n.local_size(); i++)
@@ -292,18 +290,21 @@ class FFT3D<CPU>
                                lsz * sizeof(double_complex));
                     }
                 }
+                #pragma omp barrier
+
+                #pragma omp master
+                {
+                    Timer t1("fft|comm_inner");
+                    comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
+                                   data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
+                }
+                #pragma omp barrier
+
+                double norm = 1.0 / size();
+                double_complex* ptr = data_slab_.at<CPU>();
+                #pragma omp for schedule(static)
+                for (int i = 0; i < local_size_z_ * num_xy_packed__; i++) ptr[i] *= norm;
             }
-            t1.stop();
-
-            t2.start();
-            comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
-                           data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
-            t2.stop();
-
-            double norm = 1.0 / size();
-            double_complex* ptr = data_slab_.at<CPU>();
-            #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-            for (int i = 0; i < local_size_z_ * num_xy_packed__; i++) ptr[i] *= norm;
         }
         
     public:
