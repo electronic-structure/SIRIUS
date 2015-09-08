@@ -2,6 +2,8 @@
 
 using namespace sirius;
 
+#define NOW std::chrono::high_resolution_clock::now()
+
 void test_fft_1d(int fft_size, int num_fft, int repeat)
 {
     int num_fft_workers = Platform::max_num_threads();
@@ -18,8 +20,8 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
                                               FFTW_BACKWARD, FFTW_ESTIMATE);
     }
 
-    mdarray<double_complex, 2> psi(fft_size, num_fft_workers);
-    for (int i = 0; i < num_fft_workers; i++)
+    mdarray<double_complex, 2> psi(fft_size, num_fft);
+    for (int i = 0; i < num_fft; i++)
     {
         for (int j = 0; j < fft_size; j++) psi(j, i) = type_wrapper<double_complex>::random();
     }
@@ -28,8 +30,8 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
     times.zero();
     mdarray<int, 2> counts(num_fft_workers, repeat);
     counts.zero();
-    
-    double tot_time = -omp_get_wtime();
+
+    auto t0 = NOW;
     for (int i = 0; i < repeat; i++)
     {
         #pragma omp parallel num_threads(num_fft_workers)
@@ -39,16 +41,16 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
             #pragma omp for
             for (int j = 0; j < num_fft; j++)
             {
-                memcpy(fftw_buffer_z[tid], &psi(0, tid), fft_size * sizeof(double_complex));
-                double tt = omp_get_wtime();
+                memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
+                auto tt = NOW;
                 fftw_execute(plan_backward_z[tid]);
-                times(tid, i) += (omp_get_wtime() - tt);
+                times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
                 counts(tid, i)++;
             }
         }
     }
-    tot_time += omp_get_wtime();
-    
+    double tot_time = std::chrono::duration_cast< std::chrono::duration<double> >(NOW - t0).count();
+
     Communicator comm_world(MPI_COMM_WORLD);
     pstdout pout(comm_world);
     pout.printf("\n");
