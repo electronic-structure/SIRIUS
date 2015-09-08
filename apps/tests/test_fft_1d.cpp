@@ -1,11 +1,12 @@
 #include <sirius.h>
+#include <thread>
 #include "kiss_fft.h"
 
 using namespace sirius;
 
 #define NOW std::chrono::high_resolution_clock::now()
 
-template <bool use_fftw>
+template <bool use_fftw, bool use_std_thread>
 void test_fft_1d(int fft_size, int num_fft, int repeat)
 {
     kiss_fft_cfg cfg = kiss_fft_alloc( fft_size, false ,0,0 );
@@ -41,25 +42,58 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
     auto t0 = NOW;
     for (int i = 0; i < repeat; i++)
     {
-        #pragma omp parallel num_threads(num_fft_workers)
+        if (use_std_thread)
         {
-            int tid = omp_get_thread_num();
-
-            #pragma omp for
-            for (int j = 0; j < num_fft; j++)
+            std::vector<std::thread> threads;
+            for (int tid = 0; tid < num_fft_workers; tid++)
             {
-                memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
-                auto tt = NOW;
-                if (use_fftw)
+                threads.push_back(std::thread([tid, i, num_fft_workers, num_fft, &times, &counts, repeat, &fftw_buffer_z,
+                                               &fftw_out_buffer_z, &cfg, &plan_backward_z, fft_size, &psi]()
                 {
-                    fftw_execute(plan_backward_z[tid]);
-                }
-                else
+                    for (int j = 0; j < num_fft; j++)
+                    {
+                        if (j % num_fft_workers == tid)
+                        {
+                            memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
+                            auto tt = NOW;
+                            if (use_fftw)
+                            {
+                                fftw_execute(plan_backward_z[tid]);
+                            }
+                            else
+                            {
+                                kiss_fft(cfg, (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
+                            }
+                            times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
+                            counts(tid, i)++;
+                        }
+                    }
+                }));
+            }
+            for (auto& t: threads) t.join();
+        }
+        else
+        {
+            #pragma omp parallel num_threads(num_fft_workers)
+            {
+                int tid = omp_get_thread_num();
+
+                #pragma omp for
+                for (int j = 0; j < num_fft; j++)
                 {
-                    kiss_fft(cfg , (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
+                    memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
+                    auto tt = NOW;
+                    if (use_fftw)
+                    {
+                        fftw_execute(plan_backward_z[tid]);
+                    }
+                    else
+                    {
+                        kiss_fft(cfg, (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
+                    }
+                    times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
+                    counts(tid, i)++;
                 }
-                times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
-                counts(tid, i)++;
             }
         }
     }
@@ -133,11 +167,11 @@ int main(int argn, char** argv)
 
     if (use_fftw)
     {
-        test_fft_1d<true>(fft_size, num_fft, repeat);
+        test_fft_1d<true, true>(fft_size, num_fft, repeat);
     }
     else
     {
-        test_fft_1d<false>(fft_size, num_fft, repeat);
+        test_fft_1d<false, true>(fft_size, num_fft, repeat);
     }
 
     Platform::finalize();
