@@ -5,6 +5,7 @@ using namespace sirius;
 
 #define NOW std::chrono::high_resolution_clock::now()
 
+template <bool use_fftw>
 void test_fft_1d(int fft_size, int num_fft, int repeat)
 {
     kiss_fft_cfg cfg = kiss_fft_alloc( fft_size, false ,0,0 );
@@ -49,8 +50,14 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
             {
                 memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
                 auto tt = NOW;
-                //fftw_execute(plan_backward_z[tid]);
-                kiss_fft(cfg , (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
+                if (use_fftw)
+                {
+                    fftw_execute(plan_backward_z[tid]);
+                }
+                else
+                {
+                    kiss_fft(cfg , (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
+                }
                 times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
                 counts(tid, i)++;
             }
@@ -107,6 +114,7 @@ int main(int argn, char** argv)
     args.register_key("--fft_size=", "{int} size of 1D FFT");
     args.register_key("--num_fft=", "{int} number of FFTs inside one measurment");
     args.register_key("--repeat=", "{int} number of measurments");
+    args.register_key("--use_fftw=", "{int} use FFTW library");
 
     args.parse_args(argn, argv);
     if (argn == 1)
@@ -119,10 +127,18 @@ int main(int argn, char** argv)
     int fft_size = args.value<int>("fft_size", 128);
     int num_fft = args.value<int>("num_fft", 64);
     int repeat = args.value<int>("repeat", 100);
+    int use_fftw = args.value<int>("use_fftw", 1);
 
     Platform::initialize(1);
 
-    test_fft_1d(fft_size, num_fft, repeat);
+    if (use_fftw)
+    {
+        test_fft_1d<true>(fft_size, num_fft, repeat);
+    }
+    else
+    {
+        test_fft_1d<false>(fft_size, num_fft, repeat);
+    }
 
     Platform::finalize();
 }
