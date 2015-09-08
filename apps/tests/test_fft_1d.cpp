@@ -1,10 +1,16 @@
 #include <sirius.h>
 #include <thread>
+#include <papi.h>
 #include "kiss_fft.h"
 
 using namespace sirius;
 
 #define NOW std::chrono::high_resolution_clock::now()
+
+unsigned long int static thread_id(void)
+{
+    return omp_get_thread_num();
+}
 
 template <bool use_fftw, bool use_std_thread>
 void test_fft_1d(int fft_size, int num_fft, int repeat)
@@ -39,6 +45,44 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
     mdarray<int, 2> counts(num_fft_workers, repeat);
     counts.zero();
 
+    mdarray<long long, 2> values(2, num_fft_workers);
+    values.zero();
+    mdarray<long long, 2> tmp_values(2, num_fft_workers);
+
+    int Events[2] = {PAPI_TOT_CYC, PAPI_TOT_INS};
+    int num_hwcntrs = 0;
+
+    int retval;
+    /* Initialize the library */
+    retval = PAPI_library_init(PAPI_VER_CURRENT);
+    if (retval != PAPI_VER_CURRENT && retval > 0) 
+    {
+        TERMINATE("PAPI library version mismatch!\n");
+    }
+
+    if (PAPI_thread_init(thread_id) != PAPI_OK)
+    {
+        TERMINATE("PAPI_thread_init error");
+    }
+
+    /* Initialize the PAPI library and get the number of counters available */
+    if ((num_hwcntrs = PAPI_num_counters()) <= PAPI_OK)
+    {
+        TERMINATE("PAPI error");
+    }
+    printf("number of available counters: %i\n", num_hwcntrs);
+       
+    if (num_hwcntrs > 2) num_hwcntrs = 2;
+    
+    #pragma omp parallel num_threads(num_fft_workers)
+    {
+        /* Start counting events */
+        if (PAPI_start_counters(Events, num_hwcntrs) != PAPI_OK)
+        {
+            TERMINATE("PAPI error");
+        }
+    }
+            
     auto t0 = NOW;
     for (int i = 0; i < repeat; i++)
     {
@@ -78,11 +122,12 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
             {
                 int tid = omp_get_thread_num();
 
-                #pragma omp for
+                #pragma omp for schedule(static)
                 for (int j = 0; j < num_fft; j++)
                 {
                     memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
                     auto tt = NOW;
+                    PAPI_read_counters(&tmp_values(0, tid), num_hwcntrs);
                     if (use_fftw)
                     {
                         fftw_execute(plan_backward_z[tid]);
@@ -91,13 +136,29 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
                     {
                         kiss_fft(cfg, (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
                     }
+                    PAPI_accum_counters(&values(0, tid), num_hwcntrs);
                     times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
                     counts(tid, i)++;
                 }
+
             }
         }
     }
     double tot_time = std::chrono::duration_cast< std::chrono::duration<double> >(NOW - t0).count();
+    #pragma omp parallel num_threads(num_fft_workers)
+    {
+        int tid = omp_get_thread_num();
+        /* Stop counting events */
+        if (PAPI_stop_counters(&tmp_values(0, tid), num_hwcntrs) != PAPI_OK)
+        {
+            TERMINATE("PAPI error");
+        }
+    }
+
+    //if (PAPI_read_counters(values, NUM_EVENTS) != PAPI_OK)
+    //{
+    //    TERMINATE("PAPI error");
+    //}
 
     Communicator comm_world(MPI_COMM_WORLD);
     pstdout pout(comm_world);
@@ -120,11 +181,19 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
         for (int i = 0; i < repeat; i++) variance += std::pow(x[i] - avg, 2);
         variance /= repeat;
         double sigma = std::sqrt(variance);
-        pout.printf("tid: %2i, mean: %16.4f, sigma: %16.4f, cv: %6.2f%%, kernel time: %6.2f%%\n",
-                    tid, avg, sigma, 100 * (sigma / avg), 100 * tot_time_thread / tot_time);
+        pout.printf("                            tid : %i\n", tid);
+        pout.printf("            average performance : %.4f\n", avg);
+        pout.printf("                          sigma : %.4f\n", sigma);
+        pout.printf("       coefficient of variation : %6.2f%%\n", 100 * (sigma / avg));
+        pout.printf("                    kernel time : %6.2f%%\n", 100 * tot_time_thread / tot_time);
+        pout.printf("                   total cycles : %lld\n", values(0, tid));
+        pout.printf("         instructions completed : %lld\n", values(1, tid));
+        pout.printf(" completed instructions / cycle : %f\n", double(values(1, tid)) / values(0, tid));
     }
     double perf = repeat * num_fft / tot_time;
+    pout.printf("---------\n");
     pout.printf("performance: %.4f FFTs/sec/rank\n", perf);
+    pout.printf("---------\n");
     pout.flush();
 
     comm_world.allreduce(&perf, 1);
@@ -132,6 +201,7 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
     {
         printf("\n");
         printf("Aggregate performance: %.4f FFTs/sec\n", perf);
+        printf("\n");
     }
 
     for (int i = 0; i < num_fft_workers; i++)
@@ -167,11 +237,11 @@ int main(int argn, char** argv)
 
     if (use_fftw)
     {
-        test_fft_1d<true, true>(fft_size, num_fft, repeat);
+        test_fft_1d<true, false>(fft_size, num_fft, repeat);
     }
     else
     {
-        test_fft_1d<false, true>(fft_size, num_fft, repeat);
+        test_fft_1d<false, false>(fft_size, num_fft, repeat);
     }
 
     Platform::finalize();
