@@ -1,4 +1,5 @@
 #include <sirius.h>
+#include "kiss_fft.h"
 
 using namespace sirius;
 
@@ -6,15 +7,20 @@ using namespace sirius;
 
 void test_fft_1d(int fft_size, int num_fft, int repeat)
 {
+    kiss_fft_cfg cfg = kiss_fft_alloc( fft_size, false ,0,0 );
+
     int num_fft_workers = Platform::max_num_threads();
 
     std::vector<fftw_plan> plan_backward_z(num_fft_workers);
     std::vector<double_complex*> fftw_buffer_z(num_fft_workers);
+    std::vector<double_complex*> fftw_out_buffer_z(num_fft_workers);
 
     fftw_plan_with_nthreads(1);
     for (int i = 0; i < num_fft_workers; i++)
     {
         fftw_buffer_z[i] = (double_complex*)fftw_malloc(fft_size * sizeof(double_complex));
+
+        fftw_out_buffer_z[i] = (double_complex*)fftw_malloc(fft_size * sizeof(double_complex));
 
         plan_backward_z[i] = fftw_plan_dft_1d(fft_size, (fftw_complex*)fftw_buffer_z[i], (fftw_complex*)fftw_buffer_z[i],
                                               FFTW_BACKWARD, FFTW_ESTIMATE);
@@ -43,7 +49,8 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
             {
                 memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
                 auto tt = NOW;
-                fftw_execute(plan_backward_z[tid]);
+                //fftw_execute(plan_backward_z[tid]);
+                kiss_fft(cfg , (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
                 times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
                 counts(tid, i)++;
             }
@@ -89,6 +96,7 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
     for (int i = 0; i < num_fft_workers; i++)
     {
         fftw_free(fftw_buffer_z[i]);
+        fftw_free(fftw_out_buffer_z[i]);
         fftw_destroy_plan(plan_backward_z[i]);
     }
 }

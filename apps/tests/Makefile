@@ -19,6 +19,10 @@ test_gemm: test_gemm.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) -D_TEST_REAL_ $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o test_dgemm
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o test_zgemm
 
+test_fft_1d: test_fft_1d.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) -c kiss_fft.c -o kiss_fft.o
+	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) kiss_fft.o -o test_fft_1d
+
 clean:
 	rm -rf *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
 	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
