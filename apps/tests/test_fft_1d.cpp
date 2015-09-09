@@ -12,7 +12,74 @@ unsigned long int static thread_id(void)
     return omp_get_thread_num();
 }
 
-template <bool use_fftw, bool use_std_thread>
+void kernel_v1(int size, double_complex* in, double_complex* out)
+{
+    for (int i = 0; i < size; i++)
+    {
+        out[i] = double_complex(0, 0);
+        for (int j = 0; j < 100; j++)
+        {
+            out[i] = std::pow(out[i], 2) + in[i];
+        }
+    }
+}
+
+void kernel_v2(int size, double_complex* in, double_complex* out)
+{
+    for (int i = 0; i < size; i++)
+    {
+        out[i] = double_complex(0, 0);
+    }
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < size; j++)
+        {
+            out[(i + j) % size] = out[i] + in[(i + j) % size];
+        }
+    }
+}
+
+void kernel_fft(int size, double_complex* buf)
+{
+    int depth = int(log2(size) + 1e-10);
+    if (size != std::pow(2, depth))
+    {
+        printf("wrong FFT size");
+        exit(0);
+    }
+    
+    for (int i = 0; i < size / 2; i++)
+    {
+        int j = 0;
+        for (int k = 0; k < depth; k++)
+        {
+            if (i & (1 << (depth - k - 1))) j += (1 << k);
+        }
+        if (i != j) std::swap(buf[i], buf[j]);
+    }
+    
+    int nb = size / 2;
+    for (int s = 0; s < depth; s++)
+    {
+        int bs = 1 << (s + 1);
+        for (int ib = 0; ib < nb; ib++)
+        {
+            for (int k = 0; k < (1 << s); k++)
+            {
+                double_complex w = std::exp(-double_complex(0, twopi * k / size));
+                auto z1 = buf[ib * bs + k];
+                auto z2 = buf[ib * bs + k + (1<<s)];
+    
+                buf[ib * bs + k] = z1 + w * z2;
+                buf[ib * bs + k + (1<<s)] = z1 - w * z2;
+            }
+        }
+    
+        nb >>= 1;
+    }
+}
+
+template <int fft_kernel>
 void test_fft_1d(int fft_size, int num_fft, int repeat)
 {
     kiss_fft_cfg cfg = kiss_fft_alloc( fft_size, false ,0,0 );
@@ -86,61 +153,22 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
     auto t0 = NOW;
     for (int i = 0; i < repeat; i++)
     {
-        if (use_std_thread)
+        #pragma omp parallel num_threads(num_fft_workers)
         {
-            std::vector<std::thread> threads;
-            for (int tid = 0; tid < num_fft_workers; tid++)
-            {
-                threads.push_back(std::thread([tid, i, num_fft_workers, num_fft, &times, &counts, repeat, &fftw_buffer_z,
-                                               &fftw_out_buffer_z, &cfg, &plan_backward_z, fft_size, &psi]()
-                {
-                    for (int j = 0; j < num_fft; j++)
-                    {
-                        if (j % num_fft_workers == tid)
-                        {
-                            memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
-                            auto tt = NOW;
-                            if (use_fftw)
-                            {
-                                fftw_execute(plan_backward_z[tid]);
-                            }
-                            else
-                            {
-                                kiss_fft(cfg, (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
-                            }
-                            times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
-                            counts(tid, i)++;
-                        }
-                    }
-                }));
-            }
-            for (auto& t: threads) t.join();
-        }
-        else
-        {
-            #pragma omp parallel num_threads(num_fft_workers)
-            {
-                int tid = omp_get_thread_num();
+            int tid = omp_get_thread_num();
 
-                #pragma omp for schedule(static)
-                for (int j = 0; j < num_fft; j++)
-                {
-                    memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
-                    auto tt = NOW;
-                    PAPI_read_counters(&tmp_values(0, tid), num_hwcntrs);
-                    if (use_fftw)
-                    {
-                        fftw_execute(plan_backward_z[tid]);
-                    }
-                    else
-                    {
-                        kiss_fft(cfg, (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
-                    }
-                    PAPI_accum_counters(&values(0, tid), num_hwcntrs);
-                    times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
-                    counts(tid, i)++;
-                }
-
+            #pragma omp for schedule(static)
+            for (int j = 0; j < num_fft; j++)
+            {
+                memcpy(fftw_buffer_z[tid], &psi(0, j), fft_size * sizeof(double_complex));
+                auto tt = NOW;
+                PAPI_read_counters(&tmp_values(0, tid), num_hwcntrs);
+                if (fft_kernel == 0) fftw_execute(plan_backward_z[tid]);
+                if (fft_kernel == 1) kiss_fft(cfg, (kiss_fft_cpx*)fftw_buffer_z[tid], (kiss_fft_cpx*)fftw_out_buffer_z[tid]);
+                if (fft_kernel == 2) kernel_fft(fft_size, fftw_buffer_z[tid]);
+                PAPI_accum_counters(&values(0, tid), num_hwcntrs);
+                times(tid, i) += std::chrono::duration_cast< std::chrono::duration<double> >(NOW - tt).count();
+                counts(tid, i)++;
             }
         }
     }
@@ -154,11 +182,6 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
             TERMINATE("PAPI error");
         }
     }
-
-    //if (PAPI_read_counters(values, NUM_EVENTS) != PAPI_OK)
-    //{
-    //    TERMINATE("PAPI error");
-    //}
 
     Communicator comm_world(MPI_COMM_WORLD);
     pstdout pout(comm_world);
@@ -184,11 +207,12 @@ void test_fft_1d(int fft_size, int num_fft, int repeat)
         pout.printf("                            tid : %i\n", tid);
         pout.printf("            average performance : %.4f\n", avg);
         pout.printf("                          sigma : %.4f\n", sigma);
-        pout.printf("       coefficient of variation : %6.2f%%\n", 100 * (sigma / avg));
-        pout.printf("                    kernel time : %6.2f%%\n", 100 * tot_time_thread / tot_time);
+        pout.printf("       coefficient of variation : %.2f%%\n", 100 * (sigma / avg));
+        pout.printf("                    kernel time : %.2f%%\n", 100 * tot_time_thread / tot_time);
         pout.printf("                   total cycles : %lld\n", values(0, tid));
         pout.printf("         instructions completed : %lld\n", values(1, tid));
         pout.printf(" completed instructions / cycle : %f\n", double(values(1, tid)) / values(0, tid));
+        pout.printf("                             -------\n");
     }
     double perf = repeat * num_fft / tot_time;
     pout.printf("---------\n");
@@ -218,7 +242,7 @@ int main(int argn, char** argv)
     args.register_key("--fft_size=", "{int} size of 1D FFT");
     args.register_key("--num_fft=", "{int} number of FFTs inside one measurment");
     args.register_key("--repeat=", "{int} number of measurments");
-    args.register_key("--use_fftw=", "{int} use FFTW library");
+    args.register_key("--kernel=", "{int} 0: fftw, 1: kiss_fft, 2: custom_fft");
 
     args.parse_args(argn, argv);
     if (argn == 1)
@@ -231,18 +255,13 @@ int main(int argn, char** argv)
     int fft_size = args.value<int>("fft_size", 128);
     int num_fft = args.value<int>("num_fft", 64);
     int repeat = args.value<int>("repeat", 100);
-    int use_fftw = args.value<int>("use_fftw", 1);
+    int ikernel = args.value<int>("kernel", 0);
 
     Platform::initialize(1);
 
-    if (use_fftw)
-    {
-        test_fft_1d<true, false>(fft_size, num_fft, repeat);
-    }
-    else
-    {
-        test_fft_1d<false, false>(fft_size, num_fft, repeat);
-    }
+    if (ikernel == 0) test_fft_1d<0>(fft_size, num_fft, repeat);
+    if (ikernel == 1) test_fft_1d<1>(fft_size, num_fft, repeat);
+    if (ikernel == 2) test_fft_1d<2>(fft_size, num_fft, repeat);
 
     Platform::finalize();
 }
