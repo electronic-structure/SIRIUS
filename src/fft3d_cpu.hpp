@@ -152,7 +152,6 @@ class FFT3D<CPU>
             //std::vector<double> xy_times(num_fft_workers_, 0.0);
             //std::vector<int> xy_counts(num_fft_workers_, 0);
 
-            Timer t2("fft|comp");
             #pragma omp parallel num_threads(num_fft_workers_)
             {
                 int tid = omp_get_thread_num();
@@ -185,42 +184,30 @@ class FFT3D<CPU>
                     }
                 }
             }
-            t2.stop();
 
             t1.start();
             comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
                            data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
             t1.stop();
 
-            t2.start();
-            memset(fftw_buffer_[0], 0, local_size() * sizeof(double_complex));
-
-            for (int n = 0; n < num_xy_packed__; n++)
-            {
-                int x = xy_packed_idx__(0, n);
-                int y = xy_packed_idx__(1, n);
-                for (int z = 0; z < local_size_z_; z++)
-                {
-                    fftw_buffer_[0][x + y * size(0) + z * size_xy] = data_slab_(z, n);
-                }
-            }
-
             #pragma omp parallel num_threads(num_fft_workers_)
             {
                 int tid = omp_get_thread_num();
-                
                 #pragma omp for
-                for (int i = 0; i < local_size_z_; i++)
+                for (int iz = 0; iz < local_size_z_; iz++)
                 {
-                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][i * size_xy], sizeof(fftw_complex) * size_xy);
-                    //double tt = omp_get_wtime();
+                    memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+                    for (int n = 0; n < num_xy_packed__; n++)
+                    {
+                        int x = xy_packed_idx__(0, n);
+                        int y = xy_packed_idx__(1, n);
+
+                        fftw_buffer_xy_[tid][x + y * size(0)] = data_slab_(iz, n);
+                    }
                     fftw_execute(plan_backward_xy_[tid]);
-                    //xy_times[tid] += (omp_get_wtime() - tt);
-                    //xy_counts[tid]++;
-                    memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                    memcpy(&fftw_buffer_[0][iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
                 }
             }
-            t2.stop();
 
             //if (Platform::rank() == 0)
             //{
@@ -243,8 +230,6 @@ class FFT3D<CPU>
 
             int size_xy = size(0) * size(1);
 
-            Timer t1("fft|comp");
-
             splindex<block> spl_n(num_xy_packed__, comm_.size(), comm_.rank());
 
             std::vector<int> sendcounts(comm_.size());
@@ -266,31 +251,24 @@ class FFT3D<CPU>
                 int tid = omp_get_thread_num();
                 
                 #pragma omp for
-                for (int i = 0; i < local_size_z_; i++)
+                for (int iz = 0; iz < local_size_z_; iz++)
                 {
-                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][i * size_xy], sizeof(fftw_complex) * size_xy);
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][iz * size_xy], sizeof(fftw_complex) * size_xy);
                     fftw_execute(plan_forward_xy_[tid]);
-                    memcpy(&fftw_buffer_[0][i * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                    for (int n = 0; n < num_xy_packed__; n++)
+                    {
+                        int x = xy_packed_idx__(0, n);
+                        int y = xy_packed_idx__(1, n);
+                        data_slab_(iz, n) = fftw_buffer_xy_[tid][x + y * size(0)];
+                    }
                 }
             }
-
-            for (int n = 0; n < num_xy_packed__; n++)
-            {
-                int x = xy_packed_idx__(0, n);
-                int y = xy_packed_idx__(1, n);
-                for (int z = 0; z < local_size_z_; z++)
-                {
-                    data_slab_(z, n) = fftw_buffer_[0][x + y * size(0) + z * size_xy];
-                }
-            }
-            t1.stop();
 
             Timer t2("fft|comm_inner");
             comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
                            data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
             t2.stop();
 
-            t1.start();
             #pragma omp parallel num_threads(num_fft_workers_)
             {
                 int tid = omp_get_thread_num();
@@ -319,7 +297,6 @@ class FFT3D<CPU>
                     }
                 }
             }
-            t1.stop();
 
             t2.start();
             comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
@@ -840,7 +817,7 @@ class Gvec
                 }
             }
 
-            if (build_reverse_mapping__ && true)
+            if (build_reverse_mapping__ && false)
             {
                 int num_gvec_reduced_ = 0;
                 mdarray<int, 1> flg(num_gvec_);
