@@ -28,7 +28,7 @@ namespace sirius {
 
 Step_function::Step_function(Unit_cell const& unit_cell__,
                              Reciprocal_lattice const* reciprocal_lattice__,
-                             FFT3D<CPU>* fft__,
+                             FFT3D_CPU* fft__,
                              Gvec const& gvec__,
                              Communicator const& comm__)
     : unit_cell_(unit_cell__),
@@ -88,7 +88,7 @@ void Step_function::init()
     step_function_pw_[0] += 1.0;
 
     fft_->input(gvec_.num_gvec(), gvec_.index_map(), &step_function_pw_[0]);
-    fft_->transform(1);
+    fft_->transform(1, gvec_.z_sticks_coord());
     fft_->output(&step_function_[0]);
     
     double vit = 0.0;
