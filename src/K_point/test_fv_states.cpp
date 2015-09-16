@@ -36,11 +36,11 @@ void K_point::test_fv_states()
             }
         }
 
-        fft_->input(num_gkvec(), gkvec_.index_map(), &fv_states_slice_(unit_cell_.mt_basis_size(), i));
-        fft_->transform(1, gkvec_.z_sticks_coord());
-        for (int ir = 0; ir < fft_->size(); ir++) fft_->buffer(ir) *= ctx_.step_function()->theta_r(ir);
-        fft_->transform(-1, gkvec_.z_sticks_coord());
-        fft_->output(num_gkvec(), gkvec_.index_map(), &o_fv_slice(unit_cell_.mt_basis_size(), i));
+        ctx_.fft(0)->input(num_gkvec(), gkvec_.index_map(), &fv_states_slice_(unit_cell_.mt_basis_size(), i));
+        ctx_.fft(0)->transform(1, gkvec_.z_sticks_coord());
+        for (int ir = 0; ir < ctx_.fft(0)->size(); ir++) ctx_.fft(0)->buffer(ir) *= ctx_.step_function()->theta_r(ir);
+        ctx_.fft(0)->transform(-1, gkvec_.z_sticks_coord());
+        ctx_.fft(0)->output(num_gkvec(), gkvec_.index_map(), &o_fv_slice(unit_cell_.mt_basis_size(), i));
     }
 
     dmatrix<double_complex> o_fv(wf_size(), parameters_.num_fv_states(), blacs_grid_,

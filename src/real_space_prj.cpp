@@ -101,7 +101,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
     if (mask(1, 1) > 1e-13) TERMINATE("wrong mask function");
 
     fft_ = new FFT3D_CPU(Utils::find_translation_limits(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
-                         num_fft_threads__, num_fft_workers__, MPI_COMM_SELF);
+                         num_fft_workers__, MPI_COMM_SELF);
 
     gvec_ = Gvec(vector3d<double>(0, 0, 0), pw_cutoff__, unit_cell_.reciprocal_lattice_vectors(), fft_, false);
 
@@ -196,7 +196,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
                 double_complex z = beta_pw[ig];
                 //auto gvec_cart = fft_->gvec_cart(ig);
                 //if (gvec_cart.length() > pw_cutoff__) z *= std::exp(-mask_alpha_ * std::pow(gvec_cart.length() / pw_cutoff__ - 1, 2));
-                fft_->buffer(fft_->index(gv[0], gv[1], gv[2])) = z;
+                fft_->buffer(fft_->fft_buffer_index_by_gvec(gv[0], gv[1], gv[2])) = z;
             }
             //fft_->input(fft_->num_gvec(), fft_->index_map(), &beta_pw[0]);
             STOP();

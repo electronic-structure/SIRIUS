@@ -51,7 +51,7 @@ void Density::initial_density()
         #endif
 
         /* remove possible negative noise */
-        for (int ir = 0; ir < fft_->local_size(); ir++)
+        for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
             if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;
         }
@@ -295,7 +295,7 @@ void Density::initial_density()
         #endif
         
         /* remove possible negative noise */
-        for (int ir = 0; ir < fft_->local_size(); ir++)
+        for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
             rho_->f_it(ir) = rho_->f_it(ir) * unit_cell_.num_valence_electrons() / charge;
             if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;

@@ -50,7 +50,7 @@ class Potential
         Communicator const& comm_;
 
         /// Alias for FFT driver.
-        FFT3D_CPU* fft_;
+        FFT3D_base* fft_;
 
         Periodic_function<double>* effective_potential_;
 

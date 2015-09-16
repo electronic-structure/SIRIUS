@@ -35,7 +35,7 @@ Potential::Potential(Simulation_context& ctx__)
       parameters_(ctx__.parameters()),
       unit_cell_(ctx__.unit_cell()),
       comm_(ctx__.comm()),
-      fft_(ctx__.fft()),
+      fft_(ctx__.fft(0)),
       pseudo_density_order(9)
 {
     Timer t("sirius::Potential::Potential");

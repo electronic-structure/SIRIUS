@@ -1605,7 +1605,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
-    auto fft_coarse = ctx_.fft_coarse();
+    auto fft_coarse = ctx_.fft_coarse(0);
     auto& gv = ctx_.gvec();
     auto& gvc = ctx_.gvec_coarse();
 

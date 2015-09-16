@@ -6,7 +6,7 @@ Density::Density(Simulation_context& ctx__)
     : ctx_(ctx__),
       parameters_(ctx__.parameters()),
       unit_cell_(ctx_.unit_cell()),
-      fft_(ctx_.fft()),
+      //fft_(ctx_.fft()),
       rho_pseudo_core_(nullptr),
       gaunt_coefs_(nullptr),
       high_freq_mixer_(nullptr),

@@ -42,7 +42,7 @@ namespace sirius {
 /// Base class 
 class FFT3D_base
 {
-    private:
+    protected:
 
         /// Number of working threads inside each FFT.
         int num_fft_workers_;
@@ -127,9 +127,9 @@ class FFT3D_base
             }
         }
 
-        virtual void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+        virtual void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__) = 0;
         
-        virtual void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+        virtual void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__) = 0;
         
     public:
 
@@ -137,29 +137,7 @@ class FFT3D_base
                    int num_fft_workers__,
                    Communicator const& comm__);
 
-        ~FFT3D_base();
-
-        //~FFT3D_CPU()
-        //{
-        //    PROFILE();
-
-        //    for (int i = 0; i < num_fft_threads_; i++)
-        //    {
-        //        fftw_free(fftw_buffer_[i]);
-        //        fftw_destroy_plan(plan_backward_[i]);
-        //        fftw_destroy_plan(plan_forward_[i]);
-        //    }
-
-        //    for (int i = 0; i < num_fft_workers_ * num_fft_threads_; i++)
-        //    {
-        //        fftw_free(fftw_buffer_z_[i]);
-        //        fftw_free(fftw_buffer_xy_[i]);
-        //        fftw_destroy_plan(plan_forward_z_[i]);
-        //        fftw_destroy_plan(plan_forward_xy_[i]);
-        //        fftw_destroy_plan(plan_backward_z_[i]);
-        //        fftw_destroy_plan(plan_backward_xy_[i]);
-        //    }
-        //}
+        virtual ~FFT3D_base();
 
         ///// Execute the transformation for a given thread.
         //inline void transform(int direction__, int thread_id__ = 0)
@@ -312,15 +290,10 @@ class FFT3D_base
             return (comm_.size() != 1);
         }
 
-        //inline int num_fft_threads() const
-        //{
-        //    return num_fft_threads_;
-        //}
-
-        //inline int num_fft_workers() const
-        //{
-        //    return num_fft_workers_;
-        //}
+        inline int num_fft_workers() const
+        {
+            return num_fft_workers_;
+        }
 };
 
 };

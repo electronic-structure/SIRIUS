@@ -50,7 +50,7 @@ void Density::generate_valence(K_set& ks__)
         }
     }
 
-    for (int ir = 0; ir < fft_->local_size(); ir++)
+    for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
     {
         if (rho_->f_it(ir) < 0) TERMINATE("density is wrong");
     }

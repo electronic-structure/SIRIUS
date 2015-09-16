@@ -447,7 +447,7 @@ void sirius_get_mt_points(char* label__, double* mt_points__)
 void sirius_get_num_fft_grid_points(int32_t* num_grid_points__)
 {
     PROFILE();
-    *num_grid_points__ = sim_ctx->fft()->local_size();
+    *num_grid_points__ = sim_ctx->fft(0)->local_size();
 }
 
 void sirius_get_num_bands(int32_t* num_bands)
@@ -467,9 +467,9 @@ void sirius_get_num_gvec(int32_t* num_gvec__)
 void sirius_get_fft_grid_size(int32_t* grid_size__)
 {
     PROFILE();
-    grid_size__[0] = sim_ctx->fft()->size(0);
-    grid_size__[1] = sim_ctx->fft()->size(1);
-    grid_size__[2] = sim_ctx->fft()->size(2);
+    grid_size__[0] = sim_ctx->fft(0)->size(0);
+    grid_size__[1] = sim_ctx->fft(0)->size(1);
+    grid_size__[2] = sim_ctx->fft(0)->size(2);
 }
 
 /// Get lower and upper limits of the FFT grid dimension
@@ -488,8 +488,8 @@ void sirius_get_fft_grid_limits(int32_t const* d, int32_t* lower, int32_t* upper
 {
     PROFILE();
     assert((*d >= 1) && (*d <= 3));
-    *lower = sim_ctx->fft()->grid_limits(*d - 1).first;
-    *upper = sim_ctx->fft()->grid_limits(*d - 1).second;
+    *lower = sim_ctx->fft(0)->grid_limits(*d - 1).first;
+    *upper = sim_ctx->fft(0)->grid_limits(*d - 1).second;
 }
 
 /// Get mapping between G-vector index and FFT index
@@ -591,7 +591,7 @@ void sirius_get_gvec_phase_factors(double_complex* sfacg__)
 void sirius_get_step_function(double_complex* cfunig__, double* cfunir__)
 {
     PROFILE();
-    for (int i = 0; i < sim_ctx->fft()->size(); i++)
+    for (int i = 0; i < sim_ctx->fft(0)->size(); i++)
     {
         cfunig__[i] = sim_ctx->step_function()->theta_pw(i);
         cfunir__[i] = sim_ctx->step_function()->theta_r(i);
@@ -1687,7 +1687,7 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
     /* set temporary array wrapper */
     mdarray<double, 4> bxcmt(bxcmt__, sim_param->lmmax_pot(), sim_ctx->unit_cell().max_num_mt_points(), 
                              sim_ctx->unit_cell().num_atoms(), sim_param->num_mag_dims());
-    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft()->size(), sim_param->num_mag_dims());
+    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft(0)->size(), sim_param->num_mag_dims());
 
     if (sim_param->num_mag_dims() == 1)
     {

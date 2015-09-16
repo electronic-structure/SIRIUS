@@ -50,7 +50,7 @@ class Band
         Unit_cell& unit_cell_;
 
         /// Alias for FFT driver.
-        FFT3D_CPU* fft_;
+        //FFT3D_CPU* fft_;
 
         /// BLACS grid for distributed linear algebra operations.
         BLACS_grid const& blacs_grid_;
@@ -323,7 +323,7 @@ class Band
             : ctx_(ctx__),
               parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
-              fft_(ctx__.fft()),
+              //fft_(ctx__.fft(0)),
               blacs_grid_(blacs_grid__)
         {
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), 

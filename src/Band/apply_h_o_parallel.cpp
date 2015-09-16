@@ -24,7 +24,7 @@ void Band::apply_h_o_parallel(K_point* kp__,
     /* change data distribution from slab storage to slice or 2d block-cyclic */
     linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0, kp__->blacs_grid().context());
     t1.stop();
-    if (ctx_.fft_coarse()->parallel())
+    if (ctx_.fft_coarse(0)->parallel())
     {
         /* this is how n wave-functions are distributed */
         splindex<block_cyclic> spl_phi(n__, kp__->num_ranks_col(), kp__->rank_col(), 1);

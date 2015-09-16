@@ -13,7 +13,7 @@ void Density::generate_valence_density_it(K_set& ks__)
         auto kp = ks__[ik];
         occupied_bands_descriptor occupied_bands;
 
-        if (fft_->parallel())
+        if (ctx_.fft(0)->parallel())
         {
             occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid().comm_col());
         }
@@ -30,7 +30,7 @@ void Density::generate_valence_density_it(K_set& ks__)
                                 kp->blacs_grid().context());
         }
 
-        if (fft_->parallel())
+        if (ctx_.fft(0)->parallel())
         {
             add_k_point_contribution_it_pfft(ks__[ik], occupied_bands);
         }
@@ -41,15 +41,15 @@ void Density::generate_valence_density_it(K_set& ks__)
     }
 
     /* reduce arrays; assume that each rank did it's own fraction of the density */
-    if (fft_->parallel())
+    if (ctx_.fft(0)->parallel())
     {
-        ctx_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(&rho_->f_it(0), fft_->local_size()); 
+        ctx_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(&rho_->f_it(0), ctx_.fft(0)->local_size()); 
     }
     else
     {
-        ctx_.comm().allreduce(&rho_->f_it(0), fft_->size()); 
+        ctx_.comm().allreduce(&rho_->f_it(0), ctx_.fft(0)->size()); 
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            ctx_.comm().allreduce(&magnetization_[j]->f_it(0), fft_->size()); 
+            ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
     }
 }
 

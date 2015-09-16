@@ -484,7 +484,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     
     if (is_gga) 
     {
-        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it(0), fft_, &ctx_.gvec());
+        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it(0), ctx_.fft(0), &ctx_.gvec());
 
         /* get plane-wave coefficients of the density */
         Smooth_periodic_function<spectral, double_complex> rho_pw = transform(rho_it);

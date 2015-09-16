@@ -120,7 +120,7 @@ class Density
         Unit_cell& unit_cell_;
 
         /// Alias for FFT driver.
-        FFT3D_CPU* fft_;
+        //FFT3D_CPU* fft_;
         
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.

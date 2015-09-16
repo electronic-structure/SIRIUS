@@ -30,7 +30,7 @@ Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
       unit_cell_(ctx__.unit_cell()), 
       step_function_(ctx__.step_function()),
       comm_(ctx__.comm()),
-      fft_(ctx__.fft()),
+      fft_(ctx__.fft(0)),
       gvec_(ctx__.gvec()),
       angular_domain_size_(angular_domain_size__),
       num_gvec_(0)

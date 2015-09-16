@@ -39,7 +39,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
 
     /* temporary buffer */
     dmatrix<double_complex> phi_tmp;
-    if (ctx_.fft_coarse()->parallel())
+    if (ctx_.fft_coarse(0)->parallel())
     {
         int bs = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks_row());
         phi_tmp = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), bs, 1);

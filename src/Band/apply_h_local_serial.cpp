@@ -26,34 +26,33 @@ void Band::apply_h_local_serial(K_point* kp__,
 
     //auto pu = parameters_.processing_unit();
 
-    auto fft = ctx_.fft_coarse();
-
     /* save omp_nested flag */
     int nested = omp_get_nested();
     omp_set_nested(1);
-    #pragma omp parallel num_threads(fft->num_fft_threads())
+    #pragma omp parallel num_threads(ctx_.num_fft_threads())
     {
         int thread_id = omp_get_thread_num();
 
         #pragma omp for
-        for (int i = 0; i <  num_phi__; i++)
+        for (int i = 0; i < num_phi__; i++)
         {
-            fft->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i), thread_id);
+            ctx_.fft_coarse(thread_id)->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i));
             /* phi(G) -> phi(r) */
-            fft->transform(1, kp__->gkvec_coarse().z_sticks_coord(), thread_id);
+            ctx_.fft_coarse(thread_id)->transform(1, kp__->gkvec_coarse().z_sticks_coord());
             /* multiply by effective potential */
-            for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= effective_potential__[ir];
+            for (int ir = 0; ir < ctx_.fft_coarse(thread_id)->size(); ir++) ctx_.fft_coarse(thread_id)->buffer(ir) *= effective_potential__[ir];
             /* V(r)phi(r) -> [V*phi](G) */
-            fft->transform(-1, kp__->gkvec_coarse().z_sticks_coord(), thread_id);
+            ctx_.fft_coarse(thread_id)->transform(-1, kp__->gkvec_coarse().z_sticks_coord());
 
             if (in_place)
             {
+                /* psi(G) -> 0.5 * |G|^2 * psi(G) */
                 for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) *= pw_ekin__[igk];
-                fft->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), thread_id, 1.0);
+                ctx_.fft_coarse(thread_id)->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), 1.0);
             }
             else
             {
-                fft->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), thread_id);
+                ctx_.fft_coarse(thread_id)->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i));
                 for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
             }
         }

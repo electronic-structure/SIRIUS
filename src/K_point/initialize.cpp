@@ -228,7 +228,7 @@ void K_point::initialize()
         }
         else
         {
-            if (ctx_.fft()->parallel())
+            if (ctx_.fft(0)->parallel())
             {
                 /* assume 2d block-cyclic distribution */
                 int bs = (int)splindex_base::block_size(num_gkvec(), num_ranks_row());
