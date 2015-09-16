@@ -33,7 +33,8 @@ extern "C" {
 #include "matrix3d.h"
 #include "constants.h"
 #include "utils.h"
-#include "fft3d.h"
+//#include "fft3d.h"
+#include "gvec.h"
 
 namespace sirius {
 
@@ -131,11 +132,6 @@ class Symmetry
                  double tolerance__);
 
         ~Symmetry();
-
-        //inline int num_sym_op()
-        //{
-        //    return spg_dataset_->n_operations;
-        //}
 
         inline int atom_symmetry_class(int ia__)
         {
