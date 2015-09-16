@@ -21,25 +21,6 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     
     if (occupied_bands__.idx_bnd_loc.size() == 0) return;
     
-    ///* index of the occupied bands */
-    ////int idx_band = 0;
-    //std::mutex idx_band_mutex;
-
-    //int num_fft_threads = -1;
-    //switch (parameters_.processing_unit())
-    //{
-    //    case CPU:
-    //    {
-    //        num_fft_threads = parameters_.num_fft_threads();
-    //        break;
-    //    }
-    //    case GPU:
-    //    {
-    //        num_fft_threads = std::min(parameters_.num_fft_threads() + 1, Platform::max_num_threads());
-    //        break;
-    //    }
-    //}
-
     int num_spins = parameters_.num_spins();
     int num_mag_dims = parameters_.num_mag_dims();
     int num_fv_states = parameters_.num_fv_states();
@@ -47,6 +28,10 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
 
     mdarray<double, 3> it_density_matrix(ctx_.fft(0)->size(), parameters_.num_mag_dims() + 1, ctx_.num_fft_threads());
     it_density_matrix.zero();
+
+    /* save omp_nested flag */
+    int nested = omp_get_nested();
+    omp_set_nested(1);
 
     int wf_pw_offset = kp__->wf_pw_offset();
     #pragma omp parallel num_threads(ctx_.num_fft_threads())
@@ -89,7 +74,6 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 ctx_.fft(thread_id)->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
                                            kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc));
                 ctx_.fft(thread_id)->transform(1, kp__->gkvec().z_sticks_coord());
-                //fft->output(&psi_it(0, ispn), thread_id);
 
                 for (int ir = 0; ir < ctx_.fft(thread_id)->size(); ir++)
                 {
@@ -100,6 +84,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         }
     }
 
+    /* restore the nested flag */
+    omp_set_nested(nested);
 
 
 

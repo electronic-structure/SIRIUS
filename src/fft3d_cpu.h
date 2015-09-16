@@ -69,54 +69,6 @@ class FFT3D_CPU: public FFT3D_base
                   Communicator const& comm__);
 
         ~FFT3D_CPU();
-
-        ///// Execute the transformation for a given thread.
-        //inline void transform(int direction__, int thread_id__ = 0)
-        //{
-        //    assert(thread_id__ < num_fft_threads_);
-
-        //    switch (direction__)
-        //    {
-        //        case 1:
-        //        {
-        //            backward(thread_id__);
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            forward(thread_id__);
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
-        //        }
-        //    }
-        //}
-
-        //void transform(int direction__, std::vector< std::pair<int, int> > const& z_sticks_coord__, int thread_id__ = 0)
-        //{
-        //    assert(thread_id__ < num_fft_threads_);
-
-        //    switch (direction__)
-        //    {
-        //        case 1:
-        //        {
-        //            backward_custom(z_sticks_coord__, thread_id__);
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            forward_custom(z_sticks_coord__, thread_id__);
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
-        //        }
-        //    }
-        //}
-
 };
 
 };

@@ -34,8 +34,6 @@
 #include "splindex.h"
 #include "vector3d.h"
 #include "timer.h"
-#include "blacs_grid.h"
-#include "linalg.h"
 
 namespace sirius {
 
