@@ -57,12 +57,12 @@ class Simulation_context
         Step_function* step_function_;
 
         /// FFT wrapper for dense grid.
-        FFT3D<CPU>* fft_;
+        FFT3D_CPU* fft_;
 
         Gvec gvec_;
 
         /// FFT wrapper for coarse grid.
-        FFT3D<CPU>* fft_coarse_;
+        FFT3D_CPU* fft_coarse_;
 
         Gvec gvec_coarse_;
 
@@ -196,15 +196,15 @@ class Simulation_context
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
             /* create FFT interface */
-            if (parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
+            if (true) //parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
             {
-                fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                      parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
+                fft_ = new FFT3D_CPU(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
+                                     parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
             }
             else
             {
-                fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                      1, Platform::max_num_threads(), mpi_grid_->communicator(1 << _dim_row_));
+                fft_ = new FFT3D_CPU(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
+                                     1, Platform::max_num_threads(), mpi_grid_->communicator(1 << _dim_row_));
             }
             
             gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_, true);
@@ -216,17 +216,17 @@ class Simulation_context
             if (!parameters_.full_potential())
             {
                 /* create FFT interface for coarse grid */
-                if (parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
+                if (true) //parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
                 {
                     /* serial version */
-                    fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
-                                                 parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
+                    fft_coarse_ = new FFT3D_CPU(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
+                                                parameters_.num_fft_threads(), parameters_.num_fft_workers(), MPI_COMM_SELF);
                 }
                 else
                 {
                     /* parallel version */
-                    fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
-                                                 1, Platform::max_num_threads(), mpi_grid_->communicator(1 << _dim_row_));
+                    fft_coarse_ = new FFT3D_CPU(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, rlv),
+                                                1, Platform::max_num_threads(), mpi_grid_->communicator(1 << _dim_row_));
                 }
                 
                 /* create a list of G-vectors for corase FFT grid */
@@ -373,12 +373,12 @@ class Simulation_context
             return reciprocal_lattice_;
         }
 
-        inline FFT3D<CPU>* fft() const
+        inline FFT3D_CPU* fft() const
         {
             return fft_;
         }
 
-        inline FFT3D<CPU>* fft_coarse() const
+        inline FFT3D_CPU* fft_coarse() const
         {
             return fft_coarse_;
         }
