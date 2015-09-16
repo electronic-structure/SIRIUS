@@ -179,11 +179,11 @@ void Band::apply_h_local_serial(K_point* kp__,
                     {
                         fft->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i), thread_id);
                         /* phi(G) -> phi(r) */
-                        fft->transform(1, thread_id);
+                        fft->transform(1, kp__->gkvec_coarse().z_sticks_coord(), thread_id);
                         /* multiply by effective potential */
                         for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= effective_potential__[ir];
                         /* V(r)phi(r) -> [V*phi](G) */
-                        fft->transform(-1, thread_id);
+                        fft->transform(-1, kp__->gkvec_coarse().z_sticks_coord(), thread_id);
 
                         if (in_place)
                         {
