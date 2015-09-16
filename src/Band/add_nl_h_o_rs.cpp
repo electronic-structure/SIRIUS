@@ -101,7 +101,8 @@ void Band::add_nl_h_o_rs(K_point* kp__,
             double t0 = omp_get_wtime();
             fft->input(kp__->num_gkvec(), &fft_index[0], &phi__(0, ib), thread_id);
             /* phi(G) -> phi(r) */
-            fft->transform(1, thread_id);
+            STOP();
+            //fft->transform(1, kp__->gkvec().z_sticks_coord(), thread_id);
             timers(0, thread_id) += omp_get_wtime() - t0;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -179,11 +180,13 @@ void Band::add_nl_h_o_rs(K_point* kp__,
 
             t0 = omp_get_wtime();
             fft->input(&hphi_rs(0, thread_id), thread_id);
-            fft->transform(-1, thread_id);
+            STOP();
+            //fft->transform(-1, thread_id);
             fft->output(kp__->num_gkvec(), &fft_index[0], &hphi__(0, ib), thread_id, 1.0);
 
             fft->input(&ophi_rs(0, thread_id), thread_id);
-            fft->transform(-1, thread_id);
+            STOP();
+            //fft->transform(-1, thread_id);
             fft->output(kp__->num_gkvec(), &fft_index[0], &ophi__(0, ib), thread_id, 1.0);
 
             timers(0, thread_id) += omp_get_wtime() - t0;

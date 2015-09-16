@@ -50,7 +50,7 @@ class Band
         Unit_cell& unit_cell_;
 
         /// Alias for FFT driver.
-        FFT3D<CPU>* fft_;
+        FFT3D_CPU* fft_;
 
         /// BLACS grid for distributed linear algebra operations.
         BLACS_grid const& blacs_grid_;

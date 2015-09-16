@@ -212,7 +212,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                             {
                                 fft->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
                                            kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc), thread_id);
-                                fft->transform(1, thread_id);
+                                fft->transform(1, kp__->gkvec().z_sticks_coord(), thread_id);
                                 fft->output(&psi_it(0, ispn), thread_id);
                             }
                             for (int ir = 0; ir < fft->size(); ir++)
@@ -232,7 +232,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                             int ispn = (j < num_fv_states) ? 0 : 1;
                             fft->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
                                        kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc), thread_id);
-                            fft->transform(1, thread_id);
+                            fft->transform(1, kp__->gkvec().z_sticks_coord(), thread_id);
                             fft->output(&psi_it(0, ispn), thread_id);
 
                             for (int ir = 0; ir < fft->size(); ir++)
@@ -365,8 +365,8 @@ void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_des
                                       &buf[0],
                                       &a2a.recvcounts[0], &a2a.rdispls[0]);
             t1.stop();
-            fft_->input_custom(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map_xy(), &buf[0]);
-            fft_->transform_custom(1, kp__->gkvec().num_xy_packed(), kp__->gkvec().xy_packed_idx());
+            fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
+            fft_->transform(1, kp__->gkvec().z_sticks_coord());
             fft_->output(&psi_it(0, ispn));
             
             #pragma omp parallel for schedule(static)

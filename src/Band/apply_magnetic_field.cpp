@@ -264,7 +264,8 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                     if (!done)
                     {
                         fft->input(num_gkvec__, fft_index__, &fv_states__(wf_pw_offset, i), thread_id);
-                        fft->transform(1, thread_id);
+                        STOP();
+                        //fft->transform(1, thread_id);
                                                     
                         for (int ir = 0; ir < fft->size(); ir++)
                         {
@@ -272,7 +273,8 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                             fft->buffer(ir, thread_id) *= (effective_magnetic_field__[0]->f_it(ir) * step_function->theta_r(ir));
                         }
                         
-                        fft->transform(-1, thread_id);
+                        STOP();
+                        //fft->transform(-1, thread_id);
                         fft->output(num_gkvec__, fft_index__, &hpsi__[0](wf_pw_offset, i), thread_id); 
 
                         if (hpsi__.size() >= 3)
@@ -286,7 +288,8 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                             }
                             
                             fft->input(&hpsi_it[0], thread_id);
-                            fft->transform(-1, thread_id);
+                            STOP();
+                            //fft->transform(-1, thread_id);
                             fft->output(num_gkvec__, fft_index__, &hpsi__[2](wf_pw_offset, i), thread_id); 
                         }
                         
@@ -301,7 +304,8 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
                             }
                             
                             fft->input(&hpsi_it[0], thread_id);
-                            fft->transform(-1, thread_id);
+                            STOP();
+                            //fft->transform(-1, thread_id);
                             fft->output(num_gkvec__, fft_index__, &hpsi__[3](wf_pw_offset, i), thread_id); 
                         }
                     }

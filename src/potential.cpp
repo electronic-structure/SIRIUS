@@ -373,7 +373,7 @@ void Potential::generate_pw_coefs()
     DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
 
-    fft_->transform(-1);
+    fft_->transform(-1, ctx_.gvec().z_sticks_coord());
     fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_potential()->f_pw(0));
 
     #ifdef __PRINT_OBJECT_CHECKSUM
@@ -389,7 +389,7 @@ void Potential::generate_pw_coefs()
             for (int ir = 0; ir < fft_->size(); ir++)
                 fft_->buffer(ir) = effective_magnetic_field(i)->f_it(ir) * ctx_.step_function()->theta_r(ir);
     
-            fft_->transform(-1);
+            fft_->transform(-1, ctx_.gvec().z_sticks_coord());
             fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
         }
     }

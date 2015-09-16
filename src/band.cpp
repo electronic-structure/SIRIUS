@@ -1634,7 +1634,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     }
 
     fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
-    fft_coarse->transform(1);
+    fft_coarse->transform(1, gvc.z_sticks_coord());
     fft_coarse->output(&veff_it_coarse[0]);
 
     double v0 = real(effective_potential__->f_pw(0));

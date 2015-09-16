@@ -42,7 +42,6 @@ class Potential
         Simulation_context& ctx_;
 
         Simulation_parameters const& parameters_;
-        //Global& parameters_;
 
         Unit_cell const& unit_cell_;
 
@@ -50,8 +49,8 @@ class Potential
 
         Communicator const& comm_;
 
-        /// alias for FFT driver
-        FFT3D<CPU>* fft_;
+        /// Alias for FFT driver.
+        FFT3D_CPU* fft_;
 
         Periodic_function<double>* effective_potential_;
 
@@ -61,7 +60,7 @@ class Potential
         Periodic_function<double>* xc_potential_;
         Periodic_function<double>* xc_energy_density_;
         
-        /// local part of pseudopotential
+        /// Local part of pseudopotential.
         Periodic_function<double>* local_potential_;
 
         mdarray<double, 3> sbessel_mom_;

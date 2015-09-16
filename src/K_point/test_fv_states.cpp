@@ -37,9 +37,9 @@ void K_point::test_fv_states()
         }
 
         fft_->input(num_gkvec(), gkvec_.index_map(), &fv_states_slice_(unit_cell_.mt_basis_size(), i));
-        fft_->transform(1);
+        fft_->transform(1, gkvec_.z_sticks_coord());
         for (int ir = 0; ir < fft_->size(); ir++) fft_->buffer(ir) *= ctx_.step_function()->theta_r(ir);
-        fft_->transform(-1);
+        fft_->transform(-1, gkvec_.z_sticks_coord());
         fft_->output(num_gkvec(), gkvec_.index_map(), &o_fv_slice(unit_cell_.mt_basis_size(), i));
     }
 

@@ -82,7 +82,7 @@ class Periodic_function
         Communicator const& comm_;
 
         /// Alias for FFT driver.
-        FFT3D<CPU>* fft_;
+        FFT3D_CPU* fft_;
 
         Gvec const& gvec_;
 
@@ -246,14 +246,14 @@ class Periodic_function
                 case 1:
                 {
                     fft_->input(gvec_.num_gvec_loc(), gvec_.index_map(), &f_pw(gvec_.gvec_offset()));
-                    fft_->transform(1);
+                    fft_->transform(1, gvec_.z_sticks_coord());
                     fft_->output(&f_it(0));
                     break;
                 }
                 case -1:
                 {
                     fft_->input(&f_it(0));
-                    fft_->transform(-1);
+                    fft_->transform(-1, gvec_.z_sticks_coord());
                     fft_->output(gvec_.num_gvec_loc(), gvec_.index_map(), &f_pw(gvec_.gvec_offset()));
                     fft_->comm().allgather(&f_pw(0), gvec_.gvec_offset(), gvec_.num_gvec_loc());
                     break;

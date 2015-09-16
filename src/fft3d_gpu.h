@@ -17,14 +17,15 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file fft3d_gpu.hpp
+/** \file fft3d_gpu.h
  *   
  *  \brief Contains GPU specialization.
  */
 
-/// GPU specialization of FFT3D class.
-template<> 
-class FFT3D<GPU>
+namespace sirius {
+
+/// GPU wrapper for FFT3D.
+class FFT3D_GPU
 {
     private:
         
@@ -42,7 +43,7 @@ class FFT3D<GPU>
             : grid_size_(grid_size__),
               num_fft_(num_fft__)
         {
-            Timer t("sirius::FFT3D<GPU>::FFT3D");
+            Timer t("sirius::FFT3D_GPU::FFT3D");
             cufft_create_plan_handle(&plan_);
             cufft_create_batch_plan(plan_, grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
             work_size_ = cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
@@ -126,4 +127,6 @@ class FFT3D<GPU>
         {
             return num_fft_;
         }
+};
+
 };
