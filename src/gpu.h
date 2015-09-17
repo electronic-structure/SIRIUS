@@ -32,7 +32,6 @@ typedef std::complex<double> cuDoubleComplex;
 /* cufftHandle is a handle type used to store and access CUFFT plans. */
 typedef int cufftHandle;
 
-
 extern "C" {
 
 void cuda_initialize();
@@ -111,9 +110,11 @@ void cufft_destroy_plan_handle(cufftHandle plan);
 
 size_t cufft_get_size(int nx, int ny, int nz, int nfft);
 
-size_t cufft_create_batch_plan(cufftHandle plan, int nx, int ny, int nz, int nfft);
+size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int nfft, int auto_alloc);
 
 void cufft_set_work_area(cufftHandle plan, void* work_area);
+
+void cufft_set_stream(cufftHandle plan__, int stream_id__);
 
 void cufft_batch_load_gpu(int fft_size,
                           int num_pw_components, 

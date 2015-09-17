@@ -22,7 +22,9 @@
  *  \brief Contains CPU specialization.
  */
 
- #include "matrix3d.h"
+#include "fft3d.h"
+//#include "matrix3d.h"
+#include "gpu.h"
 
 namespace sirius {
 
@@ -57,6 +59,11 @@ class FFT3D_CPU: public FFT3D_base
         std::vector<fftw_plan> plan_forward_z_;
 
         std::vector<fftw_plan> plan_forward_xy_;
+
+        #ifdef __GPU
+        std::vector<cufftHandle> plan_z_;
+        std::vector<cufftHandle> plan_xy_;
+        #endif
     
         void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
         
@@ -66,7 +73,8 @@ class FFT3D_CPU: public FFT3D_base
 
         FFT3D_CPU(vector3d<int> dims__,
                   int num_fft_workers__,
-                  Communicator const& comm__);
+                  Communicator const& comm__,
+                  processing_unit_t pu__);
 
         ~FFT3D_CPU();
 };

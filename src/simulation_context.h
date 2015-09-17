@@ -66,11 +66,11 @@ class Simulation_context
 
         Gvec gvec_coarse_;
 
-        #ifdef __GPU
-        FFT3D<GPU>* fft_gpu_;
+        //#ifdef __GPU
+        //FFT3D<GPU>* fft_gpu_;
 
-        FFT3D<GPU>* fft_gpu_coarse_;
-        #endif
+        //FFT3D<GPU>* fft_gpu_coarse_;
+        //#endif
 
         Real_space_prj* real_space_prj_;
 
@@ -96,10 +96,10 @@ class Simulation_context
               unit_cell_(parameters_, comm_),
               reciprocal_lattice_(nullptr),
               step_function_(nullptr),
-              #ifdef __GPU
-              fft_gpu_(nullptr),
-              fft_gpu_coarse_(nullptr),
-              #endif
+              //#ifdef __GPU
+              //fft_gpu_(nullptr),
+              //fft_gpu_coarse_(nullptr),
+              //#endif
               real_space_prj_(nullptr),
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
               std_evp_solver_type_(ev_lapack),
@@ -126,10 +126,10 @@ class Simulation_context
             for (auto obj: fft_) delete obj;
             for (auto obj: fft_coarse_) delete obj;
 
-            #ifdef __GPU
-            if (fft_gpu_ != nullptr) delete fft_gpu_;
-            if (fft_gpu_coarse_ != nullptr) delete fft_gpu_coarse_;
-            #endif
+            //#ifdef __GPU
+            //if (fft_gpu_ != nullptr) delete fft_gpu_;
+            //if (fft_gpu_coarse_ != nullptr) delete fft_gpu_coarse_;
+            //#endif
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
@@ -142,6 +142,14 @@ class Simulation_context
             PROFILE();
 
             if (initialized_) TERMINATE("Simulation context is already initialized.");
+            
+            /* check if we can use a GPU device */
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifndef __GPU
+                TERMINATE_NO_GPU
+                #endif
+            }
 
             switch (parameters_.esm_type())
             {
@@ -210,39 +218,47 @@ class Simulation_context
                 if (do_parallel_fft)
                 {
                     fft_.push_back(new FFT3D_CPU(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                                 nfft_workers, mpi_grid_->communicator(1 << _dim_row_)));
+                                                 nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
                     if (!parameters_.full_potential())
                     {
                         fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                            nfft_workers, mpi_grid_->communicator(1 << _dim_row_)));
+                                                            nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
                     }
                 }
                 else
                 {
                     fft_.push_back(new FFT3D_CPU(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                                 nfft_workers, MPI_COMM_SELF));
+                                                 nfft_workers, MPI_COMM_SELF, CPU));
                     if (!parameters_.full_potential())
                     {
-                        fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                            nfft_workers, MPI_COMM_SELF));
+                        if (tid == 0)
+                        {
+                            fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
+                                                                nfft_workers, MPI_COMM_SELF, parameters_.processing_unit()));
+                        }
+                        else
+                        {
+                            fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
+                                                                nfft_workers, MPI_COMM_SELF, CPU));
+                        }
                     }
                 }
             }
 
             gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_[0], true);
 
-            #ifdef __GPU
-            fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
-            #endif
+            //#ifdef __GPU
+            //fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
+            //#endif
             
             if (!parameters_.full_potential())
             {
                 /* create a list of G-vectors for corase FFT grid */
                 gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv, fft_coarse_[0], false);
 
-                #ifdef __GPU
-                fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
-                #endif
+                //#ifdef __GPU
+                //fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
+                //#endif
             }
 
             #ifdef __PRINT_MEMORY_USAGE
@@ -401,17 +417,17 @@ class Simulation_context
             return gvec_coarse_;
         }
 
-        #ifdef __GPU
-        inline FFT3D<GPU>* fft_gpu() const
-        {
-            return fft_gpu_;
-        }
+        //#ifdef __GPU
+        //inline FFT3D<GPU>* fft_gpu() const
+        //{
+        //    return fft_gpu_;
+        //}
 
-        inline FFT3D<GPU>* fft_gpu_coarse() const
-        {
-            return fft_gpu_coarse_;
-        }
-        #endif
+        //inline FFT3D<GPU>* fft_gpu_coarse() const
+        //{
+        //    return fft_gpu_coarse_;
+        //}
+        //#endif
 
         Communicator const& comm() const
         {

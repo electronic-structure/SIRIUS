@@ -134,9 +134,9 @@ void Band::apply_magnetic_field(dmatrix<double_complex>& fv_states__,
 
     //int wf_pw_offset = unit_cell_.mt_basis_size();
     //auto fft = fft_;
-    #ifdef __GPU
-    auto fft_gpu = ctx_.fft_gpu();
-    #endif
+    //#ifdef __GPU
+    //auto fft_gpu = ctx_.fft_gpu();
+    //#endif
     //auto step_function = ctx_.step_function();
 
     STOP();

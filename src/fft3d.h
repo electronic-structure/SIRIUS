@@ -41,12 +41,14 @@ namespace sirius {
 class FFT3D_base
 {
     protected:
-
+        
         /// Number of working threads inside each FFT.
         int num_fft_workers_;
         
         /// Communicator for the parallel FFT.
         Communicator comm_;
+
+        processing_unit_t pu_;
         
         /// Auxiliary array to store full z-sticks of FFT buffer.
         mdarray<double_complex, 1> fft_buffer_aux_;
@@ -69,16 +71,16 @@ class FFT3D_base
         /// Backward transformation plan for each thread
         //std::vector<fftw_plan> plan_backward_;
 
-        std::vector<fftw_plan> plan_backward_z_;
+        //std::vector<fftw_plan> plan_backward_z_;
 
-        std::vector<fftw_plan> plan_backward_xy_;
-        
-        /// Forward transformation plan for each thread
-        //std::vector<fftw_plan> plan_forward_;
+        //std::vector<fftw_plan> plan_backward_xy_;
+        //
+        ///// Forward transformation plan for each thread
+        ////std::vector<fftw_plan> plan_forward_;
 
-        std::vector<fftw_plan> plan_forward_z_;
+        //std::vector<fftw_plan> plan_forward_z_;
 
-        std::vector<fftw_plan> plan_forward_xy_;
+        //std::vector<fftw_plan> plan_forward_xy_;
     
         /// Main input/output buffer.
         double_complex* fftw_buffer_;
@@ -88,6 +90,9 @@ class FFT3D_base
 
         /// Internal buffer for independent {xy}-transforms.
         std::vector<double_complex*> fftw_buffer_xy_;
+
+        std::vector< mdarray<double_complex, 1> > buf_z_;
+        std::vector< mdarray<double_complex, 1> > buf_xy_;
 
         ///// Execute backward transformation.
         //inline void backward(int thread_id = 0)
@@ -133,7 +138,8 @@ class FFT3D_base
 
         FFT3D_base(vector3d<int> dims__,
                    int num_fft_workers__,
-                   Communicator const& comm__);
+                   Communicator const& comm__,
+                   processing_unit_t pu__);
 
         virtual ~FFT3D_base();
 
@@ -295,12 +301,6 @@ class FFT3D_base
 };
 
 };
-
-#include "fft3d_cpu.h"
-
-#ifdef __GPU
-#include "fft3d_gpu.h"
-#endif
 
 #endif // __FFT3D_H__
 

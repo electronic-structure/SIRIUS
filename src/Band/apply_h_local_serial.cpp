@@ -24,7 +24,10 @@ void Band::apply_h_local_serial(K_point* kp__,
 
     bool in_place = (&phi__ == &hphi__);
 
-    //auto pu = parameters_.processing_unit();
+    mdarray<double, 1> timers(ctx_.num_fft_threads());
+    timers.zero();
+    mdarray<int, 1> timer_counts(ctx_.num_fft_threads());
+    timer_counts.zero();
 
     /* save omp_nested flag */
     int nested = omp_get_nested();
@@ -33,9 +36,10 @@ void Band::apply_h_local_serial(K_point* kp__,
     {
         int thread_id = omp_get_thread_num();
 
-        #pragma omp for
+        #pragma omp for schedule(dynamic, 1)
         for (int i = 0; i < num_phi__; i++)
         {
+            double t1 = omp_get_wtime();
             ctx_.fft_coarse(thread_id)->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i));
             /* phi(G) -> phi(r) */
             ctx_.fft_coarse(thread_id)->transform(1, kp__->gkvec_coarse().z_sticks_coord());
@@ -55,10 +59,26 @@ void Band::apply_h_local_serial(K_point* kp__,
                 ctx_.fft_coarse(thread_id)->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i));
                 for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
             }
+            timers(thread_id) += (omp_get_wtime() - t1);
+            timer_counts(thread_id)++;
         }
     }
     /* restore the nested flag */
     omp_set_nested(nested);
+
+    if (kp__->comm().rank() == 0)
+    {
+        std::cout << "---------------------------------" << std::endl;
+        std::cout << "thread_id  | fft       | perf    " << std::endl;
+        std::cout << "---------------------------------" << std::endl;
+        for (int i = 0; i < ctx_.num_fft_threads(); i++)
+        {
+            printf("   %2i      | %8.4f  | %8.2f\n", i, timers(i), (timer_counts(i) == 0) ? 0 : timer_counts(i) / timers(i));
+        }
+        std::cout << "---------------------------------" << std::endl;
+    }
+    
+    //if (kp__->comm().rank() == 0) DUMP("CPU / GPU fft count : %i %i", count_fft_cpu, count_fft_gpu);
 
 
 
@@ -247,19 +267,6 @@ void Band::apply_h_local_serial(K_point* kp__,
 //==     double tval = t1.stop();
 //==     DUMP("time: %f (sec.), performance: %f (FFTs/sec.)", tval, 2 * num_phi__ / tval);
 //== 
-//==     //== if (kp__->comm().rank() == 0)
-//==     //== {
-//==     //==     std::cout << "---------------------" << std::endl;
-//==     //==     std::cout << "thread_id  | fft     " << std::endl;
-//==     //==     std::cout << "---------------------" << std::endl;
-//==     //==     for (int i = 0; i < num_fft_threads; i++)
-//==     //==     {
-//==     //==         printf("   %2i      | %8.4f  \n", i, timers(i));
-//==     //==     }
-//==     //==     std::cout << "---------------------" << std::endl;
-//==     //== }
-//==     
-//==     //== if (kp__->comm().rank() == 0) DUMP("CPU / GPU fft count : %i %i", count_fft_cpu, count_fft_gpu);
 }
 
 };

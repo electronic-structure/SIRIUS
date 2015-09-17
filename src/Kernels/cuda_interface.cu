@@ -458,15 +458,21 @@ extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
     return work_size;
 }
 
-extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int nx, int ny, int nz, int nfft)
+extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int nfft, int auto_alloc)
 {
-    int fft_size = nx * ny * nz;
-    int n[] = {nz, ny, nx};
-
-    CALL_CUFFT(cufftSetAutoAllocation, (plan, false));
+    int fft_size = 1;
+    for (int i = 0; i < rank; i++) fft_size *= dims[i];
     
+    if (auto_alloc)
+    {
+        CALL_CUFFT(cufftSetAutoAllocation, (plan, true));
+    }
+    else
+    {
+        CALL_CUFFT(cufftSetAutoAllocation, (plan, false));
+    }
     size_t work_size;
-    CALL_CUFFT(cufftMakePlanMany, (plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
+    CALL_CUFFT(cufftMakePlanMany, (plan, rank, dims, dims, 1, fft_size, dims, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
 
     return work_size;
 }
@@ -474,6 +480,13 @@ extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int nx, int ny, int 
 extern "C" void cufft_set_work_area(cufftHandle plan, void* work_area)
 {
     CALL_CUFFT(cufftSetWorkArea, (plan, work_area));
+}
+
+extern "C" void cufft_set_stream(cufftHandle plan__, int stream_id__)
+{
+    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+
+    CALL_CUFFT(cufftSetStream, (plan__, stream));
 }
 
 __global__ void cufft_batch_load_gpu_kernel
@@ -561,13 +574,13 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 
 extern "C" void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
 {
-    CUDA_timer t("cufft_forward_transform");
+    //CUDA_timer t("cufft_forward_transform");
     CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_FORWARD));
 }
 
 extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
 {
-    CUDA_timer t("cufft_backward_transform");
+    //CUDA_timer t("cufft_backward_transform");
     CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_INVERSE));
 }
 
