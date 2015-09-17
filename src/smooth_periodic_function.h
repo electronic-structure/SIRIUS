@@ -39,7 +39,7 @@ class Smooth_periodic_function
         
         mdarray<T, 1> data_;
 
-        FFT3D_base* fft_;
+        FFT3D* fft_;
 
         Gvec const* gvec_;
 
@@ -51,7 +51,7 @@ class Smooth_periodic_function
         {
         }
         
-        Smooth_periodic_function(T* ptr__, FFT3D_base* fft__, Gvec const* gvec__) 
+        Smooth_periodic_function(T* ptr__, FFT3D* fft__, Gvec const* gvec__) 
             : fft_(fft__),
               gvec_(gvec__)
         {
@@ -61,7 +61,7 @@ class Smooth_periodic_function
             }
         }
 
-        Smooth_periodic_function(FFT3D_base* fft__, Gvec const* gvec__) 
+        Smooth_periodic_function(FFT3D* fft__, Gvec const* gvec__) 
             : fft_(fft__),
               gvec_(gvec__)
         {
@@ -95,7 +95,7 @@ class Smooth_periodic_function
             data_.zero();
         }
 
-        inline FFT3D_base* fft()
+        inline FFT3D* fft()
         {
             return fft_;
         }
@@ -169,7 +169,7 @@ class Smooth_periodic_function_gradient
 
         std::array<Smooth_periodic_function<domaint_t, T>, 3> grad_;
 
-        FFT3D_base* fft_;
+        FFT3D* fft_;
 
     public:
 
@@ -177,7 +177,7 @@ class Smooth_periodic_function_gradient
         {
         }
 
-        Smooth_periodic_function_gradient(FFT3D_base* fft__) : fft_(fft__)
+        Smooth_periodic_function_gradient(FFT3D* fft__) : fft_(fft__)
         {
             assert(fft__ != nullptr);
         }
@@ -187,7 +187,7 @@ class Smooth_periodic_function_gradient
             return grad_[idx__];
         }
 
-        inline FFT3D_base* fft()
+        inline FFT3D* fft()
         {
             return fft_;
         }

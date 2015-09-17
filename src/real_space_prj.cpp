@@ -100,7 +100,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
 
     if (mask(1, 1) > 1e-13) TERMINATE("wrong mask function");
 
-    fft_ = new FFT3D_CPU(Utils::find_translation_limits(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
+    fft_ = new FFT3D(Utils::find_translation_limits(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
                          num_fft_workers__, MPI_COMM_SELF, CPU);
 
     gvec_ = Gvec(vector3d<double>(0, 0, 0), pw_cutoff__, unit_cell_.reciprocal_lattice_vectors(), fft_, false);

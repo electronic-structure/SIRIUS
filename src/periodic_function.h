@@ -82,7 +82,7 @@ class Periodic_function
         Communicator const& comm_;
 
         /// Alias for FFT driver.
-        FFT3D_base* fft_;
+        FFT3D* fft_;
 
         Gvec const& gvec_;
 

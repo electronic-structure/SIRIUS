@@ -57,12 +57,12 @@ class Simulation_context
         Step_function* step_function_;
 
         /// FFT wrapper for dense grid.
-        std::vector<FFT3D_base*> fft_;
+        std::vector<FFT3D*> fft_;
 
         Gvec gvec_;
 
         /// FFT wrapper for coarse grid.
-        std::vector<FFT3D_base*> fft_coarse_;
+        std::vector<FFT3D*> fft_coarse_;
 
         Gvec gvec_coarse_;
 
@@ -217,29 +217,29 @@ class Simulation_context
             {
                 if (do_parallel_fft)
                 {
-                    fft_.push_back(new FFT3D_CPU(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                                 nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
+                    fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
+                                             nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
                     if (!parameters_.full_potential())
                     {
-                        fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                            nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
+                        fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
+                                                        nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
                     }
                 }
                 else
                 {
-                    fft_.push_back(new FFT3D_CPU(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                                 nfft_workers, MPI_COMM_SELF, CPU));
+                    fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
+                                             nfft_workers, MPI_COMM_SELF, CPU));
                     if (!parameters_.full_potential())
                     {
                         if (tid == 0)
                         {
-                            fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                                nfft_workers, MPI_COMM_SELF, parameters_.processing_unit()));
+                            fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
+                                                            nfft_workers, MPI_COMM_SELF, parameters_.processing_unit()));
                         }
                         else
                         {
-                            fft_coarse_.push_back(new FFT3D_CPU(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                                nfft_workers, MPI_COMM_SELF, CPU));
+                            fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
+                                                            nfft_workers, MPI_COMM_SELF, CPU));
                         }
                     }
                 }
@@ -397,12 +397,12 @@ class Simulation_context
             return reciprocal_lattice_;
         }
 
-        inline FFT3D_base* fft(int thread_id__) const
+        inline FFT3D* fft(int thread_id__) const
         {
             return fft_[thread_id__];
         }
 
-        inline FFT3D_base* fft_coarse(int thread_id__) const
+        inline FFT3D* fft_coarse(int thread_id__) const
         {
             return fft_coarse_[thread_id__];
         }

@@ -37,8 +37,20 @@
 
 namespace sirius {
 
-/// Base class 
-class FFT3D_base
+/// Interface to 3D FFT.
+/** FFT convention:
+ *  \f[
+ *      f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
+ *  \f]
+ *  is a \em backward transformation from a set of pw coefficients to a function.  
+ *
+ *  \f[
+ *      f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = 
+ *          \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
+ *  \f]
+ *  is a \em forward transformation from a function to a set of coefficients. 
+ */
+class FFT3D
 {
     protected:
         
@@ -68,20 +80,6 @@ class FFT3D_base
         /// Reciprocal space range
         std::pair<int, int> grid_limits_[3];
         
-        /// Backward transformation plan for each thread
-        //std::vector<fftw_plan> plan_backward_;
-
-        //std::vector<fftw_plan> plan_backward_z_;
-
-        //std::vector<fftw_plan> plan_backward_xy_;
-        //
-        ///// Forward transformation plan for each thread
-        ////std::vector<fftw_plan> plan_forward_;
-
-        //std::vector<fftw_plan> plan_forward_z_;
-
-        //std::vector<fftw_plan> plan_forward_xy_;
-    
         /// Main input/output buffer.
         double_complex* fftw_buffer_;
         
@@ -92,7 +90,27 @@ class FFT3D_base
         std::vector<double_complex*> fftw_buffer_xy_;
 
         std::vector< mdarray<double_complex, 1> > buf_z_;
+        
         std::vector< mdarray<double_complex, 1> > buf_xy_;
+
+        /// Backward transformation plan for each thread
+        fftw_plan plan_backward_;
+
+        std::vector<fftw_plan> plan_backward_z_;
+
+        std::vector<fftw_plan> plan_backward_xy_;
+        
+        /// Forward transformation plan for each thread
+        fftw_plan plan_forward_;
+
+        std::vector<fftw_plan> plan_forward_z_;
+
+        std::vector<fftw_plan> plan_forward_xy_;
+
+        #ifdef __GPU
+        std::vector<cufftHandle> plan_z_;
+        std::vector<cufftHandle> plan_xy_;
+        #endif
 
         ///// Execute backward transformation.
         //inline void backward(int thread_id = 0)
@@ -130,18 +148,18 @@ class FFT3D_base
             }
         }
 
-        virtual void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__) = 0;
+        void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
         
-        virtual void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__) = 0;
+        void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
         
     public:
 
-        FFT3D_base(vector3d<int> dims__,
-                   int num_fft_workers__,
-                   Communicator const& comm__,
-                   processing_unit_t pu__);
+        FFT3D(vector3d<int> dims__,
+              int num_fft_workers__,
+              Communicator const& comm__,
+              processing_unit_t pu__);
 
-        virtual ~FFT3D_base();
+        ~FFT3D();
 
         ///// Execute the transformation for a given thread.
         //inline void transform(int direction__, int thread_id__ = 0)

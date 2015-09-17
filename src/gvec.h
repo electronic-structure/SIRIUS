@@ -6,7 +6,7 @@ class Gvec
 {
     private:
         
-        FFT3D_base* fft_;
+        FFT3D* fft_;
 
         matrix3d<double> lattice_vectors_;
 
@@ -55,7 +55,7 @@ class Gvec
         Gvec(vector3d<double> q__,
              double Gmax__,
              matrix3d<double> const& M__,
-             FFT3D_base* fft__,
+             FFT3D* fft__,
              bool build_reverse_mapping__)
             : fft_(fft__),
               lattice_vectors_(M__),

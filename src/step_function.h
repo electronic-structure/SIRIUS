@@ -83,7 +83,7 @@ class Step_function
 
         Communicator const& comm_;
 
-        FFT3D_base* fft_;
+        FFT3D* fft_;
 
         Gvec const& gvec_;
        
@@ -94,7 +94,7 @@ class Step_function
         /// Constructor
         Step_function(Unit_cell const& unit_cell_, 
                       Reciprocal_lattice const* reciprocal_lattice__,
-                      FFT3D_base* fft__,
+                      FFT3D* fft__,
                       Gvec const& gvec__,
                       Communicator const& comm__);
 

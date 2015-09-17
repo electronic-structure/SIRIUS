@@ -37,7 +37,7 @@ class Real_space_prj
 
         Unit_cell& unit_cell_;
 
-        FFT3D_CPU* fft_;
+        FFT3D* fft_;
 
         Gvec gvec_;
 
@@ -122,7 +122,7 @@ class Real_space_prj
             delete fft_;
         }
 
-        FFT3D_CPU* fft() const
+        FFT3D* fft() const
         {
             return fft_;
         }

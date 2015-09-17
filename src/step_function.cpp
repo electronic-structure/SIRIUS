@@ -28,7 +28,7 @@ namespace sirius {
 
 Step_function::Step_function(Unit_cell const& unit_cell__,
                              Reciprocal_lattice const* reciprocal_lattice__,
-                             FFT3D_base* fft__,
+                             FFT3D* fft__,
                              Gvec const& gvec__,
                              Communicator const& comm__)
     : unit_cell_(unit_cell__),

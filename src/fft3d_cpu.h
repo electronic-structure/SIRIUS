@@ -42,41 +42,41 @@ namespace sirius {
  *  is a \em forward transformation from a function to a set of coefficients. 
  *  
  */
-class FFT3D_CPU: public FFT3D_base
-{
-    private:
-
-        /// Backward transformation plan for each thread
-        fftw_plan plan_backward_;
-
-        std::vector<fftw_plan> plan_backward_z_;
-
-        std::vector<fftw_plan> plan_backward_xy_;
-        
-        /// Forward transformation plan for each thread
-        fftw_plan plan_forward_;
-
-        std::vector<fftw_plan> plan_forward_z_;
-
-        std::vector<fftw_plan> plan_forward_xy_;
-
-        #ifdef __GPU
-        std::vector<cufftHandle> plan_z_;
-        std::vector<cufftHandle> plan_xy_;
-        #endif
-    
-        void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
-        
-        void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
-        
-    public:
-
-        FFT3D_CPU(vector3d<int> dims__,
-                  int num_fft_workers__,
-                  Communicator const& comm__,
-                  processing_unit_t pu__);
-
-        ~FFT3D_CPU();
-};
+//class FFT3D_CPU: public FFT3D_base
+//{
+//    private:
+//
+//        /// Backward transformation plan for each thread
+//        fftw_plan plan_backward_;
+//
+//        std::vector<fftw_plan> plan_backward_z_;
+//
+//        std::vector<fftw_plan> plan_backward_xy_;
+//        
+//        /// Forward transformation plan for each thread
+//        fftw_plan plan_forward_;
+//
+//        std::vector<fftw_plan> plan_forward_z_;
+//
+//        std::vector<fftw_plan> plan_forward_xy_;
+//
+//        #ifdef __GPU
+//        std::vector<cufftHandle> plan_z_;
+//        std::vector<cufftHandle> plan_xy_;
+//        #endif
+//    
+//        void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+//        
+//        void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+//        
+//    public:
+//
+//        FFT3D_CPU(vector3d<int> dims__,
+//                  int num_fft_workers__,
+//                  Communicator const& comm__,
+//                  processing_unit_t pu__);
+//
+//        ~FFT3D_CPU();
+//};
 
 };
