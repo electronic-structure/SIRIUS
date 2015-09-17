@@ -26,7 +26,7 @@
 #define __RECIPROCAL_LATTICE_H__
 
 #include "unit_cell.h"
-#include "fft3d_cpu.h"
+#include "fft3d.h"
 #include "sbessel_pw.h"
 
 namespace sirius {
