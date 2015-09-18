@@ -155,8 +155,8 @@ FFT3D::FFT3D(vector3d<int> dims__,
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        plan_z_  = std::vector<cufftHandle>(num_fft_workers_);
-        plan_xy_ = std::vector<cufftHandle>(num_fft_workers_);
+        plan_z_  = std::vector<cufftHandle>(get_num_cuda_streams());
+        plan_xy_ = std::vector<cufftHandle>(get_num_cuda_streams());
         
         int nbatch = 1;
         int auto_alloc = 1;
@@ -166,7 +166,7 @@ FFT3D::FFT3D(vector3d<int> dims__,
         int embed_xy[] = {size(1), size(0)};
 
 
-        for (int i = 0; i < num_fft_workers_; i++)
+        for (int i = 0; i < get_num_cuda_streams(); i++)
         {
             cufft_create_plan_handle(&plan_z_[i]);
             cufft_create_batch_plan(plan_z_[i], 1, dim_z, embed_z, size(0) * size(1), 1, nbatch, auto_alloc);
@@ -203,7 +203,7 @@ FFT3D::~FFT3D()
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        for (int i = 0; i < num_fft_workers_; i++)
+        for (int i = 0; i < get_num_cuda_streams(); i++)
         {
             cufft_destroy_plan_handle(plan_z_[i]); 
             cufft_destroy_plan_handle(plan_xy_[i]); 
@@ -307,19 +307,18 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            #pragma omp parallel num_threads(num_fft_workers_)
+            for (int i = 0; i < get_num_cuda_streams(); i++)
             {
-                int tid = omp_get_thread_num();
-                #pragma omp for
-                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+                for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
                 {
-                    int x = z_sticks_coord__[i].first;
-                    int y = z_sticks_coord__[i].second;
-
-                    cufft_backward_transform(plan_z_[tid], buf_.at<GPU>(x + y * size(0)));
+                    int x = z_sticks_coord__[j].first;
+                    int y = z_sticks_coord__[j].second;
+                    if (j % get_num_cuda_streams() == i)
+                        cufft_backward_transform(plan_z_[i], buf_.at<GPU>(x + y * size(0)));
                 }
-                cuda_stream_synchronize(tid);
             }
+            for (int i = 0; i < get_num_cuda_streams(); i++)
+                cuda_stream_synchronize(i);
         }
         #endif
     }
@@ -365,16 +364,16 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            #pragma omp parallel num_threads(num_fft_workers_)
+            for (int i = 0; i < get_num_cuda_streams(); i++)
             {
-                int tid = omp_get_thread_num();
-                #pragma omp for
                 for (int z = 0; z < size(2); z++)
                 {
-                    cufft_backward_transform(plan_xy_[tid], buf_.at<GPU>(z * size_xy));
+                    if (z % get_num_cuda_streams() == i)
+                        cufft_backward_transform(plan_xy_[i], buf_.at<GPU>(z * size_xy));
                 }
-                cuda_stream_synchronize(tid);
             }
+            for (int i = 0; i < get_num_cuda_streams(); i++)
+                cuda_stream_synchronize(i);
         }
         #endif
     }
@@ -455,16 +454,16 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            #pragma omp parallel num_threads(num_fft_workers_)
+            for (int i = 0; i < get_num_cuda_streams(); i++)
             {
-                int tid = omp_get_thread_num();
-                #pragma omp for
                 for (int z = 0; z < size(2); z++)
                 {
-                    cufft_forward_transform(plan_xy_[tid], buf_.at<GPU>(z * size_xy));
+                    if (z % get_num_cuda_streams() == i)
+                        cufft_forward_transform(plan_xy_[i], buf_.at<GPU>(z * size_xy));
                 }
-                cuda_stream_synchronize(tid);
             }
+            for (int i = 0; i < get_num_cuda_streams(); i++)
+                cuda_stream_synchronize(i);
         }
         #endif
     }
@@ -540,19 +539,18 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            #pragma omp parallel num_threads(num_fft_workers_)
+            for (int i = 0; i < get_num_cuda_streams(); i++)
             {
-                int tid = omp_get_thread_num();
-                #pragma omp for
-                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+                for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
                 {
-                    int x = z_sticks_coord__[i].first;
-                    int y = z_sticks_coord__[i].second;
-
-                    cufft_forward_transform(plan_z_[tid], buf_.at<GPU>(x + y * size(0)));
+                    int x = z_sticks_coord__[j].first;
+                    int y = z_sticks_coord__[j].second;
+                    if (j % get_num_cuda_streams() == i)
+                        cufft_forward_transform(plan_z_[i], buf_.at<GPU>(x + y * size(0)));
                 }
-                cuda_stream_synchronize(tid);
             }
+            for (int i = 0; i < get_num_cuda_streams(); i++)
+                cuda_stream_synchronize(i);
         }
         #endif
     }

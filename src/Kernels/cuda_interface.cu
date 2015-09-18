@@ -54,6 +54,7 @@ inline void stack_backtrace()
 //================
 
 cudaStream_t* streams;
+int num_streams;
 
 extern "C" {
 
@@ -116,8 +117,9 @@ void cuda_device_reset()
     CALL_CUDA(cudaDeviceReset, ());
 }
 
-void cuda_create_streams(int num_streams)
+void cuda_create_streams(int num_streams__)
 {
+    num_streams = num_streams__;
     streams = (cudaStream_t*)malloc(num_streams * sizeof(cudaStream_t));
     //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
     for (int i = 0; i < num_streams; i++)
@@ -126,7 +128,12 @@ void cuda_create_streams(int num_streams)
     }
 }
 
-void cuda_destroy_streams(int num_streams)
+int get_num_cuda_streams()
+{
+    return num_streams;
+}
+
+void cuda_destroy_streams()
 {
     for (int i = 0; i < num_streams; i++) 
     {

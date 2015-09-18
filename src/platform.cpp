@@ -97,7 +97,7 @@ void Platform::finalize()
     #endif
     #ifdef __GPU
     cublas_destroy_handles(max_num_threads() + 1);
-    cuda_destroy_streams(max_num_threads() + 1);
+    cuda_destroy_streams();
     cuda_device_reset();
     #endif
     #ifdef __FFTW_MPI

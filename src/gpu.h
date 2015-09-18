@@ -62,7 +62,9 @@ void cuda_device_synchronize();
 
 void cuda_create_streams(int num_streams);
 
-void cuda_destroy_streams(int num_streams);
+void cuda_destroy_streams();
+
+int get_num_cuda_streams();
 
 void cuda_stream_synchronize(int stream_id);
 
