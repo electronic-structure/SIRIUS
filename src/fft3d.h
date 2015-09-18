@@ -89,6 +89,8 @@ class FFT3D
         /// Internal buffer for independent {xy}-transforms.
         std::vector<double_complex*> fftw_buffer_xy_;
 
+        mdarray<double_complex, 1> buf_;
+
         std::vector< mdarray<double_complex, 1> > buf_z_;
         
         std::vector< mdarray<double_complex, 1> > buf_xy_;
@@ -234,9 +236,9 @@ class FFT3D
             for (int i = 0; i < n__; i++) data__[i] = fftw_buffer_[map__[i]];
         }
 
-        inline void output(int n, int const* map, double_complex* data, double alpha)
+        inline void output(int n__, int const* map__, double_complex* data__, double beta__)
         {
-            for (int i = 0; i < n; i++) data[i] += alpha * fftw_buffer_[map[i]];
+            for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
         }
         
         inline const std::pair<int, int>& grid_limits(int idim)
@@ -288,6 +290,24 @@ class FFT3D
             return fftw_buffer_[idx__];
         }
         
+        template <processing_unit_t pu>
+        inline double_complex* buffer()
+        {
+            switch (pu)
+            {
+                case CPU:
+                {
+                    return fftw_buffer_;
+                    break;
+                }
+                case GPU:
+                {
+                    return buf_.at<GPU>();
+                    break;
+                }
+            }
+        }
+        
         vector3d<int> grid_size() const
         {
             return vector3d<int>(grid_size_[0], grid_size_[1], grid_size_[2]);
@@ -316,6 +336,31 @@ class FFT3D
         {
             return num_fft_workers_;
         }
+
+        #ifdef __GPU
+        void allocate_on_device()
+        {
+            buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size()); 
+            buf_.allocate_on_device();
+        }
+
+        void deallocate_on_device()
+        {
+            buf_.deallocate_on_device();
+        }
+
+        template<typename T>
+        inline void input_on_device(int n__, int const* map__, T* data__)
+        {
+            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, buf_.at<GPU>());
+        }
+
+        template<typename T>
+        inline void output_on_device(int n__, int const* map__, T* data__, double beta__)
+        {
+            cufft_batch_unload_gpu(local_size(), n__, 1, map__, buf_.at<GPU>(), data__, beta__);
+        }
+        #endif
 };
 
 };

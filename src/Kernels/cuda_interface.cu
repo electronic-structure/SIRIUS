@@ -458,7 +458,7 @@ extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
     return work_size;
 }
 
-extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int nfft, int auto_alloc)
+extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int* embed, int stride, int dist, int nfft, int auto_alloc)
 {
     int fft_size = 1;
     for (int i = 0; i < rank; i++) fft_size *= dims[i];
@@ -472,7 +472,22 @@ extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims,
         CALL_CUFFT(cufftSetAutoAllocation, (plan, false));
     }
     size_t work_size;
-    CALL_CUFFT(cufftMakePlanMany, (plan, rank, dims, dims, 1, fft_size, dims, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
+
+    /* 1D
+       input[ b * idist + x * istride]
+       output[ b * odist + x * ostride]
+       
+       2D
+       input[b * idist + (x * inembed[1] + y) * istride]
+       output[b * odist + (x * onembed[1] + y) * ostride]
+       
+       3D
+       input[b * idist + ((x * inembed[1] + y) * inembed[2] + z) * istride]
+       output[b * odist + ((x * onembed[1] + y) * onembed[2] + z) * ostride]
+
+       - See more at: http://docs.nvidia.com/cuda/cufft/index.html#advanced-data-layout
+     */
+    CALL_CUFFT(cufftMakePlanMany, (plan, rank, dims, embed, stride, dist, dims, stride, dist, CUFFT_Z2Z, nfft, &work_size));
 
     return work_size;
 }
@@ -493,7 +508,7 @@ __global__ void cufft_batch_load_gpu_kernel
 (
     int fft_size, 
     int num_pw_components, 
-    int* map, 
+    int const* map, 
     cuDoubleComplex* data, 
     cuDoubleComplex* fft_buffer
 )
@@ -510,7 +525,7 @@ __global__ void cufft_batch_load_gpu_kernel
 extern "C" void cufft_batch_load_gpu(int fft_size,
                                      int num_pw_components, 
                                      int num_fft,
-                                     int* map, 
+                                     int const* map, 
                                      cuDoubleComplex* data, 
                                      cuDoubleComplex* fft_buffer)
 {
@@ -533,7 +548,7 @@ __global__ void cufft_batch_unload_gpu_kernel
 (
     int fft_size, 
     int num_pw_components, 
-    int* map, 
+    int const* map, 
     cuDoubleComplex* fft_buffer,
     cuDoubleComplex* data,
     double beta
@@ -542,18 +557,20 @@ __global__ void cufft_batch_unload_gpu_kernel
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
+    double w = beta / fft_size;
+
     if (idx < num_pw_components) 
     {
         data[array2D_offset(idx, i, num_pw_components)] = cuCadd(
-            cuCmul(make_cuDoubleComplex(beta, 0), data[array2D_offset(idx, i, num_pw_components)]),
-            cuCdiv(fft_buffer[array2D_offset(map[idx], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0)));
+            data[array2D_offset(idx, i, num_pw_components)],
+            cuCmul(fft_buffer[array2D_offset(map[idx], i, fft_size)], make_cuDoubleComplex(w, 0)));
     }
 }
 
 extern "C" void cufft_batch_unload_gpu(int fft_size,
                                        int num_pw_components,
                                        int num_fft,
-                                       int* map, 
+                                       int const* map, 
                                        cuDoubleComplex* fft_buffer, 
                                        cuDoubleComplex* data,
                                        double beta)

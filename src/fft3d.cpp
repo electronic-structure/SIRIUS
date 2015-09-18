@@ -85,20 +85,20 @@ FFT3D::FFT3D(vector3d<int> dims__,
         fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(size(0) * size(1) * sizeof(double_complex)));
     }
 
-    #ifdef __GPU
-    if (pu_ == GPU)
-    {
-        buf_z_ = std::vector< mdarray<double_complex, 1> >(num_fft_workers_);
-        buf_xy_ = std::vector< mdarray<double_complex, 1> >(num_fft_workers_);
-        for (int i = 0; i < num_fft_workers_; i++)
-        {
-            buf_z_[i] = mdarray<double_complex, 1>(fftw_buffer_z_[i], size(2));
-            buf_z_[i].allocate_on_device();
-            buf_xy_[i] = mdarray<double_complex, 1>(fftw_buffer_xy_[i], size(0) * size(1));
-            buf_xy_[i].allocate_on_device();
-        }
-    }
-    #endif
+    //#ifdef __GPU
+    //if (pu_ == GPU)
+    //{
+    //    buf_z_ = std::vector< mdarray<double_complex, 1> >(num_fft_workers_);
+    //    buf_xy_ = std::vector< mdarray<double_complex, 1> >(num_fft_workers_);
+    //    for (int i = 0; i < num_fft_workers_; i++)
+    //    {
+    //        buf_z_[i] = mdarray<double_complex, 1>(fftw_buffer_z_[i], size(2));
+    //        buf_z_[i].allocate_on_device();
+    //        buf_xy_[i] = mdarray<double_complex, 1>(fftw_buffer_xy_[i], size(0) * size(1));
+    //        buf_xy_[i].allocate_on_device();
+    //    }
+    //}
+    //#endif
 
     //fftw_plan_with_nthreads(num_fft_workers_);
 
@@ -157,18 +157,23 @@ FFT3D::FFT3D(vector3d<int> dims__,
     {
         plan_z_  = std::vector<cufftHandle>(num_fft_workers_);
         plan_xy_ = std::vector<cufftHandle>(num_fft_workers_);
-
+        
+        int nbatch = 1;
+        int auto_alloc = 1;
         int dim_z[] = {size(2)};
+        int embed_z[] = {size(2)};
         int dim_xy[] = {size(1), size(0)};
+        int embed_xy[] = {size(1), size(0)};
+
 
         for (int i = 0; i < num_fft_workers_; i++)
         {
             cufft_create_plan_handle(&plan_z_[i]);
-            cufft_create_batch_plan(plan_z_[i], 1, dim_z, 1, 1);
+            cufft_create_batch_plan(plan_z_[i], 1, dim_z, embed_z, size(0) * size(1), 0, nbatch, auto_alloc);
             cufft_set_stream(plan_z_[i], i);
 
             cufft_create_plan_handle(&plan_xy_[i]);
-            cufft_create_batch_plan(plan_xy_[i], 2, dim_xy, 1, 1);
+            cufft_create_batch_plan(plan_xy_[i], 2, dim_xy, embed_xy, 1, 0, nbatch, auto_alloc);
             cufft_set_stream(plan_xy_[i], i);
         }
     }
@@ -275,42 +280,48 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
     }
     else
     {
-        #pragma omp parallel num_threads(num_fft_workers_)
+        if (pu_ == CPU)
         {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+            #pragma omp parallel num_threads(num_fft_workers_)
             {
-                int x = z_sticks_coord__[i].first;
-                int y = z_sticks_coord__[i].second;
-                for (int z = 0; z < size(2); z++)
+                int tid = omp_get_thread_num();
+                #pragma omp for
+                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
                 {
-                    fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
-                }
-                //switch (pu_)
-                //{
-                //    case CPU:
-                //    {
-                        fftw_execute(plan_backward_z_[tid]);
-                //        break;
-                //    }
-                //    case GPU:
-                //    {
-                //        #ifdef __GPU
-                //        buf_z_[tid].async_copy_to_device(tid);
-                //        cufft_backward_transform(plan_z_[tid], buf_z_[tid].at<GPU>());
-                //        buf_z_[tid].async_copy_to_host(tid);
-                //        cuda_stream_synchronize(tid);
-                //        #endif
-                //        break;
-                //    }
-                //}
-                for (int z = 0; z < size(2); z++)
-                {
-                    fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
+                    int x = z_sticks_coord__[i].first;
+                    int y = z_sticks_coord__[i].second;
+
+                    for (int z = 0; z < size(2); z++)
+                    {
+                        fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
+                    }
+                    fftw_execute(plan_backward_z_[tid]);
+                    for (int z = 0; z < size(2); z++)
+                    {
+                        fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
+                    }
                 }
             }
         }
+
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                #pragma omp for
+                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+                {
+                    int x = z_sticks_coord__[i].first;
+                    int y = z_sticks_coord__[i].second;
+
+                    cufft_backward_transform(plan_z_[tid], buf_.at<GPU>(x + y * size(0)));
+                }
+                cuda_stream_synchronize(tid);
+            }
+        }
+        #endif
     }
 
     if (comm_.size() > 1)
@@ -337,34 +348,35 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
     }
     else
     {
-        #pragma omp parallel num_threads(num_fft_workers_)
+        if (pu_ == CPU)
         {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int z = 0; z < size(2); z++)
+            #pragma omp parallel num_threads(num_fft_workers_)
             {
-                switch (pu_)
+                int tid = omp_get_thread_num();
+                #pragma omp for
+                for (int z = 0; z < size(2); z++)
                 {
-                    case CPU:
-                    {
-                        memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
-                        fftw_execute(plan_backward_xy_[tid]);
-                        memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
-                        break;
-                    }
-                    case GPU:
-                    {
-                        #ifdef __GPU
-                        mdarray<double_complex, 1>(&fftw_buffer_[z * size_xy], buf_xy_[tid].at<GPU>(), size(0) * size(1)).async_copy_to_device(tid);
-                        cufft_backward_transform(plan_xy_[tid], buf_xy_[tid].at<GPU>());
-                        mdarray<double_complex, 1>(&fftw_buffer_[z * size_xy], buf_xy_[tid].at<GPU>(), size(0) * size(1)).async_copy_to_host(tid);
-                        #endif
-                        break;
-                    }
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
+                    fftw_execute(plan_backward_xy_[tid]);
+                    memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
                 }
             }
-            cuda_stream_synchronize(tid);
         }
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                #pragma omp for
+                for (int z = 0; z < size(2); z++)
+                {
+                    cufft_backward_transform(plan_xy_[tid], buf_.at<GPU>(z * size_xy));
+                }
+                cuda_stream_synchronize(tid);
+            }
+        }
+        #endif
     }
 
     //if (Platform::rank() == 0)
@@ -425,35 +437,36 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
     }
     else
     {
-        #pragma omp parallel num_threads(num_fft_workers_)
+        if (pu_ == CPU)
         {
-            int tid = omp_get_thread_num();
-            
-            #pragma omp for
-            for (int z = 0; z < local_size_z_; z++)
+            #pragma omp parallel num_threads(num_fft_workers_)
             {
-                switch (pu_)
+                int tid = omp_get_thread_num();
+                
+                #pragma omp for
+                for (int z = 0; z < local_size_z_; z++)
                 {
-                    case CPU:
-                    {
-                        memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
-                        fftw_execute(plan_forward_xy_[tid]);
-                        memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
-                        break;
-                    }
-                    case GPU:
-                    {
-                        #ifdef __GPU
-                        mdarray<double_complex, 1>(&fftw_buffer_[z * size_xy], buf_xy_[tid].at<GPU>(), size(0) * size(1)).async_copy_to_device(tid);
-                        cufft_forward_transform(plan_xy_[tid], buf_xy_[tid].at<GPU>());
-                        mdarray<double_complex, 1>(&fftw_buffer_[z * size_xy], buf_xy_[tid].at<GPU>(), size(0) * size(1)).async_copy_to_host(tid);
-                        #endif
-                        break;
-                    }
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
+                    fftw_execute(plan_forward_xy_[tid]);
+                    memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
                 }
             }
-            cuda_stream_synchronize(tid);
         }
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                #pragma omp for
+                for (int z = 0; z < size(2); z++)
+                {
+                    cufft_forward_transform(plan_xy_[tid], buf_.at<GPU>(z * size_xy));
+                }
+                cuda_stream_synchronize(tid);
+            }
+        }
+        #endif
     }
 
     if (comm_.size() > 1)
@@ -500,29 +513,48 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
     }
     else
     {
-        #pragma omp parallel num_threads(num_fft_workers_)
+        if (pu_ == CPU)
         {
-            int tid = omp_get_thread_num();
-
-            #pragma omp for
-            for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+            #pragma omp parallel num_threads(num_fft_workers_)
             {
-                int x = z_sticks_coord__[i].first;
-                int y = z_sticks_coord__[i].second;
+                int tid = omp_get_thread_num();
 
-                for (int z = 0; z < size(2); z++)
+                #pragma omp for
+                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
                 {
-                    fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
-                }
+                    int x = z_sticks_coord__[i].first;
+                    int y = z_sticks_coord__[i].second;
 
-                fftw_execute(plan_forward_z_[tid]);
-
-                for (int z = 0; z < size(2); z++)
-                {
-                    fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
+                    for (int z = 0; z < size(2); z++)
+                    {
+                        fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
+                    }
+                    fftw_execute(plan_forward_z_[tid]);
+                    for (int z = 0; z < size(2); z++)
+                    {
+                        fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
+                    }
                 }
             }
         }
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            #pragma omp parallel num_threads(num_fft_workers_)
+            {
+                int tid = omp_get_thread_num();
+                #pragma omp for
+                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+                {
+                    int x = z_sticks_coord__[i].first;
+                    int y = z_sticks_coord__[i].second;
+
+                    cufft_forward_transform(plan_z_[tid], buf_.at<GPU>(x + y * size(0)));
+                }
+                cuda_stream_synchronize(tid);
+            }
+        }
+        #endif
     }
 
     double norm = 1.0 / size();
