@@ -307,15 +307,12 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            for (int i = 0; i < get_num_cuda_streams(); i++)
+            for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
             {
-                for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
-                {
-                    int x = z_sticks_coord__[j].first;
-                    int y = z_sticks_coord__[j].second;
-                    if (j % get_num_cuda_streams() == i)
-                        cufft_backward_transform(plan_z_[i], buf_.at<GPU>(x + y * size(0)));
-                }
+                int x = z_sticks_coord__[j].first;
+                int y = z_sticks_coord__[j].second;
+                int stream_id = j % get_num_cuda_streams();
+                cufft_backward_transform(plan_z_[stream_id], buf_.at<GPU>(x + y * size(0)));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
@@ -364,13 +361,10 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            for (int i = 0; i < get_num_cuda_streams(); i++)
+            for (int z = 0; z < size(2); z++)
             {
-                for (int z = 0; z < size(2); z++)
-                {
-                    if (z % get_num_cuda_streams() == i)
-                        cufft_backward_transform(plan_xy_[i], buf_.at<GPU>(z * size_xy));
-                }
+                int stream_id = z % get_num_cuda_streams();
+                cufft_backward_transform(plan_xy_[stream_id], buf_.at<GPU>(z * size_xy));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
@@ -454,13 +448,10 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            for (int i = 0; i < get_num_cuda_streams(); i++)
+            for (int z = 0; z < size(2); z++)
             {
-                for (int z = 0; z < size(2); z++)
-                {
-                    if (z % get_num_cuda_streams() == i)
-                        cufft_forward_transform(plan_xy_[i], buf_.at<GPU>(z * size_xy));
-                }
+                int stream_id = z % get_num_cuda_streams();
+                cufft_forward_transform(plan_xy_[stream_id], buf_.at<GPU>(z * size_xy));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
@@ -539,15 +530,12 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            for (int i = 0; i < get_num_cuda_streams(); i++)
+            for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
             {
-                for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
-                {
-                    int x = z_sticks_coord__[j].first;
-                    int y = z_sticks_coord__[j].second;
-                    if (j % get_num_cuda_streams() == i)
-                        cufft_forward_transform(plan_z_[i], buf_.at<GPU>(x + y * size(0)));
-                }
+                int x = z_sticks_coord__[j].first;
+                int y = z_sticks_coord__[j].second;
+                int stream_id = j % get_num_cuda_streams();
+                cufft_forward_transform(plan_z_[stream_id], buf_.at<GPU>(x + y * size(0)));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
