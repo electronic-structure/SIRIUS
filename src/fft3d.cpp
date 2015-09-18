@@ -155,8 +155,8 @@ FFT3D::FFT3D(vector3d<int> dims__,
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        plan_z_  = std::vector<cufftHandle>(get_num_cuda_streams());
-        plan_xy_ = std::vector<cufftHandle>(get_num_cuda_streams());
+        cufft_plan_z_  = std::vector<cufftHandle>(get_num_cuda_streams());
+        cufft_plan_xy_ = std::vector<cufftHandle>(get_num_cuda_streams());
         
         int nbatch = 1;
         int auto_alloc = 1;
@@ -168,14 +168,18 @@ FFT3D::FFT3D(vector3d<int> dims__,
 
         for (int i = 0; i < get_num_cuda_streams(); i++)
         {
-            cufft_create_plan_handle(&plan_z_[i]);
-            cufft_create_batch_plan(plan_z_[i], 1, dim_z, embed_z, size(0) * size(1), 1, nbatch, auto_alloc);
-            cufft_set_stream(plan_z_[i], i);
+            cufft_create_plan_handle(&cufft_plan_z_[i]);
+            cufft_create_batch_plan(cufft_plan_z_[i], 1, dim_z, embed_z, size(0) * size(1), 1, nbatch, auto_alloc);
+            cufft_set_stream(cufft_plan_z_[i], i);
 
-            cufft_create_plan_handle(&plan_xy_[i]);
-            cufft_create_batch_plan(plan_xy_[i], 2, dim_xy, embed_xy, 1, 1, nbatch, auto_alloc);
-            cufft_set_stream(plan_xy_[i], i);
+            cufft_create_plan_handle(&cufft_plan_xy_[i]);
+            cufft_create_batch_plan(cufft_plan_xy_[i], 2, dim_xy, embed_xy, 1, 1, nbatch, auto_alloc);
+            cufft_set_stream(cufft_plan_xy_[i], i);
         }
+        
+        int dims[] = {size(2), size(1), size(0)};
+        cufft_create_plan_handle(&cufft_plan_);
+        cufft_create_batch_plan(cufft_plan_, 3, dims, dims, 1, 1, nbatch, 0);
     }
     #endif
 }
@@ -205,9 +209,10 @@ FFT3D::~FFT3D()
     {
         for (int i = 0; i < get_num_cuda_streams(); i++)
         {
-            cufft_destroy_plan_handle(plan_z_[i]); 
-            cufft_destroy_plan_handle(plan_xy_[i]); 
+            cufft_destroy_plan_handle(cufft_plan_z_[i]); 
+            cufft_destroy_plan_handle(cufft_plan_xy_[i]); 
         }
+        cufft_destroy_plan_handle(cufft_plan_);
     }
     #endif
 }
@@ -312,7 +317,7 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
                 int x = z_sticks_coord__[j].first;
                 int y = z_sticks_coord__[j].second;
                 int stream_id = j % get_num_cuda_streams();
-                cufft_backward_transform(plan_z_[stream_id], buf_.at<GPU>(x + y * size(0)));
+                cufft_backward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
@@ -364,7 +369,7 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
             for (int z = 0; z < size(2); z++)
             {
                 int stream_id = z % get_num_cuda_streams();
-                cufft_backward_transform(plan_xy_[stream_id], buf_.at<GPU>(z * size_xy));
+                cufft_backward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
@@ -451,7 +456,7 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
             for (int z = 0; z < size(2); z++)
             {
                 int stream_id = z % get_num_cuda_streams();
-                cufft_forward_transform(plan_xy_[stream_id], buf_.at<GPU>(z * size_xy));
+                cufft_forward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);
@@ -535,7 +540,7 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
                 int x = z_sticks_coord__[j].first;
                 int y = z_sticks_coord__[j].second;
                 int stream_id = j % get_num_cuda_streams();
-                cufft_forward_transform(plan_z_[stream_id], buf_.at<GPU>(x + y * size(0)));
+                cufft_forward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
             }
             for (int i = 0; i < get_num_cuda_streams(); i++)
                 cuda_stream_synchronize(i);

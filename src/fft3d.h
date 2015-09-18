@@ -89,11 +89,13 @@ class FFT3D
         /// Internal buffer for independent {xy}-transforms.
         std::vector<double_complex*> fftw_buffer_xy_;
 
-        mdarray<double_complex, 1> buf_;
+        mdarray<double_complex, 1> cufft_buf_;
 
-        std::vector< mdarray<double_complex, 1> > buf_z_;
-        
-        std::vector< mdarray<double_complex, 1> > buf_xy_;
+        mdarray<char, 1> cufft_work_buf_;
+
+        //std::vector< mdarray<double_complex, 1> > cufft_buf_z_;
+        //
+        //std::vector< mdarray<double_complex, 1> > cufft_buf_xy_;
 
         /// Backward transformation plan for each thread
         fftw_plan plan_backward_;
@@ -110,24 +112,43 @@ class FFT3D
         std::vector<fftw_plan> plan_forward_xy_;
 
         #ifdef __GPU
-        std::vector<cufftHandle> plan_z_;
-        std::vector<cufftHandle> plan_xy_;
+        cufftHandle cufft_plan_;
+        std::vector<cufftHandle> cufft_plan_z_;
+        std::vector<cufftHandle> cufft_plan_xy_;
         #endif
 
-        ///// Execute backward transformation.
-        //inline void backward(int thread_id = 0)
-        //{    
-        //    fftw_execute(plan_backward_[thread_id]);
-        //}
-        //
-        ///// Execute forward transformation.
-        //inline void forward(int thread_id = 0)
-        //{    
-        //    fftw_execute(plan_forward_[thread_id]);
-        //    double norm = 1.0 / size();
-        //    #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-        //    for (int i = 0; i < local_size(); i++) fftw_buffer_[thread_id][i] *= norm;
-        //}
+        /// Execute backward transformation.
+        inline void backward()
+        {
+            if (pu_ == CPU)
+            {
+                fftw_execute(plan_backward_);
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                cufft_backward_transform(cufft_plan_, cufft_buf_.at<GPU>());
+            }
+            #endif
+        }
+        
+        /// Execute forward transformation.
+        inline void forward()
+        {    
+            if (pu_ == CPU)
+            {
+                fftw_execute(plan_forward_);
+                double norm = 1.0 / size();
+                #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+                for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                cufft_forward_transform(cufft_plan_, cufft_buf_.at<GPU>());
+            }
+            #endif
+        }
 
         /// Find smallest optimal grid size starting from n.
         int find_grid_size(int n)
@@ -163,29 +184,29 @@ class FFT3D
 
         ~FFT3D();
 
-        ///// Execute the transformation for a given thread.
-        //inline void transform(int direction__, int thread_id__ = 0)
-        //{
-        //    assert(thread_id__ < num_fft_threads_);
+        /// Execute the transformation for a given thread.
+        inline void transform(int direction__)
+        {
+            assert(thread_id__ < num_fft_threads_);
 
-        //    switch (direction__)
-        //    {
-        //        case 1:
-        //        {
-        //            backward(thread_id__);
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            forward(thread_id__);
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
-        //        }
-        //    }
-        //}
+            switch (direction__)
+            {
+                case 1:
+                {
+                    backward();
+                    break;
+                }
+                case -1:
+                {
+                    forward();
+                    break;
+                }
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "wrong FFT direction");
+                }
+            }
+        }
 
         void transform(int direction__, std::vector< std::pair<int, int> > const& z_sticks_coord__)
         {
@@ -302,7 +323,7 @@ class FFT3D
                 }
                 case GPU:
                 {
-                    return buf_.at<GPU>();
+                    return cufft_buf_.at<GPU>();
                     break;
                 }
             }
@@ -340,25 +361,32 @@ class FFT3D
         #ifdef __GPU
         void allocate_on_device()
         {
-            buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size()); 
-            buf_.allocate_on_device();
+            cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size()); 
+            cufft_buf_.allocate_on_device();
+
+            auto work_size = cufft_get_size(size(0), size(1), size(2), 1);
+            cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
+            cufft_work_buf_.allocate_on_device();
+
+            cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
         }
 
         void deallocate_on_device()
         {
-            buf_.deallocate_on_device();
+            cufft_buf_.deallocate_on_device();
+            cufft_work_buf_.deallocate_on_device();
         }
 
         template<typename T>
         inline void input_on_device(int n__, int const* map__, T* data__)
         {
-            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, buf_.at<GPU>());
+            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, cufft_buf_.at<GPU>());
         }
 
         template<typename T>
         inline void output_on_device(int n__, int const* map__, T* data__, double beta__)
         {
-            cufft_batch_unload_gpu(local_size(), n__, 1, map__, buf_.at<GPU>(), data__, beta__);
+            cufft_batch_unload_gpu(local_size(), n__, 1, map__, cufft_buf_.at<GPU>(), data__, beta__);
         }
         #endif
 };

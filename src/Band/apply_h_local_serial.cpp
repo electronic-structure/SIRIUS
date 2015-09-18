@@ -83,14 +83,16 @@ void Band::apply_h_local_serial(K_point* kp__,
                 scale_matrix_rows_gpu(kp__->num_gkvec(), 1, pw_buf.at<GPU>(), pw_ekin.at<GPU>());
                 
                 /* execute FFT */
-                ctx_.fft_coarse(thread_id)->transform(1, kp__->gkvec_coarse().z_sticks_coord());
+                //ctx_.fft_coarse(thread_id)->transform(1, kp__->gkvec_coarse().z_sticks_coord());
+                ctx_.fft_coarse(thread_id)->transform(1);
                 
                 /* multiply by potential */
                 scale_matrix_rows_gpu(ctx_.fft_coarse(thread_id)->local_size(), 1,
                                       ctx_.fft_coarse(thread_id)->buffer<GPU>(), veff.at<GPU>());
                 
                 /* transform back */
-                ctx_.fft_coarse(thread_id)->transform(-1, kp__->gkvec_coarse().z_sticks_coord());
+                //ctx_.fft_coarse(thread_id)->transform(-1, kp__->gkvec_coarse().z_sticks_coord());
+                ctx_.fft_coarse(thread_id)->transform(-1);
                 
                 /* phi(G) += fft_buffer(G) */
                 ctx_.fft_coarse(thread_id)->output_on_device(kp__->num_gkvec(), fft_index.at<GPU>(), pw_buf.at<GPU>(), 1.0);
