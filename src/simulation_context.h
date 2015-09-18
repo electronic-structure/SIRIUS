@@ -66,6 +66,8 @@ class Simulation_context
 
         Gvec gvec_coarse_;
 
+        int gpu_thread_id_;
+
         //#ifdef __GPU
         //FFT3D<GPU>* fft_gpu_;
 
@@ -213,6 +215,9 @@ class Simulation_context
                 nfft_threads = 1;
             }
 
+            gpu_thread_id_ = -1;
+            if (nfft_threads > 1) gpu_thread_id_ = nfft_threads - 1;
+
             for (int tid = 0; tid < nfft_threads; tid++)
             {
                 if (do_parallel_fft)
@@ -231,7 +236,7 @@ class Simulation_context
                                              nfft_workers, MPI_COMM_SELF, CPU));
                     if (!parameters_.full_potential())
                     {
-                        if (tid == 0)
+                        if (tid == gpu_thread_id_)
                         {
                             fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
                                                             nfft_workers, MPI_COMM_SELF, parameters_.processing_unit()));
@@ -628,6 +633,11 @@ class Simulation_context
         inline int num_fft_threads() const
         {
             return (int)fft_.size();
+        }
+
+        inline int gpu_thread_id() const
+        {
+            return gpu_thread_id_;
         }
 
 

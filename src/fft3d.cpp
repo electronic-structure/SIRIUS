@@ -169,11 +169,11 @@ FFT3D::FFT3D(vector3d<int> dims__,
         for (int i = 0; i < num_fft_workers_; i++)
         {
             cufft_create_plan_handle(&plan_z_[i]);
-            cufft_create_batch_plan(plan_z_[i], 1, dim_z, embed_z, size(0) * size(1), 0, nbatch, auto_alloc);
+            cufft_create_batch_plan(plan_z_[i], 1, dim_z, embed_z, size(0) * size(1), 1, nbatch, auto_alloc);
             cufft_set_stream(plan_z_[i], i);
 
             cufft_create_plan_handle(&plan_xy_[i]);
-            cufft_create_batch_plan(plan_xy_[i], 2, dim_xy, embed_xy, 1, 0, nbatch, auto_alloc);
+            cufft_create_batch_plan(plan_xy_[i], 2, dim_xy, embed_xy, 1, 1, nbatch, auto_alloc);
             cufft_set_stream(plan_xy_[i], i);
         }
     }
@@ -557,9 +557,12 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         #endif
     }
 
-    double norm = 1.0 / size();
-    #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-    for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
+    if (pu_ == CPU)
+    {
+        double norm = 1.0 / size();
+        #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+        for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
+    }
 }
 
 };

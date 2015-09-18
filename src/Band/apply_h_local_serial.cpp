@@ -29,9 +29,9 @@ void Band::apply_h_local_serial(K_point* kp__,
     mdarray<double_complex, 1> pw_buf;
     mdarray<double, 1> veff;
     mdarray<double, 1> pw_ekin;
-    if (parameters_.processing_unit() == GPU)
+    if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
     {
-        ctx_.fft_coarse(0)->allocate_on_device();
+        ctx_.fft_coarse(ctx_.gpu_thread_id())->allocate_on_device();
         /* move fft index to GPU */
         fft_index = mdarray<int, 1>(const_cast<int*>(kp__->gkvec_coarse().index_map()), kp__->num_gkvec());
         fft_index.allocate_on_device();
@@ -70,7 +70,7 @@ void Band::apply_h_local_serial(K_point* kp__,
         for (int i = 0; i < num_phi__; i++)
         {
             double t1 = omp_get_wtime();
-            if (thread_id == 0 && parameters_.processing_unit() == GPU)
+            if (thread_id == ctx_.gpu_thread_id() && parameters_.processing_unit() == GPU)
             {
                 #ifdef __GPU
                 /* copy phi to GPU */
@@ -139,6 +139,13 @@ void Band::apply_h_local_serial(K_point* kp__,
         }
         std::cout << "---------------------------------" << std::endl;
     }
+
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+        ctx_.fft_coarse(ctx_.gpu_thread_id())->deallocate_on_device();
+    }
+    #endif
     
     //if (kp__->comm().rank() == 0) DUMP("CPU / GPU fft count : %i %i", count_fft_cpu, count_fft_gpu);
 
