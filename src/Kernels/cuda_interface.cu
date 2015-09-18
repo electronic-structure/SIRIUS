@@ -1074,58 +1074,58 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
 //== //    }
 //== //}
 
-__global__ void add_band_density_gpu_kernel(int lmmax_rho, int lmmax_wf, int max_nmtp, int* ia_by_ialoc, 
-                                            int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, 
-                                            int* gaunt12_size, int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, 
-                                            cuDoubleComplex* gaunt12_cg, cuDoubleComplex* fylm, double weight, 
-                                            double* dens)
-{
-    int lm = blockIdx.x;
-    int ialoc = blockIdx.y;
-    int ia = ia_by_ialoc[ialoc];
-    int iat = iat_by_ia[ia];
-    int nmtp = nmtp_by_iat[iat];
-
-    int offs3 = array3D_offset(0, lm, ialoc, max_nmtp, lmmax_rho);
-
-    int N = nmtp / blockDim.x;
-    if (nmtp % blockDim.x != 0) N++;
-
-    for (int k = 0; k < gaunt12_size[lm]; k++)
-    {
-        int offs = array2D_offset(k, lm, max_num_gaunt);
-
-        int lm1 = gaunt12_lm1_by_lm3[offs];
-        int lm2 = gaunt12_lm2_by_lm3[offs];
-        cuDoubleComplex cg = gaunt12_cg[offs];
-        
-        int offs1 = array3D_offset(0, lm1, ia, max_nmtp, lmmax_wf);
-        int offs2 = array3D_offset(0, lm2, ia, max_nmtp, lmmax_wf);
-        
-        for (int n = 0; n < N; n++)
-        {
-            int ir = n * blockDim.x + threadIdx.x;
-            if (ir < nmtp)
-            {
-                cuDoubleComplex z = cuCmul(cuConj(fylm[offs1 + ir]), fylm[offs2 + ir]);
-
-                dens[offs3 + ir] += weight * cuCreal(cuCmul(z, cg));
-            }
-        }
-    }
-}
-
-void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_atoms_loc, int* ia_by_ialoc, 
-                          int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, int* gaunt12_size, 
-                          int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, void* gaunt12_cg, void* fylm, 
-                          double weight, double* dens)
-{
-    dim3 threadsPerBlock(128);
-    dim3 numBlocks(lmmax_rho, num_atoms_loc);
-    add_band_density_gpu_kernel<<<numBlocks, threadsPerBlock>>>
-        (lmmax_rho, lmmax_wf, max_nmtp, ia_by_ialoc, iat_by_ia, nmtp_by_iat, max_num_gaunt, gaunt12_size, 
-         gaunt12_lm1_by_lm3, gaunt12_lm2_by_lm3, (cuDoubleComplex*)gaunt12_cg, (cuDoubleComplex*)fylm, weight, dens);
-}
+//== __global__ void add_band_density_gpu_kernel(int lmmax_rho, int lmmax_wf, int max_nmtp, int* ia_by_ialoc, 
+//==                                             int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, 
+//==                                             int* gaunt12_size, int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, 
+//==                                             cuDoubleComplex* gaunt12_cg, cuDoubleComplex* fylm, double weight, 
+//==                                             double* dens)
+//== {
+//==     int lm = blockIdx.x;
+//==     int ialoc = blockIdx.y;
+//==     int ia = ia_by_ialoc[ialoc];
+//==     int iat = iat_by_ia[ia];
+//==     int nmtp = nmtp_by_iat[iat];
+//== 
+//==     int offs3 = array3D_offset(0, lm, ialoc, max_nmtp, lmmax_rho);
+//== 
+//==     int N = nmtp / blockDim.x;
+//==     if (nmtp % blockDim.x != 0) N++;
+//== 
+//==     for (int k = 0; k < gaunt12_size[lm]; k++)
+//==     {
+//==         int offs = array2D_offset(k, lm, max_num_gaunt);
+//== 
+//==         int lm1 = gaunt12_lm1_by_lm3[offs];
+//==         int lm2 = gaunt12_lm2_by_lm3[offs];
+//==         cuDoubleComplex cg = gaunt12_cg[offs];
+//==         
+//==         int offs1 = array3D_offset(0, lm1, ia, max_nmtp, lmmax_wf);
+//==         int offs2 = array3D_offset(0, lm2, ia, max_nmtp, lmmax_wf);
+//==         
+//==         for (int n = 0; n < N; n++)
+//==         {
+//==             int ir = n * blockDim.x + threadIdx.x;
+//==             if (ir < nmtp)
+//==             {
+//==                 cuDoubleComplex z = cuCmul(cuConj(fylm[offs1 + ir]), fylm[offs2 + ir]);
+//== 
+//==                 dens[offs3 + ir] += weight * cuCreal(cuCmul(z, cg));
+//==             }
+//==         }
+//==     }
+//== }
+//== 
+//== void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_atoms_loc, int* ia_by_ialoc, 
+//==                           int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, int* gaunt12_size, 
+//==                           int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, void* gaunt12_cg, void* fylm, 
+//==                           double weight, double* dens)
+//== {
+//==     dim3 threadsPerBlock(128);
+//==     dim3 numBlocks(lmmax_rho, num_atoms_loc);
+//==     add_band_density_gpu_kernel<<<numBlocks, threadsPerBlock>>>
+//==         (lmmax_rho, lmmax_wf, max_nmtp, ia_by_ialoc, iat_by_ia, nmtp_by_iat, max_num_gaunt, gaunt12_size, 
+//==          gaunt12_lm1_by_lm3, gaunt12_lm2_by_lm3, (cuDoubleComplex*)gaunt12_cg, (cuDoubleComplex*)fylm, weight, dens);
+//== }
     
 
 
@@ -1145,24 +1145,6 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
 //==         }
 //==     }
 //== }
-
-__global__ void update_it_density_matrix_1_gpu_kernel(int fft_size,
-                                                      int nfft_max,
-                                                      int ispn,
-                                                      cuDoubleComplex const* psi_it,
-                                                      double const* wt,
-                                                      double* it_density_matrix)
-{
-    int ir = blockIdx.x * blockDim.x + threadIdx.x;
-    for (int i = 0; i < nfft_max; i++)
-    {
-        if (ir < fft_size)
-        {
-            cuDoubleComplex z = psi_it[array3D_offset(ir, i, ispn, fft_size, nfft_max)];
-            it_density_matrix[array2D_offset(ir, ispn, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
-        }
-    }
-}
 
 
 //extern "C" void update_it_density_matrix_gpu(int fft_size, 
@@ -1214,62 +1196,6 @@ __global__ void update_it_density_matrix_1_gpu_kernel(int fft_size,
 //    }
 //}
 
-extern "C" void update_it_density_matrix_1_gpu(int fft_size, 
-                                               int ispin,
-                                               cuDoubleComplex const* psi_it, 
-                                               double const* wt, 
-                                               double* it_density_matrix)
-{
-    CUDA_timer t("update_it_density_matrix_gpu");
-
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(fft_size, grid_t.x));
-
-    update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        fft_size,
-        1,
-        ispin,
-        psi_it,
-        wt,
-        it_density_matrix
-    );
-
-//==     switch (num_mag_dims)
-//==     {
-//==         //== case 3:
-//==         //== {
-//==         //==     for (int ir = 0; ir < fft_->size(); ir++)
-//==         //==     {
-//==         //==         double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
-//==         //==         it_density_matrix(ir, 2) += 2.0 * real(z);
-//==         //==         it_density_matrix(ir, 3) -= 2.0 * imag(z);
-//==         //==     }
-//==         //== }
-//==         case 1:
-//==         {
-//==             update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
-//==             (
-//==                 fft_size,
-//==                 nfft_max,
-//==                 psi_it,
-//==                 wt,
-//==                 it_density_matrix
-//==             );
-//==         }
-//==         case 0:
-//==         {
-//==             update_it_density_matrix_0_gpu_kernel <<<grid_b, grid_t>>>
-//==             (
-//==                 fft_size,
-//==                 nfft_max,
-//==                 psi_it,
-//==                 wt,
-//==                 it_density_matrix
-//==             );
-//==         }
-//==     }
-}
 
 //== inline __device__ uint32_t random(size_t seed)
 //== {
