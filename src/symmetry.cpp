@@ -323,7 +323,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    Gvec const& gvec__,
                                    Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_function");
+    Timer t("sirius::Symmetry::symmetrize_function", comm__);
 
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());

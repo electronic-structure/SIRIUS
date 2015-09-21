@@ -80,6 +80,8 @@ class Simulation_context
         ev_solver_t std_evp_solver_type_;
 
         ev_solver_t gen_evp_solver_type_;
+
+        double time_active_;
         
         bool initialized_;
 
@@ -114,6 +116,13 @@ class Simulation_context
         ~Simulation_context()
         {
             PROFILE();
+
+            time_active_ += Utils::current_time();
+
+            if (Platform::rank() == 0)
+            {
+                printf("Simulation_context active time: %.4f sec.\n", time_active_);
+            }
 
             for (auto obj: fft_) delete obj;
             for (auto obj: fft_coarse_) delete obj;
@@ -365,6 +374,8 @@ class Simulation_context
             #if (__VERBOSITY > 0)
             if (comm_.rank() == 0) print_info();
             #endif
+
+            time_active_ = -Utils::current_time();
 
             initialized_ = true;
         }

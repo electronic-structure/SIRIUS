@@ -459,7 +459,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 {
     PROFILE();
 
-    Timer t("sirius::Potential::generate_effective_potential");
+    Timer t("sirius::Potential::generate_effective_potential", ctx_.comm());
     
     /* zero effective potential and magnetic field */
     zero();

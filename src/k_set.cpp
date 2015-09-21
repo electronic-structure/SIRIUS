@@ -57,7 +57,7 @@ void K_set::sync_band_energies()
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::K_set::find_eigen_states", comm_k_);
+    Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
     
     if (precompute && parameters_.full_potential())
     {

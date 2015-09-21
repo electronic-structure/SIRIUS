@@ -71,7 +71,6 @@ struct Unit_cell_input_section
 
             double scale = section["lattice_vectors_scale"].get(1.0);
 
-
             for (int x = 0; x < 3; x++)
             {
                 lattice_vectors_[0][x] = a0[x] * scale;
