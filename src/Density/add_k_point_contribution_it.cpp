@@ -62,6 +62,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(1);
 
     int wf_pw_offset = kp__->wf_pw_offset();
+    double t0 = -Utils::current_time();
     #pragma omp parallel num_threads(ctx_.num_fft_threads())
     {
         int thread_id = omp_get_thread_num();
@@ -141,6 +142,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
             timer_counts(thread_id)++;
         }
     }
+    t0 += Utils::current_time();
 
     /* restore the nested flag */
     omp_set_nested(nested);
@@ -206,6 +208,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         }
         std::cout << "---------------------------------" << std::endl;
         std::cout << "final reduction: " << t1 << " sec" << std::endl;
+        std::cout << "main summation of " << occupied_bands__.num_occupied_bands_local() << " bands is done in " << t0 << "sec." << std::endl;
     }
 }
 
