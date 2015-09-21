@@ -24,10 +24,13 @@ void Density::generate_valence_density_it(K_set& ks__)
 
         if (!parameters_.full_potential() && kp->num_ranks() > 1)
         {
+            double t0 = -Utils::current_time();
             linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
                                 kp->fv_states(), 0, 0,
                                 kp->spinor_wave_functions(0), 0, 0,
                                 kp->blacs_grid().context());
+            t0 += Utils::current_time();
+            printf("gemr2d time: %.4f\n", t0);
         }
 
         if (ctx_.fft(0)->parallel())
@@ -40,6 +43,7 @@ void Density::generate_valence_density_it(K_set& ks__)
         }
     }
 
+    double t0 = -Utils::current_time();
     /* reduce arrays; assume that each rank did it's own fraction of the density */
     if (ctx_.fft(0)->parallel())
     {
@@ -51,6 +55,8 @@ void Density::generate_valence_density_it(K_set& ks__)
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
     }
+    t0 += Utils::current_time();
+    printf("reduction time: %.4f\n", t0);
 }
 
 };
