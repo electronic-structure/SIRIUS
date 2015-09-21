@@ -11,10 +11,10 @@ void test_gemr2d()
 
     int gcontext = grid_row.context();
 
-    int M = 4000;
+    int M = 80000;
     int N = 375;
 
-    dmatrix<double_complex> A(M, N, grid_col, 1, 1);
+    dmatrix<double_complex> A(M, N, grid_row, splindex_base::block_size(M, comm.size()), 1);
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < M; j++) A.set(j, i, type_wrapper<double_complex>::random());
@@ -22,12 +22,18 @@ void test_gemr2d()
     auto h = A.panel().hash();
 
 
-    dmatrix<double_complex> B(M, N - 1, grid_row, 32, 1);
-
+    dmatrix<double_complex> B(M, N - 1, grid_col, 1, 1);
+    B.zero();
+    
+    double t0 = -Utils::current_time();
     linalg<CPU>::gemr2d(M, N - 1, A, 0, 1, B, 0, 0, gcontext);
-    //A.zero();
-
     linalg<CPU>::gemr2d(M, N - 1, B, 0, 0, A, 0, 1, gcontext);
+    t0 += Utils::current_time();
+
+    if (comm.rank() == 0)
+    {
+        printf("done in %.4f sec, swap speed: %.4f GB/sec\n", t0, sizeof(double_complex) * 2 * M * N / double(1 << 30) / t0);
+    }
     
     if (A.panel().hash() != h)
     {
