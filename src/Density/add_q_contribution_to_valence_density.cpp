@@ -4,8 +4,6 @@ namespace sirius {
 
 void Density::add_q_contribution_to_valence_density(K_set& ks)
 {
-    Timer t("sirius::Density::add_q_contribution_to_valence_density", ctx_.comm());
-
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric. */
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
@@ -128,8 +126,6 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
 
 void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 {
-    Timer t("sirius::Density::add_q_contribution_to_valence_density_gpu", ctx_.comm());
-
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric.  */
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);

@@ -105,6 +105,10 @@ void Density::generate_core_charge_density()
 
 void Density::augment(K_set& ks__)
 {
+    PROFILE();
+
+    Timer t("sirius::Density::augment", ctx_.comm());
+
     switch (parameters_.esm_type())
     {
         case ultrasoft_pseudopotential:
