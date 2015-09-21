@@ -103,8 +103,6 @@ class Periodic_function
         /// number of plane-wave expansion coefficients
         int num_gvec_;
 
-        //splindex<block> spl_fft_size_;
-
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
@@ -241,6 +239,7 @@ class Periodic_function
 
         void fft_transform(int direction__)
         {
+            Timer t("sirius::Periodic_function::fft_transform");
             switch (direction__)
             {
                 case 1:

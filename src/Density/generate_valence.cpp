@@ -49,11 +49,13 @@ void Density::generate_valence(K_set& ks__)
             break;
         }
     }
-
+    
+    #if (__VERIFICATION > 0)
     for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
     {
         if (rho_->f_it(ir) < 0) TERMINATE("density is wrong");
     }
+    #endif
     
     /* get rho(G) */
     rho_->fft_transform(-1);

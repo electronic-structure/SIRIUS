@@ -193,6 +193,13 @@ class Utils
             double b = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
             return a0 + b;
         }
+
+        inline static double current_time()
+        {
+            timeval t;
+            gettimeofday(&t, NULL);
+            return double(t.tv_sec) + double(t.tv_usec) / 1e6;
+        }
 };
 
 #endif
