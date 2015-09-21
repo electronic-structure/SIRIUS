@@ -19,154 +19,133 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
     auto& rlv = uc.reciprocal_lattice_vectors();
     auto dims = Utils::find_translation_limits(pw_cutoff, rlv);
 
-    MPI_FFT3D fft(dims, Platform::max_num_threads(), blacs_grid.comm_row());
+    int num_fft_workers = 1;
+    int num_fft_threads = omp_get_max_threads();
+    
+    std::vector<FFT3D*> fft;
+    for (int i = 0; i < num_fft_threads; i++)
+        fft.push_back(new FFT3D(dims, num_fft_workers, blacs_grid.comm_row(), CPU));
 
-    auto gv_rho = fft.init_gvec(vector3d<double>(0, 0, 0), pw_cutoff, rlv);
-    auto gv_wf = fft.init_gvec(vector3d<double>(0, 0, 0), wf_cutoff, rlv);
+    //Gvec gv_rho(vector3d<double>(0, 0, 0), pw_cutoff, rlv, fft[0], false);
+    Gvec gv_wf(vector3d<double>(0, 0, 0), wf_cutoff, rlv, fft[0], false);
 
     if (comm.rank() == 0)
     {
         printf("MPI grid: %i %i\n", mpi_grid[0], mpi_grid[1]);
-        printf("FFT dimensions: %i %i %i\n", fft.size(0), fft.size(1), fft.size(2));
-        printf("num_gvec_rho: %i\n", gv_rho.num_gvec_);
-        printf("num_gvec_wf: %i\n", gv_wf.num_gvec_);
+        printf("FFT dimensions: %i %i %i\n", fft[0]->size(0), fft[0]->size(1), fft[0]->size(2));
+        //printf("num_gvec_rho: %i\n", gv_rho.num_gvec());
+        printf("num_gvec_wf: %i\n", gv_wf.num_gvec());
     }
 
-    mdarray<double, 1> rho(fft.local_size());
-    rho.zero();
+    mdarray<double, 1> rho_tot(fft[0]->local_size());
+    rho_tot.zero();
 
-    splindex<block> spl_gv_wf(gv_wf.num_gvec_, blacs_grid.num_ranks_row(), blacs_grid.rank_row());
-    //DUMP("spl_gv_wf.local_size: %li, block_size: %li", spl_gv_wf.local_size(), spl_gv_wf.block_size());
-    //DUMP("num_gvec_loc: %i", gv_wf.num_gvec_loc_);
-    //DUMP("gvec_offset: %i", gv_wf.gvec_offset_);
+    splindex<block> spl_gv_wf(gv_wf.num_gvec(), blacs_grid.num_ranks_row(), blacs_grid.rank_row());
 
-    dmatrix<double_complex> psi(gv_wf.num_gvec_, num_bands, blacs_grid, (int)spl_gv_wf.block_size(), 1);
+    dmatrix<double_complex> psi(gv_wf.num_gvec(), num_bands, blacs_grid,
+                                (int)splindex_base::block_size(gv_wf.num_gvec(), blacs_grid.num_ranks_row()), 1);
     psi.zero();
 
     for (int i = 0; i < num_bands; i++) 
     {
-        for (int ig = 0; ig < gv_wf.num_gvec_; ig++)
+        for (int ig = 0; ig < gv_wf.num_gvec(); ig++)
         {
-            psi.set(ig, i, double_complex(1, 0) / std::sqrt(double((gv_wf.num_gvec_))));
+            psi.set(ig, i, double_complex(1, 0) / std::sqrt(double((gv_wf.num_gvec()))));
         }
     }
-
 
     if (psi.num_rows_local() != (int)spl_gv_wf.local_size())
     {
         TERMINATE("wrong index splitting");
     }
 
-    mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc_);
+    mdarray<double_complex, 1> buf(gv_wf.num_gvec_loc());
 
-    auto a2a_desc = blacs_grid.comm_row().map_alltoall(spl_gv_wf.counts(), gv_wf.gvec_counts_); 
+    auto a2a_desc = blacs_grid.comm_row().map_alltoall(spl_gv_wf.counts(), gv_wf.counts()); 
 
-    pstdout pout(blacs_grid.comm_row());
+    //== pstdout pout(blacs_grid.comm_row());
 
-    pout.printf("-----------\n");
-    pout.printf("rank: %i\n", blacs_grid.comm_row().rank());
-    pout.printf("-----------\n");
-    pout.printf("sendcounts : ");
-    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-        pout.printf("%5i ", a2a_desc.sendcounts[j]);
-    pout.printf("\n");
-    pout.printf("sdispls    : ");
-    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-        pout.printf("%5i ", a2a_desc.sdispls[j]);
-    pout.printf("\n");
-    pout.printf("recvcounts : ");
-    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-        pout.printf("%5i ", a2a_desc.recvcounts[j]);
-    pout.printf("\n");
-    pout.printf("rdispls    : ");
-    for (int j = 0; j < blacs_grid.comm_row().size(); j++)
-        pout.printf("%5i ", a2a_desc.rdispls[j]);
-    pout.printf("\n");
+    //== pout.printf("-----------\n");
+    //== pout.printf("rank: %i\n", blacs_grid.comm_row().rank());
+    //== pout.printf("-----------\n");
+    //== pout.printf("sendcounts : ");
+    //== for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+    //==     pout.printf("%5i ", a2a_desc.sendcounts[j]);
+    //== pout.printf("\n");
+    //== pout.printf("sdispls    : ");
+    //== for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+    //==     pout.printf("%5i ", a2a_desc.sdispls[j]);
+    //== pout.printf("\n");
+    //== pout.printf("recvcounts : ");
+    //== for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+    //==     pout.printf("%5i ", a2a_desc.recvcounts[j]);
+    //== pout.printf("\n");
+    //== pout.printf("rdispls    : ");
+    //== for (int j = 0; j < blacs_grid.comm_row().size(); j++)
+    //==     pout.printf("%5i ", a2a_desc.rdispls[j]);
+    //== pout.printf("\n");
 
-    pout.flush();
-    comm.barrier();
+    //== pout.flush();
+    //== comm.barrier();
 
-    PRINT(" ");
+    //== PRINT(" ");
 
-    Timer t2("sum_rho");
-    for (int i = 0; i < psi.num_cols_local(); i++)
+    int nested = omp_get_nested();
+    omp_set_nested(1);
+
+    Timer t2("sum_rho", comm);
+    mdarray<double, 2> rho(fft[0]->local_size(), num_fft_threads);
+    rho.zero();
+
+    #pragma omp parallel num_threads(num_fft_threads)
     {
-        PRINT("band: %i", i);
-        double_complex* inp = (gv_wf.num_gvec_loc_ != 0) ? &buf(0) : NULL;
+        int thread_id = omp_get_thread_num();
+        #pragma omp for schedule(dynamic, 1)
+        for (int i = 0; i < psi.num_cols_local(); i++)
+        {
+            //PRINT("band: %i", i);
+            //double_complex* inp = (gv_wf.num_gvec_loc() != 0) ? &buf(0) : NULL;
 
-        blacs_grid.comm_row().alltoall(&psi(0, i), &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], inp,
-                                       &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
-        
-        /* this is to make assert statements of mdarray happy */
-        int* map = (gv_wf.num_gvec_loc_ != 0) ? &gv_wf.index_map_local_to_local_(0) : NULL;
-        fft.input_pw(gv_wf.num_gvec_loc_, map, inp);
-        fft.transform(1);
-        for (int j = 0; j < (int)fft.local_size(); j++) rho(j) += (std::pow(std::real(fft.buffer(j)), 2) +
-                                                                   std::pow(std::imag(fft.buffer(j)), 2));
+            //blacs_grid.comm_row().alltoall(&psi(0, i), &a2a_desc.sendcounts[0], &a2a_desc.sdispls[0], inp,
+            //                               &a2a_desc.recvcounts[0], &a2a_desc.rdispls[0]);
+            //
+            ///* this is to make assert statements of mdarray happy */
+            //int* map = (gv_wf.num_gvec_loc_ != 0) ? &gv_wf.index_map_local_to_local_(0) : NULL;
+            //fft.input_pw(gv_wf.num_gvec_loc_, map, inp);
+            //fft.transform(1);
+            //for (int j = 0; j < (int)fft.local_size(); j++) rho(j) += (std::pow(std::real(fft.buffer(j)), 2) +
+            //                                                           std::pow(std::imag(fft.buffer(j)), 2));
+            fft[thread_id]->input(gv_wf.num_gvec(), gv_wf.index_map(), &psi(0, i));
+            fft[thread_id]->transform(1, gv_wf.z_sticks_coord());
+                        
+            #pragma omp parallel for schedule(static) num_threads(fft[thread_id]->num_fft_workers())
+            for (int ir = 0; ir < fft[thread_id]->local_size(); ir++)
+            {
+                auto z = fft[thread_id]->buffer(ir);
+                rho(ir, thread_id) += (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+            }
+        }
     }
     t2.stop();
+    omp_set_nested(nested);
+
+    #pragma omp parallel
+    {
+        for (int i = 0; i < num_fft_threads; i++)
+        {
+            #pragma omp for schedule(static)
+            for (int ir = 0; ir < fft[0]->local_size(); ir++) rho_tot(ir) += rho(ir, i);
+        }
+    }
 
     double nel = 0;
-    for (int j = 0; j < (int)fft.local_size(); j++) nel += rho(j);
+    for (int j = 0; j < (int)fft[0]->local_size(); j++) nel += rho_tot(j);
     comm.allreduce(&nel, 1);
-    nel /= fft.size();
+    nel = nel / fft[0]->size();
 
     PRINT("num_bands: %i, num_electrons: %f", num_bands, nel);
 
-    
-
-
-
-
-    //#ifdef __PRINT_MEMORY_USAGE
-    //MEMORY_USAGE_INFO();
-    //#endif
-
-    //std::vector<double_complex> pw_coefs(gv.num_gvec_);
-    //
-    //if (comm.rank() == 0) printf("num_gvec: %i\n", gv.num_gvec_);
-    //DUMP("num_gvec_loc: %i", gv.num_gvec_loc_);
-
-    //int n = (fft.size() < 100000) ? gv.num_gvec_ : std::min(50, gv.num_gvec_);
-
-    //for (int ig = 0; ig < n; ig++)
-    //{
-    //    memset(&pw_coefs[0], 0, pw_coefs.size() * sizeof(double_complex));
-    //    auto gvec = fft.gvec_by_index(gv.gvec_index_(ig));
-
-    //    if (comm.rank() == 0) printf("G: %i %i %i\n", gvec[0], gvec[1], gvec[2]);
-
-    //    pw_coefs[ig] = 1.0;
-    //    fft.input_pw(gv.num_gvec_loc_, &gv.index_map_local_to_local_(0), &pw_coefs[gv.gvec_offset_]);
-    //    fft.transform(1);
-
-    //    mdarray<double_complex, 3> tmp(&fft.buffer(0), fft.size(0), fft.size(1), fft.local_size_z());
-
-    //    double dmax = 0;
-    //    // loop over 3D array (real space)
-    //    for (int j0 = 0; j0 < fft.size(0); j0++)
-    //    {
-    //        for (int j1 = 0; j1 < fft.size(1); j1++)
-    //        {
-    //            for (int j2 = 0; j2 < fft.local_size_z(); j2++)
-    //            {
-    //                // get real space fractional coordinate
-    //                vector3d<double> fv(double(j0) / fft.size(0), 
-    //                                    double(j1) / fft.size(1), 
-    //                                    double(j2 + fft.offset_z()) / fft.size(2));
-    //                double_complex z = std::exp(twopi * double_complex(0.0, (fv * gvec)));
-    //                dmax = std::max(dmax, std::abs(tmp(j0, j1, j2) - z));
-    //            }
-    //        }
-    //    }
-    //    comm.allreduce<double, op_max>(&dmax, 1);
-    //    if (dmax > 1e-12)
-    //    {
-    //        printf("maximum difference: %18.12f\n", dmax);
-    //        exit(-1);
-    //    }
-    //}
-    //printf("OK\n");
+    for (int i = 0; i < num_fft_threads; i++) delete fft[i];
 }
 
 int main(int argn, char **argv)
