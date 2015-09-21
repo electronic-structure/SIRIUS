@@ -52,6 +52,11 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     #endif
     mdarray<double_complex, 2> psi_it;
 
+    mdarray<double, 1> timers(ctx_.num_fft_threads());
+    timers.zero();
+    mdarray<int, 1> timer_counts(ctx_.num_fft_threads());
+    timer_counts.zero();
+
     /* save omp_nested flag */
     int nested = omp_get_nested();
     omp_set_nested(1);
@@ -68,6 +73,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
             int j    = occupied_bands__.idx_bnd_glob[i];
             int jloc = occupied_bands__.idx_bnd_loc[i];
             double w = occupied_bands__.weight[i] / omega;
+            double t1 = omp_get_wtime();
 
             if (thread_id == ctx_.gpu_thread_id() && parameters_.processing_unit() == GPU)
             {
@@ -131,6 +137,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                     }
                 }
             }
+            timers(thread_id) += (omp_get_wtime() - t1);
+            timer_counts(thread_id)++;
         }
     }
 
@@ -145,7 +153,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         ctx_.fft(ctx_.gpu_thread_id())->deallocate_on_device();
     }
     #endif
-
+    
+    double t1 = -Utils::current_time();
     /* switch from real density matrix to density and magnetization */
     switch (parameters_.num_mag_dims())
     {
@@ -183,6 +192,20 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 }
             }
         }
+    }
+    t1 += Utils::current_time();
+
+    if (kp__->comm().rank() == 0)
+    {
+        std::cout << "---------------------------------" << std::endl;
+        std::cout << "thread_id  | fft       | perf    " << std::endl;
+        std::cout << "---------------------------------" << std::endl;
+        for (int i = 0; i < ctx_.num_fft_threads(); i++)
+        {
+            printf("   %2i      | %8.4f  | %8.2f\n", i, timers(i), (timer_counts(i) == 0) ? 0 : timer_counts(i) / timers(i));
+        }
+        std::cout << "---------------------------------" << std::endl;
+        std::cout << "final reduction: " << t1 << " sec" << std::endl;
     }
 }
 
