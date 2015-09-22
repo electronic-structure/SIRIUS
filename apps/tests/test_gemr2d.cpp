@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void test_gemr2d()
+void test_gemr2d(int M, int N, int repeat)
 {
     Communicator comm(MPI_COMM_WORLD);
 
@@ -10,9 +10,6 @@ void test_gemr2d()
     BLACS_grid grid_row(comm, comm.size(), 1);
 
     int gcontext = grid_row.context();
-
-    int M = 80000;
-    int N = 375;
 
     dmatrix<double_complex> A(M, N, grid_row, splindex_base::block_size(M, comm.size()), 1);
     for (int i = 0; i < N; i++)
@@ -22,17 +19,21 @@ void test_gemr2d()
     auto h = A.panel().hash();
 
 
-    dmatrix<double_complex> B(M, N - 1, grid_col, 1, 1);
+    dmatrix<double_complex> B(M, N, grid_col, 1, 1);
     B.zero();
     
     double t0 = -Utils::current_time();
-    linalg<CPU>::gemr2d(M, N - 1, A, 0, 1, B, 0, 0, gcontext);
-    linalg<CPU>::gemr2d(M, N - 1, B, 0, 0, A, 0, 1, gcontext);
+    for (int i = 0; i < repeat; i++)
+    {
+        linalg<CPU>::gemr2d(M, N, A, 0, 0, B, 0, 0, gcontext);
+        linalg<CPU>::gemr2d(M, N, B, 0, 0, A, 0, 0, gcontext);
+    }
     t0 += Utils::current_time();
 
     if (comm.rank() == 0)
     {
-        printf("done in %.4f sec, swap speed: %.4f GB/sec\n", t0, sizeof(double_complex) * 2 * M * N / double(1 << 30) / t0);
+        printf("average time %.4f sec, swap speed: %.4f GB/sec\n", t0 / repeat,
+               sizeof(double_complex) * 2 * repeat * M * N / double(1 << 30) / t0);
     }
     
     if (A.panel().hash() != h)
@@ -44,9 +45,26 @@ void test_gemr2d()
 
 int main(int argn, char** argv)
 {
+    cmd_args args;
+    args.register_key("--help", "print this help and exit");
+    args.register_key("--M=", "{int} number of rows");
+    args.register_key("--N=", "{int} number of columns");
+    args.register_key("--repeat=", "{int} number of repeats");
+
+    args.parse_args(argn, argv);
+    if (args.exist("help"))
+    {
+        printf("Usage: %s [options]\n", argv[0]);
+        args.print_help();
+        exit(0);
+    }
+    int M = args.value<int>("M", 10000);
+    int N = args.value<int>("N", 100);
+    int repeat = args.value<int>("repeat", 10);
+
     Platform::initialize(1);
     
-    test_gemr2d();
+    test_gemr2d(M, N, repeat);
 
     Platform::finalize();
 }
