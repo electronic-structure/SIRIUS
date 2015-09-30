@@ -167,13 +167,13 @@ class K_point
 
         mdarray<double, 2> gkvec_row_;
 
-        Communicator comm_;
+        Communicator const& comm_;
 
         /// Communicator between(!!) rows.
-        Communicator comm_row_;
+        Communicator const& comm_row_;
 
         /// Communicator between(!!) columns.
-        Communicator comm_col_;
+        Communicator const& comm_col_;
 
         /// Build G+k and lo basis descriptors.
         void build_gklo_basis_descriptors();
@@ -203,6 +203,7 @@ class K_point
 
         ~K_point()
         {
+            PROFILE();
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (alm_coeffs_ != nullptr) delete alm_coeffs_;
@@ -614,17 +615,17 @@ class K_point
             return alm_coeffs_col_;
         }
 
-        inline Communicator& comm()
+        inline Communicator const& comm() const
         {
             return comm_;
         }
 
-        inline Communicator& comm_row()
+        inline Communicator const& comm_row() const
         {
             return comm_row_;
         }
 
-        inline Communicator& comm_col()
+        inline Communicator const& comm_col() const
         {
             return comm_col_;
         }
