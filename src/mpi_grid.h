@@ -50,7 +50,7 @@ class MPI_grid
         std::vector<int> coordinates_;
 
         /// Parent communicator
-        Communicator parent_communicator_;
+        Communicator const& parent_communicator_;
 
         /// Grid communicator of the enrire grid returned by MPI_Cart_create
         Communicator base_grid_communicator_;
@@ -98,10 +98,8 @@ class MPI_grid
             
             /* communicator of the entire grid */
             std::vector<int> periods(dimensions_.size(), 0);
-            MPI_Comm comm;
             CALL_MPI(MPI_Cart_create, (parent_communicator_.mpi_comm(), (int)dimensions_.size(), &dimensions_[0], 
-                                       &periods[0], 0, &comm));
-            base_grid_communicator_ = Communicator(comm);
+                                       &periods[0], 0, &base_grid_communicator_.mpi_comm()));
 
             /* total number of communicators inside the grid */
             int num_comm = 1 << dimensions_.size();
@@ -141,20 +139,19 @@ class MPI_grid
                 communicator_size_[i] = comm_size;
 
                 /* subcommunicators */
-                CALL_MPI(MPI_Cart_sub, (base_grid_communicator_.mpi_comm(), &flg[0], &comm));
-                communicators_[i] = Communicator(comm);
+                CALL_MPI(MPI_Cart_sub, (base_grid_communicator_.mpi_comm(), &flg[0], &communicators_[i].mpi_comm()));
             }
             
-            // explicitly set the size of "self" communicator
+            /* explicitly set the size of "self" communicator */
             communicator_size_[0] = 1;
             
-            // explicitly set the root of "self" communicator
+            /* explicitly set the root of "self" communicator */
             communicator_root_[0] = true;
 
-            // expicitly set the "self" communicator
+            /* expicitly set the "self" communicator */
             communicators_[0] = Communicator(MPI_COMM_SELF);
 
-            // double check the size of communicators
+            /* double check the size of communicators */
             for (int i = 1; i < num_comm; i++)
             {
                 if (communicators_[i].size() != communicator_size_[i]) 
@@ -269,13 +266,11 @@ class Communicator_bundle
             /* assign ID in cyclic fasion */
             id_ = rank % size_;
             /* split parent communicator */
-            MPI_Comm comm;
-            CALL_MPI(MPI_Comm_split, (base_comm__.mpi_comm(), id_, rank, &comm));
-            comm_ = Communicator(comm);
+            CALL_MPI(MPI_Comm_split, (base_comm__.mpi_comm(), id_, rank, &comm_.mpi_comm()));
         }
 
         /// Return sub-communicator.
-        inline Communicator& comm()
+        inline Communicator const& comm() const
         {
             return comm_;
         }
