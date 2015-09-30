@@ -22,7 +22,8 @@ void Band::apply_h_o_parallel(K_point* kp__,
 
     Timer t1("fft|comm");
     /* change data distribution from slab storage to slice or 2d block-cyclic */
-    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0, kp__->blacs_grid().context());
+    //linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0, kp__->blacs_grid().context());
+    redist::gemr2d(kp__->num_gkvec(), n__, phi_slab__, 0, N__, phi_tmp__, 0, 0);
     t1.stop();
     if (ctx_.fft_coarse(0)->parallel())
     {
@@ -44,7 +45,8 @@ void Band::apply_h_o_parallel(K_point* kp__,
     }
     t1.start();
     /* change back to slab data distribution */
-    linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_tmp__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
+    //linalg<CPU>::gemr2d(kp__->num_gkvec(), n__, phi_tmp__, 0, 0, hphi_slab__, 0, N__, kp__->blacs_grid().context());
+    redist::gemr2d(kp__->num_gkvec(), n__, phi_tmp__, 0, 0, hphi_slab__, 0, N__);
     t1.stop();
 
     #ifdef __PRINT_OBJECT_CHECKSUM
