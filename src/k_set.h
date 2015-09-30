@@ -64,7 +64,7 @@ class K_set
 
         Unit_cell& unit_cell_;
 
-        Communicator comm_k_;
+        Communicator const& comm_k_;
 
         BLACS_grid const& blacs_grid_;
 
@@ -78,6 +78,7 @@ class K_set
 
         void init()
         {
+            PROFILE();
             band_ = new Band(ctx_, blacs_grid_);
         }
 
@@ -94,6 +95,7 @@ class K_set
               blacs_grid_slab_(blacs_grid_.comm(), blacs_grid_.comm().size(), 1),
               blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size())
         {
+            PROFILE();
             init();
         }
 
@@ -111,6 +113,7 @@ class K_set
               blacs_grid_slab_(blacs_grid_.comm(), blacs_grid_.comm().size(), 1),
               blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size())
         {
+            PROFILE();
             init();
 
             int nk;
@@ -205,6 +208,7 @@ class K_set
 
         ~K_set()
         {
+            PROFILE();
             clear();
             delete band_;
         }
@@ -212,8 +216,6 @@ class K_set
         /// Initialize the k-point set
         void initialize();
 
-        //void update();
-        
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
         void find_eigen_states(Potential* potential, bool precompute);
 
@@ -237,11 +239,13 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
+            PROFILE();
             kpoints_.push_back(new K_point(ctx_, vk__, weight__, blacs_grid_, blacs_grid_slab_, blacs_grid_slice_));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
+            PROFILE();
             for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
 
@@ -254,8 +258,8 @@ class K_set
 
         void clear()
         {
+            PROFILE();
             for (int ik = 0; ik < (int)kpoints_.size(); ik++) delete kpoints_[ik];
-            
             kpoints_.clear();
         }
         
