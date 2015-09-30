@@ -24,13 +24,16 @@ void Density::generate_valence_density_it(K_set& ks__)
 
         if (!parameters_.full_potential() && kp->num_ranks() > 1)
         {
-            double t0 = -Utils::current_time();
-            linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                                kp->fv_states(), 0, 0,
-                                kp->spinor_wave_functions(0), 0, 0,
-                                kp->blacs_grid().context());
-            t0 += Utils::current_time();
-            printf("gemr2d time: %.4f\n", t0);
+            //double t0 = -Utils::current_time();
+            //linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+            //                    kp->fv_states(), 0, 0,
+            //                    kp->spinor_wave_functions(0), 0, 0,
+            //                    kp->blacs_grid().context());
+            //t0 += Utils::current_time();
+            //printf("gemr2d time: %.4f\n", t0);
+            redist::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+                           kp->fv_states(), 0, 0,
+                           kp->spinor_wave_functions(0), 0, 0);
         }
 
         if (ctx_.fft(0)->parallel())
