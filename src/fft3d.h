@@ -58,7 +58,7 @@ class FFT3D
         int num_fft_workers_;
         
         /// Communicator for the parallel FFT.
-        Communicator comm_;
+        Communicator const& comm_;
 
         processing_unit_t pu_;
         
@@ -187,8 +187,6 @@ class FFT3D
         /// Execute the transformation for a given thread.
         inline void transform(int direction__)
         {
-            assert(thread_id__ < num_fft_threads_);
-
             switch (direction__)
             {
                 case 1:
