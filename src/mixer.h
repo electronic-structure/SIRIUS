@@ -60,7 +60,7 @@ class Mixer
         mdarray<T, 1> output_buffer_;
         
         /// Base communicator.
-        Communicator comm_;
+        Communicator const& comm_;
 
         /// Residual sum of squares.
         double rss_;

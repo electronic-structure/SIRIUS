@@ -1423,8 +1423,8 @@ void sirius_get_gkvec_arrays(int32_t* kset_id,
     /* position of processors which store a given k-point */
     int rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
     
-    Communicator comm_r(sim_ctx->mpi_grid().communicator(1 << _dim_row_));
-    Communicator comm_k(sim_ctx->mpi_grid().communicator(1 << _dim_k_));
+    auto& comm_r = sim_ctx->mpi_grid().communicator(1 << _dim_row_);
+    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _dim_k_);
 
     if (rank == comm_k.rank())
     {

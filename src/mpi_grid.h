@@ -104,7 +104,7 @@ class MPI_grid
             /* total number of communicators inside the grid */
             int num_comm = 1 << dimensions_.size();
 
-            communicators_.resize(num_comm);
+            communicators_ = std::vector<Communicator>(num_comm);//.resize(num_comm);
 
             coordinates_ = std::vector<int>(dimensions_.size(), -1);
 
@@ -191,11 +191,13 @@ class MPI_grid
             : dimensions_(dimensions__),
               parent_communicator_(parent_communicator__)
         {
+            PROFILE();
             initialize();
         }
 
         ~MPI_grid()
         {
+            PROFILE();
             finalize();
         }
 

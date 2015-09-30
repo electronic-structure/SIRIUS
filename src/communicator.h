@@ -54,6 +54,8 @@ class Communicator
 
         MPI_Comm mpi_comm_;
 
+        Communicator(Communicator const& src__) = delete;
+
     public:
     
         Communicator() : mpi_comm_(MPI_COMM_NULL)

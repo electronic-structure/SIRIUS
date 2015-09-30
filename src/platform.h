@@ -36,7 +36,6 @@
 #include "gpu.h"
 #endif
 #include "typedefs.h"
-#include "communicator.h"
 
 /// Platform specific functions.
 class Platform
@@ -56,7 +55,7 @@ class Platform
         static int rank() // TODO: global rank should never be referenced; all calculations "live" inside thier own communicator
         {
             int r;
-            CALL_MPI(MPI_Comm_rank, (MPI_COMM_WORLD, &r));
+            MPI_Comm_rank(MPI_COMM_WORLD, &r);
             return r;
         }
 

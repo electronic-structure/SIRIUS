@@ -403,6 +403,8 @@ class Band
 
         ~Band()
         {
+            PROFILE();
+
             delete gaunt_coefs_;
             delete std_evp_solver_;
             delete gen_evp_solver_;

@@ -649,8 +649,8 @@ class generalized_evp_elpa1: public generalized_evp
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
-        Communicator comm_row_;
-        Communicator comm_col_;
+        Communicator const& comm_row_;
+        Communicator const& comm_col_;
 
     public:
         
@@ -759,9 +759,9 @@ class generalized_evp_elpa2: public generalized_evp
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
-        Communicator comm_row_;
-        Communicator comm_col_;
-        Communicator comm_all_;
+        Communicator const& comm_row_;
+        Communicator const& comm_col_;
+        Communicator const& comm_all_;
 
     public:
         
