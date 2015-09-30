@@ -64,7 +64,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
        K_point/get_occupied_bands_list.cpp \
-       fft3d.cpp
+       fft3d.cpp \
+       communicator.cpp
 
 OBJ = $(SRC:.cpp=.o) 
 
