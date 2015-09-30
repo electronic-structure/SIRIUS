@@ -8,7 +8,7 @@ class BLACS_grid
 {
     private:
 
-        Communicator comm_;
+        Communicator const& comm_;
 
         MPI_grid* mpi_grid_;
 
@@ -24,6 +24,8 @@ class BLACS_grid
 
         int blacs_context_;
 
+        mdarray<int, 2> map_ranks_;
+
         /* forbid copy constructor */
         BLACS_grid(BLACS_grid const& src) = delete;
         /* forbid assigment operator */
@@ -38,33 +40,35 @@ class BLACS_grid
               blacs_handler_(-1),
               blacs_context_(-1)
         {
+            PROFILE();
+
             std::vector<int> xy(2);
             xy[0] = num_ranks_col__;
             xy[1] = num_ranks_row__;
 
-            mpi_grid_ = new MPI_grid(xy, comm__);
+            mpi_grid_ = new MPI_grid(xy, comm_);
 
             rank_col_ = mpi_grid_->coordinate(0);
             rank_row_ = mpi_grid_->coordinate(1);
             
             #ifdef __SCALAPACK
             /* create handler first */
-            blacs_handler_ = linalg_base::create_blacs_handler(comm_.mpi_comm());
+            blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
 
-            mdarray<int, 2> map_ranks(num_ranks_row__, num_ranks_col__);
+            map_ranks_ = mdarray<int, 2>(num_ranks_row__, num_ranks_col__);
             for (int i = 0; i < num_ranks_row__; i++)
             {
                 for (int j = 0; j < num_ranks_col__; j++)
                 {
                     xy[0] = j;
                     xy[1] = i;
-                    map_ranks(i, j) = mpi_grid_->communicator().cart_rank(xy);
+                    map_ranks_(i, j) = mpi_grid_->communicator().cart_rank(xy);
                 }
             }
 
             /* create context */
             blacs_context_ = blacs_handler_;
-            linalg_base::gridmap(&blacs_context_, &map_ranks(0, 0), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
+            linalg_base::gridmap(&blacs_context_, &map_ranks_(0, 0), map_ranks_.ld(), num_ranks_row__, num_ranks_col__);
 
             /* check the grid */
             int nrow1, ncol1, irow1, icol1;
@@ -84,6 +88,8 @@ class BLACS_grid
 
         ~BLACS_grid()
         {
+            PROFILE();
+
             #ifdef __SCALAPACK
             linalg_base::gridexit(blacs_context_);
             linalg_base::free_blacs_handler(blacs_handler_);
@@ -129,6 +135,11 @@ class BLACS_grid
         inline int rank_col() const
         {
             return rank_col_;
+        }
+
+        inline int cart_rank(int irow__, int icol__) const
+        {
+            return map_ranks_(irow__, icol__);
         }
 };
 
