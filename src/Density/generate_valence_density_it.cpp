@@ -46,7 +46,7 @@ void Density::generate_valence_density_it(K_set& ks__)
         }
     }
 
-    double t0 = -Utils::current_time();
+    //double t0 = -Utils::current_time();
     /* reduce arrays; assume that each rank did it's own fraction of the density */
     if (ctx_.fft(0)->parallel())
     {
@@ -58,8 +58,8 @@ void Density::generate_valence_density_it(K_set& ks__)
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
     }
-    t0 += Utils::current_time();
-    printf("reduction time: %.4f\n", t0);
+    //t0 += Utils::current_time();
+    //printf("reduction time: %.4f\n", t0);
 }
 
 };

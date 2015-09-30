@@ -31,6 +31,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     /* split local fraction of G-vectors between threads */
     splindex<block> spl_ngv_loc(spl_gvec.local_size(), Platform::max_num_threads(), 0);
 
+    mdarray<double, 2> timers(3, Platform::max_num_threads());
+    timers.zero();
+
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         auto atom_type = unit_cell_.atom_type(iat);
@@ -56,7 +59,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
             mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * nbf);
     
             int thread_id = Platform::thread_id();
-
+            
+            double t = -omp_get_wtime();
             for (int i = 0; i < atom_type->num_atoms(); i++)
             {
                 int ia = atom_type->atom_id(i);
@@ -68,11 +72,17 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     phase_factors(igloc_t, i) = std::conj(rl->gvec_phase_factor(ig, ia));
                 }
             }
+            t += omp_get_wtime();
+            timers(0, thread_id) += t;
 
+            t = -omp_get_wtime();
             linalg<CPU>::gemm(0, 0, (int)spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type->num_atoms(),
                               &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
                               &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+            t += omp_get_wtime();
+            timers(1, thread_id) += t;
 
+            t = -omp_get_wtime();
             /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
@@ -102,7 +112,21 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     }
                 }
             }
+            t += omp_get_wtime();
+            timers(2, thread_id) += t;
         }
+    }
+
+    if (ctx_.comm().rank() == 0)
+    {
+        std::cout << "-------------------------------------------" << std::endl;
+        std::cout << "thread_id  | phase    | zgemm    | update  " << std::endl;
+        std::cout << "-------------------------------------------" << std::endl;
+        for (int i = 0; i < Platform::max_num_threads(); i++)
+        {
+            printf("   %2i      | %8.4f | %8.4f | %8.4f \n", i, timers(0, i), timers(1, i), timers(2, i));
+        }
+        std::cout << "-------------------------------------------" << std::endl;
     }
     
     ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
