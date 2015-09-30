@@ -26,6 +26,8 @@
 #define __COMMUNICATOR_H__
 
 #include <mpi.h>
+#include <memory>
+#include <vector>
 #include "typedefs.h"
 
 #define CALL_MPI(func__, args__)                                                    \
@@ -52,44 +54,31 @@ class Communicator
 
         MPI_Comm mpi_comm_;
 
-        inline void set_comm(MPI_Comm const& mpi_comm_orig__)
-        {
-            assert(mpi_comm_orig__ != MPI_COMM_NULL);
-            CALL_MPI(MPI_Comm_dup, (mpi_comm_orig__, &mpi_comm_));
-        }
-
     public:
     
         Communicator() : mpi_comm_(MPI_COMM_NULL)
         {
         }
 
-        Communicator(MPI_Comm const& mpi_comm__)
+        Communicator(MPI_Comm mpi_comm__) : mpi_comm_(mpi_comm__)
         {
-            set_comm(mpi_comm__);
-        }
-
-        Communicator(Communicator const& comm__)
-        {
-            set_comm(comm__.mpi_comm_);
-        }
-
-        Communicator& operator=(Communicator const& comm__)
-        {
-            set_comm(comm__.mpi_comm_);
-            return *this;
         }
 
         ~Communicator()
         {
-            if (mpi_comm_ != MPI_COMM_NULL) 
+            if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF))
             {
                 CALL_MPI(MPI_Comm_free, (&mpi_comm_));
                 mpi_comm_ = MPI_COMM_NULL;
             }
         }
 
-        inline MPI_Comm mpi_comm() const
+        inline MPI_Comm& mpi_comm()
+        {
+            return mpi_comm_;
+        }
+
+        inline MPI_Comm const& mpi_comm() const
         {
             return mpi_comm_;
         }
@@ -270,6 +259,13 @@ class Communicator
         }
 
         template <typename T>
+        void alltoall(T const* sendbuf__, int sendcounts__, T* recvbuf__, int recvcounts__) const
+        {
+            CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, type_wrapper<T>::mpi_type_id(),
+                                    recvbuf__, recvcounts__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
+
+        template <typename T>
         void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, 
                       T* recvbuf__, int const* recvcounts__, int const* rdispls__) const
         {
@@ -348,5 +344,7 @@ class Communicator
             return a2a;
         }
 };
+
+extern Communicator mpi_comm_self;
 
 #endif // __COMMUNICATOR_H__
