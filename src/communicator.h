@@ -346,5 +346,6 @@ class Communicator
 };
 
 extern Communicator mpi_comm_self;
+extern Communicator mpi_comm_world;
 
 #endif // __COMMUNICATOR_H__

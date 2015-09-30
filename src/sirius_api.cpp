@@ -79,7 +79,7 @@ void sirius_create_global_parameters()
 
 void sirius_create_simulation_context()
 {
-    sim_ctx = new sirius::Simulation_context(*sim_param, MPI_COMM_WORLD);
+    sim_ctx = new sirius::Simulation_context(*sim_param, mpi_comm_world);
 }
 
 void sirius_set_lmax_apw(int32_t* lmax_apw__)
