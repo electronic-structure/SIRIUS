@@ -248,19 +248,19 @@ void Unit_cell::initialize()
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
 
-    if (num_atoms() != 0)
-    {
-        comm_bundle_atoms_ = Communicator_bundle(comm_, num_atoms());
-        spl_atoms_ = splindex<block>(num_atoms(), comm_bundle_atoms_.size(), comm_bundle_atoms_.id());
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
-            int rank = spl_num_atoms().local_rank(ia);
-            if (comm_.rank() == rank)
-            {
-                if (comm_bundle_atoms_.comm().rank() != 0) error_local(__FILE__, __LINE__, "wrong root rank");
-            }
-        }
-    }
+    //if (num_atoms() != 0)
+    //{
+    //    comm_bundle_atoms_ = Communicator_bundle(comm_, num_atoms());
+    //    spl_atoms_ = splindex<block>(num_atoms(), comm_bundle_atoms_.size(), comm_bundle_atoms_.id());
+    //    for (int ia = 0; ia < num_atoms(); ia++)
+    //    {
+    //        int rank = spl_num_atoms().local_rank(ia);
+    //        if (comm_.rank() == rank)
+    //        {
+    //            if (comm_bundle_atoms_.comm().rank() != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+    //        }
+    //    }
+    //}
 
     /* initialize atom types */
     max_num_mt_points_ = 0;
