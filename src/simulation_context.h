@@ -42,7 +42,7 @@ class Simulation_context
         Simulation_parameters parameters_; 
     
         /// Communicator for this simulation.
-        Communicator comm_;
+        Communicator const& comm_;
 
         /// MPI grid for this simulation.
         MPI_grid* mpi_grid_;
@@ -230,24 +230,24 @@ class Simulation_context
                     if (tid == gpu_thread_id_)
                     {
                         fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                                 nfft_workers, MPI_COMM_SELF, parameters_.processing_unit()));
+                                                 nfft_workers, mpi_comm_self, parameters_.processing_unit()));
                     }
                     else
                     {
                         fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                                 nfft_workers, MPI_COMM_SELF, CPU));
+                                                 nfft_workers, mpi_comm_self, CPU));
                     }
                     if (!parameters_.full_potential())
                     {
                         if (tid == gpu_thread_id_)
                         {
                             fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                            nfft_workers, MPI_COMM_SELF, parameters_.processing_unit()));
+                                                            nfft_workers, mpi_comm_self, parameters_.processing_unit()));
                         }
                         else
                         {
                             fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                            nfft_workers, MPI_COMM_SELF, CPU));
+                                                            nfft_workers, mpi_comm_self, CPU));
                         }
                     }
                 }
