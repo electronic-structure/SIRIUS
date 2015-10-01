@@ -236,52 +236,44 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
         rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
     }
-    
+
+    /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
     if (comm_.size() > 1)
     {
-        STOP();
+        Timer t1("fft|a2a_internal");
+        comm_.alltoall(fftw_buffer_, &sendcounts[0], &sdispls[0], &fft_buffer_aux_(0), &recvcounts[0], &rdispls[0]);
+        t1.stop();
 
-        //Timer t1("fft|comm_inner");
-        //comm_.alltoall(fftw_buffer_[thread_id__], &sendcounts[0], &sdispls[0], 
-        //               &fft_buffer_aux_(0, thread_id__), &recvcounts[0], &rdispls[0]);
-        //t1.stop();
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int i = 0; i < (int)spl_n.local_size(); i++)
+            {
+                /* collect z-column from auxiliary buffer */
+                for (int rank = 0; rank < comm_.size(); rank++)
+                {
+                    int lsz = (int)spl_z_.local_size(rank);
 
-        //#pragma omp parallel num_threads(num_fft_workers_)
-        //{
-        //    int tid = omp_get_thread_num();
+                    memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                           &fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                           lsz * sizeof(double_complex));
+                }
+                fftw_execute(plan_backward_z_[tid]);
+                for (int rank = 0; rank < comm_.size(); rank++)
+                {
+                    int lsz = (int)spl_z_.local_size(rank);
 
-        //    double_complex* src = (comm_.size() == 1) ? fftw_buffer_[thread_id__] : &z_sticks_(0, thread_id__);
-        //    double_complex* dest = &z_sticks_(0, thread_id__);
-        //    
-        //    #pragma omp for
-        //    for (int i = 0; i < (int)spl_n.local_size(); i++)
-        //    {
-        //        /* collect z-column from temporary data_slice_ buffer */
-        //        for (int rank = 0; rank < comm_.size(); rank++)
-        //        {
-        //            int lsz = (int)spl_z_.local_size(rank);
+                    memcpy(&fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                           &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                           lsz * sizeof(double_complex));
+                }
+            }
+        }
 
-        //            memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-        //                   &src[spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz],
-        //                   lsz * sizeof(double_complex));
-        //        }
-
-        //        fftw_execute(plan_backward_z_[tid]);
-
-        //        for (int rank = 0; rank < comm_.size(); rank++)
-        //        {
-        //            int lsz = (int)spl_z_.local_size(rank);
-
-        //            memcpy(&dest[spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz],
-        //                   &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-        //                   lsz * sizeof(double_complex));
-        //        }
-        //    }
-        //}
-
-        //t1.start();
-        //comm_.alltoall(&z_sticks_(0, thread_id__), &recvcounts[0], &rdispls[0], 
-        //               fftw_buffer_[thread_id__], &sendcounts[0], &sdispls[0]);
+        t1.start();
+        comm_.alltoall(&fft_buffer_aux_(0), &recvcounts[0], &rdispls[0], fftw_buffer_, &sendcounts[0], &sdispls[0]);
+        memcpy(&fft_buffer_aux_(0), fftw_buffer_, local_size() * sizeof(double_complex));
     }
     else
     {
@@ -325,27 +317,27 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         #endif
     }
 
+    /* transform f(Gx,Gy,z) -> f(x,y,z) */
     if (comm_.size() > 1)
     {
-        STOP();
-        //#pragma omp parallel num_threads(num_fft_workers_)
-        //{
-        //    int tid = omp_get_thread_num();
-        //    #pragma omp for
-        //    for (int iz = 0; iz < local_size_z_; iz++)
-        //    {
-        //        memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
-        //        for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
-        //        {
-        //            int x = z_sticks_coord__[n].first;
-        //            int y = z_sticks_coord__[n].second;
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int iz = 0; iz < local_size_z_; iz++)
+            {
+                memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+                for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
+                {
+                    int x = z_sticks_coord__[n].first;
+                    int y = z_sticks_coord__[n].second;
 
-        //            fftw_buffer_xy_[tid][x + y * size(0)] = data_slab_(iz, n);
-        //        }
-        //        fftw_execute(plan_backward_xy_[tid]);
-        //        memcpy(&fftw_buffer_[0][iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
-        //    }
-        //}
+                    fftw_buffer_xy_[tid][x + y * size(0)] = fft_buffer_aux_(iz + local_size_z_ * n);
+                }
+                fftw_execute(plan_backward_xy_[tid]);
+                memcpy(&fftw_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+            }
+        }
     }
     else
     {
@@ -411,27 +403,28 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
         rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
     }
-    
+
+    /* transform f(x,y,z) -> f(Gx,Gy,z) */
     if (comm_.size() > 1)
     {
-        STOP();
-        //#pragma omp parallel num_threads(num_fft_workers_)
-        //{
-        //    int tid = omp_get_thread_num();
-        //    
-        //    #pragma omp for
-        //    for (int iz = 0; iz < local_size_z_; iz++)
-        //    {
-        //        memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[0][iz * size_xy], sizeof(fftw_complex) * size_xy);
-        //        fftw_execute(plan_forward_xy_[tid]);
-        //        for (int n = 0; n < num_xy_packed__; n++)
-        //        {
-        //            int x = xy_packed_idx__(0, n);
-        //            int y = xy_packed_idx__(1, n);
-        //            data_slab_(iz, n) = fftw_buffer_xy_[tid][x + y * size(0)];
-        //        }
-        //    }
-        //}
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            
+            #pragma omp for
+            for (int iz = 0; iz < local_size_z_; iz++)
+            {
+                memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+                fftw_execute(plan_forward_xy_[tid]);
+                for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
+                {
+                    int x = z_sticks_coord__[n].first;
+                    int y = z_sticks_coord__[n].second;
+                    fft_buffer_aux_(iz + local_size_z_ * n) = fftw_buffer_xy_[tid][x + y * size(0)];
+                }
+            }
+        }
+        memcpy(fftw_buffer_, &fft_buffer_aux_(0), local_size_z_ * z_sticks_coord__.size() * sizeof(double_complex));
     }
     else
     {
@@ -466,45 +459,42 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
 
     if (comm_.size() > 1)
     {
-        STOP();
-        //Timer t2("fft|comm_inner");
-        //comm_.alltoall(data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0], 
-        //               data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0]);
-        //t2.stop();
+        Timer t1("fft|a2a_internal");
+        comm_.alltoall(fftw_buffer_, &sendcounts[0], &sdispls[0], &fft_buffer_aux_(0), &recvcounts[0], &rdispls[0]);
+        t1.stop();
 
-        //#pragma omp parallel num_threads(num_fft_workers_)
-        //{
-        //    int tid = omp_get_thread_num();
-        //    
-        //    #pragma omp for
-        //    for (int i = 0; i < (int)spl_n.local_size(); i++)
-        //    {
-        //        for (int rank = 0; rank < comm_.size(); rank++)
-        //        {
-        //            int lsz = (int)spl_z_.local_size(rank);
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            
+            #pragma omp for
+            for (int i = 0; i < (int)spl_n.local_size(); i++)
+            {
+                for (int rank = 0; rank < comm_.size(); rank++)
+                {
+                    int lsz = (int)spl_z_.local_size(rank);
 
-        //            memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-        //                   &data_slice_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
-        //                   lsz * sizeof(double_complex));
-        //        }
+                    memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                           &fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                           lsz * sizeof(double_complex));
+                }
 
-        //        fftw_execute(plan_forward_z_[tid]);
+                fftw_execute(plan_forward_z_[tid]);
 
-        //        for (int rank = 0; rank < comm_.size(); rank++)
-        //        {
-        //            int lsz = (int)spl_z_.local_size(rank);
+                for (int rank = 0; rank < comm_.size(); rank++)
+                {
+                    int lsz = (int)spl_z_.local_size(rank);
 
-        //            memcpy(&data_slice_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
-        //                   &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-        //                   lsz * sizeof(double_complex));
-        //        }
-        //    }
-        //}
+                    memcpy(&fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
+                           &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                           lsz * sizeof(double_complex));
+                }
+            }
+        }
 
-        //t2.start();
-        //comm_.alltoall(data_slice_.at<CPU>(), &recvcounts[0], &rdispls[0], 
-        //               data_slab_.at<CPU>(), &sendcounts[0], &sdispls[0]);
-        //t2.stop();
+        t1.start();
+        comm_.alltoall(&fft_buffer_aux_(0), &recvcounts[0], &rdispls[0], fftw_buffer_, &sendcounts[0], &sdispls[0]);
+        t1.stop();
     }
     else
     {

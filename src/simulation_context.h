@@ -201,7 +201,7 @@ class Simulation_context
             int nfft_threads = parameters_.num_fft_threads();
             int nfft_workers = parameters_.num_fft_workers();
 
-            bool do_parallel_fft = false; //parameters_.full_potential() || mpi_grid_->dimension_size(_dim_row_) == 1)
+            bool do_parallel_fft = (mpi_grid_->dimension_size(_dim_row_) > 1 && !parameters_.full_potential());
 
             if (do_parallel_fft)
             {
@@ -222,7 +222,7 @@ class Simulation_context
                     if (!parameters_.full_potential())
                     {
                         fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                        nfft_workers, mpi_grid_->communicator(1 << _dim_row_), CPU));
+                                                        nfft_workers, mpi_grid_->communicator(1 << _dim_row_), parameters_.processing_unit()));
                     }
                 }
                 else /* serial FFT driver */

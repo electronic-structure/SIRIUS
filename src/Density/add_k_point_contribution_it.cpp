@@ -28,6 +28,10 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     mdarray<double, 3> it_density_matrix(ctx_.fft(0)->size(), parameters_.num_mag_dims() + 1, ctx_.num_fft_threads());
     it_density_matrix.zero();
 
+    splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
+    auto a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
+    std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
+
     #ifdef __GPU
     mdarray<int, 1> fft_index;
     mdarray<double_complex, 1> pw_buf;
@@ -126,12 +130,24 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 {
                     /* transform only single compopnent */
                     int ispn = (j < num_fv_states) ? 0 : 1;
-                    ctx_.fft(thread_id)->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
-                                               kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc));
+                    if (ctx_.fft(thread_id)->parallel())
+                    {
+                        Timer t1("fft|a2a_external");
+                        kp__->comm_row().alltoall(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
+                                                  &a2a.sendcounts[0], &a2a.sdispls[0],
+                                                  &buf[0],
+                                                  &a2a.recvcounts[0], &a2a.rdispls[0]);
+                        ctx_.fft(thread_id)->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
+                    }
+                    else
+                    {
+                        ctx_.fft(thread_id)->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
+                                                   kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc));
+                    }
                     ctx_.fft(thread_id)->transform(1, kp__->gkvec().z_sticks_coord());
                     
                     #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
-                    for (int ir = 0; ir < ctx_.fft(thread_id)->size(); ir++)
+                    for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
                     {
                         auto z = ctx_.fft(thread_id)->buffer(ir);
                         it_density_matrix(ir, ispn, thread_id) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
@@ -164,7 +180,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         {
             for (int i = 0; i < ctx_.num_fft_threads(); i++)
             {
-                for (int ir = 0; ir < ctx_.fft(0)->size(); ir++)
+                for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
                 {
                     magnetization_[1]->f_it(ir) += it_density_matrix(ir, 2, i);
                     magnetization_[2]->f_it(ir) += it_density_matrix(ir, 3, i);
@@ -175,7 +191,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         {
             for (int i = 0; i < ctx_.num_fft_threads(); i++)
             {
-                for (int ir = 0; ir < ctx_.fft(0)->size(); ir++)
+                for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
                 {
                     rho_->f_it(ir) += (it_density_matrix(ir, 0, i) + it_density_matrix(ir, 1, i));
                     magnetization_[0]->f_it(ir) += (it_density_matrix(ir, 0, i) - it_density_matrix(ir, 1, i));
@@ -190,7 +206,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 for (int i = 0; i < ctx_.num_fft_threads(); i++)
                 {
                     #pragma omp for schedule(static)
-                    for (int ir = 0; ir < ctx_.fft(0)->size(); ir++) rho_->f_it(ir) += it_density_matrix(ir, 0, i);
+                    for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++) rho_->f_it(ir) += it_density_matrix(ir, 0, i);
                 }
             }
         }
@@ -210,113 +226,6 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         std::cout << "final reduction: " << t1 << " sec" << std::endl;
         std::cout << "main summation of " << occupied_bands__.num_occupied_bands_local() << " bands is done in " << t0 << "sec." << std::endl;
     }
-}
-
-
-void Density::add_k_point_contribution_it_pfft(K_point* kp__, occupied_bands_descriptor const& occupied_bands__)
-{
-    PROFILE();
-
-    Timer t("sirius::Density::add_k_point_contribution_it_pfft");
-    STOP();
-    
-    //if (occupied_bands__.idx_bnd_loc.size() == 0) return;
-    //
-    //mdarray<double, 2> it_density_matrix(fft_->local_size(), parameters_.num_mag_dims() + 1);
-    //it_density_matrix.zero();
-    //
-    //int num_spins     = parameters_.num_spins();
-    //int num_mag_dims  = parameters_.num_mag_dims();
-    //int num_fv_states = parameters_.num_fv_states();
-    //double omega      = unit_cell_.omega();
-    //int wf_pw_offset  = kp__->wf_pw_offset();
-    //
-    //mdarray<double_complex, 2> psi_it(fft_->local_size(), num_spins);
-
-    //splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
-
-    //assert(kp__->spinor_wave_functions(0).num_rows_local() == (int)spl_gkvec.local_size());
-
-    //auto a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
-    //std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
-
-    //for (int i = 0; i < occupied_bands__.num_occupied_bands_local(); i++)
-    //{
-    //    int j    = occupied_bands__.idx_bnd_glob[i];
-    //    int jloc = occupied_bands__.idx_bnd_loc[i];
-    //    double w = occupied_bands__.weight[i] / omega;
-
-    //    if (num_mag_dims == 3)
-    //    {
-    //        STOP();
-    //        ///* transform both components of the spinor state */
-    //        //for (int ispn = 0; ispn < num_spins; ispn++)
-    //        //{
-    //        //    fft->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
-    //        //               kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc), thread_id);
-    //        //    fft->transform(1, thread_id);
-    //        //    fft->output(&psi_it(0, ispn), thread_id);
-    //        //}
-    //        //for (int ir = 0; ir < fft->size(); ir++)
-    //        //{
-    //        //    auto z0 = psi_it(ir, 0) * std::conj(psi_it(ir, 0)) * w;
-    //        //    auto z1 = psi_it(ir, 1) * std::conj(psi_it(ir, 1)) * w;
-    //        //    auto z2 = psi_it(ir, 0) * std::conj(psi_it(ir, 1)) * w;
-    //        //    it_density_matrix(ir, 0, thread_id) += std::real(z0);
-    //        //    it_density_matrix(ir, 1, thread_id) += std::real(z1);
-    //        //    it_density_matrix(ir, 2, thread_id) += 2.0 * std::real(z2);
-    //        //    it_density_matrix(ir, 3, thread_id) -= 2.0 * std::imag(z2);
-    //        //}
-    //    }
-    //    else
-    //    {
-    //        /* transform only single compopnent */
-    //        int ispn = (j < num_fv_states) ? 0 : 1;
-    //        
-    //        Timer t1("fft|comm");
-    //        kp__->comm_row().alltoall(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
-    //                                  &a2a.sendcounts[0], &a2a.sdispls[0],
-    //                                  &buf[0],
-    //                                  &a2a.recvcounts[0], &a2a.rdispls[0]);
-    //        t1.stop();
-    //        fft_->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
-    //        fft_->transform(1, kp__->gkvec().z_sticks_coord());
-    //        fft_->output(&psi_it(0, ispn));
-    //        
-    //        #pragma omp parallel for schedule(static)
-    //        for (int ir = 0; ir < fft_->local_size(); ir++)
-    //        {
-    //            double_complex z = psi_it(ir, ispn);
-    //            it_density_matrix(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-    //        }
-    //    }
-    //}
-
-    ///* switch from real density matrix to density and magnetization */
-    //switch (parameters_.num_mag_dims())
-    //{
-    //    case 3:
-    //    {
-    //        for (int ir = 0; ir < fft_->local_size(); ir++)
-    //        {
-    //            magnetization_[1]->f_it(ir) += it_density_matrix(ir, 2);
-    //            magnetization_[2]->f_it(ir) += it_density_matrix(ir, 3);
-    //        }
-    //    }
-    //    case 1:
-    //    {
-    //        for (int ir = 0; ir < fft_->local_size(); ir++)
-    //        {
-    //            rho_->f_it(ir) += (it_density_matrix(ir, 0) + it_density_matrix(ir, 1));
-    //            magnetization_[0]->f_it(ir) += (it_density_matrix(ir, 0) - it_density_matrix(ir, 1));
-    //        }
-    //        break;
-    //    }
-    //    case 0:
-    //    {
-    //        for (int ir = 0; ir < fft_->local_size(); ir++) rho_->f_it(ir) += it_density_matrix(ir, 0);
-    //    }
-    //}
 }
 
 };

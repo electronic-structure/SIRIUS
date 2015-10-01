@@ -21,32 +21,28 @@ void Density::generate_valence_density_it(K_set& ks__)
         {
             occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
         }
-
+        
+        Timer t1("gemr2d");
         if (!parameters_.full_potential() && kp->num_ranks() > 1)
         {
-            //double t0 = -Utils::current_time();
-            //linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-            //                    kp->fv_states(), 0, 0,
-            //                    kp->spinor_wave_functions(0), 0, 0,
-            //                    kp->blacs_grid().context());
-            //t0 += Utils::current_time();
-            //printf("gemr2d time: %.4f\n", t0);
-            redist::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                           kp->fv_states(), 0, 0,
-                           kp->spinor_wave_functions(0), 0, 0);
+            if (ctx_.fft(0)->parallel())
+            {
+                linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+                                    kp->fv_states(), 0, 0,
+                                    kp->spinor_wave_functions(0), 0, 0,
+                                    kp->blacs_grid().context());
+            }
+            else
+            {
+                redist::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+                               kp->fv_states(), 0, 0,
+                               kp->spinor_wave_functions(0), 0, 0);
+            }
         }
-
-        if (ctx_.fft(0)->parallel())
-        {
-            add_k_point_contribution_it_pfft(ks__[ik], occupied_bands);
-        }
-        else
-        {
-            add_k_point_contribution_it(ks__[ik], occupied_bands);
-        }
+        t1.stop();
+        add_k_point_contribution_it(ks__[ik], occupied_bands);
     }
 
-    //double t0 = -Utils::current_time();
     /* reduce arrays; assume that each rank did it's own fraction of the density */
     if (ctx_.fft(0)->parallel())
     {
@@ -58,8 +54,6 @@ void Density::generate_valence_density_it(K_set& ks__)
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
     }
-    //t0 += Utils::current_time();
-    //printf("reduction time: %.4f\n", t0);
 }
 
 };
