@@ -117,6 +117,20 @@ class FFT3D
         std::vector<cufftHandle> cufft_plan_xy_;
         #endif
 
+        template <int direction>
+        void transform_z_parallel(std::vector<int> const& sendcounts, std::vector<int> const& sdispls,
+                                  std::vector<int> const& recvcounts, std::vector<int> const& rdispls,
+                                  int num_z_cols_local);
+
+        template <int direction>
+        void transform_xy_parallel(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+
+        template <int direction>
+        void transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+
+        template <int direction>
+        void transform_xy_serial();
+
         /// Execute backward transformation.
         inline void backward()
         {

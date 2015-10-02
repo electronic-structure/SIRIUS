@@ -165,7 +165,6 @@ FFT3D::FFT3D(vector3d<int> dims__,
         int dim_xy[] = {size(1), size(0)};
         int embed_xy[] = {size(1), size(0)};
 
-
         for (int i = 0; i < get_num_cuda_streams(); i++)
         {
             cufft_create_plan_handle(&cufft_plan_z_[i]);
@@ -217,10 +216,252 @@ FFT3D::~FFT3D()
     #endif
 }
 
-void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
+template <int direction>
+void FFT3D::transform_z_parallel(std::vector<int> const& sendcounts, std::vector<int> const& sdispls,
+                                 std::vector<int> const& recvcounts, std::vector<int> const& rdispls,
+                                 int num_z_cols_local)
+{
+    if (comm_.size() > 1)
+    {
+        Timer t1("fft|a2a_internal");
+        comm_.alltoall(fftw_buffer_, &sendcounts[0], &sdispls[0], &fft_buffer_aux_(0), &recvcounts[0], &rdispls[0]);
+        t1.stop();
+    
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int i = 0; i < num_z_cols_local; i++)
+            {
+                for (int rank = 0; rank < comm_.size(); rank++)
+                {
+                    int lsz = (int)spl_z_.local_size(rank);
+    
+                    memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                           &fft_buffer_aux_(spl_z_.global_offset(rank) * num_z_cols_local + i * lsz),
+                           lsz * sizeof(double_complex));
+                }
+                switch (direction)
+                {
+                    case 1:
+                    {
+                        fftw_execute(plan_backward_z_[tid]);
+                        break;
+                    }
+                    case -1:
+                    {
+                        fftw_execute(plan_forward_z_[tid]);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE("wrong direction");
+                    }
+                }
+                for (int rank = 0; rank < comm_.size(); rank++)
+                {
+                    int lsz = (int)spl_z_.local_size(rank);
+    
+                    memcpy(&fft_buffer_aux_(spl_z_.global_offset(rank) * num_z_cols_local + i * lsz),
+                           &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
+                           lsz * sizeof(double_complex));
+                }
+            }
+        }
+    
+        t1.start();
+        comm_.alltoall(&fft_buffer_aux_(0), &recvcounts[0], &rdispls[0], fftw_buffer_, &sendcounts[0], &sdispls[0]);
+    }
+}
+
+template <int direction>
+void FFT3D::transform_xy_parallel(std::vector< std::pair<int, int> > const& z_sticks_coord__)
 {
     int size_xy = size(0) * size(1);
+    #pragma omp parallel num_threads(num_fft_workers_)
+    {
+        int tid = omp_get_thread_num();
+        #pragma omp for
+        for (int iz = 0; iz < local_size_z_; iz++)
+        {
+            switch (direction)
+            {
+                case 1:
+                {
+                    memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+                    for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
+                    {
+                        int x = z_sticks_coord__[n].first;
+                        int y = z_sticks_coord__[n].second;
 
+                        fftw_buffer_xy_[tid][x + y * size(0)] = fft_buffer_aux_(iz + local_size_z_ * n);
+                    }
+                    fftw_execute(plan_backward_xy_[tid]);
+                    memcpy(&fftw_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                    break;
+                }
+                case -1:
+                {
+                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+                    fftw_execute(plan_forward_xy_[tid]);
+                    for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
+                    {
+                        int x = z_sticks_coord__[n].first;
+                        int y = z_sticks_coord__[n].second;
+                        fft_buffer_aux_(iz + local_size_z_ * n) = fftw_buffer_xy_[tid][x + y * size(0)];
+                    }
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong direction");
+                }
+            }
+        }
+    }
+}
+
+template <int direction>
+void FFT3D::transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__)
+{
+    int size_xy = size(0) * size(1);
+    if (pu_ == CPU)
+    {
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
+            {
+                int x = z_sticks_coord__[i].first;
+                int y = z_sticks_coord__[i].second;
+    
+                for (int z = 0; z < size(2); z++)
+                {
+                    fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
+                }
+                switch (direction)
+                {
+                    case 1:
+                    {
+                        fftw_execute(plan_backward_z_[tid]);
+                        break;
+                    }
+                    case -1:
+                    {
+                        fftw_execute(plan_forward_z_[tid]);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE("wrong direction");
+                    }
+                }
+                for (int z = 0; z < size(2); z++)
+                {
+                    fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
+                }
+            }
+        }
+    }
+    #ifdef __GPU
+    if (pu_ == GPU)
+    {
+        for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
+        {
+            int x = z_sticks_coord__[j].first;
+            int y = z_sticks_coord__[j].second;
+            int stream_id = j % get_num_cuda_streams();
+            switch (direction)
+            {
+                case 1:
+                {
+                    cufft_backward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
+                    break;
+                }
+                case -1:
+                {
+                    cufft_forward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong direction");
+                }
+           }
+        }
+        for (int i = 0; i < get_num_cuda_streams(); i++)
+            cuda_stream_synchronize(i);
+    }
+    #endif
+}
+
+template <int direction>
+void FFT3D::transform_xy_serial()
+{
+    int size_xy = size(0) * size(1);
+    if (pu_ == CPU)
+    {
+        #pragma omp parallel num_threads(num_fft_workers_)
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int z = 0; z < size(2); z++)
+            {
+                memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
+                switch (direction)
+                {
+                    case 1:
+                    {
+                        fftw_execute(plan_backward_xy_[tid]);
+                        break;
+                    }
+                    case -1:
+                    {
+                        fftw_execute(plan_forward_xy_[tid]);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE("wrong direction");
+                    }
+                }
+                memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
+            }
+        }
+    }
+    #ifdef __GPU
+    if (pu_ == GPU)
+    {
+        for (int z = 0; z < size(2); z++)
+        {
+            int stream_id = z % get_num_cuda_streams();
+            switch (direction)
+            {
+                case 1:
+                {
+                    cufft_backward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
+                    break;
+                }
+                case -1:
+                {
+                    cufft_forward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong direction");
+                }
+            }
+        }
+        for (int i = 0; i < get_num_cuda_streams(); i++)
+            cuda_stream_synchronize(i);
+    }
+    #endif
+}
+
+void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
+{
     splindex<block> spl_n(z_sticks_coord__.size(), comm_.size(), comm_.rank());
 
     std::vector<int> sendcounts(comm_.size());
@@ -237,157 +478,25 @@ void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_c
         rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
     }
 
-    /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
     if (comm_.size() > 1)
     {
-        Timer t1("fft|a2a_internal");
-        comm_.alltoall(fftw_buffer_, &sendcounts[0], &sdispls[0], &fft_buffer_aux_(0), &recvcounts[0], &rdispls[0]);
-        t1.stop();
-
-        #pragma omp parallel num_threads(num_fft_workers_)
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int i = 0; i < (int)spl_n.local_size(); i++)
-            {
-                /* collect z-column from auxiliary buffer */
-                for (int rank = 0; rank < comm_.size(); rank++)
-                {
-                    int lsz = (int)spl_z_.local_size(rank);
-
-                    memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-                           &fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
-                           lsz * sizeof(double_complex));
-                }
-                fftw_execute(plan_backward_z_[tid]);
-                for (int rank = 0; rank < comm_.size(); rank++)
-                {
-                    int lsz = (int)spl_z_.local_size(rank);
-
-                    memcpy(&fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
-                           &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-                           lsz * sizeof(double_complex));
-                }
-            }
-        }
-
-        t1.start();
-        comm_.alltoall(&fft_buffer_aux_(0), &recvcounts[0], &rdispls[0], fftw_buffer_, &sendcounts[0], &sdispls[0]);
+        /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
+        transform_z_parallel<1>(sendcounts, sdispls, recvcounts, rdispls, (int)spl_n.local_size());
         memcpy(&fft_buffer_aux_(0), fftw_buffer_, local_size() * sizeof(double_complex));
+        /* transform f(Gx,Gy,z) -> f(x,y,z) */
+        transform_xy_parallel<1>(z_sticks_coord__);
     }
     else
     {
-        if (pu_ == CPU)
-        {
-            #pragma omp parallel num_threads(num_fft_workers_)
-            {
-                int tid = omp_get_thread_num();
-                #pragma omp for
-                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
-                {
-                    int x = z_sticks_coord__[i].first;
-                    int y = z_sticks_coord__[i].second;
-
-                    for (int z = 0; z < size(2); z++)
-                    {
-                        fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
-                    }
-                    fftw_execute(plan_backward_z_[tid]);
-                    for (int z = 0; z < size(2); z++)
-                    {
-                        fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
-                    }
-                }
-            }
-        }
-
-        #ifdef __GPU
-        if (pu_ == GPU)
-        {
-            for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
-            {
-                int x = z_sticks_coord__[j].first;
-                int y = z_sticks_coord__[j].second;
-                int stream_id = j % get_num_cuda_streams();
-                cufft_backward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
-            }
-            for (int i = 0; i < get_num_cuda_streams(); i++)
-                cuda_stream_synchronize(i);
-        }
-        #endif
+        /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
+        transform_z_serial<1>(z_sticks_coord__);
+        /* transform f(Gx,Gy,z) -> f(x,y,z) */
+        transform_xy_serial<1>();
     }
-
-    /* transform f(Gx,Gy,z) -> f(x,y,z) */
-    if (comm_.size() > 1)
-    {
-        #pragma omp parallel num_threads(num_fft_workers_)
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int iz = 0; iz < local_size_z_; iz++)
-            {
-                memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
-                for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
-                {
-                    int x = z_sticks_coord__[n].first;
-                    int y = z_sticks_coord__[n].second;
-
-                    fftw_buffer_xy_[tid][x + y * size(0)] = fft_buffer_aux_(iz + local_size_z_ * n);
-                }
-                fftw_execute(plan_backward_xy_[tid]);
-                memcpy(&fftw_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
-            }
-        }
-    }
-    else
-    {
-        if (pu_ == CPU)
-        {
-            #pragma omp parallel num_threads(num_fft_workers_)
-            {
-                int tid = omp_get_thread_num();
-                #pragma omp for
-                for (int z = 0; z < size(2); z++)
-                {
-                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
-                    fftw_execute(plan_backward_xy_[tid]);
-                    memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
-                }
-            }
-        }
-        #ifdef __GPU
-        if (pu_ == GPU)
-        {
-            for (int z = 0; z < size(2); z++)
-            {
-                int stream_id = z % get_num_cuda_streams();
-                cufft_backward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
-            }
-            for (int i = 0; i < get_num_cuda_streams(); i++)
-                cuda_stream_synchronize(i);
-        }
-        #endif
-    }
-
-    //if (Platform::rank() == 0)
-    //{
-    //    std::cout << "----------------------------------------------------------------" << std::endl;
-    //    std::cout << "thread_id  | fft_z (num, throughput) | fft_xy (num, throughput) " << std::endl;
-    //    std::cout << "----------------------------------------------------------------" << std::endl;
-    //    for (int i = 0; i < num_fft_workers_; i++)
-    //    {
-    //        double d1 = (z_counts[i] == 0) ? 0 : z_counts[i] / z_times[i];
-    //        double d2 = (xy_counts[i] == 0) ? 0 : xy_counts[i] / xy_times[i];
-    //        printf("   %2i      | %5i  %10.4e       |  %5i   %10.4e \n", i, z_counts[i], d1, xy_counts[i], d2);
-    //    }
-    //    std::cout << "----------------------------------------------------------------" << std::endl;
-    //}
 }
         
 void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
 {
-    int size_xy = size(0) * size(1);
-
     splindex<block> spl_n(z_sticks_coord__.size(), comm_.size(), comm_.rank());
 
     std::vector<int> sendcounts(comm_.size());
@@ -404,146 +513,25 @@ void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_co
         rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
     }
 
-    /* transform f(x,y,z) -> f(Gx,Gy,z) */
     if (comm_.size() > 1)
     {
-        #pragma omp parallel num_threads(num_fft_workers_)
-        {
-            int tid = omp_get_thread_num();
-            
-            #pragma omp for
-            for (int iz = 0; iz < local_size_z_; iz++)
-            {
-                memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
-                fftw_execute(plan_forward_xy_[tid]);
-                for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
-                {
-                    int x = z_sticks_coord__[n].first;
-                    int y = z_sticks_coord__[n].second;
-                    fft_buffer_aux_(iz + local_size_z_ * n) = fftw_buffer_xy_[tid][x + y * size(0)];
-                }
-            }
-        }
+        /* transform f(x,y,z) -> f(Gx,Gy,z) */
+        transform_xy_parallel<-1>(z_sticks_coord__);
         memcpy(fftw_buffer_, &fft_buffer_aux_(0), local_size_z_ * z_sticks_coord__.size() * sizeof(double_complex));
+        /* transform f(Gx,Gy,z) -> f(Gx,Gy,Gz) */
+        transform_z_parallel<-1>(sendcounts, sdispls, recvcounts, rdispls, (int)spl_n.local_size());
     }
     else
     {
-        if (pu_ == CPU)
-        {
-            #pragma omp parallel num_threads(num_fft_workers_)
-            {
-                int tid = omp_get_thread_num();
-                
-                #pragma omp for
-                for (int z = 0; z < local_size_z_; z++)
-                {
-                    memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
-                    fftw_execute(plan_forward_xy_[tid]);
-                    memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
-                }
-            }
-        }
-        #ifdef __GPU
-        if (pu_ == GPU)
-        {
-            for (int z = 0; z < size(2); z++)
-            {
-                int stream_id = z % get_num_cuda_streams();
-                cufft_forward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
-            }
-            for (int i = 0; i < get_num_cuda_streams(); i++)
-                cuda_stream_synchronize(i);
-        }
-        #endif
+        /* transform f(x,y,z) -> f(Gx,Gy,z) */
+        transform_xy_serial<-1>();
+        /* transform f(Gx,Gy,z) -> f(Gx,Gy,Gz) */
+        transform_z_serial<-1>(z_sticks_coord__);
     }
 
-    if (comm_.size() > 1)
-    {
-        Timer t1("fft|a2a_internal");
-        comm_.alltoall(fftw_buffer_, &sendcounts[0], &sdispls[0], &fft_buffer_aux_(0), &recvcounts[0], &rdispls[0]);
-        t1.stop();
-
-        #pragma omp parallel num_threads(num_fft_workers_)
-        {
-            int tid = omp_get_thread_num();
-            
-            #pragma omp for
-            for (int i = 0; i < (int)spl_n.local_size(); i++)
-            {
-                for (int rank = 0; rank < comm_.size(); rank++)
-                {
-                    int lsz = (int)spl_z_.local_size(rank);
-
-                    memcpy(&fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-                           &fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
-                           lsz * sizeof(double_complex));
-                }
-
-                fftw_execute(plan_forward_z_[tid]);
-
-                for (int rank = 0; rank < comm_.size(); rank++)
-                {
-                    int lsz = (int)spl_z_.local_size(rank);
-
-                    memcpy(&fft_buffer_aux_(spl_z_.global_offset(rank) * spl_n.local_size() + i * lsz),
-                           &fftw_buffer_z_[tid][spl_z_.global_offset(rank)], 
-                           lsz * sizeof(double_complex));
-                }
-            }
-        }
-
-        t1.start();
-        comm_.alltoall(&fft_buffer_aux_(0), &recvcounts[0], &rdispls[0], fftw_buffer_, &sendcounts[0], &sdispls[0]);
-        t1.stop();
-    }
-    else
-    {
-        if (pu_ == CPU)
-        {
-            #pragma omp parallel num_threads(num_fft_workers_)
-            {
-                int tid = omp_get_thread_num();
-
-                #pragma omp for
-                for (int i = 0; i < (int)z_sticks_coord__.size(); i++)
-                {
-                    int x = z_sticks_coord__[i].first;
-                    int y = z_sticks_coord__[i].second;
-
-                    for (int z = 0; z < size(2); z++)
-                    {
-                        fftw_buffer_z_[tid][z] = fftw_buffer_[x + y * size(0) + z * size_xy];
-                    }
-                    fftw_execute(plan_forward_z_[tid]);
-                    for (int z = 0; z < size(2); z++)
-                    {
-                        fftw_buffer_[x + y * size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
-                    }
-                }
-            }
-        }
-        #ifdef __GPU
-        if (pu_ == GPU)
-        {
-            for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
-            {
-                int x = z_sticks_coord__[j].first;
-                int y = z_sticks_coord__[j].second;
-                int stream_id = j % get_num_cuda_streams();
-                cufft_forward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
-            }
-            for (int i = 0; i < get_num_cuda_streams(); i++)
-                cuda_stream_synchronize(i);
-        }
-        #endif
-    }
-
-    if (pu_ == CPU)
-    {
-        double norm = 1.0 / size();
-        #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-        for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
-    }
+    double norm = 1.0 / size();
+    #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+    for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
 }
 
 };
