@@ -60,6 +60,7 @@ class FFT3D
         /// Communicator for the parallel FFT.
         Communicator const& comm_;
 
+        /// Main processing unit of this FFT.
         processing_unit_t pu_;
         
         /// Auxiliary array to store full z-sticks of FFT buffer.
@@ -70,14 +71,14 @@ class FFT3D
 
         /// Size of each dimension.
         int grid_size_[3];
-
-        int local_size_;
-
+        
+        /// Local size of z-dimension of FFT buffer.
         int local_size_z_;
 
+        /// Offset in the global z-dimension.
         int offset_z_;
 
-        /// Reciprocal space range
+        /// Reciprocal space range.
         std::pair<int, int> grid_limits_[3];
         
         /// Main input/output buffer.
@@ -88,14 +89,6 @@ class FFT3D
 
         /// Internal buffer for independent {xy}-transforms.
         std::vector<double_complex*> fftw_buffer_xy_;
-
-        mdarray<double_complex, 1> cufft_buf_;
-
-        mdarray<char, 1> cufft_work_buf_;
-
-        //std::vector< mdarray<double_complex, 1> > cufft_buf_z_;
-        //
-        //std::vector< mdarray<double_complex, 1> > cufft_buf_xy_;
 
         /// Backward transformation plan for each thread
         fftw_plan plan_backward_;
@@ -113,8 +106,11 @@ class FFT3D
 
         #ifdef __GPU
         cufftHandle cufft_plan_;
-        std::vector<cufftHandle> cufft_plan_z_;
-        std::vector<cufftHandle> cufft_plan_xy_;
+        cufftHandle cufft_plan_xy_;
+        mdarray<double_complex, 1> cufft_buf_;
+        mdarray<char, 1> cufft_work_buf_;
+        int cufft_nbatch_;
+        bool allocated_on_device_;
         #endif
 
         template <int direction>
@@ -222,6 +218,14 @@ class FFT3D
 
         void transform(int direction__, std::vector< std::pair<int, int> > const& z_sticks_coord__)
         {
+            #ifdef __GPU
+            bool auto_alloc = false;
+            if (pu_ == GPU && !allocated_on_device_)
+            {
+                auto_alloc = true;
+                allocate_on_device();
+            }
+            #endif
             switch (direction__)
             {
                 case 1:
@@ -239,6 +243,9 @@ class FFT3D
                     error_local(__FILE__, __LINE__, "wrong FFT direction");
                 }
             }
+            #ifdef __GPU
+            if (pu_ == GPU && auto_alloc) deallocate_on_device();
+            #endif
         }
 
         template<typename T>
@@ -373,20 +380,34 @@ class FFT3D
         #ifdef __GPU
         void allocate_on_device()
         {
+            PROFILE();
             cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size()); 
             cufft_buf_.allocate_on_device();
+            
+            if (comm_.size() == 1)
+            {
+                auto work_size = cufft_get_size_3d(size(0), size(1), size(2), 1);
+                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
+                cufft_work_buf_.allocate_on_device();
 
-            auto work_size = cufft_get_size(size(0), size(1), size(2), 1);
-            cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
-            cufft_work_buf_.allocate_on_device();
+                cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
+            }
+            else
+            {
+                auto work_size = cufft_get_size_2d(size(0), size(1), cufft_nbatch_);
+                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
+                cufft_work_buf_.allocate_on_device();
 
-            cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
+                cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
+            }
+            allocated_on_device_ = true;
         }
 
         void deallocate_on_device()
         {
             cufft_buf_.deallocate_on_device();
             cufft_work_buf_.deallocate_on_device();
+            allocated_on_device_ = false;
         }
 
         template<typename T>

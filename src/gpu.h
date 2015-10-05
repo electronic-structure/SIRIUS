@@ -110,7 +110,9 @@ void cufft_create_plan_handle(cufftHandle* plan);
 
 void cufft_destroy_plan_handle(cufftHandle plan);
 
-size_t cufft_get_size(int nx, int ny, int nz, int nfft);
+size_t cufft_get_size_3d(int nx, int ny, int nz, int nfft);
+
+size_t cufft_get_size_2d(int nx, int ny, int nfft);
 
 size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int* embed, int stride, int dist, int nfft, int auto_alloc);
 

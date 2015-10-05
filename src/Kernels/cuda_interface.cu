@@ -454,13 +454,24 @@ extern "C" void cufft_destroy_plan_handle(cufftHandle plan)
 }
 
 /** Get the work size for cuFFT */
-extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
+extern "C" size_t cufft_get_size_3d(int nx, int ny, int nz, int nfft)
 {
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
     size_t work_size;
 
     CALL_CUFFT(cufftEstimateMany, (3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
+    
+    return work_size;
+}
+
+extern "C" size_t cufft_get_size_2d(int nx, int ny, int nfft)
+{
+    int fft_size = nx * ny;
+    int n[] = {ny, nx};
+    size_t work_size;
+    
+    CALL_CUFFT(cufftEstimateMany, (2, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
     
     return work_size;
 }
@@ -494,7 +505,7 @@ extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims,
 
        - See more at: http://docs.nvidia.com/cuda/cufft/index.html#advanced-data-layout
      */
-    CALL_CUFFT(cufftMakePlanMany, (plan, rank, dims, embed, stride, dist, dims, stride, dist, CUFFT_Z2Z, nfft, &work_size));
+    CALL_CUFFT(cufftMakePlanMany, (plan, rank, dims, embed, stride, dist, embed, stride, dist, CUFFT_Z2Z, nfft, &work_size));
 
     return work_size;
 }

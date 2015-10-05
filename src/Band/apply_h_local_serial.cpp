@@ -141,7 +141,7 @@ void Band::apply_h_local_serial(K_point* kp__,
     //== }
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
     {
         ctx_.fft_coarse(ctx_.gpu_thread_id())->deallocate_on_device();
     }

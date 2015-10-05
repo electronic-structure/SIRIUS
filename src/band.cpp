@@ -1633,11 +1633,12 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
         }
     }
 
+    // TODO: veff is independet of k-point
     fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
     fft_coarse->transform(1, gvc.z_sticks_coord());
     fft_coarse->output(&veff_it_coarse[0]);
 
-    double v0 = real(effective_potential__->f_pw(0));
+    double v0 = effective_potential__->f_pw(0).real();
 
     if (gen_evp_solver()->parallel())
     {

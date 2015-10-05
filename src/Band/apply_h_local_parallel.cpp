@@ -13,6 +13,13 @@ void Band::apply_h_local_parallel(K_point* kp__,
 
     Timer t("sirius::Band::apply_h_local_parallel");
 
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+         ctx_.fft_coarse(0)->allocate_on_device();
+    }
+    #endif
+
     splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
 
     assert(phi__.num_rows_local() == (int)spl_gkvec.local_size());
@@ -46,6 +53,13 @@ void Band::apply_h_local_parallel(K_point* kp__,
         /* add kinetic energy */
         for (int igk = 0; igk < (int)spl_gkvec.local_size(); igk++) hphi__(igk, i) = htmp[igk] + phi__(igk, i) * pw_ekin__[spl_gkvec[igk]];
     }
+
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+         ctx_.fft_coarse(0)->deallocate_on_device();
+    }
+    #endif
 }
 
 };
