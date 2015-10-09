@@ -29,7 +29,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     it_density_matrix.zero();
 
     splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
-    auto a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
+    alltoall_descriptor a2a;
+    if (ctx_.fft(0)->parallel()) a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
     std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
 
     #ifdef __GPU

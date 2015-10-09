@@ -340,10 +340,16 @@ class FFT3D
                     return fftw_buffer_;
                     break;
                 }
+                #ifdef __GPU
                 case GPU:
                 {
                     return cufft_buf_.at<GPU>();
                     break;
+                }
+                #endif
+                default:
+                {
+                    return nullptr;
                 }
             }
         }

@@ -201,7 +201,7 @@ class Simulation_context
             int nfft_threads = parameters_.num_fft_threads();
             int nfft_workers = parameters_.num_fft_workers();
 
-            bool do_parallel_fft = (mpi_grid_->dimension_size(_dim_row_) > 1 && !parameters_.full_potential());
+            bool do_parallel_fft = false; //(mpi_grid_->dimension_size(_dim_row_) > 1 && !parameters_.full_potential());
 
             if (do_parallel_fft)
             {
