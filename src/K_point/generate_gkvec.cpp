@@ -26,11 +26,15 @@ void K_point::generate_gkvec(double gk_cutoff)
     
     /* create G+k vectors using fine FFT grid; 
      * this would provide a correct mapping between \psi(G) and \rho(r) */
-    gkvec_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft(0), false);
+    gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft(0)->fft_grid(),
+                  ctx_.fft(0)->comm(), false);
     
     /* additionally create mapping between \psi(G) and a coarse FFT buffer in order to apply H_loc */
     if (!parameters_.full_potential())
-        gkvec_coarse_ = Gvec(vk_, gk_cutoff, ctx_.unit_cell().reciprocal_lattice_vectors(), ctx_.fft_coarse(0), false);
+    {
+        gkvec_coarse_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff,
+                             ctx_.fft_coarse(0)->fft_grid(), ctx_.fft_coarse(0)->comm(), false);
+    }
 }
 
 };

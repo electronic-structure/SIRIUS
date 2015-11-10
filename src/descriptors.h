@@ -275,4 +275,42 @@ struct occupied_bands_descriptor
     }
 };
 
+struct block_data_descriptor
+{
+    int num_ranks;
+    std::vector<int> counts;
+    std::vector<int> offsets;
+
+    block_data_descriptor()
+    {
+    }
+
+    block_data_descriptor(int num_ranks__) : num_ranks(num_ranks__)
+    {
+        counts = std::vector<int>(num_ranks, 0);
+        offsets = std::vector<int>(num_ranks, 0);
+    }
+
+    void calc_offsets()
+    {
+        for (int i = 1; i < num_ranks; i++) offsets[i] = offsets[i - 1] + counts[i - 1];
+    }
+};
+
+struct z_column_descriptor
+{
+    int x;
+    int y;
+    int offset;
+    std::vector<int> z;
+
+    z_column_descriptor()
+    {
+    }
+
+    z_column_descriptor(int x__, int y__, std::vector<int> z__) : x(x__), y(y__), z(z__)
+    {
+    }
+};
+
 #endif

@@ -103,7 +103,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
     fft_ = new FFT3D(Utils::find_translation_limits(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
                          num_fft_workers__, MPI_COMM_SELF, CPU);
 
-    gvec_ = Gvec(vector3d<double>(0, 0, 0), pw_cutoff__, unit_cell_.reciprocal_lattice_vectors(), fft_, false);
+    gvec_ = Gvec(vector3d<double>(0, 0, 0), unit_cell_.reciprocal_lattice_vectors(), pw_cutoff__, fft_->fft_grid(), fft_->comm(), false);
 
     //double rmin = 15 / fft_->gvec_shell_len(fft_->num_gvec_shells_inner() - 1) / R_mask_scale_;
 
@@ -196,7 +196,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
                 double_complex z = beta_pw[ig];
                 //auto gvec_cart = fft_->gvec_cart(ig);
                 //if (gvec_cart.length() > pw_cutoff__) z *= std::exp(-mask_alpha_ * std::pow(gvec_cart.length() / pw_cutoff__ - 1, 2));
-                fft_->buffer(fft_->fft_buffer_index_by_gvec(gv[0], gv[1], gv[2])) = z;
+                fft_->buffer(fft_->fft_grid().index_by_gvec(gv[0], gv[1], gv[2])) = z;
             }
             //fft_->input(fft_->num_gvec(), fft_->index_map(), &beta_pw[0]);
             STOP();
@@ -930,16 +930,16 @@ void Real_space_prj::get_beta_grid()
         beta_projectors_[ia].offset_ = num_points_;
 
         /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft_->size(0); j0++)
+        for (int j0 = 0; j0 < fft_->fft_grid().size(0); j0++)
         {
-            for (int j1 = 0; j1 < fft_->size(1); j1++)
+            for (int j1 = 0; j1 < fft_->fft_grid().size(1); j1++)
             {
-                for (int j2 = 0; j2 < fft_->size(2); j2++)
+                for (int j2 = 0; j2 < fft_->fft_grid().size(2); j2++)
                 {
                     /* get real space fractional coordinate */
-                    vector3d<double> v0(double(j0) / fft_->size(0), double(j1) / fft_->size(1), double(j2) / fft_->size(2));
+                    vector3d<double> v0(double(j0) / fft_->fft_grid().size(0), double(j1) / fft_->fft_grid().size(1), double(j2) / fft_->fft_grid().size(2));
                     /* index of real space point */
-                    int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+                    int ir = fft_->fft_grid().index_by_coord(j0, j1, j2);
 
                     bool found = false;
 

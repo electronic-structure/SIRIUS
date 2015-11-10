@@ -30,22 +30,24 @@ void Band::add_nl_h_o_rs(K_point* kp__,
         /* linear index inside coarse FFT buffer */
         //fft_index[igk] = fft->index(gvec[0], gvec[1], gvec[2]);
     }
+
+    STOP();
     
-    std::vector<double_complex> k_phase(fft->size());
-    /* loop over 3D array (real space) */
-    for (int j0 = 0; j0 < fft->size(0); j0++)
-    {
-        for (int j1 = 0; j1 < fft->size(1); j1++)
-        {
-            for (int j2 = 0; j2 < fft->size(2); j2++)
-            {
-                /* get real space fractional coordinate */
-                vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
-                int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
-                k_phase[ir] = std::exp(double_complex(0.0, twopi * (kp__->vk() * v0)));
-            }
-        }
-    }
+    //std::vector<double_complex> k_phase(fft->size());
+    ///* loop over 3D array (real space) */
+    //for (int j0 = 0; j0 < fft->fft_grid().size(0); j0++)
+    //{
+    //    for (int j1 = 0; j1 < fft->fft_grid().size(1); j1++)
+    //    {
+    //        for (int j2 = 0; j2 < fft->fft_grid().size(2); j2++)
+    //        {
+    //            /* get real space fractional coordinate */
+    //            vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
+    //            int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
+    //            k_phase[ir] = std::exp(double_complex(0.0, twopi * (kp__->vk() * v0)));
+    //        }
+    //    }
+    //}
 
     mdarray<double_complex, 3> T_phase(mdarray_index_descriptor(-1, 1),
                                        mdarray_index_descriptor(-1, 1),

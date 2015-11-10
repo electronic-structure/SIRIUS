@@ -467,9 +467,9 @@ void sirius_get_num_gvec(int32_t* num_gvec__)
 void sirius_get_fft_grid_size(int32_t* grid_size__)
 {
     PROFILE();
-    grid_size__[0] = sim_ctx->fft(0)->size(0);
-    grid_size__[1] = sim_ctx->fft(0)->size(1);
-    grid_size__[2] = sim_ctx->fft(0)->size(2);
+    grid_size__[0] = sim_ctx->fft(0)->fft_grid().size(0);
+    grid_size__[1] = sim_ctx->fft(0)->fft_grid().size(1);
+    grid_size__[2] = sim_ctx->fft(0)->fft_grid().size(2);
 }
 
 /// Get lower and upper limits of the FFT grid dimension
@@ -488,8 +488,8 @@ void sirius_get_fft_grid_limits(int32_t const* d, int32_t* lower, int32_t* upper
 {
     PROFILE();
     assert((*d >= 1) && (*d <= 3));
-    *lower = sim_ctx->fft(0)->grid_limits(*d - 1).first;
-    *upper = sim_ctx->fft(0)->grid_limits(*d - 1).second;
+    *lower = sim_ctx->fft(0)->fft_grid().limits(*d - 1).first;
+    *upper = sim_ctx->fft(0)->fft_grid().limits(*d - 1).second;
 }
 
 /// Get mapping between G-vector index and FFT index

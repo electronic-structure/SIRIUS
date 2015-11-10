@@ -254,12 +254,13 @@ class Simulation_context
             }
 
             /* create a list of G-vectors for dense FFT grid */
-            gvec_ = Gvec(vector3d<double>(0, 0, 0), parameters_.pw_cutoff(), rlv, fft_[0], true);
+            gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.pw_cutoff(), fft_[0]->fft_grid(), fft_[0]->comm(), true);
 
             if (!parameters_.full_potential())
             {
                 /* create a list of G-vectors for corase FFT grid */
-                gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), parameters_.gk_cutoff() * 2, rlv, fft_coarse_[0], false);
+                gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.gk_cutoff() * 2,
+                                    fft_coarse_[0]->fft_grid(), fft_coarse_[0]->comm(), false);
             }
 
             #ifdef __PRINT_MEMORY_USAGE
@@ -477,18 +478,20 @@ class Simulation_context
             printf("plane wave cutoff                     : %f\n", parameters_.pw_cutoff());
             printf("number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
             printf("number of G-shells                    : %i\n", gvec_.num_shells());
-            printf("FFT grid size   : %i %i %i   total : %i\n", fft_[0]->size(0), fft_[0]->size(1), fft_[0]->size(2), fft_[0]->size());
-            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_[0]->grid_limits(0).first, fft_[0]->grid_limits(0).second,
-                                                                fft_[0]->grid_limits(1).first, fft_[0]->grid_limits(1).second,
-                                                                fft_[0]->grid_limits(2).first, fft_[0]->grid_limits(2).second);
+            auto fft_grid = fft_[0]->fft_grid();
+            printf("FFT grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
+            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
+                                                                fft_grid.limits(1).first, fft_grid.limits(1).second,
+                                                                fft_grid.limits(2).first, fft_grid.limits(2).second);
             
             if (!parameters_.full_potential())
             {
+                fft_grid = fft_[0]->fft_grid();
                 printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
-                printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_coarse_[0]->size(0), fft_coarse_[0]->size(1), fft_coarse_[0]->size(2), fft_coarse_[0]->size());
-                printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_coarse_[0]->grid_limits(0).first, fft_coarse_[0]->grid_limits(0).second,
-                                                                           fft_coarse_[0]->grid_limits(1).first, fft_coarse_[0]->grid_limits(1).second,
-                                                                           fft_coarse_[0]->grid_limits(2).first, fft_coarse_[0]->grid_limits(2).second);
+                printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
+                printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
+                                                                           fft_grid.limits(1).first, fft_grid.limits(1).second,
+                                                                           fft_grid.limits(2).first, fft_grid.limits(2).second);
             }
         
             for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i)->print_info();

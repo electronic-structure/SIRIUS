@@ -28,11 +28,32 @@ void test_blacs()
     A t(blacs_grid);
 }
 
+void test_blacs_grid_order()
+{
+    Communicator comm(MPI_COMM_WORLD);
+    BLACS_grid grid(comm, 3, 2);
+    
+    if (comm.rank() == 0)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                int rank = grid.cart_rank(j, i);
+                printf("%2i ", rank);
+            }
+            printf("\n");
+        }
+    }
+}
+
 int main(int argn, char** argv)
 {
     Platform::initialize(1);
 
     test_blacs();
+
+    test_blacs_grid_order();
 
     Platform::finalize();
 }

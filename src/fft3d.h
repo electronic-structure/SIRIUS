@@ -34,6 +34,9 @@
 #include "splindex.h"
 #include "vector3d.h"
 #include "timer.h"
+#include "descriptors.h"
+#include "fft_grid.h"
+#include "gvec.h"
 
 namespace sirius {
 
@@ -69,18 +72,14 @@ class FFT3D
         /// Split z-direction.
         splindex<block> spl_z_;
 
-        /// Size of each dimension.
-        int grid_size_[3];
-        
+        FFT_grid fft_grid_;
+
         /// Local size of z-dimension of FFT buffer.
         int local_size_z_;
 
         /// Offset in the global z-dimension.
         int offset_z_;
 
-        /// Reciprocal space range.
-        std::pair<int, int> grid_limits_[3];
-        
         /// Main input/output buffer.
         double_complex* fftw_buffer_;
         
@@ -125,6 +124,17 @@ class FFT3D
         void transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__);
 
         template <int direction>
+        void transform_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
+
+        template <int direction>
+        void transform_z_parallel(block_data_descriptor const& zcol_distr__,
+                                  std::vector<z_column_descriptor> const& z_cols__,
+                                  double_complex* data__);
+
+        template <int direction>
+        void transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols__);
+
+        template <int direction>
         void transform_xy_serial();
 
         /// Execute backward transformation.
@@ -160,28 +170,9 @@ class FFT3D
             #endif
         }
 
-        /// Find smallest optimal grid size starting from n.
-        int find_grid_size(int n)
-        {
-            while (true)
-            {
-                int m = n;
-                for (int k = 2; k <= 5; k++)
-                {
-                    while (m % k == 0) m /= k;
-                }
-                if (m == 1) 
-                {
-                    return n;
-                }
-                else 
-                {
-                    n++;
-                }
-            }
-        }
-
         void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+
+        void backward_custom(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
         
         void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
         
@@ -247,9 +238,33 @@ class FFT3D
             if (pu_ == GPU && auto_alloc) deallocate_on_device();
             #endif
         }
+        
+        template <int direction>
+        void transform(Gvec const& gvec__, double_complex* data__);
+        //{
+        //    switch (direction__)
+        //    {
+        //        case 1:
+        //        {
+        //            backward_custom(z_cols__, data__);
+        //            break;
+        //        }
+        //        case -1:
+        //        {
+        //            STOP();
+        //            //forward_custom(z_sticks_coord__);
+        //            break;
+        //        }
+        //        default:
+        //        {
+        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
+        //        }
+        //    }
+
+        //}
 
         template<typename T>
-        inline void input(int n__, int const* map__, T* data__)
+        inline void input(int n__, int const* map__, T const* data__)
         {
             memset(fftw_buffer_, 0, local_size() * sizeof(double_complex));
             for (int i = 0; i < n__; i++) fftw_buffer_[map__[i]] = data__[i];
@@ -280,28 +295,21 @@ class FFT3D
         {
             for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
         }
+
+        FFT_grid const& fft_grid() const
+        {
+            return fft_grid_;
+        }
         
-        inline const std::pair<int, int>& grid_limits(int idim)
-        {
-            return grid_limits_[idim];
-        }
-
-        /// Size of a given dimension.
-        inline int size(int dim__) const
-        {
-            assert(dim__ >= 0 && dim__ < 3);
-            return grid_size_[dim__]; 
-        }
-
         /// Total size of the FFT grid.
         inline int size() const
         {
-            return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
+            return fft_grid_.size();
         }
 
         inline int local_size() const
         {
-            return grid_size_[0] * grid_size_[1] * local_size_z_;
+            return fft_grid_.size(0) * fft_grid_.size(1) * local_size_z_;
         }
 
         inline int local_size_z() const
@@ -312,16 +320,6 @@ class FFT3D
         inline int offset_z() const
         {
             return offset_z_;
-        }
-
-        /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside fft buffer.
-        inline int fft_buffer_index_by_gvec(int i0, int i1, int i2) const
-        {
-            if (i0 < 0) i0 += grid_size_[0];
-            if (i1 < 0) i1 += grid_size_[1];
-            if (i2 < 0) i2 += grid_size_[2];
-
-            return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
         }
 
         /// Direct access to the fft buffer
@@ -354,20 +352,6 @@ class FFT3D
             }
         }
         
-        vector3d<int> grid_size() const
-        {
-            return vector3d<int>(grid_size_[0], grid_size_[1], grid_size_[2]);
-        }
-
-        inline vector3d<int> gvec_by_grid_pos(int i0__, int i1__, int i2__) const
-        {
-            if (i0__ > grid_limits_[0].second) i0__ -= grid_size_[0];
-            if (i1__ > grid_limits_[1].second) i1__ -= grid_size_[1];
-            if (i2__ > grid_limits_[2].second) i2__ -= grid_size_[2];
-
-            return vector3d<int>(i0__, i1__, i2__);
-        }
-
         Communicator const& comm() const
         {
             return comm_;
@@ -429,6 +413,8 @@ class FFT3D
         }
         #endif
 };
+
+#include "fft3d.hpp"
 
 };
 
