@@ -253,14 +253,17 @@ class Simulation_context
                 }
             }
 
+            int num_ranks_col = mpi_grid_->communicator(1 << _dim_col_).size();
+
             /* create a list of G-vectors for dense FFT grid */
-            gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.pw_cutoff(), fft_[0]->fft_grid(), fft_[0]->comm(), true);
+            gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.pw_cutoff(), fft_[0]->fft_grid(), fft_[0]->comm(),
+                         num_ranks_col, true);
 
             if (!parameters_.full_potential())
             {
                 /* create a list of G-vectors for corase FFT grid */
                 gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.gk_cutoff() * 2,
-                                    fft_coarse_[0]->fft_grid(), fft_coarse_[0]->comm(), false);
+                                    fft_coarse_[0]->fft_grid(), fft_coarse_[0]->comm(), num_ranks_col, false);
             }
 
             #ifdef __PRINT_MEMORY_USAGE

@@ -593,7 +593,7 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
         {
             case 1:
             {
-                transform_z_parallel<1>(gvec__.zcol_distr(), gvec__.z_columns(), data__);
+                transform_z_parallel<1>(gvec__.zcol_fft_distr(), gvec__.z_columns(), data__);
                 transform_xy_parallel<1>(gvec__.z_columns());
                 break;
             }

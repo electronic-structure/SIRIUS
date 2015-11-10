@@ -372,9 +372,11 @@ void Potential::generate_pw_coefs()
     //DUMP("checksum(step_function): %18.10f", mdarray<double, 1>(&parameters_.step_function(0), fft_->size()).checksum();
     DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
+    
+    STOP();
 
-    fft_->transform(-1, ctx_.gvec().z_sticks_coord());
-    fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_potential()->f_pw(0));
+    //fft_->transform(-1, ctx_.gvec().z_sticks_coord());
+    //fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_potential()->f_pw(0));
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(veff_it): %18.10f", effective_potential()->f_it().checksum());
@@ -388,9 +390,10 @@ void Potential::generate_pw_coefs()
         {
             for (int ir = 0; ir < fft_->size(); ir++)
                 fft_->buffer(ir) = effective_magnetic_field(i)->f_it(ir) * ctx_.step_function()->theta_r(ir);
-    
-            fft_->transform(-1, ctx_.gvec().z_sticks_coord());
-            fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
+            
+            STOP();
+            //fft_->transform(-1, ctx_.gvec().z_sticks_coord());
+            //fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
         }
     }
 

@@ -20,10 +20,11 @@ class Gvec
         /// Total number of G-vectors.
         int num_gvec_;
 
-        /// Local number of G-vectors for a given slab.
-        int num_gvec_loc_;
-
-        int gvec_offset_;
+        /// Local number of G-vectors for FFT communicator.
+        int num_gvec_fft_;
+        
+        /// Offset (in the global index) of the local fraction of G-vectors for FFT communicator.
+        int offset_gvec_fft_;
         
         /// Mapping between G-vector index [0:num_gvec_) and a full index.
         /** Full index is used to store x,y,z coordinates in a packed form in a single integer number. */
@@ -35,9 +36,9 @@ class Gvec
         /// Position in the local slab of FFT buffer by local G-vec index.
         mdarray<int, 1> index_map_local_to_local_;
 
-        std::vector<int> gvec_counts_;
+        //std::vector<int> gvec_counts_;
 
-        std::vector<int> gvec_offsets_;
+        //std::vector<int> gvec_offsets_;
 
         int num_gvec_shells_;
 
@@ -58,7 +59,6 @@ class Gvec
 
         block_data_descriptor gvec_fft_distr_;
 
-
         block_data_descriptor gvec_distr_;
 
         Gvec(Gvec const& src__) = delete;
@@ -76,13 +76,12 @@ class Gvec
              double Gmax__,
              FFT_grid const& fft_grid__,
              Communicator const& comm__,
+             int comm_size_factor__,
              bool build_reverse_mapping__)
             : fft_grid_(fft_grid__),
               lattice_vectors_(M__),
               map_to_3d_idx_(false)
         {
-            int comm_size_factor__ = 3;
-
             num_gvec_ = 0;
             for (int i = 0; i < fft_grid_.size(0); i++)
             {
@@ -186,9 +185,9 @@ class Gvec
             /* get offsets of G-vectors */
             gvec_fft_distr_.calc_offsets();
             /* get local number of G-vectors for a given rank */
-            num_gvec_loc_ = gvec_fft_distr_.counts[comm__.rank()];
+            num_gvec_fft_ = gvec_fft_distr_.counts[comm__.rank()];
             /* get offset of G-vectors for a given rank */
-            gvec_offset_ = gvec_fft_distr_.offsets[comm__.rank()];
+            offset_gvec_fft_ = gvec_fft_distr_.offsets[comm__.rank()];
             
             /* calculate offsets of z-columns inside each local buffer of PW coefficients */
             for (int rank = 0; rank < comm__.size(); rank++)
@@ -309,7 +308,7 @@ class Gvec
             //}
 
             gvec_full_index_          = mdarray<int, 1>(num_gvec_);
-            index_map_local_to_local_ = mdarray<int, 1>(num_gvec_loc_);
+            //index_map_local_to_local_ = mdarray<int, 1>(num_gvec_loc_);
 
             //gvec_counts_  = std::vector<int>(fft_->comm().size(), 0);
             //gvec_offsets_ = std::vector<int>(fft_->comm().size(), 0);
@@ -350,11 +349,7 @@ class Gvec
             {
                 for (size_t j = 0; j < z_columns_[i].z.size(); j++)
                 {
-                    //int x = z_columns_[i].x;
-                    //int y = z_columns_[i].y;
-                    //int z = z_columns_[i].z[j];
-                    //gvec_full_index_(ig++) = x + y * fft_->size(0) + z * fft_->size(0) * fft_->size(1);
-                    gvec_full_index_(ig++) = static_cast<int>((i << 12) + j); // x + y * fft_->size(0) + z * fft_->size(0) * fft_->size(1);
+                    gvec_full_index_(ig++) = static_cast<int>((i << 12) + j);
                 }
             }
 
@@ -433,40 +428,39 @@ class Gvec
             return num_gvec_;
         }
 
-        /// Return local number of G-vectors for the z-slab of FFT buffer.
-        inline int num_gvec_loc() const
+        /// Return local number of G-vectors for the FFT communicator.
+        inline int num_gvec_fft() const
         {
-            return num_gvec_loc_;
+            return num_gvec_fft_;
         }
 
-        inline int num_gvec_slab(int rank__) const
+        /// Offset (in the global index) of G-vectors distributed between ranks of FFT communicator.
+        inline int offset_gvec_fft() const
+        {
+            return offset_gvec_fft_;
+        }
+        
+        /// Number of G-vectors for a fine-grained distribution.
+        inline int num_gvec(int rank__) const
         {
             return gvec_distr_.counts[rank__];
         }
 
-        inline int gvec_offset_slab(int rank__) const
+        /// Offset (in the global index) of G-vectors for a fine-grained distribution.
+        inline int offset_gvec(int rank__) const
         {
             return gvec_distr_.offsets[rank__];
         }
         
-        /// Offset of G-vector global index.
-        inline int gvec_offset() const
-        {
-            return gvec_offset_;
-        }
-
         /// Return number of G-vector shells.
         inline int num_shells() const
         {
             return num_gvec_shells_;
         }
-
+        
+        /// Return corresponding G-vector for an index in the range [0, num_gvec).
         inline vector3d<int> gvec_by_full_index(int idx__) const
         {
-            //int k = idx__ / (fft_->size(0) * fft_->size(1));
-            //idx__ -= k * fft_->size(0) * fft_->size(1);
-            //int j = idx__ / fft_->size(0);
-            //int i = idx__ -  j * fft_->size(0);
             int j = idx__ & 0xFFF;
             int i = idx__ >> 12;
             int x = z_columns_[i].x;
@@ -475,12 +469,14 @@ class Gvec
             return fft_grid_.gvec_by_coord(x, y, z);
         }
 
+        /// Return corresponding G-vector for an index in the range [0, num_gvec).
         inline vector3d<int> operator[](int ig__) const
         {
             assert(ig__ >= 0 && ig__ < num_gvec_);
             return gvec_by_full_index(gvec_full_index_(ig__));
         }
 
+        /// Return G-vector in Cartesian coordinates.
         inline vector3d<double> cart(int ig__) const
         {
             auto gv = gvec_by_full_index(gvec_full_index_(ig__));
@@ -518,7 +514,8 @@ class Gvec
 
         inline int const* index_map() const
         {
-            return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_local_(0);
+            return nullptr;
+            //return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_local_(0);
         }
 
         inline int index_by_gvec(vector3d<int>& G__) const
@@ -526,22 +523,22 @@ class Gvec
             return index_by_gvec_(G__[0], G__[1], G__[2]);
         }
 
-        inline std::vector<int> const& counts() const
-        {
-            return gvec_counts_;
-        }
+        //inline std::vector<int> const& counts() const
+        //{
+        //    return gvec_counts_;
+        //}
 
-        inline std::vector< std::pair<int, int> > const& z_sticks_coord() const
-        {
-            return z_sticks_coord_;
-        }
+        //inline std::vector< std::pair<int, int> > const& z_sticks_coord() const
+        //{
+        //    return z_sticks_coord_;
+        //}
 
         inline std::vector<z_column_descriptor> const& z_columns() const
         {
             return z_columns_;
         }
 
-        inline block_data_descriptor const& zcol_distr() const
+        inline block_data_descriptor const& zcol_fft_distr() const
         {
             return zcol_fft_distr_;
         }

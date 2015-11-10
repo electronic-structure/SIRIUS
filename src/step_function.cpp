@@ -86,10 +86,12 @@ void Step_function::init()
     std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, gvec_.num_gvec());
     for (int ig = 0; ig < gvec_.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
+    
+    STOP();
 
-    fft_->input(gvec_.num_gvec(), gvec_.index_map(), &step_function_pw_[0]);
-    fft_->transform(1, gvec_.z_sticks_coord());
-    fft_->output(&step_function_[0]);
+    //fft_->input(gvec_.num_gvec(), gvec_.index_map(), &step_function_pw_[0]);
+    //fft_->transform(1, gvec_.z_sticks_coord());
+    //fft_->output(&step_function_[0]);
     
     double vit = 0.0;
     for (int i = 0; i < fft_->size(); i++) vit += step_function_[i] * unit_cell_.omega() / fft_->size();

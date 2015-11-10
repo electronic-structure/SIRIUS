@@ -11,9 +11,11 @@ void Density::generate_pseudo_core_charge_density()
 
     std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, ctx_.gvec().num_gvec());
 
-    ctx_.fft(0)->input(ctx_.gvec().num_gvec_loc(), ctx_.gvec().index_map(), &v[ctx_.gvec().gvec_offset()]);
-    ctx_.fft(0)->transform(1, ctx_.gvec().z_sticks_coord());
-    ctx_.fft(0)->output(&rho_pseudo_core_->f_it(0));
+    STOP();
+
+    //== ctx_.fft(0)->input(ctx_.gvec().num_gvec_loc(), ctx_.gvec().index_map(), &v[ctx_.gvec().gvec_offset()]);
+    //== ctx_.fft(0)->transform(1, ctx_.gvec().z_sticks_coord());
+    //== ctx_.fft(0)->output(&rho_pseudo_core_->f_it(0));
 }
 
 };

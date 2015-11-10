@@ -1609,34 +1609,36 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     auto& gv = ctx_.gvec();
     auto& gvc = ctx_.gvec_coarse();
 
+    STOP();
+
     /* map effective potential to a corase grid */
     std::vector<double> veff_it_coarse(fft_coarse->local_size());
-    std::vector<double_complex> veff_pw_coarse(gvc.num_gvec_loc());
+    //== std::vector<double_complex> veff_pw_coarse(gvc.num_gvec_loc());
 
-    /* loop over full set of G-vectors and take only first num_gvec_coarse plane-wave harmonics; 
-     * this is enough to apply V_eff to \Psi;
-     * use the fact that the G-vectors are not sorted by length - this allows for an easy mapping between
-     * fine and coarse FFT grids */
-    int n = 0;
-    for (int ig = 0; ig < gv.num_gvec(); ig++)
-    {
-        if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
-        {
-            auto v = gvc[n];
-            for (int x: {0, 1, 2}) if (gv[ig][x] != v[x]) TERMINATE("wrong order of G-vectors");
+    //== /* loop over full set of G-vectors and take only first num_gvec_coarse plane-wave harmonics; 
+    //==  * this is enough to apply V_eff to \Psi;
+    //==  * use the fact that the G-vectors are not sorted by length - this allows for an easy mapping between
+    //==  * fine and coarse FFT grids */
+    //== int n = 0;
+    //== for (int ig = 0; ig < gv.num_gvec(); ig++)
+    //== {
+    //==     if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
+    //==     {
+    //==         auto v = gvc[n];
+    //==         for (int x: {0, 1, 2}) if (gv[ig][x] != v[x]) TERMINATE("wrong order of G-vectors");
 
-            if (n >= gvc.gvec_offset() && n < gvc.gvec_offset() + gvc.num_gvec_loc())
-            {
-                veff_pw_coarse[n - gvc.gvec_offset()] = effective_potential__->f_pw(ig);
-            }
-            n++;
-        }
-    }
+    //==         if (n >= gvc.gvec_offset() && n < gvc.gvec_offset() + gvc.num_gvec_loc())
+    //==         {
+    //==             veff_pw_coarse[n - gvc.gvec_offset()] = effective_potential__->f_pw(ig);
+    //==         }
+    //==         n++;
+    //==     }
+    //== }
 
-    // TODO: veff is independet of k-point
-    fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
-    fft_coarse->transform(1, gvc.z_sticks_coord());
-    fft_coarse->output(&veff_it_coarse[0]);
+    //== // TODO: veff is independet of k-point
+    //== fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
+    //== fft_coarse->transform(1, gvc.z_sticks_coord());
+    //== fft_coarse->output(&veff_it_coarse[0]);
 
     double v0 = effective_potential__->f_pw(0).real();
 

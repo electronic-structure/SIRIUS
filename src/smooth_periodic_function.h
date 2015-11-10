@@ -116,12 +116,14 @@ Smooth_periodic_function<spectral, double_complex> transform(Smooth_periodic_fun
     auto gvec = f.gvec();
 
     Smooth_periodic_function<spectral, double_complex> g(fft, gvec);
+
+    STOP();
         
-    fft->input(&f(0));
-    //fft->transform(-1);
-    fft->transform(-1, gvec->z_sticks_coord());
-    fft->output(gvec->num_gvec_loc(), gvec->index_map(), &g(gvec->gvec_offset()));
-    fft->comm().allgather(&g(0), gvec->gvec_offset(), gvec->num_gvec_loc());
+    //== fft->input(&f(0));
+    //== //fft->transform(-1);
+    //== fft->transform(-1, gvec->z_sticks_coord());
+    //== fft->output(gvec->num_gvec_loc(), gvec->index_map(), &g(gvec->gvec_offset()));
+    //== fft->comm().allgather(&g(0), gvec->gvec_offset(), gvec->num_gvec_loc());
 
     return g;
 }
@@ -136,11 +138,12 @@ Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral
     auto gvec = f.gvec();
 
     Smooth_periodic_function<spatial, T> g(fft, gvec);
-
-    fft->input(gvec->num_gvec_loc(), gvec->index_map(), &f(gvec->gvec_offset()));
-    fft->transform(1, gvec->z_sticks_coord());
+    
+    STOP();
+    //fft->input(gvec->num_gvec_loc(), gvec->index_map(), &f(gvec->gvec_offset()));
+    //fft->transform(1, gvec->z_sticks_coord());
     //fft->transform(1);
-    fft->output(&g(0));
+    //fft->output(&g(0));
     
     return g; 
 }

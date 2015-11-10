@@ -103,11 +103,13 @@ void Band::apply_h_local_serial(K_point* kp__,
             {
                 ctx_.fft_coarse(thread_id)->input(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &phi__(0, i));
                 /* phi(G) -> phi(r) */
-                ctx_.fft_coarse(thread_id)->transform(1, kp__->gkvec_coarse().z_sticks_coord());
+                STOP();
+                //ctx_.fft_coarse(thread_id)->transform(1, kp__->gkvec_coarse().z_sticks_coord());
                 /* multiply by effective potential */
                 for (int ir = 0; ir < ctx_.fft_coarse(thread_id)->size(); ir++) ctx_.fft_coarse(thread_id)->buffer(ir) *= effective_potential__[ir];
                 /* V(r)phi(r) -> [V*phi](G) */
-                ctx_.fft_coarse(thread_id)->transform(-1, kp__->gkvec_coarse().z_sticks_coord());
+                STOP();
+                //ctx_.fft_coarse(thread_id)->transform(-1, kp__->gkvec_coarse().z_sticks_coord());
 
                 if (in_place)
                 {
