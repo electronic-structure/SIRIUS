@@ -19,7 +19,7 @@ double test_alltoall(int num_gkvec__, int num_bands__, int num_groups__)
     std::vector<int> mpi_grid_dims = {np, num_groups__};
     MPI_grid* mpi_grid = new MPI_grid(mpi_grid_dims, comm_world);
 
-    Communicator comm = mpi_grid->communicator(1 << 0);
+    auto& comm = mpi_grid->communicator(1 << 0);
 
     splindex<block> spl_gkvec(num_gkvec__, comm.size(), comm.rank());
     splindex<block> spl_bands(num_bands, comm.size(), comm.rank());
