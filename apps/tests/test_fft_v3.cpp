@@ -158,8 +158,60 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     //}
 }
 
-void test2()
+void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_grid_dims__)
 {
+    Communicator comm(MPI_COMM_WORLD);
+    MPI_grid mpi_grid(mpi_grid_dims__, comm);
+
+    matrix3d<double> M;
+    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+
+    FFT3D fft1(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
+    auto dims2 = dims__;
+    for (int i: {0, 1, 2}) dims2[i] *= 2;
+    FFT3D fft2(dims2, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
+
+
+    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.fft_grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false);
+
+    mdarray<double_complex, 1> psi_tmp(gvec1.num_gvec());
+    for (int ig = 0; ig < std::min(gvec1.num_gvec(), 100); ig++)
+    {
+        auto v = gvec1[ig];
+        printf("ig: %i, gvec: %i %i %i\n", ig, v[0], v[1], v[2]);
+        psi_tmp.zero();
+        psi_tmp(ig) = 1.0;
+        fft2.transform<1>(gvec1, &psi_tmp(gvec1.offset_gvec_fft()));
+
+        double diff = 0;
+        /* loop over 3D array (real space) */
+        for (int j0 = 0; j0 < fft2.fft_grid().size(0); j0++)
+        {
+            for (int j1 = 0; j1 < fft2.fft_grid().size(1); j1++)
+            {
+                for (int j2 = 0; j2 < fft2.local_size_z(); j2++)
+                {
+                    /* get real space fractional coordinate */
+                    auto rl = vector3d<double>(double(j0) / fft2.fft_grid().size(0), 
+                                               double(j1) / fft2.fft_grid().size(1), 
+                                               double(fft2.offset_z() + j2) / fft2.fft_grid().size(2));
+                    int idx = fft2.fft_grid().index_by_coord(j0, j1, j2);
+
+                    diff += std::pow(std::abs(fft2.buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
+                }
+            }
+        }
+        diff = std::sqrt(diff / fft2.size());
+        printf("RMS difference : %18.10e", diff);
+        if (diff < 1e-10)
+        {
+            printf("  OK\n");
+        }
+        else
+        {
+            printf("  Fail\n");
+        }
+    }
 }
 
 int main(int argn, char **argv)
@@ -185,7 +237,8 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    test_fft(dims, cutoff, num_bands, mpi_grid);
+    //test_fft(dims, cutoff, num_bands, mpi_grid);
+    test2(dims, cutoff, mpi_grid);
     
     Timer::print();
 

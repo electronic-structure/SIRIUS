@@ -301,6 +301,9 @@ void FFT3D::transform_z_serial(std::vector<z_column_descriptor> const& z_cols__,
             {
                 int x = z_cols__[i].x;
                 int y = z_cols__[i].y;
+                if (x < 0) x += fft_grid_.size(0);
+                if (y < 0) y += fft_grid_.size(1);
+
                 int offset = z_cols__[i].offset;
 
                 switch (direction)
@@ -311,7 +314,9 @@ void FFT3D::transform_z_serial(std::vector<z_column_descriptor> const& z_cols__,
                         std::memset(fftw_buffer_z_[tid], 0, fft_grid_.size(2) * sizeof(double_complex));
                         for (size_t j = 0; j < z_cols__[i].z.size(); j++)
                         {
-                            fftw_buffer_z_[tid][z_cols__[i].z[j]] = data__[offset + j];
+                            int z = z_cols__[i].z[j];
+                            if (z < 0) z += fft_grid_.size(2);
+                            fftw_buffer_z_[tid][z] = data__[offset + j];
                         }
                         fftw_execute(plan_backward_z_[tid]);
                         for (int z = 0; z < fft_grid_.size(2); z++)
@@ -330,7 +335,9 @@ void FFT3D::transform_z_serial(std::vector<z_column_descriptor> const& z_cols__,
                         fftw_execute(plan_forward_z_[tid]);
                         for (size_t j = 0; j < z_cols__[i].z.size(); j++)
                         {
-                            data__[offset + j] = fftw_buffer_z_[tid][z_cols__[i].z[j]] * norm;
+                            int z = z_cols__[i].z[j];
+                            if (z < 0) z += fft_grid_.size(2);
+                            data__[offset + j] = fftw_buffer_z_[tid][z] * norm;
                         }
                         break;
                     }
@@ -452,7 +459,10 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
                     /* load z column into buffer */
                     for (size_t j = 0; j < z_cols__[icol].z.size(); j++)
                     {
-                        fftw_buffer_z_[tid][z_cols__[icol].z[j]] = data__[offset + j];
+                        int z = z_cols__[icol].z[j];
+                        if (z < 0) z += fft_grid_.size(2);
+
+                        fftw_buffer_z_[tid][z] = data__[offset + j];
                     }
                     /* perform local FFT transform of a column */
                     fftw_execute(plan_backward_z_[tid]);
@@ -484,7 +494,10 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
                     /* save z column of PW coefficients*/
                     for (size_t j = 0; j < z_cols__[icol].z.size(); j++)
                     {
-                        data__[offset + j] = fftw_buffer_z_[tid][z_cols__[icol].z[j]] * norm;
+                        int z = z_cols__[icol].z[j];
+                        if (z < 0) z += fft_grid_.size(2);
+
+                        data__[offset + j] = fftw_buffer_z_[tid][z] * norm;
                     }
                     break;
 
@@ -543,6 +556,8 @@ void FFT3D::transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols
                         {
                             int x = z_cols__[i].x;
                             int y = z_cols__[i].y;
+                            if (x < 0) x += fft_grid_.size(0);
+                            if (y < 0) y += fft_grid_.size(1);
 
                             fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)] = fft_buffer_aux_(iz + local_size_z_ * i);
                         }
@@ -563,6 +578,8 @@ void FFT3D::transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols
                         {
                             int x = z_cols__[i].x;
                             int y = z_cols__[i].y;
+                            if (x < 0) x += fft_grid_.size(0);
+                            if (y < 0) y += fft_grid_.size(1);
 
                             fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)];
                         }

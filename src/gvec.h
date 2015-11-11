@@ -92,12 +92,13 @@ class Gvec
                         /* take G+q */
                         auto gq = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q__);
 
-                        if (gq.length() <= Gmax__) z.push_back(k);
+                        if (gq.length() <= Gmax__) z.push_back(G[2]);
                     }
 
                     if (z.size())
                     {
-                        z_columns_.push_back(z_column_descriptor(i, j, z));
+                        auto G = fft_grid_.gvec_by_coord(i, j, 0);
+                        z_columns_.push_back(z_column_descriptor(G[0], G[1], z));
                         num_gvec_ += static_cast<int>(z.size());
                     }
                 }
