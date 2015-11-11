@@ -65,6 +65,7 @@ void slab_to_panel(int n__, mdarray<double_complex, 2>& slab__, mdarray<double_c
     }
     
     /* reorder received blocks to make G-vector index continuous */
+    #pragma omp parallel for
     for (int i = 0; i < n_loc; i++)
     {
         for (int j = 0; j < num_ranks_col; j++)
