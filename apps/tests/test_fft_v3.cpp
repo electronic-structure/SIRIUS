@@ -37,8 +37,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     int offs = num_bands__ / 2;
     psi_in.slab_to_panel(offs, num_bands__ / 2);
 
-    splindex<block> spl_n(num_bands__ / 2, mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 0).rank());
-    for (int i = 0; i < spl_n.local_size(); i++)
+    for (int i = 0; i < psi_in.local_size(); i++)
     {
         fft.transform<1>(psi_in.gvec(), &psi_in.panel(0, i));
         fft.transform<-1>(psi_out.gvec(), &psi_out.panel(0, i));
@@ -54,13 +53,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
             diff += std::abs(psi_in(j, i) - psi_out(j, i));
         }
     }
-    if (diff > 1e-12)
-    {
-        printf("diff: %18.12f\n", diff);
-        TERMINATE("Fail");
-    }
-
-    if (comm.rank() == 0) printf("Ok\n");
+    printf("diff: %18.12f\n", diff);
 
 
 
@@ -174,6 +167,8 @@ void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_gr
 
     Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.fft_grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false);
 
+    FFT3D* fft = &fft2;
+
     mdarray<double_complex, 1> psi_tmp(gvec1.num_gvec());
     for (int ig = 0; ig < std::min(gvec1.num_gvec(), 100); ig++)
     {
@@ -181,27 +176,27 @@ void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_gr
         printf("ig: %i, gvec: %i %i %i\n", ig, v[0], v[1], v[2]);
         psi_tmp.zero();
         psi_tmp(ig) = 1.0;
-        fft2.transform<1>(gvec1, &psi_tmp(gvec1.offset_gvec_fft()));
+        fft->transform<1>(gvec1, &psi_tmp(gvec1.offset_gvec_fft()));
 
         double diff = 0;
         /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft2.fft_grid().size(0); j0++)
+        for (int j0 = 0; j0 < fft->fft_grid().size(0); j0++)
         {
-            for (int j1 = 0; j1 < fft2.fft_grid().size(1); j1++)
+            for (int j1 = 0; j1 < fft->fft_grid().size(1); j1++)
             {
-                for (int j2 = 0; j2 < fft2.local_size_z(); j2++)
+                for (int j2 = 0; j2 < fft->local_size_z(); j2++)
                 {
                     /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft2.fft_grid().size(0), 
-                                               double(j1) / fft2.fft_grid().size(1), 
-                                               double(fft2.offset_z() + j2) / fft2.fft_grid().size(2));
-                    int idx = fft2.fft_grid().index_by_coord(j0, j1, j2);
+                    auto rl = vector3d<double>(double(j0) / fft->fft_grid().size(0), 
+                                               double(j1) / fft->fft_grid().size(1), 
+                                               double(fft->offset_z() + j2) / fft->fft_grid().size(2));
+                    int idx = fft->fft_grid().index_by_coord(j0, j1, j2);
 
-                    diff += std::pow(std::abs(fft2.buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
+                    diff += std::pow(std::abs(fft->buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
                 }
             }
         }
-        diff = std::sqrt(diff / fft2.size());
+        diff = std::sqrt(diff / fft->size());
         printf("RMS difference : %18.10e", diff);
         if (diff < 1e-10)
         {
@@ -237,7 +232,7 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    //test_fft(dims, cutoff, num_bands, mpi_grid);
+    test_fft(dims, cutoff, num_bands, mpi_grid);
     test2(dims, cutoff, mpi_grid);
     
     Timer::print();

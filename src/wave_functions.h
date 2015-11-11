@@ -27,6 +27,8 @@ class Wave_functions
         
         splindex<block> spl_num_wfs_;
 
+        splindex<block> spl_n_;
+
         int num_gvec_loc_;
 
         int rank_;
@@ -85,9 +87,9 @@ class Wave_functions
             Timer t("slab_to_panel");
 
             /* this is how n wave-functions will be distributed between panels */
-            splindex<block> spl_n(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
+            spl_n_ = splindex<block>(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
             /* local number of columns */
-            int n_loc = spl_n.local_size();
+            int n_loc = spl_n_.local_size();
 
             /* send parts of slab
              * +---+---+--+
@@ -99,8 +101,8 @@ class Wave_functions
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int dest_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                comm_.isend(&psi_slab_(0, idx0__ + spl_n.global_offset(icol)),
-                            num_gvec_loc_ * spl_n.local_size(icol),
+                comm_.isend(&psi_slab_(0, idx0__ + spl_n_.global_offset(icol)),
+                            num_gvec_loc_ * spl_n_.local_size(icol),
                             dest_rank, rank_ % num_ranks_col_);
             }
             
@@ -202,6 +204,16 @@ class Wave_functions
         inline Gvec const& gvec() const
         {
             return gvec_;
+        }
+
+        inline splindex<block> const& spl_n() const
+        {
+            return spl_n_;
+        }
+
+        inline int local_size() const
+        {
+            return spl_n_.local_size();
         }
 };
 
