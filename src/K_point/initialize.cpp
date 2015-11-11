@@ -198,7 +198,7 @@ void K_point::initialize()
             /* in case of pseudopotential wave-functions are distributed in slabs */
             fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
                                                  blacs_grid_slab_,
-                                                 (int)splindex_base::block_size(wf_size(), num_ranks()), 1);
+                                                 splindex_base<int>::block_size(wf_size(), num_ranks()), 1);
 
             assert(parameters_.num_fv_states() < num_gkvec());
             assert(fv_states_.num_rows_local() == num_gkvec_loc());
@@ -231,7 +231,7 @@ void K_point::initialize()
             if (ctx_.fft(0)->parallel())
             {
                 /* assume 2d block-cyclic distribution */
-                int bs = (int)splindex_base::block_size(num_gkvec(), num_ranks_row());
+                int bs = splindex_base<int>::block_size(num_gkvec(), num_ranks_row());
                 spinor_wave_functions_[0] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_, bs, 1);
             }
             else

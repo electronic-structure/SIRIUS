@@ -498,7 +498,7 @@ class redist
 
             /* slab to slice transformation */
             if (A__.num_ranks_row() == num_ranks && 
-                A__.bs_row() == (int)splindex_base::block_size(A__.num_rows(), num_ranks) &&
+                A__.bs_row() == splindex_base<int>::block_size(A__.num_rows(), num_ranks) &&
                 B__.num_ranks_col() == num_ranks &&
                 B__.bs_col() == 1)
             {
@@ -559,7 +559,7 @@ class redist
             }
             else
             if (B__.num_ranks_row() == num_ranks && 
-                B__.bs_row() == (int)splindex_base::block_size(B__.num_rows(), num_ranks) &&
+                B__.bs_row() == splindex_base<int>::block_size(B__.num_rows(), num_ranks) &&
                 A__.num_ranks_col() == num_ranks &&
                 A__.bs_col() == 1)
             {

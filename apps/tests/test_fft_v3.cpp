@@ -179,7 +179,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     psi_in.slab_to_panel(num_bands__);
 
     splindex<block> spl_n(num_bands__, mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 0).rank());
-    for (size_t i = 0; i < spl_n.local_size(); i++)
+    for (int i = 0; i < spl_n.local_size(); i++)
     {
         fft.transform<1>(psi_in.gvec(), &psi_in.panel(0, i));
         fft.transform<-1>(psi_out.gvec(), &psi_out.panel(0, i));

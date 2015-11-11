@@ -29,6 +29,7 @@
 #include "error_handling.h"
 
 /// Base class for split index.
+template <typename T>
 class splindex_base
 {
     private:
@@ -45,7 +46,7 @@ class splindex_base
         int num_ranks_;
 
         /// size of the global index 
-        size_t global_index_size_;
+        T global_index_size_;
 
         /// Default constructor.
         splindex_base() : rank_(-1), num_ranks_(-1)
@@ -64,19 +65,19 @@ class splindex_base
             return num_ranks_;
         }
 
-        inline size_t global_index_size() const
+        inline T global_index_size() const
         {
             return global_index_size_;
         }
 
-        static inline size_t block_size(size_t size__, int num_ranks__)
+        static inline T block_size(T size__, int num_ranks__)
         {
-            return size__ / num_ranks__ + std::min(size_t(1), size__ % num_ranks__);
+            return size__ / num_ranks__ + std::min(T(1), size__ % num_ranks__);
         }
 };
 
-template <splindex_t type> 
-class splindex: public splindex_base
+template <splindex_t type, typename T = int> 
+class splindex: public splindex_base<T>
 {
 };
 

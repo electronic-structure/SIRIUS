@@ -69,7 +69,7 @@ FFT3D::FFT3D(vector3d<int> dims__,
     if (comm_.size() > 1)
     {
         /* we need this buffer for mpi_alltoall */
-        int sz_max = std::max(int(fft_grid_.size(2) * splindex_base::block_size(fft_grid_.size(0) * fft_grid_.size(1), comm_.size())),
+        int sz_max = std::max(fft_grid_.size(2) * splindex_base<int>::block_size(fft_grid_.size(0) * fft_grid_.size(1), comm_.size()),
                               local_size());
         fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
     }
@@ -200,7 +200,7 @@ FFT3D::~FFT3D()
 
 void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
 {
-    splindex<block> spl_n(z_sticks_coord__.size(), comm_.size(), comm_.rank());
+    splindex<block> spl_n((int)z_sticks_coord__.size(), comm_.size(), comm_.rank());
 
     std::vector<int> sendcounts(comm_.size());
     std::vector<int> sdispls(comm_.size());
@@ -242,7 +242,7 @@ void FFT3D::backward_custom(std::vector<z_column_descriptor> const& z_cols__, do
 
 void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
 {
-    splindex<block> spl_n(z_sticks_coord__.size(), comm_.size(), comm_.rank());
+    splindex<block> spl_n((int)z_sticks_coord__.size(), comm_.size(), comm_.rank());
 
     std::vector<int> sendcounts(comm_.size());
     std::vector<int> sdispls(comm_.size());

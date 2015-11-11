@@ -41,7 +41,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
     dmatrix<double_complex> phi_tmp;
     if (ctx_.fft_coarse(0)->parallel())
     {
-        int bs = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks_row());
+        int bs = splindex_base<int>::block_size(kp__->num_gkvec(), kp__->num_ranks_row());
         phi_tmp = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid(), bs, 1);
     }
     else
@@ -137,7 +137,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
         }
     }
     
-    int bs = (int)splindex_base::block_size(kp__->num_gkvec(), kp__->num_ranks());
+    int bs = splindex_base<int>::block_size(kp__->num_gkvec(), kp__->num_ranks());
     dmatrix<double_complex>  phi_slab(kp__->num_gkvec(), num_phi, kp__->blacs_grid_slab(), bs, 1);
     dmatrix<double_complex> hphi_slab(kp__->num_gkvec(), num_phi, kp__->blacs_grid_slab(), bs, 1);
     dmatrix<double_complex> ophi_slab(kp__->num_gkvec(), num_phi, kp__->blacs_grid_slab(), bs, 1);

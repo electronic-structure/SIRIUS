@@ -379,7 +379,7 @@ void K_set::load()
 int K_set::max_num_gkvec()
 {
     int max_num_gkvec_ = 0;
-    for (size_t ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
         auto ik = spl_num_kpoints_[ikloc];
         max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());
