@@ -1,143 +1,8 @@
 #include <sirius.h>
 #include <thread>
-
 #include <wave_functions.h>
 
 using namespace sirius;
-
-void slab_to_panel(int n__, mdarray<double_complex, 2>& slab__, mdarray<double_complex, 2>& panel__,
-                   Gvec& gvec__, MPI_grid& mpi_grid__)
-{
-    Timer t("slab_to_panel");
-
-    /* entire communicator */
-    auto& comm = mpi_grid__.communicator();
-    /* number of column ranks */
-    int num_ranks_col = mpi_grid__.communicator(1 << 0).size();
-    /* row rank */
-    int rank_row = mpi_grid__.communicator(1 << 1).rank();
-    
-    /* this is how n columns of matrix will be distributed in panel */
-    splindex<block> panel_col_distr(n__, num_ranks_col, mpi_grid__.communicator(1 << 0).rank());
-    /* local number of columns */
-    int n_loc = static_cast<int>(panel_col_distr.local_size());
-    
-    /* store the number of G-vectors to be received by this rank */
-    block_data_descriptor gvec_slab_distr(num_ranks_col);
-    for (int i = 0; i < num_ranks_col; i++)
-    {
-        gvec_slab_distr.counts[i] = gvec__.num_gvec(rank_row * num_ranks_col + i);
-    }
-    gvec_slab_distr.calc_offsets();
-
-    assert(gvec_slab_distr.offsets[num_ranks_col - 1] + gvec_slab_distr.counts[num_ranks_col - 1] == gvec__.num_gvec_fft());
-    
-    /* receiving buffer */
-    mdarray<double_complex, 1> buf(n_loc * gvec__.num_gvec_fft());
-
-    int rank = comm.rank();
-    int num_gvec = gvec__.num_gvec(rank);
-    
-    /* send parts of slab
-     * +---+---+--+
-     * |   |   |  |  <- irow = 0
-     * +---+---+--+
-     * |   |   |  |
-     * ............
-     * ranks in flat and 2D grid are related as: rank = irow * ncol + icol */
-    for (int icol = 0; icol < num_ranks_col; icol++)
-    {
-        int dest_rank = comm.cart_rank({icol, rank / num_ranks_col});
-        comm.isend(&slab__(0, panel_col_distr.global_offset(icol)),
-                   static_cast<int>(num_gvec * panel_col_distr.local_size(icol)),
-                   dest_rank, rank % num_ranks_col);
-    }
-    
-    /* receive parts of panel
-     *                 n_loc
-     *                 +---+  
-     *                 |   |
-     * gvec_slab_distr +---+
-     *                 |   | 
-     *                 +---+ */
-    for (int i = 0; i < num_ranks_col; i++)
-    {
-        int src_rank = rank_row * num_ranks_col + i;
-        comm.recv(&buf(gvec_slab_distr.offsets[i] * n_loc), gvec_slab_distr.counts[i] * n_loc, src_rank, i);
-    }
-    
-    /* reorder received blocks to make G-vector index continuous */
-    #pragma omp parallel for
-    for (int i = 0; i < n_loc; i++)
-    {
-        for (int j = 0; j < num_ranks_col; j++)
-        {
-            std::memcpy(&panel__(gvec_slab_distr.offsets[j], i),
-                        &buf(gvec_slab_distr.offsets[j] * n_loc + gvec_slab_distr.counts[j] * i),
-                        gvec_slab_distr.counts[j] * sizeof(double_complex));
-        }
-    }
-}
-
-void panel_to_slab(int n__, mdarray<double_complex, 2>& panel__, mdarray<double_complex, 2>& slab__,
-                   Gvec& gvec__, MPI_grid& mpi_grid__)
-{
-    Timer t("panel_to_slab");
-
-    /* entire communicator */
-    auto& comm = mpi_grid__.communicator();
-    /* number of column ranks */
-    int num_ranks_col = mpi_grid__.communicator(1 << 0).size();
-    /* row rank */
-    int rank_row = mpi_grid__.communicator(1 << 1).rank();
-    
-    /* this is how n columns of matrix will be distributed in panel */
-    splindex<block> panel_col_distr(n__, num_ranks_col, mpi_grid__.communicator(1 << 0).rank());
-    /* local number of columns */
-    int n_loc = static_cast<int>(panel_col_distr.local_size());
-    
-    /* store the number of G-vectors to be sent by this rank */
-    block_data_descriptor gvec_slab_distr(num_ranks_col);
-    for (int i = 0; i < num_ranks_col; i++)
-    {
-        gvec_slab_distr.counts[i] = gvec__.num_gvec(rank_row * num_ranks_col + i);
-    }
-    gvec_slab_distr.calc_offsets();
-
-    assert(gvec_slab_distr.offsets[num_ranks_col - 1] + gvec_slab_distr.counts[num_ranks_col - 1] == gvec__.num_gvec_fft());
-    
-    /* sending buffer */
-    mdarray<double_complex, 1> buf(n_loc * gvec__.num_gvec_fft());
-
-    int rank = comm.rank();
-    int num_gvec = gvec__.num_gvec(rank);
-
-    /* reorder sending blocks */
-    #pragma omp parallel for
-    for (int i = 0; i < n_loc; i++)
-    {
-        for (int j = 0; j < num_ranks_col; j++)
-        {
-            std::memcpy(&buf(gvec_slab_distr.offsets[j] * n_loc + gvec_slab_distr.counts[j] * i),
-                        &panel__(gvec_slab_distr.offsets[j], i),
-                        gvec_slab_distr.counts[j] * sizeof(double_complex));
-        }
-    }
-
-    for (int i = 0; i < num_ranks_col; i++)
-    {
-        int dest_rank = rank_row * num_ranks_col + i;
-        comm.isend(&buf(gvec_slab_distr.offsets[i] * n_loc), gvec_slab_distr.counts[i] * n_loc, dest_rank, i);
-    }
-    
-    for (int icol = 0; icol < num_ranks_col; icol++)
-    {
-        int src_rank = comm.cart_rank({icol, rank / num_ranks_col});
-        comm.recv(&slab__(0, panel_col_distr.global_offset(icol)),
-                   static_cast<int>(num_gvec * panel_col_distr.local_size(icol)),
-                   src_rank, rank % num_ranks_col);
-    }
-}
 
 void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std::vector<int> mpi_grid_dims__)
 {
@@ -151,12 +16,6 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false);
 
-    splindex<block> panel_col_distr(num_bands__, mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 0).rank());
-    mdarray<double_complex, 2> psi_panel(gvec.num_gvec_fft(), panel_col_distr.local_size());
-   
-    mdarray<double_complex, 2> psi_slab(gvec.num_gvec(mpi_grid.communicator().rank()), num_bands__);
-    mdarray<double_complex, 2> psi_slab_2(gvec.num_gvec(mpi_grid.communicator().rank()), num_bands__);
-
     Wave_functions psi_in(num_bands__, gvec, mpi_grid);
     Wave_functions psi_out(num_bands__, gvec, mpi_grid);
     
@@ -168,7 +27,6 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     printf("num_gvec_loc: %i\n", gvec.num_gvec(comm.rank()));
     printf("num_gvec_loc: %i\n", psi_in.num_gvec_loc());
     
-
     for (int i = 0; i < num_bands__; i++)
     {
         for (int j = 0; j < psi_in.num_gvec_loc(); j++)
@@ -176,26 +34,31 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
             psi_in(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    psi_in.slab_to_panel(num_bands__);
+    int offs = num_bands__ / 2;
+    psi_in.slab_to_panel(offs, num_bands__ / 2);
 
-    splindex<block> spl_n(num_bands__, mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 0).rank());
+    splindex<block> spl_n(num_bands__ / 2, mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 0).rank());
     for (int i = 0; i < spl_n.local_size(); i++)
     {
         fft.transform<1>(psi_in.gvec(), &psi_in.panel(0, i));
         fft.transform<-1>(psi_out.gvec(), &psi_out.panel(0, i));
     }
     
-    psi_out.panel_to_slab(num_bands__);
+    psi_out.panel_to_slab(offs, num_bands__ / 2);
 
     double diff = 0;
-    for (int i = 0; i < num_bands__; i++)
+    for (int i = offs; i < offs + num_bands__ / 2; i++)
     {
         for (int j = 0; j < psi_in.num_gvec_loc(); j++)
         {
             diff += std::abs(psi_in(j, i) - psi_out(j, i));
         }
     }
-    if (diff > 1e-12) TERMINATE("Fail");
+    if (diff > 1e-12)
+    {
+        printf("diff: %18.12f\n", diff);
+        TERMINATE("Fail");
+    }
 
     if (comm.rank() == 0) printf("Ok\n");
 
@@ -293,6 +156,10 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     //        printf("  Fail\n");
     //    }
     //}
+}
+
+void test2()
+{
 }
 
 int main(int argn, char **argv)
