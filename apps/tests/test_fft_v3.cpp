@@ -153,34 +153,34 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
         //fft.transform<1>(gvec, &psi(gvec.gvec_offset()));
         fft.transform<1>(gvec, &psi_panel(0, igloc));
         
-        double diff = 0;
-        /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft.fft_grid().size(0); j0++)
-        {
-            for (int j1 = 0; j1 < fft.fft_grid().size(1); j1++)
-            {
-                for (int j2 = 0; j2 < fft.local_size_z(); j2++)
-                {
-                    /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft.fft_grid().size(0), 
-                                               double(j1) / fft.fft_grid().size(1), 
-                                               double(fft.offset_z() + j2) / fft.fft_grid().size(2));
-                    int idx = fft.fft_grid().index_by_coord(j0, j1, j2);
+        //== double diff = 0;
+        //== /* loop over 3D array (real space) */
+        //== for (int j0 = 0; j0 < fft.fft_grid().size(0); j0++)
+        //== {
+        //==     for (int j1 = 0; j1 < fft.fft_grid().size(1); j1++)
+        //==     {
+        //==         for (int j2 = 0; j2 < fft.local_size_z(); j2++)
+        //==         {
+        //==             /* get real space fractional coordinate */
+        //==             auto rl = vector3d<double>(double(j0) / fft.fft_grid().size(0), 
+        //==                                        double(j1) / fft.fft_grid().size(1), 
+        //==                                        double(fft.offset_z() + j2) / fft.fft_grid().size(2));
+        //==             int idx = fft.fft_grid().index_by_coord(j0, j1, j2);
 
-                    diff += std::pow(std::abs(fft.buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
-                }
-            }
-        }
-        diff = std::sqrt(diff / fft.size());
-        printf("RMS difference : %18.10e", diff);
-        if (diff < 1e-10)
-        {
-            printf("  OK\n");
-        }
-        else
-        {
-            printf("  Fail\n");
-        }
+        //==             diff += std::pow(std::abs(fft.buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
+        //==         }
+        //==     }
+        //== }
+        //== diff = std::sqrt(diff / fft.size());
+        //== printf("RMS difference : %18.10e", diff);
+        //== if (diff < 1e-10)
+        //== {
+        //==     printf("  OK\n");
+        //== }
+        //== else
+        //== {
+        //==     printf("  Fail\n");
+        //== }
     }
 }
 

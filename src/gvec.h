@@ -36,10 +36,6 @@ class Gvec
         /// Position in the local slab of FFT buffer by local G-vec index.
         mdarray<int, 1> index_map_local_to_local_;
 
-        //std::vector<int> gvec_counts_;
-
-        //std::vector<int> gvec_offsets_;
-
         int num_gvec_shells_;
 
         mdarray<double, 1> gvec_shell_len_;
