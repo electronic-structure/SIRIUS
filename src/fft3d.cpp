@@ -144,7 +144,7 @@ FFT3D::FFT3D(vector3d<int> dims__,
             cufft_nbatch_ = 1;
             int auto_alloc = 0;
 
-            int dims[] = {size(2), size(1), size(0)};
+            int dims[] = {fft_grid_.size(2), fft_grid_.size(1), fft_grid_.size(0)};
             cufft_create_plan_handle(&cufft_plan_);
             cufft_create_batch_plan(cufft_plan_, 3, dims, dims, 1, 1, cufft_nbatch_, auto_alloc);
         }
@@ -153,11 +153,11 @@ FFT3D::FFT3D(vector3d<int> dims__,
             cufft_nbatch_ = local_size_z_;
             int auto_alloc = 0;
 
-            int dim_xy[] = {size(1), size(0)};
-            int embed_xy[] = {size(1), size(0)};
+            int dim_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
+            int embed_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
 
             cufft_create_plan_handle(&cufft_plan_xy_);
-            cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, embed_xy, 1, size(0) * size(1), cufft_nbatch_, auto_alloc);
+            cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, embed_xy, 1, fft_grid_.size(0) * fft_grid_.size(1), cufft_nbatch_, auto_alloc);
         }
     }
     #endif

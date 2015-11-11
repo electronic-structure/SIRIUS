@@ -376,7 +376,7 @@ class FFT3D
             
             if (comm_.size() == 1)
             {
-                auto work_size = cufft_get_size_3d(size(0), size(1), size(2), 1);
+                auto work_size = cufft_get_size_3d(fft_grid_.size(0), fft_grid_.size(1), fft_grid_.size(2), 1);
                 cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
                 cufft_work_buf_.allocate_on_device();
 
@@ -384,7 +384,7 @@ class FFT3D
             }
             else
             {
-                auto work_size = cufft_get_size_2d(size(0), size(1), cufft_nbatch_);
+                auto work_size = cufft_get_size_2d(fft_grid_.size(0), fft_grid_.size(1), cufft_nbatch_);
                 cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
                 cufft_work_buf_.allocate_on_device();
 

@@ -9,7 +9,7 @@ packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
               ["--enable-mpi", "--enable-openmp", "--enable-threads"]
              ],
-    "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
+    "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-2.0.tar.gz", 
               ["--disable-shared"]
              ],
     "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.15-patch1.tar.gz",
@@ -19,7 +19,7 @@ packages = {
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.7/spglib-1.7.3.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.8/spglib-1.8.2.2.tar.gz",
               []
              ]
 }

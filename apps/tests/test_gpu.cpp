@@ -36,6 +36,7 @@ int main(int argn, char** argv)
     int N = args.value<int>("N");
 
     Platform::initialize(1);
+    cuda_device_info();
     
     #ifdef __GPU
     test_gpu(N);
