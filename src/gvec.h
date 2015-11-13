@@ -12,10 +12,11 @@ class Gvec
 {
     private:
         
-        //FFT3D* fft_;
         FFT_grid fft_grid_;
 
         matrix3d<double> lattice_vectors_;
+
+        bool reduce_gvec_;
 
         /// Total number of G-vectors.
         int num_gvec_;
@@ -49,7 +50,6 @@ class Gvec
         std::vector<z_column_descriptor> z_columns_;
 
         /// Map G-vectors to the 3D buffer index (in range [0:Nx*Ny*N_z_loc_-1]) or to the packed index of z-sticks.
-        bool map_to_3d_idx_;
 
         block_data_descriptor zcol_fft_distr_;
 
@@ -73,39 +73,59 @@ class Gvec
              FFT_grid const& fft_grid__,
              Communicator const& comm__,
              int comm_size_factor__,
-             bool build_reverse_mapping__)
+             bool build_reverse_mapping__,
+             bool reduce_gvec__)
             : fft_grid_(fft_grid__),
               lattice_vectors_(M__),
-              map_to_3d_idx_(false)
+              reduce_gvec_(reduce_gvec__)
         {
+            mdarray<int, 2> non_zero_columns(mdarray_index_descriptor(fft_grid_.limits(0).first, fft_grid_.limits(0).second),
+                                             mdarray_index_descriptor(fft_grid_.limits(1).first, fft_grid_.limits(1).second));
+            non_zero_columns.zero();
+
             num_gvec_ = 0;
-            for (int i = 0; i < fft_grid_.size(0); i++)
+            for (int i = fft_grid_.limits(0).first; i <= fft_grid_.limits(0).second; i++)
             {
-                for (int j = 0; j < fft_grid_.size(1); j++)
+                for (int j = fft_grid_.limits(1).first; j <= fft_grid_.limits(1).second; j++)
                 {
                     std::vector<int> z;
+
+                    int zmin = fft_grid_.size(2);
+                    if (reduce_gvec_ && !i && !j) zmin = fft_grid_.limits(2).second;
                     
-                    for (int k = 0; k < fft_grid_.size(2); k++)
+                    for (int iz = 0; iz < zmin; iz++)
                     {
-                        auto G = fft_grid_.gvec_by_coord(i, j, k);
-                       
+                        /* get z-coordinate of G-vector */
+                        int k = (iz > fft_grid_.limits(2).second) ? iz - fft_grid_.size(2) : iz;
                         /* take G+q */
-                        auto gq = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q__);
+                        auto gq = lattice_vectors_ * (vector3d<double>(i, j, k) + q__);
 
-                        if (gq.length() <= Gmax__) z.push_back(G[2]);
+                        if (gq.length() <= Gmax__) z.push_back(k);
                     }
-
-                    if (z.size())
+                    
+                    if (z.size() && !non_zero_columns(i, j))
                     {
-                        auto G = fft_grid_.gvec_by_coord(i, j, 0);
-                        z_columns_.push_back(z_column_descriptor(G[0], G[1], z));
+                        z_columns_.push_back(z_column_descriptor(i, j, z));
                         num_gvec_ += static_cast<int>(z.size());
+
+                        non_zero_columns(i, j) = 1;
+                        if (reduce_gvec__) non_zero_columns(-i, -j) = 1;
                     }
                 }
             }
             
-            /* sort z-columns */
-            std::sort(z_columns_.begin(), z_columns_.end(),
+            /* put column with {x, y} = {0, 0} to the beginning */
+            for (size_t i = 0; i < z_columns_.size(); i++)
+            {
+                if (z_columns_[i].x == 0 && z_columns_[i].y == 0)
+                {
+                    std::swap(z_columns_[i], z_columns_[0]);
+                    break;
+                }
+            }
+            
+            /* sort z-columns starting from the second */
+            std::sort(z_columns_.begin() + 1, z_columns_.end(),
                       [](z_column_descriptor const& a, z_column_descriptor const& b)
                       {
                           return a.z.size() > b.z.size();
@@ -538,6 +558,11 @@ class Gvec
         inline block_data_descriptor const& zcol_fft_distr() const
         {
             return zcol_fft_distr_;
+        }
+
+        inline bool reduced() const
+        {
+            return reduce_gvec_;
         }
 };
 

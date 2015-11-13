@@ -123,8 +123,11 @@ class FFT3D
         template <int direction>
         void transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__);
 
-        template <int direction>
+        template <int direction, bool use_reduction>
         void transform_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
+
+        //template <int direction>
+        void transform_r_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
 
         template <int direction>
         void transform_z_parallel(block_data_descriptor const& zcol_distr__,

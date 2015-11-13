@@ -14,7 +14,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
 
     FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
     
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
 
     Wave_functions psi_in(num_bands__, gvec, mpi_grid);
     Wave_functions psi_out(num_bands__, gvec, mpi_grid);
@@ -165,7 +165,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_gr
     FFT3D fft2(dims2, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
 
 
-    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.fft_grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false);
+    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.fft_grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
 
     FFT3D* fft = &fft2;
 
@@ -209,6 +209,70 @@ void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_gr
     }
 }
 
+void test3(vector3d<int> const& dims__, double cutoff__)
+{
+    Communicator comm(MPI_COMM_WORLD);
+
+    matrix3d<double> M;
+    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+
+    FFT3D fft(dims__, Platform::max_num_threads(), comm, CPU);
+
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), comm, 1, false, false);
+    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), comm, 1, false, true);
+
+    printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
+    printf("num_gvec_loc: %i %i\n", gvec.num_gvec(comm.rank()), gvec_r.num_gvec(comm.rank()));
+
+
+    //mdarray<double_complex, 1> phi(gvec.num_gvec());
+    //for (int i = 0; i < fft.size(); i++) fft.buffer(i) = type_wrapper<double>::random();
+    //fft.transform<-1>(gvec, &phi(gvec.offset_gvec_fft()));
+
+    //for (size_t i = 0; i < gvec.z_columns().size(); i++)
+    //{
+    //    auto zcol = gvec.z_columns()[i];
+    //    printf("x,y: %3i %3i\n", zcol.x, zcol.y);
+    //    for (size_t j = 0; j < zcol.z.size(); j++)
+    //    {
+    //        printf("z: %3i, val: %12.6f %12.6f\n", zcol.z[j], phi(zcol.offset + j).real(), phi(zcol.offset + j).imag());
+    //    }
+    //}
+
+    mdarray<double_complex, 1> phi(gvec_r.num_gvec());
+    for (int i = 0; i < gvec_r.num_gvec(); i++) phi(i) = type_wrapper<double_complex>::random();
+    phi(0) = 1.0;
+    fft.transform<1>(gvec_r, &phi(gvec.offset_gvec_fft()));
+
+    mdarray<double_complex, 1> phi1(gvec_r.num_gvec());
+    fft.transform<-1>(gvec_r, &phi1(gvec.offset_gvec_fft()));
+    //fft.transform<1>(gvec_r, &phi(gvec.offset_gvec_fft()));
+
+    
+    double diff = 0;
+    for (int i = 0; i < gvec_r.num_gvec(); i++)
+    {
+        diff += std::abs(phi(i) - phi1(i));
+    }
+    printf("diff: %18.12f\n", diff);
+
+
+    //mdarray<double_complex, 1> phi(gvec_r.num_gvec());
+    //for (int i = 0; i < gvec_r.num_gvec(); i++) phi(i) = type_wrapper<double_complex>::random();
+    //phi(0) = 1.0;
+    //fft.transform<1>(gvec_r, &phi(gvec.offset_gvec_fft()));
+
+    //for (int i = 0; i < fft.local_size(); i++)
+    //{
+    //    auto z = fft.buffer(i);
+    //    if (z.imag() > 1e-12) 
+    //    {
+    //        printf("re, im: %18.12f %18.12f\n", z.real(), z.imag());
+    //    }
+    //}
+
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -232,8 +296,9 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    test_fft(dims, cutoff, num_bands, mpi_grid);
-    test2(dims, cutoff, mpi_grid);
+    //test_fft(dims, cutoff, num_bands, mpi_grid);
+    //test2(dims, cutoff, mpi_grid);
+    test3(dims, cutoff);
     
     Timer::print();
 
