@@ -271,7 +271,7 @@ struct occupied_bands_descriptor
     {
         assert(idx_bnd_loc.size() == idx_bnd_glob.size());
         assert(idx_bnd_loc.size() == weight.size());
-        return (int)idx_bnd_loc.size();
+        return static_cast<int>(idx_bnd_loc.size());
     }
 };
 

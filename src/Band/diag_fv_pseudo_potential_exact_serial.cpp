@@ -9,7 +9,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
     /* short notation for target wave-functions */
-    auto& psi = kp__->fv_states()->slab();
+    auto& psi = kp__->fv_states()->primary_data_storage_as_matrix();
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     

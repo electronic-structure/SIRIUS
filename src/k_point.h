@@ -67,8 +67,6 @@ class K_point
         
         Gvec gkvec_;
 
-        //Gvec gkvec_coarse_;
-
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 

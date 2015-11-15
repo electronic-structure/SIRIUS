@@ -22,7 +22,7 @@ void Density::generate_valence_density_it(K_set& ks__)
             occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
         }
         
-        Timer t1("gemr2d");
+        //Timer t1("gemr2d");
         if (!parameters_.full_potential() && kp->num_ranks() > 1)
         {
             STOP();
@@ -40,8 +40,10 @@ void Density::generate_valence_density_it(K_set& ks__)
         //                       kp->spinor_wave_functions(0), 0, 0);
         //    }
         }
-        t1.stop();
-        add_k_point_contribution_it(ks__[ik], occupied_bands);
+        kp->spinor_wave_functions(0)->swap_forward(0, occupied_bands.num_occupied_bands()); 
+
+        //t1.stop();
+        add_k_point_contribution_it(kp, occupied_bands);
     }
 
     /* reduce arrays; assume that each rank did it's own fraction of the density */

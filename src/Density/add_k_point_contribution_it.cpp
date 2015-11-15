@@ -151,7 +151,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                     //}
                     //ctx_.fft(thread_id)->transform(1, kp__->gkvec().z_sticks_coord());
                     
-                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), &kp__->spinor_wave_functions(ispn)->panel(wf_pw_offset, jloc));
+                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), (*kp__->spinor_wave_functions(ispn))[jloc] + wf_pw_offset);
                     
                     #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
                     for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)

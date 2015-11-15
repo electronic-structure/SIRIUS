@@ -77,7 +77,8 @@ class dmatrix
             matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef __SCALAPACK
-            linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
+            linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0,
+                                  blacs_grid_->context(), matrix_local_.ld());
             #endif
         }
 

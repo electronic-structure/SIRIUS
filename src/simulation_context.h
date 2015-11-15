@@ -46,6 +46,8 @@ class Simulation_context
 
         /// MPI grid for this simulation.
         MPI_grid* mpi_grid_;
+
+        MPI_grid* mpi_grid_fft_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -91,6 +93,8 @@ class Simulation_context
                            Communicator const& comm__)
             : parameters_(parameters__),
               comm_(comm__),
+              mpi_grid_(nullptr),
+              mpi_grid_fft_(nullptr),
               unit_cell_(parameters_, comm_),
               reciprocal_lattice_(nullptr),
               step_function_(nullptr),
@@ -129,7 +133,8 @@ class Simulation_context
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
-            delete mpi_grid_;
+            if (mpi_grid_ != nullptr) delete mpi_grid_;
+            if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }
 
         /// Initialize the similation (can only be called once).
@@ -433,6 +438,11 @@ class Simulation_context
         {
             return *mpi_grid_;
         }
+
+        MPI_grid const& mpi_grid_fft() const
+        {
+            return *mpi_grid_fft_;
+        }
         
         void create_storage_file() const
         {
@@ -489,7 +499,7 @@ class Simulation_context
             
             if (!parameters_.full_potential())
             {
-                fft_grid = fft_[0]->fft_grid();
+                fft_grid = fft_coarse_[0]->fft_grid();
                 printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
                 printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
                 printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,

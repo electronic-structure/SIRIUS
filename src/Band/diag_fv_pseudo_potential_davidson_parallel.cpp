@@ -35,7 +35,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    auto& psi_slab = kp__->fv_states()->slab();
+    auto& psi_slab = kp__->fv_states()->primary_data_storage_as_matrix();
 
     /* temporary buffer */
     dmatrix<double_complex> phi_tmp;

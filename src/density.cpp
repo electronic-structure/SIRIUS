@@ -90,7 +90,7 @@ void Density::generate_core_charge_density()
 {
     Timer t("sirius::Density::generate_core_charge_density");
 
-    for (int icloc = 0; icloc < (int)unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
         unit_cell_.atom_symmetry_class(ic)->generate_core_charge_density();

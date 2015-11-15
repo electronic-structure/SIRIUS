@@ -19,9 +19,15 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         /// Entire communicator.
         Communicator const& comm_;
 
-        mdarray<double_complex, 2> psi_slab_;
+        std::vector<double_complex> primary_data_storage_;
+        int primary_ld_;
 
-        mdarray<double_complex, 2> psi_panel_;
+        std::vector<double_complex> swapped_data_storage_;
+        int swapped_ld_;
+
+        matrix<double_complex> primary_data_storage_as_matrix_;
+
+        matrix<double_complex> swapped_data_storage_as_matrix_;
 
         mdarray<double_complex, 1> send_recv_buf_;
         
@@ -54,9 +60,16 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
             num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
 
-            psi_slab_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_);
+            /* primary storage of PW wave functions: slabs*/ 
+            primary_data_storage_.resize(num_gvec_loc_ * num_wfs_);
+            primary_ld_ = num_gvec_loc_;
+            /* swapped storage of PW wave functions: panles */
+            swapped_data_storage_.resize(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+            swapped_ld_ = gvec_.num_gvec_fft();
 
-            psi_panel_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_num_wfs_.local_size());
+            primary_data_storage_as_matrix_ = mdarray<double_complex, 2>(&primary_data_storage_[0], primary_ld_, num_wfs_);
+
+            swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
    
             send_recv_buf_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
             
@@ -80,7 +93,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
         }
 
-        void slab_to_panel(int idx0__, int n__)
+        void swap_forward(int idx0__, int n__)
         {
             PROFILE();
 
@@ -101,7 +114,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int dest_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                comm_.isend(&psi_slab_(0, idx0__ + spl_n_.global_offset(icol)),
+                comm_.isend(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n_.global_offset(icol))],
                             num_gvec_loc_ * spl_n_.local_size(icol),
                             dest_rank, rank_ % num_ranks_col_);
             }
@@ -127,7 +140,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 {
                     for (int j = 0; j < num_ranks_col_; j++)
                     {
-                        std::memcpy(&psi_panel_(gvec_slab_distr_.offsets[j], i),
+                        std::memcpy(&swapped_data_storage_[gvec_slab_distr_.offsets[j] + swapped_ld_ * i],
                                     &send_recv_buf_(gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i),
                                     gvec_slab_distr_.counts[j] * sizeof(double_complex));
                     }
@@ -136,11 +149,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             else
             {
                 int src_rank = rank_row_ * num_ranks_col_;
-                comm_.recv(&psi_panel_(0, 0), gvec_slab_distr_.counts[0] * n_loc, src_rank, 0);
+                comm_.recv(&swapped_data_storage_[0], gvec_slab_distr_.counts[0] * n_loc, src_rank, 0);
             }
         }
 
-        void panel_to_slab(int idx0__, int n__)
+        void swap_backward(int idx0__, int n__)
         {
             PROFILE();
 
@@ -160,7 +173,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                     for (int j = 0; j < num_ranks_col_; j++)
                     {
                         std::memcpy(&send_recv_buf_(gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i),
-                                    &psi_panel_(gvec_slab_distr_.offsets[j], i),
+                                    &swapped_data_storage_[gvec_slab_distr_.offsets[j] + swapped_ld_ * i],
                                     gvec_slab_distr_.counts[j] * sizeof(double_complex));
                     }
                 }
@@ -174,13 +187,13 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             else
             {
                 int dest_rank = rank_row_ * num_ranks_col_;
-                comm_.isend(&psi_panel_(0, 0), gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
+                comm_.isend(&swapped_data_storage_[0], gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
             }
             
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                comm_.recv(&psi_slab_(0, idx0__ + spl_n.global_offset(icol)),
+                comm_.recv(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n.global_offset(icol))],
                            num_gvec_loc_ * spl_n.local_size(icol),
                            src_rank, rank_ % num_ranks_col_);
             }
@@ -188,12 +201,12 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         inline double_complex& operator()(int igloc__, int i__)
         {
-            return psi_slab_(igloc__, i__);
+            return primary_data_storage_[igloc__ + primary_ld_ * i__];
         }
 
-        inline double_complex& panel(int igloc__, int i__)
+        inline double_complex* operator[](int i__)
         {
-            return psi_panel_(igloc__, i__);
+            return &swapped_data_storage_[swapped_ld_ * i__];
         }
 
         inline int num_gvec_loc() const
@@ -216,9 +229,9 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             return spl_n_.local_size();
         }
 
-        mdarray<double_complex, 2>& slab()
+        matrix<double_complex>& primary_data_storage_as_matrix()
         {
-            return psi_slab_;
+            return primary_data_storage_as_matrix_;
         }
 };
 

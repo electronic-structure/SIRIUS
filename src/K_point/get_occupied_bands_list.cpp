@@ -11,13 +11,14 @@ occupied_bands_descriptor K_point::get_occupied_bands_list(Communicator const& c
 
     occupied_bands_descriptor occupied_bands;
 
-    splindex<block_cyclic> spl_nb(nb, comm__.size(), comm__.rank(), 1);
+    //splindex<block_cyclic> spl_nb(nb, comm__.size(), comm__.rank(), 1);
+    splindex<block> spl_nb(nb, comm__.size(), comm__.rank());
 
     for (int p = 0; p < ns ; p++)
     {
         for (int jloc = 0; jloc < (int)spl_nb.local_size(); jloc++)
         {
-            int j = (int)spl_nb[jloc] + p * parameters_.num_fv_states();
+            int j = spl_nb[jloc] + p * parameters_.num_fv_states();
             double w = band_occupancy(j) * weight();
             if (w > 1e-14)
             {
@@ -28,7 +29,7 @@ occupied_bands_descriptor K_point::get_occupied_bands_list(Communicator const& c
         }
     }
 
-    occupied_bands.num_occupied_bands_ = (int)occupied_bands.idx_bnd_loc.size();
+    occupied_bands.num_occupied_bands_ = static_cast<int>(occupied_bands.idx_bnd_loc.size());
     comm__.allreduce(&occupied_bands.num_occupied_bands_, 1);
 
     return occupied_bands;
