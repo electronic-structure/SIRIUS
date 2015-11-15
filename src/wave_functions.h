@@ -3,7 +3,7 @@
 
 namespace sirius {
 
-class Wave_functions
+class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 {
     private:
         
@@ -214,6 +214,11 @@ class Wave_functions
         inline int local_size() const
         {
             return spl_n_.local_size();
+        }
+
+        mdarray<double_complex, 2>& slab()
+        {
+            return psi_slab_;
         }
 };
 

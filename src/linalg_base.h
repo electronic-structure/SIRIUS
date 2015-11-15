@@ -65,11 +65,11 @@ void FORTRAN(zhemm)(ftn_char side, ftn_char uplo, ftn_int* m, ftn_int* n,
                     ftn_len side_len, ftn_len uplo_len);
 
 void FORTRAN(dgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, 
-                    ftn_double* alpha, ftn_double* A, ftn_int* lda, ftn_double* B, ftn_int* ldb, 
+                    ftn_double* alpha, ftn_double const* A, ftn_int* lda, ftn_double const* B, ftn_int* ldb, 
                     ftn_double* beta, ftn_double* C, ftn_int* ldc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(zgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, 
-                    ftn_double_complex* alpha, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B,
+                    ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int* lda, ftn_double_complex const* B,
                     ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc, ftn_len transa_len,
                     ftn_len transb_len);
 

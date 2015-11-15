@@ -35,7 +35,7 @@ class Gvec
         mdarray<int, 1> gvec_shell_;
         
         /// Position in the local slab of FFT buffer by local G-vec index.
-        mdarray<int, 1> index_map_local_to_local_;
+        //mdarray<int, 1> index_map_local_to_local_;
 
         int num_gvec_shells_;
 
@@ -44,7 +44,7 @@ class Gvec
         mdarray<int, 3> index_by_gvec_;
 
         /// Coordinates (x, y) of non-zero z-sticks.
-        std::vector< std::pair<int, int> > z_sticks_coord_;
+        //std::vector< std::pair<int, int> > z_sticks_coord_;
         
         /// Global list of non-zero z-columns.
         std::vector<z_column_descriptor> z_columns_;
@@ -79,8 +79,7 @@ class Gvec
               lattice_vectors_(M__),
               reduce_gvec_(reduce_gvec__)
         {
-            mdarray<int, 2> non_zero_columns(mdarray_index_descriptor(fft_grid_.limits(0).first, fft_grid_.limits(0).second),
-                                             mdarray_index_descriptor(fft_grid_.limits(1).first, fft_grid_.limits(1).second));
+            mdarray<int, 2> non_zero_columns(fft_grid_.limits(0), fft_grid_.limits(1));
             non_zero_columns.zero();
 
             num_gvec_ = 0;
@@ -131,16 +130,6 @@ class Gvec
                           return a.z.size() > b.z.size();
                       });
             
-            //== if (comm__.rank()== 0)
-            //== {
-            //==     FILE* fout = fopen("z_cols_sorted.dat", "w");
-            //==     for (size_t i = 0; i < z_columns_.size(); i++)
-            //==     {
-            //==         fprintf(fout, "%li %li %li\n", i, z_columns_[i].z.size(), z_columns_[z_columns_.size()-i-1].z.size());
-            //==     }
-            //==     fclose(fout);
-            //== }
-
             int num_ranks = comm__.size() * comm_size_factor__;
 
             gvec_distr_ = block_data_descriptor(num_ranks);
@@ -170,15 +159,7 @@ class Gvec
             }
             gvec_distr_.calc_offsets();
 
-            //if (comm__.rank() == 0)
-            //{
-            //    for (int i = 0; i < num_ranks; i++)
-            //    {
-            //        printf("rank: %i, num_cols: %li, num_gvec: %i\n", i, z_columns_distr_[i].size(), gvec_counts[i]);
-            //    }
-            //}
-            
-            /* reorder z-columns */
+            /* save new ordering of z-columns */
             z_columns_.clear();
             for (int rank = 0; rank < num_ranks; rank++)
             {
@@ -220,14 +201,6 @@ class Gvec
             }
 
 
-            //if (comm__.rank() == 0)
-            //{
-            //    for (int i = 0; i < comm__.size(); i++)
-            //    {
-            //        printf("rank: %i, num_gvec: %i\n", i, gvec_fft_distr_.counts[i]);
-            //    }
-            //}
-            
 
 
 
@@ -236,52 +209,6 @@ class Gvec
 
 
 
-
-            //zcol_distr_ = block_data_descriptor(comm__.size());
-            //gvec_distr_ = block_data_descriptor(comm__.size());
-
-            //std::vector<int> ranks;
-            //
-            //for (size_t i = 0; i < z_columns_.size(); i++)
-            //{
-            //    /* initialize the list of ranks to 0,1,2,... */
-            //    if (ranks.empty())
-            //    {
-            //        ranks.resize(comm__.size());
-            //        std::iota(ranks.begin(), ranks.end(), 0);
-            //    }
-            //    auto rank_with_min_gvec = std::min_element(ranks.begin(), ranks.end(), 
-            //                                               [this](const int& a, const int& b)
-            //                                                     {
-            //                                                        return gvec_distr_.counts[a] < gvec_distr_.counts[b];
-            //                                                     });
-
-            //    /* offset in the local part of PW coefficients */
-            //    z_columns_[i].offset = gvec_distr_.counts[*rank_with_min_gvec];
-            //    /* assign column to the current rank */
-            //    z_columns_local_[*rank_with_min_gvec].push_back(z_columns_[i]);
-            //    /* count local number of columns */
-            //    zcol_distr_.counts[*rank_with_min_gvec]++;
-            //    /* count local number of G-vectors */
-            //    gvec_distr_.counts[*rank_with_min_gvec] += static_cast<int>(z_columns_[i].z.size());
-            //    /* exclude this rank from the search */
-            //    ranks.erase(rank_with_min_gvec);
-            //}
-
-            //if (comm__.rank()== 0)
-            //{
-            //    FILE* fout = fopen("z_cols_distr.dat", "w");
-            //    for (size_t i = 0; i < z_columns_.size(); i++)
-            //    {
-            //        fprintf(fout, "%li %li %li\n", i, z_columns_[i].z.size(), z_columns_[z_columns_.size()-i-1].z.size());
-            //    }
-            //    fclose(fout);
-            //}
-
-
-
-
-            ///* find local number of G-vectors for each slab of FFT buffer;
             // * at the same time, find the non-zero z-sticks */
             //std::vector< vector3d<int> > pos;
             //for (int k = 0; k < fft_->local_size_z(); k++)
@@ -324,43 +251,7 @@ class Gvec
             //    }
             //}
 
-            gvec_full_index_          = mdarray<int, 1>(num_gvec_);
-            //index_map_local_to_local_ = mdarray<int, 1>(num_gvec_loc_);
-
-            //gvec_counts_  = std::vector<int>(fft_->comm().size(), 0);
-            //gvec_offsets_ = std::vector<int>(fft_->comm().size(), 0);
-
-            /* get local sizes from all ranks */
-            //gvec_counts_[fft_->comm().rank()] = num_gvec_loc();
-            //fft_->comm().allreduce(&gvec_counts_[0], fft_->comm().size());
-            
-            ///* compute offsets in global G-vector index */
-            //for (int i = 1; i < fft_->comm().size(); i++) 
-            //    gvec_offsets_[i] = gvec_offsets_[i - 1] + gvec_counts_[i - 1]; 
-
-            //== for (int igloc = 0; igloc < num_gvec_loc_; igloc++)
-            //== {
-            //==     auto p = pos[igloc];
-
-            //==     if (!fft_->parallel())
-            //==     {
-            //==         /* map G-vector to a position in 3D FFT buffer */ 
-            //==         index_map_local_to_local_(igloc) = p[0] + p[1] * fft_->size(0) + p[2] * fft_->size(0) * fft_->size(1);
-            //==     }
-            //==     else
-            //==     {
-            //==         /* map G-vector to the {z, xy} storage of non-zero z-sticks;
-            //==          * this kind of storage is needed for mpi_alltoall */
-            //==         index_map_local_to_local_(igloc) = p[2] + fft_->local_size_z() * xy_idx(p[0], p[1]);
-            //==     }
-            //==     
-            //==     /* this is only one way to pack coordinates into single integer */
-            //==     gvec_full_index_(gvec_offset() + igloc) = 
-            //==         p[0] + p[1] * fft_->size(0) + (p[2] + fft_->offset_z()) * fft_->size(0) * fft_->size(1);
-            //== }
-
-            //== fft_->comm().allgather(&gvec_full_index_(0), gvec_offset(), num_gvec_loc()); 
-
+            gvec_full_index_ = mdarray<int, 1>(num_gvec_);
             int ig = 0;
             for (size_t i = 0; i < z_columns_.size(); i++)
             {
@@ -401,10 +292,8 @@ class Gvec
 
             if (build_reverse_mapping__)
             {
-                index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_grid_.limits(0).first, fft_grid_.limits(0).second),
-                                                 mdarray_index_descriptor(fft_grid_.limits(1).first, fft_grid_.limits(1).second),
-                                                 mdarray_index_descriptor(fft_grid_.limits(2).first, fft_grid_.limits(2).second));
-                //memset(index_by_gvec_.at<CPU>(), 0xFF, index_by_gvec_.size() * sizeof(int));
+                index_by_gvec_ = mdarray<int, 3>(fft_grid_.limits(0), fft_grid_.limits(1), fft_grid_.limits(2));
+
                 std::fill(index_by_gvec_.at<CPU>(), index_by_gvec_.at<CPU>() + fft_grid_.size(), -1);
 
                 for (int ig = 0; ig < num_gvec_; ig++)
@@ -412,28 +301,6 @@ class Gvec
                     auto G = gvec_by_full_index(gvec_full_index_(ig));
                     index_by_gvec_(G[0], G[1], G[2]) = ig;
                 }
-            }
-
-            if (build_reverse_mapping__ && false)
-            {
-                int num_gvec_reduced_ = 0;
-                mdarray<int, 1> flg(num_gvec_);
-                flg.zero();
-
-                for (int ig = 0; ig < num_gvec_; ig++)
-                {
-                    if (!flg(ig))
-                    {
-                        flg(ig) = 1;
-                        num_gvec_reduced_++;
-                    }
-
-                    auto G = gvec_by_full_index(gvec_full_index_(ig));
-                    auto mG = G * (-1);
-                    int igm = index_by_gvec_(mG[0], mG[1], mG[2]);
-                    flg(igm) = 1;
-                }
-                printf("num_gvec_ : %i, num_gvec_reduced_ : %i\n", num_gvec_, num_gvec_reduced_);
             }
         }
 
@@ -480,6 +347,8 @@ class Gvec
         {
             int j = idx__ & 0xFFF;
             int i = idx__ >> 12;
+            assert(i < (int)z_columns_.size());
+            assert(j < (int)z_columns_[i].z.size());
             int x = z_columns_[i].x;
             int y = z_columns_[i].y;
             int z = z_columns_[i].z[j];
@@ -539,16 +408,6 @@ class Gvec
         {
             return index_by_gvec_(G__[0], G__[1], G__[2]);
         }
-
-        //inline std::vector<int> const& counts() const
-        //{
-        //    return gvec_counts_;
-        //}
-
-        //inline std::vector< std::pair<int, int> > const& z_sticks_coord() const
-        //{
-        //    return z_sticks_coord_;
-        //}
 
         inline std::vector<z_column_descriptor> const& z_columns() const
         {

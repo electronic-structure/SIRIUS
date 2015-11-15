@@ -231,6 +231,8 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
 
 void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
 {
+    PROFILE();
+
     Timer t("sirius::Reciprocal_lattice::generate_q_pw");
 
     double fourpi_omega = fourpi / unit_cell_.omega();
@@ -240,14 +242,14 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
     std::vector<double_complex> zilm(Utils::lmmax(lmax));
     for (int l = 0, lm = 0; l <= lmax; l++)
     {
-        for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(double_complex(0, 1), l);
+        for (int m = -l; m <= l; m++, lm++) zilm[lm] = std::pow(double_complex(0, 1), l);
     }
     
     splindex<block> spl_num_gvec(gvec_.num_gvec(), comm_.size(), comm_.rank());
     mdarray<double, 2> gvec_rlm(Utils::lmmax(lmax), spl_num_gvec.local_size());
-    for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
+    for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
     {
-        int ig = (int)spl_num_gvec[igloc];
+        int ig = spl_num_gvec[igloc];
         auto rtp = SHT::spherical_coordinates(gvec_.cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
@@ -281,9 +283,9 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 {
                     std::vector<double_complex> v(lmmax);
                     #pragma omp for
-                    for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
+                    for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
                     {
-                        int ig = (int)spl_num_gvec[igloc];
+                        int ig = spl_num_gvec[igloc];
                         int igs = gvec_.shell(ig);
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {

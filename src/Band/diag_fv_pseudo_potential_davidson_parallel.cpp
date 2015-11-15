@@ -35,7 +35,7 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    auto& psi_slab = kp__->fv_states();
+    auto& psi_slab = kp__->fv_states()->slab();
 
     /* temporary buffer */
     dmatrix<double_complex> phi_tmp;
@@ -333,7 +333,8 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
                 {
                     case CPU:
                     {
-                        linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab.panel(), evec_full, psi_slab.panel()); 
+                        STOP();
+                        //linalg<CPU>::gemm(0, 0, num_gkvec_loc, num_bands, N, phi_slab.panel(), evec_full, psi_slab.panel()); 
                         break;
                     }
                     case GPU:

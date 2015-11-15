@@ -246,7 +246,6 @@ void test3(vector3d<int> const& dims__, double cutoff__)
 
     mdarray<double_complex, 1> phi1(gvec_r.num_gvec());
     fft.transform<-1>(gvec_r, &phi1(gvec.offset_gvec_fft()));
-    //fft.transform<1>(gvec_r, &phi(gvec.offset_gvec_fft()));
 
     
     double diff = 0;
@@ -256,20 +255,6 @@ void test3(vector3d<int> const& dims__, double cutoff__)
     }
     printf("diff: %18.12f\n", diff);
 
-
-    //mdarray<double_complex, 1> phi(gvec_r.num_gvec());
-    //for (int i = 0; i < gvec_r.num_gvec(); i++) phi(i) = type_wrapper<double_complex>::random();
-    //phi(0) = 1.0;
-    //fft.transform<1>(gvec_r, &phi(gvec.offset_gvec_fft()));
-
-    //for (int i = 0; i < fft.local_size(); i++)
-    //{
-    //    auto z = fft.buffer(i);
-    //    if (z.imag() > 1e-12) 
-    //    {
-    //        printf("re, im: %18.12f %18.12f\n", z.real(), z.imag());
-    //    }
-    //}
 
 }
 

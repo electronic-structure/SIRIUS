@@ -31,7 +31,7 @@ void K_set::initialize()
     /* distribute k-points along the 1-st dimension of the MPI grid */
     spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
 
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
 
     #if (__VERBOSITY > 0)
@@ -49,8 +49,8 @@ void K_set::sync_band_energies()
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
     comm_k_.allgather(band_energies.at<CPU>(), 
-                      static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
-                      static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()));
+                      parameters_.num_bands() * spl_num_kpoints_.global_offset(),
+                      parameters_.num_bands() * spl_num_kpoints_.local_size());
 
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
@@ -70,7 +70,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     // TODO: mapping to coarse effective potential is k-point independent
 
     /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
         if (use_second_variation)

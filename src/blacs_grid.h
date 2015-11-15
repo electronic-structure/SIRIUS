@@ -141,6 +141,11 @@ class BLACS_grid
         {
             return map_ranks_(irow__, icol__);
         }
+
+        MPI_grid const* mpi_grid() const
+        {
+            return mpi_grid_;
+        }
 };
 
 #endif // __BLACS_GRID_H__

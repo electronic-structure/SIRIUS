@@ -9,7 +9,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
     /* short notation for target wave-functions */
-    auto& psi = kp__->fv_states();
+    auto& psi = kp__->fv_states()->slab();
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
@@ -59,6 +59,8 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     Utils::check_hermitian("h", hphi, ngk);
     Utils::check_hermitian("o", ophi, ngk);
 
+    Utils::write_matrix("h.txt", true, hphi);
+    Utils::write_matrix("o.txt", true, ophi);
     auto z1 = hphi.checksum();
     auto z2 = ophi.checksum();
 
@@ -69,6 +71,11 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
                                 &eval[0], psi.at<CPU>(), psi.ld()))
     {
         TERMINATE("error in evp solve");
+    }
+
+    for (int i = 0; i < std::min(ngk, num_bands); i++)
+    {
+        printf("eval[%i]=%f\n", i, eval[i]);
     }
 
     kp__->set_fv_eigen_values(&eval[0]);

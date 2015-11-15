@@ -1609,11 +1609,17 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     auto& gv = ctx_.gvec();
     auto& gvc = ctx_.gvec_coarse();
 
-    STOP();
-
     /* map effective potential to a corase grid */
     std::vector<double> veff_it_coarse(fft_coarse->local_size());
-    //== std::vector<double_complex> veff_pw_coarse(gvc.num_gvec_loc());
+    std::vector<double_complex> veff_pw_coarse(gvc.num_gvec_fft());
+
+    for (int ig = 0; ig < gvc.num_gvec_fft(); ig++)
+    {
+        auto G = gvc[ig + gvc.offset_gvec_fft()];
+        veff_pw_coarse[ig] = effective_potential__->f_pw(gv.index_by_gvec(G));
+    }
+    fft_coarse->transform<1>(gvc, &veff_pw_coarse[0]);
+    fft_coarse->output(&veff_it_coarse[0]);
 
     //== /* loop over full set of G-vectors and take only first num_gvec_coarse plane-wave harmonics; 
     //==  * this is enough to apply V_eff to \Psi;
@@ -1639,6 +1645,9 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     //== fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
     //== fft_coarse->transform(1, gvc.z_sticks_coord());
     //== fft_coarse->output(&veff_it_coarse[0]);
+
+
+
 
     double v0 = effective_potential__->f_pw(0).real();
 

@@ -96,7 +96,7 @@ void linalg<CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m, ftn_in
 // C = alpha * op(A) * op(B) + beta * op(C), double
 template<> 
 void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
-                                   ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb, ftn_double beta,
+                                   ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb, ftn_double beta,
                                    ftn_double* C, ftn_int ldc)
 {
     const char *trans[] = {"N", "T", "C"};
@@ -108,8 +108,8 @@ void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n,
 // C = alpha * op(A) * op(B) + beta * op(C), double_complex
 template<> 
 void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                           ftn_double_complex alpha, ftn_double_complex* A, ftn_int lda,
-                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex beta,
+                                           ftn_double_complex alpha, ftn_double_complex const* A, ftn_int lda,
+                                           ftn_double_complex const* B, ftn_int ldb, ftn_double_complex beta,
                                            ftn_double_complex* C, ftn_int ldc)
 {
     const char *trans[] = {"N", "T", "C"};
@@ -120,8 +120,8 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 
 // C = op(A) * op(B), double
 template<> 
-void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double* A, ftn_int lda, 
-                                   ftn_double* B, ftn_int ldb, ftn_double* C, ftn_int ldc)
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* A, ftn_int lda, 
+                                   ftn_double const* B, ftn_int ldb, ftn_double* C, ftn_int ldc)
 {
     gemm(transa, transb, m, n, k, 1.0, A, lda, B, ldb, 0.0, C, ldc);
 }
@@ -129,7 +129,7 @@ void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n,
 // C = op(A) * op(B), double_complex
 template<> 
 void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                           ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb,
+                                           ftn_double_complex const* A, ftn_int lda, ftn_double_complex const* B, ftn_int ldb,
                                            ftn_double_complex* C, ftn_int ldc)
 {
     gemm(transa, transb, m, n, k, zone, A, lda, B, ldb, zzero, C, ldc);
@@ -138,7 +138,7 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 // C = alpha * op(A) * op(B) + beta * op(C), double
 template<> 
 void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
-                                   matrix<ftn_double>& A, matrix<ftn_double>& B, ftn_double beta, matrix<ftn_double>& C)
+                                   matrix<ftn_double> const& A, matrix<ftn_double> const& B, ftn_double beta, matrix<ftn_double>& C)
 {
     gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
 }
@@ -146,8 +146,8 @@ void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n,
 // C = alpha * op(A) * op(B) + beta * op(C), double_complex
 template<> 
 void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                           ftn_double_complex alpha, matrix<ftn_double_complex>& A,
-                                           matrix<ftn_double_complex>& B, ftn_double_complex beta,
+                                           ftn_double_complex alpha, matrix<ftn_double_complex> const& A,
+                                           matrix<ftn_double_complex> const& B, ftn_double_complex beta,
                                            matrix<ftn_double_complex>& C)
 {
     gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
@@ -155,8 +155,8 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 
 // C = op(A) * op(B), double
 template<> 
-void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<ftn_double>& A, 
-                                   matrix<ftn_double>& B, matrix<ftn_double>& C)
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<ftn_double> const& A, 
+                                   matrix<ftn_double> const& B, matrix<ftn_double>& C)
 {
     gemm(transa, transb, m, n, k, 1.0, A, B, 0.0, C);
 }
@@ -164,7 +164,7 @@ void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n,
 // C = op(A) * op(B), double_complex
 template<> 
 void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                           matrix<ftn_double_complex>& A, matrix<ftn_double_complex>& B,
+                                           matrix<ftn_double_complex> const& A, matrix<ftn_double_complex> const& B,
                                            matrix<ftn_double_complex>& C)
 {
     gemm(transa, transb, m, n, k, ftn_double_complex(1, 0), A, B, ftn_double_complex(0, 0), C);

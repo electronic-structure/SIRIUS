@@ -31,9 +31,9 @@ double DFT_ground_state::energy_enuc()
     double enuc = 0.0;
     if (parameters_.full_potential())
     {
-        for (size_t ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
-            int ia = unit_cell_.spl_num_atoms((int)ialoc);
+            int ia = unit_cell_.spl_num_atoms(ialoc);
             int zn = unit_cell_.atom(ia)->type()->zn();
             enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
         }

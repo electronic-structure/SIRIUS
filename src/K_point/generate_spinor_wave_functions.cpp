@@ -7,14 +7,18 @@ void K_point::generate_spinor_wave_functions()
     PROFILE();
 
     Timer t("sirius::K_point::generate_spinor_wave_functions");
-    
+
     int nfv = parameters_.num_fv_states();
     double_complex alpha(1, 0);
     double_complex beta(0, 0);
     
     if (use_second_variation) 
     {
-        if (!parameters_.need_sv()) return;
+        if (!parameters_.need_sv())
+        {
+            fv_states_->slab() >> spinor_wave_functions_[0]->slab();
+            return;
+        }
  
         /* serial version */
         if (num_ranks() == 1)
@@ -52,18 +56,20 @@ void K_point::generate_spinor_wave_functions()
                     }
                     else
                     {
-                        /* multiply up block for first half of the bands, dn block for second half of the bands */
-                        linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
-                                          sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
-                                          spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
+                        STOP();
+                       // /* multiply up block for first half of the bands, dn block for second half of the bands */
+                       // linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
+                       //                   sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
+                       //                   spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
                     }
                 }
                 else
                 {
+                    STOP();
                     /* multiply up block and then dn block for all bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
-                                      sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
-                                      spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
+                    //linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
+                    //                  sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
+                    //                  spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
                 }
             }
             if (parameters_.processing_unit() == GPU)
@@ -76,32 +82,34 @@ void K_point::generate_spinor_wave_functions()
         /* parallel version */
         else
         {
-            int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
-            /* spin component of spinor wave functions */
-            dmatrix<double_complex> spin_component_panel(wf_size(), nst, blacs_grid_, parameters_.cyclic_block_size(),
-                                                         parameters_.cyclic_block_size());
-            
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                if (parameters_.num_mag_dims() != 3)
-                {
-                    /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_, sv_eigen_vectors_[ispn],
-                                      complex_zero, spin_component_panel);
-                    
-                }
-                else
-                {
-                    /* multiply up block and then dn block for all bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_, 0, 0,
-                                      sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel, 0, 0);
- 
-                }
+            STOP();
 
-                /* change to slice storage */
-                linalg<CPU>::gemr2d(wf_size(), nst, spin_component_panel, 0, 0,
-                                    spinor_wave_functions_[ispn], 0, 0, blacs_grid_.context());
-            }
+            //int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
+            ///* spin component of spinor wave functions */
+            //dmatrix<double_complex> spin_component_panel(wf_size(), nst, blacs_grid_, parameters_.cyclic_block_size(),
+            //                                             parameters_.cyclic_block_size());
+            //
+            //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            //{
+            //    if (parameters_.num_mag_dims() != 3)
+            //    {
+            //        /* multiply up block for first half of the bands, dn block for second half of the bands */
+            //        linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_, sv_eigen_vectors_[ispn],
+            //                          complex_zero, spin_component_panel);
+            //        
+            //    }
+            //    else
+            //    {
+            //        /* multiply up block and then dn block for all bands */
+            //        linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_, 0, 0,
+            //                          sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel, 0, 0);
+ 
+            //    }
+
+            //    /* change to slice storage */
+            //    linalg<CPU>::gemr2d(wf_size(), nst, spin_component_panel, 0, 0,
+            //                        spinor_wave_functions_[ispn], 0, 0, blacs_grid_.context());
+            //}
         }
     }
     else

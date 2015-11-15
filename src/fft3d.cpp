@@ -198,85 +198,85 @@ FFT3D::~FFT3D()
     #endif
 }
 
-void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
-{
-    splindex<block> spl_n((int)z_sticks_coord__.size(), comm_.size(), comm_.rank());
-
-    std::vector<int> sendcounts(comm_.size());
-    std::vector<int> sdispls(comm_.size());
-    std::vector<int> recvcounts(comm_.size());
-    std::vector<int> rdispls(comm_.size());
-
-    for (int rank = 0; rank < comm_.size(); rank++)
-    {
-        sendcounts[rank] = (int)spl_z_.local_size() * (int)spl_n.local_size(rank);
-        sdispls[rank]    = (int)spl_z_.local_size() * (int)spl_n.global_offset(rank);
-
-        recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
-        rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
-    }
-
-    if (comm_.size() > 1)
-    {
-        /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
-        transform_z_parallel<1>(sendcounts, sdispls, recvcounts, rdispls, (int)spl_n.local_size());
-        memcpy(&fft_buffer_aux_(0), fftw_buffer_, local_size() * sizeof(double_complex));
-        /* transform f(Gx,Gy,z) -> f(x,y,z) */
-        transform_xy_parallel<1>(z_sticks_coord__);
-    }
-    else
-    {
-        /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
-        transform_z_serial<1>(z_sticks_coord__);
-        /* transform f(Gx,Gy,z) -> f(x,y,z) */
-        transform_xy_serial<1>();
-    }
-}
-
-void FFT3D::backward_custom(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__)
-{
-    std::memset(fftw_buffer_, 0, size() * sizeof(double_complex));
-    transform_z_serial<1>(z_cols__, data__);
-    transform_xy_serial<1>();
-}
-
-void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
-{
-    splindex<block> spl_n((int)z_sticks_coord__.size(), comm_.size(), comm_.rank());
-
-    std::vector<int> sendcounts(comm_.size());
-    std::vector<int> sdispls(comm_.size());
-    std::vector<int> recvcounts(comm_.size());
-    std::vector<int> rdispls(comm_.size());
-
-    for (int rank = 0; rank < comm_.size(); rank++)
-    {
-        sendcounts[rank] = (int)spl_z_.local_size() * (int)spl_n.local_size(rank);
-        sdispls[rank]    = (int)spl_z_.local_size() * (int)spl_n.global_offset(rank);
-
-        recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
-        rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
-    }
-
-    if (comm_.size() > 1)
-    {
-        /* transform f(x,y,z) -> f(Gx,Gy,z) */
-        transform_xy_parallel<-1>(z_sticks_coord__);
-        memcpy(fftw_buffer_, &fft_buffer_aux_(0), local_size_z_ * z_sticks_coord__.size() * sizeof(double_complex));
-        /* transform f(Gx,Gy,z) -> f(Gx,Gy,Gz) */
-        transform_z_parallel<-1>(sendcounts, sdispls, recvcounts, rdispls, (int)spl_n.local_size());
-    }
-    else
-    {
-        /* transform f(x,y,z) -> f(Gx,Gy,z) */
-        transform_xy_serial<-1>();
-        /* transform f(Gx,Gy,z) -> f(Gx,Gy,Gz) */
-        transform_z_serial<-1>(z_sticks_coord__);
-    }
-
-    double norm = 1.0 / size();
-    #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-    for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
-}
+//void FFT3D::backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
+//{
+//    splindex<block> spl_n((int)z_sticks_coord__.size(), comm_.size(), comm_.rank());
+//
+//    std::vector<int> sendcounts(comm_.size());
+//    std::vector<int> sdispls(comm_.size());
+//    std::vector<int> recvcounts(comm_.size());
+//    std::vector<int> rdispls(comm_.size());
+//
+//    for (int rank = 0; rank < comm_.size(); rank++)
+//    {
+//        sendcounts[rank] = (int)spl_z_.local_size() * (int)spl_n.local_size(rank);
+//        sdispls[rank]    = (int)spl_z_.local_size() * (int)spl_n.global_offset(rank);
+//
+//        recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
+//        rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
+//    }
+//
+//    if (comm_.size() > 1)
+//    {
+//        /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
+//        transform_z_parallel<1>(sendcounts, sdispls, recvcounts, rdispls, (int)spl_n.local_size());
+//        memcpy(&fft_buffer_aux_(0), fftw_buffer_, local_size() * sizeof(double_complex));
+//        /* transform f(Gx,Gy,z) -> f(x,y,z) */
+//        transform_xy_parallel<1>(z_sticks_coord__);
+//    }
+//    else
+//    {
+//        /* transform f(Gx,Gy,Gz) -> f(Gx,Gy,z) */ 
+//        transform_z_serial<1>(z_sticks_coord__);
+//        /* transform f(Gx,Gy,z) -> f(x,y,z) */
+//        transform_xy_serial<1>();
+//    }
+//}
+//
+//void FFT3D::backward_custom(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__)
+//{
+//    std::memset(fftw_buffer_, 0, size() * sizeof(double_complex));
+//    transform_z_serial<1>(z_cols__, data__);
+//    transform_xy_serial<1>();
+//}
+//
+//void FFT3D::forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__)
+//{
+//    splindex<block> spl_n((int)z_sticks_coord__.size(), comm_.size(), comm_.rank());
+//
+//    std::vector<int> sendcounts(comm_.size());
+//    std::vector<int> sdispls(comm_.size());
+//    std::vector<int> recvcounts(comm_.size());
+//    std::vector<int> rdispls(comm_.size());
+//
+//    for (int rank = 0; rank < comm_.size(); rank++)
+//    {
+//        sendcounts[rank] = (int)spl_z_.local_size() * (int)spl_n.local_size(rank);
+//        sdispls[rank]    = (int)spl_z_.local_size() * (int)spl_n.global_offset(rank);
+//
+//        recvcounts[rank] = (int)spl_n.local_size() * (int)spl_z_.local_size(rank);
+//        rdispls[rank]    = (int)spl_n.local_size() * (int)spl_z_.global_offset(rank);
+//    }
+//
+//    if (comm_.size() > 1)
+//    {
+//        /* transform f(x,y,z) -> f(Gx,Gy,z) */
+//        transform_xy_parallel<-1>(z_sticks_coord__);
+//        memcpy(fftw_buffer_, &fft_buffer_aux_(0), local_size_z_ * z_sticks_coord__.size() * sizeof(double_complex));
+//        /* transform f(Gx,Gy,z) -> f(Gx,Gy,Gz) */
+//        transform_z_parallel<-1>(sendcounts, sdispls, recvcounts, rdispls, (int)spl_n.local_size());
+//    }
+//    else
+//    {
+//        /* transform f(x,y,z) -> f(Gx,Gy,z) */
+//        transform_xy_serial<-1>();
+//        /* transform f(Gx,Gy,z) -> f(Gx,Gy,Gz) */
+//        transform_z_serial<-1>(z_sticks_coord__);
+//    }
+//
+//    double norm = 1.0 / size();
+//    #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+//    for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
+//}
 
 };

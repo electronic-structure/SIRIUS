@@ -25,19 +25,20 @@ void Density::generate_valence_density_it(K_set& ks__)
         Timer t1("gemr2d");
         if (!parameters_.full_potential() && kp->num_ranks() > 1)
         {
-            if (ctx_.fft(0)->parallel())
-            {
-                linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                                    kp->fv_states(), 0, 0,
-                                    kp->spinor_wave_functions(0), 0, 0,
-                                    kp->blacs_grid().context());
-            }
-            else
-            {
-                redist::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-                               kp->fv_states(), 0, 0,
-                               kp->spinor_wave_functions(0), 0, 0);
-            }
+            STOP();
+        //    if (ctx_.fft(0)->parallel())
+        //    {
+        //        linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+        //                            kp->fv_states(), 0, 0,
+        //                            kp->spinor_wave_functions(0), 0, 0,
+        //                            kp->blacs_grid().context());
+        //    }
+        //    else
+        //    {
+        //        redist::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
+        //                       kp->fv_states(), 0, 0,
+        //                       kp->spinor_wave_functions(0), 0, 0);
+        //    }
         }
         t1.stop();
         add_k_point_contribution_it(ks__[ik], occupied_bands);

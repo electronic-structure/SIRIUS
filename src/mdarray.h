@@ -131,6 +131,15 @@ class mdarray_index_descriptor
             assert(end_ >= begin_);
         };
         
+        /// Constructor for index range [begin, end]
+        mdarray_index_descriptor(std::pair<int, int> const range__)
+            : begin_(range__.first), 
+              end_(range__.second) , 
+              size_(end_ - begin_ + 1)
+        {
+            assert(end_ >= begin_);
+        };
+        
         /// Return first index value.
         inline int64_t begin() const
         {
@@ -650,7 +659,7 @@ class mdarray_base
                     exit(-1);
                 }
             }
-            memcpy(dest__.ptr_, ptr_, size() * sizeof(T));
+            std::memcpy(dest__.ptr_, ptr_, size() * sizeof(T));
         }
 
         #ifdef __GPU

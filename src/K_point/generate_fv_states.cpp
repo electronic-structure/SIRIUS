@@ -12,7 +12,7 @@ void K_point::generate_fv_states()
     {
         /* slices of first-variational eigen-vectors */
         dmatrix<double_complex> fv_eigen_vectors_slice(gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_slice_, 1, 1);
-        assert(fv_eigen_vectors_slice.num_cols_local() == fv_states_slice_.num_cols_local());
+        //assert(fv_eigen_vectors_slice.num_cols_local() == fv_states_slice_.num_cols_local());
 
         /* change from 2d block cyclic to slice storage */
         linalg<CPU>::gemr2d(gklo_basis_size(), parameters_.num_fv_states(), fv_eigen_vectors_, 0, 0, 
@@ -189,38 +189,41 @@ void K_point::generate_fv_states()
         {
             #pragma omp parallel
             {
-                mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+                //mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+                STOP();
                 
-                #pragma omp for
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-                {
-                    int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-                    int offset_wf = unit_cell_.atom(ia)->offset_wf();
-                    alm_coeffs_->generate(ia, alm);
-                    linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(),
-                                      alm.at<CPU>(), alm.ld(), fv_eigen_vectors_slice.at<CPU>(), fv_eigen_vectors_slice.ld(),
-                                      fv_states_slice_.at<CPU>(offset_wf, 0), fv_states_slice_.ld());
-                    for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
-                    {
-                        /* lo block */
-                        memcpy(&fv_states_slice_(offset_wf + mt_aw_size, i),
-                               &fv_eigen_vectors_slice(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), i),
-                               unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
-                    }
-                }
-                #pragma omp for
-                for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
-                {
-                    /* G+k block */
-                    memcpy(&fv_states_slice_(unit_cell_.mt_basis_size(), i), &fv_eigen_vectors_slice(0, i), 
-                           num_gkvec() * sizeof(double_complex));
-                }
+                //#pragma omp for
+                //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+                //{
+                //    int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
+                //    int offset_wf = unit_cell_.atom(ia)->offset_wf();
+                //    alm_coeffs_->generate(ia, alm);
+                //    STOP();
+                //    //linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(),
+                //    //                  alm.at<CPU>(), alm.ld(), fv_eigen_vectors_slice.at<CPU>(), fv_eigen_vectors_slice.ld(),
+                //    //                  fv_states_slice_.at<CPU>(offset_wf, 0), fv_states_slice_.ld());
+                //    //for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
+                //    //{
+                //    //    /* lo block */
+                //    //    std::memcpy(&fv_states_slice_(offset_wf + mt_aw_size, i),
+                //    //                &fv_eigen_vectors_slice(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), i),
+                //    //                unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
+                //    //}
+                //}
+                //#pragma omp for
+                //for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
+                //{
+                //    /* G+k block */
+                //    std::memcpy(&fv_states_slice_(unit_cell_.mt_basis_size(), i), &fv_eigen_vectors_slice(0, i), 
+                //                num_gkvec() * sizeof(double_complex));
+                //}
             }
         }
+        STOP();
 
-        /* change from slice storage to 2d block cyclic */
-        linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(), fv_states_slice_, 0, 0, fv_states_, 0, 0,
-                            blacs_grid_.context());
+        ///* change from slice storage to 2d block cyclic */
+        //linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(), fv_states_slice_, 0, 0, fv_states_, 0, 0,
+        //                    blacs_grid_.context());
     }
 }
 

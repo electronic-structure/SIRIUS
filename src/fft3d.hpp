@@ -420,7 +420,7 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
                                  std::vector<z_column_descriptor> const& z_cols__,
                                  double_complex* data__)
 {
-    Timer t("fft|z_parallel");
+    //Timer t("fft|z_parallel");
 
     int rank = comm_.rank();
     int num_zcol_local = zcol_distr__.counts[rank];
@@ -440,12 +440,12 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
         
         std::memcpy(fftw_buffer_, &fft_buffer_aux_(0), z_cols__.size() * local_size_z_ * sizeof(double_complex)); 
 
-        Timer t1("fft|a2a_internal", comm_);
+        //Timer t1("fft|a2a_internal", comm_);
         comm_.alltoall(fftw_buffer_, &send.counts[0], &send.offsets[0], &fft_buffer_aux_(0), &recv.counts[0], &recv.offsets[0]);
-        t1.stop();
+        //t1.stop();
     }
 
-    Timer t0("fft|z_parallel_local", comm_);
+    //Timer t0("fft|z_parallel_local", comm_);
     #pragma omp parallel num_threads(num_fft_workers_)
     {
         int tid = omp_get_thread_num();
@@ -515,7 +515,7 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
             }
         }
     }
-    t0.stop();
+    //t0.stop();
 
     /* scatter z-columns between slabs of FFT buffer */
     if (direction == 1)
@@ -530,9 +530,9 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
         send.calc_offsets();
         recv.calc_offsets();
         
-        Timer t1("fft|a2a_internal", comm_);
+        //Timer t1("fft|a2a_internal", comm_);
         comm_.alltoall(&fft_buffer_aux_(0), &send.counts[0], &send.offsets[0], fftw_buffer_, &recv.counts[0], &recv.offsets[0]);
-        t1.stop();
+        //t1.stop();
 
         std::memcpy(&fft_buffer_aux_(0), fftw_buffer_, z_cols__.size() * local_size_z_ * sizeof(double_complex)); 
     }
@@ -541,7 +541,7 @@ void FFT3D::transform_z_parallel(block_data_descriptor const& zcol_distr__,
 template <int direction>
 void FFT3D::transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols__)
 {
-    Timer t0("fft|xy_parallel");
+    //Timer t0("fft|xy_parallel");
     int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
     if (pu_ == CPU)
     {
@@ -644,7 +644,7 @@ void FFT3D::transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols
 template <int direction>
 void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
 {
-    Timer t0("fft|transform");
+    //Timer t0("fft|transform");
     if (comm_.size() == 1)
     {
         switch (direction)

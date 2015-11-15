@@ -28,6 +28,7 @@
 #include "periodic_function.h"
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
+#include "wave_functions.h"
 
 namespace sirius
 {
@@ -58,9 +59,6 @@ class K_point
         /** This grid is used to distribute band index and keep a whole G+k vector index */
         BLACS_grid const& blacs_grid_slice_;
 
-        /// Alias for FFT driver.
-        //FFT3D_CPU* fft_;
-
         /// Weight of k-point.
         double weight_;
 
@@ -69,7 +67,7 @@ class K_point
         
         Gvec gkvec_;
 
-        Gvec gkvec_coarse_;
+        //Gvec gkvec_coarse_;
 
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -87,15 +85,18 @@ class K_point
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// First-variational states in "slice" storage.
-        dmatrix<double_complex> fv_states_slice_;
+        //dmatrix<double_complex> fv_states_slice_;
 
         /// First-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and basis functions index is distributed 
          *  over rows of the MPI grid. */
-        dmatrix<double_complex> fv_states_;
+        //dmatrix<double_complex> fv_states_;
+
+        Wave_functions* fv_states_;
 
         /// Two-component (spinor) wave functions describing the bands.
-        dmatrix<double_complex> spinor_wave_functions_[2];
+        //dmatrix<double_complex> spinor_wave_functions_[2];
+        Wave_functions* spinor_wave_functions_[2];
 
         /// band occupation numbers
         std::vector<double> band_occupancies_;
@@ -133,7 +134,7 @@ class K_point
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        splindex<block> spl_gkvec_;
+        //splindex<block> spl_gkvec_;
             
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector< std::vector<int> > atom_lo_cols_;
@@ -207,6 +208,7 @@ class K_point
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (alm_coeffs_ != nullptr) delete alm_coeffs_;
+            delete fv_states_;
         }
 
         /// Initialize the k-point related arrays and data
@@ -424,7 +426,11 @@ class K_point
             return weight_;
         }
 
-        inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
+        //inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
+        //{
+        //    return spinor_wave_functions_[ispn__];
+        //}
+        inline Wave_functions* spinor_wave_functions(int ispn__)
         {
             return spinor_wave_functions_[ispn__];
         }
@@ -442,13 +448,13 @@ class K_point
          */
         inline int gklo_basis_size() const
         {
-            return (int)gklo_basis_descriptors_.size();
+            return static_cast<int>(gklo_basis_descriptors_.size());
         }
         
         /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
         inline int gklo_basis_size_row() const
         {
-            return (int)gklo_basis_descriptors_row_.size();
+            return static_cast<int>(gklo_basis_descriptors_row_.size());
         }
         
         /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
@@ -460,13 +466,13 @@ class K_point
         /// Local number of local orbitals for each MPI rank in the row of the 2D MPI grid.
         inline int num_lo_row() const
         {
-            return (int)gklo_basis_descriptors_row_.size() - num_gkvec_row_;
+            return static_cast<int>(gklo_basis_descriptors_row_.size() - num_gkvec_row_);
         }
 
         /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
         inline int gklo_basis_size_col() const
         {
-            return (int)gklo_basis_descriptors_col_.size();
+            return static_cast<int>(gklo_basis_descriptors_col_.size());
         }
         
         /// Local number of G+k vectors for each MPI rank in the column of the 2D MPI grid.
@@ -478,7 +484,7 @@ class K_point
         /// Local number of local orbitals for each MPI rank in the column of the 2D MPI grid.
         inline int num_lo_col() const
         {
-            return (int)gklo_basis_descriptors_col_.size() - num_gkvec_col_;
+            return static_cast<int>(gklo_basis_descriptors_col_.size() - num_gkvec_col_);
         }
 
         inline gklo_basis_descriptor const& gklo_basis_descriptor_col(int idx) const
@@ -553,15 +559,15 @@ class K_point
             return fv_eigen_vectors_;
         }
         
-        inline dmatrix<double_complex>& fv_states()
+        inline Wave_functions* fv_states()
         {
             return fv_states_;
         }
 
-        inline dmatrix<double_complex>& fv_states_slice()
-        {
-            return fv_states_slice_;
-        }
+        //inline dmatrix<double_complex>& fv_states_slice()
+        //{
+        //    return fv_states_slice_;
+        //}
 
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
         {
@@ -590,10 +596,10 @@ class K_point
             return gkvec_;
         }
 
-        inline Gvec const& gkvec_coarse() const
-        {
-            return gkvec_coarse_;
-        }
+        //inline Gvec const& gkvec_coarse() const
+        //{
+        //    return gkvec_coarse_;
+        //}
 
         inline matrix<double_complex> const& beta_gk_t() const
         {
@@ -650,14 +656,14 @@ class K_point
             return p_mtrx_(xi1, xi2, iat);
         }
 
-        inline splindex<block>& spl_gkvec()
-        {
-            return spl_gkvec_;
-        }
+        //inline splindex<block>& spl_gkvec()
+        //{
+        //    return spl_gkvec_;
+        //}
 
         inline int num_gkvec_loc() const
         {
-            return (int)spl_gkvec_.local_size();
+            return gkvec_.num_gvec(comm_.rank());
         }
 };
 

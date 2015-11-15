@@ -30,7 +30,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft(0)->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft(0)->fft_grid().size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
         jw.single("num_atoms", ctx.unit_cell().num_atoms());

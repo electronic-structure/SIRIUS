@@ -4,6 +4,8 @@ namespace sirius {
 
 void K_point::distribute_basis_index()
 {
+    PROFILE();
+
     if (parameters_.full_potential())
     {
         /* distribute Gk+lo basis between rows */
@@ -39,11 +41,10 @@ void K_point::distribute_basis_index()
     else
     {
         /* split G+k vectors between all available ranks and keep the split index */
-        spl_gkvec_ = splindex<block>(gklo_basis_size(), comm_.size(), comm_.rank());
-        gklo_basis_descriptors_row_.resize(spl_gkvec_.local_size());
-        for (int i = 0; i < (int)spl_gkvec_.local_size(); i++)
-            gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_gkvec_[i]];
-
+        gklo_basis_descriptors_row_.resize(num_gkvec_loc());
+        
+        for (int i = 0; i < num_gkvec_loc(); i++)
+            gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[gkvec_.offset_gvec(comm_.rank()) + i];
     }
 
     /* get the number of row G+k-vectors */

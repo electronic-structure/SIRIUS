@@ -112,22 +112,19 @@ class FFT3D
         bool allocated_on_device_;
         #endif
 
-        template <int direction>
-        void transform_z_parallel(std::vector<int> const& sendcounts, std::vector<int> const& sdispls,
-                                  std::vector<int> const& recvcounts, std::vector<int> const& rdispls,
-                                  int num_z_cols_local);
+        //== template <int direction>
+        //== void transform_z_parallel(std::vector<int> const& sendcounts, std::vector<int> const& sdispls,
+        //==                           std::vector<int> const& recvcounts, std::vector<int> const& rdispls,
+        //==                           int num_z_cols_local);
 
-        template <int direction>
-        void transform_xy_parallel(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+        //== template <int direction>
+        //== void transform_xy_parallel(std::vector< std::pair<int, int> > const& z_sticks_coord__);
 
-        template <int direction>
-        void transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+        //== template <int direction>
+        //== void transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__);
 
         template <int direction, bool use_reduction>
         void transform_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
-
-        //template <int direction>
-        void transform_r_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
 
         template <int direction>
         void transform_z_parallel(block_data_descriptor const& zcol_distr__,
@@ -140,44 +137,44 @@ class FFT3D
         template <int direction>
         void transform_xy_serial();
 
-        /// Execute backward transformation.
-        inline void backward()
-        {
-            if (pu_ == CPU)
-            {
-                fftw_execute(plan_backward_);
-            }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                cufft_backward_transform(cufft_plan_, cufft_buf_.at<GPU>());
-            }
-            #endif
-        }
-        
-        /// Execute forward transformation.
-        inline void forward()
-        {    
-            if (pu_ == CPU)
-            {
-                fftw_execute(plan_forward_);
-                double norm = 1.0 / size();
-                #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-                for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
-            }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                cufft_forward_transform(cufft_plan_, cufft_buf_.at<GPU>());
-            }
-            #endif
-        }
+        ///// Execute backward transformation.
+        //inline void backward()
+        //{
+        //    if (pu_ == CPU)
+        //    {
+        //        fftw_execute(plan_backward_);
+        //    }
+        //    #ifdef __GPU
+        //    if (pu_ == GPU)
+        //    {
+        //        cufft_backward_transform(cufft_plan_, cufft_buf_.at<GPU>());
+        //    }
+        //    #endif
+        //}
+        //
+        ///// Execute forward transformation.
+        //inline void forward()
+        //{    
+        //    if (pu_ == CPU)
+        //    {
+        //        fftw_execute(plan_forward_);
+        //        double norm = 1.0 / size();
+        //        #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
+        //        for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
+        //    }
+        //    #ifdef __GPU
+        //    if (pu_ == GPU)
+        //    {
+        //        cufft_forward_transform(cufft_plan_, cufft_buf_.at<GPU>());
+        //    }
+        //    #endif
+        //}
 
-        void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+        //void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
 
-        void backward_custom(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
-        
-        void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
+        //void backward_custom(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
+        //
+        //void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
         
     public:
 
@@ -188,74 +185,19 @@ class FFT3D
 
         ~FFT3D();
 
-        /// Execute the transformation for a given thread.
-        inline void transform(int direction__)
-        {
-            switch (direction__)
-            {
-                case 1:
-                {
-                    backward();
-                    break;
-                }
-                case -1:
-                {
-                    forward();
-                    break;
-                }
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong FFT direction");
-                }
-            }
-        }
-
-        void transform(int direction__, std::vector< std::pair<int, int> > const& z_sticks_coord__)
-        {
-            #ifdef __GPU
-            bool auto_alloc = false;
-            if (pu_ == GPU && !allocated_on_device_)
-            {
-                auto_alloc = true;
-                allocate_on_device();
-            }
-            #endif
-            switch (direction__)
-            {
-                case 1:
-                {
-                    backward_custom(z_sticks_coord__);
-                    break;
-                }
-                case -1:
-                {
-                    forward_custom(z_sticks_coord__);
-                    break;
-                }
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong FFT direction");
-                }
-            }
-            #ifdef __GPU
-            if (pu_ == GPU && auto_alloc) deallocate_on_device();
-            #endif
-        }
-        
-        template <int direction>
-        void transform(Gvec const& gvec__, double_complex* data__);
+        ///// Execute the transformation for a given thread.
+        //inline void transform(int direction__)
         //{
         //    switch (direction__)
         //    {
         //        case 1:
         //        {
-        //            backward_custom(z_cols__, data__);
+        //            backward();
         //            break;
         //        }
         //        case -1:
         //        {
-        //            STOP();
-        //            //forward_custom(z_sticks_coord__);
+        //            forward();
         //            break;
         //        }
         //        default:
@@ -263,15 +205,49 @@ class FFT3D
         //            error_local(__FILE__, __LINE__, "wrong FFT direction");
         //        }
         //    }
-
         //}
 
-        template<typename T>
-        inline void input(int n__, int const* map__, T const* data__)
-        {
-            memset(fftw_buffer_, 0, local_size() * sizeof(double_complex));
-            for (int i = 0; i < n__; i++) fftw_buffer_[map__[i]] = data__[i];
-        }
+        //void transform(int direction__, std::vector< std::pair<int, int> > const& z_sticks_coord__)
+        //{
+        //    #ifdef __GPU
+        //    bool auto_alloc = false;
+        //    if (pu_ == GPU && !allocated_on_device_)
+        //    {
+        //        auto_alloc = true;
+        //        allocate_on_device();
+        //    }
+        //    #endif
+        //    switch (direction__)
+        //    {
+        //        case 1:
+        //        {
+        //            backward_custom(z_sticks_coord__);
+        //            break;
+        //        }
+        //        case -1:
+        //        {
+        //            forward_custom(z_sticks_coord__);
+        //            break;
+        //        }
+        //        default:
+        //        {
+        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
+        //        }
+        //    }
+        //    #ifdef __GPU
+        //    if (pu_ == GPU && auto_alloc) deallocate_on_device();
+        //    #endif
+        //}
+        
+        template <int direction>
+        void transform(Gvec const& gvec__, double_complex* data__);
+
+        //template<typename T>
+        //inline void input(int n__, int const* map__, T const* data__)
+        //{
+        //    memset(fftw_buffer_, 0, local_size() * sizeof(double_complex));
+        //    for (int i = 0; i < n__; i++) fftw_buffer_[map__[i]] = data__[i];
+        //}
 
         template <typename T>
         inline void input(T* data__)
@@ -281,23 +257,23 @@ class FFT3D
         
         inline void output(double* data__)
         {
-            for (int i = 0; i < local_size(); i++) data__[i] = std::real(fftw_buffer_[i]);
+            for (int i = 0; i < local_size(); i++) data__[i] = fftw_buffer_[i].real();
         }
         
         inline void output(double_complex* data__)
         {
-            memcpy(data__, fftw_buffer_, local_size() * sizeof(double_complex));
+            std::memcpy(data__, fftw_buffer_, local_size() * sizeof(double_complex));
         }
         
-        inline void output(int n__, int const* map__, double_complex* data__)
-        {
-            for (int i = 0; i < n__; i++) data__[i] = fftw_buffer_[map__[i]];
-        }
+        //inline void output(int n__, int const* map__, double_complex* data__)
+        //{
+        //    for (int i = 0; i < n__; i++) data__[i] = fftw_buffer_[map__[i]];
+        //}
 
-        inline void output(int n__, int const* map__, double_complex* data__, double beta__)
-        {
-            for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
-        }
+        //inline void output(int n__, int const* map__, double_complex* data__, double beta__)
+        //{
+        //    for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
+        //}
 
         FFT_grid const& fft_grid() const
         {

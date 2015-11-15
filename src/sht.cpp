@@ -89,9 +89,9 @@ double SHT::gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
         {
             for (int k3 = -l3; k3 <= l3; k3++)
             {
-                d += real(conj(sirius::SHT::ylm_dot_rlm(l1, k1, m1)) *
-                          sirius::SHT::ylm_dot_rlm(l2, k2, m2) *
-                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
+                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
+                                         SHT::ylm_dot_rlm(l2, k2, m2) *
+                                         SHT::ylm_dot_rlm(l3, k3, m3)) * SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
             }
         }
     }
@@ -231,7 +231,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         std::vector<double> ftp(num_points_);
         for (int lm = 0; lm < lmmax_; lm++)
         {
-            memset(&flm[0], 0, lmmax_ * sizeof(double));
+            std::memset(&flm[0], 0, lmmax_ * sizeof(double));
             flm[lm] = 1.0;
             backward_transform(lmmax_, &flm[0], 1, lmmax_, &ftp[0]);
             forward_transform(&ftp[0], 1, lmmax_, lmmax_, &flm[0]);
@@ -287,25 +287,27 @@ vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
 
 void SHT::spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)
 {
-    double x = cos(theta);
+    double x = std::cos(theta);
     std::vector<double> result_array(lmax + 1);
 
     for (int m = 0; m <= lmax; m++)
     {
         double_complex z = exp(double_complex(0.0, m * phi)); 
         
-        gsl_sf_legendre_sphPlm_array(lmax, m, x, &result_array[0]);
+        //gsl_sf_legendre_sphPlm_array(lmax, m, x, &result_array[0]);
+        for (int l = m; l <= lmax; l++)                           // TODO: make a test (with hardcoded values) for sphirical harmonics
+            result_array[l - m] = gsl_sf_legendre_sphPlm(l, m, x);
 
         for (int l = m; l <= lmax; l++)
         {
             ylm[Utils::lm_by_l_m(l, m)] = result_array[l - m] * z;
             if (m % 2) 
             {
-                ylm[Utils::lm_by_l_m(l, -m)] = -conj(ylm[Utils::lm_by_l_m(l, m)]);
+                ylm[Utils::lm_by_l_m(l, -m)] = -std::conj(ylm[Utils::lm_by_l_m(l, m)]);
             }
             else
             {
-                ylm[Utils::lm_by_l_m(l, -m)] = conj(ylm[Utils::lm_by_l_m(l, m)]);        
+                ylm[Utils::lm_by_l_m(l, -m)] = std::conj(ylm[Utils::lm_by_l_m(l, m)]);        
             }
         }
     }
@@ -317,19 +319,19 @@ void SHT::spherical_harmonics(int lmax, double theta, double phi, double* rlm)
     std::vector<double_complex> ylm(lmmax);
     spherical_harmonics(lmax, theta, phi, &ylm[0]);
     
-    double t = sqrt(2.0);
+    double t = std::sqrt(2.0);
     
     rlm[0] = y00;
 
     for (int l = 1; l <= lmax; l++)
     {
         for (int m = -l; m < 0; m++) 
-            rlm[Utils::lm_by_l_m(l, m)] = t * imag(ylm[Utils::lm_by_l_m(l, m)]);
+            rlm[Utils::lm_by_l_m(l, m)] = t * ylm[Utils::lm_by_l_m(l, m)].imag();
         
-        rlm[Utils::lm_by_l_m(l, 0)] = real(ylm[Utils::lm_by_l_m(l, 0)]);
+        rlm[Utils::lm_by_l_m(l, 0)] = ylm[Utils::lm_by_l_m(l, 0)].real();
          
         for (int m = 1; m <= l; m++) 
-            rlm[Utils::lm_by_l_m(l, m)] = t * real(ylm[Utils::lm_by_l_m(l, m)]);
+            rlm[Utils::lm_by_l_m(l, m)] = t * ylm[Utils::lm_by_l_m(l, m)].real();
     }
 }
                 

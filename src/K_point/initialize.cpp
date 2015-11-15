@@ -190,55 +190,61 @@ void K_point::initialize()
                                                         blacs_grid_, bs, bs);
             fv_eigen_vectors_.allocate(alloc_mode);
 
-            fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_, bs, bs);
+            //fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_, bs, bs);
+            STOP();
         }
 
         if (!parameters_.full_potential())
         {
             /* in case of pseudopotential wave-functions are distributed in slabs */
-            fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-                                                 blacs_grid_slab_,
-                                                 splindex_base<int>::block_size(wf_size(), num_ranks()), 1);
+            //fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
+            //                                     blacs_grid_slab_,
+            //                                     splindex_base<int>::block_size(wf_size(), num_ranks()), 1);
+
+            fv_states_ = new Wave_functions(parameters_.num_fv_states(), gkvec_, *blacs_grid_.mpi_grid());
 
             assert(parameters_.num_fv_states() < num_gkvec());
-            assert(fv_states_.num_rows_local() == num_gkvec_loc());
-            assert(fv_states_.num_cols_local() == parameters_.num_fv_states());
+            //assert(fv_states_.num_rows_local() == num_gkvec_loc());
+            //assert(fv_states_.num_cols_local() == parameters_.num_fv_states());
 
             for (int i = 0; i < parameters_.num_fv_states(); i++)
             {
-                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states_(igk, i) = type_wrapper<double_complex>::random();
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) (*fv_states_)(igk, i) = type_wrapper<double_complex>::random();
             }
         }
 
-        if (comm_.size() == 1)
-        {
-            fv_states_slice_ = dmatrix<double_complex>(fv_states_.at<CPU>(), wf_size(), parameters_.num_fv_states(),
-                                                       blacs_grid_slice_, 1, 1);
-        }
-        else
-        {
-            fv_states_slice_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-                                                       blacs_grid_slice_, 1, 1);
-        }
+        //if (comm_.size() == 1)
+        //{
+        //    fv_states_slice_ = dmatrix<double_complex>(fv_states_.at<CPU>(), wf_size(), parameters_.num_fv_states(),
+        //                                               blacs_grid_slice_, 1, 1);
+        //}
+        //else
+        //{
+        //    fv_states_slice_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
+        //                                               blacs_grid_slice_, 1, 1);
+        //}
 
         if (parameters_.need_sv())
         {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-                spinor_wave_functions_[ispn] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_slice_, 1, 1);
+            STOP();
+            //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            //    spinor_wave_functions_[ispn] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_slice_, 1, 1);
         }
         else
         {
-            if (ctx_.fft(0)->parallel())
-            {
-                /* assume 2d block-cyclic distribution */
-                int bs = splindex_base<int>::block_size(num_gkvec(), num_ranks_row());
-                spinor_wave_functions_[0] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_, bs, 1);
-            }
-            else
-            {
-                /* assume slice storage of spinor wave functions */
-                spinor_wave_functions_[0] = dmatrix<double_complex>(fv_states_slice_.at<CPU>(), wf_size(), nst, blacs_grid_slice_, 1, 1);
-            }
+            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), gkvec_, *blacs_grid_.mpi_grid());
+
+            //if (ctx_.fft(0)->parallel())
+            //{
+            //    /* assume 2d block-cyclic distribution */
+            //    int bs = splindex_base<int>::block_size(num_gkvec(), num_ranks_row());
+            //    spinor_wave_functions_[0] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_, bs, 1);
+            //}
+            //else
+            //{
+            //    /* assume slice storage of spinor wave functions */
+            //    spinor_wave_functions_[0] = dmatrix<double_complex>(fv_states_slice_.at<CPU>(), wf_size(), nst, blacs_grid_slice_, 1, 1);
+            //}
         }
     }
     else  /* use full diagonalziation */

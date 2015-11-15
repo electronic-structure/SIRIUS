@@ -4,6 +4,8 @@ namespace sirius {
 
 void K_point::build_gklo_basis_descriptors()
 {
+    PROFILE();
+
     gklo_basis_descriptors_.clear();
 
     gklo_basis_descriptor gklo;

@@ -34,7 +34,10 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     /* compute product of magnetic field and wave-function */
     if (parameters_.num_spins() == 2)
-        apply_magnetic_field(kp->fv_states_slice(), kp->num_gkvec(), kp->gkvec().index_map(), effective_magnetic_field, hpsi_slice);
+    {
+        STOP();
+        //apply_magnetic_field(kp->fv_states_slice(), kp->num_gkvec(), kp->gkvec().index_map(), effective_magnetic_field, hpsi_slice);
+    }
 
     //== if (parameters_.uj_correction())
     //== {
@@ -107,9 +110,10 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             }
             else
             {
+                STOP();
                 /* compute <wf_i | (h * wf_j)> for up-up or dn-dn block */
-                linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
-                                  kp->fv_states(), hpsi[ispn], complex_zero, h);
+                //linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
+                //                  kp->fv_states(), hpsi[ispn], complex_zero, h);
             }
             
             for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));

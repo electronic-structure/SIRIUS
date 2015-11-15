@@ -37,7 +37,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    matrix<double_complex>& psi = kp__->fv_states().panel();
+    auto& psi = kp__->fv_states()->slab();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
