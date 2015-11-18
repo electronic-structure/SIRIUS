@@ -11,6 +11,8 @@ namespace sirius {
 class Gvec
 {
     private:
+
+        vector3d<double> q_;
         
         FFT_grid fft_grid_;
 
@@ -75,7 +77,8 @@ class Gvec
              int comm_size_factor__,
              bool build_reverse_mapping__,
              bool reduce_gvec__)
-            : fft_grid_(fft_grid__),
+            : q_(q__),
+              fft_grid_(fft_grid__),
               lattice_vectors_(M__),
               reduce_gvec_(reduce_gvec__)
         {
@@ -327,6 +330,7 @@ class Gvec
         /// Number of G-vectors for a fine-grained distribution.
         inline int num_gvec(int rank__) const
         {
+            assert((size_t)rank__ < gvec_distr_.counts.size());
             return gvec_distr_.counts[rank__];
         }
 
@@ -365,8 +369,15 @@ class Gvec
         /// Return G-vector in Cartesian coordinates.
         inline vector3d<double> cart(int ig__) const
         {
-            auto gv = gvec_by_full_index(gvec_full_index_(ig__));
-            return lattice_vectors_ * vector3d<double>(gv[0], gv[1], gv[2]);
+            auto G = gvec_by_full_index(gvec_full_index_(ig__));
+            return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+        }
+
+        /// Return G+q-vector in Cartesian coordinates.
+        inline vector3d<double> cart_shifted(int ig__) const
+        {
+            auto G = gvec_by_full_index(gvec_full_index_(ig__));
+            return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q_);
         }
 
         inline int shell(int ig__) const

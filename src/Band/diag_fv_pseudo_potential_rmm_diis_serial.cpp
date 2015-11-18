@@ -217,9 +217,10 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         }
 
         if (n == 0) return 0;
-
-        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, n, phi_tmp, hphi_tmp, ophi_tmp, kappa, packed_mtrx_offset,
-                         d_mtrx_packed, q_mtrx_packed);
+        
+        STOP();
+        //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, n, phi_tmp, hphi_tmp, ophi_tmp, kappa, packed_mtrx_offset,
+        //                 d_mtrx_packed, q_mtrx_packed);
 
         n = 0;
         for (int i = 0; i < num_bands; i++)
@@ -273,9 +274,9 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         }
     };
 
-
-    apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
-                     d_mtrx_packed, q_mtrx_packed);
+    STOP();
+    //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
+    //                 d_mtrx_packed, q_mtrx_packed);
 
     update_res(res_norm_start);
 

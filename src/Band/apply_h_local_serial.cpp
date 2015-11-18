@@ -12,15 +12,15 @@ void Band::apply_h_local_serial(K_point* kp__,
                                 std::vector<double> const& effective_potential__,
                                 std::vector<double> const& pw_ekin__,
                                 int num_phi__,
-                                matrix<double_complex> const& phi__,
-                                matrix<double_complex>& hphi__)
+                                Wave_functions& phi__,
+                                Wave_functions& hphi__)
 {
     PROFILE();
 
     Timer t("sirius::Band::apply_h_local_serial");
 
-    assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
-    assert(phi__.size(1) >= (size_t)num_phi__ && hphi__.size(1) >= (size_t)num_phi__);
+    //assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
+    //assert(phi__.size(1) >= (size_t)num_phi__ && hphi__.size(1) >= (size_t)num_phi__);
 
     bool in_place = (&phi__ == &hphi__);
 
@@ -106,12 +106,12 @@ void Band::apply_h_local_serial(K_point* kp__,
             else
             {
                 /* phi(G) -> phi(r) */
-                ctx_.fft_coarse(thread_id)->transform<1>(kp__->gkvec(), const_cast<double_complex*>(&phi__(0, i)));
+                ctx_.fft_coarse(thread_id)->transform<1>(kp__->gkvec(), phi__[i]);
                 /* multiply by effective potential */
                 for (int ir = 0; ir < ctx_.fft_coarse(thread_id)->size(); ir++) ctx_.fft_coarse(thread_id)->buffer(ir) *= effective_potential__[ir];
                 /* V(r)phi(r) -> [V*phi](G) */
                 //ctx_.fft_coarse(thread_id)->transform(-1, kp__->gkvec_coarse().z_sticks_coord());
-                ctx_.fft_coarse(thread_id)->transform<-1>(kp__->gkvec(), &hphi__(0, i));
+                ctx_.fft_coarse(thread_id)->transform<-1>(kp__->gkvec(), hphi__[i]);
 
                 if (in_place)
                 {

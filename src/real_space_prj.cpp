@@ -382,37 +382,38 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(mdarray<double, 3>& beta_radial_integrals__)
 {
     Timer t("sirius::Real_space_prj::generate_beta_pw_t");
+    STOP();
 
-    mdarray<double_complex, 2> beta_pw_t(spl_num_gvec_.local_size(), unit_cell_.num_beta_t());
+    mdarray<double_complex, 2> beta_pw_t;//(spl_num_gvec_.local_size(), unit_cell_.num_beta_t());
     
-    #pragma omp parallel
-    {
-        std::vector<double> gvec_rlm(Utils::lmmax(unit_cell_.lmax_beta()));
-        #pragma omp for
-        for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
-        {
-            int ig = (int)spl_num_gvec_[ig_loc];
+    //#pragma omp parallel
+    //{
+    //    std::vector<double> gvec_rlm(Utils::lmmax(unit_cell_.lmax_beta()));
+    //    #pragma omp for
+    //    for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
+    //    {
+    //        int ig = (int)spl_num_gvec_[ig_loc];
 
-            auto rtp = SHT::spherical_coordinates(gvec_.cart(ig));
-            SHT::spherical_harmonics(unit_cell_.lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
+    //        auto rtp = SHT::spherical_coordinates(gvec_.cart(ig));
+    //        SHT::spherical_harmonics(unit_cell_.lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
 
-            int igsh = gvec_.shell(ig);
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                auto atom_type = unit_cell_.atom_type(iat);
-            
-                for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-                {
-                    int l = atom_type->indexb(xi).l;
-                    int lm = atom_type->indexb(xi).lm;
-                    int idxrf = atom_type->indexb(xi).idxrf;
+    //        int igsh = gvec_.shell(ig);
+    //        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    //        {
+    //            auto atom_type = unit_cell_.atom_type(iat);
+    //        
+    //            for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+    //            {
+    //                int l = atom_type->indexb(xi).l;
+    //                int lm = atom_type->indexb(xi).lm;
+    //                int idxrf = atom_type->indexb(xi).idxrf;
 
-                    double_complex z = std::pow(double_complex(0, -1), l) * fourpi / unit_cell_.omega();
-                    beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_rlm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
-                }
-            }
-        }
-    }
+    //                double_complex z = std::pow(double_complex(0, -1), l) * fourpi / unit_cell_.omega();
+    //                beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_rlm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
+    //            }
+    //        }
+    //    }
+    //}
 
     return beta_pw_t;
 }

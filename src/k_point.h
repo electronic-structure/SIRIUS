@@ -29,6 +29,7 @@
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
 #include "wave_functions.h"
+#include "beta_projectors.h"
 
 namespace sirius
 {
@@ -53,7 +54,7 @@ class K_point
         
         /// 1D BLACS grid for a "slab" data distribution.
         /** This grid is used to distribute G+k vector index and keep a whole band index */
-        BLACS_grid const& blacs_grid_slab_;
+        //BLACS_grid const& blacs_grid_slab_;
         
         /// 1D BLACS grid for a "slice" data distribution.
         /** This grid is used to distribute band index and keep a whole G+k vector index */
@@ -156,11 +157,15 @@ class K_point
 
         int num_ranks_row_;
 
-        /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
-        matrix<double_complex> beta_gk_t_;
+        ///// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
+        //matrix<double_complex> beta_gk_t_;
 
-        /// Plane-wave coefficients of |beta> functions for atoms.
-        matrix<double_complex> beta_gk_;
+        ///// Plane-wave coefficients of |beta> functions for atoms.
+        //matrix<double_complex> beta_gk_;
+
+        Beta_projectors* beta_projectors_;
+        
+        //Beta_projectors* beta_gk_;
 
         mdarray<double_complex, 3> p_mtrx_;
 
@@ -186,7 +191,7 @@ class K_point
         void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
         /// Generate plane-wave coefficients for beta-projectors of atom types.
-        void generate_beta_gk_t();
+        //void generate_beta_gk_t();
 
     public:
 
@@ -206,6 +211,7 @@ class K_point
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (alm_coeffs_ != nullptr) delete alm_coeffs_;
+            if (beta_projectors_ != nullptr) delete beta_projectors_;
             delete fv_states_;
         }
 
@@ -599,15 +605,15 @@ class K_point
         //    return gkvec_coarse_;
         //}
 
-        inline matrix<double_complex> const& beta_gk_t() const
-        {
-            return beta_gk_t_;
-        }
+        //inline matrix<double_complex> const& beta_gk_t() const
+        //{
+        //    return beta_gk_t_;
+        //}
 
-        inline matrix<double_complex>& beta_gk()
-        {
-            return beta_gk_;
-        }
+        //inline matrix<double_complex>& beta_gk()
+        //{
+        //    return beta_gk_;
+        //}
 
         inline Matching_coefficients* alm_coeffs_row()
         {
@@ -639,10 +645,10 @@ class K_point
             return blacs_grid_;
         }
 
-        inline BLACS_grid const& blacs_grid_slab() const
-        {
-            return blacs_grid_slab_;
-        }
+        //inline BLACS_grid const& blacs_grid_slab() const
+        //{
+        //    return blacs_grid_slab_;
+        //}
 
         inline BLACS_grid const& blacs_grid_slice() const
         {
@@ -662,6 +668,11 @@ class K_point
         inline int num_gkvec_loc() const
         {
             return gkvec_.num_gvec(comm_.rank());
+        }
+
+        Beta_projectors& beta_projectors()
+        {
+            return *beta_projectors_;
         }
 };
 

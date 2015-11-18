@@ -351,7 +351,7 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 //== }
 
 template <bool need_o_diag>
-void Band::get_h_o_diag(K_point const* kp__,
+void Band::get_h_o_diag(K_point* kp__,
                   double v0__,
                   std::vector<double> const& pw_ekin__,
                   std::vector<double>& h_diag__,
@@ -365,13 +365,13 @@ void Band::get_h_o_diag(K_point const* kp__,
     /* local H contribution */
     for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
     {
-        int igk = kp__->gklo_basis_descriptor_row(igk_loc).igk; // TODO: fix the missleadig _row and _loc suffixes.
+        int igk = kp__->gklo_basis_descriptor_row(igk_loc).igk;
         h_diag__[igk_loc] = pw_ekin__[igk] + v0__;
         o_diag__[igk_loc] = 1.0;
     }
 
     /* non-local H contribution */
-    auto const& beta_gk_t = kp__->beta_gk_t();
+    auto& beta_gk_t = kp__->beta_projectors().beta_gk_t();
     matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)

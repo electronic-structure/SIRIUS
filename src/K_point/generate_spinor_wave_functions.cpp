@@ -8,7 +8,7 @@ void K_point::generate_spinor_wave_functions()
 
     Timer t("sirius::K_point::generate_spinor_wave_functions");
 
-    int nfv = parameters_.num_fv_states();
+    //int nfv = parameters_.num_fv_states();
     double_complex alpha(1, 0);
     double_complex beta(0, 0);
     

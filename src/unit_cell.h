@@ -167,7 +167,7 @@ class Unit_cell
         splindex<block> spl_atoms_;
 
         /// Total number of beta-projectors among atom types.
-        int num_beta_t_;
+        //int num_beta_t_;
 
         mdarray<double, 2> atom_pos_;
 
@@ -175,15 +175,15 @@ class Unit_cell
 
         Communicator const& comm_;
 
-        struct beta_chunk
-        {
-            int num_beta_;
-            int num_atoms_;
-            mdarray<int, 2> desc_;
-            mdarray<double, 2> atom_pos_;
-        };
+        //struct beta_chunk
+        //{
+        //    int num_beta_;
+        //    int num_atoms_;
+        //    mdarray<int, 2> desc_;
+        //    mdarray<double, 2> atom_pos_;
+        //};
 
-        std::vector<beta_chunk> beta_chunks_;
+        //std::vector<beta_chunk> beta_chunks_;
 
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
@@ -537,15 +537,15 @@ class Unit_cell
             return symmetry_;
         }
 
-        inline int num_beta_chunks() const
-        {
-            return (int)beta_chunks_.size();
-        }
+        //inline int num_beta_chunks() const
+        //{
+        //    return (int)beta_chunks_.size();
+        //}
 
-        inline beta_chunk& beta_chunk(int idx)
-        {
-            return beta_chunks_[idx];
-        }
+        //inline beta_chunk& beta_chunk(int idx)
+        //{
+        //    return beta_chunks_[idx];
+        //}
 
         inline matrix3d<double> const& lattice_vectors() const
         {
@@ -562,10 +562,10 @@ class Unit_cell
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
         }
 
-        inline int num_beta_t() const
-        {
-            return num_beta_t_;
-        }
+        //inline int num_beta_t() const
+        //{
+        //    return num_beta_t_;
+        //}
 
         void import(Unit_cell_input_section const& inp__)
         {

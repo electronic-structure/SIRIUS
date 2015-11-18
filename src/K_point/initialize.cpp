@@ -113,54 +113,55 @@ void K_point::initialize()
     /* compute |beta> projectors for atom types */
     if (!parameters_.full_potential())
     {
-        generate_beta_gk_t();
+        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, parameters_.lmax_beta());
+        //generate_beta_gk_t();
 
-        beta_gk_ = matrix<double_complex>(num_gkvec_loc(), unit_cell_.mt_basis_size());
+        //beta_gk_ = matrix<double_complex>(num_gkvec_loc(), unit_cell_.mt_basis_size());
 
-        for (int i = 0; i < unit_cell_.mt_basis_size(); i++)
-        {
-            int ia = unit_cell_.mt_lo_basis_descriptor(i).ia;
-            int xi = unit_cell_.mt_lo_basis_descriptor(i).xi;
+        //for (int i = 0; i < unit_cell_.mt_basis_size(); i++)
+        //{
+        //    int ia = unit_cell_.mt_lo_basis_descriptor(i).ia;
+        //    int xi = unit_cell_.mt_lo_basis_descriptor(i).xi;
 
-            auto atom_type = unit_cell_.atom(ia)->type();
+        //    auto atom_type = unit_cell_.atom(ia)->type();
 
-            for (int igk = 0; igk < num_gkvec_loc(); igk++)
-            {
-                beta_gk_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * std::conj(gkvec_phase_factors_(igk, ia));
-            }
-        }
+        //    for (int igk = 0; igk < num_gkvec_loc(); igk++)
+        //    {
+        //        beta_gk_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * std::conj(gkvec_phase_factors_(igk, ia));
+        //    }
+        //}
         
         if (false)
         {
-            p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
-            p_mtrx_.zero();
+            //p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
+            //p_mtrx_.zero();
 
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                auto atom_type = unit_cell_.atom_type(iat);
-                int nbf = atom_type->mt_basis_size();
-                int ofs = atom_type->offset_lo();
+            //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            //{
+            //    auto atom_type = unit_cell_.atom_type(iat);
+            //    int nbf = atom_type->mt_basis_size();
+            //    int ofs = atom_type->offset_lo();
 
-                matrix<double_complex> qinv(nbf, nbf);
-                atom_type->uspp().q_mtrx >> qinv;
-                linalg<CPU>::geinv(nbf, qinv);
-                
-                /* compute P^{+}*P */
-                linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
-                                  &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
-                comm_row().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
+            //    matrix<double_complex> qinv(nbf, nbf);
+            //    atom_type->uspp().q_mtrx >> qinv;
+            //    linalg<CPU>::geinv(nbf, qinv);
+            //    
+            //    /* compute P^{+}*P */
+            //    linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
+            //                      &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+            //    comm_row().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
 
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
-                    for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
-                }
-                /* compute (Q^{-1} + P^{+}*P)^{-1} */
-                linalg<CPU>::geinv(nbf, qinv);
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
-                    for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
-                }
-            }
+            //    for (int xi1 = 0; xi1 < nbf; xi1++)
+            //    {
+            //        for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+            //    }
+            //    /* compute (Q^{-1} + P^{+}*P)^{-1} */
+            //    linalg<CPU>::geinv(nbf, qinv);
+            //    for (int xi1 = 0; xi1 < nbf; xi1++)
+            //    {
+            //        for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+            //    }
+            //}
         }
         
         if (parameters_.processing_unit() == GPU)
@@ -201,7 +202,7 @@ void K_point::initialize()
             //                                     blacs_grid_slab_,
             //                                     splindex_base<int>::block_size(wf_size(), num_ranks()), 1);
 
-            fv_states_ = new Wave_functions(parameters_.num_fv_states(), gkvec_, *blacs_grid_.mpi_grid());
+            fv_states_ = new Wave_functions(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), false);
 
             assert(parameters_.num_fv_states() < num_gkvec());
             //assert(fv_states_.num_rows_local() == num_gkvec_loc());
@@ -232,7 +233,7 @@ void K_point::initialize()
         }
         else
         {
-            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), gkvec_, *blacs_grid_.mpi_grid());
+            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), true);
 
             //if (ctx_.fft(0)->parallel())
             //{

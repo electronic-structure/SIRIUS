@@ -26,7 +26,7 @@ void K_point::generate_gkvec(double gk_cutoff)
     
     /* create G+k vectors */
     gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft(0)->fft_grid(),
-                  ctx_.fft(0)->comm(), blacs_grid_.num_ranks_col(), false, false);
+                  ctx_.mpi_grid_fft().communicator(1 << 1), ctx_.mpi_grid_fft().dimension_size(0), false, false);
 }
 
 };

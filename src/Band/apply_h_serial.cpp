@@ -43,7 +43,9 @@ void Band::apply_h_serial(K_point* kp__,
     }
     
     /* apply local part of Hamiltonian */
-    apply_h_local_serial(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
+    STOP();
+
+    //apply_h_local_serial(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
 
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU && !economize_gpu_memory)

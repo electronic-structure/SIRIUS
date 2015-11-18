@@ -37,12 +37,13 @@ K_point::K_point(Simulation_context& ctx__,
       parameters_(ctx__.parameters()),
       unit_cell_(ctx_.unit_cell()),
       blacs_grid_(blacs_grid__),
-      blacs_grid_slab_(blacs_grid_slab__),
+      //blacs_grid_slab_(blacs_grid_slab__),
       blacs_grid_slice_(blacs_grid_slice__),
       weight_(weight__),
       alm_coeffs_row_(nullptr),
       alm_coeffs_col_(nullptr),
       alm_coeffs_(nullptr),
+      beta_projectors_(nullptr), 
       comm_(blacs_grid_.comm()),
       comm_row_(blacs_grid_.comm_row()),
       comm_col_(blacs_grid_.comm_col())
@@ -60,7 +61,7 @@ K_point::K_point(Simulation_context& ctx__,
     rank_row_ = comm_row_.rank();
     rank_col_ = comm_col_.rank();
 
-    if (comm_.rank() != blacs_grid_slab_.comm().rank()) TERMINATE("ranks don't match");
+    //if (comm_.rank() != blacs_grid_slab_.comm().rank()) TERMINATE("ranks don't match");
     if (comm_.rank() != blacs_grid_slice_.comm().rank()) TERMINATE("ranks don't match");
     
     iterative_solver_input_section_ = parameters_.iterative_solver_input_section();

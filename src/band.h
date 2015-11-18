@@ -27,6 +27,7 @@
 
 #include "periodic_function.h"
 #include "k_point.h"
+#include "non_local_operator.h"
 
 namespace sirius
 {
@@ -143,10 +144,9 @@ class Band
                                 std::vector<double> const& pw_ekin__,
                                 int N__,
                                 int n__,
-                                dmatrix<double_complex>& phi_tmp__,
-                                dmatrix<double_complex>& phi_slab__,
-                                dmatrix<double_complex>& hphi_slab__,
-                                dmatrix<double_complex>& ophi_slab__,
+                                Wave_functions& phi__,
+                                Wave_functions& hphi__,
+                                Wave_functions& ophi__,
                                 mdarray<int, 1>& packed_mtrx_offset__,
                                 mdarray<double_complex, 1>& d_mtrx_packed__,
                                 mdarray<double_complex, 1>& q_mtrx_packed__,
@@ -213,8 +213,8 @@ class Band
                                   std::vector<double> const& effective_potential__,
                                   std::vector<double> const& pw_ekin__,
                                   int num_phi__,
-                                  matrix<double_complex> const& phi__,
-                                  matrix<double_complex>& hphi__);
+                                  Wave_functions& phi__,
+                                  Wave_functions& hphi__);
         
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
@@ -254,13 +254,15 @@ class Band
                               std::vector<double> const& pw_ekin__, 
                               int N__,
                               int n__,
-                              matrix<double_complex>& phi__,
-                              matrix<double_complex>& hphi__,
-                              matrix<double_complex>& ophi__,
+                              Wave_functions& phi__,
+                              Wave_functions& hphi__,
+                              Wave_functions& ophi__,
                               mdarray<double_complex, 1>& kappa__,
-                              mdarray<int, 1>& packed_mtrx_offset__,
-                              mdarray<double_complex, 1>& d_mtrx_packed__,
-                              mdarray<double_complex, 1>& q_mtrx_packed__);
+                              D_operator& d_op,
+                              Q_operator& q_op);
+                              //mdarray<int, 1>& packed_mtrx_offset__,
+                              //mdarray<double_complex, 1>& d_mtrx_packed__,
+                              //mdarray<double_complex, 1>& q_mtrx_packed__);
 
         void set_fv_h_o_serial(K_point* kp__,
                                int N__,
@@ -516,7 +518,7 @@ class Band
 
         /// Get diagonal elements of Hamiltonian and (if needed) overlap.
         template <bool need_o_diag = true>
-        void get_h_o_diag(K_point const* kp__,
+        void get_h_o_diag(K_point* kp__,
                           double v0__,
                           std::vector<double> const& pw_ekin__,
                           std::vector<double>& h_diag__,

@@ -29,7 +29,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         matrix<double_complex> swapped_data_storage_as_matrix_;
 
-        mdarray<double_complex, 1> send_recv_buf_;
+        std::vector<double_complex> send_recv_buf_;
         
         splindex<block> spl_num_wfs_;
 
@@ -45,7 +45,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
     public:
 
-        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__, bool swappable__)
             : num_wfs_(num_wfs__),
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
@@ -60,18 +60,19 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
             num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
 
-            /* primary storage of PW wave functions: slabs*/ 
+            /* primary storage of PW wave functions: slabs */ 
             primary_data_storage_.resize(num_gvec_loc_ * num_wfs_);
             primary_ld_ = num_gvec_loc_;
-            /* swapped storage of PW wave functions: panles */
-            swapped_data_storage_.resize(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
             swapped_ld_ = gvec_.num_gvec_fft();
 
             primary_data_storage_as_matrix_ = mdarray<double_complex, 2>(&primary_data_storage_[0], primary_ld_, num_wfs_);
 
-            swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
-   
-            send_recv_buf_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+            if (swappable__) // TODO: optimize memory allocation size
+            {
+                swapped_data_storage_.resize(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+                swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
+                send_recv_buf_.resize(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+            }
             
             /* flat rank id */
             rank_ = comm_.rank();
@@ -85,7 +86,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 gvec_slab_distr_.counts[i] = gvec_.num_gvec(rank_row_ * num_ranks_col_ + i);
             }
             gvec_slab_distr_.calc_offsets();
-        
+
             assert(gvec_slab_distr_.offsets[num_ranks_col_ - 1] + gvec_slab_distr_.counts[num_ranks_col_ - 1] == gvec__.num_gvec_fft());
         }
 
@@ -131,7 +132,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 for (int i = 0; i < num_ranks_col_; i++)
                 {
                     int src_rank = rank_row_ * num_ranks_col_ + i;
-                    comm_.recv(&send_recv_buf_(gvec_slab_distr_.offsets[i] * n_loc), gvec_slab_distr_.counts[i] * n_loc, src_rank, i);
+                    comm_.recv(&send_recv_buf_[gvec_slab_distr_.offsets[i] * n_loc], gvec_slab_distr_.counts[i] * n_loc, src_rank, i);
                 }
                 
                 /* reorder received blocks to make G-vector index continuous */
@@ -141,7 +142,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                     for (int j = 0; j < num_ranks_col_; j++)
                     {
                         std::memcpy(&swapped_data_storage_[gvec_slab_distr_.offsets[j] + swapped_ld_ * i],
-                                    &send_recv_buf_(gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i),
+                                    &send_recv_buf_[gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i],
                                     gvec_slab_distr_.counts[j] * sizeof(double_complex));
                     }
                 }
@@ -172,7 +173,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 {
                     for (int j = 0; j < num_ranks_col_; j++)
                     {
-                        std::memcpy(&send_recv_buf_(gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i),
+                        std::memcpy(&send_recv_buf_[gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i],
                                     &swapped_data_storage_[gvec_slab_distr_.offsets[j] + swapped_ld_ * i],
                                     gvec_slab_distr_.counts[j] * sizeof(double_complex));
                     }
@@ -181,7 +182,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 for (int i = 0; i < num_ranks_col_; i++)
                 {
                     int dest_rank = rank_row_ * num_ranks_col_ + i;
-                    comm_.isend(&send_recv_buf_(gvec_slab_distr_.offsets[i] * n_loc), gvec_slab_distr_.counts[i] * n_loc, dest_rank, i);
+                    comm_.isend(&send_recv_buf_[gvec_slab_distr_.offsets[i] * n_loc], gvec_slab_distr_.counts[i] * n_loc, dest_rank, i);
                 }
             }
             else
@@ -232,6 +233,13 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         matrix<double_complex>& primary_data_storage_as_matrix()
         {
             return primary_data_storage_as_matrix_;
+        }
+
+        void copy_from(Wave_functions const& src__, int idx0__, int n__)
+        {
+            std::memcpy(&primary_data_storage_[primary_ld_ * idx0__],
+                        &src__.primary_data_storage_[primary_ld_ * idx0__],
+                        primary_ld_ * n__ * sizeof(double_complex));
         }
 };
 
