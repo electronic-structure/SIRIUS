@@ -123,7 +123,8 @@ void Band::apply_h_local_serial(K_point* kp__,
                 }
                 else
                 {
-                    for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
+                    for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) = pw_ekin__[igk];
+                    //for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
                 }
             }
             timers(thread_id) += (omp_get_wtime() - t1);

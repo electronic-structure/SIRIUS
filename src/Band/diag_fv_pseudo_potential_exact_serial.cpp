@@ -62,8 +62,6 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     //STOP();
     
     apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, ngk, phi, hphi, ophi, kappa, d_op, q_op);
-    //packed_mtrx_offset,
-      //               d_mtrx_packed, q_mtrx_packed);
         
     Utils::check_hermitian("h", hphi.primary_data_storage_as_matrix(), ngk);
     Utils::check_hermitian("o", ophi.primary_data_storage_as_matrix(), ngk);

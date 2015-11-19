@@ -366,6 +366,12 @@ class Gvec
             return gvec_by_full_index(gvec_full_index_(ig__));
         }
 
+        inline vector3d<double> gvec_shifted(int ig__) const
+        {
+            auto G = gvec_by_full_index(gvec_full_index_(ig__));
+            return (vector3d<double>(G[0], G[1], G[2]) + q_);
+        }
+
         /// Return G-vector in Cartesian coordinates.
         inline vector3d<double> cart(int ig__) const
         {

@@ -213,12 +213,17 @@ class Beta_projectors
                 {
                     int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
 
-                    double phase = twopi * (gkvec_.cart_shifted(igk) * unit_cell_.atom(ia)->position());
+                    double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia)->position());
 
                     beta_gk_(igk_loc, i) = beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) *
                                            std::exp(double_complex(0.0, -phase));
                 }
             }
+
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            auto c1 = beta_gk_.checksum();
+            DUMP("checksum(beta_gk) : %18.10f %18.10f", c1.real(), c1.imag());
+            #endif
         }
 
         matrix<double_complex>& beta_gk_t()
@@ -271,6 +276,11 @@ class Beta_projectors
                               &phi__(0, idx0__), num_gkvec_loc_, beta_phi_.at<CPU>(), beta_phi_.ld());
 
             comm_.allreduce(beta_phi_.at<CPU>(), (int)beta_phi_.size());
+
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            auto c1 = beta_phi_.checksum();
+            DUMP("checksum(beta_phi) : %18.10f %18.10f", std::real(c1), std::imag(c1))
+            #endif
         }
 };
 
