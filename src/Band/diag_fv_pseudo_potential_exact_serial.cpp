@@ -1,5 +1,6 @@
 #include "band.h"
 #include "non_local_operator.h"
+#include "hloc_operator.h"
 
 namespace sirius {
 
@@ -32,36 +33,9 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     D_operator d_op(kp__->beta_projectors());
     Q_operator q_op(kp__->beta_projectors());
 
-    ///* offset in the packed array of on-site matrices */
-    //mdarray<int, 1> packed_mtrx_offset(unit_cell_.num_atoms());
-    //int packed_mtrx_size = 0;
-    //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    //{   
-    //    int nbf = unit_cell_.atom(ia)->mt_basis_size();
-    //    packed_mtrx_offset(ia) = packed_mtrx_size;
-    //    packed_mtrx_size += nbf * nbf;
-    //}
-    //
-    ///* pack Q and D matrices */
-    //mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
-    //mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
+    Hloc_operator h_op(ctx_, kp__->gkvec(), pw_ekin, veff_it_coarse__);
 
-    //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    //{
-    //    int nbf = unit_cell_.atom(ia)->mt_basis_size();
-    //    for (int xi2 = 0; xi2 < nbf; xi2++)
-    //    {
-    //        for (int xi1 = 0; xi1 < nbf; xi1++)
-    //        {
-    //            d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
-    //            q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-    //        }
-    //    }
-    //}
-    //
-    //STOP();
-    
-    apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, ngk, phi, hphi, ophi, kappa, d_op, q_op);
+    apply_h_o_serial(kp__, 0, ngk, phi, hphi, ophi, kappa, h_op, d_op, q_op);
         
     Utils::check_hermitian("h", hphi.primary_data_storage_as_matrix(), ngk);
     Utils::check_hermitian("o", ophi.primary_data_storage_as_matrix(), ngk);

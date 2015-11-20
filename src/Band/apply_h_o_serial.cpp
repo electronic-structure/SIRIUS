@@ -7,19 +7,15 @@ namespace sirius {
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
 void Band::apply_h_o_serial(K_point* kp__, 
-                            std::vector<double> const& effective_potential__, 
-                            std::vector<double> const& pw_ekin__, 
                             int N__,
                             int n__,
                             Wave_functions& phi__,
                             Wave_functions& hphi__,
                             Wave_functions& ophi__,
                             mdarray<double_complex, 1>& kappa__,
+                            Hloc_operator& h_op,
                             D_operator& d_op,
                             Q_operator& q_op)
-                            //mdarray<int, 1>& packed_mtrx_offset__,
-                            //mdarray<double_complex, 1>& d_mtrx_packed__,
-                            //mdarray<double_complex, 1>& q_mtrx_packed__)
 {
     PROFILE();
 
@@ -53,20 +49,24 @@ void Band::apply_h_o_serial(K_point* kp__,
     //    ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), gpu_ptr, kp__->num_gkvec(), n__);
     //}
 
-    phi__.swap_forward(N__, n__);
-    
-    /* apply local part of Hamiltonian */
-    apply_h_local_serial(kp__, effective_potential__, pw_ekin__, phi__.local_size(), phi__, hphi__);
-    
-    hphi__.swap_backward(N__, n__);
+    //phi__.swap_forward(N__, n__);
+    //
+    ///* apply local part of Hamiltonian */
+    //apply_h_local_serial(kp__, effective_potential__, pw_ekin__, phi__.local_size(), phi__, hphi__);
+
+    ////for (int i = 0; i < phi__.local_size(); i++)
+    ////{
+    ////    std::memcpy(hphi__[i], phi__[i], kp__->num_gkvec() * sizeof(double_complex));
+    ////}
+    //
+    //hphi__.swap_backward(N__, n__);
+    //Utils::write_matrix("hloc_phi.txt", true, hphi__.primary_data_storage_as_matrix());
+
+    h_op.apply(phi__, hphi__, N__, n__);
+
     /* set intial ophi */
     ophi__.copy_from(phi__, N__, n__);
     
-    //if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
-    //{
-    //    std::memcpy(&ophi(0, N__), &phi__(0, N__), phi__.num_gvec_loc() * n__ * sizeof(double_complex));
-    //}
-
     #ifdef __GPU
     //if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
     //{

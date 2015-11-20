@@ -114,22 +114,6 @@ void K_point::initialize()
     if (!parameters_.full_potential())
     {
         beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, parameters_.lmax_beta());
-        //generate_beta_gk_t();
-
-        //beta_gk_ = matrix<double_complex>(num_gkvec_loc(), unit_cell_.mt_basis_size());
-
-        //for (int i = 0; i < unit_cell_.mt_basis_size(); i++)
-        //{
-        //    int ia = unit_cell_.mt_lo_basis_descriptor(i).ia;
-        //    int xi = unit_cell_.mt_lo_basis_descriptor(i).xi;
-
-        //    auto atom_type = unit_cell_.atom(ia)->type();
-
-        //    for (int igk = 0; igk < num_gkvec_loc(); igk++)
-        //    {
-        //        beta_gk_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * std::conj(gkvec_phase_factors_(igk, ia));
-        //    }
-        //}
         
         if (false)
         {

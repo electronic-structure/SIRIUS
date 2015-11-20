@@ -12,6 +12,8 @@ void Band::add_nl_h_o_pw(K_point* kp__,
                          mdarray<double_complex, 1>& d_mtrx_packed__,
                          mdarray<double_complex, 1>& q_mtrx_packed__)
 {
+    STOP();
+
     //bool economize_gpu_memory = true;
 
     ///* <\beta_{\xi}^{\alpha}|\phi_j> */

@@ -430,8 +430,9 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         memcpy(&hphi_tmp(0, i), &hphi[last[i]](0, i), kp__->num_gkvec() * sizeof(double_complex));
         memcpy(&ophi_tmp(0, i), &ophi[last[i]](0, i), kp__->num_gkvec() * sizeof(double_complex));
     }
-
-    set_fv_h_o_serial(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
+    
+    STOP();
+    //set_fv_h_o_serial(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
  
     Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp", kp__->comm());
     if (gen_evp_solver()->solve(num_bands, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 

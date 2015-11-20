@@ -167,12 +167,13 @@ class Beta_projectors
 
                 //if (parameters_.processing_unit() == GPU)
                 //{
+                //    STOP();
                 //    #ifdef __GPU
-                //    beta_chunks_[ib].desc_.allocate_on_device();
-                //    beta_chunks_[ib].desc_.copy_to_device();
+                //    //beta_chunks_[ib].desc_.allocate_on_device();
+                //    //beta_chunks_[ib].desc_.copy_to_device();
 
-                //    beta_chunks_[ib].atom_pos_.allocate_on_device();
-                //    beta_chunks_[ib].atom_pos_.copy_to_device();
+                //    //beta_chunks_[ib].atom_pos_.allocate_on_device();
+                //    //beta_chunks_[ib].atom_pos_.copy_to_device();
                 //    #endif
                 //}
             }
@@ -263,6 +264,8 @@ class Beta_projectors
 
         void inner(Wave_functions& phi__, int idx0__, int n__)
         {
+            Timer t("sirius::Beta_projectors::inner");
+            
             if (n__ > max_num_phi_)
             {
                 max_num_phi_ = n__;
@@ -279,7 +282,7 @@ class Beta_projectors
 
             #ifdef __PRINT_OBJECT_CHECKSUM
             auto c1 = beta_phi_.checksum();
-            DUMP("checksum(beta_phi) : %18.10f %18.10f", std::real(c1), std::imag(c1))
+            DUMP("checksum(beta_phi) : %18.10f %18.10f", c1.real(), c1.imag());
             #endif
         }
 };
