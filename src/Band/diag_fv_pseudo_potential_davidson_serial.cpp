@@ -57,10 +57,16 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     matrix<double_complex> ovlp(num_phi, num_phi);
     matrix<double_complex> hmlt_old(num_phi, num_phi);
     matrix<double_complex> ovlp_old(num_phi, num_phi);
-
-    matrix<double_complex> evec(num_phi, num_bands);
-    matrix<double_complex> evec_tmp;
-    if (converge_by_energy) evec_tmp = matrix<double_complex>(num_phi, num_bands);
+    
+    matrix<double_complex> evec;
+    if (converge_by_energy)
+    {
+        evec = matrix<double_complex>(num_phi, num_bands * 2);
+    }
+    else
+    {
+        evec = matrix<double_complex>(num_phi, num_bands);
+    }
 
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
@@ -69,9 +75,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     
     /* residuals */
     Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
-
-    /* norm of residuals */
-    std::vector<double> res_norm(num_bands);
 
     D_operator d_op(kp__->beta_projectors());
     Q_operator q_op(kp__->beta_projectors());
@@ -185,6 +188,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
 
+        STOP();
+
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
@@ -202,97 +207,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1 && !occ_band_converged)
         {
-            if (converge_by_energy)
-            {
-                /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-                double tol = ctx_.iterative_solver_tolerance();
-                n = 0;
-                for (int i = 0; i < num_bands; i++)
-                {
-                    if (kp__->band_occupancy(i) > 1e-10 && std::abs(eval[i] - eval_old[i]) > tol)
-                    {
-                        std::memcpy(&evec_tmp(0, n), &evec(0, i), N * sizeof(double_complex));
-                        eval_tmp[n++] = eval[i];
-                    }
-                }
-
-                #ifdef __GPU
-                if (parameters_.processing_unit() == GPU)
-                    cublas_set_matrix(N, n, sizeof(double_complex), evec_tmp.at<CPU>(), evec_tmp.ld(), evec_tmp.at<GPU>(), evec_tmp.ld());
-                #endif
-
-                residuals_serial(kp__, N, n, eval_tmp, evec_tmp, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
-
-                #ifdef __GPU
-                if (parameters_.processing_unit() == GPU && economize_gpu_memory)
-                {
-                    /* copy residuals to CPU because the content of kappa array can be destroyed */
-                    cublas_get_matrix(ngk, n, sizeof(double_complex),
-                                      kappa.at<GPU>(ngk * 2 * n), ngk,
-                                      res.at<CPU>(), res.ld());
-                }
-                #endif
-            }
-            else
-            {
-                residuals_serial(kp__, N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm, kappa);
-
-                #ifdef __GPU
-                matrix<double_complex> res_tmp;
-                if (parameters_.processing_unit() == GPU)
-                {
-                    if (economize_gpu_memory)
-                    {
-                        res_tmp = matrix<double_complex>(nullptr, kappa.at<GPU>(ngk * 2 * num_bands), ngk, num_bands);
-                    }
-                    else
-                    {
-                        res_tmp = matrix<double_complex>(nullptr, res.at<GPU>(), ngk, num_bands);
-                    }
-                }
-                #endif
-                
-                Timer t1("sirius::Band::diag_fv_pseudo_potential|sort_res");
-
-                n = 0;
-                for (int i = 0; i < num_bands; i++)
-                {
-                    /* take the residual if it's norm is above the threshold */
-                    if (res_norm[i] > ctx_.iterative_solver_tolerance() && kp__->band_occupancy(i) > 1e-10)
-                    {
-                        /* shift unconverged residuals to the beginning of array */
-                        if (n != i)
-                        {
-                            switch (parameters_.processing_unit())
-                            {
-                                case CPU:
-                                {
-                                    std::memcpy(&res(0, n), &res(0, i), ngk * sizeof(double_complex));
-                                    break;
-                                }
-                                case GPU:
-                                {
-                                    #ifdef __GPU
-                                    cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
-                                    #else
-                                    TERMINATE_NO_GPU
-                                    #endif
-                                    break;
-                                }
-                            }
-                        }
-                        n++;
-                    }
-                }
-                #ifdef __GPU
-                if (parameters_.processing_unit() == GPU && economize_gpu_memory)
-                {
-                    /* copy residuals to CPU because the content of kappa array will be destroyed */
-                    cublas_get_matrix(ngk, n, sizeof(double_complex), res_tmp.at<GPU>(), res_tmp.ld(),
-                                      res.at<CPU>(), res.ld());
-                }
-                #endif
-            }
+            n = residuals(kp__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, kappa);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */

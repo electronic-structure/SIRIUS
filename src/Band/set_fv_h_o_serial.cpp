@@ -26,10 +26,6 @@ void Band::set_fv_h_o_serial(K_point* kp__,
     
     assert(n__ != 0);
 
-    //auto& phi = phi__.primary_data_storage_as_matrix();
-    //auto& hphi = hphi__.primary_data_storage_as_matrix();
-    //auto& ophi = ophi__.primary_data_storage_as_matrix();
-
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < N__; i++)
     {

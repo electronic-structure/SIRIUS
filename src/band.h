@@ -273,6 +273,21 @@ class Band
                                matrix<double_complex>& o_old__,
                                mdarray<double_complex, 1>& kappa__);
 
+        int residuals(K_point* kp__,
+                      int N__,
+                      int num_bands__,
+                      std::vector<double>& eval__,
+                      std::vector<double>& eval_old__,
+                      matrix<double_complex>& evec__,
+                      Wave_functions& hphi__,
+                      Wave_functions& ophi__,
+                      Wave_functions& hpsi__,
+                      Wave_functions& opsi__,
+                      Wave_functions& res__,
+                      std::vector<double>& h_diag__,
+                      std::vector<double>& o_diag__,
+                      mdarray<double_complex, 1>& kappa__);
+
         void residuals_serial(K_point* kp__,
                               int N__,
                               int num_bands__,

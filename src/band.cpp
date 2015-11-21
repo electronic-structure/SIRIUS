@@ -1651,18 +1651,18 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 
     double v0 = effective_potential__->f_pw(0).real();
 
-    if (gen_evp_solver()->parallel())
-    {
-        #ifdef __SCALAPACK
-        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
-        #else
-        TERMINATE_NO_SCALAPACK
-        #endif
-    }
-    else
-    {
+    //if (gen_evp_solver()->parallel())
+    //{
+    //    #ifdef __SCALAPACK
+    //    diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
+    //    #else
+    //    TERMINATE_NO_SCALAPACK
+    //    #endif
+    //}
+    //else
+    //{
         diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse);
-    }
+    //}
 }
 
 }

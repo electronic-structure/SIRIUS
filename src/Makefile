@@ -44,6 +44,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/residuals_serial.cpp \
        Band/residuals_parallel.cpp \
        Band/solve_sv.cpp \
+       Band/residuals.cpp \
        Band/diag_fv_full_potential.cpp \
        Potential/init.cpp \
        Potential/poisson.cpp \
