@@ -188,8 +188,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                                 &eval[0], evec.at<CPU>(), evec.ld());
         }
 
-        STOP();
-
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {

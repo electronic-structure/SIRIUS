@@ -29,12 +29,8 @@ extern "C" void normalize_residuals_gpu(int num_gkvec_row,
 #endif
 
 void Band::residuals_serial(K_point* kp__,
-                            int N__,
                             int num_bands__,
                             std::vector<double>& eval__,
-                            matrix<double_complex>& evec__,
-                            Wave_functions& hphi__,
-                            Wave_functions& ophi__,
                             Wave_functions& hpsi__,
                             Wave_functions& opsi__,
                             Wave_functions& res__,
@@ -49,20 +45,6 @@ void Band::residuals_serial(K_point* kp__,
     #ifdef __GPU
     bool economize_gpu_memory = (kappa__.size() != 0);
     #endif
-
-    assert(kp__->num_gkvec() == hphi__.num_gvec_loc());
-    assert(kp__->num_gkvec() == hpsi__.num_gvec_loc());
-    assert(kp__->num_gkvec() == ophi__.num_gvec_loc());
-    assert(kp__->num_gkvec() == opsi__.num_gvec_loc());
-
-    if (pu == CPU)
-    {
-        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        hpsi__.transform_from(hphi__, N__, evec__, num_bands__);
-
-        /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        opsi__.transform_from(ophi__, N__, evec__, num_bands__);
-    }
 
     if (pu == GPU)
     {
@@ -113,38 +95,56 @@ void Band::residuals_serial(K_point* kp__,
         //#endif
     }
 
+    /* compute residuals norm and apply preconditioner */
     if (pu == CPU)
     {
-        /* compute residuals norm and apply preconditioner */
+        std::fill(res_norm__.begin(), res_norm__.end(), 0);
+        /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
         #pragma omp parallel for
         for (int i = 0; i < num_bands__; i++)
         {
-            double r = 0;
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            double norm2 = 0;
+            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
             {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-                res__(igk, i) = hpsi__(igk, i) - eval__[i] * opsi__(igk, i);
-                r += std::real(std::conj(res__(igk, i)) * res__(igk, i));
+                res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
+                norm2 += std::real(std::conj(res__(ig, i)) * res__(ig, i));
             }
-            res_norm__[i] = std::sqrt(r);
-            
-            /* apply preconditioner */
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            res_norm__[i] = norm2;
+        }
+        res__.comm().allreduce(res_norm__);
+
+        /* compute norm */
+        for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+
+        /* apply preconditioner */
+        #pragma omp parallel for
+        for (int i = 0; i < num_bands__; i++)
+        {
+            for (int ig = 0; ig < res__.num_gvec_loc(); ig++)
             {
-                double p = h_diag__[igk] - eval__[i] * o_diag__[igk];
+                double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                res__(igk, i) /= p;
+                res__(ig, i) /= p;
             }
         }
 
-        /* Normalize new basis functions */
+        std::vector<double> norm2(num_bands__, 0);
+        /* normalize new basis functions */
         #pragma omp parallel for
         for (int i = 0; i < num_bands__; i++)
         {
             double d = 0;
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++) d += std::real(std::conj(res__(igk, i)) * res__(igk, i));
-            d = 1.0 / std::sqrt(d);
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++) res__(igk, i) *= d;
+            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
+                d += std::real(std::conj(res__(ig, i)) * res__(ig, i));
+            norm2[i] = d;
+        }
+        res__.comm().allreduce(norm2);
+        #pragma omp parallel for
+        for (int i = 0; i < num_bands__; i++)
+        {
+            double d = 1.0 / std::sqrt(norm2[i]);
+            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) res__(ig, i) *= d;
         }
     }
 

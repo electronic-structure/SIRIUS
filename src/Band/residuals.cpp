@@ -50,7 +50,12 @@ int Band::residuals(K_point* kp__,
 
         matrix<double_complex> evec_tmp(&evec__(0, num_bands__), evec__.ld(), n);
 
-        residuals_serial(kp__, N__, n, eval_tmp, evec_tmp, hphi__, ophi__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
+        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
+        hpsi__.transform_from(hphi__, N__, evec_tmp, n);
+        /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+        opsi__.transform_from(ophi__, N__, evec_tmp, n);
+
+        residuals_serial(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
 
         //#ifdef __GPU
         //if (parameters_.processing_unit() == GPU && economize_gpu_memory)
@@ -64,7 +69,12 @@ int Band::residuals(K_point* kp__,
     }
     else
     {
-        residuals_serial(kp__, N__, num_bands__, eval__, evec__, hphi__, ophi__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
+        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
+        hpsi__.transform_from(hphi__, N__, evec__, num_bands__);
+        /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+        opsi__.transform_from(ophi__, N__, evec__, num_bands__);
+
+        residuals_serial(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
 
         //#ifdef __GPU
         //matrix<double_complex> res_tmp;

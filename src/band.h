@@ -289,12 +289,8 @@ class Band
                       mdarray<double_complex, 1>& kappa__);
 
         void residuals_serial(K_point* kp__,
-                              int N__,
                               int num_bands__,
                               std::vector<double>& eval__,
-                              matrix<double_complex>& evec__,
-                              Wave_functions& hphi__,
-                              Wave_functions& ophi__,
                               Wave_functions& hpsi__,
                               Wave_functions& opsi__,
                               Wave_functions& res__,
