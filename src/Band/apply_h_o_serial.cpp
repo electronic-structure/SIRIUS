@@ -24,7 +24,7 @@ void Band::apply_h_o_serial(K_point* kp__,
     matrix<double_complex> phi, hphi, ophi, beta_gk;
     
     /* if temporary array is allocated, this would be the only big array on GPU */
-    bool economize_gpu_memory = (kappa__.size() != 0);
+    //bool economize_gpu_memory = (kappa__.size() != 0);
 
     //if (parameters_.processing_unit() == CPU)
     //{
@@ -85,8 +85,6 @@ void Band::apply_h_o_serial(K_point* kp__,
     {
         d_op.apply(hphi__, N__, n__);
         q_op.apply(ophi__, N__, n__);
-        
-        //add_nl_h_o_pw(kp__, n__, phi, hphi, ophi, beta_gk, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__);
     }
     else
     {

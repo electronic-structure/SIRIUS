@@ -235,16 +235,16 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             return primary_data_storage_as_matrix_;
         }
 
-        inline void copy_from(Wave_functions const& src__, int i0__, int j0__, int n__)
+        inline void copy_from(Wave_functions const& src__, int i0__, int n__, int j0__)
         {
-            std::memcpy(&primary_data_storage_[primary_ld_ * i0__],
-                        &src__.primary_data_storage_[primary_ld_ * j0__],
+            std::memcpy(&primary_data_storage_[primary_ld_ * j0__],
+                        &src__.primary_data_storage_[primary_ld_ * i0__],
                         primary_ld_ * n__ * sizeof(double_complex));
         }
 
-        inline void copy_from(Wave_functions const& src__, int idx0__, int n__)
+        inline void copy_from(Wave_functions const& src__, int i0__, int n__)
         {
-            copy_from(src__, idx0__, idx0__, n__);
+            copy_from(src__, i0__, n__, i0__);
         }
 
         inline void transform_from(Wave_functions& wf__, int nwf__, matrix<double_complex>& mtrx__, int n__)

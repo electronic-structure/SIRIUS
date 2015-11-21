@@ -305,7 +305,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             {
                 case CPU:
                 {
-                    linalg<CPU>::gemm(0, 0, ngk, num_bands, N, &phi(0, 0), ngk, &evec(0, 0), evec.ld(), &psi(0, 0), ngk);
+                    psi.transform_from(phi, N, evec, num_bands);
                     break;
                 }
                 case GPU:
@@ -368,11 +368,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                         {
                             hpsi.transform_from(hphi, N, evec, num_bands);
                             opsi.transform_from(ophi, N, evec, num_bands);
-                            //linalg<CPU>::gemm(0, 0, ngk, num_bands, N, &hphi(0, 0), ngk, &evec(0, 0), evec.ld(), 
-                            //                  &hpsi(0, 0), ngk);
-                            
-                            //linalg<CPU>::gemm(0, 0, ngk, num_bands, N, &ophi(0, 0), ngk, &evec(0, 0), evec.ld(), 
-                            //                  &opsi(0, 0), ngk);
                             break;
                         }
                         case GPU:
@@ -430,7 +425,6 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 #endif
                 
                 /* update basis functions */
-                //std::memcpy(phi.at<CPU>(), psi.at<CPU>(), num_bands * ngk * sizeof(double_complex));
                 phi.copy_from(psi, 0, num_bands);
                 N = num_bands;
             }
@@ -438,8 +432,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         /* expand variational subspace with new basis vectors obtatined from residuals */
         if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
         {
-            phi.copy_from(res, N, 0, n);
-            //memcpy(phi.at<CPU>(0, N), res.at<CPU>(), n * ngk * sizeof(double_complex));
+            phi.copy_from(res, 0, n, N);
         }
         if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
         {

@@ -58,12 +58,10 @@ void Band::residuals_serial(K_point* kp__,
     if (pu == CPU)
     {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, &hphi__(0, 0), kp__->num_gkvec(), &evec__(0, 0), evec__.ld(), 
-                          &hpsi__(0, 0), kp__->num_gkvec());
+        hpsi__.transform_from(hphi__, N__, evec__, num_bands__);
 
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, &ophi__(0, 0), kp__->num_gkvec(), &evec__(0, 0), evec__.ld(), 
-                          &opsi__(0, 0), kp__->num_gkvec());
+        opsi__.transform_from(ophi__, N__, evec__, num_bands__);
     }
 
     if (pu == GPU)
@@ -134,11 +132,7 @@ void Band::residuals_serial(K_point* kp__,
             for (int igk = 0; igk < kp__->num_gkvec(); igk++)
             {
                 double p = h_diag__[igk] - eval__[i] * o_diag__[igk];
-
-                //if (std::abs(p) < 0.5e-5) p = copysign(0.5e-5, p);
-
-                p *= 2; // QE formula is in Ry; here we convert to Ha
-                p = 0.25 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                 res__(igk, i) /= p;
             }
         }
