@@ -55,7 +55,7 @@ int Band::residuals(K_point* kp__,
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         opsi__.transform_from(ophi__, N__, evec_tmp, n);
 
-        residuals_serial(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
+        residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
 
         //#ifdef __GPU
         //if (parameters_.processing_unit() == GPU && economize_gpu_memory)
@@ -74,7 +74,7 @@ int Band::residuals(K_point* kp__,
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         opsi__.transform_from(ophi__, N__, evec__, num_bands__);
 
-        residuals_serial(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
+        residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
 
         //#ifdef __GPU
         //matrix<double_complex> res_tmp;

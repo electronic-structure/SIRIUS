@@ -250,7 +250,6 @@ class Periodic_function
                 }
                 case -1:
                 {
-                    //STOP();
                     fft_->input(&f_it(0));
                     fft_->transform<-1>(gvec_, &f_pw(gvec_.offset_gvec_fft()));
                     fft_->comm().allgather(&f_pw(0), gvec_.offset_gvec_fft(), gvec_.num_gvec_fft());

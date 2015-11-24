@@ -220,15 +220,15 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             return gvec_;
         }
 
-        inline splindex<block> const& spl_n() const
+        inline splindex<block> const& spl_num_swapped() const
         {
             return spl_n_;
         }
 
-        inline int local_size() const
-        {
-            return spl_n_.local_size();
-        }
+        //inline int local_size() const
+        //{
+        //    return spl_n_.local_size();
+        //}
 
         matrix<double_complex>& primary_data_storage_as_matrix()
         {
@@ -285,16 +285,6 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         }
 };
 
-//inline void inner(Wave_functions& wf1__, int i0__, int m__, Wave_functions& wf2__, int j0__, int n__,
-//                  double_complex* result__, int ld__)
-//{
-//    assert(wf1__.num_gvec_loc() == wf2__.num_gvec_loc());
-//
-//
-//    linalg<CPU>::gemm(2, 0, m__, n__, wf1__.num_gvec_loc(), &wf1__(0, i0__), wf1__.num_gvec_loc(),
-//                      &wf2__(0, j0__), wf2__.num_gvec_loc(), result__, ld__);
-//}
-//
 };
 
 #endif

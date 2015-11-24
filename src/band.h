@@ -181,20 +181,20 @@ class Band
                                  dmatrix<double_complex>& o_old__,
                                  mdarray<double_complex, 1>& kappa__);
 
-        void residuals_parallel(int N__,
-                                int num_bands__,
-                                K_point* kp__,
-                                std::vector<double>& eval__,
-                                matrix<double_complex>& evec__,
-                                dmatrix<double_complex>& hphi__,
-                                dmatrix<double_complex>& ophi__,
-                                dmatrix<double_complex>& hpsi__,
-                                dmatrix<double_complex>& opsi__,
-                                dmatrix<double_complex>& res__,
-                                std::vector<double>& h_diag__,
-                                std::vector<double>& o_diag__,
-                                std::vector<double>& res_norm__,
-                                mdarray<double_complex, 1>& kappa__);
+        //void residuals_parallel(int N__,
+        //                        int num_bands__,
+        //                        K_point* kp__,
+        //                        std::vector<double>& eval__,
+        //                        matrix<double_complex>& evec__,
+        //                        dmatrix<double_complex>& hphi__,
+        //                        dmatrix<double_complex>& ophi__,
+        //                        dmatrix<double_complex>& hpsi__,
+        //                        dmatrix<double_complex>& opsi__,
+        //                        dmatrix<double_complex>& res__,
+        //                        std::vector<double>& h_diag__,
+        //                        std::vector<double>& o_diag__,
+        //                        std::vector<double>& res_norm__,
+        //                        mdarray<double_complex, 1>& kappa__);
 
         void diag_fv_pseudo_potential_parallel(K_point* kp__,
                                                double v0__,
@@ -288,16 +288,16 @@ class Band
                       std::vector<double>& o_diag__,
                       mdarray<double_complex, 1>& kappa__);
 
-        void residuals_serial(K_point* kp__,
-                              int num_bands__,
-                              std::vector<double>& eval__,
-                              Wave_functions& hpsi__,
-                              Wave_functions& opsi__,
-                              Wave_functions& res__,
-                              std::vector<double>& h_diag__,
-                              std::vector<double>& o_diag__,
-                              std::vector<double>& res_norm__,
-                              mdarray<double_complex, 1>& kappa__);
+        void residuals_aux(K_point* kp__,
+                           int num_bands__,
+                           std::vector<double>& eval__,
+                           Wave_functions& hpsi__,
+                           Wave_functions& opsi__,
+                           Wave_functions& res__,
+                           std::vector<double>& h_diag__,
+                           std::vector<double>& o_diag__,
+                           std::vector<double>& res_norm__,
+                           mdarray<double_complex, 1>& kappa__);
 
         void add_nl_h_o_pw(K_point* kp__,
                            int n__,

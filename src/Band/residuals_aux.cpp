@@ -28,16 +28,16 @@ extern "C" void normalize_residuals_gpu(int num_gkvec_row,
                                         cuDoubleComplex* res);
 #endif
 
-void Band::residuals_serial(K_point* kp__,
-                            int num_bands__,
-                            std::vector<double>& eval__,
-                            Wave_functions& hpsi__,
-                            Wave_functions& opsi__,
-                            Wave_functions& res__,
-                            std::vector<double>& h_diag__,
-                            std::vector<double>& o_diag__,
-                            std::vector<double>& res_norm__,
-                            mdarray<double_complex, 1>& kappa__)
+void Band::residuals_aux(K_point* kp__,
+                         int num_bands__,
+                         std::vector<double>& eval__,
+                         Wave_functions& hpsi__,
+                         Wave_functions& opsi__,
+                         Wave_functions& res__,
+                         std::vector<double>& h_diag__,
+                         std::vector<double>& o_diag__,
+                         std::vector<double>& res_norm__,
+                         mdarray<double_complex, 1>& kappa__)
 {
     Timer t("sirius::Band::residuals_serial");
 

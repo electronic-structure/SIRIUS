@@ -41,8 +41,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/diag_fv_pseudo_potential_davidson_serial.cpp \
        Band/diag_fv_pseudo_potential_davidson_parallel.cpp \
        Band/apply_magnetic_field.cpp \
-       Band/residuals_serial.cpp \
-       Band/residuals_parallel.cpp \
+       Band/residuals_aux.cpp \
        Band/solve_sv.cpp \
        Band/residuals.cpp \
        Band/diag_fv_full_potential.cpp \

@@ -251,6 +251,8 @@ class K_point
         /// Get the local list of occupied bands.
         occupied_bands_descriptor get_occupied_bands_list(Communicator const& comm__);
 
+        int num_occupied_bands(int ispn__);
+
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,
                               mdarray<double, 2>& atom_pos__,

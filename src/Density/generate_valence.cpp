@@ -56,18 +56,19 @@ void Density::generate_valence(K_set& ks__)
         if (rho_->f_it(ir) < 0) TERMINATE("density is wrong");
     }
     #endif
-    //double nel = 0;
-    //for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
-    //{
-    //    nel += rho_->f_it(ir);
-    //}
-    //nel = nel * unit_cell_.omega() / ctx_.fft(0)->size();
-    //printf("number of electrons: %f\n", nel);
+    //== double nel = 0;
+    //== for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+    //== {
+    //==     nel += rho_->f_it(ir);
+    //== }
+    //== ctx_.mpi_grid().communicator(1 << _dim_row_).allreduce(&nel, 1);
+    //== nel = nel * unit_cell_.omega() / ctx_.fft(0)->size();
+    //== printf("number of electrons: %f\n", nel);
     
     /* get rho(G) */
     rho_->fft_transform(-1);
 
-    //printf("number of electrons: %f\n", rho_->f_pw(0).real());
+    //printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
 
     //STOP();
 

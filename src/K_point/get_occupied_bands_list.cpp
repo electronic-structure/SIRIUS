@@ -16,7 +16,7 @@ occupied_bands_descriptor K_point::get_occupied_bands_list(Communicator const& c
 
     for (int p = 0; p < ns ; p++)
     {
-        for (int jloc = 0; jloc < (int)spl_nb.local_size(); jloc++)
+        for (int jloc = 0; jloc < spl_nb.local_size(); jloc++)
         {
             int j = spl_nb[jloc] + p * parameters_.num_fv_states();
             double w = band_occupancy(j) * weight();
@@ -33,6 +33,24 @@ occupied_bands_descriptor K_point::get_occupied_bands_list(Communicator const& c
     comm__.allreduce(&occupied_bands.num_occupied_bands_, 1);
 
     return occupied_bands;
+}
+
+int K_point::num_occupied_bands(int ispn__)
+{
+    if ((parameters_.num_mag_dims() == 3 || parameters_.num_mag_dims() == 0) && ispn__ != 0)
+    {
+        TERMINATE("wrong spin index");
+    }
+
+    int nb = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
+
+    int n = 0;
+    for (int i = 0; i < nb; i++)
+    {
+        int j = i + ispn__ * parameters_.num_fv_states();
+        if (band_occupancy(j) * weight() > 1e-14) n++;
+    }
+    return n;
 }
 
 };
