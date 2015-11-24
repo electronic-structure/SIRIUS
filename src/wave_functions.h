@@ -19,17 +19,17 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         /// Entire communicator.
         Communicator const& comm_;
 
-        std::vector<double_complex> primary_data_storage_;
+        mdarray<double_complex, 1> primary_data_storage_;
         int primary_ld_;
 
-        std::vector<double_complex> swapped_data_storage_;
+        mdarray<double_complex, 1> swapped_data_storage_;
         int swapped_ld_;
 
         matrix<double_complex> primary_data_storage_as_matrix_;
 
         matrix<double_complex> swapped_data_storage_as_matrix_;
 
-        std::vector<double_complex> send_recv_buf_;
+        mdarray<double_complex, 1> send_recv_buf_;
         
         splindex<block> spl_num_wfs_;
 
@@ -61,7 +61,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
 
             /* primary storage of PW wave functions: slabs */ 
-            primary_data_storage_.resize(num_gvec_loc_ * num_wfs_);
+            primary_data_storage_ = mdarray<double_complex, 1>(num_gvec_loc_ * num_wfs_);
             primary_ld_ = num_gvec_loc_;
             swapped_ld_ = gvec_.num_gvec_fft();
 
@@ -69,9 +69,9 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
             if (swappable__) // TODO: optimize memory allocation size
             {
-                swapped_data_storage_.resize(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+                swapped_data_storage_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
                 swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
-                send_recv_buf_.resize(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+                send_recv_buf_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
             }
             
             /* flat rank id */
@@ -90,9 +90,9 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             assert(gvec_slab_distr_.offsets[num_ranks_col_ - 1] + gvec_slab_distr_.counts[num_ranks_col_ - 1] == gvec__.num_gvec_fft());
         }
 
-        ~Wave_functions()
-        {
-        }
+        //~Wave_functions()
+        //{
+        //}
 
         void swap_forward(int idx0__, int n__)
         {
@@ -202,11 +202,13 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         inline double_complex& operator()(int igloc__, int i__)
         {
+            assert(igloc__ + primary_ld_ * i__ < (int)primary_data_storage_.size()); 
             return primary_data_storage_[igloc__ + primary_ld_ * i__];
         }
 
         inline double_complex* operator[](int i__)
         {
+            assert(swapped_ld_ * i__ < (int)swapped_data_storage_.size());
             return &swapped_data_storage_[swapped_ld_ * i__];
         }
 
@@ -224,11 +226,6 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             return spl_n_;
         }
-
-        //inline int local_size() const
-        //{
-        //    return spl_n_.local_size();
-        //}
 
         matrix<double_complex>& primary_data_storage_as_matrix()
         {

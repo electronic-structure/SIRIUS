@@ -40,10 +40,11 @@ K_point::K_point(Simulation_context& ctx__,
       //blacs_grid_slab_(blacs_grid_slab__),
       blacs_grid_slice_(blacs_grid_slice__),
       weight_(weight__),
+      fv_states_(nullptr),
       alm_coeffs_row_(nullptr),
       alm_coeffs_col_(nullptr),
       alm_coeffs_(nullptr),
-      beta_projectors_(nullptr), 
+      beta_projectors_(nullptr),
       comm_(blacs_grid_.comm()),
       comm_row_(blacs_grid_.comm_row()),
       comm_col_(blacs_grid_.comm_col())
@@ -69,6 +70,9 @@ K_point::K_point(Simulation_context& ctx__,
     #ifndef __GPU
     if (parameters_.processing_unit() == GPU) TERMINATE_NO_GPU
     #endif
+
+    spinor_wave_functions_[0] = nullptr;
+    spinor_wave_functions_[1] = nullptr;
 }
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)

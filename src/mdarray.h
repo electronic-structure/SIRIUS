@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -490,6 +490,18 @@ class mdarray_base
         {
             mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2, i3)];
+        }
+
+        inline T& operator[](size_t const idx__)
+        {
+            assert(idx__ >= 0 && idx__ < size());
+            return ptr_[idx__];
+        }
+
+        inline T const& operator[](size_t const idx__) const
+        {
+            assert(idx__ >= 0 && idx__ < size());
+            return ptr_[idx__];
         }
 
         template <processing_unit_t pu>

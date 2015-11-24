@@ -157,16 +157,8 @@ class K_point
 
         int num_ranks_row_;
 
-        ///// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
-        //matrix<double_complex> beta_gk_t_;
-
-        ///// Plane-wave coefficients of |beta> functions for atoms.
-        //matrix<double_complex> beta_gk_;
-
         Beta_projectors* beta_projectors_;
         
-        //Beta_projectors* beta_gk_;
-
         mdarray<double_complex, 3> p_mtrx_;
 
         mdarray<double, 2> gkvec_row_;
@@ -190,9 +182,6 @@ class K_point
 
         void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
         
-        /// Generate plane-wave coefficients for beta-projectors of atom types.
-        //void generate_beta_gk_t();
-
     public:
 
         Iterative_solver_input_section iterative_solver_input_section_;
@@ -212,7 +201,9 @@ class K_point
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (alm_coeffs_ != nullptr) delete alm_coeffs_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
-            delete fv_states_;
+            if (fv_states_ != nullptr) delete fv_states_;
+            if (spinor_wave_functions_[0] != nullptr) delete spinor_wave_functions_[0];
+            if (spinor_wave_functions_[1] != nullptr) delete spinor_wave_functions_[1];
         }
 
         /// Initialize the k-point related arrays and data

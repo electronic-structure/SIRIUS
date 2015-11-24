@@ -40,6 +40,7 @@ class Beta_projectors
 
         std::vector<beta_chunk> beta_chunks_;
 
+        /// Generate plane-wave coefficients for beta-projectors of atom types.
         void generate_beta_gk_t()
         {
             /* find shells of G+k vectors */
@@ -106,7 +107,7 @@ class Beta_projectors
                                 int nr = atom_type->uspp().num_beta_radial_points[idxrf];
                                 /* compute \int j_l(|G+k|r) beta_l(r) r dr */
                                 /* remeber that beta(r) are defined as miltiplied by r */
-                                beta_radial_integrals_[idxrf] = sirius::inner(*jl(l, iat), beta_rf(idxrf, iat), 1, nr);
+                                beta_radial_integrals_[idxrf] = sirius::inner(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
                             }
         
                             for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)

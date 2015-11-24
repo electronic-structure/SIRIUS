@@ -259,7 +259,7 @@ class K_set
         void clear()
         {
             PROFILE();
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++) delete kpoints_[ik];
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) delete kpoints_[ik];
             kpoints_.clear();
         }
         
@@ -275,7 +275,7 @@ class K_set
         
         inline int spl_num_kpoints(int ikloc)
         {
-            return static_cast<int>(spl_num_kpoints_[ikloc]);
+            return spl_num_kpoints_[ikloc];
         }
 
         void set_band_occupancies(int ik, double* band_occupancies)
