@@ -173,17 +173,17 @@ class dmatrix
 
         inline int num_rows_local() const
         {
-            return static_cast<int>(spl_row_.local_size());
+            return spl_row_.local_size();
         }
 
         inline int num_rows_local(int rank) const
         {
-            return static_cast<int>(spl_row_.local_size(rank));
+            return spl_row_.local_size(rank);
         }
 
         inline int irow(int irow_loc) const
         {
-            return static_cast<int>(spl_row_[irow_loc]);
+            return spl_row_[irow_loc];
         }
 
         inline int num_cols() const
@@ -194,13 +194,13 @@ class dmatrix
         /// Local number of columns.
         inline int num_cols_local() const
         {
-            return static_cast<int>(spl_col_.local_size());
+            return spl_col_.local_size();
         }
         
         /// Inindex of column in global matrix.
         inline int icol(int icol_loc) const
         {
-            return static_cast<int>(spl_col_[icol_loc]);
+            return spl_col_[icol_loc];
         }
 
         inline int const* descriptor() const

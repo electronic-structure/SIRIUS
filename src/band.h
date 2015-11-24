@@ -250,6 +250,17 @@ class Band
                                                mdarray<double_complex, 1>& op_mtrx_packed__,
                                                double_complex alpha);
 
+        void diag_h_o(K_point* kp__,
+                      int N__,
+                      int num_bands__,
+                      matrix<double_complex>& hmlt__,
+                      matrix<double_complex>& ovlp__,
+                      matrix<double_complex>& evec__,
+                      dmatrix<double_complex>& hmlt_dist__,
+                      dmatrix<double_complex>& ovlp_dist__,
+                      dmatrix<double_complex>& evec_dist__,
+                      std::vector<double>& eval__);
+
         void apply_h_o_serial(K_point* kp__, 
                               int N__,
                               int n__,

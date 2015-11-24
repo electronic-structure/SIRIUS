@@ -46,18 +46,19 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, ngk);
 
+    /* allocate wave-functions */
     Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), true);
     Wave_functions hphi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), true);
     Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
-
     Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
     Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
 
+    /* allocate Hamiltonian and overlap */
     matrix<double_complex> hmlt(num_phi, num_phi);
     matrix<double_complex> ovlp(num_phi, num_phi);
     matrix<double_complex> hmlt_old(num_phi, num_phi);
     matrix<double_complex> ovlp_old(num_phi, num_phi);
-    
+
     matrix<double_complex> evec;
     if (converge_by_energy)
     {
@@ -66,6 +67,24 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     else
     {
         evec = matrix<double_complex>(num_phi, num_bands);
+    }
+
+    int bs = parameters_.cyclic_block_size();
+
+    dmatrix<double_complex> hmlt_dist;
+    dmatrix<double_complex> ovlp_dist;
+    dmatrix<double_complex> evec_dist;
+    if (kp__->comm().size() == 1)
+    {
+        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
+        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_bands, kp__->blacs_grid(), bs, bs);
+    }
+    else
+    {
+        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
+        evec_dist = dmatrix<double_complex>(num_phi, num_bands, kp__->blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);
@@ -181,13 +200,11 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         N += n;
 
         eval_old = eval;
-        /* solve generalized eigen-value problem with the size N */
-        {
-        Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
-        gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 
-                                &eval[0], evec.at<CPU>(), evec.ld());
-        }
 
+        /* solve generalized eigen-value problem with the size N */
+        diag_h_o(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
+    
+        /* check if occupied bands have converged */
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
@@ -201,10 +218,10 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         //    cublas_set_matrix(N, num_bands, sizeof(double_complex), evec.at<CPU>(), evec.ld(), evec.at<GPU>(), evec.ld());
         //#endif
 
-        /* stage 3: compute residuals */
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1 && !occ_band_converged)
         {
+            /* get new preconditionined residuals, and also hpss and opsi as a by-product */
             n = residuals(kp__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, kappa);
         }
 
