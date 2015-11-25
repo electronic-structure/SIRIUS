@@ -45,18 +45,21 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     Timer t1("fft|transform");
     for (int i = 0; i < psi_in.spl_num_swapped().local_size(); i++)
     {
-        cuda_copy_to_device(pw_buf.at<GPU>(), psi_in[i], gvec.num_gvec() * sizeof(double_complex));
+        //cuda_copy_to_device(pw_buf.at<GPU>(), psi_in[i], gvec.num_gvec() * sizeof(double_complex));
 
         /* set PW coefficients into proper positions inside FFT buffer */
-        fft.input_on_device(gvec.num_gvec(), gvec.index_map().at<GPU>(), pw_buf.at<GPU>());
+        //fft.input_on_device(gvec.num_gvec(), gvec.index_map().at<GPU>(), pw_buf.at<GPU>());
 
-        fft.transform<1>(psi_in.gvec(), pw_buf.at<GPU>());
-        fft.transform<-1>(psi_out.gvec(), pw_buf.at<GPU>());
+        //fft.transform<1>(psi_in.gvec(), pw_buf.at<GPU>());
+        //fft.transform<-1>(psi_out.gvec(), pw_buf.at<GPU>());
         
         /* phi(G) += fft_buffer(G) */
-        fft.output_on_device(gvec.num_gvec(), gvec.index_map().at<GPU>(), pw_buf.at<GPU>(), 0.0);
+        //fft.output_on_device(gvec.num_gvec(), gvec.index_map().at<GPU>(), pw_buf.at<GPU>(), 0.0);
 
-        cuda_copy_to_host(psi_out[i], pw_buf.at<GPU>(), gvec.num_gvec() * sizeof(double_complex));
+        //cuda_copy_to_host(psi_out[i], pw_buf.at<GPU>(), gvec.num_gvec() * sizeof(double_complex));
+
+        fft.transform<1>(psi_in.gvec(), psi_in[i]);
+        fft.transform<-1>(psi_out.gvec(), psi_out[i]);
     }
     t1.stop();
     
