@@ -32,10 +32,10 @@ FFT3D::FFT3D(vector3d<int> dims__,
              processing_unit_t pu__)
     : num_fft_workers_(num_fft_workers__),
       comm_(comm__),
-      pu_(pu__)
+      pu_(pu__),
+      cufft3d_(false)
       #ifdef __GPU
-      ,allocated_on_device_(false),
-      cufft3d_(true)
+      ,allocated_on_device_(false)
       #endif
       
 {
