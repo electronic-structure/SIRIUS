@@ -151,17 +151,17 @@ void K_point::initialize()
         if (parameters_.processing_unit() == GPU)
         {
             #ifdef __GPU
-            gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
-            /* copy G+k vectors */
-            for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
-            {
-                for (int x = 0; x < 3; x++) gkvec_row_(x, igk_row) = gklo_basis_descriptor_row(igk_row).gkvec[x];
-            }
-            gkvec_row_.allocate_on_device();
-            gkvec_row_.copy_to_device();
+            //gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
+            ///* copy G+k vectors */
+            //for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+            //{
+            //    for (int x = 0; x < 3; x++) gkvec_row_(x, igk_row) = gklo_basis_descriptor_row(igk_row).gkvec[x];
+            //}
+            //gkvec_row_.allocate_on_device();
+            //gkvec_row_.copy_to_device();
 
-            beta_gk_t_.allocate_on_device();
-            beta_gk_t_.copy_to_device();
+            //beta_gk_t_.allocate_on_device();
+            //beta_gk_t_.copy_to_device();
             #endif
         }
     }

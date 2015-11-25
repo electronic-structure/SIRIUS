@@ -243,6 +243,8 @@ template <typename T, int N>
 class mdarray_base
 {
     protected:
+        
+        std::string label_;
     
         /// Unique pointer to the allocated memory.
         std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_;
@@ -375,6 +377,12 @@ class mdarray_base
             return nullptr;
         }
 
+        /// Copy constructor is forbidden
+        mdarray_base(mdarray_base<T, N> const& src) = delete;
+        
+        /// Assignment operator is forbidden
+        mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
+
     public:
         
         /// Constructor of an empty array.
@@ -398,12 +406,6 @@ class mdarray_base
             #endif
         }
 
-        /// Copy constructor is forbidden
-        mdarray_base(mdarray_base<T, N> const& src) = delete;
-        
-        /// Assignment operator is forbidden
-        mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
-        
         /// Move constructor
         mdarray_base(mdarray_base<T, N>&& src) 
             : unique_ptr_(std::move(src.unique_ptr_)),
@@ -749,7 +751,6 @@ class mdarray_base
         #endif
 };
 
-
 template <typename T, int N> 
 class mdarray: public mdarray_base<T, N>
 {
@@ -759,40 +760,46 @@ class mdarray: public mdarray_base<T, N>
         {
         }
         
-        mdarray(mdarray_index_descriptor const& d0)
+        mdarray(mdarray_index_descriptor const& d0, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0});
             this->allocate();
         }
 
-        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1});
             this->allocate();
         }
 
         mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2});
             this->allocate();
         }
 
         mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2, d3});
             this->allocate();
         }
 
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0});
             this->ptr_ = ptr__;
         }
 
-        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0)
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0});
             this->ptr_ = ptr__;
             #ifdef __GPU
@@ -800,28 +807,32 @@ class mdarray: public mdarray_base<T, N>
             #endif
         }
 
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1});
             this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2});
             this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2, d3});
             this->ptr_ = ptr__;
         }
 
-        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1});
             this->ptr_ = ptr__;
             #ifdef __GPU
@@ -830,8 +841,9 @@ class mdarray: public mdarray_base<T, N>
         }
 
         mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2});
             this->ptr_ = ptr__;
             #ifdef __GPU

@@ -165,25 +165,25 @@ void Band::diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
     if (parameters_.processing_unit() == GPU)
     {
         #ifdef __GPU
-        phi_slab.allocate_on_device();
-        hphi_slab.allocate_on_device();
-        d_mtrx_packed.allocate_on_device();
-        d_mtrx_packed.copy_to_device();
-        kappa.allocate_on_device();
-        evec_full.allocate_on_device();
-        evec_full_tmp.allocate_on_device();
-        hpsi_slab.allocate_on_device();
-        opsi_slab.allocate_on_device();
-        if (with_overlap)
-        {
-            ophi_slab.allocate_on_device();
-            q_mtrx_packed.allocate_on_device();
-            q_mtrx_packed.copy_to_device();
-        }
-        psi_slab.allocate_on_device();
+        //phi_slab.allocate_on_device();
+        //hphi_slab.allocate_on_device();
+        //d_mtrx_packed.allocate_on_device();
+        //d_mtrx_packed.copy_to_device();
+        //kappa.allocate_on_device();
+        //evec_full.allocate_on_device();
+        //evec_full_tmp.allocate_on_device();
+        //hpsi_slab.allocate_on_device();
+        //opsi_slab.allocate_on_device();
+        //if (with_overlap)
+        //{
+        //    ophi_slab.allocate_on_device();
+        //    q_mtrx_packed.allocate_on_device();
+        //    q_mtrx_packed.copy_to_device();
+        //}
+        //psi_slab.allocate_on_device();
 
-        /* copy initial phi to GPU */
-        cuda_copy_to_device(phi_slab.at<GPU>(), phi_slab.at<CPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
+        ///* copy initial phi to GPU */
+        //cuda_copy_to_device(phi_slab.at<GPU>(), phi_slab.at<CPU>(), num_gkvec_loc * num_bands * sizeof(double_complex));
         #else
         TERMINATE_NO_GPU
         #endif

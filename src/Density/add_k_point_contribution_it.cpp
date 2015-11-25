@@ -244,12 +244,13 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(nested);
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
-    {
-        it_density_matrix_gpu.copy_to_host();
-        it_density_matrix_gpu.deallocate_on_device();
-        ctx_.fft(ctx_.gpu_thread_id())->deallocate_on_device();
-    }
+    STOP();
+    //if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
+    //{
+    //    it_density_matrix_gpu.copy_to_host();
+    //    it_density_matrix_gpu.deallocate_on_device();
+    //    ctx_.fft(ctx_.gpu_thread_id())->deallocate_on_device();
+    //}
     #endif
     
     double t1 = -Utils::current_time();

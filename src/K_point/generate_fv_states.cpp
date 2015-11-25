@@ -21,57 +21,58 @@ void K_point::generate_fv_states()
         if (parameters_.processing_unit() == GPU)
         {
             #ifdef __GPU
-            /* copy eigen-vectors to GPU */
-            fv_eigen_vectors_slice.allocate_on_device();
-            fv_eigen_vectors_slice.copy_to_device();
-            /* allocate GPU memory for fv_states */
-            fv_states_slice_.allocate_on_device();
+            STOP();
+            ///* copy eigen-vectors to GPU */
+            //fv_eigen_vectors_slice.allocate_on_device();
+            //fv_eigen_vectors_slice.copy_to_device();
+            ///* allocate GPU memory for fv_states */
+            //fv_states_slice_.allocate_on_device();
 
-            double_complex alpha(1, 0);
-            double_complex beta(0, 0);
-            
-            Timer t1("sirius::K_point::generate_fv_states|zgemm_eff");
-            #pragma omp parallel
-            {
-                int tid = Platform::thread_id();
-                mdarray<double_complex, 2> alm(nullptr, num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-                alm.allocate_page_locked();
-                alm.allocate_on_device();
-                
-                #pragma omp for
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-                {
-                    int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-                    int offset_wf = unit_cell_.atom(ia)->offset_wf();
-                    alm_coeffs_->generate(ia, alm);
-                    alm.async_copy_to_device();
-                    linalg<GPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(), &alpha,
-                                      alm.at<GPU>(), alm.ld(), fv_eigen_vectors_slice.at<GPU>(), fv_eigen_vectors_slice.ld(),
-                                      &beta, fv_states_slice_.at<GPU>(offset_wf, 0), fv_states_slice_.ld(), tid);
+            //double_complex alpha(1, 0);
+            //double_complex beta(0, 0);
+            //
+            //Timer t1("sirius::K_point::generate_fv_states|zgemm_eff");
+            //#pragma omp parallel
+            //{
+            //    int tid = Platform::thread_id();
+            //    mdarray<double_complex, 2> alm(nullptr, num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+            //    alm.allocate_page_locked();
+            //    alm.allocate_on_device();
+            //    
+            //    #pragma omp for
+            //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            //    {
+            //        int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
+            //        int offset_wf = unit_cell_.atom(ia)->offset_wf();
+            //        alm_coeffs_->generate(ia, alm);
+            //        alm.async_copy_to_device();
+            //        linalg<GPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(), &alpha,
+            //                          alm.at<GPU>(), alm.ld(), fv_eigen_vectors_slice.at<GPU>(), fv_eigen_vectors_slice.ld(),
+            //                          &beta, fv_states_slice_.at<GPU>(offset_wf, 0), fv_states_slice_.ld(), tid);
 
-                    /* copy block of local orbital coefficients */
-                    cuda_memcpy2D_device_to_device_async(fv_states_slice_.at<GPU>(offset_wf + mt_aw_size, 0),
-                                                         fv_states_slice_.ld(),
-                                                         fv_eigen_vectors_slice.at<GPU>(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), 0),
-                                                         fv_eigen_vectors_slice.ld(),
-                                                         unit_cell_.atom(ia)->mt_lo_basis_size(), fv_states_slice_.num_cols_local(),
-                                                         sizeof(double_complex), tid);
-                    cuda_stream_synchronize(tid);
-                }
-            }
-            double tval = t1.stop();
-            DUMP("effective zgemm performance: %f GFlops / rank",
-                 8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * parameters_.num_fv_states() / tval / comm().size());
-            /* copy block of pw coefficients */
-            cuda_memcpy2D_device_to_device(fv_states_slice_.at<GPU>(unit_cell_.mt_basis_size(), 0),
-                                           fv_states_slice_.ld(),
-                                           fv_eigen_vectors_slice.at<GPU>(),
-                                           fv_eigen_vectors_slice.ld(),
-                                           num_gkvec(), fv_states_slice_.num_cols_local(), sizeof(double_complex));
+            //        /* copy block of local orbital coefficients */
+            //        cuda_memcpy2D_device_to_device_async(fv_states_slice_.at<GPU>(offset_wf + mt_aw_size, 0),
+            //                                             fv_states_slice_.ld(),
+            //                                             fv_eigen_vectors_slice.at<GPU>(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), 0),
+            //                                             fv_eigen_vectors_slice.ld(),
+            //                                             unit_cell_.atom(ia)->mt_lo_basis_size(), fv_states_slice_.num_cols_local(),
+            //                                             sizeof(double_complex), tid);
+            //        cuda_stream_synchronize(tid);
+            //    }
+            //}
+            //double tval = t1.stop();
+            //DUMP("effective zgemm performance: %f GFlops / rank",
+            //     8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * parameters_.num_fv_states() / tval / comm().size());
+            ///* copy block of pw coefficients */
+            //cuda_memcpy2D_device_to_device(fv_states_slice_.at<GPU>(unit_cell_.mt_basis_size(), 0),
+            //                               fv_states_slice_.ld(),
+            //                               fv_eigen_vectors_slice.at<GPU>(),
+            //                               fv_eigen_vectors_slice.ld(),
+            //                               num_gkvec(), fv_states_slice_.num_cols_local(), sizeof(double_complex));
 
-            fv_eigen_vectors_slice.deallocate_on_device();
-            fv_states_slice_.copy_to_host();
-            fv_states_slice_.deallocate_on_device();
+            //fv_eigen_vectors_slice.deallocate_on_device();
+            //fv_states_slice_.copy_to_host();
+            //fv_states_slice_.deallocate_on_device();
             #else
             TERMINATE_NO_GPU
             #endif

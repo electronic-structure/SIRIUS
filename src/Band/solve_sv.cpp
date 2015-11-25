@@ -67,14 +67,15 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
         #ifdef __GPU
-        kp->fv_states().allocate_on_device();
-        kp->fv_states().copy_to_device();
+        STOP();
+        //kp->fv_states().allocate_on_device();
+        //kp->fv_states().copy_to_device();
         #endif
     }
 
     #ifdef __GPU
-    double_complex alpha = complex_one;
-    double_complex beta = complex_zero;
+    //double_complex alpha = complex_one;
+    //double_complex beta = complex_zero;
     #endif
 
     if (parameters_.num_mag_dims() != 3)
@@ -93,17 +94,18 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
             {
                 #ifdef __GPU
-                Timer t4("sirius::Band::solve_sv|zgemm");
-                hpsi[ispn].allocate_on_device();
-                hpsi[ispn].copy_to_device();
-                linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
-                                  kp->fv_states().at<GPU>(), kp->fv_states().ld(),
-                                  hpsi[ispn].at<GPU>(), hpsi[ispn].ld(), &beta, h.at<GPU>(), h.ld());
-                h.copy_to_host();
-                hpsi[ispn].deallocate_on_device();
-                double tval = t4.stop();
-                DUMP("effective zgemm performance: %12.6f GFlops", 
-                     8e-9 * parameters_.num_fv_states() * parameters_.num_fv_states() * fvsz / tval);
+                STOP();
+                //Timer t4("sirius::Band::solve_sv|zgemm");
+                //hpsi[ispn].allocate_on_device();
+                //hpsi[ispn].copy_to_device();
+                //linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
+                //                  kp->fv_states().at<GPU>(), kp->fv_states().ld(),
+                //                  hpsi[ispn].at<GPU>(), hpsi[ispn].ld(), &beta, h.at<GPU>(), h.ld());
+                //h.copy_to_host();
+                //hpsi[ispn].deallocate_on_device();
+                //double tval = t4.stop();
+                //DUMP("effective zgemm performance: %12.6f GFlops", 
+                //     8e-9 * parameters_.num_fv_states() * parameters_.num_fv_states() * fvsz / tval);
                 #else
                 TERMINATE_NO_GPU
                 #endif
@@ -132,7 +134,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
     {
         #ifdef __GPU
-        kp->fv_states().deallocate_on_device();
+        //kp->fv_states().deallocate_on_device();
         #endif
     }
 
