@@ -12,12 +12,15 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
+    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), GPU);
+    fft.allocate_on_device();
     
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
+    gvec.index_map().allocate_on_device();
+    gvec.index_map().copy_to_device();
 
-    Wave_functions psi_in(num_bands__, gvec, mpi_grid);
-    Wave_functions psi_out(num_bands__, gvec, mpi_grid);
+    Wave_functions psi_in(num_bands__, gvec, mpi_grid, true);
+    Wave_functions psi_out(num_bands__, gvec, mpi_grid, true);
     
     if (comm.rank() == 0)
     {
@@ -34,19 +37,33 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
             psi_in(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    int offs = num_bands__ / 2;
-    psi_in.slab_to_panel(offs, num_bands__ / 2);
+    psi_in.swap_forward(0, num_bands__);
 
-    for (int i = 0; i < psi_in.local_size(); i++)
-    {
-        fft.transform<1>(psi_in.gvec(), &psi_in.panel(0, i));
-        fft.transform<-1>(psi_out.gvec(), &psi_out.panel(0, i));
-    }
+    mdarray<double_complex, 1> pw_buf(gvec.num_gvec());
+    pw_buf.allocate_on_device();
     
-    psi_out.panel_to_slab(offs, num_bands__ / 2);
+    Timer t1("fft|transform");
+    for (int i = 0; i < psi_in.spl_num_swapped().local_size(); i++)
+    {
+        cuda_copy_to_device(pw_buf.at<GPU>(), psi_in[i], gvec.num_gvec() * sizeof(double_complex));
+
+        /* set PW coefficients into proper positions inside FFT buffer */
+        fft.input_on_device(gvec.num_gvec(), gvec.index_map().at<GPU>(), pw_buf.at<GPU>());
+
+        fft.transform<1>(psi_in.gvec(), pw_buf.at<GPU>());
+        fft.transform<-1>(psi_out.gvec(), pw_buf.at<GPU>());
+        
+        /* phi(G) += fft_buffer(G) */
+        fft.output_on_device(gvec.num_gvec(), gvec.index_map().at<GPU>(), pw_buf.at<GPU>(), 0.0);
+
+        cuda_copy_to_host(psi_out[i], pw_buf.at<GPU>(), gvec.num_gvec() * sizeof(double_complex));
+    }
+    t1.stop();
+    
+    psi_out.swap_backward(0, num_bands__);
 
     double diff = 0;
-    for (int i = offs; i < offs + num_bands__ / 2; i++)
+    for (int i = 0; i < num_bands__; i++)
     {
         for (int j = 0; j < psi_in.num_gvec_loc(); j++)
         {
@@ -281,9 +298,9 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    //test_fft(dims, cutoff, num_bands, mpi_grid);
+    test_fft(dims, cutoff, num_bands, mpi_grid);
     //test2(dims, cutoff, mpi_grid);
-    test3(dims, cutoff);
+    //test3(dims, cutoff);
     
     Timer::print();
 

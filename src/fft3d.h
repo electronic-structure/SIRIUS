@@ -65,6 +65,8 @@ class FFT3D
 
         /// Main processing unit of this FFT.
         processing_unit_t pu_;
+
+        bool cufft3d_;
         
         /// Auxiliary array to store full z-sticks of FFT buffer.
         mdarray<double_complex, 1> fft_buffer_aux_;
@@ -111,17 +113,6 @@ class FFT3D
         int cufft_nbatch_;
         bool allocated_on_device_;
         #endif
-
-        //== template <int direction>
-        //== void transform_z_parallel(std::vector<int> const& sendcounts, std::vector<int> const& sdispls,
-        //==                           std::vector<int> const& recvcounts, std::vector<int> const& rdispls,
-        //==                           int num_z_cols_local);
-
-        //== template <int direction>
-        //== void transform_xy_parallel(std::vector< std::pair<int, int> > const& z_sticks_coord__);
-
-        //== template <int direction>
-        //== void transform_z_serial(std::vector< std::pair<int, int> > const& z_sticks_coord__);
 
         template <int direction, bool use_reduction>
         void transform_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
@@ -350,13 +341,13 @@ class FFT3D
         void allocate_on_device()
         {
             PROFILE();
-            cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size()); 
+            cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size(), "cufft_buf_");
             cufft_buf_.allocate_on_device();
             
-            if (comm_.size() == 1)
+            if (comm_.size() == 1 && cufft3d_)
             {
                 auto work_size = cufft_get_size_3d(fft_grid_.size(0), fft_grid_.size(1), fft_grid_.size(2), 1);
-                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
+                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
                 cufft_work_buf_.allocate_on_device();
 
                 cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
@@ -364,7 +355,7 @@ class FFT3D
             else
             {
                 auto work_size = cufft_get_size_2d(fft_grid_.size(0), fft_grid_.size(1), cufft_nbatch_);
-                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size);
+                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
                 cufft_work_buf_.allocate_on_device();
 
                 cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
@@ -386,9 +377,9 @@ class FFT3D
         }
 
         template<typename T>
-        inline void output_on_device(int n__, int const* map__, T* data__, double beta__)
+        inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
         {
-            cufft_batch_unload_gpu(local_size(), n__, 1, map__, cufft_buf_.at<GPU>(), data__, beta__);
+            cufft_batch_unload_gpu(local_size(), n__, 1, map__, cufft_buf_.at<GPU>(), data__, alpha__);
         }
         #endif
 };

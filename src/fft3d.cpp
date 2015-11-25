@@ -34,7 +34,8 @@ FFT3D::FFT3D(vector3d<int> dims__,
       comm_(comm__),
       pu_(pu__)
       #ifdef __GPU
-      ,allocated_on_device_(false)
+      ,allocated_on_device_(false),
+      cufft3d_(true)
       #endif
       
 {
@@ -139,10 +140,10 @@ FFT3D::FFT3D(vector3d<int> dims__,
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        if (comm_.size() == 1)
+        int auto_alloc = 0;
+        if (comm_.size() == 1 && cufft3d_)
         {
             cufft_nbatch_ = 1;
-            int auto_alloc = 0;
 
             int dims[] = {fft_grid_.size(2), fft_grid_.size(1), fft_grid_.size(0)};
             cufft_create_plan_handle(&cufft_plan_);
@@ -151,7 +152,6 @@ FFT3D::FFT3D(vector3d<int> dims__,
         else
         {
             cufft_nbatch_ = local_size_z_;
-            int auto_alloc = 0;
 
             int dim_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
             int embed_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
@@ -186,7 +186,7 @@ FFT3D::~FFT3D()
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        if (comm_.size() == 1)
+        if (comm_.size() == 1 && cufft3d_)
         {
             cufft_destroy_plan_handle(cufft_plan_);
         }

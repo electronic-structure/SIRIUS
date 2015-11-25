@@ -37,7 +37,7 @@ class Gvec
         mdarray<int, 1> gvec_shell_;
         
         /// Position in the local slab of FFT buffer by local G-vec index.
-        //mdarray<int, 1> index_map_local_to_local_;
+        mdarray<int, 1> index_map_;
 
         int num_gvec_shells_;
 
@@ -45,13 +45,8 @@ class Gvec
 
         mdarray<int, 3> index_by_gvec_;
 
-        /// Coordinates (x, y) of non-zero z-sticks.
-        //std::vector< std::pair<int, int> > z_sticks_coord_;
-        
         /// Global list of non-zero z-columns.
         std::vector<z_column_descriptor> z_columns_;
-
-        /// Map G-vectors to the 3D buffer index (in range [0:Nx*Ny*N_z_loc_-1]) or to the packed index of z-sticks.
 
         block_data_descriptor zcol_fft_distr_;
 
@@ -203,57 +198,6 @@ class Gvec
                 assert(offs == gvec_fft_distr_.counts[rank]);
             }
 
-
-
-
-
-
-
-
-
-
-            // * at the same time, find the non-zero z-sticks */
-            //std::vector< vector3d<int> > pos;
-            //for (int k = 0; k < fft_->local_size_z(); k++)
-            //{
-            //    for (int j = 0; j < fft_->size(1); j++)
-            //    {
-            //        for (int i = 0; i < fft_->size(0); i++)
-            //        {
-            //            auto G = fft_->gvec_by_grid_pos(i, j, k + fft_->offset_z());
-            //           
-            //            /* take G+q */
-            //            auto gq = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + q__);
-
-            //            if (gq.length() <= Gmax__)
-            //            {
-            //                pos.push_back(vector3d<int>(i, j, k));
-            //                non_zero_z_sticks(i, j) = 1;
-            //            }
-            //        }
-            //    }
-            //}
-            ///* get total number of G-vectors */
-            //num_gvec_loc_ = (int)pos.size();
-            //num_gvec_ = num_gvec_loc_;
-            //fft_->comm().allreduce(&num_gvec_, 1);
-            ///* get the full map of non-zero z-sticks */
-            //fft_->comm().allreduce<int, op_max>(non_zero_z_sticks.at<CPU>(), (int)non_zero_z_sticks.size());
-            
-            ///* build a linear index of xy coordinates of non-zero z-sticks */
-            //mdarray<int, 2> xy_idx(fft_->size(0), fft_->size(1));
-            //for (int x = 0; x < fft_->size(0); x++)
-            //{
-            //    for (int y = 0; y < fft_->size(1); y++)
-            //    {
-            //        if (non_zero_z_columns(x, y))
-            //        {
-            //            xy_idx(x, y) = (int)z_sticks_coord_.size();
-            //            z_sticks_coord_.push_back({x, y});
-            //        }
-            //    }
-            //}
-
             gvec_full_index_ = mdarray<int, 1>(num_gvec_);
             int ig = 0;
             for (size_t i = 0; i < z_columns_.size(); i++)
@@ -266,6 +210,16 @@ class Gvec
 
             auto g0 = gvec_by_full_index(gvec_full_index_(0));
             if (g0[0] || g0[1] || g0[2]) TERMINATE("first G-vector is not zero");
+
+            if (comm__.size() == 1)
+            {
+                index_map_ = mdarray<int, 1>(num_gvec_);
+                for (int ig = 0; ig < num_gvec_; ig++)
+                {
+                    auto G = gvec_by_full_index(gvec_full_index_(ig));
+                    index_map_(ig) = fft_grid_.index_by_gvec(G[0], G[1], G[2]);
+                }
+            }
 
             std::map<size_t, std::vector<int> > gsh;
             for (int ig = 0; ig < num_gvec_; ig++)
@@ -415,12 +369,6 @@ class Gvec
             return 0;
         }
 
-        inline int const* index_map() const
-        {
-            return nullptr;
-            //return (num_gvec_loc() == 0) ? nullptr : &index_map_local_to_local_(0);
-        }
-
         inline int index_by_gvec(vector3d<int>& G__) const
         {
             return index_by_gvec_(G__[0], G__[1], G__[2]);
@@ -439,6 +387,11 @@ class Gvec
         inline bool reduced() const
         {
             return reduce_gvec_;
+        }
+
+        inline mdarray<int,1>& index_map()
+        {
+            return index_map_;
         }
 };
 

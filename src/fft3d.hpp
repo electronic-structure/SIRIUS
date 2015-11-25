@@ -261,30 +261,25 @@ void FFT3D::transform_xy_serial()
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        STOP();
-        //for (int z = 0; z < size(2); z++)
-        //{
-        //    int stream_id = z % get_num_cuda_streams();
-        //    switch (direction)
-        //    {
-        //        case 1:
-        //        {
-        //            cufft_backward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            cufft_forward_transform(cufft_plan_xy_[stream_id], cufft_buf_.at<GPU>(z * size_xy));
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            TERMINATE("wrong direction");
-        //        }
-        //    }
-        //}
-        //for (int i = 0; i < get_num_cuda_streams(); i++)
-        //    cuda_stream_synchronize(i);
+        cufft_buf_.copy_to_device();
+        switch (direction)
+        {
+            case 1:
+            {
+                cufft_backward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>());
+                break;
+            }
+            case -1:
+            {
+                cufft_forward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>());
+                break;
+            }
+            default:
+            {
+                TERMINATE("wrong direction");
+            }
+        }
+        cufft_buf_.copy_to_host();
     }
     #endif
 }
@@ -294,8 +289,8 @@ void FFT3D::transform_z_serial(std::vector<z_column_descriptor> const& z_cols__,
 {
     int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
     double norm = 1.0 / size();
-    if (pu_ == CPU)
-    {
+    //if (pu_ == CPU)
+    //{
         #pragma omp parallel num_threads(num_fft_workers_)
         {
             int tid = omp_get_thread_num();
@@ -381,38 +376,38 @@ void FFT3D::transform_z_serial(std::vector<z_column_descriptor> const& z_cols__,
                 }
             }
         }
-    }
-    #ifdef __GPU
-    if (pu_ == GPU)
-    {
-        STOP();
-        //for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
-        //{
-        //    int x = z_sticks_coord__[j].first;
-        //    int y = z_sticks_coord__[j].second;
-        //    int stream_id = j % get_num_cuda_streams();
-        //    switch (direction)
-        //    {
-        //        case 1:
-        //        {
-        //            cufft_backward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            cufft_forward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            TERMINATE("wrong direction");
-        //        }
-        //   }
-        //}
-        //for (int i = 0; i < get_num_cuda_streams(); i++)
-        //    cuda_stream_synchronize(i);
-    }
-    #endif
+    //}
+    //#ifdef __GPU
+    //if (pu_ == GPU)
+    //{
+    //    STOP();
+    //    //for (int j = 0; j < (int)z_sticks_coord__.size(); j++)
+    //    //{
+    //    //    int x = z_sticks_coord__[j].first;
+    //    //    int y = z_sticks_coord__[j].second;
+    //    //    int stream_id = j % get_num_cuda_streams();
+    //    //    switch (direction)
+    //    //    {
+    //    //        case 1:
+    //    //        {
+    //    //            cufft_backward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
+    //    //            break;
+    //    //        }
+    //    //        case -1:
+    //    //        {
+    //    //            cufft_forward_transform(cufft_plan_z_[stream_id], cufft_buf_.at<GPU>(x + y * size(0)));
+    //    //            break;
+    //    //        }
+    //    //        default:
+    //    //        {
+    //    //            TERMINATE("wrong direction");
+    //    //        }
+    //    //   }
+    //    //}
+    //    //for (int i = 0; i < get_num_cuda_streams(); i++)
+    //    //    cuda_stream_synchronize(i);
+    //}
+    //#endif
 }
 
 template <int direction>
@@ -644,36 +639,57 @@ void FFT3D::transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols
 template <int direction>
 void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
 {
-    //Timer t0("fft|transform");
+    /* single node FFT */
     if (comm_.size() == 1)
     {
-        switch (direction)
+        if (pu_ == CPU || !cufft3d_)
         {
-            case 1:
+            switch (direction)
             {
-                std::memset(fftw_buffer_, 0, size() * sizeof(double_complex));
-                if (gvec__.reduced())
+                case 1:
                 {
-                    transform_z_serial<1, true>(gvec__.z_columns(), data__);
+                    std::memset(fftw_buffer_, 0, size() * sizeof(double_complex));
+                    if (gvec__.reduced())
+                    {
+                        transform_z_serial<1, true>(gvec__.z_columns(), data__);
+                    }
+                    else
+                    {
+                        transform_z_serial<1, false>(gvec__.z_columns(), data__);
+                    }
+                    transform_xy_serial<1>();
+                    break;
                 }
-                else
+                case -1:
                 {
-                    transform_z_serial<1, false>(gvec__.z_columns(), data__);
+                    transform_xy_serial<-1>();
+                    transform_z_serial<-1, false>(gvec__.z_columns(), data__);
+                    break;
                 }
-                transform_xy_serial<1>();
-                break;
+                default:
+                {
+                    TERMINATE("wrong direction");
+                }
             }
-            case -1:
+        }
+        #ifdef __GPU
+        if (pu_ == GPU && cufft3d_)
+        {
+            switch (direction)
             {
-                transform_xy_serial<-1>();
-                transform_z_serial<-1, false>(gvec__.z_columns(), data__);
-                break;
+                case 1:
+                {
+                    cufft_backward_transform(cufft_plan_, cufft_buf_.at<GPU>());
+                    break;
+                }
+                case -1:
+                {
+                    cufft_forward_transform(cufft_plan_, cufft_buf_.at<GPU>());
+                    break;
+                }
             }
-            default:
-            {
-                TERMINATE("wrong direction");
-            }
-        }   
+        }
+        #endif
     }
     else
     {
