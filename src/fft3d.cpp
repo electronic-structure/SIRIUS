@@ -151,13 +151,14 @@ FFT3D::FFT3D(vector3d<int> dims__,
         }
         else
         {
-            cufft_nbatch_ = local_size_z_;
+            cufft_nbatch_ = 1; //local_size_z_;
 
             int dim_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
             int embed_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
 
             cufft_create_plan_handle(&cufft_plan_xy_);
             cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, embed_xy, 1, fft_grid_.size(0) * fft_grid_.size(1), cufft_nbatch_, auto_alloc);
+            cufft_set_stream(cufft_plan_xy_, 0);
         }
     }
     #endif

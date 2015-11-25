@@ -2,6 +2,7 @@ template <int direction>
 void FFT3D::transform_xy_serial()
 {
     int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
+
     if (pu_ == CPU)
     {
         #pragma omp parallel num_threads(num_fft_workers_)
@@ -38,27 +39,87 @@ void FFT3D::transform_xy_serial()
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        switch (direction)
+        #pragma omp parallel num_threads(num_fft_workers_)
         {
-            case 1:
+            int tid = omp_get_thread_num();
+            #pragma omp for schedule(dynamic, 1)
+            for (int z = 0; z < fft_grid_.size(2); z++)
             {
-                cufft_buf_.copy_to_device();
-                cufft_backward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>());
-                break;
-            }
-            case -1:
-            {
-                cufft_forward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>());
-                cufft_buf_.copy_to_host();
-                break;
-            }
-            default:
-            {
-                TERMINATE("wrong direction");
+                if (tid == 0)
+                {
+                    switch (direction)
+                    {
+                        case 1:
+                        {
+                            cuda_async_copy_to_device(cufft_buf_.at<GPU>(z * size_xy), &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy, tid);
+                            cufft_backward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>(z * size_xy));
+                            break;
+                        }
+                        case -1:
+                        {
+                            cufft_forward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>(z * size_xy));
+                            cuda_async_copy_to_host(&fftw_buffer_[z * size_xy], cufft_buf_.at<GPU>(z * size_xy), sizeof(double_complex) * size_xy, tid);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    /* execute 2D FFT */
+                    switch (direction)
+                    {
+                        case 1:
+                        {
+                            /* copy xy plane into local buffer */
+                            std::memcpy(fftw_buffer_xy_[tid], &fftw_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
+                            fftw_execute(plan_backward_xy_[tid]);
+                            cuda_async_copy_to_device(cufft_buf_.at<GPU>(z * size_xy), fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy, tid);
+                            break;
+                        }
+                        case -1:
+                        {
+                            cuda_async_copy_to_host(fftw_buffer_xy_[tid], cufft_buf_.at<GPU>(z * size_xy), sizeof(double_complex) * size_xy, tid);
+                            cuda_stream_synchronize(tid);
+                            fftw_execute(plan_forward_xy_[tid]);
+                            /* copy result to the main FFT buffer */
+                            std::memcpy(&fftw_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
+                            break;
+                        }
+                        default:
+                        {
+                            TERMINATE("wrong direction");
+                        }
+                    }
+                }
             }
         }
     }
     #endif
+
+    //#ifdef __GPU
+    //if (pu_ == GPU)
+    //{
+    //    switch (direction)
+    //    {
+    //        case 1:
+    //        {
+    //            cufft_buf_.copy_to_device();
+    //            cufft_backward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>());
+    //            break;
+    //        }
+    //        case -1:
+    //        {
+    //            cufft_forward_transform(cufft_plan_xy_, cufft_buf_.at<GPU>());
+    //            cufft_buf_.copy_to_host();
+    //            break;
+    //        }
+    //        default:
+    //        {
+    //            TERMINATE("wrong direction");
+    //        }
+    //    }
+    //}
+    //#endif
 }
 
 template <int direction>

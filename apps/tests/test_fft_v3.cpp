@@ -16,8 +16,8 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     fft.allocate_on_device();
     
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
-    gvec.index_map().allocate_on_device();
-    gvec.index_map().copy_to_device();
+    //gvec.index_map().allocate_on_device();
+    //gvec.index_map().copy_to_device();
 
     Wave_functions psi_in(num_bands__, gvec, mpi_grid, true);
     Wave_functions psi_out(num_bands__, gvec, mpi_grid, true);
@@ -39,8 +39,8 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     }
     psi_in.swap_forward(0, num_bands__);
 
-    mdarray<double_complex, 1> pw_buf(gvec.num_gvec());
-    pw_buf.allocate_on_device();
+    //mdarray<double_complex, 1> pw_buf(gvec.num_gvec());
+    //pw_buf.allocate_on_device();
     
     Timer t1("fft|transform");
     for (int i = 0; i < psi_in.spl_num_swapped().local_size(); i++)

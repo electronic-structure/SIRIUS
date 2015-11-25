@@ -128,45 +128,6 @@ class FFT3D
         template <int direction>
         void transform_xy_serial();
 
-        ///// Execute backward transformation.
-        //inline void backward()
-        //{
-        //    if (pu_ == CPU)
-        //    {
-        //        fftw_execute(plan_backward_);
-        //    }
-        //    #ifdef __GPU
-        //    if (pu_ == GPU)
-        //    {
-        //        cufft_backward_transform(cufft_plan_, cufft_buf_.at<GPU>());
-        //    }
-        //    #endif
-        //}
-        //
-        ///// Execute forward transformation.
-        //inline void forward()
-        //{    
-        //    if (pu_ == CPU)
-        //    {
-        //        fftw_execute(plan_forward_);
-        //        double norm = 1.0 / size();
-        //        #pragma omp parallel for schedule(static) num_threads(num_fft_workers_)
-        //        for (int i = 0; i < local_size(); i++) fftw_buffer_[i] *= norm;
-        //    }
-        //    #ifdef __GPU
-        //    if (pu_ == GPU)
-        //    {
-        //        cufft_forward_transform(cufft_plan_, cufft_buf_.at<GPU>());
-        //    }
-        //    #endif
-        //}
-
-        //void backward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
-
-        //void backward_custom(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
-        //
-        //void forward_custom(std::vector< std::pair<int, int> > const& z_sticks_coord__);
-        
     public:
 
         FFT3D(vector3d<int> dims__,
