@@ -82,7 +82,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
-	Kernels/it_density.o
+	Kernels/it_density.o \
+	Kernels/pack_unpack_z_columns.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

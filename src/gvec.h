@@ -39,6 +39,8 @@ class Gvec
         /// Position in the local slab of FFT buffer by local G-vec index.
         mdarray<int, 1> index_map_;
 
+        mdarray<int, 2> z_columns_pos_;
+
         int num_gvec_shells_;
 
         mdarray<double, 1> gvec_shell_len_;
@@ -134,7 +136,7 @@ class Gvec
             std::vector< std::vector<z_column_descriptor> > zcols_local(num_ranks);
 
             std::vector<int> ranks;
-            for (int i = 0; i < (int)z_columns_.size(); i++)
+            for (size_t i = 0; i < z_columns_.size(); i++)
             {
                 /* initialize the list of ranks to 0,1,2,... */
                 if (ranks.empty())
@@ -162,6 +164,17 @@ class Gvec
             for (int rank = 0; rank < num_ranks; rank++)
             {
                 z_columns_.insert(z_columns_.end(), zcols_local[rank].begin(), zcols_local[rank].end());
+            }
+
+            z_columns_pos_ = mdarray<int, 2>(2, z_columns_.size());
+            for (size_t i = 0; i < z_columns_.size(); i++)
+            {
+                int x = z_columns_[i].x;
+                int y = z_columns_[i].y;
+                if (x < 0) x += fft_grid_.size(0);
+                if (y < 0) y += fft_grid_.size(1);
+                z_columns_pos_(0, i) = x;
+                z_columns_pos_(1, i) = y;
             }
 
             /* calculate distribution of G-vectors and z-columns for FFT communicator */
@@ -392,6 +405,16 @@ class Gvec
         inline mdarray<int,1>& index_map()
         {
             return index_map_;
+        }
+
+        inline mdarray<int, 2>& z_columns_pos()
+        {
+            return z_columns_pos_;
+        }
+
+        inline mdarray<int, 2> const& z_columns_pos() const
+        {
+            return z_columns_pos_;
         }
 };
 

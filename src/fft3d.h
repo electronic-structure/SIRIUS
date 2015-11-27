@@ -38,6 +38,8 @@
 #include "fft_grid.h"
 #include "gvec.h"
 
+// TODO: allocate and deallocate buffers manually
+
 namespace sirius {
 
 /// Interface to 3D FFT.
@@ -115,18 +117,16 @@ class FFT3D
         #endif
 
         template <int direction, bool use_reduction>
-        void transform_z_serial(std::vector<z_column_descriptor> const& z_cols__, double_complex* data__);
+        void transform_z_serial(Gvec const& gvec__, double_complex* data__);
 
         template <int direction>
-        void transform_z_parallel(block_data_descriptor const& zcol_distr__,
-                                  std::vector<z_column_descriptor> const& z_cols__,
-                                  double_complex* data__);
+        void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
 
         template <int direction>
-        void transform_xy_parallel(std::vector<z_column_descriptor> const& z_cols__);
+        void transform_xy_parallel(Gvec const& gvec__);
 
         template <int direction>
-        void transform_xy_serial();
+        void transform_xy_serial(Gvec const& gvec__);
 
     public:
 
@@ -304,6 +304,7 @@ class FFT3D
             PROFILE();
             cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size(), "cufft_buf_");
             cufft_buf_.allocate_on_device();
+            cufft_buf_.pin_memory();
             
             if (comm_.size() == 1 && cufft3d_)
             {
@@ -326,6 +327,7 @@ class FFT3D
 
         void deallocate_on_device()
         {
+            cufft_buf_.unpin_memory();
             cufft_buf_.deallocate_on_device();
             cufft_work_buf_.deallocate_on_device();
             allocated_on_device_ = false;

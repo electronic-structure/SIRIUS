@@ -68,9 +68,9 @@ int get_num_cuda_streams();
 
 void cuda_stream_synchronize(int stream_id);
 
-void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
+void cuda_async_copy_to_device(void* target, void const* source, size_t size, int stream_id);
 
-void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
+void cuda_async_copy_to_host(void* target, void const* source, size_t size, int stream_id);
 
 size_t cuda_get_free_mem();
 
@@ -151,5 +151,33 @@ void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
 
 }
+
+namespace acc {
+
+template <typename T>
+inline void copyin(T* target__, T const* source__, size_t n__)
+{
+    cuda_copy_to_device(target__, source__, n__ * sizeof(T));
+}
+
+template <typename T>
+inline void copyin(T* target__, T const* source__, size_t n__, int thread_id)
+{
+    cuda_async_copy_to_device(target__, source__, n__ * sizeof(T), thread_id);
+}
+
+template <typename T>
+inline void copyout(T* target__, T const* source__, size_t n__)
+{
+    cuda_copy_to_host(target__, source__, n__ * sizeof(T));
+}
+
+template <typename T>
+inline void copyout(T* target__, T const* source__, size_t n__, int thread_id)
+{
+    cuda_async_copy_to_host(target__, source__, n__ * sizeof(T), thread_id);
+}
+
+};
 
 #endif

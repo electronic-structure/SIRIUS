@@ -18,6 +18,8 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
     //gvec.index_map().allocate_on_device();
     //gvec.index_map().copy_to_device();
+    gvec.z_columns_pos().allocate_on_device();
+    gvec.z_columns_pos().copy_to_device();
 
     Wave_functions psi_in(num_bands__, gvec, mpi_grid, true);
     Wave_functions psi_out(num_bands__, gvec, mpi_grid, true);
@@ -70,7 +72,12 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     {
         for (int j = 0; j < psi_in.num_gvec_loc(); j++)
         {
-            diff += std::abs(psi_in(j, i) - psi_out(j, i));
+            double d = std::abs(psi_in(j, i) - psi_out(j, i));
+            if (d > 1e-10)
+            {
+                std::cout << "j=" << j<<"expected: " << psi_in(j, i) << " got: " <<  psi_out(j, i) << std::endl;
+            }
+            diff += d;
         }
     }
     printf("diff: %18.12f\n", diff);
