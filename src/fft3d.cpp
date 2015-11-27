@@ -35,7 +35,8 @@ FFT3D::FFT3D(vector3d<int> dims__,
       pu_(pu__),
       cufft3d_(false)
       #ifdef __GPU
-      ,allocated_on_device_(false)
+      ,cufft_nbatch_(0),
+      allocated_on_device_(false)
       #endif
       
 {
