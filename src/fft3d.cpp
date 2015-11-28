@@ -44,44 +44,13 @@ FFT3D::FFT3D(vector3d<int> dims__,
 
     fft_grid_ = FFT_grid(dims__);
 
-    size_t alloc_local_size = 0;
-    if (comm_.size() > 1)
-    {
-        #ifdef __FFTW_MPI
-        ptrdiff_t sz, offs;
-        alloc_local_size = fftw_mpi_local_size_3d(fft_grid_.size(2), fft_grid_.size(1), fft_grid_.size(0), comm__.mpi_comm(), &sz, &offs);
-
-        local_size_z_ = static_cast<int>(sz);
-        offset_z_ = static_cast<int>(offs);
-        #else
-        TERMINATE("not compiled with MPI support");
-        #endif
-    }
-    else
-    {
-        alloc_local_size = size();
-        local_size_z_ = fft_grid_.size(2);
-        offset_z_ = 0;
-    }
-
     /* split z-direction */
     spl_z_ = splindex<block>(fft_grid_.size(2), comm_.size(), comm_.rank());
-    assert((int)spl_z_.local_size() == local_size_z_);
-    
-    //== int sz_max;
-    //== if (comm_.size() > 1)
-    //== {
-    //==     /* we need this buffer for mpi_alltoall */
-    //==     sz_max = std::max(fft_grid_.size(2) * splindex_base<int>::block_size(fft_grid_.size(0) * fft_grid_.size(1), comm_.size()),
-    //==                       local_size());
-    //== }
-    //== else
-    //== {
-    //==     fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
-    //== }
-    
+    local_size_z_ = spl_z_.local_size();
+    offset_z_ = spl_z_.global_offset();
+
     /* allocate main buffer */
-    fftw_buffer_ = (double_complex*)fftw_malloc(alloc_local_size * sizeof(double_complex));
+    fft_buffer_ = mdarray<double_complex, 1>(local_size(), "fft_buffer_");
     
     /* allocate 1d and 2d buffers */
     for (int i = 0; i < num_fft_workers_; i++)
@@ -172,7 +141,7 @@ FFT3D::FFT3D(vector3d<int> dims__,
 
 FFT3D::~FFT3D()
 {
-    fftw_free(fftw_buffer_);
+    //fftw_free(fftw_buffer_);
 
     for (int i = 0; i < num_fft_workers_; i++)
     {

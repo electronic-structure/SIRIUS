@@ -26,7 +26,7 @@
 #define __FFT3D_H__
 
 #include <fftw3.h>
-#include <fftw3-mpi.h>
+//#include <fftw3-mpi.h>
 #include <vector>
 #include <algorithm> 
 #include "typedefs.h"
@@ -70,9 +70,6 @@ class FFT3D
 
         bool cufft3d_;
         
-        /// Auxiliary array to store full z-sticks of FFT buffer.
-        mdarray<double_complex, 1> fft_buffer_aux_;
-
         /// Split z-direction.
         splindex<block> spl_z_;
 
@@ -85,7 +82,10 @@ class FFT3D
         int offset_z_;
 
         /// Main input/output buffer.
-        double_complex* fftw_buffer_;
+        mdarray<double_complex, 1> fft_buffer_;
+        
+        /// Auxiliary array to store z-sticks for all-to-all or GPU.
+        mdarray<double_complex, 1> fft_buffer_aux_;
         
         /// Interbal buffer for independent z-transforms.
         std::vector<double_complex*> fftw_buffer_z_;
@@ -110,7 +110,7 @@ class FFT3D
         #ifdef __GPU
         cufftHandle cufft_plan_;
         cufftHandle cufft_plan_xy_;
-        mdarray<double_complex, 1> cufft_buf_;
+        //mdarray<double_complex, 1> cufft_buf_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
         bool allocated_on_device_;
@@ -137,60 +137,6 @@ class FFT3D
 
         ~FFT3D();
 
-        ///// Execute the transformation for a given thread.
-        //inline void transform(int direction__)
-        //{
-        //    switch (direction__)
-        //    {
-        //        case 1:
-        //        {
-        //            backward();
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            forward();
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
-        //        }
-        //    }
-        //}
-
-        //void transform(int direction__, std::vector< std::pair<int, int> > const& z_sticks_coord__)
-        //{
-        //    #ifdef __GPU
-        //    bool auto_alloc = false;
-        //    if (pu_ == GPU && !allocated_on_device_)
-        //    {
-        //        auto_alloc = true;
-        //        allocate_on_device();
-        //    }
-        //    #endif
-        //    switch (direction__)
-        //    {
-        //        case 1:
-        //        {
-        //            backward_custom(z_sticks_coord__);
-        //            break;
-        //        }
-        //        case -1:
-        //        {
-        //            forward_custom(z_sticks_coord__);
-        //            break;
-        //        }
-        //        default:
-        //        {
-        //            error_local(__FILE__, __LINE__, "wrong FFT direction");
-        //        }
-        //    }
-        //    #ifdef __GPU
-        //    if (pu_ == GPU && auto_alloc) deallocate_on_device();
-        //    #endif
-        //}
-        
         template <int direction>
         void transform(Gvec const& gvec__, double_complex* data__);
 
@@ -204,17 +150,17 @@ class FFT3D
         template <typename T>
         inline void input(T* data__)
         {
-            for (int i = 0; i < local_size(); i++) fftw_buffer_[i] = data__[i];
+            for (int i = 0; i < local_size(); i++) fft_buffer_[i] = data__[i];
         }
         
         inline void output(double* data__)
         {
-            for (int i = 0; i < local_size(); i++) data__[i] = fftw_buffer_[i].real();
+            for (int i = 0; i < local_size(); i++) data__[i] = fft_buffer_[i].real();
         }
         
         inline void output(double_complex* data__)
         {
-            std::memcpy(data__, fftw_buffer_, local_size() * sizeof(double_complex));
+            std::memcpy(data__, &fft_buffer_[0], local_size() * sizeof(double_complex));
         }
         
         //inline void output(int n__, int const* map__, double_complex* data__)
@@ -256,32 +202,32 @@ class FFT3D
         /// Direct access to the fft buffer
         inline double_complex& buffer(int idx__)
         {
-            return fftw_buffer_[idx__];
+            return fft_buffer_[idx__];
         }
         
-        template <processing_unit_t pu>
-        inline double_complex* buffer()
-        {
-            switch (pu)
-            {
-                case CPU:
-                {
-                    return fftw_buffer_;
-                    break;
-                }
-                #ifdef __GPU
-                case GPU:
-                {
-                    return cufft_buf_.at<GPU>();
-                    break;
-                }
-                #endif
-                default:
-                {
-                    return nullptr;
-                }
-            }
-        }
+        //template <processing_unit_t pu>
+        //inline double_complex* buffer()
+        //{
+        //    switch (pu)
+        //    {
+        //        case CPU:
+        //        {
+        //            return fftw_buffer_;
+        //            break;
+        //        }
+        //        #ifdef __GPU
+        //        case GPU:
+        //        {
+        //            return cufft_buf_.at<GPU>();
+        //            break;
+        //        }
+        //        #endif
+        //        default:
+        //        {
+        //            return nullptr;
+        //        }
+        //    }
+        //}
         
         Communicator const& comm() const
         {
@@ -302,9 +248,9 @@ class FFT3D
         void allocate_on_device()
         {
             PROFILE();
-            cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size(), "cufft_buf_");
-            cufft_buf_.allocate_on_device();
-            cufft_buf_.pin_memory();
+            //cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size(), "cufft_buf_");
+            fft_buffer_.allocate_on_device();
+            fft_buffer_.pin_memory();
             
             if (comm_.size() == 1 && cufft3d_)
             {
@@ -327,8 +273,8 @@ class FFT3D
 
         void deallocate_on_device()
         {
-            cufft_buf_.unpin_memory();
-            cufft_buf_.deallocate_on_device();
+            fft_buffer_.unpin_memory();
+            fft_buffer_.deallocate_on_device();
             cufft_work_buf_.deallocate_on_device();
             allocated_on_device_ = false;
         }
@@ -336,13 +282,13 @@ class FFT3D
         template<typename T>
         inline void input_on_device(int n__, int const* map__, T* data__)
         {
-            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, cufft_buf_.at<GPU>());
+            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, fft_buffer_.at<GPU>());
         }
 
         template<typename T>
         inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
         {
-            cufft_batch_unload_gpu(local_size(), n__, 1, map__, cufft_buf_.at<GPU>(), data__, alpha__);
+            cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
         }
         #endif
 };
