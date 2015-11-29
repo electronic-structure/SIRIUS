@@ -12,8 +12,8 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
-    //fft.allocate_on_device();
+    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), GPU);
+    fft.allocate_on_device();
     
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
     //gvec.index_map().allocate_on_device();
@@ -75,7 +75,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
             double d = std::abs(psi_in(j, i) - psi_out(j, i));
             if (d > 1e-10)
             {
-                std::cout << "j=" << j<<"expected: " << psi_in(j, i) << " got: " <<  psi_out(j, i) << std::endl;
+                std::cout << "j=" << j << " expected: " << psi_in(j, i) << " got: " <<  psi_out(j, i) << std::endl;
             }
             diff += d;
         }
@@ -176,6 +176,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     //        printf("  Fail\n");
     //    }
     //}
+    comm.barrier();
 }
 
 void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_grid_dims__)

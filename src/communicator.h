@@ -244,6 +244,12 @@ class Communicator
         }
 
         template <typename T>
+        void irecv(T* buffer__, int count__, int source__, int tag__, MPI_Request* request__) const
+        {
+            CALL_MPI(MPI_Irecv, (buffer__, count__, type_wrapper<T>::mpi_type_id(), source__, tag__, mpi_comm_, request__));
+        }
+
+        template <typename T>
         void gather(T const* sendbuf__, T* recvbuf__, int const* recvcounts__, int const* displs__, int root__) const
         {
             int sendcount = recvcounts__[rank()];

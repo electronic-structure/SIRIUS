@@ -20,39 +20,100 @@ void FFT3D::transform_xy_serial(Gvec const& gvec__)
 {
     int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
 
-    if (pu_ == CPU)
-    {
-        #pragma omp parallel num_threads(num_fft_workers_)
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int z = 0; z < fft_grid_.size(2); z++)
-            {
-                /* copy xy plane into local buffer */
-                std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
-                /* execute 2D FFT */
-                switch (direction)
-                {
-                    case 1:
-                    {
-                        fftw_execute(plan_backward_xy_[tid]);
-                        break;
-                    }
-                    case -1:
-                    {
-                        fftw_execute(plan_forward_xy_[tid]);
-                        break;
-                    }
-                    default:
-                    {
-                        TERMINATE("wrong direction");
-                    }
-                }
-                /* copy result to the main FFT buffer */
-                std::memcpy(&fft_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
-            }
-        }
-    }
+    //if (pu_ == CPU)
+    //{
+    //    #pragma omp parallel num_threads(num_fft_workers_)
+    //    {
+    //        int tid = omp_get_thread_num();
+    //        #pragma omp for
+    //        for (int iz = 0; iz < local_size_z_; iz++)
+    //        {
+    //            switch (direction)
+    //            {
+    //                case 1:
+    //                {
+    //                    /* clear xy-buffer */
+    //                    std::memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+    //                    /* load z-columns into proper location */
+    //                    for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+    //                    {
+    //                        int x = gvec__.z_column(i).x;
+    //                        int y = gvec__.z_column(i).y;
+    //                        if (x < 0) x += fft_grid_.size(0);
+    //                        if (y < 0) y += fft_grid_.size(1);
+
+    //                        fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
+    //                    }
+
+    //                    /* execute local FFT transform */
+    //                    fftw_execute(plan_backward_xy_[tid]);
+
+    //                    /* copy xy plane to the FFT buffer */
+    //                    std::memcpy(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+    //                    break;
+    //                }
+    //                case -1:
+    //                {
+    //                    /* copy xy plane from the fft buffer */
+    //                    std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+
+    //                    /* execute local FFT transform */
+    //                    fftw_execute(plan_forward_xy_[tid]);
+
+    //                    /* get z-columns */
+    //                    for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+    //                    {
+    //                        int x = gvec__.z_column(i).x;
+    //                        int y = gvec__.z_column(i).y;
+    //                        if (x < 0) x += fft_grid_.size(0);
+    //                        if (y < 0) y += fft_grid_.size(1);
+
+    //                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)];
+    //                    }
+    //                    break;
+    //                }
+    //                default:
+    //                {
+    //                    TERMINATE("wrong direction");
+    //                }
+    //            }
+    //        }
+    //    }
+    //    //#pragma omp parallel num_threads(num_fft_workers_)
+    //    //{
+    //    //    int tid = omp_get_thread_num();
+    //    //    #pragma omp for
+    //    //    for (int z = 0; z < fft_grid_.size(2); z++)
+    //    //    {
+    //    //        /* copy xy plane into local buffer */
+    //    //        std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
+    //    //        /* execute 2D FFT */
+    //    //        switch (direction)
+    //    //        {
+    //    //            case 1:
+    //    //            {
+    //    //                fftw_execute(plan_backward_xy_[tid]);
+    //    //                break;
+    //    //            }
+    //    //            case -1:
+    //    //            {
+    //    //                STOP();
+    //    //                fftw_execute(plan_forward_xy_[tid]);
+    //    //                break;
+    //    //            }
+    //    //            default:
+    //    //            {
+    //    //                TERMINATE("wrong direction");
+    //    //            }
+    //    //        }
+    //    //        /* copy result to the main FFT buffer */
+    //    //        std::memcpy(&fft_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
+    //    //    }
+    //    //}
+    //}
+
+    int first_z = 0;
+
     #ifdef __GPU
     if (pu_ == GPU)
     {
@@ -61,14 +122,13 @@ void FFT3D::transform_xy_serial(Gvec const& gvec__)
         {
             case 1:
             {
-                //double_complex z = mdarray<double_complex, 1>(&fft_buffer_aux_[0], cufft_nbatch_ * gvec__.z_columns().size()).checksum();
-                //printf("checksum(fft_buffer_aux): %f %f\n", z.real(), z.imag());
-
                 /* srteam #0 copies packed columns to GPU */
-                acc::copyin(fft_buffer_aux_.at<GPU>(), fft_buffer_aux_.at<CPU>(), cufft_nbatch_ * gvec__.z_columns().size(), 0);
+                acc::copyin(fft_buffer_aux_.at<GPU>(), cufft_nbatch_, fft_buffer_aux_.at<CPU>(), local_size_z_,
+                            cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
+
                 /* srteam #0 unpacks z-columns into proper position of FFT buffer */
                 unpack_z_cols_gpu(fft_buffer_aux_.at<GPU>(), fft_buffer_.at<GPU>(), fft_grid_.size(0), fft_grid_.size(1), 
-                                  cufft_nbatch_, (int)gvec__.z_columns().size(), gvec__.z_columns_pos().at<GPU>(), 0);
+                                  cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
                 /* stream #0 executes FFT */
                 cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                 break;
@@ -80,52 +140,114 @@ void FFT3D::transform_xy_serial(Gvec const& gvec__)
                              size_xy * (local_size_z_ - cufft_nbatch_), 1);
                 /* stream #0 executes FFT */
                 cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
-                fft_buffer_aux_.zero_on_device();
                 /* stream #0 packs z-columns */
                 pack_z_cols_gpu(fft_buffer_aux_.at<GPU>(), fft_buffer_.at<GPU>(), fft_grid_.size(0), fft_grid_.size(1), 
-                                cufft_nbatch_, (int)gvec__.z_columns().size(), gvec__.z_columns_pos().at<GPU>(), 0);
+                                cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
 
                 /* srteam #0 copies packed columns to CPU */
-                acc::copyout(fft_buffer_aux_.at<CPU>(), fft_buffer_aux_.at<GPU>(), cufft_nbatch_ * gvec__.z_columns().size(), 0);
+                acc::copyout(fft_buffer_aux_.at<CPU>(), local_size_z_, fft_buffer_aux_.at<GPU>(), cufft_nbatch_, 
+                             cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
                 /* stream #1 waits to complete memory copy */
                 cuda_stream_synchronize(1);
-                //double_complex z = mdarray<double_complex, 1>(&fft_buffer_aux_[0], cufft_nbatch_ * gvec__.z_columns().size()).checksum();
-                //printf("checksum(fft_buffer_aux): %f %f\n", z.real(), z.imag());
                 break;
             }
         }
-        
-        /* CPU starts working on remaining part of FFT buffer */
-        #pragma omp parallel num_threads(num_fft_workers_)
+        first_z = cufft_nbatch_;
+    }
+    #endif
+
+    #pragma omp parallel num_threads(num_fft_workers_)
+    {
+        int tid = omp_get_thread_num();
+        #pragma omp for
+        for (int iz = first_z; iz < local_size_z_; iz++)
         {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int z = cufft_nbatch_; z < local_size_z_; z++)
+            switch (direction)
             {
-                /* copy xy plane into local buffer */
-                std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
-                /* execute 2D FFT */
-                switch (direction)
+                case 1:
                 {
-                    case 1:
+                    /* clear xy-buffer */
+                    std::memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+                    /* load z-columns into proper location */
+                    for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        fftw_execute(plan_backward_xy_[tid]);
-                        break;
+                        int x = gvec__.z_column(i).x;
+                        int y = gvec__.z_column(i).y;
+                        if (x < 0) x += fft_grid_.size(0);
+                        if (y < 0) y += fft_grid_.size(1);
+
+                        fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
                     }
-                    case -1:
-                    {
-                        fftw_execute(plan_forward_xy_[tid]);
-                        break;
-                    }
-                    default:
-                    {
-                        TERMINATE("wrong direction");
-                    }
+
+                    /* execute local FFT transform */
+                    fftw_execute(plan_backward_xy_[tid]);
+
+                    /* copy xy plane to the FFT buffer */
+                    std::memcpy(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                    break;
                 }
-                /* copy result to the main FFT buffer */
-                std::memcpy(&fft_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
+                case -1:
+                {
+                    /* copy xy plane from the fft buffer */
+                    std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+
+                    /* execute local FFT transform */
+                    fftw_execute(plan_forward_xy_[tid]);
+
+                    /* get z-columns */
+                    for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+                    {
+                        int x = gvec__.z_column(i).x;
+                        int y = gvec__.z_column(i).y;
+                        if (x < 0) x += fft_grid_.size(0);
+                        if (y < 0) y += fft_grid_.size(1);
+
+                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)];
+                    }
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong direction");
+                }
             }
         }
+    }
+        
+        ///* CPU starts working on remaining part of FFT buffer */
+        //#pragma omp parallel num_threads(num_fft_workers_)
+        //{
+        //    int tid = omp_get_thread_num();
+        //    #pragma omp for
+        //    for (int z = cufft_nbatch_; z < local_size_z_; z++)
+        //    {
+        //        /* copy xy plane into local buffer */
+        //        std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[z * size_xy], sizeof(double_complex) * size_xy);
+        //        /* execute 2D FFT */
+        //        switch (direction)
+        //        {
+        //            case 1:
+        //            {
+        //                fftw_execute(plan_backward_xy_[tid]);
+        //                break;
+        //            }
+        //            case -1:
+        //            {
+        //                fftw_execute(plan_forward_xy_[tid]);
+        //                break;
+        //            }
+        //            default:
+        //            {
+        //                TERMINATE("wrong direction");
+        //            }
+        //        }
+        //        /* copy result to the main FFT buffer */
+        //        std::memcpy(&fft_buffer_[z * size_xy], fftw_buffer_xy_[tid], sizeof(double_complex) * size_xy);
+        //    }
+        //}
+    #ifdef __GPU
+    if (pu_ == GPU)
+    {
         if (direction == 1)
         {
             /* stream #1 copies data to GPU */
@@ -139,110 +261,109 @@ void FFT3D::transform_xy_serial(Gvec const& gvec__)
     #endif
 }
 
-template <int direction>
-void FFT3D::transform_xy_parallel(Gvec const& gvec__)
-{
-    int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
-    if (pu_ == CPU)
-    {
-        #pragma omp parallel num_threads(num_fft_workers_)
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int iz = 0; iz < local_size_z_; iz++)
-            {
-                switch (direction)
-                {
-                    case 1:
-                    {
-                        /* clear xy-buffer */
-                        std::memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
-                        /* load z-columns into proper location */
-                        for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-                        {
-                            int x = gvec__.z_columns()[i].x;
-                            int y = gvec__.z_columns()[i].y;
-                            if (x < 0) x += fft_grid_.size(0);
-                            if (y < 0) y += fft_grid_.size(1);
-
-                            fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)] = fft_buffer_aux_(iz + local_size_z_ * i);
-                        }
-                        /* execute local FFT transform */
-                        fftw_execute(plan_backward_xy_[tid]);
-                        /* copy xy plane to the FFT buffer */
-                        std::memcpy(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
-                        break;
-                    }
-                    case -1:
-                    {
-                        /* copy xy plane from the fft buffer */
-                        std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
-                        /* execute local FFT transform */
-                        fftw_execute(plan_forward_xy_[tid]);
-                        /* get z-columns */
-                        for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-                        {
-                            int x = gvec__.z_columns()[i].x;
-                            int y = gvec__.z_columns()[i].y;
-                            if (x < 0) x += fft_grid_.size(0);
-                            if (y < 0) y += fft_grid_.size(1);
-
-                            fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)];
-                        }
-                        break;
-                    }
-                    default:
-                    {
-                        TERMINATE("wrong direction");
-                    }
-                }
-            }
-        }
-    }
-    //#ifdef __GPU
-    //if (pu_ == GPU)
-    //{
-    //    if (direction == 1)
-    //    {
-    //        memset(fftw_buffer_, 0, sizeof(double_complex) * local_size());
-    //        #pragma omp parallel for num_threads(num_fft_workers_)
-    //        for (int iz = 0; iz < local_size_z_; iz++)
-    //        {
-    //            for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
-    //            {
-    //                int x = z_sticks_coord__[n].first;
-    //                int y = z_sticks_coord__[n].second;
-    //                fftw_buffer_[x + y * size(0) + iz * size_xy] = fft_buffer_aux_(iz + local_size_z_ * n);
-    //            }
-    //        }
-    //        fft_buffer_.copy_to_device();
-    //        cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
-    //        fft_buffer_.copy_to_host();
-    //    }
-    //    if (direction == -1)
-    //    {
-    //        fft_buffer_.copy_to_device();
-    //        cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
-    //        fft_buffer_.copy_to_host();
-    //        #pragma omp parallel for num_threads(num_fft_workers_)
-    //        for (int iz = 0; iz < local_size_z_; iz++)
-    //        {
-    //            for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
-    //            {
-    //                int x = z_sticks_coord__[n].first;
-    //                int y = z_sticks_coord__[n].second;
-    //                fft_buffer_aux_(iz + local_size_z_ * n) = fftw_buffer_[x + y * size(0) + iz * size_xy];
-    //            }
-    //        }
-    //    }
-    //}
-    //#endif
-}
+//= template <int direction>
+//= void FFT3D::transform_xy_parallel(Gvec const& gvec__)
+//= {
+//=     int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
+//=     if (pu_ == CPU)
+//=     {
+//=         #pragma omp parallel num_threads(num_fft_workers_)
+//=         {
+//=             int tid = omp_get_thread_num();
+//=             #pragma omp for
+//=             for (int iz = 0; iz < local_size_z_; iz++)
+//=             {
+//=                 switch (direction)
+//=                 {
+//=                     case 1:
+//=                     {
+//=                         /* clear xy-buffer */
+//=                         std::memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+//=                         /* load z-columns into proper location */
+//=                         for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+//=                         {
+//=                             int x = gvec__.z_columns()[i].x;
+//=                             int y = gvec__.z_columns()[i].y;
+//=                             if (x < 0) x += fft_grid_.size(0);
+//=                             if (y < 0) y += fft_grid_.size(1);
+//= 
+//=                             fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)] = fft_buffer_aux_(iz + local_size_z_ * i);
+//=                         }
+//=                         /* execute local FFT transform */
+//=                         fftw_execute(plan_backward_xy_[tid]);
+//=                         /* copy xy plane to the FFT buffer */
+//=                         std::memcpy(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+//=                         break;
+//=                     }
+//=                     case -1:
+//=                     {
+//=                         /* copy xy plane from the fft buffer */
+//=                         std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+//=                         /* execute local FFT transform */
+//=                         fftw_execute(plan_forward_xy_[tid]);
+//=                         /* get z-columns */
+//=                         for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+//=                         {
+//=                             int x = gvec__.z_columns()[i].x;
+//=                             int y = gvec__.z_columns()[i].y;
+//=                             if (x < 0) x += fft_grid_.size(0);
+//=                             if (y < 0) y += fft_grid_.size(1);
+//= 
+//=                             fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * fft_grid_.size(0)];
+//=                         }
+//=                         break;
+//=                     }
+//=                     default:
+//=                     {
+//=                         TERMINATE("wrong direction");
+//=                     }
+//=                 }
+//=             }
+//=         }
+//=     }
+//=     //#ifdef __GPU
+//=     //if (pu_ == GPU)
+//=     //{
+//=     //    if (direction == 1)
+//=     //    {
+//=     //        memset(fftw_buffer_, 0, sizeof(double_complex) * local_size());
+//=     //        #pragma omp parallel for num_threads(num_fft_workers_)
+//=     //        for (int iz = 0; iz < local_size_z_; iz++)
+//=     //        {
+//=     //            for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
+//=     //            {
+//=     //                int x = z_sticks_coord__[n].first;
+//=     //                int y = z_sticks_coord__[n].second;
+//=     //                fftw_buffer_[x + y * size(0) + iz * size_xy] = fft_buffer_aux_(iz + local_size_z_ * n);
+//=     //            }
+//=     //        }
+//=     //        fft_buffer_.copy_to_device();
+//=     //        cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+//=     //        fft_buffer_.copy_to_host();
+//=     //    }
+//=     //    if (direction == -1)
+//=     //    {
+//=     //        fft_buffer_.copy_to_device();
+//=     //        cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+//=     //        fft_buffer_.copy_to_host();
+//=     //        #pragma omp parallel for num_threads(num_fft_workers_)
+//=     //        for (int iz = 0; iz < local_size_z_; iz++)
+//=     //        {
+//=     //            for (int n = 0; n < (int)z_sticks_coord__.size(); n++)
+//=     //            {
+//=     //                int x = z_sticks_coord__[n].first;
+//=     //                int y = z_sticks_coord__[n].second;
+//=     //                fft_buffer_aux_(iz + local_size_z_ * n) = fftw_buffer_[x + y * size(0) + iz * size_xy];
+//=     //            }
+//=     //        }
+//=     //    }
+//=     //}
+//=     //#endif
+//= }
 
 template <int direction, bool use_reduction>
 void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
 {
-    int size_xy = fft_grid_.size(0) * fft_grid_.size(1);
     double norm = 1.0 / size();
     #pragma omp parallel num_threads(num_fft_workers_)
     {
@@ -250,83 +371,72 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
         #pragma omp for schedule(dynamic, 1)
         for (size_t i = 0; i < gvec__.z_columns().size(); i++)
         {
-            /* x,y coordinates of G-vectors */
-            int x = gvec__.z_columns()[i].x;
-            int y = gvec__.z_columns()[i].y;
-            /* coordinates inside FFT grid */
-            if (x < 0) x += fft_grid_.size(0);
-            if (y < 0) y += fft_grid_.size(1);
-
-            int offset = gvec__.z_columns()[i].offset;
+            int offset = gvec__.z_column(i).offset;
 
             switch (direction)
             {
                 case 1:
                 {
-                    //std::fill(fftw_buffer_z_[tid], fftw_buffer_z_[tid] + size(2), double_complex(0, 0));
+                    /* zero input FFT buffer */
                     std::memset(fftw_buffer_z_[tid], 0, fft_grid_.size(2) * sizeof(double_complex));
                     /* load column into local FFT buffer */
-                    for (size_t j = 0; j < gvec__.z_columns()[i].z.size(); j++)
+                    for (size_t j = 0; j < gvec__.z_column(i).z.size(); j++)
                     {
                         /* z-coordinate of G-vector */
-                        int z = gvec__.z_columns()[i].z[j];
+                        int z = gvec__.z_column(i).z[j];
                         /* coordinate inside FFT grid */
                         if (z < 0) z += fft_grid_.size(2);
                         fftw_buffer_z_[tid][z] = data__[offset + j];
                     }
                     /* column with {x,y} = {0,0} has only non-negative z components */
-                    if (use_reduction && !gvec__.z_columns()[i].x && !gvec__.z_columns()[i].y)
+                    if (use_reduction && !gvec__.z_column(i).x && !gvec__.z_column(i).y)
                     {
                         /* load remaining part of {0,0,z} column */
-                        for (size_t j = 0; j < gvec__.z_columns()[i].z.size(); j++)
+                        for (size_t j = 0; j < gvec__.z_column(i).z.size(); j++)
                         {
-                            int z = -gvec__.z_columns()[i].z[j];
+                            int z = -gvec__.z_column(i).z[j];
                             if (z < 0) z += fft_grid_.size(2);
                             fftw_buffer_z_[tid][z] = std::conj(data__[offset + j]);
                         }
                     }
+
                     /* execute 1D transform of a z-column */
                     fftw_execute(plan_backward_z_[tid]);
-                    /* load z-column into main FFT buffer */
-                    for (int z = 0; z < fft_grid_.size(2); z++)
-                    {
-                        fft_buffer_[x + y * fft_grid_.size(0) + z * size_xy] = fftw_buffer_z_[tid][z];
-                    }
-                    for (int z = 0; z < cufft_nbatch_; z++)
-                    {
-                        fft_buffer_aux_[z + i * cufft_nbatch_] = fftw_buffer_z_[tid][z];
-                    }
+
+                    /* load full column into auxiliary buffer */
+                    std::memcpy(&fft_buffer_aux_[i * fft_grid_.size(2)], fftw_buffer_z_[tid],
+                                fft_grid_.size(2) * sizeof(double_complex));
 
                     if (use_reduction && (gvec__.z_columns()[i].x || gvec__.z_columns()[i].y))
                     {
-                        /* x,y coordinates of inverse G-vectors */
-                        int x = -gvec__.z_columns()[i].x;
-                        int y = -gvec__.z_columns()[i].y;
-                        /* coordinates inside FFT grid */
-                        if (x < 0) x += fft_grid_.size(0);
-                        if (y < 0) y += fft_grid_.size(1);
-                        /* load conjugated z-column into main FFT buffer */
-                        for (int z = 0; z < fft_grid_.size(2); z++)
-                        {
-                            fft_buffer_[x + y * fft_grid_.size(0) + z * size_xy] = std::conj(fftw_buffer_z_[tid][z]);
-                        }
+                        STOP();
+                        ///* x,y coordinates of inverse G-vectors */
+                        //int x = -gvec__.z_columns()[i].x;
+                        //int y = -gvec__.z_columns()[i].y;
+                        ///* coordinates inside FFT grid */
+                        //if (x < 0) x += fft_grid_.size(0);
+                        //if (y < 0) y += fft_grid_.size(1);
+                        ///* load conjugated z-column into main FFT buffer */
+                        //for (int z = 0; z < fft_grid_.size(2); z++)
+                        //{
+                        //    fft_buffer_[x + y * fft_grid_.size(0) + z * size_xy] = std::conj(fftw_buffer_z_[tid][z]);
+                        //}
                     }
                     break;
                 }
                 case -1:
                 {
-                    for (int z = 0; z < fft_grid_.size(2); z++)
-                    {
-                        fftw_buffer_z_[tid][z] = fft_buffer_[x + y * fft_grid_.size(0) + z * size_xy];
-                    }
-                    for (int z = 0; z < cufft_nbatch_; z++)
-                    {
-                        fftw_buffer_z_[tid][z] = fft_buffer_aux_[z + i * cufft_nbatch_];
-                    }
+                    /* load full column from auxiliary buffer */
+                    std::memcpy(fftw_buffer_z_[tid], &fft_buffer_aux_[i * fft_grid_.size(2)],
+                                fft_grid_.size(2) * sizeof(double_complex));
+
+                    /* execute 1D transform of a z-column */
                     fftw_execute(plan_forward_z_[tid]);
-                    for (size_t j = 0; j < gvec__.z_columns()[i].z.size(); j++)
+
+                    /* store PW coefficients */
+                    for (size_t j = 0; j < gvec__.z_column(i).z.size(); j++)
                     {
-                        int z = gvec__.z_columns()[i].z[j];
+                        int z = gvec__.z_column(i).z[j];
                         if (z < 0) z += fft_grid_.size(2);
                         data__[offset + j] = fftw_buffer_z_[tid][z] * norm;
                     }
@@ -354,12 +464,12 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
         block_data_descriptor recv(comm_.size());
         for (int r = 0; r < comm_.size(); r++)
         {
-            send.counts[r] = static_cast<int>(spl_z_.local_size(rank) * gvec__.zcol_fft_distr().counts[r]);
-            recv.counts[r] = static_cast<int>(spl_z_.local_size(r) * gvec__.zcol_fft_distr().counts[rank]);
+            send.counts[r] = spl_z_.local_size(rank) * gvec__.zcol_fft_distr().counts[r];
+            recv.counts[r] = spl_z_.local_size(r) * gvec__.zcol_fft_distr().counts[rank];
         }
         send.calc_offsets();
         recv.calc_offsets();
-        
+
         std::memcpy(&fft_buffer_[0], &fft_buffer_aux_[0], gvec__.z_columns().size() * local_size_z_ * sizeof(double_complex)); 
 
         comm_.alltoall(&fft_buffer_[0], &send.counts[0], &send.offsets[0], &fft_buffer_aux_(0), &recv.counts[0], &recv.offsets[0]);
@@ -372,25 +482,26 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
         for (int i = 0; i < num_zcol_local; i++)
         {
             int icol = gvec__.zcol_fft_distr().offsets[rank] + i;
-            int offset = gvec__.z_columns()[icol].offset;
+            int offset = gvec__.z_column(icol).offset;
 
             switch (direction)
             {
                 case 1:
                 {
                     /* clear z buffer */
-                    //std::fill(fftw_buffer_z_[tid], fftw_buffer_z_[tid] + size(2), double_complex(0, 0));
                     std::memset(fftw_buffer_z_[tid], 0, fft_grid_.size(2) * sizeof(double_complex));
                     /* load z column into buffer */
-                    for (size_t j = 0; j < gvec__.z_columns()[icol].z.size(); j++)
+                    for (size_t j = 0; j < gvec__.z_column(icol).z.size(); j++)
                     {
-                        int z = gvec__.z_columns()[icol].z[j];
+                        int z = gvec__.z_column(icol).z[j];
                         if (z < 0) z += fft_grid_.size(2);
 
                         fftw_buffer_z_[tid][z] = data__[offset + j];
                     }
+
                     /* perform local FFT transform of a column */
                     fftw_execute(plan_backward_z_[tid]);
+
                     /* redistribute z-column for a forthcoming all-to-all */ 
                     for (int r = 0; r < comm_.size(); r++)
                     {
@@ -408,18 +519,20 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
                     /* collect full z-column */ 
                     for (int r = 0; r < comm_.size(); r++)
                     {
-                        int lsz = (int)spl_z_.local_size(r);
-                        size_t offs = spl_z_.global_offset(r);
+                        int lsz = spl_z_.local_size(r);
+                        int offs = spl_z_.global_offset(r);
                     
-                        std::memcpy(&fftw_buffer_z_[tid][offs], &fft_buffer_aux_(offs * num_zcol_local + i * lsz),
+                        std::memcpy(&fftw_buffer_z_[tid][offs], &fft_buffer_aux_[offs * num_zcol_local + i * lsz],
                                     lsz * sizeof(double_complex));
                     }
+
                     /* perform local FFT transform of a column */
                     fftw_execute(plan_forward_z_[tid]);
+
                     /* save z column of PW coefficients*/
-                    for (size_t j = 0; j < gvec__.z_columns()[icol].z.size(); j++)
+                    for (size_t j = 0; j < gvec__.z_column(icol).z.size(); j++)
                     {
-                        int z = gvec__.z_columns()[icol].z[j];
+                        int z = gvec__.z_column(icol).z[j];
                         if (z < 0) z += fft_grid_.size(2);
 
                         data__[offset + j] = fftw_buffer_z_[tid][z] * norm;
@@ -442,8 +555,8 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
         block_data_descriptor recv(comm_.size());
         for (int r = 0; r < comm_.size(); r++)
         {
-            send.counts[r] = static_cast<int>(spl_z_.local_size(r) * gvec__.zcol_fft_distr().counts[rank]);
-            recv.counts[r] = static_cast<int>(spl_z_.local_size(rank) * gvec__.zcol_fft_distr().counts[r]);
+            send.counts[r] = spl_z_.local_size(r) * gvec__.zcol_fft_distr().counts[rank];
+            recv.counts[r] = spl_z_.local_size(rank) * gvec__.zcol_fft_distr().counts[r];
         }
         send.calc_offsets();
         recv.calc_offsets();
@@ -455,7 +568,6 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
         std::memcpy(&fft_buffer_aux_[0], &fft_buffer_[0], gvec__.z_columns().size() * local_size_z_ * sizeof(double_complex)); 
     }
 }
-
 
 template <int direction>
 void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
@@ -544,12 +656,12 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
             case 1:
             {
                 transform_z_parallel<1>(gvec__, data__);
-                transform_xy_parallel<1>(gvec__);
+                transform_xy_serial<1>(gvec__);
                 break;
             }
             case -1:
             {
-                transform_xy_parallel<-1>(gvec__);
+                transform_xy_serial<-1>(gvec__);
                 transform_z_parallel<-1>(gvec__, data__);
                 break;
             }

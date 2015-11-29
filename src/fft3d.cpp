@@ -59,36 +59,6 @@ FFT3D::FFT3D(vector3d<int> dims__,
         fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(fft_grid_.size(0) * fft_grid_.size(1) * sizeof(double_complex)));
     }
 
-    //fftw_plan_with_nthreads(num_fft_workers_);
-
-    //if (comm_.size() > 1)
-    //{
-    //    #ifdef __FFTW_MPI
-    //    plan_backward_ = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), 
-    //                                          (fftw_complex*)fftw_buffer_[i], 
-    //                                          (fftw_complex*)fftw_buffer_[i],
-    //                                          comm_.mpi_comm(), FFTW_BACKWARD, FFTW_ESTIMATE);
-
-    //    plan_forward_ = fftw_mpi_plan_dft_3d(size(2), size(1), size(0), 
-    //                                         (fftw_complex*)fftw_buffer_[i], 
-    //                                         (fftw_complex*)fftw_buffer_[i],
-    //                                         comm_.mpi_comm(), FFTW_FORWARD, FFTW_ESTIMATE);
-
-    //    #else
-    //    TERMINATE("not compiled with MPI support");
-    //    #endif
-    //}
-    //else
-    //{
-    //    plan_backward_ = fftw_plan_dft_3d(size(2), size(1), size(0), 
-    //                                      (fftw_complex*)fftw_buffer_[i], 
-    //                                      (fftw_complex*)fftw_buffer_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
-    //    
-    //    plan_forward_ = fftw_plan_dft_3d(size(2), size(1), size(0), 
-    //                                     (fftw_complex*)fftw_buffer_[i], 
-    //                                     (fftw_complex*)fftw_buffer_[i], FFTW_FORWARD, FFTW_ESTIMATE);
-    //}
-
     fftw_plan_with_nthreads(1);
 
     plan_forward_z_   = std::vector<fftw_plan>(num_fft_workers_);
@@ -141,16 +111,11 @@ FFT3D::FFT3D(vector3d<int> dims__,
 
 FFT3D::~FFT3D()
 {
-    //fftw_free(fftw_buffer_);
-
     for (int i = 0; i < num_fft_workers_; i++)
     {
         fftw_free(fftw_buffer_z_[i]);
         fftw_free(fftw_buffer_xy_[i]);
     }
-
-    //fftw_destroy_plan(plan_backward_);
-    //fftw_destroy_plan(plan_forward_);
 
     for (int i = 0; i < num_fft_workers_; i++)
     {

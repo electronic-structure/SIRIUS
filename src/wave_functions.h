@@ -71,7 +71,10 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             {
                 swapped_data_storage_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
                 swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
-                send_recv_buf_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
+                //int buf_size = std::max(gvec_.num_gvec_fft() * spl_num_wfs_.local_size(),
+                //                        num_gvec_loc_ * num_wfs_);
+                int buf_size = gvec_.num_gvec_fft() * spl_num_wfs_.local_size(); 
+                send_recv_buf_ = mdarray<double_complex, 1>(buf_size);
             }
             
             /* flat rank id */
@@ -90,15 +93,15 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             assert(gvec_slab_distr_.offsets[num_ranks_col_ - 1] + gvec_slab_distr_.counts[num_ranks_col_ - 1] == gvec__.num_gvec_fft());
         }
 
-        //~Wave_functions()
-        //{
-        //}
+        ~Wave_functions()
+        {
+        }
 
         void swap_forward(int idx0__, int n__)
         {
             PROFILE();
 
-            Timer t("slab_to_panel");
+            Timer t("sirius::Wave_functions::swap_forward");
 
             /* this is how n wave-functions will be distributed between panels */
             spl_n_ = splindex<block>(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
@@ -158,12 +161,22 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             PROFILE();
 
-            Timer t("panel_to_slab");
+            Timer t("sirius::Wave_functions::swap_backward");
         
             /* this is how n wave-functions are distributed between panels */
             splindex<block> spl_n(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
             /* local number of columns */
             int n_loc = spl_n.local_size();
+
+            //==std::vector<MPI_Request> req(num_ranks_col_);
+            //==/* post a non-blocking recieve request */
+            //==for (int icol = 0; icol < num_ranks_col_; icol++)
+            //=={
+            //==    int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
+            //==    comm_.irecv(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n.global_offset(icol))],
+            //==                num_gvec_loc_ * spl_n.local_size(icol),
+            //==                src_rank, rank_ % num_ranks_col_, &req[icol]);
+            //==}
             
             if (num_ranks_col_ > 1)
             {
@@ -198,6 +211,8 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                            num_gvec_loc_ * spl_n.local_size(icol),
                            src_rank, rank_ % num_ranks_col_);
             }
+            //==std::vector<MPI_Status> stat(num_ranks_col_);
+            //==MPI_Waitall(num_ranks_col_, &req[0], &stat[0]);
         }
 
         inline double_complex& operator()(int igloc__, int i__)

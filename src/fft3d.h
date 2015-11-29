@@ -122,8 +122,8 @@ class FFT3D
         template <int direction>
         void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
 
-        template <int direction>
-        void transform_xy_parallel(Gvec const& gvec__);
+        //template <int direction>
+        //void transform_xy_parallel(Gvec const& gvec__);
 
         template <int direction>
         void transform_xy_serial(Gvec const& gvec__);

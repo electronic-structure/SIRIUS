@@ -72,6 +72,12 @@ void cuda_async_copy_to_device(void* target, void const* source, size_t size, in
 
 void cuda_async_copy_to_host(void* target, void const* source, size_t size, int stream_id);
 
+void cuda_async_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
+                                 size_t nrow__, size_t ncol__, int elem_size__, int stream_id__);
+
+void cuda_async_copy2d_to_host(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
+                               size_t nrow__, size_t ncol__, int elem_size__, int stream_id__);
+
 size_t cuda_get_free_mem();
 
 void cuda_device_reset();
@@ -161,9 +167,15 @@ inline void copyin(T* target__, T const* source__, size_t n__)
 }
 
 template <typename T>
-inline void copyin(T* target__, T const* source__, size_t n__, int thread_id)
+inline void copyin(T* target__, T const* source__, size_t n__, int stream_id__)
 {
-    cuda_async_copy_to_device(target__, source__, n__ * sizeof(T), thread_id);
+    cuda_async_copy_to_device(target__, source__, n__ * sizeof(T), stream_id__);
+}
+
+template <typename T>
+inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, int stream_id__)
+{
+    cuda_async_copy2d_to_device(target__, ld1__, source__, ld2__, nrow__, ncol__, sizeof(T), stream_id__);
 }
 
 template <typename T>
@@ -173,9 +185,15 @@ inline void copyout(T* target__, T const* source__, size_t n__)
 }
 
 template <typename T>
-inline void copyout(T* target__, T const* source__, size_t n__, int thread_id)
+inline void copyout(T* target__, T const* source__, size_t n__, int stream_id__)
 {
-    cuda_async_copy_to_host(target__, source__, n__ * sizeof(T), thread_id);
+    cuda_async_copy_to_host(target__, source__, n__ * sizeof(T), stream_id__);
+}
+
+template <typename T>
+inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, int stream_id__)
+{
+    cuda_async_copy2d_to_host(target__, ld1__, source__, ld2__, nrow__, ncol__, sizeof(T), stream_id__);
 }
 
 };

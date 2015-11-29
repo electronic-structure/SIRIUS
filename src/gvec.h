@@ -392,6 +392,11 @@ class Gvec
             return z_columns_;
         }
 
+        inline z_column_descriptor const& z_column(size_t idx__) const
+        {
+            return z_columns_[idx__];
+        }
+
         inline block_data_descriptor const& zcol_fft_distr() const
         {
             return zcol_fft_distr_;
