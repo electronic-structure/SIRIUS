@@ -101,7 +101,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             PROFILE();
 
-            Timer t("sirius::Wave_functions::swap_forward");
+            Timer t("sirius::Wave_functions::swap_forward", comm_);
 
             /* this is how n wave-functions will be distributed between panels */
             spl_n_ = splindex<block>(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
@@ -161,7 +161,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             PROFILE();
 
-            Timer t("sirius::Wave_functions::swap_backward");
+            Timer t("sirius::Wave_functions::swap_backward", comm_);
         
             /* this is how n wave-functions are distributed between panels */
             splindex<block> spl_n(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
@@ -180,7 +180,6 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             
             if (num_ranks_col_ > 1)
             {
-                Timer t1("swap_backward|1");
                 /* reorder sending blocks */
                 #pragma omp parallel for
                 for (int i = 0; i < n_loc; i++)
@@ -201,18 +200,22 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             }
             else
             {
-                Timer t2("swap_backward|2");
                 int dest_rank = rank_row_ * num_ranks_col_;
                 comm_.isend(&swapped_data_storage_[0], gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
             }
             
-            Timer t3("swap_backward|3");
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
+                double t = -omp_get_wtime();
                 comm_.recv(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n.global_offset(icol))],
                            num_gvec_loc_ * spl_n.local_size(icol),
                            src_rank, rank_ % num_ranks_col_);
+                t += omp_get_wtime();
+                DUMP("recieve from %i, %li bytes, %f GB/s",
+                     src_rank, 
+                     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex),
+                     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex) / double(1 << 30) / t);
             }
             //==std::vector<MPI_Status> stat(num_ranks_col_);
             //==MPI_Waitall(num_ranks_col_, &req[0], &stat[0]);
