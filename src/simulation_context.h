@@ -246,7 +246,7 @@ class Simulation_context
             printf("number of G-shells                    : %i\n", gvec_.num_shells());
             printf("number of independent FFTs : %i\n", mpi_grid_fft_->dimension_size(0));
             printf("FFT comm size              : %i\n", mpi_grid_fft_->dimension_size(1));
-            auto fft_grid = fft_[0]->fft_grid();
+            auto fft_grid = fft_[0]->grid();
             printf("FFT grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
             printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
                                                                 fft_grid.limits(1).first, fft_grid.limits(1).second,
@@ -254,7 +254,7 @@ class Simulation_context
             
             if (!parameters_.full_potential())
             {
-                fft_grid = fft_coarse_[0]->fft_grid();
+                fft_grid = fft_coarse_[0]->grid();
                 printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
                 printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
                 printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,

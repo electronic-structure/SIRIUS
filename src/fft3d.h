@@ -73,7 +73,7 @@ class FFT3D
         /// Split z-direction.
         splindex<block> spl_z_;
 
-        FFT_grid fft_grid_;
+        FFT_grid grid_;
 
         /// Local size of z-dimension of FFT buffer.
         int local_size_z_;
@@ -163,20 +163,20 @@ class FFT3D
         //    for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
         //}
 
-        FFT_grid const& fft_grid() const
+        FFT_grid const& grid() const
         {
-            return fft_grid_;
+            return grid_;
         }
         
         /// Total size of the FFT grid.
         inline int size() const
         {
-            return fft_grid_.size();
+            return grid_.size();
         }
 
         inline int local_size() const
         {
-            return fft_grid_.size(0) * fft_grid_.size(1) * local_size_z_;
+            return grid_.size(0) * grid_.size(1) * local_size_z_;
         }
 
         inline int local_size_z() const
@@ -244,7 +244,7 @@ class FFT3D
             
             if (comm_.size() == 1 && cufft3d_)
             {
-                auto work_size = cufft_get_size_3d(fft_grid_.size(0), fft_grid_.size(1), fft_grid_.size(2), 1);
+                auto work_size = cufft_get_size_3d(grid_.size(0), grid_.size(1), grid_.size(2), 1);
                 cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
                 cufft_work_buf_.allocate_on_device();
 
@@ -252,7 +252,7 @@ class FFT3D
             }
             else
             {
-                auto work_size = cufft_get_size_2d(fft_grid_.size(0), fft_grid_.size(1), cufft_nbatch_);
+                auto work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
                 cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
                 cufft_work_buf_.allocate_on_device();
 

@@ -42,10 +42,10 @@ FFT3D::FFT3D(vector3d<int> dims__,
 {
     PROFILE();
 
-    fft_grid_ = FFT_grid(dims__);
+    grid_ = FFT_grid(dims__);
 
     /* split z-direction */
-    spl_z_ = splindex<block>(fft_grid_.size(2), comm_.size(), comm_.rank());
+    spl_z_ = splindex<block>(grid_.size(2), comm_.size(), comm_.rank());
     local_size_z_ = spl_z_.local_size();
     offset_z_ = spl_z_.global_offset();
 
@@ -55,8 +55,8 @@ FFT3D::FFT3D(vector3d<int> dims__,
     /* allocate 1d and 2d buffers */
     for (int i = 0; i < num_fft_workers_; i++)
     {
-        fftw_buffer_z_.push_back((double_complex*)fftw_malloc(fft_grid_.size(2) * sizeof(double_complex)));
-        fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(fft_grid_.size(0) * fft_grid_.size(1) * sizeof(double_complex)));
+        fftw_buffer_z_.push_back((double_complex*)fftw_malloc(grid_.size(2) * sizeof(double_complex)));
+        fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(grid_.size(0) * grid_.size(1) * sizeof(double_complex)));
     }
 
     fftw_plan_with_nthreads(1);
@@ -68,16 +68,16 @@ FFT3D::FFT3D(vector3d<int> dims__,
 
     for (int i = 0; i < num_fft_workers_; i++)
     {
-        plan_forward_z_[i] = fftw_plan_dft_1d(fft_grid_.size(2), (fftw_complex*)fftw_buffer_z_[i], 
+        plan_forward_z_[i] = fftw_plan_dft_1d(grid_.size(2), (fftw_complex*)fftw_buffer_z_[i], 
                                               (fftw_complex*)fftw_buffer_z_[i], FFTW_FORWARD, FFTW_ESTIMATE);
 
-        plan_backward_z_[i] = fftw_plan_dft_1d(fft_grid_.size(2), (fftw_complex*)fftw_buffer_z_[i], 
+        plan_backward_z_[i] = fftw_plan_dft_1d(grid_.size(2), (fftw_complex*)fftw_buffer_z_[i], 
                                                (fftw_complex*)fftw_buffer_z_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
         
-        plan_forward_xy_[i] = fftw_plan_dft_2d(fft_grid_.size(1), fft_grid_.size(0), (fftw_complex*)fftw_buffer_xy_[i], 
+        plan_forward_xy_[i] = fftw_plan_dft_2d(grid_.size(1), grid_.size(0), (fftw_complex*)fftw_buffer_xy_[i], 
                                                (fftw_complex*)fftw_buffer_xy_[i], FFTW_FORWARD, FFTW_ESTIMATE);
 
-        plan_backward_xy_[i] = fftw_plan_dft_2d(fft_grid_.size(1), fft_grid_.size(0), (fftw_complex*)fftw_buffer_xy_[i], 
+        plan_backward_xy_[i] = fftw_plan_dft_2d(grid_.size(1), grid_.size(0), (fftw_complex*)fftw_buffer_xy_[i], 
                                                 (fftw_complex*)fftw_buffer_xy_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
     }
     
@@ -89,7 +89,7 @@ FFT3D::FFT3D(vector3d<int> dims__,
         {
             cufft_nbatch_ = 1;
 
-            int dims[] = {fft_grid_.size(2), fft_grid_.size(1), fft_grid_.size(0)};
+            int dims[] = {grid_.size(2), grid_.size(1), grid_.size(0)};
             cufft_create_plan_handle(&cufft_plan_);
             cufft_create_batch_plan(cufft_plan_, 3, dims, dims, 1, 1, cufft_nbatch_, auto_alloc);
         }
@@ -98,11 +98,11 @@ FFT3D::FFT3D(vector3d<int> dims__,
             /* GPU will take care of this number of xy-planes */
             cufft_nbatch_ = static_cast<int>(0.5 * local_size_z_);
 
-            int dim_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
-            int embed_xy[] = {fft_grid_.size(1), fft_grid_.size(0)};
+            int dim_xy[] = {grid_.size(1), grid_.size(0)};
+            int embed_xy[] = {grid_.size(1), grid_.size(0)};
 
             cufft_create_plan_handle(&cufft_plan_xy_);
-            cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, embed_xy, 1, fft_grid_.size(0) * fft_grid_.size(1), cufft_nbatch_, auto_alloc);
+            cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, embed_xy, 1, grid_.size(0) * grid_.size(1), cufft_nbatch_, auto_alloc);
             cufft_set_stream(cufft_plan_xy_, 0);
         }
     }

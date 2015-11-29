@@ -207,15 +207,15 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                double t = -omp_get_wtime();
+                //double t = -omp_get_wtime();
                 comm_.recv(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n.global_offset(icol))],
                            num_gvec_loc_ * spl_n.local_size(icol),
                            src_rank, rank_ % num_ranks_col_);
-                t += omp_get_wtime();
-                DUMP("recieve from %i, %li bytes, %f GB/s",
-                     src_rank, 
-                     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex),
-                     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex) / double(1 << 30) / t);
+                //t += omp_get_wtime();
+                //DUMP("recieve from %i, %li bytes, %f GB/s",
+                //     src_rank, 
+                //     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex),
+                //     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex) / double(1 << 30) / t);
             }
             //==std::vector<MPI_Status> stat(num_ranks_col_);
             //==MPI_Waitall(num_ranks_col_, &req[0], &stat[0]);
