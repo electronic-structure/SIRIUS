@@ -93,16 +93,10 @@ class FFT3D
         /// Internal buffer for independent {xy}-transforms.
         std::vector<double_complex*> fftw_buffer_xy_;
 
-        /// Backward transformation plan for each thread
-        fftw_plan plan_backward_;
-
         std::vector<fftw_plan> plan_backward_z_;
 
         std::vector<fftw_plan> plan_backward_xy_;
         
-        /// Forward transformation plan for each thread
-        fftw_plan plan_forward_;
-
         std::vector<fftw_plan> plan_forward_z_;
 
         std::vector<fftw_plan> plan_forward_xy_;
@@ -110,7 +104,6 @@ class FFT3D
         #ifdef __GPU
         cufftHandle cufft_plan_;
         cufftHandle cufft_plan_xy_;
-        //mdarray<double_complex, 1> cufft_buf_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
         bool allocated_on_device_;
@@ -122,11 +115,8 @@ class FFT3D
         template <int direction>
         void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
 
-        //template <int direction>
-        //void transform_xy_parallel(Gvec const& gvec__);
-
         template <int direction>
-        void transform_xy_serial(Gvec const& gvec__);
+        void transform_xy(Gvec const& gvec__);
 
     public:
 
