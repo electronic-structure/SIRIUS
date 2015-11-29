@@ -180,6 +180,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             
             if (num_ranks_col_ > 1)
             {
+                Timer t1("swap_backward|1");
                 /* reorder sending blocks */
                 #pragma omp parallel for
                 for (int i = 0; i < n_loc; i++)
@@ -200,10 +201,12 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             }
             else
             {
+                Timer t2("swap_backward|2");
                 int dest_rank = rank_row_ * num_ranks_col_;
                 comm_.isend(&swapped_data_storage_[0], gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
             }
             
+            Timer t3("swap_backward|3");
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});

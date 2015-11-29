@@ -230,6 +230,8 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
 template <int direction>
 void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 {
+    Timer t("FFT3D::transform_z_parallel");
+
     int rank = comm_.rank();
     int num_zcol_local = gvec__.zcol_fft_distr().counts[rank];
     double norm = 1.0 / size();
