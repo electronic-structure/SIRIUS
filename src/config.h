@@ -32,8 +32,6 @@
 //== #define __TIMER_MPI_WTIME
 #define __TIMER_CHRONO
 
-#define __FFTW_MPI
-
 //== #define __PRINT_OBJECT_HASH
 
 //== #define __PRINT_OBJECT_CHECKSUM

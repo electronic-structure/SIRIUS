@@ -7,12 +7,12 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--enable-mpi", "--enable-openmp", "--enable-threads"]
+              []
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-2.0.tar.gz", 
               ["--disable-shared"]
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.15-patch1.tar.gz",
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.16.tar.gz",
               ["--enable-fortran", "--disable-shared", "--enable-static=yes", 
                "--disable-deprecated-symbols", "--disable-filters","--disable-parallel", "--with-zlib=no","--with-szlib=no"]
              ],
@@ -57,17 +57,11 @@ def configure_package(package_name, platform):
 
     new_env = os.environ.copy()
     
-    if (package_name == "fftw"):
-        new_env["CC"] = platform["MPI_CC"]
-        new_env["MPICC"] = platform["MPI_CC"]
-        new_env["F77"] = platform["MPI_FC"]
-    else:
-        new_env["CC"] = platform["CC"]
-        new_env["CXX"] = platform["CXX"]
-        new_env["FC"] = platform["FC"]
-        new_env["F77"] = platform["FC"]
-        new_env["FCCPP"] = platform["FCCPP"]
-
+    new_env["CC"] = platform["CC"]
+    new_env["CXX"] = platform["CXX"]
+    new_env["FC"] = platform["FC"]
+    new_env["F77"] = platform["FC"]
+    new_env["FCCPP"] = platform["FCCPP"]
 
     p = subprocess.Popen(["./configure"] + package[1], cwd = "./libs/" + package_dir, env = new_env)
     p.wait()
@@ -93,9 +87,7 @@ def configure_package(package_name, platform):
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 
     if (package_name == "fftw"):
-        retval = ["-I" + cwdlibs + package_dir + "/api -I" + cwdlibs + package_dir + "/mpi", 
-                  cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a " + 
-                  cwdlibs + package_dir + "/mpi/.libs/libfftw3_mpi.a " + 
+        retval = ["-I" + cwdlibs + package_dir + "/api", 
                   cwdlibs + package_dir + "/.libs/libfftw3.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]

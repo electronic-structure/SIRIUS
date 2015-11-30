@@ -79,8 +79,6 @@ FFT3D::FFT3D(vector3d<int> dims__,
         fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(grid_.size(0) * grid_.size(1) * sizeof(double_complex)));
     }
 
-    fftw_plan_with_nthreads(1);
-
     plan_forward_z_   = std::vector<fftw_plan>(num_fft_workers_);
     plan_forward_xy_  = std::vector<fftw_plan>(num_fft_workers_);
     plan_backward_z_  = std::vector<fftw_plan>(num_fft_workers_);
@@ -374,8 +372,6 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
 template <int direction>
 void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 {
-    Timer t("FFT3D::transform_z_parallel");
-
     int rank = comm_.rank();
     int num_zcol_local = gvec__.zcol_fft_distr().counts[rank];
     double norm = 1.0 / size();
