@@ -1,6 +1,6 @@
 #include "kernels_common.h"
 
-template <int direction>
+template <int direction, bool conjugate>
 __global__ void pack_unpack_z_cols_gpu_kernel
 (
     cuDoubleComplex* z_cols_packed__,
@@ -20,9 +20,17 @@ __global__ void pack_unpack_z_cols_gpu_kernel
         
         for (int z = 0; z < size_z__; z++)
         {
+            /* load into buffer */
             if (direction == 1)
             {
-                fft_buf__[array3D_offset(x, y, z, size_x__, size_y__)] = z_cols_packed__[array2D_offset(z, icol, size_z__)];
+                if (conjugate)
+                {
+                    fft_buf__[array3D_offset(x, y, z, size_x__, size_y__)] = cuConj(z_cols_packed__[array2D_offset(z, icol, size_z__)]);
+                }
+                else
+                {
+                    fft_buf__[array3D_offset(x, y, z, size_x__, size_y__)] = z_cols_packed__[array2D_offset(z, icol, size_z__)];
+                }
             }
             if (direction == -1)
             {
@@ -39,6 +47,7 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                   int size_z__,
                                   int num_z_cols__,
                                   int const* z_columns_pos__,
+                                  bool use_reduction__, 
                                   int stream_id__)
 {
     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
@@ -48,7 +57,7 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
 
     cudaMemsetAsync(fft_buf__, 0, size_x__ * size_y__ * size_z__ * sizeof(cuDoubleComplex), stream);
 
-    pack_unpack_z_cols_gpu_kernel<1> <<<grid_b, grid_t, 0, stream>>>
+    pack_unpack_z_cols_gpu_kernel<1, false> <<<grid_b, grid_t, 0, stream>>>
     (
         z_cols_packed__,
         fft_buf__,
@@ -58,6 +67,19 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
         num_z_cols__,
         z_columns_pos__
     );
+    if (use_reduction__)
+    {
+        pack_unpack_z_cols_gpu_kernel<1, true> <<<grid_b, grid_t, 0, stream>>>
+        (
+            &z_cols_packed__[size_z__],
+            fft_buf__,
+            size_x__,
+            size_y__,
+            size_z__,
+            num_z_cols__ - 1,
+            &z_columns_pos__[2 * num_z_cols__]
+        );
+    }
 }
 
 extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
@@ -74,7 +96,7 @@ extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x));
 
-    pack_unpack_z_cols_gpu_kernel<-1> <<<grid_b, grid_t, 0, stream>>>
+    pack_unpack_z_cols_gpu_kernel<-1, false> <<<grid_b, grid_t, 0, stream>>>
     (
         z_cols_packed__,
         fft_buf__,

@@ -195,6 +195,11 @@ class FFT3D
             return fft_buffer_[idx__];
         }
         
+        inline mdarray<double_complex, 1>& buffer()
+        {
+            return fft_buffer_;
+        }
+        
         //template <processing_unit_t pu>
         //inline double_complex* buffer()
         //{

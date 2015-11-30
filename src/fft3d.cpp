@@ -32,6 +32,7 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                   int size_z__,
                                   int num_z_cols__,
                                   int const* z_columns_pos__,
+                                  bool use_reduction,
                                   int stream_id__);
 
 extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
@@ -177,7 +178,8 @@ void FFT3D::transform_xy(Gvec const& gvec__)
 
                 /* srteam #0 unpacks z-columns into proper position of FFT buffer */
                 unpack_z_cols_gpu(fft_buffer_aux_.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
-                                  cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
+                                  cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(),
+                                  use_reduction, 0);
                 /* stream #0 executes FFT */
                 cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                 break;
@@ -227,7 +229,7 @@ void FFT3D::transform_xy(Gvec const& gvec__)
 
                         fftw_buffer_xy_[tid][x + y * grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
 
-                        if (use_reduction && (gvec__.z_column(i).x || gvec__.z_column(i).y))
+                        if (use_reduction && i)
                         {
                             /* x,y coordinates of inverse G-vectors */
                             int x = -gvec__.z_column(i).x;
@@ -319,7 +321,7 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
                         fftw_buffer_z_[tid][z] = data__[offset + j];
                     }
                     /* column with {x,y} = {0,0} has only non-negative z components */
-                    if (use_reduction && !gvec__.z_column(i).x && !gvec__.z_column(i).y)
+                    if (use_reduction && !i)
                     {
                         /* load remaining part of {0,0,z} column */
                         for (size_t j = 0; j < gvec__.z_column(i).z.size(); j++)
@@ -414,7 +416,7 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
                     }
 
                     /* column with {x,y} = {0,0} has only non-negative z components */
-                    if (use_reduction && !gvec__.z_column(icol).x && !gvec__.z_column(icol).y)
+                    if (use_reduction && !icol)
                     {
                         /* load remaining part of {0,0,z} column */
                         for (size_t j = 0; j < gvec__.z_column(icol).z.size(); j++)

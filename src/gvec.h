@@ -165,8 +165,16 @@ class Gvec
             {
                 z_columns_.insert(z_columns_.end(), zcols_local[rank].begin(), zcols_local[rank].end());
             }
-
-            z_columns_pos_ = mdarray<int, 2>(2, z_columns_.size());
+            
+            /* build simple array of {x,y} coordinates for GPU kernel */
+            if (reduce_gvec__)
+            {
+                z_columns_pos_ = mdarray<int, 2>(2, 2 * z_columns_.size() - 1);
+            }
+            else
+            {
+                z_columns_pos_ = mdarray<int, 2>(2, z_columns_.size());
+            }
             for (size_t i = 0; i < z_columns_.size(); i++)
             {
                 int x = z_columns_[i].x;
@@ -175,6 +183,19 @@ class Gvec
                 if (y < 0) y += fft_grid_.size(1);
                 z_columns_pos_(0, i) = x;
                 z_columns_pos_(1, i) = y;
+            }
+            if (reduce_gvec__)
+            {
+                /* skip first column with {x,y} = {0,0} */
+                for (size_t i = 1; i < z_columns_.size(); i++)
+                {
+                    int x = -z_columns_[i].x;
+                    int y = -z_columns_[i].y;
+                    if (x < 0) x += fft_grid_.size(0);
+                    if (y < 0) y += fft_grid_.size(1);
+                    z_columns_pos_(0, z_columns_.size() + i - 1) = x;
+                    z_columns_pos_(1, z_columns_.size() + i - 1) = y;
+                }
             }
 
             /* calculate distribution of G-vectors and z-columns for FFT communicator */
@@ -223,7 +244,8 @@ class Gvec
 
             auto g0 = gvec_by_full_index(gvec_full_index_(0));
             if (g0[0] || g0[1] || g0[2]) TERMINATE("first G-vector is not zero");
-
+        
+            /* build a mapping between G-vector index and position inside FFT buffer */
             if (comm__.size() == 1)
             {
                 index_map_ = mdarray<int, 1>(num_gvec_);
@@ -259,7 +281,8 @@ class Gvec
                 for (int ig: it->second) gvec_shell_(ig) = n;
                 n++;
             }
-
+            
+            /* build a mapping between G-vector and it's index */
             if (build_reverse_mapping__)
             {
                 index_by_gvec_ = mdarray<int, 3>(fft_grid_.limits(0), fft_grid_.limits(1), fft_grid_.limits(2));

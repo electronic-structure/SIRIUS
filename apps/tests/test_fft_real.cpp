@@ -11,10 +11,13 @@ void test_fft_real(vector3d<int> const& dims__, double cutoff__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(dims__, Platform::max_num_threads(), comm, CPU);
+    FFT3D fft(dims__, Platform::max_num_threads(), comm, GPU);
+    fft.allocate_on_device();
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), comm, 1, false, false);
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), comm, 1, false, true);
+    gvec_r.z_columns_pos().allocate_on_device();
+    gvec_r.z_columns_pos().copy_to_device();
 
     printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
     printf("num_gvec_loc: %i %i\n", gvec.num_gvec(comm.rank()), gvec_r.num_gvec(comm.rank()));
@@ -23,6 +26,7 @@ void test_fft_real(vector3d<int> const& dims__, double cutoff__)
     for (int i = 0; i < gvec_r.num_gvec_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
     phi(0) = 1.0;
     fft.transform<1>(gvec_r, &phi(0));
+    fft.buffer().copy_to_host();
 
     mdarray<double_complex, 1> phi1(gvec_r.num_gvec_fft());
     for (int i = 0; i < fft.local_size(); i++)
@@ -32,6 +36,7 @@ void test_fft_real(vector3d<int> const& dims__, double cutoff__)
             printf("function is not real at %i\n", i);
         }
     }
+    fft.buffer().zero();
     fft.transform<-1>(gvec_r, &phi1(0));
 
     double diff = 0;
