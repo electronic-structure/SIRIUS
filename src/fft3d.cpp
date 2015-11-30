@@ -336,22 +336,6 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
                     /* load full column into auxiliary buffer */
                     std::memcpy(&fft_buffer_aux_[i * grid_.size(2)], fftw_buffer_z_[tid],
                                 grid_.size(2) * sizeof(double_complex));
-
-                    //if (use_reduction && (gvec__.z_columns()[i].x || gvec__.z_columns()[i].y))
-                    //{
-                    //    STOP();
-                    //    ///* x,y coordinates of inverse G-vectors */
-                    //    //int x = -gvec__.z_columns()[i].x;
-                    //    //int y = -gvec__.z_columns()[i].y;
-                    //    ///* coordinates inside FFT grid */
-                    //    //if (x < 0) x += grid_.size(0);
-                    //    //if (y < 0) y += grid_.size(1);
-                    //    ///* load conjugated z-column into main FFT buffer */
-                    //    //for (int z = 0; z < grid_.size(2); z++)
-                    //    //{
-                    //    //    fft_buffer_[x + y * grid_.size(0) + z * size_xy] = std::conj(fftw_buffer_z_[tid][z]);
-                    //    //}
-                    //}
                     break;
                 }
                 case -1:
