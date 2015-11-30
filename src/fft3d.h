@@ -112,10 +112,10 @@ class FFT3D
         template <int direction, bool use_reduction>
         void transform_z_serial(Gvec const& gvec__, double_complex* data__);
 
-        template <int direction>
+        template <int direction, bool use_reduction>
         void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
 
-        template <int direction>
+        template <int direction, bool use_reduction>
         void transform_xy(Gvec const& gvec__);
 
     public:

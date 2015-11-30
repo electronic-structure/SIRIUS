@@ -157,7 +157,7 @@ FFT3D::~FFT3D()
     #endif
 }
 
-template <int direction>
+template <int direction, bool use_reduction>
 void FFT3D::transform_xy(Gvec const& gvec__)
 {
     int size_xy = grid_.size(0) * grid_.size(1);
@@ -226,6 +226,18 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                         if (y < 0) y += grid_.size(1);
 
                         fftw_buffer_xy_[tid][x + y * grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
+
+                        if (use_reduction && (gvec__.z_column(i).x || gvec__.z_column(i).y))
+                        {
+                            /* x,y coordinates of inverse G-vectors */
+                            int x = -gvec__.z_column(i).x;
+                            int y = -gvec__.z_column(i).y;
+                            /* coordinates inside FFT grid */
+                            if (x < 0) x += grid_.size(0);
+                            if (y < 0) y += grid_.size(1);
+                            
+                            fftw_buffer_xy_[tid][x + y * grid_.size(0)] = std::conj(fft_buffer_aux_[iz + local_size_z_ * i]);
+                        }
                     }
 
                     /* execute local FFT transform */
@@ -325,21 +337,21 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
                     std::memcpy(&fft_buffer_aux_[i * grid_.size(2)], fftw_buffer_z_[tid],
                                 grid_.size(2) * sizeof(double_complex));
 
-                    if (use_reduction && (gvec__.z_columns()[i].x || gvec__.z_columns()[i].y))
-                    {
-                        STOP();
-                        ///* x,y coordinates of inverse G-vectors */
-                        //int x = -gvec__.z_columns()[i].x;
-                        //int y = -gvec__.z_columns()[i].y;
-                        ///* coordinates inside FFT grid */
-                        //if (x < 0) x += grid_.size(0);
-                        //if (y < 0) y += grid_.size(1);
-                        ///* load conjugated z-column into main FFT buffer */
-                        //for (int z = 0; z < grid_.size(2); z++)
-                        //{
-                        //    fft_buffer_[x + y * grid_.size(0) + z * size_xy] = std::conj(fftw_buffer_z_[tid][z]);
-                        //}
-                    }
+                    //if (use_reduction && (gvec__.z_columns()[i].x || gvec__.z_columns()[i].y))
+                    //{
+                    //    STOP();
+                    //    ///* x,y coordinates of inverse G-vectors */
+                    //    //int x = -gvec__.z_columns()[i].x;
+                    //    //int y = -gvec__.z_columns()[i].y;
+                    //    ///* coordinates inside FFT grid */
+                    //    //if (x < 0) x += grid_.size(0);
+                    //    //if (y < 0) y += grid_.size(1);
+                    //    ///* load conjugated z-column into main FFT buffer */
+                    //    //for (int z = 0; z < grid_.size(2); z++)
+                    //    //{
+                    //    //    fft_buffer_[x + y * grid_.size(0) + z * size_xy] = std::conj(fftw_buffer_z_[tid][z]);
+                    //    //}
+                    //}
                     break;
                 }
                 case -1:
@@ -369,7 +381,7 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
     }
 }
 
-template <int direction>
+template <int direction, bool use_reduction>
 void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 {
     int rank = comm_.rank();
@@ -415,6 +427,19 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
                         if (z < 0) z += grid_.size(2);
 
                         fftw_buffer_z_[tid][z] = data__[offset + j];
+                    }
+
+                    /* column with {x,y} = {0,0} has only non-negative z components */
+                    if (use_reduction && !gvec__.z_column(icol).x && !gvec__.z_column(icol).y)
+                    {
+                        /* load remaining part of {0,0,z} column */
+                        for (size_t j = 0; j < gvec__.z_column(icol).z.size(); j++)
+                        {
+                            int z = -gvec__.z_column(icol).z[j];
+                            if (z < 0) z += grid_.size(2);
+
+                            fftw_buffer_z_[tid][z] = std::conj(data__[offset + j]);
+                        }
                     }
 
                     /* perform local FFT transform of a column */
@@ -528,17 +553,18 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
                     if (gvec__.reduced())
                     {
                         transform_z_serial<1, true>(gvec__, data__);
+                        transform_xy<1, true>(gvec__);
                     }
                     else
                     {
                         transform_z_serial<1, false>(gvec__, data__);
+                        transform_xy<1, false>(gvec__);
                     }
-                    transform_xy<1>(gvec__);
                     break;
                 }
                 case -1:
                 {
-                    transform_xy<-1>(gvec__);
+                    transform_xy<-1, false>(gvec__);
                     transform_z_serial<-1, false>(gvec__, data__);
                     break;
                 }
@@ -573,14 +599,22 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
         {
             case 1:
             {
-                transform_z_parallel<1>(gvec__, data__);
-                transform_xy<1>(gvec__);
+                if (gvec__.reduced())
+                {
+                    transform_z_parallel<1, true>(gvec__, data__);
+                    transform_xy<1, true>(gvec__);
+                }
+                else
+                {
+                    transform_z_parallel<1, false>(gvec__, data__);
+                    transform_xy<1, false>(gvec__);
+                }
                 break;
             }
             case -1:
             {
-                transform_xy<-1>(gvec__);
-                transform_z_parallel<-1>(gvec__, data__);
+                transform_xy<-1, false>(gvec__);
+                transform_z_parallel<-1, false>(gvec__, data__);
                 break;
             }
             default:
