@@ -35,7 +35,7 @@
 #include "vector3d.h"
 #include "timer.h"
 #include "descriptors.h"
-#include "fft_grid.h"
+#include "fft3d_grid.h"
 #include "gvec.h"
 
 // TODO: allocate and deallocate buffers manually
@@ -73,7 +73,7 @@ class FFT3D
         /// Split z-direction.
         splindex<block> spl_z_;
 
-        FFT_grid grid_;
+        FFT3D_grid grid_;
 
         /// Local size of z-dimension of FFT buffer.
         int local_size_z_;
@@ -163,7 +163,7 @@ class FFT3D
         //    for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
         //}
 
-        FFT_grid const& grid() const
+        FFT3D_grid const& grid() const
         {
             return grid_;
         }

@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include "descriptors.h"
-#include "fft_grid.h"
+#include "fft3d_grid.h"
 #include "splindex.h"
 
 namespace sirius {
@@ -14,7 +14,7 @@ class Gvec
 
         vector3d<double> q_;
         
-        FFT_grid fft_grid_;
+        FFT3D_grid fft_grid_;
 
         matrix3d<double> lattice_vectors_;
 
@@ -69,7 +69,7 @@ class Gvec
         Gvec(vector3d<double> q__,
              matrix3d<double> const& M__,
              double Gmax__,
-             FFT_grid const& fft_grid__,
+             FFT3D_grid const& fft_grid__,
              Communicator const& comm__,
              int comm_size_factor__,
              bool build_reverse_mapping__,

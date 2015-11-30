@@ -62,7 +62,7 @@ FFT3D::FFT3D(vector3d<int> dims__,
 {
     PROFILE();
 
-    grid_ = FFT_grid(dims__);
+    grid_ = FFT3D_grid(dims__);
 
     /* split z-direction */
     spl_z_ = splindex<block>(grid_.size(2), comm_.size(), comm_.rank());

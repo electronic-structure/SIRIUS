@@ -1,7 +1,7 @@
-#ifndef __FFT_GRID_H__
-#define __FFT_GRID_H__
+#ifndef __FFT3D_GRID_H__
+#define __FFT3D_GRID_H__
 
-class FFT_grid
+class FFT3D_grid
 {
     private:
 
@@ -34,11 +34,11 @@ class FFT_grid
 
     public:
 
-        FFT_grid()
+        FFT3D_grid()
         {
         }
 
-        FFT_grid(vector3d<int> initial_dims__)
+        FFT3D_grid(vector3d<int> initial_dims__)
         {
             for (int i = 0; i < 3; i++)
             {
