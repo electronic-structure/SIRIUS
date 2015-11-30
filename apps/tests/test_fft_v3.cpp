@@ -15,7 +15,7 @@ void test_fft(vector3d<int> const& dims__, double cutoff__, int num_bands__, std
     FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), GPU);
     fft.allocate_on_device();
     
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
     //gvec.index_map().allocate_on_device();
     //gvec.index_map().copy_to_device();
     gvec.z_columns_pos().allocate_on_device();
@@ -193,7 +193,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_gr
     FFT3D fft2(dims2, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
 
 
-    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.fft_grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
+    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
 
     FFT3D* fft = &fft2;
 
@@ -208,17 +208,17 @@ void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_gr
 
         double diff = 0;
         /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft->fft_grid().size(0); j0++)
+        for (int j0 = 0; j0 < fft->grid().size(0); j0++)
         {
-            for (int j1 = 0; j1 < fft->fft_grid().size(1); j1++)
+            for (int j1 = 0; j1 < fft->grid().size(1); j1++)
             {
                 for (int j2 = 0; j2 < fft->local_size_z(); j2++)
                 {
                     /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft->fft_grid().size(0), 
-                                               double(j1) / fft->fft_grid().size(1), 
-                                               double(fft->offset_z() + j2) / fft->fft_grid().size(2));
-                    int idx = fft->fft_grid().index_by_coord(j0, j1, j2);
+                    auto rl = vector3d<double>(double(j0) / fft->grid().size(0), 
+                                               double(j1) / fft->grid().size(1), 
+                                               double(fft->offset_z() + j2) / fft->grid().size(2));
+                    int idx = fft->grid().index_by_coord(j0, j1, j2);
 
                     diff += std::pow(std::abs(fft->buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
                 }
@@ -246,8 +246,8 @@ void test3(vector3d<int> const& dims__, double cutoff__)
 
     FFT3D fft(dims__, Platform::max_num_threads(), comm, CPU);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), comm, 1, false, false);
-    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), comm, 1, false, true);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), comm, 1, false, false);
+    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), comm, 1, false, true);
 
     printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
     printf("num_gvec_loc: %i %i\n", gvec.num_gvec(comm.rank()), gvec_r.num_gvec(comm.rank()));

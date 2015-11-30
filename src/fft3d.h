@@ -283,8 +283,6 @@ class FFT3D
         #endif
 };
 
-#include "fft3d.hpp"
-
 };
 
 #endif // __FFT3D_H__
