@@ -47,23 +47,22 @@ extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
 
 namespace sirius {
 
-FFT3D::FFT3D(vector3d<int> dims__,
+FFT3D::FFT3D(FFT3D_grid grid__,
              int num_fft_workers__,
              Communicator const& comm__,
              processing_unit_t pu__)
     : num_fft_workers_(num_fft_workers__),
       comm_(comm__),
       pu_(pu__),
-      cufft3d_(false)
+      grid_(grid__)
       #ifdef __GPU
-      ,cufft_nbatch_(0),
+      ,cufft3d_(false),
+      cufft_nbatch_(0),
       allocated_on_device_(false)
       #endif
       
 {
     PROFILE();
-
-    grid_ = FFT3D_grid(dims__);
 
     /* split z-direction */
     spl_z_ = splindex<block>(grid_.size(2), comm_.size(), comm_.rank());
@@ -529,7 +528,25 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
     /* single node FFT */
     if (comm_.size() == 1)
     {
-        if (pu_ == CPU || !cufft3d_)
+        #ifdef __GPU
+        if (pu_ == GPU && cufft3d_)
+        {
+            switch (direction)
+            {
+                case 1:
+                {
+                    cufft_backward_transform(cufft_plan_, fft_buffer_.at<GPU>());
+                    break;
+                }
+                case -1:
+                {
+                    cufft_forward_transform(cufft_plan_, fft_buffer_.at<GPU>());
+                    break;
+                }
+            }
+        }
+        #endif
+        if (pu_ == CPU)
         {
             switch (direction)
             {
@@ -560,24 +577,6 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
                 }
             }
         }
-        #ifdef __GPU
-        if (pu_ == GPU && cufft3d_)
-        {
-            switch (direction)
-            {
-                case 1:
-                {
-                    cufft_backward_transform(cufft_plan_, fft_buffer_.at<GPU>());
-                    break;
-                }
-                case -1:
-                {
-                    cufft_forward_transform(cufft_plan_, fft_buffer_.at<GPU>());
-                    break;
-                }
-            }
-        }
-        #endif
     }
     else
     {

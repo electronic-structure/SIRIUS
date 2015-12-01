@@ -32,13 +32,7 @@ class FFT3D_grid
             }
         }
 
-    public:
-
-        FFT3D_grid()
-        {
-        }
-
-        FFT3D_grid(vector3d<int> initial_dims__)
+        void find_grid_size(vector3d<int> initial_dims__)
         {
             for (int i = 0; i < 3; i++)
             {
@@ -47,6 +41,23 @@ class FFT3D_grid
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
+        }
+
+    public:
+
+        FFT3D_grid()
+        {
+        }
+
+        FFT3D_grid(vector3d<int> initial_dims__)
+        {
+            find_grid_size(initial_dims__);
+        }
+
+        FFT3D_grid(double cutoff__, matrix3d<double> M__)
+        {
+            auto initial_dims = Utils::find_translations(cutoff__, M__);
+            find_grid_size(initial_dims);
         }
 
         /// Limits of a given dimension.

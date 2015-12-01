@@ -97,7 +97,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
 
     D_operator d_op(kp__->beta_projectors());
     Q_operator q_op(kp__->beta_projectors());
-    Hloc_operator h_op(ctx_, kp__->gkvec(), pw_ekin, veff_it_coarse__);
+    Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
 
     bool economize_gpu_memory = true; // TODO: move to user-controlled input
     

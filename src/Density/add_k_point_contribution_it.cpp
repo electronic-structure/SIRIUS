@@ -22,8 +22,9 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     //int num_mag_dims = parameters_.num_mag_dims();
     int nfv = parameters_.num_fv_states();
     double omega = unit_cell_.omega();
+    int num_fft_streams = ctx_.fft_ctx().num_fft_streams();
 
-    mdarray<double, 3> it_density_matrix(ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1, ctx_.num_fft_threads());
+    mdarray<double, 3> it_density_matrix(ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1, num_fft_streams);
     it_density_matrix.zero();
 
     //splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
@@ -56,9 +57,9 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     #endif
     //mdarray<double_complex, 2> psi_it;
 
-    mdarray<double, 1> timers(ctx_.num_fft_threads());
+    mdarray<double, 1> timers(num_fft_streams);
     timers.zero();
-    mdarray<int, 1> timer_counts(ctx_.num_fft_threads());
+    mdarray<int, 1> timer_counts(num_fft_streams);
     timer_counts.zero();
 
     /* save omp_nested flag */
@@ -71,7 +72,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     {
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
-            #pragma omp parallel num_threads(ctx_.num_fft_threads())
+            #pragma omp parallel num_threads(num_fft_streams)
             {
                 int thread_id = omp_get_thread_num();
 
@@ -82,7 +83,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                     double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
                     double t1 = omp_get_wtime();
 
-                    if (thread_id == ctx_.gpu_thread_id() && parameters_.processing_unit() == GPU)
+                    if (thread_id == 0 && parameters_.processing_unit() == GPU)
                     {
                         #ifdef __GPU
                         STOP();
@@ -259,7 +260,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     {
         case 3:
         {
-            for (int i = 0; i < ctx_.num_fft_threads(); i++)
+            for (int i = 0; i < num_fft_streams; i++)
             {
                 for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
                 {
@@ -270,7 +271,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         }
         case 1:
         {
-            for (int i = 0; i < ctx_.num_fft_threads(); i++)
+            for (int i = 0; i < num_fft_streams; i++)
             {
                 for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
                 {
@@ -284,7 +285,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
         {
             #pragma omp parallel
             {
-                for (int i = 0; i < ctx_.num_fft_threads(); i++)
+                for (int i = 0; i < num_fft_streams; i++)
                 {
                     #pragma omp for schedule(static)
                     for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++) rho_->f_it(ir) += it_density_matrix(ir, 0, i);

@@ -31,6 +31,7 @@
 #include "real_space_prj.h"
 #include "version.h"
 #include "debug.hpp"
+#include "fft3d_context.h"
 
 namespace sirius {
 
@@ -48,6 +49,9 @@ class Simulation_context
         MPI_grid* mpi_grid_;
 
         MPI_grid* mpi_grid_fft_;
+
+        FFT3D_context* fft_ctx_;
+        FFT3D_context* fft_coarse_ctx_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -59,12 +63,12 @@ class Simulation_context
         Step_function* step_function_;
 
         /// FFT wrapper for dense grid.
-        std::vector<FFT3D*> fft_;
+        //std::vector<FFT3D*> fft_;
 
         Gvec gvec_;
 
         /// FFT wrapper for coarse grid.
-        std::vector<FFT3D*> fft_coarse_;
+        //std::vector<FFT3D*> fft_coarse_;
 
         Gvec gvec_coarse_;
 
@@ -97,6 +101,8 @@ class Simulation_context
               comm_(comm__),
               mpi_grid_(nullptr),
               mpi_grid_fft_(nullptr),
+              fft_ctx_(nullptr),
+              fft_coarse_ctx_(nullptr),
               unit_cell_(parameters_, comm_),
               reciprocal_lattice_(nullptr),
               step_function_(nullptr),
@@ -130,11 +136,13 @@ class Simulation_context
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }
 
-            for (auto obj: fft_) delete obj;
-            for (auto obj: fft_coarse_) delete obj;
+            //for (auto obj: fft_) delete obj;
+            //for (auto obj: fft_coarse_) delete obj;
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
+            if (fft_ctx_ != 0) delete fft_ctx_;
+            if (fft_coarse_ctx_ != 0) delete fft_ctx_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }
@@ -164,12 +172,12 @@ class Simulation_context
 
         inline FFT3D* fft(int thread_id__) const
         {
-            return fft_[thread_id__];
+            return fft_ctx_->fft(thread_id__);
         }
 
         inline FFT3D* fft_coarse(int thread_id__) const
         {
-            return fft_coarse_[thread_id__];
+            return fft_coarse_ctx_->fft(thread_id__);
         }
 
         Gvec const& gvec() const
@@ -195,6 +203,16 @@ class Simulation_context
         MPI_grid const& mpi_grid_fft() const
         {
             return *mpi_grid_fft_;
+        }
+
+        FFT3D_context& fft_ctx()
+        {
+            return *fft_ctx_;
+        }
+
+        FFT3D_context& fft_coarse_ctx()
+        {
+            return *fft_coarse_ctx_;
         }
         
         void create_storage_file() const
@@ -246,7 +264,7 @@ class Simulation_context
             printf("number of G-shells                    : %i\n", gvec_.num_shells());
             printf("number of independent FFTs : %i\n", mpi_grid_fft_->dimension_size(0));
             printf("FFT comm size              : %i\n", mpi_grid_fft_->dimension_size(1));
-            auto fft_grid = fft_[0]->grid();
+            auto fft_grid = fft_ctx_->fft_grid();
             printf("FFT grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
             printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
                                                                 fft_grid.limits(1).first, fft_grid.limits(1).second,
@@ -254,7 +272,7 @@ class Simulation_context
             
             if (!parameters_.full_potential())
             {
-                fft_grid = fft_coarse_[0]->grid();
+                fft_grid = fft_coarse_ctx_->fft_grid();
                 printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
                 printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
                 printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
@@ -387,15 +405,15 @@ class Simulation_context
             return gen_evp_solver_type_;
         }
 
-        inline int num_fft_threads() const
-        {
-            return (int)fft_.size();
-        }
+        //inline int num_fft_threads() const
+        //{
+        //    return (int)fft_.size();
+        //}
 
-        inline int gpu_thread_id() const
-        {
-            return gpu_thread_id_;
-        }
+        //inline int gpu_thread_id() const
+        //{
+        //    return gpu_thread_id_;
+        //}
 
 
         //== void write_json_output()

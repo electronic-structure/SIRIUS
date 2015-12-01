@@ -9,21 +9,22 @@ class Hloc_operator
 {
     private:
 
-        Simulation_context const& ctx_;
+        //Simulation_context const& ctx_;
+        FFT3D_context& fft_ctx_;
 
         Gvec const& gkvec_;
 
-        std::vector<double> pw_ekin_;
+        std::vector<double> const& pw_ekin_;
 
-        std::vector<double> effective_potential_;
+        std::vector<double> const& effective_potential_;
 
     public:
 
-        Hloc_operator(Simulation_context const& ctx__,
+        Hloc_operator(FFT3D_context& fft_ctx__,
                       Gvec const& gkvec__,
-                      std::vector<double> pw_ekin__,
-                      std::vector<double> effective_potential__) 
-            : ctx_(ctx__),
+                      std::vector<double> const& pw_ekin__,
+                      std::vector<double> const& effective_potential__) 
+            : fft_ctx_(fft_ctx__),
               gkvec_(gkvec__),
               pw_ekin_(pw_ekin__),
               effective_potential_(effective_potential__)
@@ -43,7 +44,7 @@ class Hloc_operator
             /* save omp_nested flag */
             int nested = omp_get_nested();
             omp_set_nested(1);
-            #pragma omp parallel num_threads(ctx_.num_fft_threads())
+            #pragma omp parallel num_threads(fft_ctx_.num_fft_streams())
             {
                 int thread_id = omp_get_thread_num();
 
@@ -86,12 +87,12 @@ class Hloc_operator
                     //else
                     //{
                         /* phi(G) -> phi(r) */
-                        ctx_.fft_coarse(thread_id)->transform<1>(gkvec_, phi__[i]);
+                        fft_ctx_.fft(thread_id)->transform<1>(gkvec_, phi__[i]);
                         /* multiply by effective potential */
-                        for (int ir = 0; ir < ctx_.fft_coarse(thread_id)->local_size(); ir++)
-                            ctx_.fft_coarse(thread_id)->buffer(ir) *= effective_potential_[ir];
+                        for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
+                            fft_ctx_.fft(thread_id)->buffer(ir) *= effective_potential_[ir];
                         /* V(r)phi(r) -> [V*phi](G) */
-                        ctx_.fft_coarse(thread_id)->transform<-1>(gkvec_, hphi__[i]);
+                        fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, hphi__[i]);
 
                         //if (in_place)
                         //{

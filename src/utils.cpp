@@ -234,9 +234,9 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     return v;
 }
 
-vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> const& lattice_vectors__)
+vector3d<int> Utils::find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
 {
-    sirius::Timer t("sirius::Utils::find_translation_limits");
+    sirius::Timer t("sirius::Utils::find_translations");
 
     double theta = pi;
     double phi = 0;
@@ -265,55 +265,15 @@ vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> c
     test_point(theta, phi);
     for (int k = 1; k < num_points - 1; k++)
     {
-        double hk = -1.0 + double(2 * k) / double(num_points - 1);
+        double hk = -1.0 + 2.0 * k / (num_points - 1);
         theta = std::acos(hk);
         double t = phi + 3.80925122745582 / std::sqrt(double(num_points)) / std::sqrt(1 - hk * hk);
         phi = std::fmod(t, twopi);
         test_point(theta, phi);
     }
     
-    for (int x: {0, 1, 2}) limits[x] = int(max_lim[x] - min_lim[x] + 0.001) + 1;
+    for (int x: {0, 1, 2}) limits[x] = static_cast<int>(max_lim[x] - min_lim[x] + 0.001) + 1;
 
-
-    //vector3d<int> limits;
-
-    //int n = 1;
-    //while(true)
-    //{
-    //    bool found = false;
-    //    //for (int i0 = -n; i0 <= n; i0++)
-    //    for (int i0: {-n, 0, n})
-    //    {
-    //        //for (int i1 = -n; i1 <= n; i1++)
-    //        for (int i1: {-n, 0, n})
-    //        {
-    //            //for (int i2 = -n; i2 <= n; i2++)
-    //            for (int i2: {-n, 0, n})
-    //            {
-    //                //if (std::abs(i0) == n || std::abs(i1) == n || std::abs(i2) == n)
-    //                //{
-    //                    vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
-    //                    if (vc.length() <= radius__)
-    //                    {
-    //                        found = true;
-    //                        limits[0] = std::max(2 * abs(i0) + 1, limits[0]);
-    //                        limits[1] = std::max(2 * abs(i1) + 1, limits[1]);
-    //                        limits[2] = std::max(2 * abs(i2) + 1, limits[2]);
-    //                    }
-    //                //}
-    //            }
-    //        }
-    //    }
-
-    //    if (found) 
-    //    {
-    //        n++;
-    //    }
-    //    else 
-    //    {
-    //        return limits;
-    //    }
-    //}
     return limits;
 }
 

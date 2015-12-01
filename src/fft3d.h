@@ -67,8 +67,6 @@ class FFT3D
 
         /// Main processing unit of this FFT.
         processing_unit_t pu_;
-
-        bool cufft3d_;
         
         /// Split z-direction.
         splindex<block> spl_z_;
@@ -102,6 +100,7 @@ class FFT3D
         std::vector<fftw_plan> plan_forward_xy_;
 
         #ifdef __GPU
+        bool cufft3d_;
         cufftHandle cufft_plan_;
         cufftHandle cufft_plan_xy_;
         mdarray<char, 1> cufft_work_buf_;
@@ -120,7 +119,7 @@ class FFT3D
 
     public:
 
-        FFT3D(vector3d<int> dims__,
+        FFT3D(FFT3D_grid grid__,
               int num_fft_workers__,
               Communicator const& comm__,
               processing_unit_t pu__);
@@ -232,6 +231,11 @@ class FFT3D
         inline bool parallel() const
         {
             return (comm_.size() != 1);
+        }
+
+        inline bool hybrid() const
+        {
+            return (pu_ == GPU);
         }
 
         inline int num_fft_workers() const

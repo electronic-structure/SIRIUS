@@ -31,55 +31,65 @@ void Simulation_context::init_fft()
     gpu_thread_id_ = -1;
     if (nfft_threads > 1) gpu_thread_id_ = nfft_threads - 1;
 
-    for (int tid = 0; tid < nfft_threads; tid++)
+    FFT3D_grid fft_grid(parameters_.pw_cutoff(), rlv);
+    FFT3D_grid fft_coarse_grid(2 * parameters_.gk_cutoff(), rlv);
+
+    fft_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_grid, nfft_threads, nfft_workers, parameters_.processing_unit());
+    if (!parameters_.full_potential())
     {
-        /* in case of parallel FFT */
-        if (do_parallel_fft)
-        {
-            fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                     nfft_workers, mpi_grid_fft_->communicator(1 << 1), CPU));
-            if (!parameters_.full_potential())
-            {
-                fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                nfft_workers, mpi_grid_fft_->communicator(1 << 1), parameters_.processing_unit()));
-            }
-        }
-        else /* serial FFT driver */
-        {
-            if (tid == gpu_thread_id_)
-            {
-                fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                         nfft_workers, mpi_comm_self, parameters_.processing_unit()));
-            }
-            else
-            {
-                fft_.push_back(new FFT3D(Utils::find_translation_limits(parameters_.pw_cutoff(), rlv),
-                                         nfft_workers, mpi_comm_self, CPU));
-            }
-            if (!parameters_.full_potential())
-            {
-                if (tid == gpu_thread_id_)
-                {
-                    fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                    nfft_workers, mpi_comm_self, parameters_.processing_unit()));
-                }
-                else
-                {
-                    fft_coarse_.push_back(new FFT3D(Utils::find_translation_limits(2 * parameters_.gk_cutoff(), rlv),
-                                                    nfft_workers, mpi_comm_self, CPU));
-                }
-            }
-        }
+        fft_coarse_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_coarse_grid, nfft_threads, nfft_workers,
+                                            parameters_.processing_unit());
     }
 
+    //for (int tid = 0; tid < nfft_threads; tid++)
+    //{
+    //    /* in case of parallel FFT */
+    //    if (do_parallel_fft)
+    //    {
+    //        fft_.push_back(new FFT3D(Utils::find_translations(parameters_.pw_cutoff(), rlv),
+    //                                 nfft_workers, mpi_grid_fft_->communicator(1 << 1), CPU));
+    //        if (!parameters_.full_potential())
+    //        {
+    //            fft_coarse_.push_back(new FFT3D(Utils::find_translations(2 * parameters_.gk_cutoff(), rlv),
+    //                                            nfft_workers, mpi_grid_fft_->communicator(1 << 1), parameters_.processing_unit()));
+    //        }
+    //    }
+    //    else /* serial FFT driver */
+    //    {
+    //        if (tid == gpu_thread_id_)
+    //        {
+    //            fft_.push_back(new FFT3D(Utils::find_translations(parameters_.pw_cutoff(), rlv),
+    //                                     nfft_workers, mpi_comm_self, parameters_.processing_unit()));
+    //        }
+    //        else
+    //        {
+    //            fft_.push_back(new FFT3D(Utils::find_translations(parameters_.pw_cutoff(), rlv),
+    //                                     nfft_workers, mpi_comm_self, CPU));
+    //        }
+    //        if (!parameters_.full_potential())
+    //        {
+    //            if (tid == gpu_thread_id_)
+    //            {
+    //                fft_coarse_.push_back(new FFT3D(Utils::find_translations(2 * parameters_.gk_cutoff(), rlv),
+    //                                                nfft_workers, mpi_comm_self, parameters_.processing_unit()));
+    //            }
+    //            else
+    //            {
+    //                fft_coarse_.push_back(new FFT3D(Utils::find_translations(2 * parameters_.gk_cutoff(), rlv),
+    //                                                nfft_workers, mpi_comm_self, CPU));
+    //            }
+    //        }
+    //    }
+    //}
+
     /* create a list of G-vectors for dense FFT grid */
-    gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.pw_cutoff(), fft_[0]->grid(),
+    gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.pw_cutoff(), fft_grid,
                  mpi_grid_fft_->communicator(1 << 1), mpi_grid_fft_->dimension_size(0), true, false);
 
     if (!parameters_.full_potential())
     {
         /* create a list of G-vectors for corase FFT grid */
-        gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.gk_cutoff() * 2, fft_coarse_[0]->grid(),
+        gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, parameters_.gk_cutoff() * 2, fft_coarse_grid,
                             mpi_grid_fft_->communicator(1 << 1), mpi_grid_fft_->dimension_size(0), false, false);
     }
 }
@@ -183,7 +193,7 @@ void Simulation_context::initialize()
     MEMORY_USAGE_INFO();
     #endif
 
-    if (parameters_.full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_, fft_[0], gvec_, comm_);
+    if (parameters_.full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_, fft_ctx_->fft(0), gvec_, comm_);
 
     if (parameters_.iterative_solver_input_section().real_space_prj_) 
     {
