@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file wave_functions.h
+ *   
+ *  \brief Contains declaration and implementation of sirius::Wave_functions class.
+ */
+
 #ifndef __WAVE_FUNCTIONS_H__
 #define __WAVE_FUNCTIONS_H__
 
@@ -19,20 +43,12 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         /// Entire communicator.
         Communicator const& comm_;
 
-        mdarray<double_complex, 1> primary_data_storage_;
-        int primary_ld_;
+        mdarray<double_complex, 2> wf_coeffs_;
 
-        mdarray<double_complex, 1> swapped_data_storage_;
-        int swapped_ld_;
-
-        matrix<double_complex> primary_data_storage_as_matrix_;
-
-        matrix<double_complex> swapped_data_storage_as_matrix_;
+        mdarray<double_complex, 2> wf_coeffs_swapped_;
 
         mdarray<double_complex, 1> send_recv_buf_;
         
-        splindex<block> spl_num_wfs_;
-
         splindex<block> spl_n_;
 
         int num_gvec_loc_;
@@ -45,7 +61,25 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
     public:
 
-        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__, bool swappable__)
+        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+            : num_wfs_(num_wfs__),
+              gvec_(gvec__),
+              mpi_grid_(mpi_grid__),
+              comm_(mpi_grid_.communicator()),
+              rank_(-1),
+              rank_row_(-1),
+              num_ranks_col_(-1)
+        {
+            PROFILE();
+
+            /* local number of G-vectors */
+            num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
+
+            /* primary storage of PW wave functions: slabs */ 
+            wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
+        }
+
+        Wave_functions(int num_wfs__, int max_num_wfs_swapped__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
             : num_wfs_(num_wfs__),
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
@@ -53,32 +87,28 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             PROFILE();
 
+            /* flat rank id */
+            rank_ = comm_.rank();
+
             /* number of column ranks */
             num_ranks_col_ = mpi_grid_.communicator(1 << 0).size();
 
-            spl_num_wfs_ = splindex<block>(num_wfs_, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
-
-            num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
-
-            /* primary storage of PW wave functions: slabs */ 
-            primary_data_storage_ = mdarray<double_complex, 1>(num_gvec_loc_ * num_wfs_);
-            primary_ld_ = num_gvec_loc_;
-            swapped_ld_ = gvec_.num_gvec_fft();
-
-            primary_data_storage_as_matrix_ = mdarray<double_complex, 2>(&primary_data_storage_[0], primary_ld_, num_wfs_);
-
-            if (swappable__) // TODO: optimize memory allocation size
-            {
-                swapped_data_storage_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
-                swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
-                int buf_size = gvec_.num_gvec_fft() * spl_num_wfs_.local_size(); 
-                send_recv_buf_ = mdarray<double_complex, 1>(buf_size);
-            }
-            
-            /* flat rank id */
-            rank_ = comm_.rank();
             /* row rank */
             rank_row_ = mpi_grid_.communicator(1 << 1).rank();
+            
+            /* local number of G-vectors */
+            num_gvec_loc_ = gvec_.num_gvec(rank_);
+
+            /* primary storage of PW wave functions: slabs */ 
+            wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
+
+            splindex<block> spl_wf(max_num_wfs_swapped__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
+
+            if (comm_.size() > 1)
+            {
+                wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(), "wf_coeffs_swapped_");
+                send_recv_buf_ = mdarray<double_complex, 1>(wf_coeffs_swapped_.size(), "send_recv_buf_");
+            }
 
             /* store the number of G-vectors to be received by this rank */
             gvec_slab_distr_ = block_data_descriptor(num_ranks_col_);
@@ -99,10 +129,18 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             PROFILE();
 
-            Timer t("sirius::Wave_functions::swap_forward", comm_);
-
             /* this is how n wave-functions will be distributed between panels */
             spl_n_ = splindex<block>(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
+
+            /* trivial case */
+            if (comm_.size() == 1)
+            {
+                wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_(0, idx0__), num_gvec_loc_, n__);
+                return;
+            }
+
+            Timer t("sirius::Wave_functions::swap_forward", comm_);
+
             /* local number of columns */
             int n_loc = spl_n_.local_size();
 
@@ -116,7 +154,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int dest_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                comm_.isend(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n_.global_offset(icol))],
+                comm_.isend(&wf_coeffs_(0, idx0__ + spl_n_.global_offset(icol)),
                             num_gvec_loc_ * spl_n_.local_size(icol),
                             dest_rank, rank_ % num_ranks_col_);
             }
@@ -142,7 +180,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 {
                     for (int j = 0; j < num_ranks_col_; j++)
                     {
-                        std::memcpy(&swapped_data_storage_[gvec_slab_distr_.offsets[j] + swapped_ld_ * i],
+                        std::memcpy(&wf_coeffs_swapped_(gvec_slab_distr_.offsets[j], i),
                                     &send_recv_buf_[gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i],
                                     gvec_slab_distr_.counts[j] * sizeof(double_complex));
                     }
@@ -151,7 +189,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             else
             {
                 int src_rank = rank_row_ * num_ranks_col_;
-                comm_.recv(&swapped_data_storage_[0], gvec_slab_distr_.counts[0] * n_loc, src_rank, 0);
+                comm_.recv(&wf_coeffs_swapped_(0, 0), gvec_slab_distr_.counts[0] * n_loc, src_rank, 0);
             }
         }
 
@@ -159,6 +197,8 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             PROFILE();
 
+            if (comm_.size() == 1) return;
+            
             Timer t("sirius::Wave_functions::swap_backward", comm_);
         
             /* this is how n wave-functions are distributed between panels */
@@ -185,7 +225,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                     for (int j = 0; j < num_ranks_col_; j++)
                     {
                         std::memcpy(&send_recv_buf_[gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i],
-                                    &swapped_data_storage_[gvec_slab_distr_.offsets[j] + swapped_ld_ * i],
+                                    &wf_coeffs_swapped_(gvec_slab_distr_.offsets[j], i),
                                     gvec_slab_distr_.counts[j] * sizeof(double_complex));
                     }
                 }
@@ -199,14 +239,14 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             else
             {
                 int dest_rank = rank_row_ * num_ranks_col_;
-                comm_.isend(&swapped_data_storage_[0], gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
+                comm_.isend(&wf_coeffs_swapped_(0, 0), gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
             }
             
             for (int icol = 0; icol < num_ranks_col_; icol++)
             {
                 int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
                 //double t = -omp_get_wtime();
-                comm_.recv(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n.global_offset(icol))],
+                comm_.recv(&wf_coeffs_(0, idx0__ + spl_n.global_offset(icol)),
                            num_gvec_loc_ * spl_n.local_size(icol),
                            src_rank, rank_ % num_ranks_col_);
                 //t += omp_get_wtime();
@@ -221,14 +261,12 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         inline double_complex& operator()(int igloc__, int i__)
         {
-            assert(igloc__ + primary_ld_ * i__ < (int)primary_data_storage_.size()); 
-            return primary_data_storage_[igloc__ + primary_ld_ * i__];
+            return wf_coeffs_(igloc__, i__);
         }
 
         inline double_complex* operator[](int i__)
         {
-            assert(swapped_ld_ * i__ < (int)swapped_data_storage_.size());
-            return &swapped_data_storage_[swapped_ld_ * i__];
+            return &wf_coeffs_swapped_(0, i__);
         }
 
         inline int num_gvec_loc() const
@@ -246,16 +284,9 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             return spl_n_;
         }
 
-        matrix<double_complex>& primary_data_storage_as_matrix()
-        {
-            return primary_data_storage_as_matrix_;
-        }
-
         inline void copy_from(Wave_functions const& src__, int i0__, int n__, int j0__)
         {
-            std::memcpy(&primary_data_storage_[primary_ld_ * j0__],
-                        &src__.primary_data_storage_[primary_ld_ * i0__],
-                        primary_ld_ * n__ * sizeof(double_complex));
+            std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
         }
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__)
@@ -267,8 +298,8 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             assert(num_gvec_loc() == wf__.num_gvec_loc());
 
-            linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__.primary_data_storage_[0], wf__.primary_ld_,
-                              &mtrx__(0, 0), mtrx__.ld(), &primary_data_storage_[0], primary_ld_);
+            linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
+                              &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
         }
 
         inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
@@ -298,6 +329,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         inline Communicator const& comm() const
         {
             return comm_;
+        }
+
+        mdarray<double_complex, 2>& coeffs()
+        {
+            return wf_coeffs_;
         }
 };
 

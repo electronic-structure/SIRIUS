@@ -61,8 +61,8 @@ void Band::apply_h_o_serial(K_point* kp__,
     //
     //hphi__.swap_backward(N__, n__);
     //Utils::write_matrix("hloc_phi.txt", true, hphi__.primary_data_storage_as_matrix());
-
-    h_op.apply(phi__, hphi__, N__, n__);
+    hphi__.copy_from(phi__, N__, n__);
+    h_op.apply(hphi__, N__, n__);
 
     /* set intial ophi */
     ophi__.copy_from(phi__, N__, n__);

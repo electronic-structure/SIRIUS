@@ -16,7 +16,7 @@ void K_point::generate_spinor_wave_functions()
     {
         if (!parameters_.need_sv())
         {
-            fv_states_->primary_data_storage_as_matrix() >> spinor_wave_functions_[0]->primary_data_storage_as_matrix();
+            fv_states_->coeffs() >> spinor_wave_functions_[0]->coeffs();
             return;
         }
  

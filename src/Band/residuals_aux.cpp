@@ -43,7 +43,7 @@ void Band::residuals_aux(K_point* kp__,
 
     auto pu = parameters_.processing_unit();
     #ifdef __GPU
-    bool economize_gpu_memory = (kappa__.size() != 0);
+    //bool economize_gpu_memory = (kappa__.size() != 0);
     #endif
 
     if (pu == GPU)

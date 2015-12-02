@@ -20,14 +20,14 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
 
     int ngk = kp__->num_gkvec();
 
-    Wave_functions phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), true);
-    Wave_functions hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), true);
-    Wave_functions ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
+    Wave_functions phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft());
     mdarray<double_complex, 1> kappa;
     
     std::vector<double> eval(ngk);
 
-    phi.primary_data_storage_as_matrix().zero();
+    phi.coeffs().zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
     D_operator d_op(kp__->beta_projectors());
@@ -37,25 +37,25 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
 
     apply_h_o_serial(kp__, 0, ngk, phi, hphi, ophi, kappa, h_op, d_op, q_op);
         
-    Utils::check_hermitian("h", hphi.primary_data_storage_as_matrix(), ngk);
-    Utils::check_hermitian("o", ophi.primary_data_storage_as_matrix(), ngk);
+    Utils::check_hermitian("h", hphi.coeffs(), ngk);
+    Utils::check_hermitian("o", ophi.coeffs(), ngk);
 
-    Utils::write_matrix("h.txt", true, hphi.primary_data_storage_as_matrix());
-    Utils::write_matrix("o.txt", true, ophi.primary_data_storage_as_matrix());
-    auto z1 = hphi.primary_data_storage_as_matrix().checksum();
-    auto z2 = ophi.primary_data_storage_as_matrix().checksum();
+    Utils::write_matrix("h.txt", true, hphi.coeffs());
+    Utils::write_matrix("o.txt", true, ophi.coeffs());
+    auto z1 = hphi.coeffs().checksum();
+    auto z2 = ophi.coeffs().checksum();
 
     printf("checksum(h): %18.10f %18.10f\n", z1.real(), z1.imag());
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
 
     if (gen_evp_solver()->solve(ngk, ngk, ngk, num_bands,
-                                hphi.primary_data_storage_as_matrix().at<CPU>(),
-                                hphi.primary_data_storage_as_matrix().ld(),
-                                ophi.primary_data_storage_as_matrix().at<CPU>(),
-                                ophi.primary_data_storage_as_matrix().ld(), 
+                                hphi.coeffs().at<CPU>(),
+                                hphi.coeffs().ld(),
+                                ophi.coeffs().at<CPU>(),
+                                ophi.coeffs().ld(), 
                                 &eval[0],
-                                psi->primary_data_storage_as_matrix().at<CPU>(),
-                                psi->primary_data_storage_as_matrix().ld()))
+                                psi->coeffs().at<CPU>(),
+                                psi->coeffs().ld()))
     {
         TERMINATE("error in evp solve");
     }

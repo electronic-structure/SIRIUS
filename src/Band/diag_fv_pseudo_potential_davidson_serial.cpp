@@ -47,11 +47,11 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, ngk);
 
     /* allocate wave-functions */
-    Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), true);
-    Wave_functions hphi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), true);
-    Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
-    Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
-    Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
+    Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions hphi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
 
     /* allocate Hamiltonian and overlap */
     matrix<double_complex> hmlt(num_phi, num_phi);
@@ -93,7 +93,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     std::vector<double> eval_tmp(num_bands);
     
     /* residuals */
-    Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), false);
+    Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
 
     D_operator d_op(kp__->beta_projectors());
     Q_operator q_op(kp__->beta_projectors());

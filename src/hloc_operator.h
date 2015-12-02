@@ -19,6 +19,8 @@ class Hloc_operator
         //std::vector<double> const& effective_potential_;
         mdarray<double, 1> veff_;
 
+        mdarray<double_complex, 2> vphi_;
+
     public:
 
         Hloc_operator(FFT3D_context& fft_ctx__,
@@ -37,17 +39,16 @@ class Hloc_operator
                 veff_.copy_to_device();
             }
             #endif
+            vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
         }
         
-        // phi is always on CPU
-        // hphi is always on CPU
-        void apply(Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__)
+        void apply(Wave_functions& hphi__, int idx0__, int n__)
         {
             PROFILE();
 
             Timer t("sirius::Hloc_operator::apply");
 
-            phi__.swap_forward(idx0__, n__);
+            hphi__.swap_forward(idx0__, n__);
             
             /* save omp_nested flag */
             int nested = omp_get_nested();
@@ -57,10 +58,10 @@ class Hloc_operator
                 int thread_id = omp_get_thread_num();
 
                 #pragma omp for schedule(dynamic, 1)
-                for (int i = 0; i < phi__.spl_num_swapped().local_size(); i++)
+                for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
                 {
                     /* phi(G) -> phi(r) */
-                    fft_ctx_.fft(thread_id)->transform<1>(gkvec_, phi__[i]);
+                    fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
                     /* multiply by effective potential */
                     if (fft_ctx_.fft(thread_id)->hybrid())
                     {
@@ -78,13 +79,13 @@ class Hloc_operator
                             fft_ctx_.fft(thread_id)->buffer(ir) *= veff_[ir];
                     }
                     /* V(r)phi(r) -> [V*phi](G) */
-                    fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, hphi__[i]);
+                    fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
 
-                    /* add kinetic energy term */
+                    /* add kinetic energy */
                     for (int igk_loc = 0; igk_loc < gkvec_.num_gvec_fft(); igk_loc++)
                     {
                         int igk = gkvec_.offset_gvec_fft() + igk_loc;
-                        hphi__[i][igk_loc] += phi__[i][igk_loc] * pw_ekin_[igk];
+                        hphi__[i][igk_loc] = hphi__[i][igk_loc] * pw_ekin_[igk] + vphi_(igk_loc, thread_id);
                     }
                 }
             }
