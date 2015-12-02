@@ -51,7 +51,8 @@ class FFT3D_context
                       FFT3D_grid& fft_grid__,
                       int num_fft_streams__,
                       int num_threads_fft__,
-                      processing_unit_t pu__)
+                      processing_unit_t pu__,
+                      double gpu_workload__ = 0.8)
             : pu_(pu__),
               fft_grid_(fft_grid__),
               num_fft_streams_(num_fft_streams__),
@@ -68,7 +69,7 @@ class FFT3D_context
             for (int tid = 0; tid < num_fft_streams_; tid++)
             {
                 processing_unit_t pu = (tid == 0) ? pu_ : CPU;
-                fft_.push_back(new FFT3D(fft_grid__, num_threads_fft_, mpi_grid__.communicator(1 << 1), pu));
+                fft_.push_back(new FFT3D(fft_grid__, num_threads_fft_, mpi_grid__.communicator(1 << 1), pu, gpu_workload__));
             }
         }
 
@@ -95,6 +96,21 @@ class FFT3D_context
         inline FFT3D_grid const& fft_grid() const
         {
             return fft_grid_;
+        }
+
+        void allocate_workspace(Gvec const& gvec__)
+        {
+            for (auto obj: fft_) obj->allocate_workspace(gvec__);
+        }
+
+        void deallocate_workspace()
+        {
+            for (auto obj: fft_) obj->deallocate_workspace();
+        }
+
+        inline processing_unit_t pu() const
+        {
+            return pu_;
         }
 };
 

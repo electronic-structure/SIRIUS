@@ -197,6 +197,10 @@ class Gvec
                     z_columns_pos_(1, z_columns_.size() + i - 1) = y;
                 }
             }
+            #ifdef __GPU
+            z_columns_pos_.allocate_on_device();
+            z_columns_pos_.copy_to_device();
+            #endif
 
             /* calculate distribution of G-vectors and z-columns for FFT communicator */
             gvec_fft_distr_ = block_data_descriptor(comm__.size());

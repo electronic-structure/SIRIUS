@@ -71,8 +71,6 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             {
                 swapped_data_storage_ = mdarray<double_complex, 1>(gvec_.num_gvec_fft() * spl_num_wfs_.local_size());
                 swapped_data_storage_as_matrix_ = mdarray<double_complex, 2>(&swapped_data_storage_[0], swapped_ld_, spl_num_wfs_.local_size());
-                //int buf_size = std::max(gvec_.num_gvec_fft() * spl_num_wfs_.local_size(),
-                //                        num_gvec_loc_ * num_wfs_);
                 int buf_size = gvec_.num_gvec_fft() * spl_num_wfs_.local_size(); 
                 send_recv_buf_ = mdarray<double_complex, 1>(buf_size);
             }

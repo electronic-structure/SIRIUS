@@ -102,10 +102,9 @@ class FFT3D
         #ifdef __GPU
         bool cufft3d_;
         cufftHandle cufft_plan_;
-        cufftHandle cufft_plan_xy_;
+        //cufftHandle cufft_plan_xy_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
-        bool allocated_on_device_;
         #endif
 
         template <int direction, bool use_reduction>
@@ -122,7 +121,8 @@ class FFT3D
         FFT3D(FFT3D_grid grid__,
               int num_fft_workers__,
               Communicator const& comm__,
-              processing_unit_t pu__);
+              processing_unit_t pu__,
+              double gpu_workload = 0.8);
 
         ~FFT3D();
 
@@ -194,34 +194,11 @@ class FFT3D
             return fft_buffer_[idx__];
         }
         
-        inline mdarray<double_complex, 1>& buffer()
+        template <processing_unit_t pu>
+        inline double_complex* buffer()
         {
-            return fft_buffer_;
+            return fft_buffer_.at<pu>();
         }
-        
-        //template <processing_unit_t pu>
-        //inline double_complex* buffer()
-        //{
-        //    switch (pu)
-        //    {
-        //        case CPU:
-        //        {
-        //            return fftw_buffer_;
-        //            break;
-        //        }
-        //        #ifdef __GPU
-        //        case GPU:
-        //        {
-        //            return cufft_buf_.at<GPU>();
-        //            break;
-        //        }
-        //        #endif
-        //        default:
-        //        {
-        //            return nullptr;
-        //        }
-        //    }
-        //}
         
         Communicator const& comm() const
         {
@@ -243,31 +220,67 @@ class FFT3D
             return num_fft_workers_;
         }
 
+        void allocate_workspace(Gvec const& gvec__)
+        {
+            /* reallocate auxiliary buffer if needed */
+            size_t sz_max;
+            if (comm_.size() > 1)
+            {
+                int rank = comm_.rank();
+                int num_zcol_local = gvec__.zcol_fft_distr().counts[rank];
+                /* we need this buffer for mpi_alltoall */
+                sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
+            }
+            else
+            {
+                sz_max = grid_.size(2) * gvec__.z_columns().size();
+            }
+            if (sz_max > fft_buffer_aux_.size())
+            {
+                fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
+                #ifdef __GPU
+                if (pu_ == GPU)
+                {
+                    fft_buffer_aux_.pin_memory();
+                    fft_buffer_aux_.allocate_on_device();
+                }
+                #endif
+            }
+            #ifdef __GPU
+            if (pu_ == GPU) allocate_on_device();
+            #endif
+        }
+
+        void deallocate_workspace()
+        {
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                fft_buffer_aux_.deallocate_on_device();
+                deallocate_on_device();
+            }
+            #endif
+        }
+
         #ifdef __GPU
         void allocate_on_device()
         {
             PROFILE();
-            //cufft_buf_ = mdarray<double_complex, 1>(fftw_buffer_, local_size(), "cufft_buf_");
-            fft_buffer_.allocate_on_device();
             fft_buffer_.pin_memory();
+            fft_buffer_.allocate_on_device();
             
+            size_t work_size;
             if (comm_.size() == 1 && cufft3d_)
             {
-                auto work_size = cufft_get_size_3d(grid_.size(0), grid_.size(1), grid_.size(2), 1);
-                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
-                cufft_work_buf_.allocate_on_device();
-
-                cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
+                work_size = cufft_get_size_3d(grid_.size(0), grid_.size(1), grid_.size(2), 1);
             }
             else
             {
-                auto work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
-                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
-                cufft_work_buf_.allocate_on_device();
-
-                cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
+                work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
             }
-            allocated_on_device_ = true;
+            cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
+            cufft_work_buf_.allocate_on_device();
+            cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
         }
 
         void deallocate_on_device()
@@ -275,7 +288,6 @@ class FFT3D
             fft_buffer_.unpin_memory();
             fft_buffer_.deallocate_on_device();
             cufft_work_buf_.deallocate_on_device();
-            allocated_on_device_ = false;
         }
 
         template<typename T>

@@ -16,7 +16,8 @@ class Hloc_operator
 
         std::vector<double> const& pw_ekin_;
 
-        std::vector<double> const& effective_potential_;
+        //std::vector<double> const& effective_potential_;
+        mdarray<double, 1> veff_;
 
     public:
 
@@ -26,9 +27,16 @@ class Hloc_operator
                       std::vector<double> const& effective_potential__) 
             : fft_ctx_(fft_ctx__),
               gkvec_(gkvec__),
-              pw_ekin_(pw_ekin__),
-              effective_potential_(effective_potential__)
+              pw_ekin_(pw_ekin__)
         {
+            veff_ = mdarray<double, 1>(const_cast<double*>(&effective_potential__[0]), effective_potential__.size(), "veff_");
+            #ifdef __GPU
+            if (fft_ctx_.pu() == GPU)
+            {
+                veff_.allocate_on_device();
+                veff_.copy_to_device();
+            }
+            #endif
         }
         
         // phi is always on CPU
@@ -51,68 +59,33 @@ class Hloc_operator
                 #pragma omp for schedule(dynamic, 1)
                 for (int i = 0; i < phi__.spl_num_swapped().local_size(); i++)
                 {
-                    //double t1 = omp_get_wtime();
-                    //if (thread_id == ctx_.gpu_thread_id() && parameters_.processing_unit() == GPU)
-                    //{
-                    //    #ifdef __GPU
-                    //    STOP();
-                    //    ///* copy phi to GPU */
-                    //    //cuda_copy_to_device(pw_buf.at<GPU>(), phi__.at<CPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                    /* phi(G) -> phi(r) */
+                    fft_ctx_.fft(thread_id)->transform<1>(gkvec_, phi__[i]);
+                    /* multiply by effective potential */
+                    if (fft_ctx_.fft(thread_id)->hybrid())
+                    {
+                        #ifdef __GPU
+                        scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+                                              fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
 
-                    //    ///* set PW coefficients into proper positions inside FFT buffer */
-                    //    //ctx_.fft_coarse(thread_id)->input_on_device(kp__->num_gkvec(), fft_index.at<GPU>(), pw_buf.at<GPU>());
-
-                    //    ///* phi(G) *= Ekin(G) */
-                    //    //scale_matrix_rows_gpu(kp__->num_gkvec(), 1, pw_buf.at<GPU>(), pw_ekin.at<GPU>());
-                    //    //
-                    //    ///* execute FFT */
-                    //    ////ctx_.fft_coarse(thread_id)->transform(1);
-                    //    //STOP();
-                    //    //
-                    //    ///* multiply by potential */
-                    //    //scale_matrix_rows_gpu(ctx_.fft_coarse(thread_id)->local_size(), 1,
-                    //    //                      ctx_.fft_coarse(thread_id)->buffer<GPU>(), veff.at<GPU>());
-                    //    //
-                    //    ///* transform back */
-                    //    ////ctx_.fft_coarse(thread_id)->transform(-1);
-                    //    //STOP();
-                    //    //
-                    //    ///* phi(G) += fft_buffer(G) */
-                    //    //ctx_.fft_coarse(thread_id)->output_on_device(kp__->num_gkvec(), fft_index.at<GPU>(), pw_buf.at<GPU>(), 1.0);
-                    //    //
-                    //    ///* copy final hphi to CPU */
-                    //    //cuda_copy_to_host(hphi__.at<CPU>(0, i), pw_buf.at<GPU>(), kp__->num_gkvec() * sizeof(double_complex));
-                    //    #endif
-                    //}
-                    //else
-                    //{
-                        /* phi(G) -> phi(r) */
-                        fft_ctx_.fft(thread_id)->transform<1>(gkvec_, phi__[i]);
-                        /* multiply by effective potential */
+                        #else
+                        TERMINATE_NO_GPU
+                        #endif
+                    }
+                    else
+                    {
                         for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                            fft_ctx_.fft(thread_id)->buffer(ir) *= effective_potential_[ir];
-                        /* V(r)phi(r) -> [V*phi](G) */
-                        fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, hphi__[i]);
+                            fft_ctx_.fft(thread_id)->buffer(ir) *= veff_[ir];
+                    }
+                    /* V(r)phi(r) -> [V*phi](G) */
+                    fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, hphi__[i]);
 
-                        //if (in_place)
-                        //{
-                        //    STOP();
-                        //    /* psi(G) -> 0.5 * |G|^2 * psi(G) */
-                        //    //for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) *= pw_ekin__[igk];
-                        //    //ctx_.fft_coarse(thread_id)->output(kp__->num_gkvec(), kp__->gkvec_coarse().index_map(), &hphi__(0, i), 1.0);
-                        //    //STOP();
-                        //}
-                        //else
-                        //{
-                            for (int igk_loc = 0; igk_loc < gkvec_.num_gvec_fft(); igk_loc++)
-                            {
-                                int igk = gkvec_.offset_gvec_fft() + igk_loc;
-                                hphi__[i][igk_loc] += phi__[i][igk_loc] * pw_ekin_[igk];
-                            }
-                        //}
-                    //}
-                    //timers(thread_id) += (omp_get_wtime() - t1);
-                    //timer_counts(thread_id)++;
+                    /* add kinetic energy term */
+                    for (int igk_loc = 0; igk_loc < gkvec_.num_gvec_fft(); igk_loc++)
+                    {
+                        int igk = gkvec_.offset_gvec_fft() + igk_loc;
+                        hphi__[i][igk_loc] += phi__[i][igk_loc] * pw_ekin_[igk];
+                    }
                 }
             }
             /* restore the nested flag */

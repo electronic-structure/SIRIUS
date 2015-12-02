@@ -50,15 +50,15 @@ namespace sirius {
 FFT3D::FFT3D(FFT3D_grid grid__,
              int num_fft_workers__,
              Communicator const& comm__,
-             processing_unit_t pu__)
+             processing_unit_t pu__,
+             double gpu_workload)
     : num_fft_workers_(num_fft_workers__),
       comm_(comm__),
       pu_(pu__),
       grid_(grid__)
       #ifdef __GPU
       ,cufft3d_(false),
-      cufft_nbatch_(0),
-      allocated_on_device_(false)
+      cufft_nbatch_(0)
       #endif
       
 {
@@ -114,14 +114,14 @@ FFT3D::FFT3D(FFT3D_grid grid__,
         else
         {
             /* GPU will take care of this number of xy-planes */
-            cufft_nbatch_ = static_cast<int>(0.5 * local_size_z_);
+            cufft_nbatch_ = static_cast<int>(gpu_workload * local_size_z_);
 
             int dim_xy[] = {grid_.size(1), grid_.size(0)};
             int embed_xy[] = {grid_.size(1), grid_.size(0)};
 
-            cufft_create_plan_handle(&cufft_plan_xy_);
-            cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, embed_xy, 1, grid_.size(0) * grid_.size(1), cufft_nbatch_, auto_alloc);
-            cufft_set_stream(cufft_plan_xy_, 0);
+            cufft_create_plan_handle(&cufft_plan_);
+            cufft_create_batch_plan(cufft_plan_, 2, dim_xy, embed_xy, 1, grid_.size(0) * grid_.size(1), cufft_nbatch_, auto_alloc);
+            cufft_set_stream(cufft_plan_, 0);
         }
     }
     #endif
@@ -143,17 +143,7 @@ FFT3D::~FFT3D()
         fftw_destroy_plan(plan_backward_xy_[i]);
     }
     #ifdef __GPU
-    if (pu_ == GPU)
-    {
-        if (comm_.size() == 1 && cufft3d_)
-        {
-            cufft_destroy_plan_handle(cufft_plan_);
-        }
-        else
-        {
-            cufft_destroy_plan_handle(cufft_plan_xy_);
-        }
-    }
+    if (pu_ == GPU) cufft_destroy_plan_handle(cufft_plan_);
     #endif
 }
 
@@ -180,7 +170,7 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                                   cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(),
                                   use_reduction, 0);
                 /* stream #0 executes FFT */
-                cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                cufft_backward_transform(cufft_plan_, fft_buffer_.at<GPU>());
                 break;
             }
             case -1:
@@ -189,7 +179,7 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                 acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_ * size_xy),
                              size_xy * (local_size_z_ - cufft_nbatch_), 1);
                 /* stream #0 executes FFT */
-                cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                cufft_forward_transform(cufft_plan_, fft_buffer_.at<GPU>());
                 /* stream #0 packs z-columns */
                 pack_z_cols_gpu(fft_buffer_aux_.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
                                 cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
@@ -500,31 +490,6 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 template <int direction>
 void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
 {
-    /* reallocate auxiliary buffer if needed */
-    size_t sz_max;
-    if (comm_.size() > 1)
-    {
-        int rank = comm_.rank();
-        int num_zcol_local = gvec__.zcol_fft_distr().counts[rank];
-        /* we need this buffer for mpi_alltoall */
-        sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
-    }
-    else
-    {
-        sz_max = grid_.size(2) * gvec__.z_columns().size();
-    }
-    if (sz_max > fft_buffer_aux_.size())
-    {
-        fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
-        #ifdef __GPU
-        if (pu_ == GPU)
-        {
-            fft_buffer_aux_.pin_memory();
-            fft_buffer_aux_.allocate_on_device();
-        }
-        #endif
-    }
-
     /* single node FFT */
     if (comm_.size() == 1)
     {
@@ -546,35 +511,31 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
             }
         }
         #endif
-        if (pu_ == CPU)
+        switch (direction)
         {
-            switch (direction)
+            case 1:
             {
-                case 1:
+                if (gvec__.reduced())
                 {
-                    fft_buffer_.zero();
-                    if (gvec__.reduced())
-                    {
-                        transform_z_serial<1, true>(gvec__, data__);
-                        transform_xy<1, true>(gvec__);
-                    }
-                    else
-                    {
-                        transform_z_serial<1, false>(gvec__, data__);
-                        transform_xy<1, false>(gvec__);
-                    }
-                    break;
+                    transform_z_serial<1, true>(gvec__, data__);
+                    transform_xy<1, true>(gvec__);
                 }
-                case -1:
+                else
                 {
-                    transform_xy<-1, false>(gvec__);
-                    transform_z_serial<-1, false>(gvec__, data__);
-                    break;
+                    transform_z_serial<1, false>(gvec__, data__);
+                    transform_xy<1, false>(gvec__);
                 }
-                default:
-                {
-                    TERMINATE("wrong direction");
-                }
+                break;
+            }
+            case -1:
+            {
+                transform_xy<-1, false>(gvec__);
+                transform_z_serial<-1, false>(gvec__, data__);
+                break;
+            }
+            default:
+            {
+                TERMINATE("wrong direction");
             }
         }
     }
