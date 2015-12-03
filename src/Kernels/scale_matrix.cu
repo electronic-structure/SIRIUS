@@ -55,7 +55,7 @@ extern "C" void scale_matrix_rows_gpu(int nrow,
                                       cuDoubleComplex* mtrx,
                                       double* v)
 {
-    dim3 grid_t(64);
+    dim3 grid_t(256);
     dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
 
     scale_matrix_rows_gpu_kernel <<<grid_b, grid_t>>>

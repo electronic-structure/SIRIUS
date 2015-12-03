@@ -3,7 +3,7 @@
 using namespace sirius;
 
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
-               int num_fft_streams__, int num_threads_fft__, double gpu_workload__)
+               int num_fft_streams__, int num_threads_fft__, int use_gpu, double gpu_workload__)
 {
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world); 
     
@@ -11,9 +11,11 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
     FFT3D_grid fft_grid(2.01 * cutoff__, M);
 
-    FFT3D_context fft_ctx(mpi_grid, fft_grid, num_fft_streams__, num_threads_fft__, GPU, gpu_workload__);
+    FFT3D_context fft_ctx(mpi_grid, fft_grid, num_fft_streams__, num_threads_fft__,
+                          static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1), mpi_grid.communicator(1 << 0).size(), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1),
+              mpi_grid.communicator(1 << 0).size(), false, false);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft_ctx.fft()->local_size(), 2.0);
@@ -26,7 +28,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of FFT streams: %i\n", fft_ctx.num_fft_streams());
     }
 
-    fft_ctx.allocate_workspace(gvec);
+    fft_ctx.allocate_workspace();
     
     Hloc_operator hloc(fft_ctx, gvec, pw_ekin, veff);
 
@@ -74,6 +76,7 @@ int main(int argn, char** argv)
     args.register_key("--num_threads_fft=", "{int} number of threads for each FFT");
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--num_bands=", "{int} number of bands");
+    args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
     args.register_key("--gpu_workload=", "{double} worload of GPU");
 
     args.parse_args(argn, argv);
@@ -88,10 +91,11 @@ int main(int argn, char** argv)
     auto num_threads_fft = args.value<int>("num_threads_fft", omp_get_max_threads());
     auto cutoff = args.value<double>("cutoff", 2.0);
     auto num_bands = args.value<int>("num_bands", 10);
+    auto use_gpu = args.value<int>("use_gpu", 0);
     auto gpu_workload = args.value<double>("gpu_workload", 0.8);
 
     Platform::initialize(1);
-    test_hloc(mpi_grid_dims, cutoff, num_bands, num_fft_streams, num_threads_fft, gpu_workload);
+    test_hloc(mpi_grid_dims, cutoff, num_bands, num_fft_streams, num_threads_fft, use_gpu, gpu_workload);
     mpi_comm_world.barrier();
     Timer::print();
     Platform::finalize();
