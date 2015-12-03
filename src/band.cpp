@@ -1542,61 +1542,61 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     //== kp->set_band_energies(&eval[0]);
 }
 
-#ifdef __SCALAPACK
-void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
-                                             double v0__,
-                                             std::vector<double>& veff_it_coarse__)
-{
-    PROFILE();
+//==#ifdef __SCALAPACK
+//==void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
+//==                                             double v0__,
+//==                                             std::vector<double>& veff_it_coarse__)
+//=={
+//==    PROFILE();
+//==
+//==    Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
+//==    
+//==    auto& itso = parameters_.iterative_solver_input_section();
+//==    if (itso.type_ == "davidson")
+//==    {
+//==        diag_fv_pseudo_potential_davidson_parallel(kp__, v0__, veff_it_coarse__);
+//==    }
+//==    else if (itso.type_ == "chebyshev")
+//==    {
+//==        diag_fv_pseudo_potential_chebyshev_parallel(kp__, veff_it_coarse__);
+//==    }
+//==    else
+//==    {
+//==        TERMINATE("unknown iterative solver type");
+//==    }
+//==}
+//==#endif // __SCALAPACK
 
-    Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
-    
-    auto& itso = parameters_.iterative_solver_input_section();
-    if (itso.type_ == "davidson")
-    {
-        diag_fv_pseudo_potential_davidson_parallel(kp__, v0__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "chebyshev")
-    {
-        diag_fv_pseudo_potential_chebyshev_parallel(kp__, veff_it_coarse__);
-    }
-    else
-    {
-        TERMINATE("unknown iterative solver type");
-    }
-}
-#endif // __SCALAPACK
-
-void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
-                                           double v0__,
-                                           std::vector<double>& veff_it_coarse__)
-{
-    PROFILE();
-
-    Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
-    
-    auto& itso = parameters_.iterative_solver_input_section();
-    if (itso.type_ == "exact")
-    {
-        diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "davidson")
-    {
-        diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "rmm-diis")
-    {
-        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "chebyshev")
-    {
-        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse__);
-    }
-    else
-    {
-        TERMINATE("unknown iterative solver type");
-    }
-}
+//void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
+//                                           double v0__,
+//                                           std::vector<double>& veff_it_coarse__)
+//{
+//    PROFILE();
+//
+//    Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
+//    
+//    auto& itso = parameters_.iterative_solver_input_section();
+//    if (itso.type_ == "exact")
+//    {
+//        diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse__);
+//    }
+//    else if (itso.type_ == "davidson")
+//    {
+//        diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
+//    }
+//    else if (itso.type_ == "rmm-diis")
+//    {
+//        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0__, veff_it_coarse__);
+//    }
+//    else if (itso.type_ == "chebyshev")
+//    {
+//        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse__);
+//    }
+//    else
+//    {
+//        TERMINATE("unknown iterative solver type");
+//    }
+//}
 
 void Band::diag_fv_pseudo_potential(K_point* kp__, 
                                     Periodic_function<double>* effective_potential__)
@@ -1605,9 +1605,12 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
 
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
-    auto fft_coarse = ctx_.fft_coarse(0);
+
+    auto fft_coarse = ctx_.fft_coarse_ctx().fft();
     auto& gv = ctx_.gvec();
     auto& gvc = ctx_.gvec_coarse();
+
+    ctx_.fft_coarse_ctx().allocate_workspace();
 
     /* map effective potential to a corase grid */
     std::vector<double> veff_it_coarse(fft_coarse->local_size());
@@ -1621,48 +1624,31 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     fft_coarse->transform<1>(gvc, &veff_pw_coarse[0]);
     fft_coarse->output(&veff_it_coarse[0]);
 
-    //== /* loop over full set of G-vectors and take only first num_gvec_coarse plane-wave harmonics; 
-    //==  * this is enough to apply V_eff to \Psi;
-    //==  * use the fact that the G-vectors are not sorted by length - this allows for an easy mapping between
-    //==  * fine and coarse FFT grids */
-    //== int n = 0;
-    //== for (int ig = 0; ig < gv.num_gvec(); ig++)
-    //== {
-    //==     if (gv.shell_len(gv.shell(ig)) <= parameters_.gk_cutoff() * 2)
-    //==     {
-    //==         auto v = gvc[n];
-    //==         for (int x: {0, 1, 2}) if (gv[ig][x] != v[x]) TERMINATE("wrong order of G-vectors");
-
-    //==         if (n >= gvc.gvec_offset() && n < gvc.gvec_offset() + gvc.num_gvec_loc())
-    //==         {
-    //==             veff_pw_coarse[n - gvc.gvec_offset()] = effective_potential__->f_pw(ig);
-    //==         }
-    //==         n++;
-    //==     }
-    //== }
-
-    //== // TODO: veff is independet of k-point
-    //== fft_coarse->input(gvc.num_gvec_loc(), gvc.index_map(), &veff_pw_coarse[0]);
-    //== fft_coarse->transform(1, gvc.z_sticks_coord());
-    //== fft_coarse->output(&veff_it_coarse[0]);
-
-
-
-
     double v0 = effective_potential__->f_pw(0).real();
 
-    //if (gen_evp_solver()->parallel())
-    //{
-    //    #ifdef __SCALAPACK
-    //    diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
-    //    #else
-    //    TERMINATE_NO_SCALAPACK
-    //    #endif
-    //}
-    //else
-    //{
-        diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse);
-    //}
+    auto& itso = parameters_.iterative_solver_input_section();
+    if (itso.type_ == "exact")
+    {
+        diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse);
+    }
+    else if (itso.type_ == "davidson")
+    {
+        diag_fv_pseudo_potential_davidson_serial(kp__, v0, veff_it_coarse);
+    }
+    else if (itso.type_ == "rmm-diis")
+    {
+        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0, veff_it_coarse);
+    }
+    else if (itso.type_ == "chebyshev")
+    {
+        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse);
+    }
+    else
+    {
+        TERMINATE("unknown iterative solver type");
+    }
+
+    ctx_.fft_coarse_ctx().deallocate_workspace();
 }
 
 }

@@ -98,9 +98,9 @@ class FFT3D_context
             return fft_grid_;
         }
 
-        void allocate_workspace(Gvec const& gvec__)
+        void allocate_workspace()
         {
-            for (auto obj: fft_) obj->allocate_workspace(gvec__);
+            for (auto obj: fft_) obj->allocate_workspace();
         }
 
         void deallocate_workspace()

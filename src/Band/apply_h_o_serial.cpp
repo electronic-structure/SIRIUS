@@ -76,7 +76,7 @@ void Band::apply_h_o_serial(K_point* kp__,
     //    /* set intial ophi */
     //    cuda_copy_device_to_device(ophi.at<GPU>(), phi.at<GPU>(), kp__->num_gkvec() * n__ * sizeof(double_complex));
     //}
-    STOP();
+    //STOP();
     #endif
     
     kp__->beta_projectors().inner(phi__, N__, n__);

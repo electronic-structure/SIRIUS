@@ -220,34 +220,14 @@ class FFT3D
             return num_fft_workers_;
         }
 
-        void allocate_workspace(Gvec const& gvec__)
+        void allocate_workspace()
         {
-            /* reallocate auxiliary buffer if needed */
-            size_t sz_max;
-            if (comm_.size() > 1)
-            {
-                int rank = comm_.rank();
-                int num_zcol_local = gvec__.zcol_fft_distr().counts[rank];
-                /* we need this buffer for mpi_alltoall */
-                sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
-            }
-            else
-            {
-                sz_max = grid_.size(2) * gvec__.z_columns().size();
-            }
-            if (sz_max > fft_buffer_aux_.size())
-            {
-                fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
-                #ifdef __GPU
-                if (pu_ == GPU)
-                {
-                    fft_buffer_aux_.pin_memory();
-                    fft_buffer_aux_.allocate_on_device();
-                }
-                #endif
-            }
             #ifdef __GPU
-            if (pu_ == GPU) allocate_on_device();
+            if (pu_ == GPU)
+            {
+                fft_buffer_aux_.allocate_on_device();
+                allocate_on_device();
+            }
             #endif
         }
 

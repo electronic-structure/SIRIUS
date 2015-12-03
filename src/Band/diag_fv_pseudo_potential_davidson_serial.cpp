@@ -48,7 +48,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
 
     /* allocate wave-functions */
     Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions hphi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
     Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
     Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
     Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
@@ -211,6 +211,13 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
             if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
                 occ_band_converged = false;
         }
+
+        for (int i = 0; i < num_bands; i++)
+        {
+            printf("eval[%i]=%f\n", i, eval[i]);
+        }
+        STOP();
+
 
         ///* copy eigen-vectors to GPU */
         //#ifdef __GPU

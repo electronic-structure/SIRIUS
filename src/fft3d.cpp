@@ -490,6 +490,31 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 template <int direction>
 void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
 {
+    /* reallocate auxiliary buffer if needed */
+    size_t sz_max;
+    if (comm_.size() > 1)
+    {
+        int rank = comm_.rank();
+        int num_zcol_local = gvec__.zcol_fft_distr().counts[rank];
+        /* we need this buffer for mpi_alltoall */
+        sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
+    }
+    else
+    {
+        sz_max = grid_.size(2) * gvec__.z_columns().size();
+    }
+    if (sz_max > fft_buffer_aux_.size())
+    {
+        fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            fft_buffer_aux_.pin_memory();
+            fft_buffer_aux_.allocate_on_device();
+        }
+        #endif
+    }
+
     /* single node FFT */
     if (comm_.size() == 1)
     {
