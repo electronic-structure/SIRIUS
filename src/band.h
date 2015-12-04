@@ -132,14 +132,6 @@ class Band
                                                  mdarray<double_complex, 1>& op_mtrx_packed__,
                                                  double_complex alpha);
 
-        
-        void apply_h_local_parallel(K_point* kp__,
-                                    std::vector<double> const& effective_potential__,
-                                    std::vector<double> const& pw_ekin__,
-                                    int nst__,
-                                    dmatrix<double_complex>& phi__,
-                                    dmatrix<double_complex>& hphi__);
-
         void apply_h_o_parallel(K_point* kp__,
                                 std::vector<double> const& effective_potential__,
                                 std::vector<double> const& pw_ekin__,
@@ -208,14 +200,6 @@ class Band
                                                          std::vector<double> const& veff_it_coarse__);
     
         #endif
-        
-        /// Apply local part of Hamiltonian to a slice of wave-functions.
-        void apply_h_local_serial(K_point* kp__,
-                                  std::vector<double> const& effective_potential__,
-                                  std::vector<double> const& pw_ekin__,
-                                  int num_phi__,
-                                  Wave_functions& phi__,
-                                  Wave_functions& hphi__);
         
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
