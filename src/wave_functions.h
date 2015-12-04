@@ -303,25 +303,25 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         }
 
         inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                          double_complex* result__, int ld__)
+                          mdarray<double_complex, 2>& result__, int irow__, int icol__) 
         {
             assert(num_gvec_loc() == ket__.num_gvec_loc());
             static std::vector<double_complex> buf;
 
             if (comm_.size() == 1)
             {
-                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &(*this)(0, i0__), num_gvec_loc(),
-                                  &ket__(0, j0__), num_gvec_loc(), result__, ld__);
+                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
+                                  &ket__(0, j0__), num_gvec_loc(), &result__(irow__, icol__), result__.ld());
             }
             else
             {
                 buf.resize(m__ * n__);
-                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &(*this)(0, i0__), num_gvec_loc(),
+                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
                                   &ket__(0, j0__), num_gvec_loc(), &buf[0], m__);
                 comm_.allreduce(&buf[0], m__ * n__);
                 for (int i = 0; i < n__; i++)
                 {
-                    std::memcpy(&result__[i * ld__], &buf[i * m__], m__ * sizeof(double_complex));
+                    std::memcpy(&result__(irow__, icol__ + i), &buf[i * m__], m__ * sizeof(double_complex));
                 }
             }
         }

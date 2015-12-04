@@ -217,7 +217,7 @@ void K_point::initialize()
         }
         else
         {
-            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft());
+            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft());
 
             //if (ctx_.fft(0)->parallel())
             //{

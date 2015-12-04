@@ -33,7 +33,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     //std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
 
     #ifdef __GPU
-    STOP();
+    //STOP();
     //mdarray<int, 1> fft_index;
     //mdarray<double_complex, 1> pw_buf;
     //mdarray<double, 2> it_density_matrix_gpu;
@@ -245,7 +245,7 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(nested);
 
     #ifdef __GPU
-    STOP();
+    //STOP();
     //if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
     //{
     //    it_density_matrix_gpu.copy_to_host();

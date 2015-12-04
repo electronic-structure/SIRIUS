@@ -212,11 +212,11 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 occ_band_converged = false;
         }
 
-        for (int i = 0; i < num_bands; i++)
-        {
-            printf("eval[%i]=%f\n", i, eval[i]);
-        }
-        STOP();
+        //=for (int i = 0; i < num_bands; i++)
+        //={
+        //=    printf("eval[%i]=%f\n", i, eval[i]);
+        //=}
+        //=STOP();
 
 
         ///* copy eigen-vectors to GPU */
@@ -354,7 +354,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 }
                 
                 #ifdef __GPU
-                STOP();
+                //STOP();
                 //if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
                 //{
                 //    cuda_copy_device_to_device(hphi.at<GPU>(), hpsi.at<GPU>(), num_bands * ngk * sizeof(double_complex));
@@ -376,7 +376,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
         {
             #ifdef __GPU
-            STOP();
+            //STOP();
             //cuda_copy_device_to_device(phi.at<GPU>(0, N), res.at<GPU>(), n * ngk * sizeof(double_complex));
             //cuda_copy_to_host(phi.at<CPU>(0, N), phi.at<GPU>(0, N), n * ngk * sizeof(double_complex));
             #else
@@ -388,7 +388,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     if (parameters_.processing_unit() == GPU)
     {
         #ifdef __GPU
-        STOP();
+        //STOP();
         if (!economize_gpu_memory)
         {
             //kp__->beta_gk().deallocate_on_device();

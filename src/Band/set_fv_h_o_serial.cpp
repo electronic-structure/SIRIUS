@@ -36,9 +36,9 @@ void Band::set_fv_h_o_serial(K_point* kp__,
     if (parameters_.processing_unit() == CPU)
     {
         /* <{phi,res}|H|res> */
-        phi__.inner(0, N__ + n__, hphi__, N__, n__, &h__(0, N__), h__.ld());
+        phi__.inner(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
         /* <{phi,res}|O|res> */
-        phi__.inner(0, N__ + n__, ophi__, N__, n__, &o__(0, N__), o__.ld());
+        phi__.inner(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
     }
 
     if (parameters_.processing_unit() == GPU)
