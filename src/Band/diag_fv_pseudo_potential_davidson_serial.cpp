@@ -99,33 +99,45 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     Q_operator q_op(kp__->beta_projectors());
     Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
 
-    bool economize_gpu_memory = true; // TODO: move to user-controlled input
+    //bool economize_gpu_memory = true; // TODO: move to user-controlled input
     
     mdarray<double_complex, 1> kappa;
 
-    if (parameters_.processing_unit() == GPU && economize_gpu_memory)
-    {
-        size_t size = ngk * (std::max(unit_cell_.mt_basis_size(), num_phi) + num_bands);
-        kappa = mdarray<double_complex, 1>(nullptr, size);
-    }
-    if (parameters_.processing_unit() == CPU && itso.real_space_prj_) 
-    {
-        auto rsp = ctx_.real_space_prj();
-        size_t size = 2 * rsp->fft()->size() * parameters_.num_fft_threads();
-        size += rsp->max_num_points_ * parameters_.num_fft_threads();
+    //==if (parameters_.processing_unit() == GPU && economize_gpu_memory)
+    //=={
+    //==    size_t size = ngk * (std::max(unit_cell_.mt_basis_size(), num_phi) + num_bands);
+    //==    kappa = mdarray<double_complex, 1>(nullptr, size);
+    //==}
+    //==if (parameters_.processing_unit() == CPU && itso.real_space_prj_) 
+    //=={
+    //==    auto rsp = ctx_.real_space_prj();
+    //==    size_t size = 2 * rsp->fft()->size() * parameters_.num_fft_threads();
+    //==    size += rsp->max_num_points_ * parameters_.num_fft_threads();
 
-        kappa = mdarray<double_complex, 1>(size);
-    }
-    
-    #if defined(__GPU) && (__VERBOSITY > 1)
-    if (kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
-    {
-        printf("size of kappa array: %f GB\n", sizeof(double_complex) * double(kappa.size() >> 30));
-    }
-    #endif
+    //==    kappa = mdarray<double_complex, 1>(size);
+    //==}
+    //==
+    //==#if defined(__GPU) && (__VERBOSITY > 1)
+    //==if (kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
+    //=={
+    //==    printf("size of kappa array: %f GB\n", sizeof(double_complex) * double(kappa.size() >> 30));
+    //==}
+    //==#endif
 
     /* trial basis functions */
     phi.copy_from(psi, 0, num_bands);
+
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+        phi.allocate_on_device();
+        phi.copy_to_device(0, num_bands);
+
+        hphi.allocate_on_device();
+        ophi.allocate_on_device();
+
+    }
+    #endif
     
     //if (parameters_.processing_unit() == GPU)
     //{
@@ -179,16 +191,12 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
     std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], ctx_.fft_coarse()->size() * sizeof(double)) << std::endl;
     #endif
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto c3 = mdarray<double,1>(&veff_it_coarse__[0], ctx_.fft_coarse(0)->size()).checksum();
-    DUMP("checksum(v_eff_coarse)  : %18.10f", c3);
-    #endif
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o_serial(kp__, N, n, phi, hphi, ophi, kappa, h_op, d_op, q_op);
+        apply_h_o(kp__, N, n, phi, hphi, ophi, kappa, h_op, d_op, q_op);
         
         /* setup eigen-value problem.
          * N is the number of previous basis functions
@@ -212,11 +220,11 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 occ_band_converged = false;
         }
 
-        //=for (int i = 0; i < num_bands; i++)
-        //={
-        //=    printf("eval[%i]=%f\n", i, eval[i]);
-        //=}
-        //=STOP();
+        for (int i = 0; i < num_bands; i++)
+        {
+            printf("eval[%i]=%f\n", i, eval[i]);
+        }
+        STOP();
 
 
         ///* copy eigen-vectors to GPU */
@@ -344,14 +352,14 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                     }
                 }
  
-                /* update hphi and ophi */
-                if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
-                {
-                    hphi.copy_from(hpsi, 0, num_bands);
-                    ophi.copy_from(opsi, 0, num_bands);
-                    //std::memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * ngk * sizeof(double_complex));
-                    //std::memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * ngk * sizeof(double_complex));
-                }
+                ///* update hphi and ophi */
+                //if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
+                //{
+                //    hphi.copy_from(hpsi, 0, num_bands);
+                //    ophi.copy_from(opsi, 0, num_bands);
+                //    //std::memcpy(hphi.at<CPU>(), hpsi.at<CPU>(), num_bands * ngk * sizeof(double_complex));
+                //    //std::memcpy(ophi.at<CPU>(), opsi.at<CPU>(), num_bands * ngk * sizeof(double_complex));
+                //}
                 
                 #ifdef __GPU
                 //STOP();
@@ -368,32 +376,32 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
                 N = num_bands;
             }
         }
-        /* expand variational subspace with new basis vectors obtatined from residuals */
-        if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
-        {
-            phi.copy_from(res, 0, n, N);
-        }
-        if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
-        {
-            #ifdef __GPU
-            //STOP();
-            //cuda_copy_device_to_device(phi.at<GPU>(0, N), res.at<GPU>(), n * ngk * sizeof(double_complex));
-            //cuda_copy_to_host(phi.at<CPU>(0, N), phi.at<GPU>(0, N), n * ngk * sizeof(double_complex));
-            #else
-            TERMINATE_NO_GPU
-            #endif
-        }
+        ///* expand variational subspace with new basis vectors obtatined from residuals */
+        //if (parameters_.processing_unit() == CPU || (parameters_.processing_unit() == GPU && economize_gpu_memory))
+        //{
+        //    phi.copy_from(res, 0, n, N);
+        //}
+        //if (parameters_.processing_unit() == GPU && !economize_gpu_memory)
+        //{
+        //    #ifdef __GPU
+        //    //STOP();
+        //    //cuda_copy_device_to_device(phi.at<GPU>(0, N), res.at<GPU>(), n * ngk * sizeof(double_complex));
+        //    //cuda_copy_to_host(phi.at<CPU>(0, N), phi.at<GPU>(0, N), n * ngk * sizeof(double_complex));
+        //    #else
+        //    TERMINATE_NO_GPU
+        //    #endif
+        //}
     }
 
     if (parameters_.processing_unit() == GPU)
     {
         #ifdef __GPU
         //STOP();
-        if (!economize_gpu_memory)
-        {
-            //kp__->beta_gk().deallocate_on_device();
-            //psi.deallocate_on_device();
-        }
+        //if (!economize_gpu_memory)
+        //{
+        //    //kp__->beta_gk().deallocate_on_device();
+        //    //psi.deallocate_on_device();
+        //}
         #endif
     }
 

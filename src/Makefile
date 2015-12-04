@@ -28,7 +28,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/add_nl_h_o_rs.cpp \
        Band/add_non_local_contribution_serial.cpp \
        Band/add_non_local_contribution_parallel.cpp \
-       Band/apply_h_o_serial.cpp \
+       Band/apply_h_o.cpp \
        Band/apply_h_serial.cpp \
        Band/apply_h_o_parallel.cpp \
        Band/apply_h_o_fast_parallel_rs.cpp \

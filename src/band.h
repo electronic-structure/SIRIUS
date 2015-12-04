@@ -245,16 +245,16 @@ class Band
                       dmatrix<double_complex>& evec_dist__,
                       std::vector<double>& eval__);
 
-        void apply_h_o_serial(K_point* kp__, 
-                              int N__,
-                              int n__,
-                              Wave_functions& phi__,
-                              Wave_functions& hphi__,
-                              Wave_functions& ophi__,
-                              mdarray<double_complex, 1>& kappa__,
-                              Hloc_operator &h_op,
-                              D_operator& d_op,
-                              Q_operator& q_op);
+        void apply_h_o(K_point* kp__, 
+                       int N__,
+                       int n__,
+                       Wave_functions& phi__,
+                       Wave_functions& hphi__,
+                       Wave_functions& ophi__,
+                       mdarray<double_complex, 1>& kappa__,
+                       Hloc_operator &h_op,
+                       D_operator& d_op,
+                       Q_operator& q_op);
 
         void set_fv_h_o_serial(K_point* kp__,
                                int N__,

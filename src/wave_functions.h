@@ -303,26 +303,54 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         }
 
         inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                          mdarray<double_complex, 2>& result__, int irow__, int icol__) 
+                          mdarray<double_complex, 2>& result__, int irow__, int icol__, processing_unit_t pu__ = CPU)
         {
-            assert(num_gvec_loc() == ket__.num_gvec_loc());
-            static std::vector<double_complex> buf;
+            PROFILE();
 
-            if (comm_.size() == 1)
+            assert(num_gvec_loc() == ket__.num_gvec_loc());
+            //static std::vector<double_complex> buf;
+            static mdarray<double_complex, 1> buf;
+
+            /* single rank, CPU: store result directly in the output matrix */
+            if (comm_.size() == 1 && pu__ == CPU)
             {
                 linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
                                   &ket__(0, j0__), num_gvec_loc(), &result__(irow__, icol__), result__.ld());
             }
             else
             {
-                buf.resize(m__ * n__);
-                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
-                                  &ket__(0, j0__), num_gvec_loc(), &buf[0], m__);
-                comm_.allreduce(&buf[0], m__ * n__);
-                for (int i = 0; i < n__; i++)
+                /* reallocate buffer if necessary */
+                if (static_cast<size_t>(m__ * n__) > buf.size())
                 {
-                    std::memcpy(&result__(irow__, icol__ + i), &buf[i * m__], m__ * sizeof(double_complex));
+                    buf = mdarray<double_complex, 1>(m__ * n__);
+                    #ifdef __GPU
+                    if (pu__ == GPU) buf.allocate_on_device();
+                    #endif
                 }
+                switch (pu__)
+                {
+                    case CPU:
+                    {
+                        linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
+                                          &ket__(0, j0__), num_gvec_loc(), &buf[0], m__);
+                        break;
+                    }
+                    case GPU:
+                    {
+                        #ifdef __GPU
+                        linalg<GPU>::gemm(2, 0, m__, n__, num_gvec_loc(), wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc(),
+                                          ket__.wf_coeffs_.at<GPU>(0, j0__), num_gvec_loc(), buf.at<GPU>(), m__);
+                        buf.copy_to_host(m__ * n__);
+                        #else
+                        TERMINATE_NO_GPU
+                        #endif
+                        break;
+                    }
+                    if (comm_.size() > 1) comm_.allreduce(&buf[0], m__ * n__);
+                }
+
+                for (int i = 0; i < n__; i++)
+                    std::memcpy(&result__(irow__, icol__ + i), &buf[i * m__], m__ * sizeof(double_complex));
             }
         }
 
@@ -335,6 +363,23 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             return wf_coeffs_;
         }
+
+        #ifdef __GPU
+        void allocate_on_device()
+        {
+            wf_coeffs_.allocate_on_device();
+        }
+
+        void deallocate_on_device()
+        {
+            wf_coeffs_.deallocate_on_device();
+        }
+
+        void copy_to_device(int i0__, int n__)
+        {
+            acc::copyin(wf_coeffs_.at<GPU>(0, i0__), wf_coeffs_.at<CPU>(0, i0__), n__ * num_gvec_loc());
+        }
+        #endif
 };
 
 };

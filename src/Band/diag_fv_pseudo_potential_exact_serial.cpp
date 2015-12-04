@@ -35,7 +35,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
 
     Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
 
-    apply_h_o_serial(kp__, 0, ngk, phi, hphi, ophi, kappa, h_op, d_op, q_op);
+    apply_h_o(kp__, 0, ngk, phi, hphi, ophi, kappa, h_op, d_op, q_op);
         
     Utils::check_hermitian("h", hphi.coeffs(), ngk);
     Utils::check_hermitian("o", ophi.coeffs(), ngk);

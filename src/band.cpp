@@ -1624,6 +1624,11 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     fft_coarse->transform<1>(gvc, &veff_pw_coarse[0]);
     fft_coarse->output(&veff_it_coarse[0]);
 
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    double cs = mdarray<double, 1>(&veff_it_coarse[0], veff_it_coarse.size()).checksum();
+    DUMP("checksum(veff_it_coarse): %18.10f", cs);
+    #endif
+
     double v0 = effective_potential__->f_pw(0).real();
 
     auto& itso = parameters_.iterative_solver_input_section();

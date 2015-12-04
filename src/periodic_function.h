@@ -240,6 +240,7 @@ class Periodic_function
         void fft_transform(int direction__)
         {
             Timer t("sirius::Periodic_function::fft_transform");
+            fft_->allocate_workspace();
             switch (direction__)
             {
                 case 1:
@@ -260,6 +261,7 @@ class Periodic_function
                     TERMINATE("wrong fft direction");
                 }
             }
+            fft_->deallocate_workspace();
         }
         
         mdarray<T, 3>& f_mt()

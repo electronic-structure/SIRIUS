@@ -33,55 +33,11 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         std::memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double_complex));
     }
 
-    if (parameters_.processing_unit() == CPU)
-    {
-        /* <{phi,res}|H|res> */
-        phi__.inner(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
-        /* <{phi,res}|O|res> */
-        phi__.inner(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
-    }
+    /* <{phi,res}|H|res> */
+    phi__.inner(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);//, parameters_.processing_unit());
+    /* <{phi,res}|O|res> */
+    phi__.inner(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);//, parameters_.processing_unit());
 
-    if (parameters_.processing_unit() == GPU)
-    {
-        #ifdef __GPU
-        STOP();
-        //bool economize_gpu_memory = (kappa__.size() != 0);
-        //if (!economize_gpu_memory)
-        //{
-        //    linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi__.at<GPU>(0, 0), phi__.ld(),
-        //                      hphi__.at<GPU>(0, N__), hphi__.ld(), h__.at<GPU>(0, N__), h__.ld());
-        //    
-        //    linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi__.at<GPU>(0, 0), phi__.ld(),
-        //                      ophi__.at<GPU>(0, N__), ophi__.ld(), o__.at<GPU>(0, N__), o__.ld());
-        //}
-        //else
-        //{
-        //    /* copy phi to device */
-        //    matrix<double_complex> phi(phi__.at<CPU>(), kappa__.at<GPU>(), kp__->num_gkvec(), N__ + n__);
-        //    phi.copy_to_device();
-
-        //    /* copy hphi to device */
-        //    matrix<double_complex> hphi(hphi__.at<CPU>(0, N__), kappa__.at<GPU>(phi.size()), kp__->num_gkvec(), n__);
-        //    hphi.copy_to_device();
-
-        //    linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi.at<GPU>(), phi.ld(),
-        //                      hphi.at<GPU>(), hphi.ld(), h__.at<GPU>(0, N__), h__.ld());
-        //    
-        //    /* copy ophi to device */
-        //    matrix<double_complex> ophi(ophi__.at<CPU>(0, N__), kappa__.at<GPU>(phi.size()), kp__->num_gkvec(), n__);
-        //    ophi.copy_to_device();
-
-        //    linalg<GPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), phi.at<GPU>(), phi.ld(),
-        //                      ophi.at<GPU>(), ophi.ld(), o__.at<GPU>(0, N__), o__.ld());
-
-        //}
-        //cublas_get_matrix(N__ + n__, n__, sizeof(double_complex), h__.at<GPU>(0, N__), h__.ld(), h__.at<CPU>(0, N__), h__.ld());
-        //cublas_get_matrix(N__ + n__, n__, sizeof(double_complex), o__.at<GPU>(0, N__), o__.ld(), o__.at<CPU>(0, N__), o__.ld());
-        //#else
-        //TERMINATE_NO_GPU
-        #endif
-    }
-        
     /* save Hamiltonian and overlap */
     for (int i = N__; i < N__ + n__; i++)
     {

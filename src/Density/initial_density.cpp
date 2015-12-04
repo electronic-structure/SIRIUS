@@ -36,7 +36,7 @@ void Density::initial_density()
         #endif
 
         /* set plane-wave coefficients of the charge density */
-        memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
+        std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
         /* convert charge deisnty to real space mesh */
         rho_->fft_transform(1);
 
@@ -111,7 +111,7 @@ void Density::initial_density()
             int iat = unit_cell_.atom(ia)->type_id();
 
             /* loop over local fraction of G-shells */
-            for (int i = 0; i < (int)gsh_list.size(); i++)
+            for (size_t i = 0; i < gsh_list.size(); i++)
             {
                 auto& gv = gsh_list[i].second;
                 
@@ -119,7 +119,7 @@ void Density::initial_density()
                 for (int igloc: gv)
                 {
                     /* global index of the G-vector */
-                    int ig = (int)spl_num_gvec[igloc];
+                    int ig = spl_num_gvec[igloc];
 
                     double_complex z1 = rl->gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
 

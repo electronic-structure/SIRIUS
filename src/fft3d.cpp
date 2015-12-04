@@ -211,21 +211,26 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                     /* load z-columns into proper location */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        int x = gvec__.z_column(i).x;
-                        int y = gvec__.z_column(i).y;
-                        if (x < 0) x += grid_.size(0);
-                        if (y < 0) y += grid_.size(1);
-
+                        //int x = gvec__.z_column(i).x;
+                        //int y = gvec__.z_column(i).y;
+                        //if (x < 0) x += grid_.size(0);
+                        //if (y < 0) y += grid_.size(1);
+                        //assert(x == (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0));
+                        //assert(y == (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1));
+                        int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+                        int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
                         fftw_buffer_xy_[tid][x + y * grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
 
                         if (use_reduction && i)
                         {
                             /* x,y coordinates of inverse G-vectors */
-                            int x = -gvec__.z_column(i).x;
-                            int y = -gvec__.z_column(i).y;
-                            /* coordinates inside FFT grid */
-                            if (x < 0) x += grid_.size(0);
-                            if (y < 0) y += grid_.size(1);
+                            int x = (-gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+                            int y = (-gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+                            //int x = -gvec__.z_column(i).x;
+                            //int y = -gvec__.z_column(i).y;
+                            ///* coordinates inside FFT grid */
+                            //if (x < 0) x += grid_.size(0);
+                            //if (y < 0) y += grid_.size(1);
                             
                             fftw_buffer_xy_[tid][x + y * grid_.size(0)] = std::conj(fft_buffer_aux_[iz + local_size_z_ * i]);
                         }
@@ -249,10 +254,12 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                     /* get z-columns */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        int x = gvec__.z_column(i).x;
-                        int y = gvec__.z_column(i).y;
-                        if (x < 0) x += grid_.size(0);
-                        if (y < 0) y += grid_.size(1);
+                        int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+                        int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+                        //int x = gvec__.z_column(i).x;
+                        //int y = gvec__.z_column(i).y;
+                        //if (x < 0) x += grid_.size(0);
+                        //if (y < 0) y += grid_.size(1);
 
                         fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * grid_.size(0)];
                     }
@@ -505,7 +512,7 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
     }
     if (sz_max > fft_buffer_aux_.size())
     {
-        fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max);
+        fft_buffer_aux_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux_");
         #ifdef __GPU
         if (pu_ == GPU)
         {

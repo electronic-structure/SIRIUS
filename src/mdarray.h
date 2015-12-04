@@ -56,6 +56,7 @@ extern "C" int libsci_acc_HostFree(void*);
         {                                                                       \
             printf("Assertion (%s) failed ", #condition__);                     \
             printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+            printf("array label: %s\n", label_.c_str());                        \
             for (int i = 0; i < N; i++)                                         \
                 printf("dim[%i].size = %li\n", i, dims_[i].size());             \
             void *array[10];                                                    \
@@ -76,6 +77,7 @@ extern "C" int libsci_acc_HostFree(void*);
         {                                                                       \
             printf("Assertion (%s) failed ", #condition__);                     \
             printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+            printf("array label: %s\n", label_.c_str());                        \
             for (int i = 0; i < N; i++)                                         \
                 printf("dim[%i].size = %li\n", i, dims_[i].size());             \
             debug::Profiler::stack_trace();                                     \
@@ -711,6 +713,13 @@ class mdarray_base
             mdarray_assert(ptr_device_ != nullptr);
             
             cuda_copy_to_host(ptr_, ptr_device_, size() * sizeof(T));
+        }
+
+        void copy_to_host(int n__)
+        {
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
+            acc::copyout(ptr_, ptr_device_, n__);
         }
 
         void async_copy_to_device(int stream_id__ = -1) 
