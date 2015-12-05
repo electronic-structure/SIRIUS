@@ -13,7 +13,11 @@ class Beta_projectors
 
         Gvec const& gkvec_;
 
+        mdarray<double, 2> gkvec_coord_;
+
         int lmax_beta_;
+
+        processing_unit_t pu_;
 
         int max_num_phi_;
 
@@ -160,23 +164,23 @@ class Beta_projectors
                     beta_chunks_[ib].desc_(1, i) = num_beta;
                     /* offset in beta_gk_t */
                     beta_chunks_[ib].desc_(2, i) = type->offset_lo();
+                    /* global index of atom */
                     beta_chunks_[ib].desc_(3, i) = ia;
     
                     num_beta += type->mt_basis_size();
                 }
                 beta_chunks_[ib].num_beta_ = num_beta;
 
-                //if (parameters_.processing_unit() == GPU)
-                //{
-                //    STOP();
-                //    #ifdef __GPU
-                //    //beta_chunks_[ib].desc_.allocate_on_device();
-                //    //beta_chunks_[ib].desc_.copy_to_device();
+                #ifdef __GPU
+                if (pu_ == GPU)
+                {
+                    beta_chunks_[ib].desc_.allocate_on_device();
+                    beta_chunks_[ib].desc_.copy_to_device();
 
-                //    //beta_chunks_[ib].atom_pos_.allocate_on_device();
-                //    //beta_chunks_[ib].atom_pos_.copy_to_device();
-                //    #endif
-                //}
+                    beta_chunks_[ib].atom_pos_.allocate_on_device();
+                    beta_chunks_[ib].atom_pos_.copy_to_device();
+                }
+                #endif
             }
 
             num_beta_t_ = 0;
@@ -189,11 +193,13 @@ class Beta_projectors
         Beta_projectors(Communicator const& comm__,
                         Unit_cell const& unit_cell__,
                         Gvec const& gkvec__,
-                        int lmax_beta__)
+                        int lmax_beta__,
+                        processing_unit_t pu__)
             : comm_(comm__),
               unit_cell_(unit_cell__),
               gkvec_(gkvec__),
               lmax_beta_(lmax_beta__),
+              pu_(pu__),
               max_num_phi_(0)
         {
             num_gkvec_loc_ = gkvec_.num_gvec(comm_.rank());
@@ -201,6 +207,25 @@ class Beta_projectors
             split_in_chunks();
 
             generate_beta_gk_t();
+
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_);
+                /* copy G+k vectors */
+                for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
+                {
+                    int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+                    auto gc = gkvec_.cart_shifted(igk);
+                    for (auto x: {0, 1, 2}) gkvec_coord_(x, igk_loc) = gc[x];
+                }
+                gkvec_coord_.allocate_on_device();
+                gkvec_coord_.copy_to_device();
+
+                beta_gk_t_.allocate_on_device();
+                beta_gk_t_.copy_to_device();
+            }
+            #endif
 
             beta_gk_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_basis_size());
 
@@ -266,20 +291,51 @@ class Beta_projectors
         void inner(Wave_functions& phi__, int idx0__, int n__)
         {
             Timer t("sirius::Beta_projectors::inner");
+
+            PROFILE();
             
             if (n__ > max_num_phi_)
             {
                 max_num_phi_ = n__;
                 beta_phi_ = matrix<double_complex>(unit_cell_.mt_basis_size(), max_num_phi_);
+                #ifdef __GPU
+                if (pu_ == GPU) beta_phi_.allocate_on_device();
+                #endif
             }
 
             int nbeta__ = unit_cell_.mt_basis_size();
-  
-            /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbeta__, n__, num_gkvec_loc_, beta_gk_.at<CPU>(), num_gkvec_loc_, 
-                              &phi__(0, idx0__), num_gkvec_loc_, beta_phi_.at<CPU>(), beta_phi_.ld());
 
-            comm_.allreduce(beta_phi_.at<CPU>(), (int)beta_phi_.size());
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                beta_gk_.allocate_on_device();
+                beta_gk_.copy_to_device();
+            }
+            #endif
+
+            switch (pu_)
+            {
+                case CPU:
+                {
+                    /* compute <beta|phi> */
+                    linalg<CPU>::gemm(2, 0, nbeta__, n__, num_gkvec_loc_, beta_gk_.at<CPU>(), num_gkvec_loc_, 
+                                      &phi__(0, idx0__), num_gkvec_loc_, beta_phi_.at<CPU>(), beta_phi_.ld());
+                    break;
+                }
+                case GPU:
+                {
+                    #ifdef __GPU
+                    linalg<GPU>::gemm(2, 0, nbeta__, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_, 
+                                      phi__.coeffs().at<GPU>(0, idx0__), num_gkvec_loc_, beta_phi_.at<GPU>(), beta_phi_.ld());
+                    beta_phi_.copy_to_host();
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                    break;
+                }
+            }
+
+            comm_.allreduce(beta_phi_.at<CPU>(), static_cast<int>(beta_phi_.size()));
 
             #ifdef __PRINT_OBJECT_CHECKSUM
             auto c1 = beta_phi_.checksum();

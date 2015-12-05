@@ -59,6 +59,8 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         block_data_descriptor gvec_slab_distr_;
 
+        mdarray<double_complex, 1> inner_prod_buf_;
+
     public:
 
         Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
@@ -308,8 +310,6 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             PROFILE();
 
             assert(num_gvec_loc() == ket__.num_gvec_loc());
-            //static std::vector<double_complex> buf;
-            static mdarray<double_complex, 1> buf;
 
             /* single rank, CPU: store result directly in the output matrix */
             if (comm_.size() == 1 && pu__ == CPU)
@@ -320,11 +320,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             else
             {
                 /* reallocate buffer if necessary */
-                if (static_cast<size_t>(m__ * n__) > buf.size())
+                if (static_cast<size_t>(m__ * n__) > inner_prod_buf_.size())
                 {
-                    buf = mdarray<double_complex, 1>(m__ * n__);
+                    inner_prod_buf_ = mdarray<double_complex, 1>(m__ * n__);
                     #ifdef __GPU
-                    if (pu__ == GPU) buf.allocate_on_device();
+                    if (pu__ == GPU) inner_prod_buf_.allocate_on_device();
                     #endif
                 }
                 switch (pu__)
@@ -332,25 +332,25 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                     case CPU:
                     {
                         linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
-                                          &ket__(0, j0__), num_gvec_loc(), &buf[0], m__);
+                                          &ket__(0, j0__), num_gvec_loc(), &inner_prod_buf_[0], m__);
                         break;
                     }
                     case GPU:
                     {
                         #ifdef __GPU
                         linalg<GPU>::gemm(2, 0, m__, n__, num_gvec_loc(), wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc(),
-                                          ket__.wf_coeffs_.at<GPU>(0, j0__), num_gvec_loc(), buf.at<GPU>(), m__);
-                        buf.copy_to_host(m__ * n__);
+                                          ket__.wf_coeffs_.at<GPU>(0, j0__), num_gvec_loc(), inner_prod_buf_.at<GPU>(), m__);
+                        inner_prod_buf_.copy_to_host(m__ * n__);
                         #else
                         TERMINATE_NO_GPU
                         #endif
                         break;
                     }
-                    if (comm_.size() > 1) comm_.allreduce(&buf[0], m__ * n__);
+                    if (comm_.size() > 1) comm_.allreduce(&inner_prod_buf_[0], m__ * n__);
                 }
 
                 for (int i = 0; i < n__; i++)
-                    std::memcpy(&result__(irow__, icol__ + i), &buf[i * m__], m__ * sizeof(double_complex));
+                    std::memcpy(&result__(irow__, icol__ + i), &inner_prod_buf_[i * m__], m__ * sizeof(double_complex));
             }
         }
 

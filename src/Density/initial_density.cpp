@@ -111,7 +111,7 @@ void Density::initial_density()
             int iat = unit_cell_.atom(ia)->type_id();
 
             /* loop over local fraction of G-shells */
-            for (size_t i = 0; i < gsh_list.size(); i++)
+            for (int i = 0; i < static_cast<int>(gsh_list.size()); i++)
             {
                 auto& gv = gsh_list[i].second;
                 
@@ -121,7 +121,7 @@ void Density::initial_density()
                     /* global index of the G-vector */
                     int ig = spl_num_gvec[igloc];
 
-                    double_complex z1 = rl->gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
+                    auto z1 = rl->gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
 
                     for (int lm = 0; lm < lmmax; lm++)
                     {
@@ -130,7 +130,7 @@ void Density::initial_density()
                         /* number of expansion coefficients */
                         int nqnu = sba.nqnu(l, iat);
 
-                        double_complex z2 = z1 * zil[l] * gvec_ylm(lm, igloc);
+                        auto z2 = z1 * zil[l] * gvec_ylm(lm, igloc);
                     
                         for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z2 * sba.coeff(iq, i, l, iat);
                     }

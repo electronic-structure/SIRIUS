@@ -113,7 +113,7 @@ void K_point::initialize()
     /* compute |beta> projectors for atom types */
     if (!parameters_.full_potential())
     {
-        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, parameters_.lmax_beta());
+        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, parameters_.lmax_beta(), parameters_.processing_unit());
         
         if (false)
         {
