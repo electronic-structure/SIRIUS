@@ -186,7 +186,7 @@ void K_point::initialize()
             //                                     blacs_grid_slab_,
             //                                     splindex_base<int>::block_size(wf_size(), num_ranks()), 1);
 
-            fv_states_ = new Wave_functions(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft());
+            fv_states_ = new Wave_functions(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
 
             assert(parameters_.num_fv_states() < num_gkvec());
             //assert(fv_states_.num_rows_local() == num_gkvec_loc());
@@ -217,7 +217,7 @@ void K_point::initialize()
         }
         else
         {
-            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft());
+            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
 
             //if (ctx_.fft(0)->parallel())
             //{

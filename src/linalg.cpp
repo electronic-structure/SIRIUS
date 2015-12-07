@@ -540,8 +540,8 @@ void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int n, ftn_
 
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
-                                           ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
-                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
+                                           ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int lda,
+                                           ftn_double_complex const* B, ftn_int ldb, ftn_double_complex* beta, 
                                            ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
     cublas_zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
@@ -549,8 +549,8 @@ void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
-                                           ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
-                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
+                                           ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int lda,
+                                           ftn_double_complex const* B, ftn_int ldb, ftn_double_complex* beta, 
                                            ftn_double_complex* C, ftn_int ldc)
 {
     gemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, -1);
@@ -558,8 +558,8 @@ void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
-                                           ftn_double_complex* A, ftn_int lda,
-                                           ftn_double_complex* B, ftn_int ldb, 
+                                           ftn_double_complex const* A, ftn_int lda,
+                                           ftn_double_complex const* B, ftn_int ldb, 
                                            ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
     cublas_zgemm(transa, transb, m, n, k, &zone, A, lda, B, ldb, &zzero, C, ldc, stream_id);
@@ -567,8 +567,8 @@ void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
-                                           ftn_double_complex* A, ftn_int lda,
-                                           ftn_double_complex* B, ftn_int ldb,
+                                           ftn_double_complex const* A, ftn_int lda,
+                                           ftn_double_complex const* B, ftn_int ldb,
                                            ftn_double_complex* C, ftn_int ldc)
 {
     gemm(transa, transb, m, n, k, A, lda, B, ldb, C, ldc, -1);

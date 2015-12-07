@@ -20,9 +20,11 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
 
     int ngk = kp__->num_gkvec();
 
-    Wave_functions phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft());
+    auto pu = parameters_.processing_unit();
+
+    Wave_functions phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
     mdarray<double_complex, 1> kappa;
     
     std::vector<double> eval(ngk);
@@ -30,8 +32,8 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     phi.coeffs().zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
-    D_operator d_op(kp__->beta_projectors());
-    Q_operator q_op(kp__->beta_projectors());
+    D_operator d_op(kp__->beta_projectors(), pu);
+    Q_operator q_op(kp__->beta_projectors(), pu);
 
     Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
 

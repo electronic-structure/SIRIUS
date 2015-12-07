@@ -85,7 +85,7 @@ void cuda_device_reset();
 void cuda_check_last_error();
 
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
+                  cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                   int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
 
 void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__,

@@ -28,6 +28,14 @@ void Band::apply_h_o(K_point* kp__,
     /* apply local part of Hamiltonian */
     h_op.apply(hphi__, N__, n__);
 
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+        hphi__.copy_to_device(N__, n__);
+        ophi__.copy_to_device(N__, n__);
+    }
+    #endif
+
     kp__->beta_projectors().inner(phi__, N__, n__);
 
     if (!kp__->iterative_solver_input_section_.real_space_prj_)
@@ -40,13 +48,6 @@ void Band::apply_h_o(K_point* kp__,
         STOP();
         //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
     }
-    #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
-    {
-        hphi__.copy_to_device(N__, n__);
-        ophi__.copy_to_device(N__, n__);
-    }
-    #endif
 }
 
 };

@@ -40,6 +40,8 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         /** Assume that the 1st dimension is used to distribute wave-functions and 2nd to distribute G-vectors */
         MPI_grid const& mpi_grid_;
 
+        processing_unit_t pu_;
+
         /// Entire communicator.
         Communicator const& comm_;
 
@@ -63,10 +65,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
     public:
 
-        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__, processing_unit_t pu__)
             : num_wfs_(num_wfs__),
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
+              pu_(pu__),
               comm_(mpi_grid_.communicator()),
               rank_(-1),
               rank_row_(-1),
@@ -81,10 +84,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
         }
 
-        Wave_functions(int num_wfs__, int max_num_wfs_swapped__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+        Wave_functions(int num_wfs__, int max_num_wfs_swapped__, Gvec const& gvec__, MPI_grid const& mpi_grid__, processing_unit_t pu__)
             : num_wfs_(num_wfs__),
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
+              pu_(pu__),
               comm_(mpi_grid_.communicator())
         {
             PROFILE();
@@ -305,14 +309,14 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         }
 
         inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                          mdarray<double_complex, 2>& result__, int irow__, int icol__, processing_unit_t pu__ = CPU)
+                          mdarray<double_complex, 2>& result__, int irow__, int icol__)
         {
             PROFILE();
 
             assert(num_gvec_loc() == ket__.num_gvec_loc());
 
             /* single rank, CPU: store result directly in the output matrix */
-            if (comm_.size() == 1 && pu__ == CPU)
+            if (comm_.size() == 1 && pu_ == CPU)
             {
                 linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
                                   &ket__(0, j0__), num_gvec_loc(), &result__(irow__, icol__), result__.ld());
@@ -324,10 +328,10 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
                 {
                     inner_prod_buf_ = mdarray<double_complex, 1>(m__ * n__);
                     #ifdef __GPU
-                    if (pu__ == GPU) inner_prod_buf_.allocate_on_device();
+                    if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
                     #endif
                 }
-                switch (pu__)
+                switch (pu_)
                 {
                     case CPU:
                     {

@@ -28,6 +28,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         get_h_o_diag<false>(kp__, v0__, pw_ekin, h_diag, o_diag);
     }
 
+    auto pu = parameters_.processing_unit();
+
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();
 
@@ -47,11 +49,11 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, ngk);
 
     /* allocate wave-functions */
-    Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
-    Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
 
     /* allocate Hamiltonian and overlap */
     matrix<double_complex> hmlt(num_phi, num_phi);
@@ -93,10 +95,10 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     std::vector<double> eval_tmp(num_bands);
     
     /* residuals */
-    Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft());
+    Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
 
-    D_operator d_op(kp__->beta_projectors());
-    Q_operator q_op(kp__->beta_projectors());
+    D_operator d_op(kp__->beta_projectors(), pu);
+    Q_operator q_op(kp__->beta_projectors(), pu);
     Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
 
     //bool economize_gpu_memory = true; // TODO: move to user-controlled input

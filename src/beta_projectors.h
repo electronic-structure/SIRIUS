@@ -1,5 +1,39 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file beta_projectors.h
+ *   
+ *  \brief Contains declaration and implementation of sirius::Beta_projectors class.
+ */
+
 #ifndef __BETA_PROJECTORS_H__
 #define __BETA_PROJECTORS_H__
+
+#ifdef __GPU
+extern "C" void create_beta_gk_gpu(int num_atoms,
+                                   int num_gkvec,
+                                   int const* beta_desc,
+                                   cuDoubleComplex const* beta_gk_t,
+                                   double const* gkvec,
+                                   double const* atom_pos,
+                                   cuDoubleComplex* beta_gk);
+#endif
 
 namespace sirius {
 
@@ -216,7 +250,7 @@ class Beta_projectors
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
                 {
                     int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-                    auto gc = gkvec_.cart_shifted(igk);
+                    auto gc = gkvec_.gvec_shifted(igk);
                     for (auto x: {0, 1, 2}) gkvec_coord_(x, igk_loc) = gc[x];
                 }
                 gkvec_coord_.allocate_on_device();
@@ -309,7 +343,7 @@ class Beta_projectors
             if (pu_ == GPU)
             {
                 beta_gk_.allocate_on_device();
-                beta_gk_.copy_to_device();
+                //beta_gk_.copy_to_device();
             }
             #endif
 
@@ -325,6 +359,14 @@ class Beta_projectors
                 case GPU:
                 {
                     #ifdef __GPU
+                    create_beta_gk_gpu(beta_chunks_[0].num_atoms_,
+                                       num_gkvec_loc_,
+                                       beta_chunks_[0].desc_.at<GPU>(),
+                                       beta_gk_t_.at<GPU>(),
+                                       gkvec_coord_.at<GPU>(),
+                                       beta_chunks_[0].atom_pos_.at<GPU>(),
+                                       beta_gk_.at<GPU>());
+
                     linalg<GPU>::gemm(2, 0, nbeta__, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_, 
                                       phi__.coeffs().at<GPU>(0, idx0__), num_gkvec_loc_, beta_phi_.at<GPU>(), beta_phi_.ld());
                     beta_phi_.copy_to_host();
@@ -336,6 +378,10 @@ class Beta_projectors
             }
 
             comm_.allreduce(beta_phi_.at<CPU>(), static_cast<int>(beta_phi_.size()));
+
+            #ifdef __GPU
+            if (pu_ == GPU) beta_phi_.copy_to_device();
+            #endif
 
             #ifdef __PRINT_OBJECT_CHECKSUM
             auto c1 = beta_phi_.checksum();
