@@ -2,13 +2,13 @@
 
 namespace sirius {
 
-void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
-                                                    double v0__,
-                                                    std::vector<double>& veff_it_coarse__)
+void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
+                                             double v0__,
+                                             std::vector<double>& veff_it_coarse__)
 {
     PROFILE();
 
-    Timer t("sirius::Band::diag_fv_pseudo_potential_davidson_serial");
+    Timer t("sirius::Band::diag_fv_pseudo_potential_davidsonl");
 
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
@@ -96,6 +96,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
     
     /* residuals */
     Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+
+    kp__->beta_projectors().allocate_workspace();
 
     D_operator d_op(kp__->beta_projectors(), pu);
     Q_operator q_op(kp__->beta_projectors(), pu);
@@ -226,6 +228,8 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         {
             printf("eval[%i]=%f\n", i, eval[i]);
         }
+        cuda_device_reset();
+        exit(0);
         STOP();
 
 
@@ -395,17 +399,7 @@ void Band::diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
         //}
     }
 
-    if (parameters_.processing_unit() == GPU)
-    {
-        #ifdef __GPU
-        //STOP();
-        //if (!economize_gpu_memory)
-        //{
-        //    //kp__->beta_gk().deallocate_on_device();
-        //    //psi.deallocate_on_device();
-        //}
-        #endif
-    }
+    kp__->beta_projectors().deallocate_workspace();
 
     kp__->set_fv_eigen_values(&eval[0]);
 }

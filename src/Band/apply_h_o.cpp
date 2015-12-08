@@ -36,17 +36,22 @@ void Band::apply_h_o(K_point* kp__,
     }
     #endif
 
-    kp__->beta_projectors().inner(phi__, N__, n__);
+    for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++)
+    {
+        kp__->beta_projectors().generate(i);
 
-    if (!kp__->iterative_solver_input_section_.real_space_prj_)
-    {
-        d_op.apply(hphi__, N__, n__);
-        q_op.apply(ophi__, N__, n__);
-    }
-    else
-    {
-        STOP();
-        //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
+        kp__->beta_projectors().inner(i, phi__, N__, n__);
+
+        if (!kp__->iterative_solver_input_section_.real_space_prj_)
+        {
+            d_op.apply(i, hphi__, N__, n__);
+            q_op.apply(i, ophi__, N__, n__);
+        }
+        else
+        {
+            STOP();
+            //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
+        }
     }
 }
 

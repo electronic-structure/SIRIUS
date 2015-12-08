@@ -115,7 +115,8 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
         //                  kp__->beta_gk(), kp__->fv_states()->primary_data_storage_as_matrix(), complex_zero, beta_psi);
     }
     //kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
-    kp__->beta_projectors().inner(*kp__->fv_states(), 0, nbnd);
+    //kp__->beta_projectors().inner(*kp__->fv_states(), 0, nbnd);
+    STOP();
     auto& beta_psi = kp__->beta_projectors().beta_phi();
     t1.stop();
 

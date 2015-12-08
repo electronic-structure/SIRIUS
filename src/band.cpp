@@ -1638,7 +1638,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     }
     else if (itso.type_ == "davidson")
     {
-        diag_fv_pseudo_potential_davidson_serial(kp__, v0, veff_it_coarse);
+        diag_fv_pseudo_potential_davidson(kp__, v0, veff_it_coarse);
     }
     else if (itso.type_ == "rmm-diis")
     {

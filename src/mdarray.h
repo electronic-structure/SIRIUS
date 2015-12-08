@@ -699,26 +699,35 @@ class mdarray_base
             allocate(1);
         }
 
-        void copy_to_device() 
+        void copy_to_device()
         {
             mdarray_assert(ptr_ != nullptr);
             mdarray_assert(ptr_device_ != nullptr);
 
-            cuda_copy_to_device(ptr_device_, ptr_, size() * sizeof(T));
+            acc::copyin(ptr_device_, ptr_, size());
+        }
+
+        void copy_to_device(int n__)
+        {
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
+
+            acc::copyin(ptr_device_, ptr_, n__);
         }
 
         void copy_to_host() 
         {
             mdarray_assert(ptr_ != nullptr);
             mdarray_assert(ptr_device_ != nullptr);
-            
-            cuda_copy_to_host(ptr_, ptr_device_, size() * sizeof(T));
+
+            acc::copyout(ptr_, ptr_device_, size());
         }
 
         void copy_to_host(int n__)
         {
             mdarray_assert(ptr_ != nullptr);
             mdarray_assert(ptr_device_ != nullptr);
+
             acc::copyout(ptr_, ptr_device_, n__);
         }
 

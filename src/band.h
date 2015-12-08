@@ -192,10 +192,6 @@ class Band
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
 
-        void diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
-                                                             double v0__,
-                                                             std::vector<double>& veff_it_coarse__);
-
         void diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
                                                          std::vector<double> const& veff_it_coarse__);
     
@@ -205,9 +201,9 @@ class Band
         void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
                                                    std::vector<double>& veff_it_coarse__);
 
-        void diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
-                                                      double v0__,
-                                                      std::vector<double>& veff_it_coarse__);
+        void diag_fv_pseudo_potential_davidson(K_point* kp__,
+                                               double v0__,
+                                               std::vector<double>& veff_it_coarse__);
         
         void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                       double v0__,

@@ -46,40 +46,37 @@ class Non_local_operator
             #endif
         }
 
-        void apply(Wave_functions& op_phi__, int idx0__, int n__)
+        void apply(int chunk__, Wave_functions& op_phi__, int idx0__, int n__)
         {
             PROFILE();
 
             assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
 
-            int ib = 0;
-
             auto& beta_phi = beta_.beta_phi();
-            auto& uc = beta_.unit_cell();
             auto& beta_gk = beta_.beta_gk();
             int num_gkvec_loc = beta_.num_gkvec_loc();
-            matrix<double_complex> work(uc.mt_basis_size(), n__);
+            int nbeta = beta_.beta_chunk(chunk__).num_beta_;
+            matrix<double_complex> work(nbeta, n__);
 
             if (pu_ == CPU)
             {
                 #pragma omp parallel for
-                for (int i = 0; i < beta_.beta_chunk(ib).num_atoms_; i++)
+                for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
                 {
                     /* number of beta functions for a given atom */
-                    int nbf = beta_.beta_chunk(ib).desc_(0, i);
-                    int ofs = beta_.beta_chunk(ib).desc_(1, i);
-                    int ia  = beta_.beta_chunk(ib).desc_(3, i);
+                    int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+                    int ofs = beta_.beta_chunk(chunk__).desc_(1, i);
+                    int ia  = beta_.beta_chunk(chunk__).desc_(3, i);
 
                     /* compute O * <beta|phi> */
                     linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
                                       op_.at<CPU>(packed_mtrx_offset_(ia)), nbf,
-                                      beta_phi.at<CPU>(ofs, 0), beta_phi.ld(),
+                                      beta_phi.at<CPU>(ofs), nbeta,
                                       work.at<CPU>(ofs, 0), work.ld());
                 }
-
                 
                 /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-                linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, beta_.beta_chunk(ib).num_beta_, double_complex(1, 0),
+                linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, double_complex(1, 0),
                                   beta_gk.at<CPU>(), num_gkvec_loc, work.at<CPU>(), work.ld(), double_complex(1, 0),
                                   &op_phi__(0, idx0__), num_gkvec_loc);
             }
@@ -88,17 +85,17 @@ class Non_local_operator
             {
                 work.allocate_on_device();
                 #pragma omp parallel for
-                for (int i = 0; i < beta_.beta_chunk(ib).num_atoms_; i++)
+                for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
                 {
                     /* number of beta functions for a given atom */
-                    int nbf = beta_.beta_chunk(ib).desc_(0, i);
-                    int ofs = beta_.beta_chunk(ib).desc_(1, i);
-                    int ia  = beta_.beta_chunk(ib).desc_(3, i);
+                    int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+                    int ofs = beta_.beta_chunk(chunk__).desc_(1, i);
+                    int ia  = beta_.beta_chunk(chunk__).desc_(3, i);
 
                     /* compute O * <beta|phi> */
                     linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                                       op_.at<GPU>(packed_mtrx_offset_(ia)), nbf, 
-                                      beta_phi.at<GPU>(ofs, 0), beta_phi.ld(),
+                                      beta_phi.at<GPU>(ofs), nbeta,
                                       work.at<GPU>(ofs, 0), work.ld(),
                                       omp_get_thread_num());
 
@@ -107,7 +104,7 @@ class Non_local_operator
                 double_complex alpha(1, 0);
                 
                 /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-                linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, beta_.beta_chunk(ib).num_beta_, &alpha,
+                linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
                                   beta_gk.at<GPU>(), beta_gk.ld(), work.at<GPU>(), work.ld(), &alpha, 
                                   op_phi__.coeffs().at<GPU>(0, idx0__), op_phi__.coeffs().ld());
                 
