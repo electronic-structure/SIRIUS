@@ -247,7 +247,6 @@ class Band
                        Wave_functions& phi__,
                        Wave_functions& hphi__,
                        Wave_functions& ophi__,
-                       mdarray<double_complex, 1>& kappa__,
                        Hloc_operator &h_op,
                        D_operator& d_op,
                        Q_operator& q_op);
@@ -261,8 +260,7 @@ class Band
                                matrix<double_complex>& h__,
                                matrix<double_complex>& o__,
                                matrix<double_complex>& h_old__,
-                               matrix<double_complex>& o_old__,
-                               mdarray<double_complex, 1>& kappa__);
+                               matrix<double_complex>& o_old__);
 
         int residuals(K_point* kp__,
                       int N__,
@@ -276,8 +274,7 @@ class Band
                       Wave_functions& opsi__,
                       Wave_functions& res__,
                       std::vector<double>& h_diag__,
-                      std::vector<double>& o_diag__,
-                      mdarray<double_complex, 1>& kappa__);
+                      std::vector<double>& o_diag__);
 
         void residuals_aux(K_point* kp__,
                            int num_bands__,
@@ -287,8 +284,7 @@ class Band
                            Wave_functions& res__,
                            std::vector<double>& h_diag__,
                            std::vector<double>& o_diag__,
-                           std::vector<double>& res_norm__,
-                           mdarray<double_complex, 1>& kappa__);
+                           std::vector<double>& res_norm__);
 
         void add_nl_h_o_pw(K_point* kp__,
                            int n__,

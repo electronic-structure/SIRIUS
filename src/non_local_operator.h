@@ -56,7 +56,7 @@ class Non_local_operator
             auto& beta_gk = beta_.beta_gk();
             int num_gkvec_loc = beta_.num_gkvec_loc();
             int nbeta = beta_.beta_chunk(chunk__).num_beta_;
-            matrix<double_complex> work(nbeta, n__);
+            matrix<double_complex> work(nbeta, n__); // TODO: cache and not rellocate
 
             if (pu_ == CPU)
             {

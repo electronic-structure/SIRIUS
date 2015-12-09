@@ -14,8 +14,7 @@ int Band::residuals(K_point* kp__,
                     Wave_functions& opsi__,
                     Wave_functions& res__,
                     std::vector<double>& h_diag__,
-                    std::vector<double>& o_diag__,
-                    mdarray<double_complex, 1>& kappa__)
+                    std::vector<double>& o_diag__)
 {
     PROFILE();
 
@@ -69,7 +68,7 @@ int Band::residuals(K_point* kp__,
         }
         #endif
 
-        residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
+        residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
 
         //#ifdef __GPU
         //if (parameters_.processing_unit() == GPU && economize_gpu_memory)
@@ -96,7 +95,7 @@ int Band::residuals(K_point* kp__,
         }
         #endif
 
-        residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
+        residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
 
         //#ifdef __GPU
         //matrix<double_complex> res_tmp;

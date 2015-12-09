@@ -127,29 +127,6 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     Q_operator q_op(kp__->beta_projectors(), pu);
     Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
 
-    mdarray<double_complex, 1> kappa;
-
-    //==if (parameters_.processing_unit() == GPU && economize_gpu_memory)
-    //=={
-    //==    size_t size = ngk * (std::max(unit_cell_.mt_basis_size(), num_phi) + num_bands);
-    //==    kappa = mdarray<double_complex, 1>(nullptr, size);
-    //==}
-    //==if (parameters_.processing_unit() == CPU && itso.real_space_prj_) 
-    //=={
-    //==    auto rsp = ctx_.real_space_prj();
-    //==    size_t size = 2 * rsp->fft()->size() * parameters_.num_fft_threads();
-    //==    size += rsp->max_num_points_ * parameters_.num_fft_threads();
-
-    //==    kappa = mdarray<double_complex, 1>(size);
-    //==}
-    //==
-    //==#if defined(__GPU) && (__VERBOSITY > 1)
-    //==if (kp__->comm().rank() == 0 && parameters_.processing_unit() == GPU)
-    //=={
-    //==    printf("size of kappa array: %f GB\n", sizeof(double_complex) * double(kappa.size() >> 30));
-    //==}
-    //==#endif
-
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
@@ -172,70 +149,22 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     /* trial basis functions */
     phi.copy_from(psi, 0, num_bands);
 
-    
-    //if (parameters_.processing_unit() == GPU)
-    //{
-    //    #ifdef __GPU
-    //    if (!economize_gpu_memory)
-    //    {
-    //        phi.allocate_on_device();
-    //        psi.allocate_on_device();
-    //        res.allocate_on_device();
-    //        hphi.allocate_on_device();
-    //        hpsi.allocate_on_device();
-    //        kp__->beta_gk().allocate_on_device();
-    //        kp__->beta_gk().copy_to_device();
-    //        /* initial phi on GPU */
-    //        cuda_copy_to_device(phi.at<GPU>(), psi.at<CPU>(), ngk * num_bands * sizeof(double_complex));
-    //        if (with_overlap)
-    //        {
-    //            ophi.allocate_on_device();
-    //            opsi.allocate_on_device();
-    //        }
-    //    }
-    //    else
-    //    {
-    //        kappa.allocate_on_device();
-    //    }
-    //    d_mtrx_packed.allocate_on_device();
-    //    d_mtrx_packed.copy_to_device();
-    //    if (with_overlap)
-    //    {
-    //        q_mtrx_packed.allocate_on_device();
-    //        q_mtrx_packed.copy_to_device();
-    //    }
-    //    hmlt.allocate_on_device();
-    //    ovlp.allocate_on_device();
-    //    evec.allocate_on_device();
-    //    if (converge_by_energy) evec_tmp.allocate_on_device();
-    //    #else
-    //    TERMINATE_NO_GPU
-    //    #endif
-    //}
-
     /* current subspace size */
     int N = 0;
 
     /* number of newly added basis functions */
     int n = num_bands;
     
-    #ifdef __PRINT_OBJECT_HASH
-    //std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
-    std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
-    std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
-    std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], ctx_.fft_coarse()->size() * sizeof(double)) << std::endl;
-    #endif
-
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o(kp__, N, n, phi, hphi, ophi, kappa, h_op, d_op, q_op);
+        apply_h_o(kp__, N, n, phi, hphi, ophi, h_op, d_op, q_op);
         
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_fv_h_o_serial(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
+        set_fv_h_o_serial(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
  
         /* increase size of the variation space */
         N += n;
@@ -262,7 +191,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
         if (k != itso.num_steps_ - 1 && !occ_band_converged)
         {
             /* get new preconditionined residuals, and also hpss and opsi as a by-product */
-            n = residuals(kp__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, kappa);
+            n = residuals(kp__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */

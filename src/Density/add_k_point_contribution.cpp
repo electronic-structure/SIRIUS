@@ -81,74 +81,123 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
     if (!nbnd) return;
 
-    /* compute <beta|Psi> */
-    Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
-    //matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
-    if (parameters_.processing_unit() == GPU)
+    for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
     {
-        #ifdef __GPU
-        STOP();
-        //beta_psi.allocate_on_device();
+        kp__->beta_projectors().generate(chunk);
+        kp__->beta_projectors().inner(chunk, *kp__->fv_states(), 0, nbnd);
+        int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 
-        //kp__->beta_gk().allocate_on_device(); // TODO: avoid copy of beta_gk, create it on GPU directly
-        //kp__->beta_gk().copy_to_device();
+        mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
 
-        //kp__->fv_states().panel().allocate_on_device(); // TODO: copy only occupied bands
-        //kp__->fv_states().panel().copy_to_device();
-
-        //linalg<GPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(),
-        //                  kp__->beta_gk().at<GPU>(), kp__->beta_gk().ld(),
-        //                  kp__->fv_states().panel().at<GPU>(), kp__->fv_states().panel().ld(),
-        //                  beta_psi.at<GPU>(), beta_psi.ld()); 
-
-        //beta_psi.copy_to_host();
-        //
-        //kp__->beta_gk().deallocate_on_device();
-        //kp__->fv_states().panel().deallocate_on_device();
-        #else
-        TERMINATE_NO_GPU
-        #endif
-    }
-    else
-    {
-        //linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
-        //                  kp__->beta_gk(), kp__->fv_states()->primary_data_storage_as_matrix(), complex_zero, beta_psi);
-    }
-    //kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
-    //kp__->beta_projectors().inner(*kp__->fv_states(), 0, nbnd);
-    STOP();
-    auto& beta_psi = kp__->beta_projectors().beta_phi();
-    t1.stop();
-
-    if (nbnd_loc) // TODO: this part can also be moved to GPU
-    {
-        #pragma omp parallel
+        if (nbnd_loc) // TODO: this part can also be moved to GPU
         {
-            /* auxiliary arrays */
-            mdarray<double_complex, 2> bp1(unit_cell_.max_mt_basis_size(), nbnd_loc);
-            mdarray<double_complex, 2> bp2(unit_cell_.max_mt_basis_size(), nbnd_loc);
-            #pragma omp for
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            {   
-                /* number of beta functions for a given atom */
-                int nbf = unit_cell_.atom(ia)->mt_basis_size();
-
-                for (int i = 0; i < nbnd_loc; i++)
+            #pragma omp parallel
+            {
+                /* auxiliary arrays */
+                mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
+                mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
+                #pragma omp for
+                for (int ia = 0; ia < kp__->beta_projectors().beta_chunk(chunk).num_atoms_; ia++)
                 {
-                    int j = occupied_bands__.idx_bnd_glob[i];
-                    for (int xi = 0; xi < nbf; xi++)
-                    {
-                        bp1(xi, i) = beta_psi(unit_cell_.atom(ia)->offset_lo() + xi, j);
-                        bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
-                    }
-                }
+                    int nbf = kp__->beta_projectors().beta_chunk(chunk).desc_(0, ia);
+                    int offs = kp__->beta_projectors().beta_chunk(chunk).desc_(1, ia);
+                    int ja = kp__->beta_projectors().beta_chunk(chunk).desc_(3, ia);
 
-                linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
-                                  &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ia), 
-                                  density_matrix__.ld());
+                    for (int i = 0; i < nbnd_loc; i++)
+                    {
+                        int j = occupied_bands__.idx_bnd_glob[i];
+                        for (int xi = 0; xi < nbf; xi++)
+                        {
+                            bp1(xi, i) = beta_psi(offs + xi, j);
+                            bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+                        }
+                    }
+
+                    linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
+                                      &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ja), 
+                                      density_matrix__.ld());
+                }
             }
         }
+
     }
+
+
+
+
+
+
+
+
+
+//    /* compute <beta|Psi> */
+//    Timer t1("sirius::Density::add_k_point_contribution|beta_psi");
+//    //matrix<double_complex> beta_psi(unit_cell_.mt_basis_size(), nbnd);
+//    if (parameters_.processing_unit() == GPU)
+//    {
+//        #ifdef __GPU
+//        STOP();
+//        //beta_psi.allocate_on_device();
+//
+//        //kp__->beta_gk().allocate_on_device(); // TODO: avoid copy of beta_gk, create it on GPU directly
+//        //kp__->beta_gk().copy_to_device();
+//
+//        //kp__->fv_states().panel().allocate_on_device(); // TODO: copy only occupied bands
+//        //kp__->fv_states().panel().copy_to_device();
+//
+//        //linalg<GPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(),
+//        //                  kp__->beta_gk().at<GPU>(), kp__->beta_gk().ld(),
+//        //                  kp__->fv_states().panel().at<GPU>(), kp__->fv_states().panel().ld(),
+//        //                  beta_psi.at<GPU>(), beta_psi.ld()); 
+//
+//        //beta_psi.copy_to_host();
+//        //
+//        //kp__->beta_gk().deallocate_on_device();
+//        //kp__->fv_states().panel().deallocate_on_device();
+//        #else
+//        TERMINATE_NO_GPU
+//        #endif
+//    }
+//    else
+//    {
+//        //linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), nbnd, kp__->num_gkvec_loc(), complex_one, 
+//        //                  kp__->beta_gk(), kp__->fv_states()->primary_data_storage_as_matrix(), complex_zero, beta_psi);
+//    }
+//    //kp__->comm().allreduce(&beta_psi(0, 0), (int)beta_psi.size());
+//    //kp__->beta_projectors().inner(*kp__->fv_states(), 0, nbnd);
+//    STOP();
+//    auto& beta_psi = kp__->beta_projectors().beta_phi();
+//    t1.stop();
+//
+//    if (nbnd_loc) // TODO: this part can also be moved to GPU
+//    {
+//        #pragma omp parallel
+//        {
+//            /* auxiliary arrays */
+//            mdarray<double_complex, 2> bp1(unit_cell_.max_mt_basis_size(), nbnd_loc);
+//            mdarray<double_complex, 2> bp2(unit_cell_.max_mt_basis_size(), nbnd_loc);
+//            #pragma omp for
+//            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+//            {   
+//                /* number of beta functions for a given atom */
+//                int nbf = unit_cell_.atom(ia)->mt_basis_size();
+//
+//                for (int i = 0; i < nbnd_loc; i++)
+//                {
+//                    int j = occupied_bands__.idx_bnd_glob[i];
+//                    for (int xi = 0; xi < nbf; xi++)
+//                    {
+//                        bp1(xi, i) = beta_psi(unit_cell_.atom(ia)->offset_lo() + xi, j);
+//                        bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+//                    }
+//                }
+//
+//                linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
+//                                  &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ia), 
+//                                  density_matrix__.ld());
+//            }
+//        }
+//    }
 }
 
 //#ifdef __GPU

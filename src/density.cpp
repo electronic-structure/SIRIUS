@@ -175,7 +175,7 @@ void Density::generate(K_set& ks__)
     }
     else
     {
-        nel = real(rho_->f_pw(0)) * unit_cell_.omega();
+        nel = rho_->f_pw(0).real() * unit_cell_.omega();
     }
 
     if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5)

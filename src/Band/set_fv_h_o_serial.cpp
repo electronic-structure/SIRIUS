@@ -17,8 +17,7 @@ void Band::set_fv_h_o_serial(K_point* kp__,
                              matrix<double_complex>& h__,
                              matrix<double_complex>& o__,
                              matrix<double_complex>& h_old__,
-                             matrix<double_complex>& o_old__,
-                             mdarray<double_complex, 1>& kappa__)
+                             matrix<double_complex>& o_old__)
 {
     PROFILE();
 

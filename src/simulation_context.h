@@ -133,8 +133,8 @@ class Simulation_context
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
-            if (fft_ctx_ != 0) delete fft_ctx_;
-            if (fft_coarse_ctx_ != 0) delete fft_ctx_;
+            if (fft_ctx_ != nullptr) delete fft_ctx_;
+            if (fft_coarse_ctx_ != nullptr) delete fft_coarse_ctx_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }

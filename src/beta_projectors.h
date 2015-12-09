@@ -193,10 +193,11 @@ class Beta_projectors
     
                 for (int i = 0; i < na; i++)
                 {
+                    /* global index of atom by local index and chunk */
                     int ia = spl_beta_chunks.global_index(i, ib);
                     auto type = unit_cell_.atom(ia)->type();
                     /* atom fractional coordinates */
-                    for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = unit_cell_.atom(ia)->position(x);
+                    for (int x: {0, 1, 2}) beta_chunks_[ib].atom_pos_(x, i) = unit_cell_.atom(ia)->position(x);
                     /* number of beta functions for atom */
                     beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
                     /* offset in beta_gk*/
@@ -208,6 +209,7 @@ class Beta_projectors
     
                     num_beta += type->mt_basis_size();
                 }
+                /* number of beta-projectors in this chunk */
                 beta_chunks_[ib].num_beta_ = num_beta;
                 beta_chunks_[ib].offset_ = offset_in_beta_gk;
                 offset_in_beta_gk += num_beta;
