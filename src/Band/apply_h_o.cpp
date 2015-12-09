@@ -23,18 +23,17 @@ void Band::apply_h_o(K_point* kp__,
 
     /* set initial hphi */
     hphi__.copy_from(phi__, N__, n__);
-    /* set intial ophi */
-    ophi__.copy_from(phi__, N__, n__);
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU) hphi__.copy_to_host(N__, n__);
+    #endif
     /* apply local part of Hamiltonian */
     h_op.apply(hphi__, N__, n__);
-
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
-    {
-        hphi__.copy_to_device(N__, n__);
-        ophi__.copy_to_device(N__, n__);
-    }
+    if (parameters_.processing_unit() == GPU) hphi__.copy_to_device(N__, n__);
     #endif
+
+    /* set intial ophi */
+    ophi__.copy_from(phi__, N__, n__);
 
     for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++)
     {

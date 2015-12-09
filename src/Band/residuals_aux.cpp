@@ -42,61 +42,9 @@ void Band::residuals_aux(K_point* kp__,
     Timer t("sirius::Band::residuals_serial");
 
     auto pu = parameters_.processing_unit();
-    #ifdef __GPU
-    //bool economize_gpu_memory = (kappa__.size() != 0);
-    #endif
-
-    if (pu == GPU)
-    {
-        STOP();
-        //#ifdef __GPU
-        //if (!economize_gpu_memory)
-        //{
-        //    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        //    linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, hphi__.at<GPU>(), hphi__.ld(),
-        //                      evec__.at<GPU>(), evec__.ld(), hpsi__.at<GPU>(), hpsi__.ld());
-
-        //    /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        //    linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, ophi__.at<GPU>(), ophi__.ld(),
-        //                      evec__.at<GPU>(), evec__.ld(), opsi__.at<GPU>(), opsi__.ld());
-        //}
-        //else
-        //{
-        //    /* copy hphi to device */
-        //    matrix<double_complex> hphi(hphi__.at<CPU>(), kappa__.at<GPU>(), kp__->num_gkvec(), N__);
-        //    hphi.copy_to_device();
-
-        //    matrix<double_complex> hpsi(hpsi__.at<CPU>(), kappa__.at<GPU>(hphi.size()), kp__->num_gkvec(), num_bands__);
-
-        //    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        //    linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, hphi.at<GPU>(), hphi.ld(),
-        //                      evec__.at<GPU>(), evec__.ld(), hpsi.at<GPU>(), hpsi.ld());
-
-        //    hpsi.copy_to_host();
-
-        //    /* copy ophi to device */
-        //    matrix<double_complex> ophi(ophi__.at<CPU>(), kappa__.at<GPU>(kp__->num_gkvec() * num_bands__), kp__->num_gkvec(), N__);
-        //    ophi.copy_to_device();
-
-        //    matrix<double_complex> opsi(opsi__.at<CPU>(), kappa__.at<GPU>(), kp__->num_gkvec(), num_bands__);
-        //    /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        //    linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, ophi.at<GPU>(), ophi.ld(),
-        //                      evec__.at<GPU>(), evec__.ld(), opsi.at<GPU>(), opsi.ld());
-        //    
-        //    /* kappa(0, 0) contains opsi */
-        //    opsi.copy_to_host();
-
-        //    /* kappa(0, num_bands) contains hpsi */
-        //    hpsi = matrix<double_complex>(hpsi__.at<CPU>(), kappa__.at<GPU>(kp__->num_gkvec() * num_bands__), kp__->num_gkvec(), num_bands__);
-        //    hpsi.copy_to_device();
-        //}
-        //#else
-        //TERMINATE_NO_GPU
-        //#endif
-    }
 
     /* compute residuals norm and apply preconditioner */
-    if (pu == CPU)
+    if (pu == CPU || pu == GPU)
     {
         std::fill(res_norm__.begin(), res_norm__.end(), 0);
         /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
@@ -148,74 +96,74 @@ void Band::residuals_aux(K_point* kp__,
         }
     }
 
-    if (pu == GPU)
-    {
-        STOP();
-        //#ifdef __GPU
-        //double_complex* hpsi_ptr;
-        //double_complex* opsi_ptr;
-        //double_complex* res_ptr;
+    //if (pu == GPU)
+    //{
+    //    STOP();
+    //    //#ifdef __GPU
+    //    //double_complex* hpsi_ptr;
+    //    //double_complex* opsi_ptr;
+    //    //double_complex* res_ptr;
 
-        //if (economize_gpu_memory)
-        //{
-        //    hpsi_ptr = kappa__.at<GPU>(kp__->num_gkvec() * num_bands__);
-        //    opsi_ptr = kappa__.at<GPU>();
-        //    res_ptr = kappa__.at<GPU>(kp__->num_gkvec() * 2 * num_bands__);
-        //}
-        //else
-        //{
-        //    hpsi_ptr = hpsi__.at<GPU>();
-        //    opsi_ptr = opsi__.at<GPU>();
-        //    res_ptr = res__.at<GPU>();
-        //}
+    //    //if (economize_gpu_memory)
+    //    //{
+    //    //    hpsi_ptr = kappa__.at<GPU>(kp__->num_gkvec() * num_bands__);
+    //    //    opsi_ptr = kappa__.at<GPU>();
+    //    //    res_ptr = kappa__.at<GPU>(kp__->num_gkvec() * 2 * num_bands__);
+    //    //}
+    //    //else
+    //    //{
+    //    //    hpsi_ptr = hpsi__.at<GPU>();
+    //    //    opsi_ptr = opsi__.at<GPU>();
+    //    //    res_ptr = res__.at<GPU>();
+    //    //}
 
-        //mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
-        //res_norm_gpu.allocate_on_device();
-        //res_norm_gpu.zero_on_device();
+    //    //mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
+    //    //res_norm_gpu.allocate_on_device();
+    //    //res_norm_gpu.zero_on_device();
 
-        //mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
-        //eval_gpu.allocate_on_device();
-        //eval_gpu.copy_to_device();
+    //    //mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
+    //    //eval_gpu.allocate_on_device();
+    //    //eval_gpu.copy_to_device();
 
-        ///* global index of residual */
-        //mdarray<int, 1> res_idx_gpu(num_bands__);
-        //for (int i = 0; i < num_bands__; i++) res_idx_gpu(i) = i;
-        //res_idx_gpu.allocate_on_device();
-        //res_idx_gpu.copy_to_device();
+    //    ///* global index of residual */
+    //    //mdarray<int, 1> res_idx_gpu(num_bands__);
+    //    //for (int i = 0; i < num_bands__; i++) res_idx_gpu(i) = i;
+    //    //res_idx_gpu.allocate_on_device();
+    //    //res_idx_gpu.copy_to_device();
 
-        //compute_residuals_gpu(kp__->num_gkvec(), num_bands__, res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
-        //                      hpsi_ptr, opsi_ptr, res_ptr, res_norm_gpu.at<GPU>());
-        //res_norm_gpu.copy_to_host();
+    //    //compute_residuals_gpu(kp__->num_gkvec(), num_bands__, res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
+    //    //                      hpsi_ptr, opsi_ptr, res_ptr, res_norm_gpu.at<GPU>());
+    //    //res_norm_gpu.copy_to_host();
 
-        ///* compute norm */
-        //for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+    //    ///* compute norm */
+    //    //for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
 
-        //mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
-        //hdiag_gpu.allocate_on_device();
-        //hdiag_gpu.copy_to_device();
+    //    //mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
+    //    //hdiag_gpu.allocate_on_device();
+    //    //hdiag_gpu.copy_to_device();
 
-        //mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
-        //odiag_gpu.allocate_on_device();
-        //odiag_gpu.copy_to_device();
+    //    //mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
+    //    //odiag_gpu.allocate_on_device();
+    //    //odiag_gpu.copy_to_device();
 
-        //mdarray<double, 1> norm2(num_bands__);
-        //norm2.allocate_on_device();
-        //norm2.zero_on_device();
+    //    //mdarray<double, 1> norm2(num_bands__);
+    //    //norm2.allocate_on_device();
+    //    //norm2.zero_on_device();
 
-        //apply_preconditioner_gpu(kp__->num_gkvec(), num_bands__, res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
-        //                         hdiag_gpu.at<GPU>(), odiag_gpu.at<GPU>(), res_ptr, norm2.at<GPU>());
+    //    //apply_preconditioner_gpu(kp__->num_gkvec(), num_bands__, res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
+    //    //                         hdiag_gpu.at<GPU>(), odiag_gpu.at<GPU>(), res_ptr, norm2.at<GPU>());
 
-        //normalize_residuals_gpu(kp__->num_gkvec_row(), num_bands__, res_idx_gpu.at<GPU>(), norm2.at<GPU>(), res_ptr);
+    //    //normalize_residuals_gpu(kp__->num_gkvec_row(), num_bands__, res_idx_gpu.at<GPU>(), norm2.at<GPU>(), res_ptr);
 
-        ////== if (economize_gpu_memory)
-        ////== {
-        ////==     cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), res_ptr, kp__->num_gkvec(),
-        ////==                       res__.at<CPU>(), res__.ld());
-        ////== }
-        //#else
-        //TERMINATE_NO_GPU
-        //#endif
-    }
+    //    ////== if (economize_gpu_memory)
+    //    ////== {
+    //    ////==     cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), res_ptr, kp__->num_gkvec(),
+    //    ////==                       res__.at<CPU>(), res__.ld());
+    //    ////== }
+    //    //#else
+    //    //TERMINATE_NO_GPU
+    //    //#endif
+    //}
 }
 
 };

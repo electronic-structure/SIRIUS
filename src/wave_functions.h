@@ -292,7 +292,16 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__, int j0__)
         {
-            std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
+            if (pu_ == CPU)
+            {
+                std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                acc::copy(wf_coeffs_.at<GPU>(0, j0__), src__.wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc_ * n__);
+            }
+            #endif
         }
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__)
@@ -304,8 +313,18 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             assert(num_gvec_loc() == wf__.num_gvec_loc());
 
-            linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
-                              &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
+            if (pu_ == CPU)
+            {
+                linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
+                                  &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                linalg<GPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, wf__.coeffs().at<GPU>(), num_gvec_loc(),
+                                  mtrx__.at<GPU>(), mtrx__.ld(), wf_coeffs_.at<GPU>(), num_gvec_loc());
+            }
+            #endif
         }
 
         inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
@@ -382,6 +401,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         void copy_to_device(int i0__, int n__)
         {
             acc::copyin(wf_coeffs_.at<GPU>(0, i0__), wf_coeffs_.at<CPU>(0, i0__), n__ * num_gvec_loc());
+        }
+
+        void copy_to_host(int i0__, int n__)
+        {
+            acc::copyout(wf_coeffs_.at<CPU>(0, i0__), wf_coeffs_.at<GPU>(0, i0__), n__ * num_gvec_loc());
         }
         #endif
 };
