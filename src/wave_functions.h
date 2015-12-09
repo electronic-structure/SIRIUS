@@ -330,7 +330,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
                           mdarray<double_complex, 2>& result__, int irow__, int icol__)
         {
-            PROFILE();
+            PROFILE_WITH_TIMER("sirius::Wave_functions::inner");
 
             assert(num_gvec_loc() == ket__.num_gvec_loc());
 

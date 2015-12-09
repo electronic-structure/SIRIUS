@@ -27,35 +27,16 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     mdarray<double, 3> it_density_matrix(ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1, num_fft_streams);
     it_density_matrix.zero();
 
-    //splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
-    //alltoall_descriptor a2a;
-    //if (ctx_.fft(0)->parallel()) a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
-    //std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
-
     #ifdef __GPU
-    //STOP();
-    //mdarray<int, 1> fft_index;
-    //mdarray<double_complex, 1> pw_buf;
-    //mdarray<double, 2> it_density_matrix_gpu;
-    //if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
-    //{
-    //    ctx_.fft(ctx_.gpu_thread_id())->allocate_on_device();
-    //    /* move fft index to GPU */
-    //    fft_index = mdarray<int, 1>(const_cast<int*>(kp__->gkvec().index_map()), kp__->num_gkvec());
-    //    fft_index.allocate_on_device();
-    //    fft_index.copy_to_device();
-
-    //    /* allocate space for plane-wave expansion coefficients */
-    //    pw_buf = mdarray<double_complex, 1>(nullptr, kp__->num_gkvec()); 
-    //    pw_buf.allocate_on_device();
-
-    //    /* density on GPU */
-    //    it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, ctx_.gpu_thread_id()), ctx_.fft(0)->size(), parameters_.num_mag_dims() + 1);
-    //    it_density_matrix_gpu.allocate_on_device();
-    //    it_density_matrix_gpu.zero_on_device();
-    //}
+    mdarray<double, 2> it_density_matrix_gpu;
+    if (parameters_.processing_unit() == GPU)
+    {
+        /* density on GPU */
+        it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, 0), ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1);
+        it_density_matrix_gpu.allocate_on_device();
+        it_density_matrix_gpu.zero_on_device();
+    }
     #endif
-    //mdarray<double_complex, 2> psi_it;
 
     mdarray<double, 1> timers(num_fft_streams);
     timers.zero();
@@ -83,33 +64,20 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                     double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
                     double t1 = omp_get_wtime();
 
+                    /* transform to real space; in case of GPU wave-function stays in GPU memory */
+                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), (*kp__->spinor_wave_functions(ispn))[i] + wf_pw_offset);
+
                     if (thread_id == 0 && parameters_.processing_unit() == GPU)
                     {
                         #ifdef __GPU
-                        STOP();
-                        //if (num_mag_dims == 3)
-                        //{
-                        //    TERMINATE("this should be implemented");
-                        //}
-                        //else
-                        //{
-                        //    int ispn = (j < num_fv_states) ? 0 : 1;
-                        //    
-                        //    /* copy pw coefficients to GPU */
-                        //    mdarray<double_complex, 1>(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
-                        //                               pw_buf.at<GPU>(), kp__->num_gkvec()).copy_to_device();
-                        //    
-                        //    ctx_.fft(thread_id)->input_on_device(kp__->num_gkvec(), fft_index.at<GPU>(), pw_buf.at<GPU>());
-                        //    ctx_.fft(thread_id)->transform(1);
-                        //    
-                        //    update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
-                        //                                   it_density_matrix_gpu.at<GPU>());
-                        //}
+                        update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
+                                                       it_density_matrix_gpu.at<GPU>());
+                        #else
+                        TERMINATE_NO_GPU
                         #endif
                     }
                     else
                     {
-                        ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), (*kp__->spinor_wave_functions(ispn))[i] + wf_pw_offset);
                             
                         #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
                         for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
@@ -245,13 +213,11 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(nested);
 
     #ifdef __GPU
-    //STOP();
-    //if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
-    //{
-    //    it_density_matrix_gpu.copy_to_host();
-    //    it_density_matrix_gpu.deallocate_on_device();
-    //    ctx_.fft(ctx_.gpu_thread_id())->deallocate_on_device();
-    //}
+    if (parameters_.processing_unit() == GPU)
+    {
+        it_density_matrix_gpu.copy_to_host();
+        it_density_matrix_gpu.deallocate_on_device();
+    }
     #endif
     
     double t1 = -Utils::current_time();

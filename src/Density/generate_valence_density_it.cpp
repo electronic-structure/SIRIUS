@@ -6,12 +6,13 @@ void Density::generate_valence_density_it(K_set& ks__)
 {
     Timer t("sirius::Density::generate_valence_density_it", ctx_.comm());
 
+    ctx_.fft_ctx().allocate_workspace();
+
     /* add k-point contribution */
     for (int ikloc = 0; ikloc < (int)ks__.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__[ik];
-        //occupied_bands_descriptor occupied_bands;
 
         auto occupied_bands = kp->get_occupied_bands_list(ctx_.mpi_grid_fft().communicator(1 << 0));
 
@@ -24,7 +25,6 @@ void Density::generate_valence_density_it(K_set& ks__)
         //    occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
         //}
         
-        ////Timer t1("gemr2d");
         //if (!parameters_.full_potential() && kp->num_ranks() > 1)
         //{
         //    STOP();
@@ -46,7 +46,6 @@ void Density::generate_valence_density_it(K_set& ks__)
         //kp->spinor_wave_functions(0)->swap_forward(0, occupied_bands.num_occupied_bands()); 
         kp->spinor_wave_functions(0)->swap_forward(0, kp->num_occupied_bands(0)); 
 
-        //t1.stop();
         add_k_point_contribution_it(kp, occupied_bands);
     }
 
@@ -61,6 +60,8 @@ void Density::generate_valence_density_it(K_set& ks__)
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
     }
+
+    ctx_.fft_ctx().deallocate_workspace();
 }
 
 };

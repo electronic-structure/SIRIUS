@@ -66,7 +66,7 @@ class Simulation_context
 
         Gvec gvec_coarse_;
 
-        int gpu_thread_id_;
+        //int gpu_thread_id_;
 
         Real_space_prj* real_space_prj_;
 

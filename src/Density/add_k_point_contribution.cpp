@@ -81,6 +81,15 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
     if (!nbnd) return;
 
+    kp__->beta_projectors().allocate_workspace();
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+        kp__->fv_states()->allocate_on_device();
+        kp__->fv_states()->copy_to_device(0, nbnd);
+    }
+    #endif
+
     for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
     {
         kp__->beta_projectors().generate(chunk);
@@ -121,7 +130,13 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
         }
 
     }
-
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+        kp__->fv_states()->deallocate_on_device();
+    }
+    #endif
+    kp__->beta_projectors().deallocate_workspace();
 
 
 

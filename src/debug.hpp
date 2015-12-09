@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include "platform.h"
 #include "communicator.h"
+#include "timer.h"
 
 namespace debug
 {
@@ -12,9 +13,11 @@ namespace debug
 class Profiler
 {
     private:
+
         std::string name_;
         std::string file_;
         int line_;
+        sirius::Timer* timer_;
 
         std::string timestamp()
         {
@@ -29,38 +32,64 @@ class Profiler
             return std::string(buf);
         }
 
+        #ifdef __PROFILE_STACK
         static std::vector<std::string>& call_stack()
         {
             static std::vector<std::string> call_stack_;
             return call_stack_;
         }
+        #endif
 
-    public:
-
-        Profiler(char const* name__, char const* file__, int line__)
+        inline void init(char const* name__, char const* file__, int line__)
         {
+            #if defined(__PROFILE_STACK) || defined(__PROFILE_FUNC)
             name_ = std::string(name__);
             file_ = std::string(file__);
             line_ = line__;
 
             char str[1024];
             snprintf(str, 1024, "%s at %s:%i", name__, file__, line__);
-
+            #endif
+            
+            #ifdef __PROFILE_STACK
             call_stack().push_back(std::string(str));
+            #endif
 
-            #ifdef __LOG_FUNC
+            #ifdef __PROFILE_FUNC
             printf("rank%04i + %s\n", mpi_comm_world.rank(), name_.c_str());
+            #endif
+        }
+
+    public:
+
+        Profiler(char const* name__, char const* file__, int line__) : timer_(nullptr)
+        {
+            init(name__, file__, line__);
+        }
+
+        Profiler(char const* name__, char const* file__, int line__, char const* timer_name_)
+        {
+            init(name__, file__, line__);
+            
+            #ifdef __PROFILE_TIME
+            timer_ = new sirius::Timer(timer_name_);
             #endif
         }
 
         ~Profiler()
         {
-            #ifdef __LOG_FUNC
+            #ifdef __PROFILE_TIME
+            if (timer_ != nullptr) delete timer_;
+            #endif
+            #ifdef __PROFILE_FUNC
             printf("rank%04i - %s\n", mpi_comm_world.rank(), name_.c_str());
             #endif
+            #ifdef __PROFILE_STACK
             call_stack().pop_back();
+            #endif
         }
 
+        #ifdef __PROFILE_STACK
         static void stack_trace()
         {
             int t = 0;
@@ -71,18 +100,20 @@ class Profiler
                 t++;
             }
         }
+        #endif
 };
 
 #ifdef __GNUC__
-#define function_name__ __PRETTY_FUNCTION__
+#define __function_name__ __PRETTY_FUNCTION__
 #else
-#define function_name__ __func__
+#define __function_name__ __func__
 #endif
 
 #ifdef __PROFILE
-  #define PROFILE() debug::Profiler profiler__(function_name__, __FILE__, __LINE__);
+  #define PROFILE() debug::Profiler profiler__(__function_name__, __FILE__, __LINE__)
+  #define PROFILE_WITH_TIMER(name) debug::Profiler profiler__(__function_name__, __FILE__, __LINE__, name)
 #else
-  #define PROFILE()
+  #define PROFILE(...)
 #endif
 
 inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)
