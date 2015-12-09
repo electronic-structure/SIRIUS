@@ -341,9 +341,7 @@ class Beta_projectors
 
         inline void generate(int chunk__)
         {
-            Timer t("sirius::Beta_projectors::generate");
-
-            PROFILE();
+            PROFILE_WITH_TIMER("sirius::Beta_projectors::generate");
 
             auto& desc = beta_chunk(chunk__).desc_;
 
@@ -383,9 +381,7 @@ class Beta_projectors
 
         void inner(int chunk__, Wave_functions& phi__, int idx0__, int n__)
         {
-            Timer t("sirius::Beta_projectors::inner");
-
-            PROFILE();
+            PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 
             int nbeta = beta_chunk(chunk__).num_beta_;
 
@@ -409,14 +405,6 @@ class Beta_projectors
                 case GPU:
                 {
                     #ifdef __GPU
-                    //create_beta_gk_gpu(beta_chunks_[0].num_atoms_,
-                    //                   num_gkvec_loc_,
-                    //                   beta_chunks_[0].desc_.at<GPU>(),
-                    //                   beta_gk_t_.at<GPU>(),
-                    //                   gkvec_coord_.at<GPU>(),
-                    //                   beta_chunks_[0].atom_pos_.at<GPU>(),
-                    //                   beta_gk_.at<GPU>());
-
                     linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_, 
                                       phi__.coeffs().at<GPU>(0, idx0__), num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta);
                     beta_phi_.copy_to_host(nbeta * n__);
@@ -433,10 +421,10 @@ class Beta_projectors
             if (pu_ == GPU) beta_phi_.copy_to_device(nbeta * n__);
             #endif
 
-            //#ifdef __PRINT_OBJECT_CHECKSUM
-            //auto c1 = beta_phi_.checksum();
-            //DUMP("checksum(beta_phi) : %18.10f %18.10f", c1.real(), c1.imag());
-            //#endif
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            auto c1 = mdarray<double_complex, 1>(beta_phi_.at<CPU>(), nbeta * n__).checksum();
+            DUMP("checksum(beta_phi) : %18.10f %18.10f", c1.real(), c1.imag());
+            #endif
         }
 
         void allocate_workspace()

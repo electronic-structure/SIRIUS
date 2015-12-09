@@ -164,7 +164,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_fv_h_o_serial(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_fv_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
  
         /* increase size of the variation space */
         N += n;
@@ -180,11 +180,6 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
         {
             if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
                 occ_band_converged = false;
-        }
-
-        for (int i = 0; i < num_bands; i++)
-        {
-            printf("eval[%i]=%f\n", i, eval[i]);
         }
 
         /* don't compute residuals on last iteration */

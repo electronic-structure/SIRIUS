@@ -169,7 +169,7 @@ class Communicator
         template <typename T, mpi_op_t op__ = op_sum>
         inline void allreduce(std::vector<T>& buffer__) const
         {
-            allreduce<T, op__>(&buffer__[0], (int)buffer__.size());
+            allreduce<T, op__>(&buffer__[0], static_cast<int>(buffer__.size()));
         }
         
         /// Perform buffer broadcast.

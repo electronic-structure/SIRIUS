@@ -22,8 +22,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \
        Density/generate_pseudo_core_charge_density.cpp \
-       Band/set_fv_h_o_serial.cpp \
-       Band/set_fv_h_o_parallel.cpp \
+       Band/set_fv_h_o.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
        Band/add_non_local_contribution_serial.cpp \
@@ -70,15 +69,13 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	Kernels/cuda_interface.o \
 	Kernels/cuda_uspp_kernels.o \
-	Kernels/compute_residuals.o \
-	Kernels/apply_preconditioner.o \
-	Kernels/normalize_residuals.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
 	Kernels/it_density.o \
-	Kernels/pack_unpack_z_columns.o
+	Kernels/pack_unpack_z_columns.o \
+	Kernels/residuals_aux.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

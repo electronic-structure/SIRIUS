@@ -161,33 +161,6 @@ class Band
                                         mdarray<double_complex, 1>& q_mtrx_packed__,
                                         mdarray<double_complex, 1>& kappa__);
 
-        void set_fv_h_o_parallel(int N__,
-                                 int n__,
-                                 K_point* kp__,
-                                 dmatrix<double_complex>& phi_slab__,
-                                 dmatrix<double_complex>& hphi_slab__,
-                                 dmatrix<double_complex>& ophi_slab__,
-                                 dmatrix<double_complex>& h__,
-                                 dmatrix<double_complex>& o__,
-                                 dmatrix<double_complex>& h_old__,
-                                 dmatrix<double_complex>& o_old__,
-                                 mdarray<double_complex, 1>& kappa__);
-
-        //void residuals_parallel(int N__,
-        //                        int num_bands__,
-        //                        K_point* kp__,
-        //                        std::vector<double>& eval__,
-        //                        matrix<double_complex>& evec__,
-        //                        dmatrix<double_complex>& hphi__,
-        //                        dmatrix<double_complex>& ophi__,
-        //                        dmatrix<double_complex>& hpsi__,
-        //                        dmatrix<double_complex>& opsi__,
-        //                        dmatrix<double_complex>& res__,
-        //                        std::vector<double>& h_diag__,
-        //                        std::vector<double>& o_diag__,
-        //                        std::vector<double>& res_norm__,
-        //                        mdarray<double_complex, 1>& kappa__);
-
         void diag_fv_pseudo_potential_parallel(K_point* kp__,
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
@@ -251,16 +224,16 @@ class Band
                        D_operator& d_op,
                        Q_operator& q_op);
 
-        void set_fv_h_o_serial(K_point* kp__,
-                               int N__,
-                               int n__,
-                               Wave_functions& phi__,
-                               Wave_functions& hphi__,
-                               Wave_functions& ophi__,
-                               matrix<double_complex>& h__,
-                               matrix<double_complex>& o__,
-                               matrix<double_complex>& h_old__,
-                               matrix<double_complex>& o_old__);
+        void set_fv_h_o(K_point* kp__,
+                        int N__,
+                        int n__,
+                        Wave_functions& phi__,
+                        Wave_functions& hphi__,
+                        Wave_functions& ophi__,
+                        matrix<double_complex>& h__,
+                        matrix<double_complex>& o__,
+                        matrix<double_complex>& h_old__,
+                        matrix<double_complex>& o_old__);
 
         int residuals(K_point* kp__,
                       int N__,

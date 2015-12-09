@@ -5,19 +5,17 @@ namespace sirius {
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
  *  \param [in] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  *  \param [in] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
- *
- *  Temporary array kappa is expected to have the size num_gkvec * (num_phi + num_bands)
  */
-void Band::set_fv_h_o_serial(K_point* kp__,
-                             int N__,
-                             int n__,
-                             Wave_functions& phi__,
-                             Wave_functions& hphi__,
-                             Wave_functions& ophi__,
-                             matrix<double_complex>& h__,
-                             matrix<double_complex>& o__,
-                             matrix<double_complex>& h_old__,
-                             matrix<double_complex>& o_old__)
+void Band::set_fv_h_o(K_point* kp__,
+                      int N__,
+                      int n__,
+                      Wave_functions& phi__,
+                      Wave_functions& hphi__,
+                      Wave_functions& ophi__,
+                      matrix<double_complex>& h__,
+                      matrix<double_complex>& o__,
+                      matrix<double_complex>& h_old__,
+                      matrix<double_complex>& o_old__)
 {
     PROFILE();
 
