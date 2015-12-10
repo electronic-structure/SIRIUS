@@ -16,9 +16,7 @@ int Band::residuals(K_point* kp__,
                     std::vector<double>& h_diag__,
                     std::vector<double>& o_diag__)
 {
-    PROFILE();
-
-    Timer t("sirius::Band::residuals");
+    PROFILE_WITH_TIMER("sirius::Band::residuals");
 
     auto& itso = kp__->iterative_solver_input_section_;
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
@@ -70,8 +68,10 @@ int Band::residuals(K_point* kp__,
         //    opsi__.copy_to_host(0, n);
         //}
         //#endif
+        DUMP("#1");
 
         residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
+        DUMP("#2");
 
         //#ifdef __GPU
         //if (parameters_.processing_unit() == GPU && economize_gpu_memory)

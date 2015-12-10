@@ -4,9 +4,7 @@ namespace sirius {
 
 void K_point::initialize()
 {
-    PROFILE();
-
-    Timer t("sirius::K_point::initialize");
+    PROFILE_WITH_TIMER("sirius::K_point::initialize");
     
     zil_.resize(parameters_.lmax_apw() + 1);
     for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = std::pow(double_complex(0, 1), l);
@@ -175,9 +173,16 @@ void K_point::initialize()
             //assert(fv_states_.num_rows_local() == num_gkvec_loc());
             //assert(fv_states_.num_cols_local() == parameters_.num_fv_states());
 
+            fv_states_->coeffs().zero();
+
             for (int i = 0; i < parameters_.num_fv_states(); i++)
             {
                 for (int igk = 0; igk < num_gkvec_loc(); igk++) (*fv_states_)(igk, i) = type_wrapper<double_complex>::random();
+                //for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++)
+                //{
+                //    int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+                //    if (gkvec_.shell(igk) == i) (*fv_states_)(igk_loc, i) = 1.0;
+                //}
             }
         }
 

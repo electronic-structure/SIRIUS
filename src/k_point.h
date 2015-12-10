@@ -376,26 +376,26 @@ class K_point
         {
             assert((int)band_occupancies_.size() == parameters_.num_bands());
             
-            memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
+            std::memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
         }
 
         inline void set_band_occupancies(double* band_occupancies)
         {
             band_occupancies_.resize(parameters_.num_bands());
-            memcpy(&band_occupancies_[0], band_occupancies, parameters_.num_bands() * sizeof(double));
+            std::memcpy(&band_occupancies_[0], band_occupancies, parameters_.num_bands() * sizeof(double));
         }
 
         inline void get_band_energies(double* band_energies) const
         {
             assert((int)band_energies_.size() == parameters_.num_bands());
             
-            memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
+            std::memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
         }
 
         inline void set_band_energies(double* band_energies)
         {
             band_energies_.resize(parameters_.num_bands()); 
-            memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
+            std::memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
         }
 
         inline double band_occupancy(int j) const
@@ -592,21 +592,6 @@ class K_point
         {
             return gkvec_;
         }
-
-        //inline Gvec const& gkvec_coarse() const
-        //{
-        //    return gkvec_coarse_;
-        //}
-
-        //inline matrix<double_complex> const& beta_gk_t() const
-        //{
-        //    return beta_gk_t_;
-        //}
-
-        //inline matrix<double_complex>& beta_gk()
-        //{
-        //    return beta_gk_;
-        //}
 
         inline Matching_coefficients* alm_coeffs_row()
         {

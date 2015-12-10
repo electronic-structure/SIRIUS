@@ -173,7 +173,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
 
         /* solve generalized eigen-value problem with the size N */
         diag_h_o(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
-    
+
         /* check if occupied bands have converged */
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
@@ -252,6 +252,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
         psi.deallocate_on_device();
     }
     #endif
+    kp__->comm().barrier();
 }
 
 };
