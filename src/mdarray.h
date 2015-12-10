@@ -498,7 +498,7 @@ class mdarray_base
 
         inline T& operator[](size_t const idx__)
         {
-            assert(idx__ >= 0 && idx__ < size());
+            mdarray_assert(idx__ >= 0 && idx__ < size());
             return ptr_[idx__];
         }
 

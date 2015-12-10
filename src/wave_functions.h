@@ -116,7 +116,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
             if (comm_.size() > 1)
             {
-                wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(), "wf_coeffs_swapped_");
+                wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(0), "wf_coeffs_swapped_");
                 send_recv_buf_ = mdarray<double_complex, 1>(wf_coeffs_swapped_.size(), "send_recv_buf_");
             }
 

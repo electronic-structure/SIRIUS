@@ -55,12 +55,12 @@ class Profiler
             call_stack().push_back(std::string(str));
             #endif
 
+
+            #ifdef __PROFILE_FUNC
             int tab = 0;
             #ifdef __PROFILE_STACK
             tab = static_cast<int>(call_stack().size());
             #endif
-
-            #ifdef __PROFILE_FUNC
             for (int i = 0; i < tab; i++) printf(" ");
             printf("rank%04i + %s\n", mpi_comm_world.rank(), name_.c_str());
             #endif
@@ -88,15 +88,15 @@ class Profiler
             if (timer_ != nullptr) delete timer_;
             #endif
 
+            #ifdef __PROFILE_FUNC
             int tab = 0;
             #ifdef __PROFILE_STACK
             tab = static_cast<int>(call_stack().size());
             #endif
-
-            #ifdef __PROFILE_FUNC
             for (int i = 0; i < tab; i++) printf(" ");
             printf("rank%04i - %s\n", mpi_comm_world.rank(), name_.c_str());
             #endif
+
             #ifdef __PROFILE_STACK
             call_stack().pop_back();
             #endif

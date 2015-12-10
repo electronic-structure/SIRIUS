@@ -61,27 +61,7 @@ int Band::residuals(K_point* kp__,
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         opsi__.transform_from(ophi__, N__, evec_tmp, n);
 
-        //#ifdef __GPU
-        //if (parameters_.processing_unit() == GPU)
-        //{
-        //    hpsi__.copy_to_host(0, n);
-        //    opsi__.copy_to_host(0, n);
-        //}
-        //#endif
-        DUMP("#1");
-
         residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
-        DUMP("#2");
-
-        //#ifdef __GPU
-        //if (parameters_.processing_unit() == GPU && economize_gpu_memory)
-        //{
-        //    /* copy residuals to CPU because the content of kappa array can be destroyed */
-        //    cublas_get_matrix(ngk, n, sizeof(double_complex),
-        //                      kappa.at<GPU>(ngk * 2 * n), ngk,
-        //                      res.at<CPU>(), res.ld());
-        //}
-        //#endif
     }
     else
     {
@@ -90,31 +70,8 @@ int Band::residuals(K_point* kp__,
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         opsi__.transform_from(ophi__, N__, evec__, num_bands__);
 
-        //#ifdef __GPU
-        //if (parameters_.processing_unit() == GPU)
-        //{
-        //    hpsi__.copy_to_host(0, n);
-        //    opsi__.copy_to_host(0, n);
-        //}
-        //#endif
-
         residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
 
-        //#ifdef __GPU
-        //matrix<double_complex> res_tmp;
-        //if (parameters_.processing_unit() == GPU)
-        //{
-        //    if (economize_gpu_memory)
-        //    {
-        //        res_tmp = matrix<double_complex>(nullptr, kappa.at<GPU>(ngk * 2 * num_bands), ngk, num_bands);
-        //    }
-        //    else
-        //    {
-        //        res_tmp = matrix<double_complex>(nullptr, res.at<GPU>(), ngk, num_bands);
-        //    }
-        //}
-        //#endif
-        
         for (int i = 0; i < num_bands__; i++)
         {
             /* take the residual if it's norm is above the threshold */
@@ -153,10 +110,6 @@ int Band::residuals(K_point* kp__,
         //}
         //#endif
     }
-
-    //#ifdef __GPU
-    //if (parameters_.processing_unit() == GPU) res__.copy_to_device(0, n);
-    //#endif
 
     return n;
 }
