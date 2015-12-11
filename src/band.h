@@ -122,28 +122,6 @@ class Band
 
 
         #ifdef __SCALAPACK
-        void add_non_local_contribution_parallel(K_point* kp__,
-                                                 int N__,
-                                                 int n__,
-                                                 dmatrix<double_complex>& phi__, 
-                                                 dmatrix<double_complex>& op_phi__, 
-                                                 matrix<double_complex>& kappa__,
-                                                 mdarray<int, 1> const& packed_mtrx_offset__,
-                                                 mdarray<double_complex, 1>& op_mtrx_packed__,
-                                                 double_complex alpha);
-
-        void apply_h_o_parallel(K_point* kp__,
-                                std::vector<double> const& effective_potential__,
-                                std::vector<double> const& pw_ekin__,
-                                int N__,
-                                int n__,
-                                Wave_functions& phi__,
-                                Wave_functions& hphi__,
-                                Wave_functions& ophi__,
-                                mdarray<int, 1>& packed_mtrx_offset__,
-                                mdarray<double_complex, 1>& d_mtrx_packed__,
-                                mdarray<double_complex, 1>& q_mtrx_packed__,
-                                mdarray<double_complex, 1>& kappa__);
 
         void apply_h_o_fast_parallel_rs(K_point* kp__,
                                         std::vector<double> const& effective_potential__,
@@ -193,16 +171,6 @@ class Band
                             mdarray<int, 1>& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__);
 
-        void add_non_local_contribution_serial(K_point* kp__,
-                                               int N__,
-                                               int n__,
-                                               matrix<double_complex>& phi__,
-                                               matrix<double_complex>& op_phi__, 
-                                               mdarray<double_complex, 1>& kappa__,
-                                               mdarray<int, 1> const& packed_mtrx_offset__,
-                                               mdarray<double_complex, 1>& op_mtrx_packed__,
-                                               double_complex alpha);
-
         void diag_h_o(K_point* kp__,
                       int N__,
                       int num_bands__,
@@ -217,9 +185,9 @@ class Band
         void apply_h_o(K_point* kp__, 
                        int N__,
                        int n__,
-                       Wave_functions& phi__,
-                       Wave_functions& hphi__,
-                       Wave_functions& ophi__,
+                       Wave_functions<false>& phi__,
+                       Wave_functions<false>& hphi__,
+                       Wave_functions<false>& ophi__,
                        Hloc_operator &h_op,
                        D_operator& d_op,
                        Q_operator& q_op);
@@ -227,9 +195,9 @@ class Band
         void set_fv_h_o(K_point* kp__,
                         int N__,
                         int n__,
-                        Wave_functions& phi__,
-                        Wave_functions& hphi__,
-                        Wave_functions& ophi__,
+                        Wave_functions<false>& phi__,
+                        Wave_functions<false>& hphi__,
+                        Wave_functions<false>& ophi__,
                         matrix<double_complex>& h__,
                         matrix<double_complex>& o__,
                         matrix<double_complex>& h_old__,
@@ -241,20 +209,20 @@ class Band
                       std::vector<double>& eval__,
                       std::vector<double>& eval_old__,
                       matrix<double_complex>& evec__,
-                      Wave_functions& hphi__,
-                      Wave_functions& ophi__,
-                      Wave_functions& hpsi__,
-                      Wave_functions& opsi__,
-                      Wave_functions& res__,
+                      Wave_functions<false>& hphi__,
+                      Wave_functions<false>& ophi__,
+                      Wave_functions<false>& hpsi__,
+                      Wave_functions<false>& opsi__,
+                      Wave_functions<false>& res__,
                       std::vector<double>& h_diag__,
                       std::vector<double>& o_diag__);
 
         void residuals_aux(K_point* kp__,
                            int num_bands__,
                            std::vector<double>& eval__,
-                           Wave_functions& hpsi__,
-                           Wave_functions& opsi__,
-                           Wave_functions& res__,
+                           Wave_functions<false>& hpsi__,
+                           Wave_functions<false>& opsi__,
+                           Wave_functions<false>& res__,
                            std::vector<double>& h_diag__,
                            std::vector<double>& o_diag__,
                            std::vector<double>& res_norm__);

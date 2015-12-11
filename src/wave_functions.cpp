@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-void Wave_functions::swap_forward(int idx0__, int n__)
+void Wave_functions<false>::swap_forward(int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
 
@@ -75,7 +75,7 @@ void Wave_functions::swap_forward(int idx0__, int n__)
     comm_.barrier();
 }
 
-void Wave_functions::swap_backward(int idx0__, int n__)
+void Wave_functions<false>::swap_backward(int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
 
@@ -146,8 +146,8 @@ void Wave_functions::swap_backward(int idx0__, int n__)
     comm_.barrier();
 }
 
-void Wave_functions::inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                           mdarray<double_complex, 2>& result__, int irow__, int icol__)
+void Wave_functions<false>::inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
+                                  mdarray<double_complex, 2>& result__, int irow__, int icol__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::inner");
 

@@ -25,11 +25,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/set_fv_h_o.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
-       Band/add_non_local_contribution_serial.cpp \
-       Band/add_non_local_contribution_parallel.cpp \
        Band/apply_h_o.cpp \
        Band/apply_h_serial.cpp \
-       Band/apply_h_o_parallel.cpp \
        Band/apply_h_o_fast_parallel_rs.cpp \
        Band/diag_fv_pseudo_potential_exact_serial.cpp \
        Band/diag_fv_pseudo_potential_rmm_diis_serial.cpp \

@@ -51,7 +51,7 @@ class Non_local_operator
         {
         }
 
-        void apply(int chunk__, Wave_functions& op_phi__, int idx0__, int n__)
+        void apply(int chunk__, Wave_functions<false>& op_phi__, int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
 

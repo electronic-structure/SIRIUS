@@ -203,7 +203,7 @@ void Beta_projectors::generate(int chunk__)
     #endif
 }
 
-void Beta_projectors::inner(int chunk__, Wave_functions& phi__, int idx0__, int n__)
+void Beta_projectors::inner(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 

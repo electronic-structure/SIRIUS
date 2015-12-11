@@ -52,12 +52,8 @@ class K_point
         /// 2D BLACS grid for diagonalization and 2D data distribution.
         BLACS_grid const& blacs_grid_;
         
-        /// 1D BLACS grid for a "slab" data distribution.
-        /** This grid is used to distribute G+k vector index and keep a whole band index */
-        //BLACS_grid const& blacs_grid_slab_;
-        
         /// 1D BLACS grid for a "slice" data distribution.
-        /** This grid is used to distribute band index and keep a whole G+k vector index */
+        /** This grid is used to distribute band index and keep a whole wave-function on a rank */
         BLACS_grid const& blacs_grid_slice_;
 
         /// Weight of k-point.
@@ -66,6 +62,7 @@ class K_point
         /// Fractional k-point coordinates.
         vector3d<double> vk_;
         
+        /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
         /// First-variational eigen values
@@ -91,11 +88,12 @@ class K_point
          *  over rows of the MPI grid. */
         //dmatrix<double_complex> fv_states_;
 
-        Wave_functions* fv_states_;
+        //Wave_functions* fv_states_;
+        void* fv_states_;
 
         /// Two-component (spinor) wave functions describing the bands.
-        //dmatrix<double_complex> spinor_wave_functions_[2];
-        Wave_functions* spinor_wave_functions_[2];
+        //Wave_functions* spinor_wave_functions_[2];
+        void* spinor_wave_functions_[2];
 
         /// band occupation numbers
         std::vector<double> band_occupancies_;
@@ -191,7 +189,6 @@ class K_point
                 double* vk__,
                 double weight__,
                 BLACS_grid const& blacs_grid__,
-                BLACS_grid const& blacs_grid_slab__,
                 BLACS_grid const& blacs_grid_slice__);
 
         ~K_point()
@@ -201,9 +198,21 @@ class K_point
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (alm_coeffs_ != nullptr) delete alm_coeffs_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
-            if (fv_states_ != nullptr) delete fv_states_;
-            if (spinor_wave_functions_[0] != nullptr) delete spinor_wave_functions_[0];
-            if (spinor_wave_functions_[1] != nullptr) delete spinor_wave_functions_[1];
+            if (fv_states_ != nullptr)
+            {
+                if (parameters_.full_potential()) delete fv_states<true>();
+                else delete fv_states<false>();
+            }
+            if (spinor_wave_functions_[0] != nullptr)
+            {   
+                if (parameters_.full_potential()) delete spinor_wave_functions<true>(0);
+                else delete spinor_wave_functions<false>(0);
+            }
+            if (spinor_wave_functions_[1] != nullptr)
+            {
+                if (parameters_.full_potential()) delete spinor_wave_functions<true>(1);
+                else delete spinor_wave_functions<false>(1);
+            }
         }
 
         /// Initialize the k-point related arrays and data
@@ -423,13 +432,16 @@ class K_point
             return weight_;
         }
 
-        //inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
-        //{
-        //    return spinor_wave_functions_[ispn__];
-        //}
-        inline Wave_functions* spinor_wave_functions(int ispn__)
+        template <bool mt_spheres>
+        inline Wave_functions<mt_spheres>* fv_states()
         {
-            return spinor_wave_functions_[ispn__];
+            return reinterpret_cast<Wave_functions<mt_spheres>*>(fv_states_);
+        }
+
+        template <bool mt_spheres>
+        inline Wave_functions<mt_spheres>* spinor_wave_functions(int ispn__)
+        {
+            return reinterpret_cast<Wave_functions<mt_spheres>*>(spinor_wave_functions_[ispn__]);
         }
 
         inline vector3d<double> vk() const
@@ -556,11 +568,6 @@ class K_point
             return fv_eigen_vectors_;
         }
         
-        inline Wave_functions* fv_states()
-        {
-            return fv_states_;
-        }
-
         //inline dmatrix<double_complex>& fv_states_slice()
         //{
         //    return fv_states_slice_;

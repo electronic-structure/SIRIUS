@@ -159,30 +159,17 @@ void K_point::initialize()
             //fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_, bs, bs);
             STOP();
         }
-
-        if (!parameters_.full_potential())
+        else
         {
-            /* in case of pseudopotential wave-functions are distributed in slabs */
-            //fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-            //                                     blacs_grid_slab_,
-            //                                     splindex_base<int>::block_size(wf_size(), num_ranks()), 1);
-
-            fv_states_ = new Wave_functions(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
-
             assert(parameters_.num_fv_states() < num_gkvec());
-            //assert(fv_states_.num_rows_local() == num_gkvec_loc());
-            //assert(fv_states_.num_cols_local() == parameters_.num_fv_states());
 
-            fv_states_->coeffs().zero();
+            fv_states_ = new Wave_functions<false>(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
 
-            for (int i = 0; i < parameters_.num_fv_states(); i++)
+            fv_states<false>()->coeffs().zero();
+
+            for (int i = 0; i < parameters_.num_fv_states(); i++) // TODO: init from atomic WFs
             {
-                for (int igk = 0; igk < num_gkvec_loc(); igk++) (*fv_states_)(igk, i) = type_wrapper<double_complex>::random();
-                //for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++)
-                //{
-                //    int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-                //    if (gkvec_.shell(igk) == i) (*fv_states_)(igk_loc, i) = 1.0;
-                //}
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) (*fv_states<false>())(igk, i) = type_wrapper<double_complex>::random();
             }
         }
 
@@ -205,7 +192,13 @@ void K_point::initialize()
         }
         else
         {
-            spinor_wave_functions_[0] = new Wave_functions(parameters_.num_fv_states(), parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
+            if (!parameters_.full_potential())
+            {
+                spinor_wave_functions_[0] = new Wave_functions<false>(parameters_.num_fv_states(),
+                                                                      parameters_.num_fv_states(),
+                                                                      gkvec_, ctx_.mpi_grid_fft(),
+                                                                      parameters_.processing_unit());
+            }
 
             //if (ctx_.fft(0)->parallel())
             //{

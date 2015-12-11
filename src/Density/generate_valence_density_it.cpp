@@ -44,7 +44,7 @@ void Density::generate_valence_density_it(K_set& ks__)
         //}
 
         //kp->spinor_wave_functions(0)->swap_forward(0, occupied_bands.num_occupied_bands()); 
-        kp->spinor_wave_functions(0)->swap_forward(0, kp->num_occupied_bands(0)); 
+        kp->spinor_wave_functions<false>(0)->swap_forward(0, kp->num_occupied_bands(0)); 
 
         add_k_point_contribution_it(kp, occupied_bands);
     }

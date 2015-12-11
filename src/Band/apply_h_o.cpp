@@ -9,9 +9,9 @@ namespace sirius {
 void Band::apply_h_o(K_point* kp__, 
                      int N__,
                      int n__,
-                     Wave_functions& phi__,
-                     Wave_functions& hphi__,
-                     Wave_functions& ophi__,
+                     Wave_functions<false>& phi__,
+                     Wave_functions<false>& hphi__,
+                     Wave_functions<false>& ophi__,
                      Hloc_operator& h_op,
                      D_operator& d_op,
                      Q_operator& q_op)

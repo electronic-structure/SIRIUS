@@ -19,9 +19,9 @@ extern "C" void residuals_aux_gpu(int num_gvec_loc__,
 void Band::residuals_aux(K_point* kp__,
                          int num_bands__,
                          std::vector<double>& eval__,
-                         Wave_functions& hpsi__,
-                         Wave_functions& opsi__,
-                         Wave_functions& res__,
+                         Wave_functions<false>& hpsi__,
+                         Wave_functions<false>& opsi__,
+                         Wave_functions<false>& res__,
                          std::vector<double>& h_diag__,
                          std::vector<double>& o_diag__,
                          std::vector<double>& res_norm__)
@@ -120,139 +120,6 @@ void Band::residuals_aux(K_point* kp__,
         scale_matrix_columns_gpu(res__.num_gvec_loc(), num_bands__, res__.coeffs().at<GPU>(), p_norm.at<GPU>());
     }
     #endif
-
-
-
-
-
-
-//== 
-//==     /* compute residuals norm and apply preconditioner */
-//==     if (pu == CPU)
-//==     {
-//==         /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
-//==         #pragma omp parallel for
-//==         for (int i = 0; i < num_bands__; i++)
-//==         {
-//==             res_norm__[i] = 0;
-//==             for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
-//==             {
-//==                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-//==                 res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
-//==                 res_norm__[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
-//==             }
-//==         }
-//==     }
-//==     #ifdef __GPU
-//==     if (pu == GPU)
-//==     {
-//==         mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
-//==         res_norm_gpu.allocate_on_device();
-//==         res_norm_gpu.zero_on_device();
-//== 
-//==         mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
-//==         eval_gpu.allocate_on_device();
-//==         eval_gpu.copy_to_device();
-//== 
-//==         compute_residuals_gpu(res__->num_gvec_loc(), num_bands__, res_idx.at<GPU>(), eval_gpu.at<GPU>(),
-//==                               hpsi__.coeffs().at<GPU>(), opsi__.coeffs().at<GPU>(), res__.coeffs().at<GPU>(),
-//==                               res_norm_gpu.at<GPU>());
-//==         res_norm_gpu.copy_to_host();
-//==     }
-//==     #endif
-//== 
-//==     kp__->comm().allreduce(res_norm__);
-//==     /* compute norm */
-//==     for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
-//== 
-//==     mdarray<double, 1> norm2(num_bands__);
-//== 
-//==     if (pu_ == CPU)
-//==     {
-//==         /* apply preconditioner */
-//==         #pragma omp parallel for
-//==         for (int i = 0; i < num_bands__; i++)
-//==         {
-//==             for (int ig = 0; ig < res__.num_gvec_loc(); ig++)
-//==             {
-//==                 double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
-//==                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-//==                 res__(ig, i) /= p;
-//==             }
-//==         }
-//== 
-//==         /* normalize new basis functions */
-//==         #pragma omp parallel for
-//==         for (int i = 0; i < num_bands__; i++)
-//==         {
-//==             norm2[i] = 0;
-//==             for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
-//==                 norm2[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
-//==         }
-//==     }
-//== 
-//==     #ifdef __GPU
-//==     if (pu_ == GPU)
-//==     {
-//==         mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
-//==         hdiag_gpu.allocate_on_device();
-//==         hdiag_gpu.copy_to_device();
-//== 
-//==         mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
-//==         odiag_gpu.allocate_on_device();
-//==         odiag_gpu.copy_to_device();
-//== 
-//==         mdarray<double, 1> norm2(num_bands__);
-//==         norm2.allocate_on_device();
-//==         norm2.zero_on_device();
-//== 
-//==         apply_preconditioner_gpu(kp__->num_gkvec(), num_bands__, res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
-//==                                  hdiag_gpu.at<GPU>(), odiag_gpu.at<GPU>(), res_ptr, norm2.at<GPU>());
-//== 
-//==     }
-//==     #endif
-//== 
-//== 
-//==         res__.comm().allreduce(norm2);
-//==         #pragma omp parallel for
-//==         for (int i = 0; i < num_bands__; i++)
-//==         {
-//==             double d = 1.0 / std::sqrt(norm2[i]);
-//==             for (int ig = 0; ig < res__.num_gvec_loc(); ig++) res__(ig, i) *= d;
-//==         }
-//==     }
-//== 
-//==     //if (pu == GPU)
-//==     //{
-//==     //    STOP();
-//==     //    //#ifdef __GPU
-//== 
-//==     //    //mdarray<double, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
-//==     //    //hdiag_gpu.allocate_on_device();
-//==     //    //hdiag_gpu.copy_to_device();
-//== 
-//==     //    //mdarray<double, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
-//==     //    //odiag_gpu.allocate_on_device();
-//==     //    //odiag_gpu.copy_to_device();
-//== 
-//==     //    //mdarray<double, 1> norm2(num_bands__);
-//==     //    //norm2.allocate_on_device();
-//==     //    //norm2.zero_on_device();
-//== 
-//==     //    //apply_preconditioner_gpu(kp__->num_gkvec(), num_bands__, res_idx_gpu.at<GPU>(), eval_gpu.at<GPU>(),
-//==     //    //                         hdiag_gpu.at<GPU>(), odiag_gpu.at<GPU>(), res_ptr, norm2.at<GPU>());
-//== 
-//==     //    //normalize_residuals_gpu(kp__->num_gkvec_row(), num_bands__, res_idx_gpu.at<GPU>(), norm2.at<GPU>(), res_ptr);
-//== 
-//==     //    ////== if (economize_gpu_memory)
-//==     //    ////== {
-//==     //    ////==     cublas_get_matrix(kp__->num_gkvec(), num_bands__, sizeof(double_complex), res_ptr, kp__->num_gkvec(),
-//==     //    ////==                       res__.at<CPU>(), res__.ld());
-//==     //    ////== }
-//==     //    //#else
-//==     //    //TERMINATE_NO_GPU
-//==     //    //#endif
-//==     //}
 }
 
 };

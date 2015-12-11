@@ -13,7 +13,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
     /* short notation for target wave-functions */
-    auto psi = kp__->fv_states(); //->primary_data_storage_as_matrix();
+    auto psi = kp__->fv_states<false>();
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
@@ -22,9 +22,9 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
 
     auto pu = parameters_.processing_unit();
 
-    Wave_functions phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
     
     std::vector<double> eval(ngk);
 

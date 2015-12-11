@@ -31,7 +31,13 @@
 
 namespace sirius {
 
-class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
+template <bool mt_spheres>
+class Wave_functions
+{
+};
+
+template<>
+class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 rank
 {
     private:
         

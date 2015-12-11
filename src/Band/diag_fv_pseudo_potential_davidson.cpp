@@ -63,7 +63,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    auto& psi = *kp__->fv_states();
+    auto& psi = *kp__->fv_states<false>();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
@@ -73,11 +73,13 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, ngk);
 
     /* allocate wave-functions */
-    Wave_functions phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    /* residuals */
+    Wave_functions<false> res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
 
     /* allocate Hamiltonian and overlap */
     matrix<double_complex> hmlt(num_phi, num_phi);
@@ -118,9 +120,6 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     std::vector<double> eval_old(num_bands);
     std::vector<double> eval_tmp(num_bands);
     
-    /* residuals */
-    Wave_functions res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-
     kp__->beta_projectors().allocate_workspace();
 
     D_operator d_op(kp__->beta_projectors(), pu);
