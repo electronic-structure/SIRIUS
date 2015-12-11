@@ -102,9 +102,9 @@ class Profiler
             #endif
         }
 
-        #ifdef __PROFILE_STACK
         static void stack_trace()
         {
+            #ifdef __PROFILE_STACK
             int t = 0;
             for (auto it = call_stack().rbegin(); it != call_stack().rend(); it++)
             {
@@ -112,8 +112,8 @@ class Profiler
                 printf("[%s]\n", it->c_str());
                 t++;
             }
+            #endif
         }
-        #endif
 };
 
 #ifdef __GNUC__

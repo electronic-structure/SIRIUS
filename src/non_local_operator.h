@@ -16,6 +16,7 @@ class Non_local_operator
         mdarray<int, 1> packed_mtrx_offset_;
         
         mdarray<double_complex, 1> op_;
+        mdarray<double_complex, 1> work_;
 
         Non_local_operator& operator=(Non_local_operator const& src) = delete;
         Non_local_operator(Non_local_operator const& src) = delete;
@@ -46,9 +47,13 @@ class Non_local_operator
             #endif
         }
 
+        ~Non_local_operator()
+        {
+        }
+
         void apply(int chunk__, Wave_functions& op_phi__, int idx0__, int n__)
         {
-            PROFILE();
+            PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
 
             assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
 
@@ -56,7 +61,14 @@ class Non_local_operator
             auto& beta_gk = beta_.beta_gk();
             int num_gkvec_loc = beta_.num_gkvec_loc();
             int nbeta = beta_.beta_chunk(chunk__).num_beta_;
-            matrix<double_complex> work(nbeta, n__); // TODO: cache and not rellocate
+
+            if (static_cast<size_t>(nbeta * n__) > work_.size())
+            {
+                work_ = mdarray<double_complex, 1>(nbeta * n__);
+                #ifdef __GPU
+                if (pu_ == GPU) work_.allocate_on_device();
+                #endif
+            }
 
             if (pu_ == CPU)
             {
@@ -65,38 +77,37 @@ class Non_local_operator
                 {
                     /* number of beta functions for a given atom */
                     int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-                    int ofs = beta_.beta_chunk(chunk__).desc_(1, i);
-                    int ia  = beta_.beta_chunk(chunk__).desc_(3, i);
+                    int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+                    int ia = beta_.beta_chunk(chunk__).desc_(3, i);
 
                     /* compute O * <beta|phi> */
                     linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
                                       op_.at<CPU>(packed_mtrx_offset_(ia)), nbf,
-                                      beta_phi.at<CPU>(ofs), nbeta,
-                                      work.at<CPU>(ofs, 0), work.ld());
+                                      beta_phi.at<CPU>(offs), nbeta,
+                                      work_.at<CPU>(offs), nbeta);
                 }
                 
                 /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
                 linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, double_complex(1, 0),
-                                  beta_gk.at<CPU>(), num_gkvec_loc, work.at<CPU>(), work.ld(), double_complex(1, 0),
+                                  beta_gk.at<CPU>(), num_gkvec_loc, work_.at<CPU>(), nbeta, double_complex(1, 0),
                                   &op_phi__(0, idx0__), num_gkvec_loc);
             }
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                work.allocate_on_device();
                 #pragma omp parallel for
                 for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
                 {
                     /* number of beta functions for a given atom */
                     int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-                    int ofs = beta_.beta_chunk(chunk__).desc_(1, i);
-                    int ia  = beta_.beta_chunk(chunk__).desc_(3, i);
+                    int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+                    int ia = beta_.beta_chunk(chunk__).desc_(3, i);
 
                     /* compute O * <beta|phi> */
                     linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                                       op_.at<GPU>(packed_mtrx_offset_(ia)), nbf, 
-                                      beta_phi.at<GPU>(ofs), nbeta,
-                                      work.at<GPU>(ofs, 0), work.ld(),
+                                      beta_phi.at<GPU>(offs), nbeta,
+                                      work_.at<GPU>(offs), nbeta,
                                       omp_get_thread_num());
 
                 }
@@ -105,7 +116,7 @@ class Non_local_operator
                 
                 /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
                 linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
-                                  beta_gk.at<GPU>(), beta_gk.ld(), work.at<GPU>(), work.ld(), &alpha, 
+                                  beta_gk.at<GPU>(), beta_gk.ld(), work_.at<GPU>(), nbeta, &alpha, 
                                   op_phi__.coeffs().at<GPU>(0, idx0__), op_phi__.coeffs().ld());
                 
                 cuda_device_synchronize();
