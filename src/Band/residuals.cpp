@@ -87,15 +87,16 @@ int Band::residuals(K_point* kp__,
                             std::memcpy(&res__(0, n), &res__(0, i), res__.num_gvec_loc() * sizeof(double_complex));
                             break;
                         }
-                        //case GPU:
-                        //{
-                        //    #ifdef __GPU
-                        //    cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
-                        //    #else
-                        //    TERMINATE_NO_GPU
-                        //    #endif
-                        //    break;
-                        //}
+                        case GPU:
+                        {
+                            STOP();
+                            //#ifdef __GPU
+                            //cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
+                            //#else
+                            //TERMINATE_NO_GPU
+                            //#endif
+                            break;
+                        }
                     }
                 }
                 n++;

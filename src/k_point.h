@@ -69,7 +69,7 @@ class K_point
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
-        dmatrix<double_complex> fv_eigen_vectors_;
+        Wave_functions<true>* fv_eigen_vectors_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -80,29 +80,20 @@ class K_point
         /// Full-diagonalization eigen vectors.
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
-        /// First-variational states in "slice" storage.
-        //dmatrix<double_complex> fv_states_slice_;
-
-        /// First-variational states, distributed over rows and columns of the MPI grid
-        /** Band index is distributed over columns and basis functions index is distributed 
-         *  over rows of the MPI grid. */
-        //dmatrix<double_complex> fv_states_;
-
-        //Wave_functions* fv_states_;
+        /// First-variational states.
         void* fv_states_;
 
         /// Two-component (spinor) wave functions describing the bands.
-        //Wave_functions* spinor_wave_functions_[2];
         void* spinor_wave_functions_[2];
 
-        /// band occupation numbers
+        /// Band occupation numbers.
         std::vector<double> band_occupancies_;
 
-        /// band energies
+        /// Band energies.
         std::vector<double> band_energies_; 
 
         /// phase factors \f$ e^{i ({\bf G+k}) {\bf r}_{\alpha}} \f$
-        mdarray<double_complex, 2> gkvec_phase_factors_;
+        //mdarray<double_complex, 2> gkvec_phase_factors_;
 
         /// spherical harmonics of G+k vectors
         mdarray<double_complex, 2> gkvec_ylm_;
@@ -194,24 +185,29 @@ class K_point
         ~K_point()
         {
             PROFILE();
+            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
-            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
+            if (fv_eigen_vectors_ != nullptr) delete fv_eigen_vectors_;
             if (fv_states_ != nullptr)
             {
-                if (parameters_.full_potential()) delete fv_states<true>();
-                else delete fv_states<false>();
+                if (parameters_.full_potential())
+                {
+                    delete reinterpret_cast<Wave_functions<true>*>(fv_states_);
+                }
+                else 
+                {
+                    delete reinterpret_cast<Wave_functions<false>*>(fv_states_);
+                }
             }
-            if (spinor_wave_functions_[0] != nullptr)
-            {   
-                if (parameters_.full_potential()) delete spinor_wave_functions<true>(0);
-                else delete spinor_wave_functions<false>(0);
-            }
-            if (spinor_wave_functions_[1] != nullptr)
+            for (int ispn: {0, 1})
             {
-                if (parameters_.full_potential()) delete spinor_wave_functions<true>(1);
-                else delete spinor_wave_functions<false>(1);
+                if (spinor_wave_functions_[ispn] != nullptr)
+                {   
+                    if (parameters_.full_potential()) delete spinor_wave_functions<true>(ispn);
+                    else delete spinor_wave_functions<false>(ispn);
+                }
             }
         }
 
@@ -222,6 +218,12 @@ class K_point
         void generate_gkvec(double gk_cutoff);
 
         /// Generate first-variational states from eigen-vectors
+        /** First-variational states are obtained from the first-variational eigen-vectors and 
+         *  LAPW matching coefficients. \n APW part:
+         *  \f[
+         *      \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
+         *  \f]
+         */
         void generate_fv_states();
 
         #ifdef __GPU
@@ -305,10 +307,10 @@ class K_point
             }
         }
         
-        inline double_complex gkvec_phase_factor(int igk__, int ia__) const
-        {
-            return gkvec_phase_factors_(igk__, ia__);
-        }
+        //inline double_complex gkvec_phase_factor(int igk__, int ia__) const
+        //{
+        //    return gkvec_phase_factors_(igk__, ia__);
+        //}
 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
@@ -433,9 +435,9 @@ class K_point
         }
 
         template <bool mt_spheres>
-        inline Wave_functions<mt_spheres>* fv_states()
+        inline Wave_functions<mt_spheres>& fv_states()
         {
-            return reinterpret_cast<Wave_functions<mt_spheres>*>(fv_states_);
+            return *reinterpret_cast<Wave_functions<mt_spheres>*>(fv_states_);
         }
 
         template <bool mt_spheres>
@@ -453,8 +455,7 @@ class K_point
         /** In case of full-potential LAPW+lo or PW+lo method the total number of 
          *  basis functions is equal to the number of (augmented) plane-waves plus the number 
          *  of local orbitals. In case of plane-wave pseudopotential method this is just the 
-         *  number of G+k vectors. 
-         */
+         *  number of G+k vectors. */
         inline int gklo_basis_size() const
         {
             return static_cast<int>(gklo_basis_descriptors_.size());
@@ -563,16 +564,11 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline dmatrix<double_complex>& fv_eigen_vectors()
+        inline Wave_functions<true>& fv_eigen_vectors()
         {
-            return fv_eigen_vectors_;
+            return *fv_eigen_vectors_;
         }
         
-        //inline dmatrix<double_complex>& fv_states_slice()
-        //{
-        //    return fv_states_slice_;
-        //}
-
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
         {
             return sv_eigen_vectors_[ispn];
@@ -630,11 +626,6 @@ class K_point
             return blacs_grid_;
         }
 
-        //inline BLACS_grid const& blacs_grid_slab() const
-        //{
-        //    return blacs_grid_slab_;
-        //}
-
         inline BLACS_grid const& blacs_grid_slice() const
         {
             return blacs_grid_slice_;
@@ -644,11 +635,6 @@ class K_point
         {
             return p_mtrx_(xi1, xi2, iat);
         }
-
-        //inline splindex<block>& spl_gkvec()
-        //{
-        //    return spl_gkvec_;
-        //}
 
         inline int num_gkvec_loc() const
         {

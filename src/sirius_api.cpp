@@ -1451,12 +1451,13 @@ void sirius_get_gkvec_arrays(int32_t* kset_id,
         
         mdarray<double_complex, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, sim_ctx->unit_cell().num_atoms());
         gkvec_phase_factors.zero();
-        for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
-        {
-            int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
-            for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
-                gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
-        }
+        STOP();
+        //for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
+        //{
+        //    int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
+        //    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
+        //        gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
+        //}
         comm_r.allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size()); 
     }
     comm_k.bcast(num_gkvec, 1, rank);

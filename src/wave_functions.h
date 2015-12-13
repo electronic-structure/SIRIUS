@@ -243,6 +243,80 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
         #endif
 };
 
+template<>
+class Wave_functions<true>
+{
+    private:
+        
+        int wf_size_;
+        int num_wfs_;
+        int bs_;
+        BLACS_grid const& blacs_grid_;
+        BLACS_grid const& blacs_grid_slice_;
+
+        dmatrix<double_complex> wf_coeffs_;
+
+        dmatrix<double_complex> wf_coeffs_swapped_;
+
+        mdarray<double_complex, 1> swp_buf_;
+
+        splindex<block> spl_n_;
+
+    public:
+
+        Wave_functions(int wf_size__, int num_wfs__, int bs__, BLACS_grid const& blacs_grid__, BLACS_grid const& blacs_grid_slice__)
+            : wf_size_(wf_size__),
+              num_wfs_(num_wfs__),
+              bs_(bs__),
+              blacs_grid_(blacs_grid__),
+              blacs_grid_slice_(blacs_grid_slice__)
+        {
+            assert(blacs_grid_slice__.num_ranks_row() == 1);
+
+            wf_coeffs_ = dmatrix<double_complex>(wf_size_, num_wfs_, blacs_grid_, bs_, bs_);
+
+            int bs1 = splindex_base<int>::block_size(num_wfs_, blacs_grid_slice_.num_ranks_col());
+            swp_buf_ = mdarray<double_complex, 1>(wf_size__ * bs1);
+        }
+
+        void set_num_swapped(int n__)
+        {
+            /* this is how n wave-functions will be distributed between panels */
+            spl_n_ = splindex<block>(n__, blacs_grid_slice_.num_ranks_col(), blacs_grid_slice_.rank_col());
+
+            int bs = splindex_base<int>::block_size(n__, blacs_grid_slice_.num_ranks_col());
+            wf_coeffs_swapped_ = dmatrix<double_complex>(&swp_buf_[0], wf_size_, n__, blacs_grid_slice_, 1, bs);
+        }
+
+        void swap_forward(int idx0__, int n__)
+        {
+            PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
+            set_num_swapped(n__);
+            linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_, 0, idx0__, wf_coeffs_swapped_, 0, 0, blacs_grid_.context());
+        }
+
+        void swap_backward(int idx0__, int n__)
+        {
+            PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
+            linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_swapped_, 0, 0, wf_coeffs_, 0, idx0__, blacs_grid_.context());
+        }
+
+        inline splindex<block> const& spl_num_swapped() const
+        {
+            return spl_n_;
+        }
+
+        dmatrix<double_complex>& coeffs()
+        {
+            return wf_coeffs_;
+        }
+
+        inline double_complex* operator[](int i__)
+        {
+            return &wf_coeffs_swapped_(0, i__);
+        }
+};
+
 };
 
 #endif

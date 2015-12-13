@@ -152,12 +152,9 @@ void K_point::initialize()
         /* allocate memory for first-variational eigen vectors */
         if (parameters_.full_potential())
         {
-            fv_eigen_vectors_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(),
-                                                        blacs_grid_, bs, bs);
-            fv_eigen_vectors_.allocate(alloc_mode);
+            fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), parameters_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
 
-            //fv_states_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_, bs, bs);
-            STOP();
+            fv_states_ = new Wave_functions<true>(wf_size(), parameters_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
         }
         else
         {
@@ -165,24 +162,13 @@ void K_point::initialize()
 
             fv_states_ = new Wave_functions<false>(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
 
-            fv_states<false>()->coeffs().zero();
+            fv_states<false>().coeffs().zero();
 
             for (int i = 0; i < parameters_.num_fv_states(); i++) // TODO: init from atomic WFs
             {
-                for (int igk = 0; igk < num_gkvec_loc(); igk++) (*fv_states<false>())(igk, i) = type_wrapper<double_complex>::random();
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states<false>()(igk, i) = type_wrapper<double_complex>::random();
             }
         }
-
-        //if (comm_.size() == 1)
-        //{
-        //    fv_states_slice_ = dmatrix<double_complex>(fv_states_.at<CPU>(), wf_size(), parameters_.num_fv_states(),
-        //                                               blacs_grid_slice_, 1, 1);
-        //}
-        //else
-        //{
-        //    fv_states_slice_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(),
-        //                                               blacs_grid_slice_, 1, 1);
-        //}
 
         if (parameters_.need_sv())
         {

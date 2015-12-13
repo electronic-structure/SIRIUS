@@ -63,7 +63,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    auto& psi = *kp__->fv_states<false>();
+    auto& psi = kp__->fv_states<false>();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     

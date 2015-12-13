@@ -900,7 +900,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o");
+    PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
     
     h__.zero();
     o__.zero();

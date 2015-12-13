@@ -13,7 +13,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
     /* short notation for target wave-functions */
-    auto psi = kp__->fv_states<false>();
+    auto& psi = kp__->fv_states<false>();
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
@@ -54,8 +54,8 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
                                 ophi.coeffs().at<CPU>(),
                                 ophi.coeffs().ld(), 
                                 &eval[0],
-                                psi->coeffs().at<CPU>(),
-                                psi->coeffs().ld()))
+                                psi.coeffs().at<CPU>(),
+                                psi.coeffs().ld()))
     {
         TERMINATE("error in evp solve");
     }

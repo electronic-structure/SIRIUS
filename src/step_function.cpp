@@ -72,26 +72,23 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
 
 void Step_function::init()
 {
-    PROFILE();
-
-    Timer t("sirius::Step_function::init");
+    PROFILE_WITH_TIMER("sirius::Step_function::init");
 
     if (unit_cell_.num_atoms() == 0) return;
     
     auto ffac = get_step_function_form_factors(gvec_.num_shells());
 
     step_function_pw_.resize(gvec_.num_gvec());
-    step_function_.resize(fft_->size());
+    step_function_.resize(fft_->local_size());
     
     std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, gvec_.num_gvec());
     for (int ig = 0; ig < gvec_.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
     
-    STOP();
-
-    //fft_->input(gvec_.num_gvec(), gvec_.index_map(), &step_function_pw_[0]);
-    //fft_->transform(1, gvec_.z_sticks_coord());
-    //fft_->output(&step_function_[0]);
+    fft_->allocate_workspace();
+    fft_->transform<1>(gvec_, &step_function_pw_[gvec_.offset_gvec_fft()]);
+    fft_->output(&step_function_[0]);
+    fft_->deallocate_workspace();
     
     double vit = 0.0;
     for (int i = 0; i < fft_->size(); i++) vit += step_function_[i] * unit_cell_.omega() / fft_->size();

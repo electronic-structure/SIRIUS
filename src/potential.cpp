@@ -363,20 +363,17 @@ Potential::~Potential()
 
 void Potential::generate_pw_coefs()
 {
-    for (int ir = 0; ir < fft_->size(); ir++)
+    for (int ir = 0; ir < fft_->local_size(); ir++)
         fft_->buffer(ir) = effective_potential()->f_it(ir) * ctx_.step_function()->theta_r(ir);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
     DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it(0) , fft_->size()).checksum());
-    //DUMP("checksum(step_function): %18.10f", mdarray<double, 1>(&parameters_.step_function(0), fft_->size()).checksum();
     DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
     
-    STOP();
-
-    //fft_->transform(-1, ctx_.gvec().z_sticks_coord());
-    //fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_potential()->f_pw(0));
+    fft_->transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().offset_gvec_fft()));
+    fft_->comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().offset_gvec_fft(), ctx_.gvec().num_gvec_fft());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(veff_it): %18.10f", effective_potential()->f_it().checksum());

@@ -109,9 +109,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
 
 void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__)
 {
-    PROFILE();
-
-    Timer t("sirius::Atom::generate_radial_integrals");
+    PROFILE_WITH_TIMER("sirius::Atom::generate_radial_integrals");
     
     int lmmax = Utils::lmmax(lmax_pot_);
     int nmtp = type()->num_mt_points();

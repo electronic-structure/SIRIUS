@@ -85,15 +85,15 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
-        kp__->fv_states<false>()->allocate_on_device();
-        kp__->fv_states<false>()->copy_to_device(0, nbnd);
+        kp__->fv_states<false>().allocate_on_device();
+        kp__->fv_states<false>().copy_to_device(0, nbnd);
     }
     #endif
 
     for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
     {
         kp__->beta_projectors().generate(chunk);
-        kp__->beta_projectors().inner(chunk, *kp__->fv_states<false>(), 0, nbnd);
+        kp__->beta_projectors().inner(chunk, kp__->fv_states<false>(), 0, nbnd);
         int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 
         mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
@@ -133,7 +133,7 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
-        kp__->fv_states<false>()->deallocate_on_device();
+        kp__->fv_states<false>().deallocate_on_device();
     }
     #endif
     kp__->beta_projectors().deallocate_workspace();

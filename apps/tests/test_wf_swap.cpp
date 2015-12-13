@@ -4,53 +4,77 @@
 
 using namespace sirius;
 
-void test1(vector3d<int> const& dims__, double cutoff__, int num_bands__, std::vector<int> mpi_grid_dims__)
+//void test1(vector3d<int> const& dims__, double cutoff__, int num_bands__, std::vector<int> mpi_grid_dims__)
+//{
+//    Communicator comm(MPI_COMM_WORLD);
+//    MPI_grid mpi_grid(mpi_grid_dims__, comm);
+//
+//    matrix3d<double> M;
+//    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+//
+//    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
+//    
+//    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
+//
+//    Wave_functions psi_in(num_bands__, gvec, mpi_grid, true);
+//    Wave_functions psi_out(num_bands__, gvec, mpi_grid, true);
+//    
+//    for (int i = 0; i < num_bands__; i++)
+//    {
+//        for (int j = 0; j < psi_in.num_gvec_loc(); j++)
+//        {
+//            psi_in(j, i) = type_wrapper<double_complex>::random();
+//        }
+//    }
+//    if (comm.rank() == 0)
+//    {
+//        printf("local size of wf: %f GB\n", num_bands__ * gvec.num_gvec(comm.rank()) / double(1 << 30));
+//    }
+//    Timer t1("swap", comm);
+//    psi_in.swap_forward(0, num_bands__);
+//    for (int i = 0; i < psi_in.spl_num_swapped().local_size(); i++)
+//    {
+//        std::memcpy(psi_out[i], psi_in[i], gvec.num_gvec_fft() * sizeof(double_complex));
+//    }
+//    psi_out.swap_backward(0, num_bands__);
+//    t1.stop();
+//
+//    double diff = 0;
+//    for (int i = 0; i < num_bands__; i++)
+//    {
+//        for (int j = 0; j < psi_in.num_gvec_loc(); j++)
+//        {
+//            double d = std::abs(psi_in(j, i) - psi_out(j, i));
+//            diff += d;
+//        }
+//    }
+//    printf("diff: %18.12f\n", diff);
+//
+//    comm.barrier();
+//}
+
+void test2(std::vector<int> mpi_grid_dims__)
 {
-    Communicator comm(MPI_COMM_WORLD);
-    MPI_grid mpi_grid(mpi_grid_dims__, comm);
+    BLACS_grid blacs_grid(mpi_comm_world, mpi_grid_dims__[0], mpi_grid_dims__[1]);
+    BLACS_grid blacs_grid_slice(mpi_comm_world, 1, mpi_grid_dims__[0] * mpi_grid_dims__[1]);
 
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-
-    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
-    
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
-
-    Wave_functions psi_in(num_bands__, gvec, mpi_grid, true);
-    Wave_functions psi_out(num_bands__, gvec, mpi_grid, true);
-    
-    for (int i = 0; i < num_bands__; i++)
+    int N = 10019;
+    int n = 123;
+    Wave_functions<true> wf1(N, n, 8, blacs_grid, blacs_grid_slice);
+    for (int i = 0; i < wf1.coeffs().num_cols_local(); i++)
     {
-        for (int j = 0; j < psi_in.num_gvec_loc(); j++)
+        for (int j = 0; j < wf1.coeffs().num_rows_local(); j++)
         {
-            psi_in(j, i) = type_wrapper<double_complex>::random();
+            wf1.coeffs()(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    if (comm.rank() == 0)
-    {
-        printf("local size of wf: %f GB\n", num_bands__ * gvec.num_gvec(comm.rank()) / double(1 << 30));
-    }
-    Timer t1("swap", comm);
-    psi_in.swap_forward(0, num_bands__);
-    for (int i = 0; i < psi_in.spl_num_swapped().local_size(); i++)
-    {
-        std::memcpy(psi_out[i], psi_in[i], gvec.num_gvec_fft() * sizeof(double_complex));
-    }
-    psi_out.swap_backward(0, num_bands__);
-    t1.stop();
+    auto h = wf1.coeffs().panel().hash();
 
-    double diff = 0;
-    for (int i = 0; i < num_bands__; i++)
-    {
-        for (int j = 0; j < psi_in.num_gvec_loc(); j++)
-        {
-            double d = std::abs(psi_in(j, i) - psi_out(j, i));
-            diff += d;
-        }
-    }
-    printf("diff: %18.12f\n", diff);
+    wf1.swap_forward(0, n);
+    wf1.coeffs().zero();
+    wf1.swap_backward(0, n);
 
-    comm.barrier();
+    if (wf1.coeffs().panel().hash() != h) TERMINATE("wrong hash");
 }
 
 int main(int argn, char **argv)
@@ -76,7 +100,8 @@ int main(int argn, char **argv)
 
     Platform::initialize(1);
 
-    test1(dims, cutoff, num_bands, mpi_grid);
+    //test1(dims, cutoff, num_bands, mpi_grid);
+    test2(mpi_grid);
     
     Timer::print();
 

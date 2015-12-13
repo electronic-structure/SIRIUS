@@ -50,6 +50,10 @@
 
 //== #definr __LIBSCI_ACC
 
+#ifdef __LIBSCI_ACC
+#warning "Don't forget to use pinned memory with libsci_acc"
+#endif
+
 //== #define __GPU
 
 //== #define __GPU_DIRECT

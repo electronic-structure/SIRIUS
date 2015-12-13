@@ -1,23 +1,43 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file generate_fv_states.cpp
+ *   
+ *  \brief Contains implementation of sirius::K_point::generate_fv_states method.
+ */
+
 #include "k_point.h"
 
 namespace sirius {
 
 void K_point::generate_fv_states()
 {
-    PROFILE();
-
-    Timer t("sirius::K_point::generate_fv_states");
+    PROFILE_WITH_TIMER("sirius::K_point::generate_fv_states");
     
     if (parameters_.full_potential())
     {
-        /* slices of first-variational eigen-vectors */
-        dmatrix<double_complex> fv_eigen_vectors_slice(gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_slice_, 1, 1);
-        //assert(fv_eigen_vectors_slice.num_cols_local() == fv_states_slice_.num_cols_local());
+        fv_eigen_vectors_->swap_forward(0, parameters_.num_fv_states());
 
-        /* change from 2d block cyclic to slice storage */
-        linalg<CPU>::gemr2d(gklo_basis_size(), parameters_.num_fv_states(), fv_eigen_vectors_, 0, 0, 
-                            fv_eigen_vectors_slice, 0, 0, blacs_grid_.context());
-            
+        fv_states<true>().set_num_swapped(parameters_.num_fv_states());
+
+        assert(fv_eigen_vectors_->spl_num_swapped().local_size() == fv_states<true>().spl_num_swapped().local_size());
+
         if (parameters_.processing_unit() == GPU)
         {
             #ifdef __GPU
@@ -190,42 +210,42 @@ void K_point::generate_fv_states()
         {
             #pragma omp parallel
             {
-                //mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-                STOP();
+                mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
                 
-                //#pragma omp for
-                //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-                //{
-                //    int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-                //    int offset_wf = unit_cell_.atom(ia)->offset_wf();
-                //    alm_coeffs_->generate(ia, alm);
-                //    STOP();
-                //    //linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(),
-                //    //                  alm.at<CPU>(), alm.ld(), fv_eigen_vectors_slice.at<CPU>(), fv_eigen_vectors_slice.ld(),
-                //    //                  fv_states_slice_.at<CPU>(offset_wf, 0), fv_states_slice_.ld());
-                //    //for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
-                //    //{
-                //    //    /* lo block */
-                //    //    std::memcpy(&fv_states_slice_(offset_wf + mt_aw_size, i),
-                //    //                &fv_eigen_vectors_slice(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), i),
-                //    //                unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
-                //    //}
-                //}
-                //#pragma omp for
-                //for (int i = 0; i < fv_states_slice_.num_cols_local(); i++)
-                //{
-                //    /* G+k block */
-                //    std::memcpy(&fv_states_slice_(unit_cell_.mt_basis_size(), i), &fv_eigen_vectors_slice(0, i), 
-                //                num_gkvec() * sizeof(double_complex));
-                //}
+                #pragma omp for
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+                {
+                    int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
+                    int offset_wf = unit_cell_.atom(ia)->offset_wf();
+                    alm_coeffs_->generate(ia, alm);
+                    
+                    /* multiply eigen-vectors and matching coefficients */
+                    linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_->spl_num_swapped().local_size(), num_gkvec(),
+                                      alm.at<CPU>(), alm.ld(), (*fv_eigen_vectors_)[0], gklo_basis_size(),
+                                      &fv_states<true>()[0][offset_wf], wf_size());
+
+                    for (int i = 0; i < fv_states<true>().spl_num_swapped().local_size(); i++)
+                    {
+                        /* lo block */
+                        std::memcpy(&fv_states<true>()[i][offset_wf + mt_aw_size],
+                                    &(*fv_eigen_vectors_)[i][num_gkvec() + unit_cell_.atom(ia)->offset_lo()],
+                                    unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
+                    }
+                }
+                #pragma omp for
+                for (int i = 0; i < fv_states<true>().spl_num_swapped().local_size(); i++)
+                {
+                    /* G+k block */
+                    std::memcpy(&fv_states<true>()[i][unit_cell_.mt_basis_size()],
+                                (*fv_eigen_vectors_)[i], num_gkvec() * sizeof(double_complex));
+                }
             }
         }
-        STOP();
 
-        ///* change from slice storage to 2d block cyclic */
-        //linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(), fv_states_slice_, 0, 0, fv_states_, 0, 0,
-        //                    blacs_grid_.context());
+        fv_states<true>().swap_backward(0, parameters_.num_fv_states());
     }
+
+    //test_fv_states();
 }
 
 };

@@ -20,20 +20,20 @@ namespace sirius {
 //== 
 void K_point::init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__)
 {
-    gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec__, unit_cell_.num_atoms());
+    //gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec__, unit_cell_.num_atoms());
 
-    #pragma omp parallel for default(shared)
-    for (int i = 0; i < num_gkvec__; i++)
-    {
-        int igk = desc__[i].igk;
+    //#pragma omp parallel for default(shared)
+    //for (int i = 0; i < num_gkvec__; i++)
+    //{
+    //    int igk = desc__[i].igk;
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
-            double phase = twopi * (gkvec<fractional>(igk) * unit_cell_.atom(ia)->position());
+    //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    //    {
+    //        double phase = twopi * (gkvec<fractional>(igk) * unit_cell_.atom(ia)->position());
 
-            gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
-        }
-    }
+    //        gkvec_phase_factors_(i, ia) = std::exp(double_complex(0.0, phase));
+    //    }
+    //}
 }
 //== 
 //== void K_point::init_gkvec()
