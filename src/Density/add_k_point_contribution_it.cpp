@@ -58,14 +58,14 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 int thread_id = omp_get_thread_num();
 
                 #pragma omp for schedule(dynamic, 1)
-                for (int i = 0; i < kp__->spinor_wave_functions<false>(ispn)->spl_num_swapped().local_size(); i++)
+                for (int i = 0; i < kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size(); i++)
                 {
-                    int j = kp__->spinor_wave_functions<false>(ispn)->spl_num_swapped()[i];
+                    int j = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped()[i];
                     double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
                     double t1 = omp_get_wtime();
 
                     /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), (*kp__->spinor_wave_functions<false>(ispn))[i] + wf_pw_offset);
+                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<false>(ispn)[i] + wf_pw_offset);
 
                     if (thread_id == 0 && parameters_.processing_unit() == GPU)
                     {

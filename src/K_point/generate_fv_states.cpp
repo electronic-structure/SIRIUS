@@ -236,7 +236,7 @@ void K_point::generate_fv_states()
                 for (int i = 0; i < fv_states<true>().spl_num_swapped().local_size(); i++)
                 {
                     /* G+k block */
-                    std::memcpy(&fv_states<true>()[i][unit_cell_.mt_basis_size()],
+                    std::memcpy(&fv_states<true>()[i][wf_pw_offset()],
                                 (*fv_eigen_vectors_)[i], num_gkvec() * sizeof(double_complex));
                 }
             }

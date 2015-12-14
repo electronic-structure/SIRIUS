@@ -41,12 +41,6 @@ void K_point::test_fv_states()
     }
     o_fv.swap_backward(0, parameters_.num_fv_states());
 
-//    dmatrix<double_complex> o_fv(wf_size(), parameters_.num_fv_states(), blacs_grid_,
-//                                 parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
-//
-//    /* change from slice storage to 2d block cyclic */
-//    linalg<CPU>::gemr2d(wf_size(), parameters_.num_fv_states(), o_fv_slice, 0, 0, o_fv, 0, 0, blacs_grid_.context());
-//
     dmatrix<double_complex> ovlp(parameters_.num_fv_states(), parameters_.num_fv_states(), blacs_grid_,
                                  parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
     

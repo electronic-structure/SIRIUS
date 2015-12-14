@@ -92,11 +92,8 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_; 
 
-        /// phase factors \f$ e^{i ({\bf G+k}) {\bf r}_{\alpha}} \f$
-        //mdarray<double_complex, 2> gkvec_phase_factors_;
-
         /// spherical harmonics of G+k vectors
-        mdarray<double_complex, 2> gkvec_ylm_;
+        //mdarray<double_complex, 2> gkvec_ylm_;
 
         Matching_coefficients* alm_coeffs_row_;
 
@@ -205,8 +202,14 @@ class K_point
             {
                 if (spinor_wave_functions_[ispn] != nullptr)
                 {   
-                    if (parameters_.full_potential()) delete spinor_wave_functions<true>(ispn);
-                    else delete spinor_wave_functions<false>(ispn);
+                    if (parameters_.full_potential())
+                    {
+                        delete reinterpret_cast<Wave_functions<true>*>(spinor_wave_functions_[ispn]);
+                    }
+                    else
+                    {
+                        delete reinterpret_cast<Wave_functions<false>*>(spinor_wave_functions_[ispn]);
+                    }
                 }
             }
         }
@@ -377,7 +380,7 @@ class K_point
                 }
                 default:
                 {
-                    terminate(__FILE__, __LINE__, "wrong esm_type");
+                    TERMINATE("wrong type of electronic structure method");
                     return -1; //make compiler happy
                 }
             }
@@ -385,7 +388,7 @@ class K_point
 
         inline void get_band_occupancies(double* band_occupancies) const
         {
-            assert((int)band_occupancies_.size() == parameters_.num_bands());
+            assert(static_cast<int>(band_occupancies_.size()) == parameters_.num_bands());
             
             std::memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
         }
@@ -441,9 +444,9 @@ class K_point
         }
 
         template <bool mt_spheres>
-        inline Wave_functions<mt_spheres>* spinor_wave_functions(int ispn__)
+        inline Wave_functions<mt_spheres>& spinor_wave_functions(int ispn__)
         {
-            return reinterpret_cast<Wave_functions<mt_spheres>*>(spinor_wave_functions_[ispn__]);
+            return *reinterpret_cast<Wave_functions<mt_spheres>*>(spinor_wave_functions_[ispn__]);
         }
 
         inline vector3d<double> vk() const
@@ -581,7 +584,7 @@ class K_point
 
         void bypass_sv()
         {
-            memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
+            std::memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
         }
 
         std::vector<double> get_pw_ekin() const

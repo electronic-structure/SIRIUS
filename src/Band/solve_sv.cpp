@@ -4,9 +4,7 @@ namespace sirius {
 
 void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])
 {
-    PROFILE();
-
-    Timer t("sirius::Band::solve_sv");
+    PROFILE_WITH_TIMER("sirius::Band::solve_sv");
 
     if (!parameters_.need_sv())
     {

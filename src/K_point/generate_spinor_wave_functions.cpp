@@ -4,11 +4,8 @@ namespace sirius {
 
 void K_point::generate_spinor_wave_functions()
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::K_point::generate_spinor_wave_functions");
 
-    Timer t("sirius::K_point::generate_spinor_wave_functions");
-
-    //int nfv = parameters_.num_fv_states();
     double_complex alpha(1, 0);
     double_complex beta(0, 0);
     
@@ -16,7 +13,14 @@ void K_point::generate_spinor_wave_functions()
     {
         if (!parameters_.need_sv())
         {
-            fv_states<false>().coeffs() >> spinor_wave_functions<false>(0)->coeffs();
+            if (parameters_.full_potential())
+            {
+                fv_states<true>().coeffs().panel() >> spinor_wave_functions<true>(0).coeffs().panel();
+            }
+            else
+            {
+                fv_states<false>().coeffs() >> spinor_wave_functions<false>(0).coeffs();
+            }
             return;
         }
  

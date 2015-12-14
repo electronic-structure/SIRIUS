@@ -13,10 +13,30 @@ void K_point::initialize()
 
     int bs = parameters_.cyclic_block_size();
 
-    if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
-
-    /* in case of collinear magnetism we store only non-zero spinor components */
+    /* in case of collinear magnetism we store only non-zero spinor components 
+     *
+     * non magnetic case: 
+     * +---+
+     * |   |
+     * +---+
+     *
+     * collinear case:
+     * +---+
+     * |uu |
+     * +---+---+
+     *     |dd |
+     *     +---+
+     *
+     * non collinear case:
+     * +-------+
+     * |       |
+     * +-------+
+     * |       |
+     * +-------+
+     */
     int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
+
+    if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 
     if (use_second_variation && parameters_.need_sv())
     {
@@ -100,12 +120,12 @@ void K_point::initialize()
 
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
+        alm_coeffs_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec(),
+                                                gklo_basis_descriptors_);
         alm_coeffs_row_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_row(),
                                                     gklo_basis_descriptors_row_);
         alm_coeffs_col_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
                                                     gklo_basis_descriptors_col_);
-        alm_coeffs_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec(),
-                                                gklo_basis_descriptors_);
     }
 
     /* compute |beta> projectors for atom types */
@@ -149,12 +169,17 @@ void K_point::initialize()
 
     if (use_second_variation)
     {
-        /* allocate memory for first-variational eigen vectors */
+        /* allocate memory for first-variational eigen vectors and states and for spinor wave-fucntions */
         if (parameters_.full_potential())
         {
             fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), parameters_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
 
             fv_states_ = new Wave_functions<true>(wf_size(), parameters_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
+
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                spinor_wave_functions_[ispn] = new Wave_functions<true>(wf_size(), nst, bs, blacs_grid_, blacs_grid_slice_);
+            }
         }
         else
         {
@@ -168,35 +193,12 @@ void K_point::initialize()
             {
                 for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states<false>()(igk, i) = type_wrapper<double_complex>::random();
             }
-        }
 
-        if (parameters_.need_sv())
-        {
-            STOP();
-            //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            //    spinor_wave_functions_[ispn] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_slice_, 1, 1);
-        }
-        else
-        {
-            if (!parameters_.full_potential())
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                spinor_wave_functions_[0] = new Wave_functions<false>(parameters_.num_fv_states(),
-                                                                      parameters_.num_fv_states(),
-                                                                      gkvec_, ctx_.mpi_grid_fft(),
-                                                                      parameters_.processing_unit());
+                spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
+                                                                         parameters_.processing_unit());
             }
-
-            //if (ctx_.fft(0)->parallel())
-            //{
-            //    /* assume 2d block-cyclic distribution */
-            //    int bs = splindex_base<int>::block_size(num_gkvec(), num_ranks_row());
-            //    spinor_wave_functions_[0] = dmatrix<double_complex>(wf_size(), nst, blacs_grid_, bs, 1);
-            //}
-            //else
-            //{
-            //    /* assume slice storage of spinor wave functions */
-            //    spinor_wave_functions_[0] = dmatrix<double_complex>(fv_states_slice_.at<CPU>(), wf_size(), nst, blacs_grid_slice_, 1, 1);
-            //}
         }
     }
     else  /* use full diagonalziation */
