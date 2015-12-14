@@ -92,9 +92,6 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_; 
 
-        /// spherical harmonics of G+k vectors
-        //mdarray<double_complex, 2> gkvec_ylm_;
-
         Matching_coefficients* alm_coeffs_row_;
 
         Matching_coefficients* alm_coeffs_col_;
@@ -119,8 +116,6 @@ class K_point
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        //splindex<block> spl_gkvec_;
-            
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector< std::vector<int> > atom_lo_cols_;
 
@@ -253,9 +248,7 @@ class K_point
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
 
-        /// Get the local list of occupied bands.
-        occupied_bands_descriptor get_occupied_bands_list(Communicator const& comm__);
-
+        /// Get the number of occupied bands for each spin channel.
         int num_occupied_bands(int ispn__);
 
         /// Generate beta-proectors for a block of atoms.

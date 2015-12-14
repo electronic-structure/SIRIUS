@@ -188,7 +188,6 @@ class Density
          *  the occupancy operator written in spectral representation. */
         template <electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
-                                      occupied_bands_descriptor const& occupied_bands__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
         /// Restore valence density by adding the Q-operator constribution

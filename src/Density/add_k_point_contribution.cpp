@@ -4,7 +4,6 @@ namespace sirius {
 
 template <>
 void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
-                                                              occupied_bands_descriptor const& occupied_bands__,
                                                               mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
@@ -104,74 +103,74 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
 
 template <>
 void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
-                                                                  occupied_bands_descriptor const& occupied_bands__,
                                                                   mdarray<double_complex, 4>& density_matrix__)
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
-    Timer t("sirius::Density::add_k_point_contribution");
+    //int nbnd = occupied_bands__.num_occupied_bands();
+    //int nbnd_loc = occupied_bands__.num_occupied_bands_local();
+    //if (!nbnd) return;
 
-    int nbnd = occupied_bands__.num_occupied_bands();
-    int nbnd_loc = occupied_bands__.num_occupied_bands_local();
+    STOP();
 
-    if (!nbnd) return;
-
-    kp__->beta_projectors().allocate_workspace();
-    #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
-    {
-        kp__->fv_states<false>().allocate_on_device();
-        kp__->fv_states<false>().copy_to_device(0, nbnd);
-    }
-    #endif
-
-    for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
-    {
-        kp__->beta_projectors().generate(chunk);
-        kp__->beta_projectors().inner(chunk, kp__->fv_states<false>(), 0, nbnd);
-        int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
-
-        mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
-
-        if (nbnd_loc) // TODO: this part can also be moved to GPU
-        {
-            #pragma omp parallel
-            {
-                /* auxiliary arrays */
-                mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
-                mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
-                #pragma omp for
-                for (int ia = 0; ia < kp__->beta_projectors().beta_chunk(chunk).num_atoms_; ia++)
-                {
-                    int nbf = kp__->beta_projectors().beta_chunk(chunk).desc_(0, ia);
-                    int offs = kp__->beta_projectors().beta_chunk(chunk).desc_(1, ia);
-                    int ja = kp__->beta_projectors().beta_chunk(chunk).desc_(3, ia);
-
-                    for (int i = 0; i < nbnd_loc; i++)
-                    {
-                        int j = occupied_bands__.idx_bnd_glob[i];
-                        for (int xi = 0; xi < nbf; xi++)
-                        {
-                            bp1(xi, i) = beta_psi(offs + xi, j);
-                            bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
-                        }
-                    }
-
-                    linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
-                                      &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ja), 
-                                      density_matrix__.ld());
-                }
-            }
-        }
-
-    }
-    #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
-    {
-        kp__->fv_states<false>().deallocate_on_device();
-    }
-    #endif
-    kp__->beta_projectors().deallocate_workspace();
+//    int nbnd = kp__->num_occupied_bands(0);
+//
+//    kp__->beta_projectors().allocate_workspace();
+//    #ifdef __GPU
+//    if (parameters_.processing_unit() == GPU)
+//    {
+//        kp__->fv_states<false>().allocate_on_device();
+//        kp__->fv_states<false>().copy_to_device(0, nbnd);
+//    }
+//    #endif
+//
+//    for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
+//    {
+//        kp__->beta_projectors().generate(chunk);
+//        kp__->beta_projectors().inner(chunk, kp__->fv_states<false>(), 0, nbnd);
+//        int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
+//
+//        mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
+//
+//        if (nbnd_loc) // TODO: this part can also be moved to GPU
+//        {
+//            #pragma omp parallel
+//            {
+//                /* auxiliary arrays */
+//                mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
+//                mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
+//                #pragma omp for
+//                for (int ia = 0; ia < kp__->beta_projectors().beta_chunk(chunk).num_atoms_; ia++)
+//                {
+//                    int nbf = kp__->beta_projectors().beta_chunk(chunk).desc_(0, ia);
+//                    int offs = kp__->beta_projectors().beta_chunk(chunk).desc_(1, ia);
+//                    int ja = kp__->beta_projectors().beta_chunk(chunk).desc_(3, ia);
+//
+//                    for (int i = 0; i < nbnd_loc; i++)
+//                    {
+//                        int j = occupied_bands__.idx_bnd_glob[i];
+//                        for (int xi = 0; xi < nbf; xi++)
+//                        {
+//                            bp1(xi, i) = beta_psi(offs + xi, j);
+//                            bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
+//                        }
+//                    }
+//
+//                    linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
+//                                      &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, 0, ja), 
+//                                      density_matrix__.ld());
+//                }
+//            }
+//        }
+//
+//    }
+//    #ifdef __GPU
+//    if (parameters_.processing_unit() == GPU)
+//    {
+//        kp__->fv_states<false>().deallocate_on_device();
+//    }
+//    #endif
+//    kp__->beta_projectors().deallocate_workspace();
 }
 
 //#ifdef __GPU
