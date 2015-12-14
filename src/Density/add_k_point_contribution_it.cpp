@@ -12,11 +12,10 @@ extern "C" void update_it_density_matrix_1_gpu(int fft_size,
                                                double* it_density_matrix);
 #endif
 
-void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__)
+template <bool mt_spheres>
+void Density::add_k_point_contribution_it(K_point* kp__)
 {
-    PROFILE();
-
-    Timer t("sirius::Density::add_k_point_contribution_it");
+    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_it");
 
     //int num_spins = parameters_.num_spins();
     //int num_mag_dims = parameters_.num_mag_dims();
@@ -48,7 +47,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(1);
 
     int wf_pw_offset = kp__->wf_pw_offset();
-
+        
+    /* non-magnetic or collinear case */
     if (parameters_.num_mag_dims() != 3)
     {
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
@@ -58,14 +58,14 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 int thread_id = omp_get_thread_num();
 
                 #pragma omp for schedule(dynamic, 1)
-                for (int i = 0; i < kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size(); i++)
+                for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().local_size(); i++)
                 {
-                    int j = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped()[i];
+                    int j = kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped()[i];
                     double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
                     double t1 = omp_get_wtime();
 
                     /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<false>(ispn)[i] + wf_pw_offset);
+                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
 
                     if (thread_id == 0 && parameters_.processing_unit() == GPU)
                     {
@@ -275,5 +275,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     //==     std::cout << "main summation of " << occupied_bands__.num_occupied_bands_local() << " bands is done in " << t0 << "sec." << std::endl;
     //== }
 }
+
+template void Density::add_k_point_contribution_it<true>(K_point* kp__);
+template void Density::add_k_point_contribution_it<false>(K_point* kp__);
 
 };

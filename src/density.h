@@ -216,7 +216,8 @@ class Density
         void add_q_contribution_to_valence_density(K_set& kset);
 
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__);
+        template <bool mt_spheres>
+        void add_k_point_contribution_it(K_point* kp__);
 
         #ifdef __GPU
         void add_q_contribution_to_valence_density_gpu(K_set& ks);

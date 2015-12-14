@@ -4,20 +4,20 @@ namespace sirius {
 
 void Density::generate_valence_density_mt(K_set& ks)
 {
-    Timer t("sirius::Density::generate_valence_density_mt");
+    PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_mt");
 
     /* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
        because density matrix is symmetric */
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
-    // complex density matrix
+    /* complex density matrix */
     mdarray<double_complex, 4> mt_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
-                                                    unit_cell_.max_mt_basis_size(),
-                                                    num_zdmat, unit_cell_.num_atoms());
+                                                         unit_cell_.max_mt_basis_size(),
+                                                         num_zdmat, unit_cell_.num_atoms());
     mt_complex_density_matrix.zero();
     
     /* add k-point contribution */
-    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         auto kp = ks[ik];
@@ -41,10 +41,10 @@ void Density::generate_valence_density_mt(K_set& ks)
         }
     }
    
-    // compute occupation matrix
+    /* compute occupation matrix */
     if (parameters_.uj_correction())
     {
-        Timer* t3 = new Timer("sirius::Density::generate:om");
+        Timer t3("sirius::Density::generate:om");
         
         mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
         
@@ -94,8 +94,6 @@ void Density::generate_valence_density_mt(K_set& ks)
             int rank = unit_cell_.spl_num_atoms().local_rank(ia);
             unit_cell_.atom(ia)->sync_occupation_matrix(ctx_.comm(), rank);
         }
-
-        delete t3;
     }
 
     int max_num_rf_pairs = unit_cell_.max_mt_radial_basis_size() * 

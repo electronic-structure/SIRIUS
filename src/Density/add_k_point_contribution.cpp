@@ -7,11 +7,46 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
                                                               occupied_bands_descriptor const& occupied_bands__,
                                                               mdarray<double_complex, 4>& density_matrix__)
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
-    STOP();
+    if (parameters_.num_mag_dims() != 3)
+    {
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        {
+            int nbnd = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped().local_size();
 
-    //Timer t("sirius::Density::add_k_point_contribution");
+            mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
+            mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
+
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            {
+                int offset_wf = unit_cell_.atom(ia)->offset_wf();
+                int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
+
+                for (int i = 0; i < nbnd; i++)
+                {
+                    int j = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped()[i];
+ 
+                    for (int xi = 0; xi < mt_basis_size; xi++)
+                    {
+                        wf1(xi, i) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
+                        wf2(xi, i) = kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi] * 
+                                     kp__->band_occupancy(j + ispn * parameters_.num_fv_states()) *
+                                     kp__->weight();
+                    }
+                }
+                /* add |psi_j> n_j <psi_j| to density matrix */
+                linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
+                                      &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), complex_one, 
+                                      density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
+            }
+        }
+    }
+    else
+    {
+        STOP();
+    }
+
 
     //int nbnd = occupied_bands__.num_occupied_bands_local();
     //

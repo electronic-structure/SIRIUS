@@ -604,7 +604,6 @@ void FFT3D::transform(Gvec const& gvec__, double_complex* data__)
 }
 
 template void FFT3D::transform<1>(Gvec const& gvec__, double_complex* data__);
-
 template void FFT3D::transform<-1>(Gvec const& gvec__, double_complex* data__);
         
 };

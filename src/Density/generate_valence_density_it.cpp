@@ -4,49 +4,24 @@ namespace sirius {
 
 void Density::generate_valence_density_it(K_set& ks__)
 {
-    Timer t("sirius::Density::generate_valence_density_it", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_it");
 
     ctx_.fft_ctx().allocate_workspace();
 
     /* add k-point contribution */
-    for (int ikloc = 0; ikloc < (int)ks__.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__[ik];
-
-        auto occupied_bands = kp->get_occupied_bands_list(ctx_.mpi_grid_fft().communicator(1 << 0));
-
-        //if (ctx_.fft(0)->parallel())
-        //{
-        //    occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid().comm_col());
-        //}
-        //else
-        //{
-        //    occupied_bands = kp->get_occupied_bands_list(kp->blacs_grid_slice().comm_col());
-        //}
         
-        //if (!parameters_.full_potential() && kp->num_ranks() > 1)
-        //{
-        //    STOP();
-        ////    if (ctx_.fft(0)->parallel())
-        ////    {
-        ////        linalg<CPU>::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-        ////                            kp->fv_states(), 0, 0,
-        ////                            kp->spinor_wave_functions(0), 0, 0,
-        ////                            kp->blacs_grid().context());
-        ////    }
-        ////    else
-        ////    {
-        ////        redist::gemr2d(kp->wf_size(), occupied_bands.num_occupied_bands(),
-        ////                       kp->fv_states(), 0, 0,
-        ////                       kp->spinor_wave_functions(0), 0, 0);
-        ////    }
-        //}
-
-        //kp->spinor_wave_functions(0)->swap_forward(0, occupied_bands.num_occupied_bands()); 
-        kp->spinor_wave_functions<false>(0).swap_forward(0, kp->num_occupied_bands(0)); 
-
-        add_k_point_contribution_it(kp, occupied_bands);
+        if (parameters_.full_potential())
+        {
+            add_k_point_contribution_it<true>(kp);
+        }
+        else
+        {
+            add_k_point_contribution_it<false>(kp);
+        }
     }
 
     /* reduce arrays; assume that each rank did it's own fraction of the density */
