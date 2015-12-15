@@ -38,15 +38,28 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
       types_(types__),
       tolerance_(tolerance__)
 {
+    PROFILE();
+
+    std::cout << "Det(lattice): " << lattice_vectors__.det() << std::endl;
+
     double lattice[3][3];
-    for (int i = 0; i < 3; i++)
+    for (int i: {0, 1, 2})
     {
-        for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_(i, j);
+        for (int j: {0, 1, 2}) lattice[i][j] = lattice_vectors_(i, j);
     }
     positions_ = mdarray<double, 2>(3, num_atoms_);
-    positions__ >> positions_;
+    for (int ia = 0; ia < num_atoms_; ia++)
+    {
+        for (int x: {0, 1, 2}) positions_(x, ia) = positions__(x, ia);
+    }
 
+    //int na = spg_standardize_cell(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, 0, 0, tolerance_);
+    
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
+    if (spg_dataset_ == NULL)
+    {
+        TERMINATE("spg_get_dataset() returned NULL");
+    }
 
     if (spg_dataset_->spacegroup_number == 0)
         TERMINATE("spg_get_dataset() returned 0 for the space group");

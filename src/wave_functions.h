@@ -311,6 +311,16 @@ class Wave_functions<true>
             return wf_coeffs_;
         }
 
+        inline int wf_size() const
+        {
+            return wf_size_;
+        }
+
+        inline double_complex& operator()(int i__, int j__)
+        {
+            return wf_coeffs_(i__, j__);
+        }
+
         inline double_complex* operator[](int i__)
         {
             return &wf_coeffs_swapped_(0, i__);

@@ -8,7 +8,7 @@ void K_point::generate_spinor_wave_functions()
 
     double_complex alpha(1, 0);
     double_complex beta(0, 0);
-    
+
     if (use_second_variation) 
     {
         if (!parameters_.need_sv())
@@ -23,6 +23,8 @@ void K_point::generate_spinor_wave_functions()
             }
             return;
         }
+
+        int nfv = parameters_.num_fv_states();
  
         /* serial version */
         if (num_ranks() == 1)
@@ -61,11 +63,10 @@ void K_point::generate_spinor_wave_functions()
                     }
                     else
                     {
-                        STOP();
-                       // /* multiply up block for first half of the bands, dn block for second half of the bands */
-                       // linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
-                       //                   sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
-                       //                   spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
+                        /* multiply up block for first half of the bands, dn block for second half of the bands */
+                        linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states<true>().coeffs().panel().at<CPU>(), wf_size(), 
+                                          sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
+                                          spinor_wave_functions<true>(ispn).coeffs().panel().at<CPU>(), wf_size());
                     }
                 }
                 else

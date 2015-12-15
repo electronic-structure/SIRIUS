@@ -65,11 +65,10 @@ class Band
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(dmatrix<double_complex>& fv_states__,
-                                  int num_gkvec__,
-                                  int const* fft_index__, 
+        void apply_magnetic_field(Wave_functions<true>& fv_states__,
+                                  Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
-                                  std::vector< dmatrix<double_complex> >& hpsi__);
+                                  std::vector<Wave_functions<true>*>& hpsi__);
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
