@@ -37,11 +37,11 @@ void Density::generate_valence_density_mt(K_set& ks)
             ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
                                unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
             
-            std::cout <<"ia: "<<ia<<" j: "<<j<<" sum(mt_complex_density_matrix): "<<
-              std::accumulate(&mt_complex_density_matrix(0, 0, j, ia),
-                              &mt_complex_density_matrix(0, 0, j, ia) + unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(),
-                              double_complex(0, 0)) << std::endl;
-                                                
+            //std::cout <<"ia: "<<ia<<" j: "<<j<<" sum(mt_complex_density_matrix): "<<
+            //  std::accumulate(&mt_complex_density_matrix(0, 0, j, ia),
+            //                  &mt_complex_density_matrix(0, 0, j, ia) + unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(),
+            //                  double_complex(0, 0)) << std::endl;
+            //                                    
         }
     }
    

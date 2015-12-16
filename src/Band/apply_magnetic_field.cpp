@@ -87,7 +87,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
             }
               
             linalg<CPU>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
-                              &fv_states__[0][offset], fv_states__.wf_size(), &(*hpsi__[2])[0][offset], hpsi__[0]->wf_size());
+                              &fv_states__[0][offset], fv_states__.wf_size(), &(*hpsi__[2])[0][offset], hpsi__[2]->wf_size());
         }
         
         //== /* compute bwf = (B_x + iB_y)|wf_j> */
