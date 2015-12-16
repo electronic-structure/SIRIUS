@@ -296,6 +296,8 @@ class DFT_ground_state
 
         void symmetrize_density()
         {
+            PROFILE();
+
             auto& comm = ctx_.comm();
 
             if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)

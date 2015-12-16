@@ -161,8 +161,6 @@ class K_point
         /// Test orthonormalization of first-variational states.
         void test_fv_states();
 
-        void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
-        
     public:
 
         Iterative_solver_input_section iterative_solver_input_section_;
@@ -249,7 +247,7 @@ class K_point
         void test_spinor_wave_functions(int use_fft);
 
         /// Get the number of occupied bands for each spin channel.
-        int num_occupied_bands(int ispn__);
+        int num_occupied_bands(int ispn__ = -1);
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,

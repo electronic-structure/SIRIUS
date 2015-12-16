@@ -17,8 +17,6 @@ void Density::add_k_point_contribution_it(K_point* kp__)
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_it");
 
-    //int num_spins = parameters_.num_spins();
-    //int num_mag_dims = parameters_.num_mag_dims();
     int nfv = parameters_.num_fv_states();
     double omega = unit_cell_.omega();
     int num_fft_streams = ctx_.fft_ctx().num_fft_streams();
@@ -78,7 +76,6 @@ void Density::add_k_point_contribution_it(K_point* kp__)
                     }
                     else
                     {
-                            
                         #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
                         for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
                         {
@@ -94,7 +91,57 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     }
     else
     {
-        STOP();
+        assert(kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped().local_size() ==
+               kp__->spinor_wave_functions<mt_spheres>(1).spl_num_swapped().local_size());
+
+        #pragma omp parallel num_threads(num_fft_streams)
+        {
+            int thread_id = omp_get_thread_num();
+
+            std::vector<double_complex> psi_r(ctx_.fft(0)->local_size());
+
+            #pragma omp for schedule(dynamic, 1)
+            for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped().local_size(); i++)
+            {
+                int j = kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped()[i];
+                double w = kp__->band_occupancy(j) * kp__->weight() / omega;
+
+                /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
+                ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(0)[i] + wf_pw_offset);
+                /* save in auxiliary buffer */
+                ctx_.fft(thread_id)->output(&psi_r[0]);
+                /* transform dn- component of spinor wave function */
+                ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(1)[i] + wf_pw_offset);
+
+                if (thread_id == 0 && parameters_.processing_unit() == GPU)
+                {
+                    STOP();
+                    //#ifdef __GPU
+                    //update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
+                    //                               it_density_matrix_gpu.at<GPU>());
+                    //#else
+                    //TERMINATE_NO_GPU
+                    //#endif
+                }
+                else
+                {
+                    #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
+                    for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
+                    {
+                        auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
+                        auto r1 = (std::pow(ctx_.fft(thread_id)->buffer(ir).real(), 2) +
+                                   std::pow(ctx_.fft(thread_id)->buffer(ir).imag(), 2)) * w;
+
+                        auto z2 = psi_r[ir] * std::conj(ctx_.fft(thread_id)->buffer(ir)) * w;
+
+                        it_density_matrix(ir, 0, thread_id) += r0;
+                        it_density_matrix(ir, 1, thread_id) += r1;
+                        it_density_matrix(ir, 2, thread_id) += 2.0 * std::real(z2);
+                        it_density_matrix(ir, 3, thread_id) -= 2.0 * std::imag(z2);
+                    }
+                }
+            }
+        }
     }
 
 

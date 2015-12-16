@@ -13,7 +13,7 @@ void K_point::initialize()
 
     int bs = parameters_.cyclic_block_size();
 
-    /* in case of collinear magnetism we store only non-zero spinor components 
+    /* In case of collinear magnetism we store only non-zero spinor components.
      *
      * non magnetic case: 
      * +---+
@@ -36,23 +36,15 @@ void K_point::initialize()
      */
     int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
 
-    if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
-
     if (use_second_variation && parameters_.need_sv())
     {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
-        if (parameters_.num_mag_dims() == 3)
-        {
-            sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
-        }
-        else /* store up-up and dn-dn components */
-        {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                sv_eigen_vectors_[ispn] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
-            }
-        }
+        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
+        if (parameters_.num_mag_dims() == 1)
+            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
     }
+
+    if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
 
     /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
      * form the input whereas for full-potential calculations this is derived 
@@ -83,8 +75,6 @@ void K_point::initialize()
     build_gklo_basis_descriptors();
     /* distribute basis functions */
     distribute_basis_index();
-    /* initialize phase factors */
-    init_gkvec_phase_factors(num_gkvec_row(), gklo_basis_descriptors_row_);
     
     if (parameters_.full_potential())
     {

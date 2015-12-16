@@ -15,27 +15,23 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (kp->num_ranks() > 1 && !std_evp_solver()->parallel()) TERMINATE("eigen-value solver is not parallel");
 
     /* number of h|\psi> components */
-    int nhpsi = parameters_.num_mag_dims() + 1;
-    if (!std_evp_solver()->parallel() && parameters_.num_mag_dims() == 3) nhpsi = 3;
+    int nhpsi = (parameters_.num_mag_dims() == 3) ? 3 : parameters_.num_spins();
+
+    //int nhpsi = parameters_.num_mag_dims() + 1;
+    //if (!std_evp_solver()->parallel() && parameters_.num_mag_dims() == 3) nhpsi = 3;
 
     /* size of the first-variational state */
     int fvsz = kp->wf_size();
 
     std::vector<double> band_energies(parameters_.num_bands());
 
+    /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions<true>*> hpsi;
     for (int i = 0; i < nhpsi; i++)
     {
         hpsi.push_back(new Wave_functions<true>(kp->wf_size(), parameters_.num_fv_states(), parameters_.cyclic_block_size(),
                                                 blacs_grid_, kp->blacs_grid_slice()));
     }
-
-    /* product of the second-variational Hamiltonian and a wave-function */
-    //std::vector< dmatrix<double_complex> > hpsi_slice(nhpsi);
-    //for (int i = 0; i < nhpsi; i++)
-    //{
-    //    hpsi_slice[i] = dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid_slice(), 1, 1);
-    //}
 
     /* compute product of magnetic field and wave-function */
     if (parameters_.num_spins() == 2)
@@ -63,7 +59,6 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     for (auto e: hpsi) e->swap_backward(0, parameters_.num_fv_states());
 
-//== 
 //==     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
 //==     {
 //==         #ifdef __GPU
@@ -79,10 +74,11 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 //==     #endif
 //==
 
+    int nfv = parameters_.num_fv_states();
+    int bs = parameters_.cyclic_block_size();
+
     if (parameters_.num_mag_dims() != 3)
     {
-        int nfv = parameters_.num_fv_states();
-        int bs = parameters_.cyclic_block_size();
         dmatrix<double_complex> h(nfv, nfv, kp->blacs_grid(), bs, bs);
 
         //if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
@@ -116,7 +112,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             }
             else
             {
-                /* compute <wf_i | (h * wf_j)> for up-up or dn-dn block */
+                /* compute <wf_i | h * wf_j> for up-up or dn-dn block */
                 linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), hpsi[ispn]->coeffs(),
                                   complex_zero, h);
             }
@@ -130,7 +126,28 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     }
     else
     {
-        STOP();
+        int nb = parameters_.num_bands();
+        dmatrix<double_complex> h(nb, nb, kp->blacs_grid(), bs, bs);
+
+        /* compute <wf_i | h * wf_j> for up-up block */
+        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[0]->coeffs(), 0, 0,
+                          complex_zero, h, 0, 0);
+        /* compute <wf_i | h * wf_j> for dn-dn block */
+        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[1]->coeffs(), 0, 0,
+                          complex_zero, h, nfv, nfv);
+        /* compute <wf_i | h * wf_j> for up-dn block */
+        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[2]->coeffs(), 0, 0,
+                          complex_zero, h, 0, nfv);
+        
+        for (int i = 0; i < nfv; i++)
+        {
+            h.add(i, i, kp->fv_eigen_value(i));
+            h.add(i + nfv, i + nfv, kp->fv_eigen_value(i));
+        }
+        Timer t1("sirius::Band::solve_sv|stdevp");
+        std_evp_solver()->solve(nb, h.at<CPU>(), h.ld(), &band_energies[0],
+                                kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld());
+        
     }
 //== 
 //==     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)

@@ -83,11 +83,11 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
                 for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) - complex_i * zm(j1, j2, 2);
                 
                 /* remember: zm is hermitian and we computed only the upper triangular part */
-                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - complex_i * conj(zm(j2, j1, 2));
+                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = std::conj(zm(j2, j1, 1)) - complex_i * std::conj(zm(j2, j1, 2));
             }
               
             linalg<CPU>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
-                              &fv_states__[0][offset], fv_states__.wf_size(), &(*hpsi__[0])[0][offset], hpsi__[0]->wf_size());
+                              &fv_states__[0][offset], fv_states__.wf_size(), &(*hpsi__[2])[0][offset], hpsi__[0]->wf_size());
         }
         
         //== /* compute bwf = (B_x + iB_y)|wf_j> */
@@ -105,17 +105,35 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
         //==                       &fv_states__(offset, 0), fv_states__.ld(), &hpsi__[2](offset, 0), hpsi__[2].ld());
         //== }
     }
+    std::vector<double_complex> psi_r;
+    if (hpsi__.size() == 3) psi_r.resize(ctx_.fft(0)->local_size());
 
     int wf_pw_offset = unit_cell_.mt_basis_size();
     for (int i = 0; i < fv_states__.spl_num_swapped().local_size(); i++)
     {
+        /* transform first-variational state to real space */
         ctx_.fft(0)->transform<1>(gkvec__, &fv_states__[i][wf_pw_offset]);
+        /* save for a reuse */
+        if (hpsi__.size() == 3) ctx_.fft(0)->output(&psi_r[0]);
+
         for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
-            /* hpsi(r) = psi(r) * Bz(r) * Theta(r) */
+            /* hpsi(r) = psi(r) * B_z(r) * Theta(r) */
             ctx_.fft(0)->buffer(ir) *= (effective_magnetic_field__[0]->f_it(ir) * ctx_.step_function()->theta_r(ir));
         }
         ctx_.fft(0)->transform<-1>(gkvec__, &(*hpsi__[0])[i][wf_pw_offset]);
+
+        if (hpsi__.size() >= 3)
+        {
+            for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+            {
+                /* hpsi(r) = psi(r) * (B_x(r) - iB_y(r)) * Theta(r) */
+                ctx_.fft(0)->buffer(ir) = psi_r[ir] * ctx_.step_function()->theta_r(ir) * 
+                                          (effective_magnetic_field__[1]->f_it(ir) - 
+                                           complex_i * effective_magnetic_field__[2]->f_it(ir));
+            }
+            ctx_.fft(0)->transform<-1>(gkvec__, &(*hpsi__[2])[i][wf_pw_offset]);
+        }
     }
 
 

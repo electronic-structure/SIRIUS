@@ -167,7 +167,7 @@ class Symmetry
 
         inline int num_spg_sym() const
         {
-            return (int)space_group_symmetry_.size();
+            return static_cast<int>(space_group_symmetry_.size());
         }
 
         inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
@@ -177,7 +177,7 @@ class Symmetry
         }
         inline int num_mag_sym() const
         {
-            return (int)magnetic_group_symmetry_.size();
+            return static_cast<int>(magnetic_group_symmetry_.size());
         }
 
         inline magnetic_group_symmetry_descriptor const& magnetic_group_symmetry(int isym__) const

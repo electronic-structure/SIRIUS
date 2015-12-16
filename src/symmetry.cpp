@@ -40,7 +40,12 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
 {
     PROFILE();
 
-    std::cout << "Det(lattice): " << lattice_vectors__.det() << std::endl;
+    if (lattice_vectors__.det() < 0)
+    {
+        std::stringstream s;
+        s << "spglib requires positive determinant for a matrix of lattice vectors";
+        TERMINATE(s);
+    }
 
     double lattice[3][3];
     for (int i: {0, 1, 2})
@@ -53,8 +58,6 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
         for (int x: {0, 1, 2}) positions_(x, ia) = positions__(x, ia);
     }
 
-    //int na = spg_standardize_cell(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, 0, 0, tolerance_);
-    
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
     if (spg_dataset_ == NULL)
     {
@@ -83,7 +86,7 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
                                     spg_dataset_->translations[isym][1],
                                     spg_dataset_->translations[isym][2]);
         int p = sym_op.R.det(); 
-        if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
+        if (!(p == 1 || p == -1)) TERMINATE("wrong rotation matrix");
         sym_op.proper = p;
         sym_op.rotation = lattice_vectors_ * matrix3d<double>(sym_op.R * p) * inverse_lattice_vectors_;
         sym_op.euler_angles = euler_angles(sym_op.rotation);
@@ -469,8 +472,8 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
         }
     }
     comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
-                     (int)(lmmax * nrmax * spl_atoms.global_offset()), 
-                     (int)(lmmax * nrmax * spl_atoms.local_size()));
+                     lmmax * nrmax * spl_atoms.global_offset(), 
+                     lmmax * nrmax * spl_atoms.local_size());
 }
 
 void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,

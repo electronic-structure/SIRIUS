@@ -71,11 +71,10 @@ void K_point::generate_spinor_wave_functions()
                 }
                 else
                 {
-                    STOP();
                     /* multiply up block and then dn block for all bands */
-                    //linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
-                    //                  sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
-                    //                  spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states<true>().coeffs().panel().at<CPU>(), wf_size(),
+                                      sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
+                                      spinor_wave_functions<true>(ispn).coeffs().panel().at<CPU>(), wf_size());
                 }
             }
             if (parameters_.processing_unit() == GPU)

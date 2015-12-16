@@ -12,11 +12,6 @@ void Density::initial_density()
     
     auto rl = ctx_.reciprocal_lattice();
 
-    /* let rho(r) = a*Exp[-b*r]
-       \int rho(r) dr = 4pi * a * \int Exp[-b*r]*r*r*dr = 4pi*a * (2/b^3) = Z
-       a = Z * b^3 / 2 / 4 / pi
-    */
-
     if (parameters_.full_potential())
     {
         splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
@@ -56,7 +51,7 @@ void Density::initial_density()
             if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;
         }
 
-        int ngv_loc = (int)spl_num_gvec.local_size();
+        int ngv_loc = spl_num_gvec.local_size();
 
         /* mapping between G-shell (global index) and a list of G-vectors (local index) */
         std::map<int, std::vector<int> > gsh_map;
@@ -100,7 +95,7 @@ void Density::initial_density()
         auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ngv_loc);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            int ig = (int)spl_num_gvec[igloc];
+            int ig = spl_num_gvec[igloc];
             auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
@@ -149,16 +144,10 @@ void Density::initial_density()
         
         SHT sht(lmax);
 
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             int iat = unit_cell_.atom(ia)->type_id();
-            //double b = 4;
-            //double R = parameters_.unit_cell()->atom(ia)->mt_radius();
-            //int Z = parameters_.unit_cell()->atom(ia)->zn();
-
-            //double c2 = (std::pow(b,3)*(3 + b*R)*Z)/(8.*std::exp(b*R)*pi*std::pow(R,2));
-            //double c3 = -(std::pow(b,3)*(2 + b*R)*Z)/(8.*std::exp(b*R)*pi*std::pow(R,3));
 
             Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia)->radial_grid());
             rhoylm.zero();
@@ -181,7 +170,6 @@ void Density::initial_density()
             {
                 double x = unit_cell_.atom(ia)->radial_grid(ir);
                 rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia)->type()->free_atom_density(x)) / y00;
-                //rhoylm(0, ir) += (v[0] - (c2 * std::pow(x, 2) + c3*std::pow(x, 3))) / y00;
             }
             sht.convert(rhoylm, rho_->f_mt(ialoc));
         }
@@ -193,9 +181,6 @@ void Density::initial_density()
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            //double b = 8;
-            //int Z = parameters_.unit_cell()->atom(ia)->zn();
-
             auto p = unit_cell_.spl_num_atoms().location(ia);
             
             if (p.second == ctx_.comm().rank())
@@ -213,9 +198,9 @@ void Density::initial_density()
         /* initialize the magnetization */
         if (parameters_.num_mag_dims())
         {
-            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = (int)unit_cell_.spl_num_atoms(ialoc);
+                int ia = unit_cell_.spl_num_atoms(ialoc);
                 vector3d<double> v = unit_cell_.atom(ia)->vector_field();
                 double len = v.length();
 

@@ -43,7 +43,41 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
     }
     else
     {
-        STOP();
+        assert(kp__->spinor_wave_functions<true>(0).spl_num_swapped().local_size() ==
+               kp__->spinor_wave_functions<true>(1).spl_num_swapped().local_size());
+
+        int nbnd = kp__->spinor_wave_functions<true>(0).spl_num_swapped().local_size();
+
+        mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, parameters_.num_spins());
+        mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, parameters_.num_spins());
+
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            int offset_wf = unit_cell_.atom(ia)->offset_wf();
+            int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
+
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                for (int i = 0; i < nbnd; i++)
+                {
+                    int j = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped()[i];
+
+                    for (int xi = 0; xi < mt_basis_size; xi++)
+                    {
+                        wf1(xi, i, ispn) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
+                        wf2(xi, i, ispn) = kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi] * 
+                                           kp__->band_occupancy(j) * kp__->weight();
+                    }
+                }
+            }
+            for (int j = 0; j < 3; j++)
+            {
+                linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
+                                  &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
+                                  &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex_one, 
+                                  density_matrix__.at<CPU>(0, 0, j, ia), density_matrix__.ld());
+            }
+        }
     }
 
 

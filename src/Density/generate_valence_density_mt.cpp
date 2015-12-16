@@ -31,11 +31,17 @@ void Density::generate_valence_density_mt(K_set& ks)
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int ialoc = (int)unit_cell_.spl_num_atoms().local_index(ia);
+            int ialoc = unit_cell_.spl_num_atoms().local_index(ia);
             int rank = unit_cell_.spl_num_atoms().local_rank(ia);
 
             ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
                                unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
+            
+            std::cout <<"ia: "<<ia<<" j: "<<j<<" sum(mt_complex_density_matrix): "<<
+              std::accumulate(&mt_complex_density_matrix(0, 0, j, ia),
+                              &mt_complex_density_matrix(0, 0, j, ia) + unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(),
+                              double_complex(0, 0)) << std::endl;
+                                                
         }
     }
    
@@ -46,7 +52,7 @@ void Density::generate_valence_density_mt(K_set& ks)
         
         mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
         
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             Atom_type* type = unit_cell_.atom(ia)->type();
@@ -139,7 +145,7 @@ void Density::generate_valence_density_mt(K_set& ks)
             int offs = idxrf2 * (idxrf2 + 1) / 2;
             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
             {
-                // off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2
+                /* off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2 */
                 int n = (idxrf1 == idxrf2) ? 1 : 2; 
                 for (int ir = 0; ir < unit_cell_.atom(ia)->type()->num_mt_points(); ir++)
                 {
@@ -155,13 +161,13 @@ void Density::generate_valence_density_mt(K_set& ks)
                               &rf_pairs(0, 0), rf_pairs.ld(), &dlm(0, 0, j), dlm.ld());
         }
 
-        int sz = parameters_.lmmax_rho() * nmtp * (int)sizeof(double);
+        int sz = static_cast<int>(parameters_.lmmax_rho() * nmtp * sizeof(double));
         switch (parameters_.num_mag_dims())
         {
             case 3:
             {
-                memcpy(&magnetization_[1]->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 2), sz); 
-                memcpy(&magnetization_[2]->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
+                std::memcpy(&magnetization_[1]->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 2), sz); 
+                std::memcpy(&magnetization_[2]->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
             }
             case 1:
             {
@@ -177,10 +183,9 @@ void Density::generate_valence_density_mt(K_set& ks)
             }
             case 0:
             {
-                memcpy(&rho_->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
+                std::memcpy(&rho_->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
             }
         }
-        t2.stop();
     }
 }
 

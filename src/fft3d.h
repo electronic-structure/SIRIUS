@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,7 +19,7 @@
 
 /** \file fft3d.h
  *   
- *  \brief Interface to FFTW3 library.
+ *  \brief Contains declaration and partial implementation of FFT3D class.
  */
 
 #ifndef __FFT3D_H__
@@ -42,7 +42,7 @@
 
 namespace sirius {
 
-/// Interface to 3D FFT.
+/// Implementation of FFT3D.
 /** FFT convention:
  *  \f[
  *      f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})

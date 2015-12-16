@@ -4,20 +4,25 @@ namespace sirius {
 
 int K_point::num_occupied_bands(int ispn__)
 {
-    if ((parameters_.num_mag_dims() == 3 || parameters_.num_mag_dims() == 0) && ispn__ != 0)
+    int nbnd = 0;
+
+    if (parameters_.num_mag_dims() == 3)
     {
-        TERMINATE("wrong spin index");
+        for (int j = 0; j < parameters_.num_bands(); j++)
+        {
+            if (band_occupancy(j) * weight() > 1e-14) nbnd++;
+        }
+        return nbnd;
     }
 
-    int nb = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
+    if (!(ispn__ == 0 || ispn__ == 1)) TERMINATE("wrong spin channel");
 
-    int n = 0;
-    for (int i = 0; i < nb; i++)
+    for (int i = 0; i < parameters_.num_fv_states(); i++)
     {
         int j = i + ispn__ * parameters_.num_fv_states();
-        if (band_occupancy(j) * weight() > 1e-14) n++;
+        if (band_occupancy(j) * weight() > 1e-14) nbnd++;
     }
-    return n;
+    return nbnd;
 }
 
 };

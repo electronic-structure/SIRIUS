@@ -52,7 +52,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/generate_fv_states.cpp \
        K_point/generate_spinor_wave_functions.cpp \
        K_point/generate_gkvec.cpp \
-       K_point/init_gkvec.cpp \
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \

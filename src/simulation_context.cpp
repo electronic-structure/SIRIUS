@@ -9,7 +9,8 @@ void Simulation_context::init_fft()
     int nfft_threads = parameters_.num_fft_threads();
     int nfft_workers = parameters_.num_fft_workers();
 
-    bool do_parallel_fft = true; //(mpi_grid_->dimension_size(_dim_row_) > 1 && !parameters_.full_potential());
+    /* for now, use parallel fft only in pseudopotential part of the code */
+    bool do_parallel_fft = !parameters_.full_potential();
 
     auto& comm = mpi_grid_->communicator(1 << _dim_col_ | 1 << _dim_row_);
 
@@ -171,7 +172,7 @@ void Simulation_context::initialize()
         TERMINATE("not enough first-variational states");
     
     /* total number of bands */
-    parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
+    //parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
 
     std::map<std::string, ev_solver_t> str_to_ev_solver_t;
 

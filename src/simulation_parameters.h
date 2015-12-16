@@ -255,10 +255,10 @@ class Simulation_parameters
             uj_correction_ = uj_correction__; 
         }
 
-        inline void set_num_bands(int num_bands__)
-        {
-            num_bands_ = num_bands__;
-        }
+        //inline void set_num_bands(int num_bands__)
+        //{
+        //    num_bands_ = num_bands__;
+        //}
 
         inline void set_mpi_grid_dims(std::vector<int> const& mpi_grid_dims__)
         {
@@ -360,16 +360,17 @@ class Simulation_parameters
             return num_fv_states_;
         }
     
-        inline int num_bands() const
-        {
-            return num_bands_;
-        }
-        
         inline int num_spins() const
         {
             assert(num_spins_ == 1 || num_spins_ == 2);
             
             return num_spins_;
+        }
+
+        inline int num_bands() const
+        {
+            return num_fv_states() * num_spins();
+            //return num_bands_;
         }
     
         inline int num_mag_dims() const
