@@ -30,20 +30,6 @@
 #include "k_set.h"
 #include "force.h"
 
-/** \page DFT Spin-polarized DFT
-    \section section1 Preliminary notes
-
-    \note Here and below sybol \f$ \sigma \f$ is reserved for the Pauli matrices. Spin components are labeled with \f$ \alpha \f$ or \f$ \beta\f$.
-
-    Wave-function of spin-1/2 particle is a two-component spinor:
-    \f[
-        {\bf \varphi}({\bf r})=\left( \begin{array}{c} \varphi_1({\bf r}) \\ \varphi_2({\bf r}) \end{array} \right)
-    \f]
-    Operator of spin:
-    \f[
-        {\bf \hat S}=\frac{\hbar}{2}{\bf \sigma},
-    \f]
-*/
 namespace sirius
 {
 
@@ -336,3 +322,63 @@ class DFT_ground_state
 
 #endif // __DFT_GROUND_STATE_H__
 
+/** \page DFT Spin-polarized DFT
+ *  \section section1 Preliminary notes
+ *
+ *  \note Here and below sybol \f$ {\boldsymbol \sigma} \f$ is reserved for the vector of Pauli matrices. Spin components 
+ *        are labeled with \f$ \alpha \f$ or \f$ \beta\f$.
+ *
+ *  Wave-function of spin-1/2 particle is a two-component spinor:
+ *  \f[
+ *      {\bf \varphi}({\bf r})=\left( \begin{array}{c} \varphi_1({\bf r}) \\ \varphi_2({\bf r}) \end{array} \right)
+ *  \f]
+ *  Operator of spin:
+ *  \f[
+ *      {\bf \hat S}=\frac{\hbar}{2}{\bf \sigma},
+ *  \f]
+ *  Pauli matrices:
+ *  \f[
+ *      \sigma_x=\left( \begin{array}{cc}
+ *         0 & 1 \\
+ *         1 & 0 \\ \end{array} \right) \,
+ *           \sigma_y=\left( \begin{array}{cc}
+ *         0 & -i \\
+ *         i & 0 \\ \end{array} \right) \,
+ *           \sigma_z=\left( \begin{array}{cc}
+ *         1 & 0 \\
+ *         0 & -1 \\ \end{array} \right)
+ *  \f]
+ *
+ *  \section section2 Density and magnetization
+ *  Density is defined as:
+ *  \f[
+ *      \rho({\bf r}) = \sum_{j}^{occ} \Psi_{j}^{*}({\bf r}){\bf I} \Psi_{j}({\bf r}) = 
+          \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} + \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} 
+
+ *  \f]
+ *  Magnetization is defined as:
+ *  \f[
+ *      {\bf m}({\bf r}) = \sum_{j}^{occ} \Psi_{j}^{*}({\bf r}) {\boldsymbol \sigma} \Psi_{j}({\bf r})
+ *  \f]
+ *  \f[
+ *      m_x({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} + \psi_{j}^{\downarrow *} \psi_{j}^{\uparrow} 
+ *  \f]
+ *  \f[
+ *      m_y({\bf r}) = \sum_{j}^{occ} -i \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} + i \psi_{j}^{\downarrow *} \psi_{j}^{\uparrow} 
+ *  \f]
+ *  \f[
+ *      m_z({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} - \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} 
+ *  \f]
+ *  Density matrix is defined as:
+ *  \f[
+ *      {\boldsymbol \rho}({\bf r}) = \frac{1}{2} \Big( {\bf I}\rho({\bf r}) + {\boldsymbol \sigma} {\bf m}({\bf r})\Big) = 
+ *        \frac{1}{2} \sum_{j}^{occ} \left( \begin{array}{cc} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} & 
+ *                                                            \psi_{j}^{\downarrow *} \psi_{j}^{\uparrow} \\
+ *                                                            \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} &
+ *                                                            \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} \end{array} \right)
+ *  \f]
+ *  Pay attention to the order of spin indices in the \f$ 2 \times 2 \f$ density matrix:
+ *  \f[
+ *    \rho_{\alpha \beta}({\bf r}) = \frac{1}{2} \sum_{j}^{occ} \psi_{j}^{\beta *}({\bf r})\psi_{j}^{\alpha}({\bf r})
+ *  \f]
+ */

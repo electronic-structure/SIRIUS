@@ -70,69 +70,19 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
                     }
                 }
             }
-            for (int j = 0; j < 3; j++)
+            /* compute diagonal terms */
+            for (int ispn = 0; ispn < 2; ispn++)
             {
                 linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-                                  &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
-                                  &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex_one, 
-                                  density_matrix__.at<CPU>(0, 0, j, ia), density_matrix__.ld());
+                                  &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), complex_one, 
+                                  density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
             }
+            /* offdiagonal term */
+            linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
+                              &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), complex_one, 
+                              density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
         }
     }
-
-
-    //int nbnd = occupied_bands__.num_occupied_bands_local();
-    //
-    //if (!nbnd) return;
-   
-    //mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, parameters_.num_spins());
-    //mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, parameters_.num_spins());
-
-    //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    //{
-    //    int offset_wf = unit_cell_.atom(ia)->offset_wf();
-    //    int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
-
-    //    if (parameters_.num_mag_dims() == 3)
-    //    {
-    //        for (int i = 0; i < nbnd; i++)
-    //        {   
-    //            int ibnd_loc = occupied_bands__.idx_bnd_loc[i];
-    //            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-    //            {
-    //                for (int xi = 0; xi < mt_basis_size; xi++)
-    //                {
-    //                    wf1(xi, i, ispn) = std::conj(*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + xi, ibnd_loc));
-    //                    wf2(xi, i, ispn) = (*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + xi, ibnd_loc)) * occupied_bands__.weight[i];
-    //                }
-    //            }
-    //        }
-    //    }
-    //    else
-    //    {
-    //        for (int i = 0; i < nbnd; i++)
-    //        {   
-    //            int ibnd_loc = occupied_bands__.idx_bnd_loc[i];
-    //            int ibnd = occupied_bands__.idx_bnd_glob[i];
-    //            int ispn = (ibnd < parameters_.num_fv_states()) ? 0 : 1;
-    //            for (int xi = 0; xi < mt_basis_size; xi++)
-    //            {
-    //                wf1(xi, i, ispn) = std::conj(*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + xi, ibnd_loc));
-    //                wf2(xi, i, ispn) = (*kp__->spinor_wave_functions(ispn).at<CPU>(offset_wf + xi, ibnd_loc)) * occupied_bands__.weight[i];
-    //            }
-    //        }
-
-    //    }
-
-    //    for (int j = 0; j < (int)density_matrix__.size(2); j++)
-    //    {
-    //        linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-    //                          &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
-    //                          &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex_one, 
-    //                          density_matrix__.at<CPU>(0, 0, j, ia), density_matrix__.ld());
-    //    }
-    //}
-
 }
 
 template <>

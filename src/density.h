@@ -133,8 +133,6 @@ class Density
         
         Periodic_function<double>* magnetization_[3];
         
-        std::vector< std::pair<int, int> > dmat_spins_;
-
         /// Non-zero Gaunt coefficients.
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
         

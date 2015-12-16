@@ -48,56 +48,60 @@ void Density::generate_valence_density_mt(K_set& ks)
     /* compute occupation matrix */
     if (parameters_.uj_correction())
     {
-        Timer t3("sirius::Density::generate:om");
-        
-        mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
-        
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-        {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            Atom_type* type = unit_cell_.atom(ia)->type();
-            
-            occupation_matrix.zero();
-            for (int l = 0; l <= 3; l++)
-            {
-                int num_rf = type->indexr().num_rf(l);
+        STOP();
 
-                for (int j = 0; j < num_zdmat; j++)
-                {
-                    for (int order2 = 0; order2 < num_rf; order2++)
-                    {
-                    for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
-                    {
-                        for (int order1 = 0; order1 < num_rf; order1++)
-                        {
-                        for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
-                        {
-                            occupation_matrix(lm1, lm2, dmat_spins_[j].first, dmat_spins_[j].second) +=
-                                mt_complex_density_matrix_loc(type->indexb_by_lm_order(lm1, order1),
-                                                              type->indexb_by_lm_order(lm2, order2), j, ialoc) *
-                                unit_cell_.atom(ia)->symmetry_class()->o_radial_integral(l, order1, order2);
-                        }
-                        }
-                    }
-                    }
-                }
-            }
-        
-            // restore the du block
-            for (int lm1 = 0; lm1 < 16; lm1++)
-            {
-                for (int lm2 = 0; lm2 < 16; lm2++)
-                    occupation_matrix(lm2, lm1, 1, 0) = conj(occupation_matrix(lm1, lm2, 0, 1));
-            }
+        // TODO: fix the way how occupation matrix is calculated
 
-            unit_cell_.atom(ia)->set_occupation_matrix(&occupation_matrix(0, 0, 0, 0));
-        }
+        //Timer t3("sirius::Density::generate:om");
+        //
+        //mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
+        //
+        //for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        //{
+        //    int ia = unit_cell_.spl_num_atoms(ialoc);
+        //    Atom_type* type = unit_cell_.atom(ia)->type();
+        //    
+        //    occupation_matrix.zero();
+        //    for (int l = 0; l <= 3; l++)
+        //    {
+        //        int num_rf = type->indexr().num_rf(l);
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
-            int rank = unit_cell_.spl_num_atoms().local_rank(ia);
-            unit_cell_.atom(ia)->sync_occupation_matrix(ctx_.comm(), rank);
-        }
+        //        for (int j = 0; j < num_zdmat; j++)
+        //        {
+        //            for (int order2 = 0; order2 < num_rf; order2++)
+        //            {
+        //            for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
+        //            {
+        //                for (int order1 = 0; order1 < num_rf; order1++)
+        //                {
+        //                for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
+        //                {
+        //                    occupation_matrix(lm1, lm2, dmat_spins_[j].first, dmat_spins_[j].second) +=
+        //                        mt_complex_density_matrix_loc(type->indexb_by_lm_order(lm1, order1),
+        //                                                      type->indexb_by_lm_order(lm2, order2), j, ialoc) *
+        //                        unit_cell_.atom(ia)->symmetry_class()->o_radial_integral(l, order1, order2);
+        //                }
+        //                }
+        //            }
+        //            }
+        //        }
+        //    }
+        //
+        //    // restore the du block
+        //    for (int lm1 = 0; lm1 < 16; lm1++)
+        //    {
+        //        for (int lm2 = 0; lm2 < 16; lm2++)
+        //            occupation_matrix(lm2, lm1, 1, 0) = conj(occupation_matrix(lm1, lm2, 0, 1));
+        //    }
+
+        //    unit_cell_.atom(ia)->set_occupation_matrix(&occupation_matrix(0, 0, 0, 0));
+        //}
+
+        //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+        //{
+        //    int rank = unit_cell_.spl_num_atoms().local_rank(ia);
+        //    unit_cell_.atom(ia)->sync_occupation_matrix(ctx_.comm(), rank);
+        //}
     }
 
     int max_num_rf_pairs = unit_cell_.max_mt_radial_basis_size() * 
