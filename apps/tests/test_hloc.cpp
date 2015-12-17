@@ -32,7 +32,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     Hloc_operator hloc(fft_ctx, gvec, pw_ekin, veff);
 
-    Wave_functions<false> phi(4 * num_bands__, gvec, mpi_grid, static_cast<processing_unit_t>(use_gpu));
+    Wave_functions<false> phi(4 * num_bands__, gvec, mpi_grid, CPU);
     for (int i = 0; i < 4 * num_bands__; i++)
     {
         for (int j = 0; j < phi.num_gvec_loc(); j++)
@@ -40,7 +40,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
             phi(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    Wave_functions<false> hphi(4 * num_bands__, num_bands__, gvec, mpi_grid, static_cast<processing_unit_t>(use_gpu));
+    Wave_functions<false> hphi(4 * num_bands__, num_bands__, gvec, mpi_grid, CPU);
     
     Timer t1("h_loc");
     for (int i = 0; i < 4; i++)
