@@ -11,10 +11,12 @@ void test1(vector3d<int> const& dims__, double cutoff__, int num_bands__, std::v
 
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-
-    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
     
+    FFT3D fft(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
+    MEMORY_USAGE_INFO();
+
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.fft_grid(), fft.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
+    MEMORY_USAGE_INFO();
 
     Wave_functions psi_in(num_bands__, gvec, mpi_grid, true);
     Wave_functions psi_out(num_bands__, gvec, mpi_grid, true);
@@ -26,12 +28,15 @@ void test1(vector3d<int> const& dims__, double cutoff__, int num_bands__, std::v
             psi_in(j, i) = type_wrapper<double_complex>::random();
         }
     }
+    MEMORY_USAGE_INFO();
     if (comm.rank() == 0)
     {
-        printf("local size of wf: %f GB\n", num_bands__ * gvec.num_gvec(comm.rank()) / double(1 << 30));
+        printf("num_gvec_loc: %i\n", gvec.num_gvec(comm.rank()));
+        printf("local size of wf: %f GB\n", sizeof(double_complex) * num_bands__ * gvec.num_gvec(comm.rank()) / double(1 << 30));
     }
     Timer t1("swap", comm);
     psi_in.swap_forward(0, num_bands__);
+    MEMORY_USAGE_INFO();
     for (int i = 0; i < psi_in.spl_num_swapped().local_size(); i++)
     {
         std::memcpy(psi_out[i], psi_in[i], gvec.num_gvec_fft() * sizeof(double_complex));
