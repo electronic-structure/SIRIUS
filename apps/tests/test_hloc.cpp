@@ -15,7 +15,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
                           static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1),
-              mpi_grid.communicator(1 << 0).size(), false, false);
+              mpi_grid.dimension_size(0), false, false);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft_ctx.fft()->local_size(), 2.0);
@@ -26,6 +26,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
         printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
         printf("number of FFT streams: %i\n", fft_ctx.num_fft_streams());
+        printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
     }
 
     fft_ctx.allocate_workspace();
