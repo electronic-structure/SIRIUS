@@ -167,37 +167,13 @@ class Gvec
             }
             
             /* build simple array of {x,y} coordinates for GPU kernel */
-            if (reduce_gvec__)
-            {
-                z_columns_pos_ = mdarray<int, 2>(2, 2 * z_columns_.size() - 1);
-            }
-            else
-            {
-                z_columns_pos_ = mdarray<int, 2>(2, z_columns_.size());
-            }
+            #ifdef __GPU
+            z_columns_pos_ = mdarray<int, 2>(2, z_columns_.size());
             for (size_t i = 0; i < z_columns_.size(); i++)
             {
-                int x = z_columns_[i].x;
-                int y = z_columns_[i].y;
-                if (x < 0) x += fft_grid_.size(0);
-                if (y < 0) y += fft_grid_.size(1);
-                z_columns_pos_(0, i) = x;
-                z_columns_pos_(1, i) = y;
+                z_columns_pos_(0, i) = z_columns_[i].x;
+                z_columns_pos_(1, i) = z_columns_[i].y;
             }
-            if (reduce_gvec__)
-            {
-                /* skip first column with {x,y} = {0,0} */
-                for (size_t i = 1; i < z_columns_.size(); i++)
-                {
-                    int x = -z_columns_[i].x;
-                    int y = -z_columns_[i].y;
-                    if (x < 0) x += fft_grid_.size(0);
-                    if (y < 0) y += fft_grid_.size(1);
-                    z_columns_pos_(0, z_columns_.size() + i - 1) = x;
-                    z_columns_pos_(1, z_columns_.size() + i - 1) = y;
-                }
-            }
-            #ifdef __GPU
             z_columns_pos_.allocate_on_device();
             z_columns_pos_.copy_to_device();
             #endif

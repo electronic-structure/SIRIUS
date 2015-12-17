@@ -290,17 +290,12 @@ void SHT::spherical_harmonics(int lmax, double theta, double phi, double_complex
     double x = std::cos(theta);
     std::vector<double> result_array(lmax + 1);
 
-    for (int m = 0; m <= lmax; m++)
+    for (int l = 0; l <= lmax; l++)
     {
-        double_complex z = exp(double_complex(0.0, m * phi)); 
-        
-        //gsl_sf_legendre_sphPlm_array(lmax, m, x, &result_array[0]);
-        for (int l = m; l <= lmax; l++)                           // TODO: make a test (with hardcoded values) for sphirical harmonics
-            result_array[l - m] = gsl_sf_legendre_sphPlm(l, m, x);
-
-        for (int l = m; l <= lmax; l++)
+        for (int m = 0; m <= l; m++)
         {
-            ylm[Utils::lm_by_l_m(l, m)] = result_array[l - m] * z;
+            double_complex z = std::exp(double_complex(0.0, m * phi)); 
+            ylm[Utils::lm_by_l_m(l, m)] = gsl_sf_legendre_sphPlm(l, m, x) * z;
             if (m % 2) 
             {
                 ylm[Utils::lm_by_l_m(l, -m)] = -std::conj(ylm[Utils::lm_by_l_m(l, m)]);

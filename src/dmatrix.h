@@ -254,29 +254,29 @@ class dmatrix
             matrix_local_.copy_to_host();
         }
 
-        inline void copy_cols_to_device(int icol_fisrt, int icol_last)
-        {
-            splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
-            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
-            int nloc = static_cast<int>(s1.local_size() - s0.local_size());
-            if (nloc)
-            {
-                cuda_copy_to_device(at<GPU>(0, s0.local_size()), at<CPU>(0, s0.local_size()),
-                                    num_rows_local() * nloc * sizeof(double_complex));
-            }
-        }
+        //== inline void copy_cols_to_device(int icol_fisrt, int icol_last)
+        //== {
+        //==     splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
+        //==     splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
+        //==     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
+        //==     if (nloc)
+        //==     {
+        //==         cuda_copy_to_device(at<GPU>(0, s0.local_size()), at<CPU>(0, s0.local_size()),
+        //==                             num_rows_local() * nloc * sizeof(double_complex));
+        //==     }
+        //== }
 
-        inline void copy_cols_to_host(int icol_fisrt, int icol_last)
-        {
-            splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
-            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
-            int nloc = static_cast<int>(s1.local_size() - s0.local_size());
-            if (nloc)
-            {
-                cuda_copy_to_host(at<CPU>(0, s0.local_size()), at<GPU>(0, s0.local_size()),
-                                  num_rows_local() * nloc * sizeof(double_complex));
-            }
-        }
+        //== inline void copy_cols_to_host(int icol_fisrt, int icol_last)
+        //== {
+        //==     splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
+        //==     splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
+        //==     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
+        //==     if (nloc)
+        //==     {
+        //==         cuda_copy_to_host(at<CPU>(0, s0.local_size()), at<GPU>(0, s0.local_size()),
+        //==                           num_rows_local() * nloc * sizeof(double_complex));
+        //==     }
+        //== }
         #endif
 
         inline T& operator()(const int64_t irow_loc, const int64_t icol_loc) 

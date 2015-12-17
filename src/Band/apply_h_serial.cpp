@@ -55,7 +55,8 @@ void Band::apply_h_serial(K_point* kp__,
     }
     #endif
 
-    add_non_local_contribution_serial(kp__, N__, n__, phi__, hphi__, kappa__, packed_mtrx_offset__, d_mtrx_packed__, complex_one);
+    STOP();
+    //add_non_local_contribution_serial(kp__, N__, n__, phi__, hphi__, kappa__, packed_mtrx_offset__, d_mtrx_packed__, complex_one);
 }
 
 };

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,7 +19,7 @@
 
 /** \file fft3d.h
  *   
- *  \brief Interface to FFTW3 library.
+ *  \brief Contains declaration and partial implementation of FFT3D class.
  */
 
 #ifndef __FFT3D_H__
@@ -42,7 +42,7 @@
 
 namespace sirius {
 
-/// Interface to 3D FFT.
+/// Implementation of FFT3D.
 /** FFT convention:
  *  \f[
  *      f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
@@ -140,16 +140,36 @@ class FFT3D
         inline void input(T* data__)
         {
             for (int i = 0; i < local_size(); i++) fft_buffer_[i] = data__[i];
+            #ifdef __GPU
+            if (pu_ == GPU) fft_buffer_.copy_to_device();
+            #endif
         }
         
         inline void output(double* data__)
         {
+            #ifdef __GPU
+            if (pu_ == GPU) fft_buffer_.copy_to_host();
+            #endif
             for (int i = 0; i < local_size(); i++) data__[i] = fft_buffer_[i].real();
         }
         
         inline void output(double_complex* data__)
         {
-            std::memcpy(data__, &fft_buffer_[0], local_size() * sizeof(double_complex));
+            switch (pu_)
+            {
+                case CPU:
+                {
+                    std::memcpy(data__, fft_buffer_.at<CPU>(), local_size() * sizeof(double_complex));
+                    break;
+                }
+                case GPU:
+                {
+                    #ifdef __GPU
+                    acc::copyout(data__, fft_buffer_.at<GPU>(), local_size());
+                    #endif
+                    break;
+                }
+            }
         }
         
         //inline void output(int n__, int const* map__, double_complex* data__)

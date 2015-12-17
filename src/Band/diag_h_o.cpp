@@ -13,7 +13,7 @@ void Band::diag_h_o(K_point* kp__,
                     dmatrix<double_complex>& evec_dist__,
                     std::vector<double>& eval__)
 {
-    Timer t("sirius::Band::diag_h_o");
+    PROFILE_WITH_TIMER("sirius::Band::diag_h_o");
 
     if (kp__->comm().size() > 1 && gen_evp_solver()->parallel())
     {
@@ -28,18 +28,20 @@ void Band::diag_h_o(K_point* kp__,
             }
         }
     }
-
+    
+    int result;
     if (gen_evp_solver()->parallel())
     {
-        gen_evp_solver()->solve(N__, hmlt_dist__.num_rows_local(), hmlt_dist__.num_cols_local(), num_bands__, 
-                                hmlt_dist__.at<CPU>(), hmlt_dist__.ld(), ovlp_dist__.at<CPU>(), ovlp_dist__.ld(), 
-                                &eval__[0], evec_dist__.at<CPU>(), evec_dist__.ld());
+        result = gen_evp_solver()->solve(N__, hmlt_dist__.num_rows_local(), hmlt_dist__.num_cols_local(), num_bands__, 
+                                         hmlt_dist__.at<CPU>(), hmlt_dist__.ld(), ovlp_dist__.at<CPU>(), ovlp_dist__.ld(), 
+                                         &eval__[0], evec_dist__.at<CPU>(), evec_dist__.ld());
     }
     else
     {
-        gen_evp_solver()->solve(N__, num_bands__, num_bands__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(),
-                                ovlp__.at<CPU>(), ovlp__.ld(), &eval__[0], evec__.at<CPU>(), evec__.ld());
+        result = gen_evp_solver()->solve(N__, num_bands__, num_bands__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(),
+                                         ovlp__.at<CPU>(), ovlp__.ld(), &eval__[0], evec__.at<CPU>(), evec__.ld());
     }
+    if (result) TERMINATE("error in diagonalziation");
 
     if (kp__->comm().size() > 1 && gen_evp_solver()->parallel())
     {
@@ -53,6 +55,11 @@ void Band::diag_h_o(K_point* kp__,
         }
         kp__->comm().allreduce(evec__.at<CPU>(), evec__.ld() * num_bands__);
     }
+    /* copy eigen-vectors to GPU */
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+        acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
+    #endif
 }
 
 };

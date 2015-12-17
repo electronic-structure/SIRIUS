@@ -50,6 +50,10 @@
 
 //== #definr __LIBSCI_ACC
 
+#ifdef __LIBSCI_ACC
+#warning "Don't forget to use pinned memory with libsci_acc"
+#endif
+
 //== #define __GPU
 
 //== #define __GPU_DIRECT
@@ -61,7 +65,9 @@
 //== #endif
 
 //== #define __PROFILE
-//== #define __LOG_FUNC
+#define __PROFILE_STACK
+#define __PROFILE_TIME
+#define __PROFILE_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"

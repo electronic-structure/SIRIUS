@@ -12,14 +12,11 @@ extern "C" void update_it_density_matrix_1_gpu(int fft_size,
                                                double* it_density_matrix);
 #endif
 
-void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__)
+template <bool mt_spheres>
+void Density::add_k_point_contribution_it(K_point* kp__)
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_it");
 
-    Timer t("sirius::Density::add_k_point_contribution_it");
-
-    //int num_spins = parameters_.num_spins();
-    //int num_mag_dims = parameters_.num_mag_dims();
     int nfv = parameters_.num_fv_states();
     double omega = unit_cell_.omega();
     int num_fft_streams = ctx_.fft_ctx().num_fft_streams();
@@ -27,35 +24,16 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     mdarray<double, 3> it_density_matrix(ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1, num_fft_streams);
     it_density_matrix.zero();
 
-    //splindex<block> spl_gkvec(kp__->num_gkvec(), kp__->num_ranks_row(), kp__->rank_row());
-    //alltoall_descriptor a2a;
-    //if (ctx_.fft(0)->parallel()) a2a = kp__->comm_row().map_alltoall(spl_gkvec.counts(), kp__->gkvec().counts());
-    //std::vector<double_complex> buf(kp__->gkvec().num_gvec_loc());
-
     #ifdef __GPU
-    STOP();
-    //mdarray<int, 1> fft_index;
-    //mdarray<double_complex, 1> pw_buf;
-    //mdarray<double, 2> it_density_matrix_gpu;
-    //if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
-    //{
-    //    ctx_.fft(ctx_.gpu_thread_id())->allocate_on_device();
-    //    /* move fft index to GPU */
-    //    fft_index = mdarray<int, 1>(const_cast<int*>(kp__->gkvec().index_map()), kp__->num_gkvec());
-    //    fft_index.allocate_on_device();
-    //    fft_index.copy_to_device();
-
-    //    /* allocate space for plane-wave expansion coefficients */
-    //    pw_buf = mdarray<double_complex, 1>(nullptr, kp__->num_gkvec()); 
-    //    pw_buf.allocate_on_device();
-
-    //    /* density on GPU */
-    //    it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, ctx_.gpu_thread_id()), ctx_.fft(0)->size(), parameters_.num_mag_dims() + 1);
-    //    it_density_matrix_gpu.allocate_on_device();
-    //    it_density_matrix_gpu.zero_on_device();
-    //}
+    mdarray<double, 2> it_density_matrix_gpu;
+    if (parameters_.processing_unit() == GPU)
+    {
+        /* density on GPU */
+        it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, 0), ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1);
+        it_density_matrix_gpu.allocate_on_device();
+        it_density_matrix_gpu.zero_on_device();
+    }
     #endif
-    //mdarray<double_complex, 2> psi_it;
 
     mdarray<double, 1> timers(num_fft_streams);
     timers.zero();
@@ -67,7 +45,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(1);
 
     int wf_pw_offset = kp__->wf_pw_offset();
-
+        
+    /* non-magnetic or collinear case */
     if (parameters_.num_mag_dims() != 3)
     {
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
@@ -77,40 +56,26 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
                 int thread_id = omp_get_thread_num();
 
                 #pragma omp for schedule(dynamic, 1)
-                for (int i = 0; i < kp__->spinor_wave_functions(ispn)->spl_num_swapped().local_size(); i++)
+                for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().local_size(); i++)
                 {
-                    int j = kp__->spinor_wave_functions(ispn)->spl_num_swapped()[i];
+                    int j = kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped()[i];
                     double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
                     double t1 = omp_get_wtime();
+
+                    /* transform to real space; in case of GPU wave-function stays in GPU memory */
+                    ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
 
                     if (thread_id == 0 && parameters_.processing_unit() == GPU)
                     {
                         #ifdef __GPU
-                        STOP();
-                        //if (num_mag_dims == 3)
-                        //{
-                        //    TERMINATE("this should be implemented");
-                        //}
-                        //else
-                        //{
-                        //    int ispn = (j < num_fv_states) ? 0 : 1;
-                        //    
-                        //    /* copy pw coefficients to GPU */
-                        //    mdarray<double_complex, 1>(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
-                        //                               pw_buf.at<GPU>(), kp__->num_gkvec()).copy_to_device();
-                        //    
-                        //    ctx_.fft(thread_id)->input_on_device(kp__->num_gkvec(), fft_index.at<GPU>(), pw_buf.at<GPU>());
-                        //    ctx_.fft(thread_id)->transform(1);
-                        //    
-                        //    update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
-                        //                                   it_density_matrix_gpu.at<GPU>());
-                        //}
+                        update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
+                                                       it_density_matrix_gpu.at<GPU>());
+                        #else
+                        TERMINATE_NO_GPU
                         #endif
                     }
                     else
                     {
-                        ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), (*kp__->spinor_wave_functions(ispn))[i] + wf_pw_offset);
-                            
                         #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
                         for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
                         {
@@ -126,7 +91,57 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     }
     else
     {
-        STOP();
+        assert(kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped().local_size() ==
+               kp__->spinor_wave_functions<mt_spheres>(1).spl_num_swapped().local_size());
+
+        #pragma omp parallel num_threads(num_fft_streams)
+        {
+            int thread_id = omp_get_thread_num();
+
+            std::vector<double_complex> psi_r(ctx_.fft(0)->local_size());
+
+            #pragma omp for schedule(dynamic, 1)
+            for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped().local_size(); i++)
+            {
+                int j = kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped()[i];
+                double w = kp__->band_occupancy(j) * kp__->weight() / omega;
+
+                /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
+                ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(0)[i] + wf_pw_offset);
+                /* save in auxiliary buffer */
+                ctx_.fft(thread_id)->output(&psi_r[0]);
+                /* transform dn- component of spinor wave function */
+                ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(1)[i] + wf_pw_offset);
+
+                if (thread_id == 0 && parameters_.processing_unit() == GPU)
+                {
+                    STOP();
+                    //#ifdef __GPU
+                    //update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
+                    //                               it_density_matrix_gpu.at<GPU>());
+                    //#else
+                    //TERMINATE_NO_GPU
+                    //#endif
+                }
+                else
+                {
+                    #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
+                    for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
+                    {
+                        auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
+                        auto r1 = (std::pow(ctx_.fft(thread_id)->buffer(ir).real(), 2) +
+                                   std::pow(ctx_.fft(thread_id)->buffer(ir).imag(), 2)) * w;
+
+                        auto z2 = psi_r[ir] * std::conj(ctx_.fft(thread_id)->buffer(ir)) * w;
+
+                        it_density_matrix(ir, 0, thread_id) += r0;
+                        it_density_matrix(ir, 1, thread_id) += r1;
+                        it_density_matrix(ir, 2, thread_id) += 2.0 * std::real(z2);
+                        it_density_matrix(ir, 3, thread_id) -= 2.0 * std::imag(z2);
+                    }
+                }
+            }
+        }
     }
 
 
@@ -245,13 +260,11 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     omp_set_nested(nested);
 
     #ifdef __GPU
-    STOP();
-    //if (parameters_.processing_unit() == GPU && ctx_.gpu_thread_id() >= 0)
-    //{
-    //    it_density_matrix_gpu.copy_to_host();
-    //    it_density_matrix_gpu.deallocate_on_device();
-    //    ctx_.fft(ctx_.gpu_thread_id())->deallocate_on_device();
-    //}
+    if (parameters_.processing_unit() == GPU)
+    {
+        it_density_matrix_gpu.copy_to_host();
+        it_density_matrix_gpu.deallocate_on_device();
+    }
     #endif
     
     double t1 = -Utils::current_time();
@@ -309,5 +322,8 @@ void Density::add_k_point_contribution_it(K_point* kp__, occupied_bands_descript
     //==     std::cout << "main summation of " << occupied_bands__.num_occupied_bands_local() << " bands is done in " << t0 << "sec." << std::endl;
     //== }
 }
+
+template void Density::add_k_point_contribution_it<true>(K_point* kp__);
+template void Density::add_k_point_contribution_it<false>(K_point* kp__);
 
 };

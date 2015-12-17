@@ -38,15 +38,31 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
       types_(types__),
       tolerance_(tolerance__)
 {
-    double lattice[3][3];
-    for (int i = 0; i < 3; i++)
+    PROFILE();
+
+    if (lattice_vectors__.det() < 0)
     {
-        for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_(i, j);
+        std::stringstream s;
+        s << "spglib requires positive determinant for a matrix of lattice vectors";
+        TERMINATE(s);
+    }
+
+    double lattice[3][3];
+    for (int i: {0, 1, 2})
+    {
+        for (int j: {0, 1, 2}) lattice[i][j] = lattice_vectors_(i, j);
     }
     positions_ = mdarray<double, 2>(3, num_atoms_);
-    positions__ >> positions_;
+    for (int ia = 0; ia < num_atoms_; ia++)
+    {
+        for (int x: {0, 1, 2}) positions_(x, ia) = positions__(x, ia);
+    }
 
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
+    if (spg_dataset_ == NULL)
+    {
+        TERMINATE("spg_get_dataset() returned NULL");
+    }
 
     if (spg_dataset_->spacegroup_number == 0)
         TERMINATE("spg_get_dataset() returned 0 for the space group");
@@ -70,7 +86,7 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
                                     spg_dataset_->translations[isym][1],
                                     spg_dataset_->translations[isym][2]);
         int p = sym_op.R.det(); 
-        if (!(p == 1 || p == -1)) error_local(__FILE__, __LINE__, "wrong rotation matrix");
+        if (!(p == 1 || p == -1)) TERMINATE("wrong rotation matrix");
         sym_op.proper = p;
         sym_op.rotation = lattice_vectors_ * matrix3d<double>(sym_op.R * p) * inverse_lattice_vectors_;
         sym_op.euler_angles = euler_angles(sym_op.rotation);
@@ -456,8 +472,8 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
         }
     }
     comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
-                     (int)(lmmax * nrmax * spl_atoms.global_offset()), 
-                     (int)(lmmax * nrmax * spl_atoms.local_size()));
+                     lmmax * nrmax * spl_atoms.global_offset(), 
+                     lmmax * nrmax * spl_atoms.local_size());
 }
 
 void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,

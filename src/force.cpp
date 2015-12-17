@@ -99,7 +99,7 @@ void Force::ibs_force(Simulation_context& ctx__,
     dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
-    auto& fv_evec = kp__->fv_eigen_vectors();
+    auto& fv_evec = kp__->fv_eigen_vectors().coeffs();
 
     dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());

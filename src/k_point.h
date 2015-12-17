@@ -52,12 +52,8 @@ class K_point
         /// 2D BLACS grid for diagonalization and 2D data distribution.
         BLACS_grid const& blacs_grid_;
         
-        /// 1D BLACS grid for a "slab" data distribution.
-        /** This grid is used to distribute G+k vector index and keep a whole band index */
-        //BLACS_grid const& blacs_grid_slab_;
-        
         /// 1D BLACS grid for a "slice" data distribution.
-        /** This grid is used to distribute band index and keep a whole G+k vector index */
+        /** This grid is used to distribute band index and keep a whole wave-function on a rank */
         BLACS_grid const& blacs_grid_slice_;
 
         /// Weight of k-point.
@@ -66,13 +62,14 @@ class K_point
         /// Fractional k-point coordinates.
         vector3d<double> vk_;
         
+        /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
-        dmatrix<double_complex> fv_eigen_vectors_;
+        Wave_functions<true>* fv_eigen_vectors_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -83,31 +80,17 @@ class K_point
         /// Full-diagonalization eigen vectors.
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
-        /// First-variational states in "slice" storage.
-        //dmatrix<double_complex> fv_states_slice_;
-
-        /// First-variational states, distributed over rows and columns of the MPI grid
-        /** Band index is distributed over columns and basis functions index is distributed 
-         *  over rows of the MPI grid. */
-        //dmatrix<double_complex> fv_states_;
-
-        Wave_functions* fv_states_;
+        /// First-variational states.
+        void* fv_states_;
 
         /// Two-component (spinor) wave functions describing the bands.
-        //dmatrix<double_complex> spinor_wave_functions_[2];
-        Wave_functions* spinor_wave_functions_[2];
+        void* spinor_wave_functions_[2];
 
-        /// band occupation numbers
+        /// Band occupation numbers.
         std::vector<double> band_occupancies_;
 
-        /// band energies
+        /// Band energies.
         std::vector<double> band_energies_; 
-
-        /// phase factors \f$ e^{i ({\bf G+k}) {\bf r}_{\alpha}} \f$
-        mdarray<double_complex, 2> gkvec_phase_factors_;
-
-        /// spherical harmonics of G+k vectors
-        mdarray<double_complex, 2> gkvec_ylm_;
 
         Matching_coefficients* alm_coeffs_row_;
 
@@ -133,8 +116,6 @@ class K_point
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        //splindex<block> spl_gkvec_;
-            
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector< std::vector<int> > atom_lo_cols_;
 
@@ -180,8 +161,6 @@ class K_point
         /// Test orthonormalization of first-variational states.
         void test_fv_states();
 
-        void init_gkvec_phase_factors(int num_gkvec__, std::vector<gklo_basis_descriptor>& desc__);
-        
     public:
 
         Iterative_solver_input_section iterative_solver_input_section_;
@@ -191,19 +170,41 @@ class K_point
                 double* vk__,
                 double weight__,
                 BLACS_grid const& blacs_grid__,
-                BLACS_grid const& blacs_grid_slab__,
                 BLACS_grid const& blacs_grid_slice__);
 
         ~K_point()
         {
             PROFILE();
+            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
-            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
-            if (fv_states_ != nullptr) delete fv_states_;
-            if (spinor_wave_functions_[0] != nullptr) delete spinor_wave_functions_[0];
-            if (spinor_wave_functions_[1] != nullptr) delete spinor_wave_functions_[1];
+            if (fv_eigen_vectors_ != nullptr) delete fv_eigen_vectors_;
+            if (fv_states_ != nullptr)
+            {
+                if (parameters_.full_potential())
+                {
+                    delete reinterpret_cast<Wave_functions<true>*>(fv_states_);
+                }
+                else 
+                {
+                    delete reinterpret_cast<Wave_functions<false>*>(fv_states_);
+                }
+            }
+            for (int ispn: {0, 1})
+            {
+                if (spinor_wave_functions_[ispn] != nullptr)
+                {   
+                    if (parameters_.full_potential())
+                    {
+                        delete reinterpret_cast<Wave_functions<true>*>(spinor_wave_functions_[ispn]);
+                    }
+                    else
+                    {
+                        delete reinterpret_cast<Wave_functions<false>*>(spinor_wave_functions_[ispn]);
+                    }
+                }
+            }
         }
 
         /// Initialize the k-point related arrays and data
@@ -213,6 +214,12 @@ class K_point
         void generate_gkvec(double gk_cutoff);
 
         /// Generate first-variational states from eigen-vectors
+        /** First-variational states are obtained from the first-variational eigen-vectors and 
+         *  LAPW matching coefficients. \n APW part:
+         *  \f[
+         *      \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
+         *  \f]
+         */
         void generate_fv_states();
 
         #ifdef __GPU
@@ -239,10 +246,8 @@ class K_point
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
 
-        /// Get the local list of occupied bands.
-        occupied_bands_descriptor get_occupied_bands_list(Communicator const& comm__);
-
-        int num_occupied_bands(int ispn__);
+        /// Get the number of occupied bands for each spin channel.
+        int num_occupied_bands(int ispn__ = -1);
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,
@@ -296,10 +301,10 @@ class K_point
             }
         }
         
-        inline double_complex gkvec_phase_factor(int igk__, int ia__) const
-        {
-            return gkvec_phase_factors_(igk__, ia__);
-        }
+        //inline double_complex gkvec_phase_factor(int igk__, int ia__) const
+        //{
+        //    return gkvec_phase_factors_(igk__, ia__);
+        //}
 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
@@ -366,7 +371,7 @@ class K_point
                 }
                 default:
                 {
-                    terminate(__FILE__, __LINE__, "wrong esm_type");
+                    TERMINATE("wrong type of electronic structure method");
                     return -1; //make compiler happy
                 }
             }
@@ -374,28 +379,28 @@ class K_point
 
         inline void get_band_occupancies(double* band_occupancies) const
         {
-            assert((int)band_occupancies_.size() == parameters_.num_bands());
+            assert(static_cast<int>(band_occupancies_.size()) == parameters_.num_bands());
             
-            memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
+            std::memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
         }
 
         inline void set_band_occupancies(double* band_occupancies)
         {
             band_occupancies_.resize(parameters_.num_bands());
-            memcpy(&band_occupancies_[0], band_occupancies, parameters_.num_bands() * sizeof(double));
+            std::memcpy(&band_occupancies_[0], band_occupancies, parameters_.num_bands() * sizeof(double));
         }
 
         inline void get_band_energies(double* band_energies) const
         {
             assert((int)band_energies_.size() == parameters_.num_bands());
             
-            memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
+            std::memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
         }
 
         inline void set_band_energies(double* band_energies)
         {
             band_energies_.resize(parameters_.num_bands()); 
-            memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
+            std::memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
         }
 
         inline double band_occupancy(int j) const
@@ -423,13 +428,16 @@ class K_point
             return weight_;
         }
 
-        //inline dmatrix<double_complex>& spinor_wave_functions(int ispn__)
-        //{
-        //    return spinor_wave_functions_[ispn__];
-        //}
-        inline Wave_functions* spinor_wave_functions(int ispn__)
+        template <bool mt_spheres>
+        inline Wave_functions<mt_spheres>& fv_states()
         {
-            return spinor_wave_functions_[ispn__];
+            return *reinterpret_cast<Wave_functions<mt_spheres>*>(fv_states_);
+        }
+
+        template <bool mt_spheres>
+        inline Wave_functions<mt_spheres>& spinor_wave_functions(int ispn__)
+        {
+            return *reinterpret_cast<Wave_functions<mt_spheres>*>(spinor_wave_functions_[ispn__]);
         }
 
         inline vector3d<double> vk() const
@@ -441,8 +449,7 @@ class K_point
         /** In case of full-potential LAPW+lo or PW+lo method the total number of 
          *  basis functions is equal to the number of (augmented) plane-waves plus the number 
          *  of local orbitals. In case of plane-wave pseudopotential method this is just the 
-         *  number of G+k vectors. 
-         */
+         *  number of G+k vectors. */
         inline int gklo_basis_size() const
         {
             return static_cast<int>(gklo_basis_descriptors_.size());
@@ -551,21 +558,11 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline dmatrix<double_complex>& fv_eigen_vectors()
+        inline Wave_functions<true>& fv_eigen_vectors()
         {
-            return fv_eigen_vectors_;
+            return *fv_eigen_vectors_;
         }
         
-        inline Wave_functions* fv_states()
-        {
-            return fv_states_;
-        }
-
-        //inline dmatrix<double_complex>& fv_states_slice()
-        //{
-        //    return fv_states_slice_;
-        //}
-
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
         {
             return sv_eigen_vectors_[ispn];
@@ -578,7 +575,7 @@ class K_point
 
         void bypass_sv()
         {
-            memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
+            std::memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
         }
 
         std::vector<double> get_pw_ekin() const
@@ -592,21 +589,6 @@ class K_point
         {
             return gkvec_;
         }
-
-        //inline Gvec const& gkvec_coarse() const
-        //{
-        //    return gkvec_coarse_;
-        //}
-
-        //inline matrix<double_complex> const& beta_gk_t() const
-        //{
-        //    return beta_gk_t_;
-        //}
-
-        //inline matrix<double_complex>& beta_gk()
-        //{
-        //    return beta_gk_;
-        //}
 
         inline Matching_coefficients* alm_coeffs_row()
         {
@@ -638,11 +620,6 @@ class K_point
             return blacs_grid_;
         }
 
-        //inline BLACS_grid const& blacs_grid_slab() const
-        //{
-        //    return blacs_grid_slab_;
-        //}
-
         inline BLACS_grid const& blacs_grid_slice() const
         {
             return blacs_grid_slice_;
@@ -652,11 +629,6 @@ class K_point
         {
             return p_mtrx_(xi1, xi2, iat);
         }
-
-        //inline splindex<block>& spl_gkvec()
-        //{
-        //    return spl_gkvec_;
-        //}
 
         inline int num_gkvec_loc() const
         {

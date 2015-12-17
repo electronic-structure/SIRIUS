@@ -31,7 +31,6 @@ K_point::K_point(Simulation_context& ctx__,
                  double* vk__,
                  double weight__,
                  BLACS_grid const& blacs_grid__,
-                 BLACS_grid const& blacs_grid_slab__,
                  BLACS_grid const& blacs_grid_slice__)
     : ctx_(ctx__),
       parameters_(ctx__.parameters()),
@@ -39,7 +38,9 @@ K_point::K_point(Simulation_context& ctx__,
       blacs_grid_(blacs_grid__),
       blacs_grid_slice_(blacs_grid_slice__),
       weight_(weight__),
+      fv_eigen_vectors_(nullptr),
       fv_states_(nullptr),
+      spinor_wave_functions_{nullptr, nullptr},
       alm_coeffs_row_(nullptr),
       alm_coeffs_col_(nullptr),
       alm_coeffs_(nullptr),
@@ -61,7 +62,6 @@ K_point::K_point(Simulation_context& ctx__,
     rank_row_ = comm_row_.rank();
     rank_col_ = comm_col_.rank();
 
-    //if (comm_.rank() != blacs_grid_slab_.comm().rank()) TERMINATE("ranks don't match");
     if (comm_.rank() != blacs_grid_slice_.comm().rank()) TERMINATE("ranks don't match");
     
     iterative_solver_input_section_ = parameters_.iterative_solver_input_section();
@@ -69,9 +69,6 @@ K_point::K_point(Simulation_context& ctx__,
     #ifndef __GPU
     if (parameters_.processing_unit() == GPU) TERMINATE_NO_GPU
     #endif
-
-    spinor_wave_functions_[0] = nullptr;
-    spinor_wave_functions_[1] = nullptr;
 }
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)

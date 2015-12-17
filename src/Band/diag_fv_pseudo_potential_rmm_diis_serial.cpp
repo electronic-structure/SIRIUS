@@ -8,7 +8,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 {
     if (ctx_.iterative_solver_tolerance() > 1e-5)
     {
-        diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
+        diag_fv_pseudo_potential_davidson(kp__, v0__, veff_it_coarse__);
         return;
     }
 
@@ -38,7 +38,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     //auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    matrix<double_complex>& psi = kp__->fv_states()->coeffs();
+    matrix<double_complex>& psi = kp__->fv_states<false>().coeffs();
 
     int niter = 4; //itso.num_steps_;
 

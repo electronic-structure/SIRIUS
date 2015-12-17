@@ -119,9 +119,6 @@ class Density
 
         Unit_cell& unit_cell_;
 
-        /// Alias for FFT driver.
-        //FFT3D_CPU* fft_;
-        
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
@@ -136,8 +133,6 @@ class Density
         
         Periodic_function<double>* magnetization_[3];
         
-        std::vector< std::pair<int, int> > dmat_spins_;
-
         /// Non-zero Gaunt coefficients.
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
         
@@ -188,7 +183,6 @@ class Density
          *  the occupancy operator written in spectral representation. */
         template <electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
-                                      occupied_bands_descriptor const& occupied_bands__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
         /// Restore valence density by adding the Q-operator constribution
@@ -216,7 +210,8 @@ class Density
         void add_q_contribution_to_valence_density(K_set& kset);
 
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_k_point_contribution_it(K_point* kp__, occupied_bands_descriptor const& occupied_bands__);
+        template <bool mt_spheres>
+        void add_k_point_contribution_it(K_point* kp__);
 
         #ifdef __GPU
         void add_q_contribution_to_valence_density_gpu(K_set& ks);

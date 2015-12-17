@@ -4,16 +4,15 @@ namespace sirius {
 
 void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential)
 {
-    PROFILE();
-
-    Timer t("sirius::Band::diag_fv_full_potential", kp->comm());
+    PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential");
 
     if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    dmatrix<double_complex> h(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
-
-    dmatrix<double_complex> o(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid(), parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    int ngklo = kp->gklo_basis_size();
+    int bs = parameters_.cyclic_block_size();
+    dmatrix<double_complex> h(nullptr, ngklo, ngklo, kp->blacs_grid(), bs, bs);
+    dmatrix<double_complex> o(nullptr, ngklo, ngklo, kp->blacs_grid(), bs, bs);
     
     h.allocate(alloc_mode);
     o.allocate(alloc_mode);
@@ -74,7 +73,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     
         if (gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
                                     parameters_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                    &eval[0], kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld()))
+                                    &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld()))
         {
             TERMINATE("error in generalized eigen-value problem");
         }

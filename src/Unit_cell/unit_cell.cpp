@@ -831,11 +831,9 @@ void Unit_cell::generate_radial_functions()
 
 void Unit_cell::generate_radial_integrals()
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_integrals");
 
-    Timer t("sirius::Unit_cell::generate_radial_integrals");
-    
-    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
         atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
@@ -844,10 +842,15 @@ void Unit_cell::generate_radial_integrals()
         atom_symmetry_class(ic)->sync_radial_integrals(comm_, rank);
     }
 
-    for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
+    //for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
+    //{
+    //    int ia = spl_atoms_[ialoc];
+    //    atom(ia)->generate_radial_integrals(parameters_.processing_unit(), comm_bundle_atoms_.comm());
+    //}
+    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++)
     {
-        int ia = (int)spl_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(parameters_.processing_unit(), comm_bundle_atoms_.comm());
+        int ia = spl_num_atoms_[ialoc];
+        atom(ia)->generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self);
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)

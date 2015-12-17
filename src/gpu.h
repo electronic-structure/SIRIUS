@@ -78,6 +78,9 @@ void cuda_async_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, s
 void cuda_async_copy2d_to_host(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
                                size_t nrow__, size_t ncol__, int elem_size__, int stream_id__);
 
+void cuda_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__,
+                           size_t ncol__, int elem_size__);
+
 size_t cuda_get_free_mem();
 
 void cuda_device_reset();
@@ -85,7 +88,7 @@ void cuda_device_reset();
 void cuda_check_last_error();
 
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
+                  cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                   int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
 
 void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
@@ -161,6 +164,12 @@ void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
 namespace acc {
 
 template <typename T>
+inline void copy(T* target__, T const* source__, size_t n__)
+{
+    cuda_copy_device_to_device(target__, source__, n__ * sizeof(T));
+}
+
+template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__)
 {
     cuda_copy_to_device(target__, source__, n__ * sizeof(T));
@@ -176,6 +185,12 @@ template <typename T>
 inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, int stream_id__)
 {
     cuda_async_copy2d_to_device(target__, ld1__, source__, ld2__, nrow__, ncol__, sizeof(T), stream_id__);
+}
+
+template <typename T>
+inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__)
+{
+    cuda_copy2d_to_device(target__, ld1__, source__, ld2__, nrow__, ncol__, sizeof(T));
 }
 
 template <typename T>

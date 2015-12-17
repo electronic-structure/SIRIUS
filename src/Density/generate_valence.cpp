@@ -4,7 +4,7 @@ namespace sirius {
 
 void Density::generate_valence(K_set& ks__)
 {
-    Timer t("sirius::Density::generate_valence", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Density::generate_valence");
     
     double wt = 0.0;
     double ot = 0.0;
@@ -22,10 +22,29 @@ void Density::generate_valence(K_set& ks__)
         s << "wrong occupancies" << std::endl
           << "  computed : " << ot << std::endl
           << "  required : " << unit_cell_.num_valence_electrons() << std::endl
-          << "  difference : " << fabs(ot - unit_cell_.num_valence_electrons());
+          << "  difference : " << std::abs(ot - unit_cell_.num_valence_electrons());
         warning_local(__FILE__, __LINE__, s);
     }
-    
+
+    /* swap wave functions */
+    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = ks__.spl_num_kpoints(ikloc);
+        auto kp = ks__[ik];
+
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        {
+            if (parameters_.full_potential())
+            {
+                kp->spinor_wave_functions<true>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
+            }
+            else
+            {
+                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
+            }
+        }
+    }
+
     /* zero density and magnetization */
     zero();
 
@@ -68,9 +87,8 @@ void Density::generate_valence(K_set& ks__)
     /* get rho(G) */
     rho_->fft_transform(-1);
 
-    //printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
-
-    //STOP();
+    //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
+    //== STOP();
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential) augment(ks__);
 }

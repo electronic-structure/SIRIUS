@@ -25,9 +25,19 @@
 #ifndef __WAVE_FUNCTIONS_H__
 #define __WAVE_FUNCTIONS_H__
 
+#include "gvec.h"
+#include "mpi_grid.h"
+#include "linalg.h"
+
 namespace sirius {
 
-class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
+template <bool mt_spheres>
+class Wave_functions
+{
+};
+
+template<>
+class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 rank
 {
     private:
         
@@ -39,6 +49,8 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         /// MPI grid for wave-function storage.
         /** Assume that the 1st dimension is used to distribute wave-functions and 2nd to distribute G-vectors */
         MPI_grid const& mpi_grid_;
+
+        processing_unit_t pu_;
 
         /// Entire communicator.
         Communicator const& comm_;
@@ -59,12 +71,15 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         block_data_descriptor gvec_slab_distr_;
 
+        mdarray<double_complex, 1> inner_prod_buf_;
+
     public:
 
-        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__, processing_unit_t pu__)
             : num_wfs_(num_wfs__),
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
+              pu_(pu__),
               comm_(mpi_grid_.communicator()),
               rank_(-1),
               rank_row_(-1),
@@ -79,10 +94,11 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
             wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
         }
 
-        Wave_functions(int num_wfs__, int max_num_wfs_swapped__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+        Wave_functions(int num_wfs__, int max_num_wfs_swapped__, Gvec const& gvec__, MPI_grid const& mpi_grid__, processing_unit_t pu__)
             : num_wfs_(num_wfs__),
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
+              pu_(pu__),
               comm_(mpi_grid_.communicator())
         {
             PROFILE();
@@ -106,7 +122,7 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
             if (comm_.size() > 1)
             {
-                wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(), "wf_coeffs_swapped_");
+                wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(0), "wf_coeffs_swapped_");
                 send_recv_buf_ = mdarray<double_complex, 1>(wf_coeffs_swapped_.size(), "send_recv_buf_");
             }
 
@@ -125,139 +141,9 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
         }
 
-        void swap_forward(int idx0__, int n__)
-        {
-            PROFILE();
+        void swap_forward(int idx0__, int n__);
 
-            /* this is how n wave-functions will be distributed between panels */
-            spl_n_ = splindex<block>(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
-
-            /* trivial case */
-            if (comm_.size() == 1)
-            {
-                wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_(0, idx0__), num_gvec_loc_, n__);
-                return;
-            }
-
-            Timer t("sirius::Wave_functions::swap_forward", comm_);
-
-            /* local number of columns */
-            int n_loc = spl_n_.local_size();
-
-            /* send parts of slab
-             * +---+---+--+
-             * |   |   |  |  <- irow = 0
-             * +---+---+--+
-             * |   |   |  |
-             * ............
-             * ranks in flat and 2D grid are related as: rank = irow * ncol + icol */
-            for (int icol = 0; icol < num_ranks_col_; icol++)
-            {
-                int dest_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                comm_.isend(&wf_coeffs_(0, idx0__ + spl_n_.global_offset(icol)),
-                            num_gvec_loc_ * spl_n_.local_size(icol),
-                            dest_rank, rank_ % num_ranks_col_);
-            }
-            
-            /* receive parts of panel
-             *                 n_loc
-             *                 +---+  
-             *                 |   |
-             * gvec_slab_distr +---+
-             *                 |   | 
-             *                 +---+ */
-            if (num_ranks_col_ > 1)
-            {
-                for (int i = 0; i < num_ranks_col_; i++)
-                {
-                    int src_rank = rank_row_ * num_ranks_col_ + i;
-                    comm_.recv(&send_recv_buf_[gvec_slab_distr_.offsets[i] * n_loc], gvec_slab_distr_.counts[i] * n_loc, src_rank, i);
-                }
-                
-                /* reorder received blocks to make G-vector index continuous */
-                #pragma omp parallel for
-                for (int i = 0; i < n_loc; i++)
-                {
-                    for (int j = 0; j < num_ranks_col_; j++)
-                    {
-                        std::memcpy(&wf_coeffs_swapped_(gvec_slab_distr_.offsets[j], i),
-                                    &send_recv_buf_[gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i],
-                                    gvec_slab_distr_.counts[j] * sizeof(double_complex));
-                    }
-                }
-            }
-            else
-            {
-                int src_rank = rank_row_ * num_ranks_col_;
-                comm_.recv(&wf_coeffs_swapped_(0, 0), gvec_slab_distr_.counts[0] * n_loc, src_rank, 0);
-            }
-        }
-
-        void swap_backward(int idx0__, int n__)
-        {
-            PROFILE();
-
-            if (comm_.size() == 1) return;
-            
-            Timer t("sirius::Wave_functions::swap_backward", comm_);
-        
-            /* this is how n wave-functions are distributed between panels */
-            splindex<block> spl_n(n__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
-            /* local number of columns */
-            int n_loc = spl_n.local_size();
-
-            //==std::vector<MPI_Request> req(num_ranks_col_);
-            //==/* post a non-blocking recieve request */
-            //==for (int icol = 0; icol < num_ranks_col_; icol++)
-            //=={
-            //==    int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-            //==    comm_.irecv(&primary_data_storage_[primary_ld_ * (idx0__ + spl_n.global_offset(icol))],
-            //==                num_gvec_loc_ * spl_n.local_size(icol),
-            //==                src_rank, rank_ % num_ranks_col_, &req[icol]);
-            //==}
-            
-            if (num_ranks_col_ > 1)
-            {
-                /* reorder sending blocks */
-                #pragma omp parallel for
-                for (int i = 0; i < n_loc; i++)
-                {
-                    for (int j = 0; j < num_ranks_col_; j++)
-                    {
-                        std::memcpy(&send_recv_buf_[gvec_slab_distr_.offsets[j] * n_loc + gvec_slab_distr_.counts[j] * i],
-                                    &wf_coeffs_swapped_(gvec_slab_distr_.offsets[j], i),
-                                    gvec_slab_distr_.counts[j] * sizeof(double_complex));
-                    }
-                }
-        
-                for (int i = 0; i < num_ranks_col_; i++)
-                {
-                    int dest_rank = rank_row_ * num_ranks_col_ + i;
-                    comm_.isend(&send_recv_buf_[gvec_slab_distr_.offsets[i] * n_loc], gvec_slab_distr_.counts[i] * n_loc, dest_rank, i);
-                }
-            }
-            else
-            {
-                int dest_rank = rank_row_ * num_ranks_col_;
-                comm_.isend(&wf_coeffs_swapped_(0, 0), gvec_slab_distr_.counts[0] * n_loc, dest_rank, 0);
-            }
-            
-            for (int icol = 0; icol < num_ranks_col_; icol++)
-            {
-                int src_rank = comm_.cart_rank({icol, rank_ / num_ranks_col_});
-                //double t = -omp_get_wtime();
-                comm_.recv(&wf_coeffs_(0, idx0__ + spl_n.global_offset(icol)),
-                           num_gvec_loc_ * spl_n.local_size(icol),
-                           src_rank, rank_ % num_ranks_col_);
-                //t += omp_get_wtime();
-                //DUMP("recieve from %i, %li bytes, %f GB/s",
-                //     src_rank, 
-                //     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex),
-                //     num_gvec_loc_ * spl_n.local_size(icol) * sizeof(double_complex) / double(1 << 30) / t);
-            }
-            //==std::vector<MPI_Status> stat(num_ranks_col_);
-            //==MPI_Waitall(num_ranks_col_, &req[0], &stat[0]);
-        }
+        void swap_backward(int idx0__, int n__);
 
         inline double_complex& operator()(int igloc__, int i__)
         {
@@ -286,7 +172,16 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__, int j0__)
         {
-            std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
+            if (pu_ == CPU)
+            {
+                std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                acc::copy(wf_coeffs_.at<GPU>(0, j0__), src__.wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc_ * n__);
+            }
+            #endif
         }
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__)
@@ -298,33 +193,22 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         {
             assert(num_gvec_loc() == wf__.num_gvec_loc());
 
-            linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
-                              &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
+            if (pu_ == CPU)
+            {
+                linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
+                                  &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                linalg<GPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, wf__.coeffs().at<GPU>(), num_gvec_loc(),
+                                  mtrx__.at<GPU>(), mtrx__.ld(), wf_coeffs_.at<GPU>(), num_gvec_loc());
+            }
+            #endif
         }
 
-        inline void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                          double_complex* result__, int ld__)
-        {
-            assert(num_gvec_loc() == ket__.num_gvec_loc());
-            static std::vector<double_complex> buf;
-
-            if (comm_.size() == 1)
-            {
-                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &(*this)(0, i0__), num_gvec_loc(),
-                                  &ket__(0, j0__), num_gvec_loc(), result__, ld__);
-            }
-            else
-            {
-                buf.resize(m__ * n__);
-                linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &(*this)(0, i0__), num_gvec_loc(),
-                                  &ket__(0, j0__), num_gvec_loc(), &buf[0], m__);
-                comm_.allreduce(&buf[0], m__ * n__);
-                for (int i = 0; i < n__; i++)
-                {
-                    std::memcpy(&result__[i * ld__], &buf[i * m__], m__ * sizeof(double_complex));
-                }
-            }
-        }
+        void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
+                   mdarray<double_complex, 2>& result__, int irow__, int icol__);
 
         inline Communicator const& comm() const
         {
@@ -334,6 +218,112 @@ class Wave_functions // TODO: don't allocate buffers in the case of 1 rank
         mdarray<double_complex, 2>& coeffs()
         {
             return wf_coeffs_;
+        }
+
+        #ifdef __GPU
+        void allocate_on_device()
+        {
+            wf_coeffs_.allocate_on_device();
+        }
+
+        void deallocate_on_device()
+        {
+            wf_coeffs_.deallocate_on_device();
+        }
+
+        void copy_to_device(int i0__, int n__)
+        {
+            acc::copyin(wf_coeffs_.at<GPU>(0, i0__), wf_coeffs_.at<CPU>(0, i0__), n__ * num_gvec_loc());
+        }
+
+        void copy_to_host(int i0__, int n__)
+        {
+            acc::copyout(wf_coeffs_.at<CPU>(0, i0__), wf_coeffs_.at<GPU>(0, i0__), n__ * num_gvec_loc());
+        }
+        #endif
+};
+
+template<>
+class Wave_functions<true>
+{
+    private:
+        
+        int wf_size_;
+        int num_wfs_;
+        int bs_;
+        BLACS_grid const& blacs_grid_;
+        BLACS_grid const& blacs_grid_slice_;
+
+        dmatrix<double_complex> wf_coeffs_;
+
+        dmatrix<double_complex> wf_coeffs_swapped_;
+
+        mdarray<double_complex, 1> swp_buf_;
+
+        splindex<block> spl_n_;
+
+    public:
+
+        Wave_functions(int wf_size__, int num_wfs__, int bs__, BLACS_grid const& blacs_grid__, BLACS_grid const& blacs_grid_slice__)
+            : wf_size_(wf_size__),
+              num_wfs_(num_wfs__),
+              bs_(bs__),
+              blacs_grid_(blacs_grid__),
+              blacs_grid_slice_(blacs_grid_slice__)
+        {
+            assert(blacs_grid_slice__.num_ranks_row() == 1);
+
+            wf_coeffs_ = dmatrix<double_complex>(wf_size_, num_wfs_, blacs_grid_, bs_, bs_);
+
+            int bs1 = splindex_base<int>::block_size(num_wfs_, blacs_grid_slice_.num_ranks_col());
+            swp_buf_ = mdarray<double_complex, 1>(wf_size__ * bs1);
+        }
+
+        void set_num_swapped(int n__)
+        {
+            /* this is how n wave-functions will be distributed between panels */
+            spl_n_ = splindex<block>(n__, blacs_grid_slice_.num_ranks_col(), blacs_grid_slice_.rank_col());
+
+            int bs = splindex_base<int>::block_size(n__, blacs_grid_slice_.num_ranks_col());
+            wf_coeffs_swapped_ = dmatrix<double_complex>(&swp_buf_[0], wf_size_, n__, blacs_grid_slice_, 1, bs);
+        }
+
+        void swap_forward(int idx0__, int n__)
+        {
+            PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
+            set_num_swapped(n__);
+            linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_, 0, idx0__, wf_coeffs_swapped_, 0, 0, blacs_grid_.context());
+        }
+
+        void swap_backward(int idx0__, int n__)
+        {
+            PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
+            linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_swapped_, 0, 0, wf_coeffs_, 0, idx0__, blacs_grid_.context());
+        }
+
+        inline splindex<block> const& spl_num_swapped() const
+        {
+            return spl_n_;
+        }
+
+        dmatrix<double_complex>& coeffs()
+        {
+            return wf_coeffs_;
+        }
+
+        inline int wf_size() const
+        {
+            return wf_size_;
+        }
+
+        inline double_complex& operator()(int i__, int j__)
+        {
+            return wf_coeffs_(i__, j__);
+        }
+
+        inline double_complex* operator[](int i__)
+        {
+            return &wf_coeffs_swapped_(0, i__);
         }
 };
 

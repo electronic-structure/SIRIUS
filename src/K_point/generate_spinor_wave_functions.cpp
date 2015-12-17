@@ -4,21 +4,27 @@ namespace sirius {
 
 void K_point::generate_spinor_wave_functions()
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::K_point::generate_spinor_wave_functions");
 
-    Timer t("sirius::K_point::generate_spinor_wave_functions");
-
-    //int nfv = parameters_.num_fv_states();
     double_complex alpha(1, 0);
     double_complex beta(0, 0);
-    
+
     if (use_second_variation) 
     {
         if (!parameters_.need_sv())
         {
-            fv_states_->coeffs() >> spinor_wave_functions_[0]->coeffs();
+            if (parameters_.full_potential())
+            {
+                fv_states<true>().coeffs().panel() >> spinor_wave_functions<true>(0).coeffs().panel();
+            }
+            else
+            {
+                fv_states<false>().coeffs() >> spinor_wave_functions<false>(0).coeffs();
+            }
             return;
         }
+
+        int nfv = parameters_.num_fv_states();
  
         /* serial version */
         if (num_ranks() == 1)
@@ -57,20 +63,18 @@ void K_point::generate_spinor_wave_functions()
                     }
                     else
                     {
-                        STOP();
-                       // /* multiply up block for first half of the bands, dn block for second half of the bands */
-                       // linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
-                       //                   sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
-                       //                   spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
+                        /* multiply up block for first half of the bands, dn block for second half of the bands */
+                        linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states<true>().coeffs().panel().at<CPU>(), wf_size(), 
+                                          sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
+                                          spinor_wave_functions<true>(ispn).coeffs().panel().at<CPU>(), wf_size());
                     }
                 }
                 else
                 {
-                    STOP();
                     /* multiply up block and then dn block for all bands */
-                    //linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.at<CPU>(), fv_states_.ld(), 
-                    //                  sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
-                    //                  spinor_wave_functions_[ispn].at<CPU>(), spinor_wave_functions_[ispn].ld());
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states<true>().coeffs().panel().at<CPU>(), wf_size(),
+                                      sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
+                                      spinor_wave_functions<true>(ispn).coeffs().panel().at<CPU>(), wf_size());
                 }
             }
             if (parameters_.processing_unit() == GPU)

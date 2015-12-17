@@ -242,15 +242,23 @@ void cuda_check_last_error()
     }
 }
 
-void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__)
+void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
+                                    size_t nrow__, size_t ncol__, int elem_size__)
 {
-    CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
+    CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__,
+                             nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
 }
 
 void cuda_memcpy2D_device_to_device_async(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__, int stream_id__)
 {
     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
     CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice, stream));
+}
+
+void cuda_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__,
+                           size_t ncol__, int elem_size__)
+{
+    CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyHostToDevice));
 }
 
 void cuda_async_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__,

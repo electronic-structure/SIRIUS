@@ -8,18 +8,15 @@ int Band::residuals(K_point* kp__,
                     std::vector<double>& eval__,
                     std::vector<double>& eval_old__,
                     matrix<double_complex>& evec__,
-                    Wave_functions& hphi__,
-                    Wave_functions& ophi__,
-                    Wave_functions& hpsi__,
-                    Wave_functions& opsi__,
-                    Wave_functions& res__,
+                    Wave_functions<false>& hphi__,
+                    Wave_functions<false>& ophi__,
+                    Wave_functions<false>& hpsi__,
+                    Wave_functions<false>& opsi__,
+                    Wave_functions<false>& res__,
                     std::vector<double>& h_diag__,
-                    std::vector<double>& o_diag__,
-                    mdarray<double_complex, 1>& kappa__)
+                    std::vector<double>& o_diag__)
 {
-    PROFILE();
-
-    Timer t("sirius::Band::residuals");
+    PROFILE_WITH_TIMER("sirius::Band::residuals");
 
     auto& itso = kp__->iterative_solver_input_section_;
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
@@ -42,30 +39,29 @@ int Band::residuals(K_point* kp__,
                 eval_tmp[n++] = eval__[i];
             }
         }
+        //TODO: do this on GPU
 
-        //#ifdef __GPU
-        //if (parameters_.processing_unit() == GPU)
-        //    cublas_set_matrix(N, n, sizeof(double_complex), evec_tmp.at<CPU>(), evec_tmp.ld(), evec_tmp.at<GPU>(), evec_tmp.ld());
-        //#endif
-
-        matrix<double_complex> evec_tmp(&evec__(0, num_bands__), evec__.ld(), n);
+        /* create alias for eigen-vectors corresponding to unconverged residuals */
+        matrix<double_complex> evec_tmp;
+        if (parameters_.processing_unit() == CPU)
+        {
+            evec_tmp = matrix<double_complex>(&evec__(0, num_bands__), evec__.ld(), n);
+        }
+        #ifdef __GPU
+        if (parameters_.processing_unit() == GPU)
+        {
+            evec_tmp = matrix<double_complex>(evec__.at<CPU>(0, num_bands__), evec__.at<GPU>(0, num_bands__), evec__.ld(), n);
+            /* move matrix of eigen-vectors to GPU */
+            acc::copyin(evec_tmp.at<GPU>(), evec_tmp.ld(), evec_tmp.at<CPU>(), evec_tmp.ld(), N__, n);
+        }
+        #endif
 
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
         hpsi__.transform_from(hphi__, N__, evec_tmp, n);
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         opsi__.transform_from(ophi__, N__, evec_tmp, n);
 
-        residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
-
-        //#ifdef __GPU
-        //if (parameters_.processing_unit() == GPU && economize_gpu_memory)
-        //{
-        //    /* copy residuals to CPU because the content of kappa array can be destroyed */
-        //    cublas_get_matrix(ngk, n, sizeof(double_complex),
-        //                      kappa.at<GPU>(ngk * 2 * n), ngk,
-        //                      res.at<CPU>(), res.ld());
-        //}
-        //#endif
+        residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
     }
     else
     {
@@ -74,24 +70,7 @@ int Band::residuals(K_point* kp__,
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         opsi__.transform_from(ophi__, N__, evec__, num_bands__);
 
-        residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm, kappa__);
-
-        //#ifdef __GPU
-        //matrix<double_complex> res_tmp;
-        //if (parameters_.processing_unit() == GPU)
-        //{
-        //    if (economize_gpu_memory)
-        //    {
-        //        res_tmp = matrix<double_complex>(nullptr, kappa.at<GPU>(ngk * 2 * num_bands), ngk, num_bands);
-        //    }
-        //    else
-        //    {
-        //        res_tmp = matrix<double_complex>(nullptr, res.at<GPU>(), ngk, num_bands);
-        //    }
-        //}
-        //#endif
-        
-        Timer t1("sirius::Band::diag_fv_pseudo_potential|sort_res");
+        residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
 
         for (int i = 0; i < num_bands__; i++)
         {
@@ -108,15 +87,16 @@ int Band::residuals(K_point* kp__,
                             std::memcpy(&res__(0, n), &res__(0, i), res__.num_gvec_loc() * sizeof(double_complex));
                             break;
                         }
-                        //case GPU:
-                        //{
-                        //    #ifdef __GPU
-                        //    cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
-                        //    #else
-                        //    TERMINATE_NO_GPU
-                        //    #endif
-                        //    break;
-                        //}
+                        case GPU:
+                        {
+                            STOP();
+                            //#ifdef __GPU
+                            //cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
+                            //#else
+                            //TERMINATE_NO_GPU
+                            //#endif
+                            break;
+                        }
                     }
                 }
                 n++;

@@ -62,17 +62,11 @@ class Simulation_context
         /// Step function is used in full-potential methods.
         Step_function* step_function_;
 
-        /// FFT wrapper for dense grid.
-        //std::vector<FFT3D*> fft_;
-
         Gvec gvec_;
-
-        /// FFT wrapper for coarse grid.
-        //std::vector<FFT3D*> fft_coarse_;
 
         Gvec gvec_coarse_;
 
-        int gpu_thread_id_;
+        //int gpu_thread_id_;
 
         Real_space_prj* real_space_prj_;
 
@@ -136,13 +130,11 @@ class Simulation_context
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }
 
-            //for (auto obj: fft_) delete obj;
-            //for (auto obj: fft_coarse_) delete obj;
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
-            if (fft_ctx_ != 0) delete fft_ctx_;
-            if (fft_coarse_ctx_ != 0) delete fft_ctx_;
+            if (fft_ctx_ != nullptr) delete fft_ctx_;
+            if (fft_coarse_ctx_ != nullptr) delete fft_coarse_ctx_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }

@@ -42,11 +42,9 @@ class Hloc_operator
             vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
         }
         
-        void apply(Wave_functions& hphi__, int idx0__, int n__)
+        void apply(Wave_functions<false>& hphi__, int idx0__, int n__)
         {
-            PROFILE();
-
-            Timer t("sirius::Hloc_operator::apply");
+            PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
             hphi__.swap_forward(idx0__, n__);
             

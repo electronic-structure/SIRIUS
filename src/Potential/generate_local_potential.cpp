@@ -60,8 +60,10 @@ void Potential::generate_local_potential()
     comm_.allgather(vloc_radial_integrals.at<CPU>(), ld * spl_gshells.global_offset(), ld * spl_gshells.local_size());
 
     auto v = rl->make_periodic_function(vloc_radial_integrals, ctx_.gvec().num_gvec());
+    fft_->allocate_workspace();
     fft_->transform<1>(ctx_.gvec(), &v[ctx_.gvec().offset_gvec_fft()]);
     fft_->output(&local_potential_->f_it(0));
+    fft_->deallocate_workspace();
 }
 
 };

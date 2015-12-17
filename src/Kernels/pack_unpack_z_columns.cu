@@ -16,8 +16,18 @@ __global__ void pack_unpack_z_cols_gpu_kernel
     int iz = blockIdx.y;
     if (icol < num_z_cols__)
     {
-        int x = z_columns_pos__[array2D_offset(0, icol, 2)];
-        int y = z_columns_pos__[array2D_offset(1, icol, 2)];
+        int x, y;
+
+        if (conjugate)
+        {
+            x = (-z_columns_pos__[array2D_offset(0, icol, 2)] + size_x__) % size_x__;
+            y = (-z_columns_pos__[array2D_offset(1, icol, 2)] + size_y__) % size_y__;
+        }
+        else
+        {
+            x = (z_columns_pos__[array2D_offset(0, icol, 2)] + size_x__) % size_x__;
+            y = (z_columns_pos__[array2D_offset(1, icol, 2)] + size_y__) % size_y__;
+        }
         
         /* load into buffer */
         if (direction == 1)
@@ -75,7 +85,7 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
             size_y__,
             size_z__,
             num_z_cols__ - 1,
-            &z_columns_pos__[2 * num_z_cols__]
+            &z_columns_pos__[2] // * num_z_cols__]
         );
     }
 }

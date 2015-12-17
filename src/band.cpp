@@ -900,7 +900,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o");
+    PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
     
     h__.zero();
     o__.zero();
@@ -1624,6 +1624,11 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     fft_coarse->transform<1>(gvc, &veff_pw_coarse[0]);
     fft_coarse->output(&veff_it_coarse[0]);
 
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    double cs = mdarray<double, 1>(&veff_it_coarse[0], veff_it_coarse.size()).checksum();
+    DUMP("checksum(veff_it_coarse): %18.10f", cs);
+    #endif
+
     double v0 = effective_potential__->f_pw(0).real();
 
     auto& itso = parameters_.iterative_solver_input_section();
@@ -1633,7 +1638,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     }
     else if (itso.type_ == "davidson")
     {
-        diag_fv_pseudo_potential_davidson_serial(kp__, v0, veff_it_coarse);
+        diag_fv_pseudo_potential_davidson(kp__, v0, veff_it_coarse);
     }
     else if (itso.type_ == "rmm-diis")
     {

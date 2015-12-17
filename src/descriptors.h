@@ -252,28 +252,28 @@ struct mt_basis_descriptor
     int xi;
 };
 
-struct occupied_bands_descriptor
-{
-    int num_occupied_bands_;
-
-    std::vector<int> idx_bnd_loc;
-    std::vector<int> idx_bnd_glob;
-    std::vector<double> weight;
-
-    /// Total number of occupied bands.
-    int num_occupied_bands() const
-    {
-        return num_occupied_bands_;
-    }
-
-    /// Local freaction of occupied bands.
-    int num_occupied_bands_local() const
-    {
-        assert(idx_bnd_loc.size() == idx_bnd_glob.size());
-        assert(idx_bnd_loc.size() == weight.size());
-        return static_cast<int>(idx_bnd_loc.size());
-    }
-};
+//== struct occupied_bands_descriptor
+//== {
+//==     int num_occupied_bands_;
+//== 
+//==     std::vector<int> idx_bnd_loc;
+//==     std::vector<int> idx_bnd_glob;
+//==     std::vector<double> weight;
+//== 
+//==     /// Total number of occupied bands.
+//==     int num_occupied_bands() const
+//==     {
+//==         return num_occupied_bands_;
+//==     }
+//== 
+//==     /// Local freaction of occupied bands.
+//==     int num_occupied_bands_local() const
+//==     {
+//==         assert(idx_bnd_loc.size() == idx_bnd_glob.size());
+//==         assert(idx_bnd_loc.size() == weight.size());
+//==         return static_cast<int>(idx_bnd_loc.size());
+//==     }
+//== };
 
 struct block_data_descriptor
 {

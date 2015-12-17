@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -224,7 +224,7 @@ class Matching_coefficients
                     {
                         sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igk] + (l / R) * sbessel_mt(l, 0);
                         sbessel_mt(l, 2) = 2 * gkvec_len_[igk] * sbessel_mt(l + 1, 0) / R + 
-                                           ((l - 1) * l - pow(RGk, 2)) * sbessel_mt(l, 0) / pow(R, 2);
+                                           ((l - 1) * l - std::pow(RGk, 2)) * sbessel_mt(l, 0) / std::pow(R, 2);
                     }
                     
                     for (int l = 0; l <= lmax_apw__; l++)
@@ -268,7 +268,7 @@ class Matching_coefficients
                 int nu = type->indexb(xi).order; 
 
                 /* order of augmentation for a given orbital quantum number */
-                int num_aw = (int)type->aw_descriptor(l).size();
+                int num_aw = static_cast<int>(type->aw_descriptor(l).size());
                 
                 /* create matrix of radial derivatives */
                 for (int order = 0; order < num_aw; order++)

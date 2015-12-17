@@ -36,10 +36,20 @@ class splindex<block, T>: public splindex_base<T>
         {
             this->global_index_size_ = global_index_size__;
 
-            if (num_ranks__ < 0) error_local(__FILE__, __LINE__, "wrong number of ranks");
+            if (num_ranks__ < 0)
+            {
+                std::stringstream s;
+                s << "wrong number of ranks: " << num_ranks__;
+                TERMINATE(s);
+            }
             this->num_ranks_ = num_ranks__;
 
-            if (rank__ < 0 || rank__ >= num_ranks__) error_local(__FILE__, __LINE__, "wrong rank");
+            if (rank__ < 0 || rank__ >= num_ranks__)
+            {
+                std::stringstream s;
+                s << "wrong rank: " << rank__;
+                TERMINATE(s);
+            }
             this->rank_ = rank__;
 
             block_size_ = this->block_size(global_index_size__, num_ranks__);
@@ -160,13 +170,28 @@ class splindex<block_cyclic, T>: public splindex_base<T>
         {
             this->global_index_size_ = global_index_size__;
 
-            if (num_ranks__ < 0) error_local(__FILE__, __LINE__, "wrong number of ranks");
+            if (num_ranks__ < 0)
+            {
+                std::stringstream s;
+                s << "wrong number of ranks: " << num_ranks__;
+                TERMINATE(s);
+            }
             this->num_ranks_ = num_ranks__;
 
-            if (rank__ < 0 || rank__ >= num_ranks__) error_local(__FILE__, __LINE__, "wrong rank");
+            if (rank__ < 0 || rank__ >= num_ranks__)
+            {
+                std::stringstream s;
+                s << "wrong rank: " << rank__;
+                TERMINATE(s);
+            }
             this->rank_ = rank__;
 
-            if (block_size__ <= 0) error_local(__FILE__, __LINE__, "wrong block size");
+            if (block_size__ <= 0)
+            {
+                std::stringstream s;
+                s << "wrong block size: " << block_size__;
+                TERMINATE(s);
+            }
             block_size_ = block_size__;
         }
 

@@ -65,11 +65,10 @@ class Band
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(dmatrix<double_complex>& fv_states__,
-                                  int num_gkvec__,
-                                  int const* fft_index__, 
+        void apply_magnetic_field(Wave_functions<true>& fv_states__,
+                                  Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
-                                  std::vector< dmatrix<double_complex> >& hpsi__);
+                                  std::vector<Wave_functions<true>*>& hpsi__);
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -122,36 +121,6 @@ class Band
 
 
         #ifdef __SCALAPACK
-        void add_non_local_contribution_parallel(K_point* kp__,
-                                                 int N__,
-                                                 int n__,
-                                                 dmatrix<double_complex>& phi__, 
-                                                 dmatrix<double_complex>& op_phi__, 
-                                                 matrix<double_complex>& kappa__,
-                                                 mdarray<int, 1> const& packed_mtrx_offset__,
-                                                 mdarray<double_complex, 1>& op_mtrx_packed__,
-                                                 double_complex alpha);
-
-        
-        void apply_h_local_parallel(K_point* kp__,
-                                    std::vector<double> const& effective_potential__,
-                                    std::vector<double> const& pw_ekin__,
-                                    int nst__,
-                                    dmatrix<double_complex>& phi__,
-                                    dmatrix<double_complex>& hphi__);
-
-        void apply_h_o_parallel(K_point* kp__,
-                                std::vector<double> const& effective_potential__,
-                                std::vector<double> const& pw_ekin__,
-                                int N__,
-                                int n__,
-                                Wave_functions& phi__,
-                                Wave_functions& hphi__,
-                                Wave_functions& ophi__,
-                                mdarray<int, 1>& packed_mtrx_offset__,
-                                mdarray<double_complex, 1>& d_mtrx_packed__,
-                                mdarray<double_complex, 1>& q_mtrx_packed__,
-                                mdarray<double_complex, 1>& kappa__);
 
         void apply_h_o_fast_parallel_rs(K_point* kp__,
                                         std::vector<double> const& effective_potential__,
@@ -169,61 +138,22 @@ class Band
                                         mdarray<double_complex, 1>& q_mtrx_packed__,
                                         mdarray<double_complex, 1>& kappa__);
 
-        void set_fv_h_o_parallel(int N__,
-                                 int n__,
-                                 K_point* kp__,
-                                 dmatrix<double_complex>& phi_slab__,
-                                 dmatrix<double_complex>& hphi_slab__,
-                                 dmatrix<double_complex>& ophi_slab__,
-                                 dmatrix<double_complex>& h__,
-                                 dmatrix<double_complex>& o__,
-                                 dmatrix<double_complex>& h_old__,
-                                 dmatrix<double_complex>& o_old__,
-                                 mdarray<double_complex, 1>& kappa__);
-
-        //void residuals_parallel(int N__,
-        //                        int num_bands__,
-        //                        K_point* kp__,
-        //                        std::vector<double>& eval__,
-        //                        matrix<double_complex>& evec__,
-        //                        dmatrix<double_complex>& hphi__,
-        //                        dmatrix<double_complex>& ophi__,
-        //                        dmatrix<double_complex>& hpsi__,
-        //                        dmatrix<double_complex>& opsi__,
-        //                        dmatrix<double_complex>& res__,
-        //                        std::vector<double>& h_diag__,
-        //                        std::vector<double>& o_diag__,
-        //                        std::vector<double>& res_norm__,
-        //                        mdarray<double_complex, 1>& kappa__);
-
         void diag_fv_pseudo_potential_parallel(K_point* kp__,
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
-
-        void diag_fv_pseudo_potential_davidson_parallel(K_point* kp__,
-                                                             double v0__,
-                                                             std::vector<double>& veff_it_coarse__);
 
         void diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
                                                          std::vector<double> const& veff_it_coarse__);
     
         #endif
         
-        /// Apply local part of Hamiltonian to a slice of wave-functions.
-        void apply_h_local_serial(K_point* kp__,
-                                  std::vector<double> const& effective_potential__,
-                                  std::vector<double> const& pw_ekin__,
-                                  int num_phi__,
-                                  Wave_functions& phi__,
-                                  Wave_functions& hphi__);
-        
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
                                                    std::vector<double>& veff_it_coarse__);
 
-        void diag_fv_pseudo_potential_davidson_serial(K_point* kp__,
-                                                      double v0__,
-                                                      std::vector<double>& veff_it_coarse__);
+        void diag_fv_pseudo_potential_davidson(K_point* kp__,
+                                               double v0__,
+                                               std::vector<double>& veff_it_coarse__);
         
         void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                       double v0__,
@@ -240,16 +170,6 @@ class Band
                             mdarray<int, 1>& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__);
 
-        void add_non_local_contribution_serial(K_point* kp__,
-                                               int N__,
-                                               int n__,
-                                               matrix<double_complex>& phi__,
-                                               matrix<double_complex>& op_phi__, 
-                                               mdarray<double_complex, 1>& kappa__,
-                                               mdarray<int, 1> const& packed_mtrx_offset__,
-                                               mdarray<double_complex, 1>& op_mtrx_packed__,
-                                               double_complex alpha);
-
         void diag_h_o(K_point* kp__,
                       int N__,
                       int num_bands__,
@@ -261,28 +181,26 @@ class Band
                       dmatrix<double_complex>& evec_dist__,
                       std::vector<double>& eval__);
 
-        void apply_h_o_serial(K_point* kp__, 
-                              int N__,
-                              int n__,
-                              Wave_functions& phi__,
-                              Wave_functions& hphi__,
-                              Wave_functions& ophi__,
-                              mdarray<double_complex, 1>& kappa__,
-                              Hloc_operator &h_op,
-                              D_operator& d_op,
-                              Q_operator& q_op);
+        void apply_h_o(K_point* kp__, 
+                       int N__,
+                       int n__,
+                       Wave_functions<false>& phi__,
+                       Wave_functions<false>& hphi__,
+                       Wave_functions<false>& ophi__,
+                       Hloc_operator &h_op,
+                       D_operator& d_op,
+                       Q_operator& q_op);
 
-        void set_fv_h_o_serial(K_point* kp__,
-                               int N__,
-                               int n__,
-                               Wave_functions& phi__,
-                               Wave_functions& hphi__,
-                               Wave_functions& ophi__,
-                               matrix<double_complex>& h__,
-                               matrix<double_complex>& o__,
-                               matrix<double_complex>& h_old__,
-                               matrix<double_complex>& o_old__,
-                               mdarray<double_complex, 1>& kappa__);
+        void set_fv_h_o(K_point* kp__,
+                        int N__,
+                        int n__,
+                        Wave_functions<false>& phi__,
+                        Wave_functions<false>& hphi__,
+                        Wave_functions<false>& ophi__,
+                        matrix<double_complex>& h__,
+                        matrix<double_complex>& o__,
+                        matrix<double_complex>& h_old__,
+                        matrix<double_complex>& o_old__);
 
         int residuals(K_point* kp__,
                       int N__,
@@ -290,25 +208,23 @@ class Band
                       std::vector<double>& eval__,
                       std::vector<double>& eval_old__,
                       matrix<double_complex>& evec__,
-                      Wave_functions& hphi__,
-                      Wave_functions& ophi__,
-                      Wave_functions& hpsi__,
-                      Wave_functions& opsi__,
-                      Wave_functions& res__,
+                      Wave_functions<false>& hphi__,
+                      Wave_functions<false>& ophi__,
+                      Wave_functions<false>& hpsi__,
+                      Wave_functions<false>& opsi__,
+                      Wave_functions<false>& res__,
                       std::vector<double>& h_diag__,
-                      std::vector<double>& o_diag__,
-                      mdarray<double_complex, 1>& kappa__);
+                      std::vector<double>& o_diag__);
 
         void residuals_aux(K_point* kp__,
                            int num_bands__,
                            std::vector<double>& eval__,
-                           Wave_functions& hpsi__,
-                           Wave_functions& opsi__,
-                           Wave_functions& res__,
+                           Wave_functions<false>& hpsi__,
+                           Wave_functions<false>& opsi__,
+                           Wave_functions<false>& res__,
                            std::vector<double>& h_diag__,
                            std::vector<double>& o_diag__,
-                           std::vector<double>& res_norm__,
-                           mdarray<double_complex, 1>& kappa__);
+                           std::vector<double>& res_norm__);
 
         void add_nl_h_o_pw(K_point* kp__,
                            int n__,
