@@ -127,6 +127,7 @@ class Profiler
   #define PROFILE_WITH_TIMER(name) debug::Profiler profiler__(__function_name__, __FILE__, __LINE__, name)
 #else
   #define PROFILE(...)
+  #define PROFILE_WITH_TIMER(name) 
 #endif
 
 inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)

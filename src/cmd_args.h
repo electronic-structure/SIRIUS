@@ -64,7 +64,12 @@ class cmd_args
             for (int i = 1; i < argn__; i++)
             {
                 std::string str(argv__[i]);
-                if (str.length() < 3 || str[0] != '-' || str[1] != '-') TERMINATE("wrong key");
+                if (str.length() < 3 || str[0] != '-' || str[1] != '-')
+                {
+                    std::stringstream s;
+                    s << "wrong key: " << str;
+                    TERMINATE(s);
+                }
 
                 size_t k = str.find("=");
 
