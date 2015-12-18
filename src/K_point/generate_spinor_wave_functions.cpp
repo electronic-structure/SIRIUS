@@ -13,6 +13,7 @@ void K_point::generate_spinor_wave_functions()
     {
         if (!parameters_.need_sv())
         {
+            /* copy eigen-states and exit */
             if (parameters_.full_potential())
             {
                 fv_states<true>().coeffs().panel() >> spinor_wave_functions<true>(0).coeffs().panel();
@@ -25,109 +26,78 @@ void K_point::generate_spinor_wave_functions()
         }
 
         int nfv = parameters_.num_fv_states();
- 
-        /* serial version */
-        if (num_ranks() == 1)
+        int nbnd = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : nfv;
+
+        /* serial GPU version */
+        if (num_ranks() == 1 && parameters_.processing_unit() == GPU)
         {
-            //spinor_wave_functions_.zero();
-            if (parameters_.processing_unit() == GPU)
-            {
-                #ifdef __GPU
-                //fv_states_.allocate_on_device();
-                //fv_states_.copy_to_device();
-                #endif
-            }
- 
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                if (parameters_.num_mag_dims() != 3)
-                {
-                    if (parameters_.processing_unit() == GPU)
-                    {
-                        #ifdef __GPU
-                        STOP();
-                        //sv_eigen_vectors_[ispn].allocate_on_device();
-                        //sv_eigen_vectors_[ispn].copy_to_device();
-                        //spinor_wave_functions_[ispn].allocate_on_device();
- 
-                        //linalg<GPU>::gemm(0, 0, wf_size(), nfv, nfv, &alpha, fv_states_.at<GPU>(), fv_states_.ld(), 
-                        //                  sv_eigen_vectors_[ispn].at<GPU>(), sv_eigen_vectors_[ispn].ld(),
-                        //                  &beta, spinor_wave_functions_[ispn].at<GPU>(), spinor_wave_functions_[ispn].ld());
- 
-                        //sv_eigen_vectors_[ispn].deallocate_on_device();
-                        //spinor_wave_functions_[ispn].copy_to_host();
-                        //spinor_wave_functions_[ispn].deallocate_on_device();
-                        #else
-                        TERMINATE_NO_GPU
-                        #endif
-                    }
-                    else
-                    {
-                        /* multiply up block for first half of the bands, dn block for second half of the bands */
-                        linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states<true>().coeffs().panel().at<CPU>(), wf_size(), 
-                                          sv_eigen_vectors_[ispn].at<CPU>(), sv_eigen_vectors_[ispn].ld(), 
-                                          spinor_wave_functions<true>(ispn).coeffs().panel().at<CPU>(), wf_size());
-                    }
-                }
-                else
-                {
-                    /* multiply up block and then dn block for all bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states<true>().coeffs().panel().at<CPU>(), wf_size(),
-                                      sv_eigen_vectors_[0].at<CPU>(ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
-                                      spinor_wave_functions<true>(ispn).coeffs().panel().at<CPU>(), wf_size());
-                }
-            }
-            if (parameters_.processing_unit() == GPU)
-            {
-                #ifdef __GPU
-                //fv_states_.deallocate_on_device();
-                #endif
-            }
+            STOP();
         }
-        /* parallel version */
         else
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                if (parameters_.num_mag_dims() != 3)
-                {
-                    /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, double_complex(1, 0), fv_states<true>().coeffs(), 
-                                      sv_eigen_vectors_[ispn], double_complex(0, 0), spinor_wave_functions<true>(ispn).coeffs());
+                int s, o;
+                if (parameters_.num_mag_dims() == 3) // in case of non-collinear magnetism sv_eigen_vectors_ is
+                {                                    // a single 2Nx2N matrix
+                    s = 0;
+                    o = ispn * nfv; // offset for spin up is 0, for spin dn is nfv
                 }
-                else
+                else // sv_eigen_vectors_ is composed of two NxN matrices
                 {
-                    STOP();
+                    s = ispn;
+                    o = 0;
                 }
+                /* multiply consecutively up and dn blocks */
+                linalg<CPU>::gemm(0, 0, wf_size(), nbnd, nfv, double_complex(1, 0), fv_states<true>().coeffs(), 0, 0,
+                                  sv_eigen_vectors_[s], o, 0, double_complex(0, 0), spinor_wave_functions<true>(ispn).coeffs(), 0, 0);
             }
-
-            //int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
-            ///* spin component of spinor wave functions */
-            //dmatrix<double_complex> spin_component_panel(wf_size(), nst, blacs_grid_, parameters_.cyclic_block_size(),
-            //                                             parameters_.cyclic_block_size());
-            //
-            //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            //{
-            //    if (parameters_.num_mag_dims() != 3)
-            //    {
-            //        /* multiply up block for first half of the bands, dn block for second half of the bands */
-            //        linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_, sv_eigen_vectors_[ispn],
-            //                          complex_zero, spin_component_panel);
-            //        
-            //    }
-            //    else
-            //    {
-            //        /* multiply up block and then dn block for all bands */
-            //        linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_, 0, 0,
-            //                          sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel, 0, 0);
- 
-            //    }
-
-            //    /* change to slice storage */
-            //    linalg<CPU>::gemr2d(wf_size(), nst, spin_component_panel, 0, 0,
-            //                        spinor_wave_functions_[ispn], 0, 0, blacs_grid_.context());
-            //}
         }
+ 
+        ///* serial version */
+        //if (num_ranks() == 1)
+        //{
+        //    //spinor_wave_functions_.zero();
+        //    if (parameters_.processing_unit() == GPU)
+        //    {
+        //        #ifdef __GPU
+        //        //fv_states_.allocate_on_device();
+        //        //fv_states_.copy_to_device();
+        //        #endif
+        //    }
+ 
+        //    for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        //    {
+        //        if (parameters_.num_mag_dims() != 3)
+        //        {
+        //            if (parameters_.processing_unit() == GPU)
+        //            {
+        //                #ifdef __GPU
+        //                STOP();
+        //                //sv_eigen_vectors_[ispn].allocate_on_device();
+        //                //sv_eigen_vectors_[ispn].copy_to_device();
+        //                //spinor_wave_functions_[ispn].allocate_on_device();
+ 
+        //                //linalg<GPU>::gemm(0, 0, wf_size(), nfv, nfv, &alpha, fv_states_.at<GPU>(), fv_states_.ld(), 
+        //                //                  sv_eigen_vectors_[ispn].at<GPU>(), sv_eigen_vectors_[ispn].ld(),
+        //                //                  &beta, spinor_wave_functions_[ispn].at<GPU>(), spinor_wave_functions_[ispn].ld());
+ 
+        //                //sv_eigen_vectors_[ispn].deallocate_on_device();
+        //                //spinor_wave_functions_[ispn].copy_to_host();
+        //                //spinor_wave_functions_[ispn].deallocate_on_device();
+        //                #else
+        //                TERMINATE_NO_GPU
+        //                #endif
+        //            }
+        //        }
+        //    }
+        //    if (parameters_.processing_unit() == GPU)
+        //    {
+        //        #ifdef __GPU
+        //        //fv_states_.deallocate_on_device();
+        //        #endif
+        //    }
+        //}
     }
     else
     {
