@@ -64,7 +64,8 @@ class linalg<CPU>: public linalg_base
         static void hemm(int side, int uplo, ftn_int m, ftn_int n, T alpha, matrix<T>& A, 
                          matrix<T>& B, T beta, matrix<T>& C);
         
-        /// Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers.
+        /// General matrix-matrix multiplication.
+        /** Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers. */
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T const* A, ftn_int lda,
                          T const* B, ftn_int ldb, T beta, T* C, ftn_int ldc);

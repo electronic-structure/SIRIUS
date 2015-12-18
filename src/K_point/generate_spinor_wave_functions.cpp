@@ -87,7 +87,19 @@ void K_point::generate_spinor_wave_functions()
         /* parallel version */
         else
         {
-            STOP();
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                if (parameters_.num_mag_dims() != 3)
+                {
+                    /* multiply up block for first half of the bands, dn block for second half of the bands */
+                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, double_complex(1, 0), fv_states<true>().coeffs(), 
+                                      sv_eigen_vectors_[ispn], double_complex(0, 0), spinor_wave_functions<true>(ispn).coeffs());
+                }
+                else
+                {
+                    STOP();
+                }
+            }
 
             //int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
             ///* spin component of spinor wave functions */
