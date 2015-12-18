@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -431,6 +431,84 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
 
 }
 
+void Symmetry::symmetrize_vector(double_complex* fx_pw__,
+                                 double_complex* fy_pw__,
+                                 double_complex* fz_pw__,
+                                 Gvec const& gvec__,
+                                 Communicator const& comm__) const
+{
+    Timer t("sirius::Symmetry::symmetrize_vector");
+    
+    splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
+    mdarray<double_complex, 1> sym_fx_pw(gvec__.num_gvec());
+    mdarray<double_complex, 1> sym_fy_pw(gvec__.num_gvec());
+    mdarray<double_complex, 1> sym_fz_pw(gvec__.num_gvec());
+    sym_fx_pw.zero();
+    sym_fy_pw.zero();
+    sym_fz_pw.zero();
+
+    double* ptr_x = (double*)&sym_fx_pw(0);
+    double* ptr_y = (double*)&sym_fy_pw(0);
+    double* ptr_z = (double*)&sym_fz_pw(0);
+
+    std::vector<double_complex*> v_pw_in({fx_pw__, fy_pw__, fz_pw__});
+
+    #pragma omp parallel for
+    for (int i = 0; i < num_mag_sym(); i++)
+    {
+        /* full space-group symmetry operation is {R|t} */
+        auto R = magnetic_group_symmetry(i).spg_op.R;
+        auto t = magnetic_group_symmetry(i).spg_op.t;
+        auto S = magnetic_group_symmetry(i).spin_rotation;
+
+        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+        {
+            int ig = (int)spl_gvec[igloc];
+
+            auto gv_rot = transpose(R) * gvec__[ig];
+
+            /* index of a rotated G-vector */
+            int ig_rot = gvec__.index_by_gvec(gv_rot);
+
+            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
+
+            double_complex phase = std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
+            double_complex vz[] = {double_complex(0, 0), double_complex(0, 0), double_complex(0, 0)};
+            for (int j: {0, 1, 2})
+                for (int k: {0, 1, 2})
+                    vz[j] += phase * S(j, k) * v_pw_in[k][ig];
+
+            #pragma omp atomic update
+            ptr_x[2 * ig_rot] += vz[0].real();
+
+            #pragma omp atomic update
+            ptr_y[2 * ig_rot] += vz[1].real();
+
+            #pragma omp atomic update
+            ptr_z[2 * ig_rot] += vz[2].real();
+
+            #pragma omp atomic update
+            ptr_x[2 * ig_rot + 1] += vz[0].imag();
+            
+            #pragma omp atomic update
+            ptr_y[2 * ig_rot + 1] += vz[1].imag();
+
+            #pragma omp atomic update
+            ptr_z[2 * ig_rot + 1] += vz[2].imag();
+        }
+    }
+    comm__.allreduce(&sym_fx_pw(0), gvec__.num_gvec());
+    comm__.allreduce(&sym_fy_pw(0), gvec__.num_gvec());
+    comm__.allreduce(&sym_fz_pw(0), gvec__.num_gvec());
+
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++)
+    {
+        fx_pw__[ig] = sym_fx_pw(ig) / double(num_mag_sym());
+        fy_pw__[ig] = sym_fy_pw(ig) / double(num_mag_sym());
+        fz_pw__[ig] = sym_fz_pw(ig) / double(num_mag_sym());
+    }
+}
+
 void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                                    Communicator const& comm__) const
 {
@@ -476,17 +554,17 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                      lmmax * nrmax * spl_atoms.local_size());
 }
 
-void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
+void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& vz_rlm__,
                                              Communicator const& comm__) const
 {
     Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
 
-    int lmmax = (int)frlm__.size(0);
-    int nrmax = (int)frlm__.size(1);
+    int lmmax = (int)vz_rlm__.size(0);
+    int nrmax = (int)vz_rlm__.size(1);
 
     splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
 
-    if (num_atoms_ != (int)frlm__.size(2)) TERMINATE("wrong number of atoms");
+    if (num_atoms_ != (int)vz_rlm__.size(2)) TERMINATE("wrong number of atoms");
 
     int lmax = Utils::lmax_by_lmmax(lmmax);
 
@@ -513,15 +591,86 @@ void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
             if (location.second == comm__.rank())
             {
                 linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at<CPU>(), rotm.ld(), 
-                                  frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
+                                  vz_rlm__.at<CPU>(0, 0, ia), vz_rlm__.ld(), 1.0,
                                   fsym.at<CPU>(0, 0, location.first), fsym.ld());
             }
         }
     }
 
-    comm__.allgather(fsym.at<CPU>(), frlm__.at<CPU>(), 
+    comm__.allgather(fsym.at<CPU>(), vz_rlm__.at<CPU>(), 
                      (int)(lmmax * nrmax * spl_atoms.global_offset()), 
                      (int)(lmmax * nrmax * spl_atoms.local_size()));
+}
+
+void Symmetry::symmetrize_vector(mdarray<double, 3>& vx_rlm__,
+                                 mdarray<double, 3>& vy_rlm__,
+                                 mdarray<double, 3>& vz_rlm__,
+                                 Communicator const& comm__) const
+{
+    Timer t("sirius::Symmetry::symmetrize_vector_mt");
+
+    int lmmax = (int)vx_rlm__.size(0);
+    int nrmax = (int)vx_rlm__.size(1);
+
+    splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
+
+    int lmax = Utils::lmax_by_lmmax(lmmax);
+
+    mdarray<double, 2> rotm(lmmax, lmmax);
+
+    mdarray<double, 4> v_sym(lmmax, nrmax, spl_atoms.local_size(), 3);
+    v_sym.zero();
+
+    mdarray<double, 3> vtmp(lmmax, nrmax, 3);
+
+    double alpha = 1.0 / double(num_mag_sym());
+
+    std::vector<mdarray<double, 3>*> vrlm({&vx_rlm__, &vy_rlm__, &vz_rlm__});
+
+    for (int i = 0; i < num_mag_sym(); i++)
+    {
+        /* full space-group symmetry operation is {R|t} */
+        int pr = magnetic_group_symmetry(i).spg_op.proper;
+        auto eang = magnetic_group_symmetry(i).spg_op.euler_angles;
+        int isym = magnetic_group_symmetry(i).isym;
+        auto S = magnetic_group_symmetry(i).spin_rotation;
+        SHT::rotation_matrix(lmax, eang, pr, rotm);
+
+        for (int ia = 0; ia < num_atoms_; ia++)
+        {
+            int ja = sym_table_(ia, isym);
+            auto location = spl_atoms.location(ja);
+            if (location.second == comm__.rank())
+            {
+                for (int k: {0, 1, 2}) 
+                {
+                    linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(), 
+                                      vrlm[k]->at<CPU>(0, 0, ia), vrlm[k]->ld(), 0.0,
+                                      vtmp.at<CPU>(0, 0, k), vtmp.ld());
+                }
+                for (int k: {0, 1, 2})
+                {
+                    for (int j: {0, 1, 2})
+                    {
+                        for (int ir = 0; ir < nrmax; ir++)
+                        {
+                            for (int lm = 0; lm < lmmax; lm++)
+                            {
+                                v_sym(lm, ir, location.first, k) += S(k, j) * vtmp(lm, ir, j);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int k: {0, 1, 2})
+    {
+        comm__.allgather(v_sym.at<CPU>(0, 0, 0, k), vrlm[k]->at<CPU>(), 
+                         (int)(lmmax * nrmax * spl_atoms.global_offset()), 
+                         (int)(lmmax * nrmax * spl_atoms.local_size()));
+    }
 }
 
 };
