@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -216,28 +216,25 @@ struct gklo_basis_descriptor
     /// G+k vector in fractional coordinates.
     vector3d<double> gkvec;
 
-    /// G+k vector in Cartesian coordinates.
-    vector3d<double> gkvec_cart;
-
     /// Global index of the G vector for the corresponding G+k vector.
     int ig;
 
     /// Index of atom if this is a local orbital descriptor.
-    int ia;
+    uint16_t ia;
 
     /// Index of orbital quantum number \f$ \ell \f$.
-    int l;
+    uint8_t l;
 
     /// Combined lm index.
-    int lm;
+    uint16_t lm;
 
     /// Order of the local orbital radial function for the given orbital quantum number \f$ \ell \f$.
     /** All radial functions for the given orbital quantum number \f$ \ell \f$ are ordered in the following way: 
      *  augmented radial functions come first followed by the local orbital radial function. */
-    int order;
+    uint8_t order;
 
     /// Index of the local orbital radial function.
-    int idxrf;
+    uint8_t idxrf;
 };
 
 struct mt_basis_descriptor
