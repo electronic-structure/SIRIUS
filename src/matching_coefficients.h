@@ -184,8 +184,9 @@ class Matching_coefficients
                 #pragma omp for
                 for (int igk = 0; igk < num_gkvec_; igk++)
                 {
+                    auto gkvec_cart = unit_cell__->reciprocal_lattice_vectors() * gklo_basis_descriptors_[igk].gkvec;
                     /* get r, theta, phi */
-                    auto vs = SHT::spherical_coordinates(gklo_basis_descriptors_[igk].gkvec_cart);
+                    auto vs = SHT::spherical_coordinates(gkvec_cart);
 
                     /* get spherical harmonics */
                     SHT::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
