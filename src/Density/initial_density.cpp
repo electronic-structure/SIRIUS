@@ -313,45 +313,47 @@ void Density::initial_density()
         //== fclose(fout);
 
 
-        //== /* initialize the magnetization */
-        //== if (parameters_.num_mag_dims())
-        //== {
-        //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        //==     {
-        //==         vector3d<double> v = unit_cell_.atom(ia)->vector_field();
-        //==         double len = v.length();
+        /* initialize the magnetization */
+        if (parameters_.num_mag_dims())
+        {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            {
+                //vector3d<double> v = unit_cell_.atom(ia)->vector_field();
+                //double len = v.length();
 
-        //==         for (int j0 = 0; j0 < fft_->size(0); j0++)
-        //==         {
-        //==             for (int j1 = 0; j1 < fft_->size(1); j1++)
-        //==             {
-        //==                 for (int j2 = 0; j2 < fft_->size(2); j2++)
-        //==                 {
-        //==                     /* get real space fractional coordinate */
-        //==                     vector3d<double> v0(double(j0) / fft_->size(0), double(j1) / fft_->size(1), double(j2) / fft_->size(2));
-        //==                     /* index of real space point */
-        //==                     int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+                for (int j0 = 0; j0 < ctx_.fft(0)->grid().size(0); j0++)
+                {
+                    for (int j1 = 0; j1 < ctx_.fft(0)->grid().size(1); j1++)
+                    {
+                        for (int j2 = 0; j2 < ctx_.fft(0)->local_size_z(); j2++)
+                        {
+                            /* get real space fractional coordinate */
+                            auto v0 = vector3d<double>(double(j0) / ctx_.fft(0)->grid().size(0), 
+                                                       double(j1) / ctx_.fft(0)->grid().size(1), 
+                                                       double(ctx_.fft(0)->offset_z() + j2) / ctx_.fft(0)->grid().size(2));
+                            /* index of real space point */
+                            int ir = ctx_.fft(0)->grid().index_by_coord(j0, j1, j2);
 
-        //==                     for (int t0 = -1; t0 <= 1; t0++)
-        //==                     {
-        //==                         for (int t1 = -1; t1 <= 1; t1++)
-        //==                         {
-        //==                             for (int t2 = -1; t2 <= 1; t2++)
-        //==                             {
-        //==                                 vector3d<double> v1 = v0 - (unit_cell_.atom(ia)->position() + vector3d<double>(t0, t1, t2));
-        //==                                 auto r = unit_cell_.get_cartesian_coordinates(vector3d<double>(v1));
-        //==                                 if (r.length() <= 2.0)
-        //==                                 {
-        //==                                     magnetization_[0]->f_it<global>(ir) = 1.0;
-        //==                                 }
-        //==                             }
-        //==                         }
-        //==                     }
-        //==                 }
-        //==             }
-        //==         }
-        //==     }
-        //== }
+                            for (int t0 = -1; t0 <= 1; t0++)
+                            {
+                                for (int t1 = -1; t1 <= 1; t1++)
+                                {
+                                    for (int t2 = -1; t2 <= 1; t2++)
+                                    {
+                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia)->position() + vector3d<double>(t0, t1, t2));
+                                        auto r = unit_cell_.get_cartesian_coordinates(v1);
+                                        if (r.length() <= 2.0)
+                                        {
+                                            magnetization_[0]->f_it(ir) = 1.0;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
 
         //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));

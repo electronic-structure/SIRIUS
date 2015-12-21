@@ -95,7 +95,7 @@ void Beta_projectors::generate_beta_gk_t()
 void Beta_projectors::split_in_chunks()
 {
     /* split beta-projectors into chunks */
-    int num_atoms_in_chunk = 1; //(comm_.size() == 1) ? unit_cell_.num_atoms() : std::min(unit_cell_.num_atoms(), 256);
+    int num_atoms_in_chunk = (comm_.size() == 1) ? unit_cell_.num_atoms() : std::min(unit_cell_.num_atoms(), 256);
     int num_beta_chunks = unit_cell_.num_atoms() / num_atoms_in_chunk + std::min(1, unit_cell_.num_atoms() % num_atoms_in_chunk);
     splindex<block> spl_beta_chunks(unit_cell_.num_atoms(), num_beta_chunks, 0);
     beta_chunks_.resize(num_beta_chunks);
