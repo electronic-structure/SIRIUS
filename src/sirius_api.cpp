@@ -1436,14 +1436,16 @@ void sirius_get_gkvec_arrays(int32_t* kset_id,
 
         for (int igk = 0; igk < kp->num_gkvec(); igk++)
         {
+            auto gkc = kp->gkvec().cart_shifted(igk);
+
             //gvec_index[igk] = kp->gvec_index(igk) + 1; // Fortran counts form 1
             gvec_index[igk] = igk + 1; // Fortran counts from 1
             for (int x = 0; x < 3; x++) 
             {
-                gkvec(x, igk) = kp->gkvec<fractional>(igk)[x];
-                gkvec_cart(x, igk) = kp->gkvec<cartesian>(igk)[x];
+                gkvec(x, igk) = kp->gkvec().gvec_shifted(igk)[x]; //kp->gkvec<fractional>(igk)[x];
+                gkvec_cart(x, igk) = gkc[x]; //kp->gkvec().cart_shifted(igk)[x]; //kp->gkvec<cartesian>(igk)[x];
             }
-            auto rtp = sirius::SHT::spherical_coordinates(kp->gkvec<cartesian>(igk));
+            auto rtp = sirius::SHT::spherical_coordinates(gkc);
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
@@ -1620,7 +1622,7 @@ void sirius_get_gkvec_cart(int32_t* kset_id, int32_t* ik, double* gkvec_cart__)
 
     for (int igk = 0; igk < kp->num_gkvec(); igk++)
     {
-        for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = kp->gkvec<cartesian>(igk)[x];
+        for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = kp->gkvec().gvec_shifted(igk)[x]; //kp->gkvec<cartesian>(igk)[x];
     }
 }
 
