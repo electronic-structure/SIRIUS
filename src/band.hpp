@@ -365,7 +365,7 @@ void Band::get_h_o_diag(K_point* kp__,
     /* local H contribution */
     for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
     {
-        int igk = kp__->gklo_basis_descriptor_row(igk_loc).igk;
+        int igk = kp__->gklo_basis_descriptor_row(igk_loc).ig;
         h_diag__[igk_loc] = pw_ekin__[igk] + v0__;
         o_diag__[igk_loc] = 1.0;
     }

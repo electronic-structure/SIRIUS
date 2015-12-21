@@ -211,12 +211,6 @@ struct unit_cell_parameters_descriptor
  *      - pure G+k plane-wave basis */
 struct gklo_basis_descriptor
 {
-    /// ID (global index) of the basis function.
-    int id;
-
-    /// Global index of the G+k vector.
-    int igk;
-
     vector3d<int> gvec;
 
     /// G+k vector in fractional coordinates.
@@ -251,29 +245,6 @@ struct mt_basis_descriptor
     int ia;
     int xi;
 };
-
-//== struct occupied_bands_descriptor
-//== {
-//==     int num_occupied_bands_;
-//== 
-//==     std::vector<int> idx_bnd_loc;
-//==     std::vector<int> idx_bnd_glob;
-//==     std::vector<double> weight;
-//== 
-//==     /// Total number of occupied bands.
-//==     int num_occupied_bands() const
-//==     {
-//==         return num_occupied_bands_;
-//==     }
-//== 
-//==     /// Local freaction of occupied bands.
-//==     int num_occupied_bands_local() const
-//==     {
-//==         assert(idx_bnd_loc.size() == idx_bnd_glob.size());
-//==         assert(idx_bnd_loc.size() == weight.size());
-//==         return static_cast<int>(idx_bnd_loc.size());
-//==     }
-//== };
 
 struct block_data_descriptor
 {

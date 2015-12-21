@@ -35,7 +35,7 @@ void K_point::distribute_basis_index()
         num_gkvec_col_ = 0;
         for (int i = 0; i < gklo_basis_size_col(); i++)
         {
-            if (gklo_basis_descriptor_col(i).igk != -1) num_gkvec_col_++;
+            if (gklo_basis_descriptor_col(i).ig != -1) num_gkvec_col_++;
         }
     }
     else
@@ -51,7 +51,7 @@ void K_point::distribute_basis_index()
     num_gkvec_row_ = 0;
     for (int i = 0; i < gklo_basis_size_row(); i++)
     {
-        if (gklo_basis_descriptor_row(i).igk != -1) num_gkvec_row_++;
+        if (gklo_basis_descriptor_row(i).ig != -1) num_gkvec_row_++;
     }
 }
 
