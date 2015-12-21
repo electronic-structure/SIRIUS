@@ -64,12 +64,17 @@ class K_set
 
         Unit_cell& unit_cell_;
 
-        Communicator comm_k_;
+        Communicator const& comm_k_;
 
         BLACS_grid const& blacs_grid_;
 
+        /// 1D BLACS grid for a "slice" data distribution.
+        /** This grid is used to distribute band index and keep a whole wave-function */
+        BLACS_grid blacs_grid_slice_;
+
         void init()
         {
+            PROFILE();
             band_ = new Band(ctx_, blacs_grid_);
         }
 
@@ -82,8 +87,10 @@ class K_set
               parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__),
-              blacs_grid_(blacs_grid__)
+              blacs_grid_(blacs_grid__),
+              blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size())
         {
+            PROFILE();
             init();
         }
 
@@ -97,8 +104,10 @@ class K_set
               parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__),
-              blacs_grid_(blacs_grid__)
+              blacs_grid_(blacs_grid__),
+              blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size())
         {
+            PROFILE();
             init();
 
             int nk;
@@ -193,6 +202,7 @@ class K_set
 
         ~K_set()
         {
+            PROFILE();
             clear();
             delete band_;
         }
@@ -200,8 +210,6 @@ class K_set
         /// Initialize the k-point set
         void initialize();
 
-        void update();
-        
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
         void find_eigen_states(Potential* potential, bool precompute);
 
@@ -225,11 +233,13 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            kpoints_.push_back(new K_point(ctx_, vk__, weight__, blacs_grid_));
+            PROFILE();
+            kpoints_.push_back(new K_point(ctx_, vk__, weight__, blacs_grid_, blacs_grid_slice_));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
+            PROFILE();
             for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
 
@@ -242,8 +252,8 @@ class K_set
 
         void clear()
         {
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++) delete kpoints_[ik];
-            
+            PROFILE();
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) delete kpoints_[ik];
             kpoints_.clear();
         }
         
@@ -259,7 +269,7 @@ class K_set
         
         inline int spl_num_kpoints(int ikloc)
         {
-            return static_cast<int>(spl_num_kpoints_[ikloc]);
+            return spl_num_kpoints_[ikloc];
         }
 
         void set_band_occupancies(int ik, double* band_occupancies)

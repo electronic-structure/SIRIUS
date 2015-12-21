@@ -76,6 +76,22 @@ interface
         integer,                 intent(in) :: num_mag_dims
     end subroutine
 
+    subroutine sirius_add_xc_functional(xc_name)&
+       &bind(C, name="sirius_add_xc_functional")
+        character, dimension(*), intent(in) :: xc_name
+    end subroutine
+
+    subroutine sirius_set_esm_type(esm_name)&
+       &bind(C, name="sirius_set_esm_type")
+        character, dimension(*), intent(in) :: esm_name
+    end subroutine
+
+    subroutine sirius_set_mpi_grid_dims(ndims, dims)&
+       &bind(C, name="sirius_set_mpi_grid_dims")
+        integer,                 intent(in) :: ndims
+        integer,                 intent(in) :: dims
+    end subroutine
+
     subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
        &bind(C, name="sirius_set_atom_type_properties")
         character, dimension(*), intent(in) :: label
@@ -132,7 +148,7 @@ interface
         real(8),                 intent(in) :: dion
     end subroutine
 
-    subroutine sirius_set_atom_type_q_rf(label, num_q_coefs, lmax_q, q_coefs, rinner, q_rf)&
+    subroutine sirius_set_atom_type_q_rf(label, num_q_coefs, lmax_q, q_coefs, rinner, q_rf, lmax)&
        &bind(C, name="sirius_set_atom_type_q_rf")
         character, dimension(*), intent(in) :: label
         integer,                 intent(in) :: num_q_coefs
@@ -140,6 +156,7 @@ interface
         real(8),                 intent(in) :: q_coefs
         real(8),                 intent(in) :: rinner
         real(8),                 intent(in) :: q_rf
+        integer,                 intent(in) :: lmax
     end subroutine
 
     subroutine sirius_set_atom_type_rho_core(label, num_points, rho_core)&
@@ -247,6 +264,7 @@ interface
 
     subroutine sirius_augment_density(kset_id)&
        &bind(C, name="sirius_augment_density")
+        integer,                 intent(in) :: kset_id
     end subroutine
 
     subroutine sirius_density_mixer_initialize()&
@@ -295,13 +313,15 @@ interface
         real(8),                 intent(in) :: band_occupancies
     end subroutine
 
-    subroutine sirius_set_rho_pw(rho_pw)&
+    subroutine sirius_set_rho_pw(num_gvec, rho_pw)&
        &bind(C, name="sirius_set_rho_pw")
+        integer,                 intent(in) :: num_gvec
         complex(8),              intent(in) :: rho_pw
     end subroutine
 
-    subroutine sirius_get_rho_pw(rho_pw)&
+    subroutine sirius_get_rho_pw(num_gvec, rho_pw)&
        &bind(C, name="sirius_get_rho_pw")
+        integer,                 intent(in)  :: num_gvec
         complex(8),              intent(out) :: rho_pw
     end subroutine
 
@@ -522,6 +542,11 @@ interface
         real(8),                 intent(out) :: val
     end subroutine
 
+    subroutine sirius_get_energy_ewald(val)&
+       &bind(C, name="sirius_get_energy_ewald")
+        real(8),                 intent(out) :: val
+    end subroutine
+
     subroutine sirius_get_fv_h_o(kset_id, ik, msize, h, o)&
        &bind(C, name="sirius_get_fv_h_o")
         integer,                 intent(in)  :: kset_id
@@ -553,6 +578,10 @@ interface
         complex(8),              intent(out) :: apwalm
         integer,                 intent(in)  :: ngkmax
         integer,                 intent(in)  :: apwordmax
+    end subroutine
+
+    subroutine sirius_write_json_output()&
+       &bind(C, name="sirius_write_json_output")
     end subroutine
 
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&

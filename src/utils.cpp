@@ -234,45 +234,46 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     return v;
 }
 
-vector3d<int> Utils::find_translation_limits(double radius__, matrix3d<double> const& lattice_vectors__)
+vector3d<int> Utils::find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
 {
-    sirius::Timer t("sirius::Utils::find_translation_limits");
+    sirius::Timer t("sirius::Utils::find_translations");
 
-    vector3d<int> limits;
+    double theta = pi;
+    double phi = 0;
 
-    int n = 0;
-    while(true)
+    auto minv = inverse(lattice_vectors__);
+    vector3d<int> limits(0, 0, 0);
+    double max_lim[] = {0, 0, 0};
+    double min_lim[] = {0, 0, 0};
+
+    auto test_point = [&minv, radius__, &limits, &max_lim, &min_lim](double th, double ph)
     {
-        bool found = false;
-        for (int i0 = -n; i0 <= n; i0++)
+        vector3d<double> pos(radius__ * std::sin(th) * std::cos(ph),
+                             radius__ * std::sin(th) * std::sin(ph),
+                             radius__ * std::cos(th));
+        auto f = minv * pos;
+        for (int x: {0, 1, 2})
         {
-            for (int i1 = -n; i1 <= n; i1++)
-            {
-                for (int i2 = -n; i2 <= n; i2++)
-                {
-                    if (std::abs(i0) == n || std::abs(i1) == n || std::abs(i2) == n)
-                    {
-                        vector3d<double> vc = lattice_vectors__ * vector3d<double>(i0, i1, i2);
-                        if (vc.length() <= radius__)
-                        {
-                            found = true;
-                            limits[0] = std::max(2 * abs(i0) + 1, limits[0]);
-                            limits[1] = std::max(2 * abs(i1) + 1, limits[1]);
-                            limits[2] = std::max(2 * abs(i2) + 1, limits[2]);
-                        }
-                    }
-                }
-            }
+            max_lim[x] = std::max(max_lim[x], std::floor(f[x]));
+            min_lim[x] = std::min(min_lim[x], std::ceil(f[x]));
         }
+    };
 
-        if (found) 
-        {
-            n++;
-        }
-        else 
-        {
-            return limits;
-        }
+    int num_points = 5000;
+
+    test_point(0, 0);
+    test_point(theta, phi);
+    for (int k = 1; k < num_points - 1; k++)
+    {
+        double hk = -1.0 + 2.0 * k / (num_points - 1);
+        theta = std::acos(hk);
+        double t = phi + 3.80925122745582 / std::sqrt(double(num_points)) / std::sqrt(1 - hk * hk);
+        phi = std::fmod(t, twopi);
+        test_point(theta, phi);
     }
+    
+    for (int x: {0, 1, 2}) limits[x] = static_cast<int>(max_lim[x] - min_lim[x] + 0.001) + 1;
+
+    return limits;
 }
 

@@ -60,7 +60,7 @@ class Mixer
         mdarray<T, 1> output_buffer_;
         
         /// Base communicator.
-        Communicator comm_;
+        Communicator const& comm_;
 
         /// Residual sum of squares.
         double rss_;
@@ -137,6 +137,11 @@ class Mixer
         inline T const* output_buffer() const
         {
             return output_buffer_.template at<CPU>();
+        }
+
+        inline T output_buffer(int idx) const
+        {
+            return output_buffer_(idx);
         }
 
         inline void initialize()

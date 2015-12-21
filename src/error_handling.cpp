@@ -54,7 +54,6 @@ void terminate(const char* file_name, int line_number, const std::stringstream& 
 void error_message(const char* file_name, int line_number, const std::string& message, int flags)
 {
     bool verbose = (flags & _global_message_) ? (Platform::rank() == 0) : true;
-    if (verbosity_level >= 10) verbose = true;
 
     std::vector<char> buffer(message.size() + 1000);
 
@@ -142,15 +141,5 @@ void warning_local(const char* file_name, int line_number, const std::string& me
 void warning_local(const char* file_name, int line_number, const std::stringstream& message)
 {
     error_message(file_name, line_number, message.str(), 0);
-}
-
-void log_function_enter(const char* func_name)
-{
-    if (verbosity_level >= 10) printf("rank%04i %s + %s\n", Platform::rank(), timestamp().c_str(), func_name);
-}
-
-void log_function_exit(const char* func_name)
-{
-    if (verbosity_level >= 10) printf("rank%04i %s - %s\n", Platform::rank(), timestamp().c_str(), func_name);
 }
 

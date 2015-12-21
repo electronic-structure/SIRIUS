@@ -900,7 +900,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o");
+    PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
     
     h__.zero();
     o__.zero();
@@ -1217,7 +1217,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     Timer t("sirius::Band::set_fv_h_o_it");
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), fft_->num_gvec()).checksum();
+    double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
     DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
     #endif
 
@@ -1226,8 +1226,8 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
+                                             kp->gklo_basis_descriptor_col(igk_col).gvec);
             
             /* pw kinetic energy */
             double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
@@ -1337,88 +1337,6 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 //==                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
 //== }
 
-void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential)
-{
-    log_function_enter(__func__);
-    Timer t("sirius::Band::diag_fv_full_potential", kp->comm());
-
-    if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
-        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
-
-    dmatrix<double_complex> h(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid());
-
-    dmatrix<double_complex> o(nullptr, kp->gklo_basis_size(), kp->gklo_basis_size(), kp->blacs_grid());
-    
-    h.allocate(alloc_mode);
-    o.allocate(alloc_mode);
-    
-    /* setup Hamiltonian and overlap */
-    switch (parameters_.processing_unit())
-    {
-        case CPU:
-        {
-            set_fv_h_o<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
-            break;
-        }
-        #ifdef __GPU
-        case GPU:
-        {
-            set_fv_h_o<GPU, full_potential_lapwlo>(kp, effective_potential, h, o);
-            break;
-        }
-        #endif
-        default:
-        {
-            TERMINATE("wrong processing unit");
-        }
-    }
-
-    // TODO: move debug code to a separate function
-    if (debug_level > 0 && !gen_evp_solver()->parallel())
-    {
-        Utils::check_hermitian("h", h.panel());
-        Utils::check_hermitian("o", o.panel());
-    }
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = h.panel().checksum();
-    auto z2 = o.panel().checksum();
-    DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
-    DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
-    #endif
-
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(h): %16llX", h.panel().hash());
-    DUMP("hash(o): %16llX", o.panel().hash());
-    #endif
-
-    assert(kp->gklo_basis_size() > parameters_.num_fv_states());
-    
-    if (fix_apwlo_linear_dependence)
-    {
-        //solve_fv_evp_2stage(kp, h, o);
-    }
-    else
-    {
-        std::vector<double> eval(parameters_.num_fv_states());
-    
-        Timer t("sirius::Band::diag_fv_full_potential|genevp");
-    
-        if (gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
-                                    parameters_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                    &eval[0], kp->fv_eigen_vectors_panel().at<CPU>(), kp->fv_eigen_vectors_panel().ld()))
-        {
-            TERMINATE("error in generalized eigen-value problem");
-        }
-        kp->set_fv_eigen_values(&eval[0]);
-    }
-
-    h.deallocate();
-    o.deallocate();
-    
-    log_function_exit(__func__);
-}
-
 //void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
 //                        mdarray<double_complex, 2>& o)
 //{
@@ -1475,8 +1393,8 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = ctx_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-                                                            kp->gklo_basis_descriptor_col(igk_col).ig);
+            int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
+                                             kp->gklo_basis_descriptor_col(igk_col).gvec);
             
             o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
         }
@@ -1569,197 +1487,6 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
     }
 }
 
-void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])
-{
-    LOG_FUNC_BEGIN();
-
-    Timer t("sirius::Band::solve_sv");
-
-    if (!parameters_.need_sv())
-    {
-        kp->bypass_sv();
-        return;
-    }
-    
-    if (kp->num_ranks() > 1 && !std_evp_solver()->parallel()) TERMINATE("eigen-value solver is not parallel");
-
-    /* number of h|\psi> components */
-    int nhpsi = parameters_.num_mag_dims() + 1;
-    if (!std_evp_solver()->parallel() && parameters_.num_mag_dims() == 3) nhpsi = 3;
-
-    /* size of the first-variational state */
-    int fvsz = kp->wf_size();
-
-    std::vector<double> band_energies(parameters_.num_bands());
-
-    /* product of the second-variational Hamiltonian and a wave-function */
-    mdarray<double_complex, 3> hpsi(fvsz, kp->sub_spl_fv_states().local_size(), nhpsi);
-    hpsi.zero();
-
-    // compute product of magnetic field and wave-function 
-    if (parameters_.num_spins() == 2)
-        apply_magnetic_field(kp->fv_states(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
-
-    //== if (parameters_.uj_correction())
-    //== {
-    //==     apply_uj_correction<uu>(kp->fv_states_col(), hpsi);
-    //==     if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(kp->fv_states_col(), hpsi);
-    //==     if (parameters_.num_mag_dims() == 3) 
-    //==     {
-    //==         apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
-    //==         if (parameters_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
-    //==     }
-    //== }
-
-    //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
-
-
-    std::vector< dmatrix<double_complex>* > hpsi_panel(nhpsi);
-    for (int i = 0; i < nhpsi; i++)
-    {
-        hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid());
-        // change data distribution of hpsi to panels
-        auto sm = hpsi.submatrix(i);
-        hpsi_panel[i]->scatter(sm);
-    }
-    hpsi.deallocate(); // we don't need full vectors anymore
-
-    if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
-    {
-        #ifdef __GPU
-        //kp->fv_states_panel().panel().allocate_on_device();
-        //kp->fv_states_panel().panel().copy_to_device();
-        #endif
-    }
-    double_complex alpha = complex_one;
-    double_complex beta = complex_zero;
-
-    if (parameters_.num_mag_dims() != 3)
-    {
-        dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), kp->blacs_grid());
-        if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
-        {
-            #ifdef __GPU
-            h.panel().allocate_on_device();
-            #endif
-        }
-
-        /* perform one or two consecutive diagonalizations */
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-        {
-            if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
-            {
-                #ifdef __GPU
-                Timer t4("sirius::Band::solve_sv|zgemm");
-                hpsi_panel[ispn]->panel().allocate_on_device();
-                hpsi_panel[ispn]->panel().copy_to_device();
-                linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
-                                  kp->fv_states().at<GPU>(), kp->fv_states().ld(),
-                                  hpsi_panel[ispn]->panel().at<GPU>(), hpsi_panel[ispn]->panel().ld(), &beta,
-                                  h.panel().at<GPU>(), h.panel().ld());
-                h.panel().copy_to_host();
-                hpsi_panel[ispn]->panel().deallocate_on_device();
-                double tval = t4.stop();
-                DUMP("effective zgemm performance: %12.6f GFlops", 
-                     8e-9 * parameters_.num_fv_states() * parameters_.num_fv_states() * fvsz / tval);
-                #else
-                TERMINATE_NO_GPU
-                #endif
-            }
-            else
-            {
-                /* compute <wf_i | (h * wf_j)> for up-up or dn-dn block */
-                linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
-                                  kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
-            }
-            
-            for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
-        
-            Timer t1("sirius::Band::solve_sv|stdevp");
-            std_evp_solver()->solve(parameters_.num_fv_states(), h.at<CPU>(), h.ld(),
-                                    &band_energies[ispn * parameters_.num_fv_states()],
-                                    kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
-        }
-    }
-
-    for (int i = 0; i < nhpsi; i++) delete hpsi_panel[i];
-
-    //== if (parameters_.num_mag_dims() == 1)
-    //== {
-    //==     mdarray<double_complex, 2> h(nrow, ncol);
-    //==     
-    //==     //perform two consecutive diagonalizations
-    //==     for (int ispn = 0; ispn < 2; ispn++)
-    //==     {
-    //==         // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-    //==         blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), 
-    //==                         &hpsi(0, 0, ispn), hpsi.ld(), &h(0, 0), h.ld());
-
-    //==         for (int icol = 0; icol < ncol; icol++)
-    //==         {
-    //==             int i = parameters_.spl_fv_states_col(icol);
-    //==             for (int irow = 0; irow < nrow; irow++)
-    //==             {
-    //==                 if (parameters_.spl_fv_states_row(irow) == i) h(irow, icol) += kp->fv_eigen_value(i);
-    //==             }
-    //==         }
-    //==     
-    //==         Timer t1("sirius::Band::solve_sv|stdevp");
-    //==         parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
-    //==                                             &band_energies[ispn * parameters_.num_fv_states()],
-    //==                                             &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
-    //==     }
-    //== }
-
-    //== if (parameters_.num_mag_dims() == 3)
-    //== {
-    //==     mdarray<double_complex, 2> h(2 * nrow, 2 * ncol);
-    //==     h.zero();
-
-    //==     // compute <fv_i | (h * fv_j)> for up-up block
-    //==     blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), 
-    //==                     &h(0, 0), h.ld());
-
-    //==     // compute <fv_i | (h * fv_j)> for up-dn block
-    //==     blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), 
-    //==                     &h(0, ncol), h.ld());
-    //==    
-    //==     // compute <fv_i | (h * fv_j)> for dn-dn block
-    //==     blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
-    //==                     &h(nrow, ncol), h.ld());
-
-    //==     if (parameters_.std_evp_solver()->parallel())
-    //==     {
-    //==         // compute <fv_i | (h * fv_j)> for dn-up block
-    //==         blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
-    //==                         &h(nrow, 0), h.ld());
-    //==     }
-    //==   
-    //==     for (int ispn = 0; ispn < 2; ispn++)
-    //==     {
-    //==         for (int icol = 0; icol < ncol; icol++)
-    //==         {
-    //==             int i = parameters_.spl_fv_states_col(icol) + ispn * parameters_.num_fv_states();
-    //==             for (int irow = 0; irow < nrow; irow++)
-    //==             {
-    //==                 int j = parameters_.spl_fv_states_row(irow) + ispn * parameters_.num_fv_states();
-    //==                 if (j == i) 
-    //==                 {
-    //==                     h(irow + ispn * nrow, icol + ispn * ncol) += kp->fv_eigen_value(parameters_.spl_fv_states_col(icol));
-    //==                 }
-    //==             }
-    //==         }
-    //==     }
-    //== 
-    //==     Timer t1("sirius::Band::solve_sv|stdevp");
-    //==     parameters_.std_evp_solver()->solve(parameters_.num_bands(), h.ptr(), h.ld(), &band_energies[0], 
-    //==                                         sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
-    //== }
-
-    kp->set_band_energies(&band_energies[0]);
-    LOG_FUNC_END();
-}
-
 void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
                     Periodic_function<double>* effective_magnetic_field[3])
 {
@@ -1815,99 +1542,118 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     //== kp->set_band_energies(&eval[0]);
 }
 
-#ifdef __SCALAPACK
-void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
-                                             double v0__,
-                                             std::vector<double>& veff_it_coarse__)
-{
-    log_function_enter(__func__);
-    Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
-    
-    auto& itso = parameters_.iterative_solver_input_section();
-    if (itso.type_ == "davidson")
-    {
-        diag_fv_pseudo_potential_davidson_fast_parallel(kp__, v0__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "chebyshev")
-    {
-        diag_fv_pseudo_potential_chebyshev_parallel(kp__, veff_it_coarse__);
-    }
-    else
-    {
-        TERMINATE("unknown iterative solver type");
-    }
+//==#ifdef __SCALAPACK
+//==void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
+//==                                             double v0__,
+//==                                             std::vector<double>& veff_it_coarse__)
+//=={
+//==    PROFILE();
+//==
+//==    Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
+//==    
+//==    auto& itso = parameters_.iterative_solver_input_section();
+//==    if (itso.type_ == "davidson")
+//==    {
+//==        diag_fv_pseudo_potential_davidson_parallel(kp__, v0__, veff_it_coarse__);
+//==    }
+//==    else if (itso.type_ == "chebyshev")
+//==    {
+//==        diag_fv_pseudo_potential_chebyshev_parallel(kp__, veff_it_coarse__);
+//==    }
+//==    else
+//==    {
+//==        TERMINATE("unknown iterative solver type");
+//==    }
+//==}
+//==#endif // __SCALAPACK
 
-    log_function_exit(__func__);
-}
-#endif // __SCALAPACK
-
-void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
-                                           double v0__,
-                                           std::vector<double>& veff_it_coarse__)
-{
-    log_function_enter(__func__);
-    Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
-    
-    auto& itso = parameters_.iterative_solver_input_section();
-    if (itso.type_ == "exact")
-    {
-        diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "davidson")
-    {
-        diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "rmm-diis")
-    {
-        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0__, veff_it_coarse__);
-    }
-    else if (itso.type_ == "chebyshev")
-    {
-        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse__);
-    }
-    else
-    {
-        TERMINATE("unknown iterative solver type");
-    }
-
-    log_function_exit(__func__);
-}
+//void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
+//                                           double v0__,
+//                                           std::vector<double>& veff_it_coarse__)
+//{
+//    PROFILE();
+//
+//    Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
+//    
+//    auto& itso = parameters_.iterative_solver_input_section();
+//    if (itso.type_ == "exact")
+//    {
+//        diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse__);
+//    }
+//    else if (itso.type_ == "davidson")
+//    {
+//        diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
+//    }
+//    else if (itso.type_ == "rmm-diis")
+//    {
+//        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0__, veff_it_coarse__);
+//    }
+//    else if (itso.type_ == "chebyshev")
+//    {
+//        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse__);
+//    }
+//    else
+//    {
+//        TERMINATE("unknown iterative solver type");
+//    }
+//}
 
 void Band::diag_fv_pseudo_potential(K_point* kp__, 
                                     Periodic_function<double>* effective_potential__)
 {
+    PROFILE();
+
     Timer t("sirius::Band::diag_fv_pseudo_potential");
 
-    auto fft_coarse = ctx_.fft_coarse();
+
+    auto fft_coarse = ctx_.fft_coarse_ctx().fft();
+    auto& gv = ctx_.gvec();
+    auto& gvc = ctx_.gvec_coarse();
+
+    ctx_.fft_coarse_ctx().allocate_workspace();
 
     /* map effective potential to a corase grid */
-    std::vector<double> veff_it_coarse(fft_coarse->size());
-    std::vector<double_complex> veff_pw_coarse(fft_coarse->num_gvec());
+    std::vector<double> veff_it_coarse(fft_coarse->local_size());
+    std::vector<double_complex> veff_pw_coarse(gvc.num_gvec_fft());
 
-    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
-    for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
+    for (int ig = 0; ig < gvc.num_gvec_fft(); ig++)
     {
-        int ig = ctx_.fft()->gvec_index(fft_coarse->gvec(igc));
-        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+        auto G = gvc[ig + gvc.offset_gvec_fft()];
+        veff_pw_coarse[ig] = effective_potential__->f_pw(gv.index_by_gvec(G));
     }
-    fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);
-    fft_coarse->transform(1);
+    fft_coarse->transform<1>(gvc, &veff_pw_coarse[0]);
     fft_coarse->output(&veff_it_coarse[0]);
 
-    double v0 = real(effective_potential__->f_pw(0));
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    double cs = mdarray<double, 1>(&veff_it_coarse[0], veff_it_coarse.size()).checksum();
+    DUMP("checksum(veff_it_coarse): %18.10f", cs);
+    #endif
 
-    if (gen_evp_solver()->parallel())
+    double v0 = effective_potential__->f_pw(0).real();
+
+    auto& itso = parameters_.iterative_solver_input_section();
+    if (itso.type_ == "exact")
     {
-        #ifdef __SCALAPACK
-        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
-        #else
-        TERMINATE_NO_SCALAPACK
-        #endif
+        diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse);
+    }
+    else if (itso.type_ == "davidson")
+    {
+        diag_fv_pseudo_potential_davidson(kp__, v0, veff_it_coarse);
+    }
+    else if (itso.type_ == "rmm-diis")
+    {
+        diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0, veff_it_coarse);
+    }
+    else if (itso.type_ == "chebyshev")
+    {
+        diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse);
     }
     else
     {
-        diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse);
+        TERMINATE("unknown iterative solver type");
     }
+
+    ctx_.fft_coarse_ctx().deallocate_workspace();
 }
 
 }

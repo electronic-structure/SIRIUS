@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,13 +19,14 @@
 
 /** \file fft3d.h
  *   
- *  \brief Interface to FFTW3 library.
+ *  \brief Contains declaration and partial implementation of FFT3D class.
  */
 
 #ifndef __FFT3D_H__
 #define __FFT3D_H__
 
 #include <fftw3.h>
+//#include <fftw3-mpi.h>
 #include <vector>
 #include <algorithm> 
 #include "typedefs.h"
@@ -33,18 +34,275 @@
 #include "splindex.h"
 #include "vector3d.h"
 #include "timer.h"
+#include "descriptors.h"
+#include "fft3d_grid.h"
+#include "gvec.h"
 
-namespace sirius
+// TODO: allocate and deallocate buffers manually
+
+namespace sirius {
+
+/// Implementation of FFT3D.
+/** FFT convention:
+ *  \f[
+ *      f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
+ *  \f]
+ *  is a \em backward transformation from a set of pw coefficients to a function.  
+ *
+ *  \f[
+ *      f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = 
+ *          \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
+ *  \f]
+ *  is a \em forward transformation from a function to a set of coefficients. 
+ */
+class FFT3D
 {
+    protected:
+        
+        /// Number of working threads inside each FFT.
+        int num_fft_workers_;
+        
+        /// Communicator for the parallel FFT.
+        Communicator const& comm_;
 
-template <processing_unit_t> 
-class FFT3D;
+        /// Main processing unit of this FFT.
+        processing_unit_t pu_;
+        
+        /// Split z-direction.
+        splindex<block> spl_z_;
 
-#include "fft3d_cpu.hpp"
+        FFT3D_grid grid_;
 
-#ifdef __GPU
-#include "fft3d_gpu.hpp"
-#endif
+        /// Local size of z-dimension of FFT buffer.
+        int local_size_z_;
+
+        /// Offset in the global z-dimension.
+        int offset_z_;
+
+        /// Main input/output buffer.
+        mdarray<double_complex, 1> fft_buffer_;
+        
+        /// Auxiliary array to store z-sticks for all-to-all or GPU.
+        mdarray<double_complex, 1> fft_buffer_aux_;
+        
+        /// Interbal buffer for independent z-transforms.
+        std::vector<double_complex*> fftw_buffer_z_;
+
+        /// Internal buffer for independent {xy}-transforms.
+        std::vector<double_complex*> fftw_buffer_xy_;
+
+        std::vector<fftw_plan> plan_backward_z_;
+
+        std::vector<fftw_plan> plan_backward_xy_;
+        
+        std::vector<fftw_plan> plan_forward_z_;
+
+        std::vector<fftw_plan> plan_forward_xy_;
+
+        #ifdef __GPU
+        bool cufft3d_;
+        cufftHandle cufft_plan_;
+        //cufftHandle cufft_plan_xy_;
+        mdarray<char, 1> cufft_work_buf_;
+        int cufft_nbatch_;
+        #endif
+
+        template <int direction, bool use_reduction>
+        void transform_z_serial(Gvec const& gvec__, double_complex* data__);
+
+        template <int direction, bool use_reduction>
+        void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
+
+        template <int direction, bool use_reduction>
+        void transform_xy(Gvec const& gvec__);
+
+    public:
+
+        FFT3D(FFT3D_grid grid__,
+              int num_fft_workers__,
+              Communicator const& comm__,
+              processing_unit_t pu__,
+              double gpu_workload = 0.8);
+
+        ~FFT3D();
+
+        template <int direction>
+        void transform(Gvec const& gvec__, double_complex* data__);
+
+        //template<typename T>
+        //inline void input(int n__, int const* map__, T const* data__)
+        //{
+        //    memset(fftw_buffer_, 0, local_size() * sizeof(double_complex));
+        //    for (int i = 0; i < n__; i++) fftw_buffer_[map__[i]] = data__[i];
+        //}
+
+        template <typename T>
+        inline void input(T* data__)
+        {
+            for (int i = 0; i < local_size(); i++) fft_buffer_[i] = data__[i];
+            #ifdef __GPU
+            if (pu_ == GPU) fft_buffer_.copy_to_device();
+            #endif
+        }
+        
+        inline void output(double* data__)
+        {
+            #ifdef __GPU
+            if (pu_ == GPU) fft_buffer_.copy_to_host();
+            #endif
+            for (int i = 0; i < local_size(); i++) data__[i] = fft_buffer_[i].real();
+        }
+        
+        inline void output(double_complex* data__)
+        {
+            switch (pu_)
+            {
+                case CPU:
+                {
+                    std::memcpy(data__, fft_buffer_.at<CPU>(), local_size() * sizeof(double_complex));
+                    break;
+                }
+                case GPU:
+                {
+                    #ifdef __GPU
+                    acc::copyout(data__, fft_buffer_.at<GPU>(), local_size());
+                    #endif
+                    break;
+                }
+            }
+        }
+        
+        //inline void output(int n__, int const* map__, double_complex* data__)
+        //{
+        //    for (int i = 0; i < n__; i++) data__[i] = fftw_buffer_[map__[i]];
+        //}
+
+        //inline void output(int n__, int const* map__, double_complex* data__, double beta__)
+        //{
+        //    for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
+        //}
+
+        FFT3D_grid const& grid() const
+        {
+            return grid_;
+        }
+        
+        /// Total size of the FFT grid.
+        inline int size() const
+        {
+            return grid_.size();
+        }
+
+        inline int local_size() const
+        {
+            return grid_.size(0) * grid_.size(1) * local_size_z_;
+        }
+
+        inline int local_size_z() const
+        {
+            return local_size_z_;
+        }
+
+        inline int offset_z() const
+        {
+            return offset_z_;
+        }
+
+        /// Direct access to the fft buffer
+        inline double_complex& buffer(int idx__)
+        {
+            return fft_buffer_[idx__];
+        }
+        
+        template <processing_unit_t pu>
+        inline double_complex* buffer()
+        {
+            return fft_buffer_.at<pu>();
+        }
+        
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
+
+        inline bool parallel() const
+        {
+            return (comm_.size() != 1);
+        }
+
+        inline bool hybrid() const
+        {
+            return (pu_ == GPU);
+        }
+
+        inline int num_fft_workers() const
+        {
+            return num_fft_workers_;
+        }
+
+        void allocate_workspace()
+        {
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                fft_buffer_aux_.allocate_on_device();
+                allocate_on_device();
+            }
+            #endif
+        }
+
+        void deallocate_workspace()
+        {
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                fft_buffer_aux_.deallocate_on_device();
+                deallocate_on_device();
+            }
+            #endif
+        }
+
+        #ifdef __GPU
+        void allocate_on_device()
+        {
+            PROFILE();
+            fft_buffer_.pin_memory();
+            fft_buffer_.allocate_on_device();
+            
+            size_t work_size;
+            if (comm_.size() == 1 && cufft3d_)
+            {
+                work_size = cufft_get_size_3d(grid_.size(0), grid_.size(1), grid_.size(2), 1);
+            }
+            else
+            {
+                work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
+            }
+            cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
+            cufft_work_buf_.allocate_on_device();
+            cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
+        }
+
+        void deallocate_on_device()
+        {
+            fft_buffer_.unpin_memory();
+            fft_buffer_.deallocate_on_device();
+            cufft_work_buf_.deallocate_on_device();
+        }
+
+        template<typename T>
+        inline void input_on_device(int n__, int const* map__, T* data__)
+        {
+            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, fft_buffer_.at<GPU>());
+        }
+
+        template<typename T>
+        inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
+        {
+            cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
+        }
+        #endif
+};
 
 };
 

@@ -22,8 +22,9 @@
  *  \brief Contains remaining implementation of Platform class.
  */
 
-#include "platform.h"
+#include <fftw3-mpi.h>
 #include <fftw3.h>
+#include "platform.h"
 
 int Platform::num_fft_threads_ = -1;
 
@@ -38,18 +39,19 @@ extern "C" void libsci_acc_finalize();
 
 void Platform::initialize(bool call_mpi_init__)
 {
-    if (call_mpi_init__) MPI_Init(NULL, NULL);
-    //== int provided;
-    //== if (call_mpi_init) 
-    //== {
-    //==     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
-    //== }
+    //if (call_mpi_init__) MPI_Init(NULL, NULL);
 
-    //== MPI_Query_thread(&provided);
-    //== if (provided != MPI_THREAD_MULTIPLE && rank() == 0)
-    //== {
-    //==     printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
-    //== }
+    int provided;
+    if (call_mpi_init__) 
+    {
+        MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+    }
+
+    MPI_Query_thread(&provided);
+    if (provided < MPI_THREAD_FUNNELED && rank() == 0)
+    {
+        printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
+    }
 
     #ifdef __GPU
     //cuda_initialize();
@@ -68,13 +70,6 @@ void Platform::initialize(bool call_mpi_init__)
     #ifdef __LIBSCI_ACC
     libsci_acc_init();
     #endif
-    #ifdef __FFTW_THREADED
-    if (!fftw_init_threads())
-    {
-        printf("error in fftw_init_threads()\n");
-        exit(0);
-    }
-    #endif
 
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
@@ -91,10 +86,9 @@ void Platform::finalize()
     #endif
     #ifdef __GPU
     cublas_destroy_handles(max_num_threads() + 1);
-    cuda_destroy_streams(max_num_threads() + 1);
+    cuda_destroy_streams();
     cuda_device_reset();
     #endif
-    fftw_cleanup_threads();
     fftw_cleanup();
 }
 

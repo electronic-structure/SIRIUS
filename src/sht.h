@@ -26,6 +26,7 @@
 #define __SHT_H__
 
 #include <math.h>
+#include <stddef.h>
 #include <gsl/gsl_sf_coupling.h>
 #include <gsl/gsl_sf_legendre.h>
 #include <string.h>

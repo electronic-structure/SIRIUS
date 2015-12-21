@@ -68,7 +68,7 @@ double SHT::gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3)
     assert(m2 >= -l2 && m2 <= l2);
     assert(m3 >= -l3 && m3 <= l3);
     
-    return pow(-1.0, abs(m1)) * sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
+    return pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
 }
@@ -89,9 +89,9 @@ double SHT::gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
         {
             for (int k3 = -l3; k3 <= l3; k3++)
             {
-                d += real(conj(sirius::SHT::ylm_dot_rlm(l1, k1, m1)) *
-                          sirius::SHT::ylm_dot_rlm(l2, k2, m2) *
-                          sirius::SHT::ylm_dot_rlm(l3, k3, m3)) * sirius::SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
+                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
+                                         SHT::ylm_dot_rlm(l2, k2, m2) *
+                                         SHT::ylm_dot_rlm(l3, k3, m3)) * SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
             }
         }
     }
@@ -189,7 +189,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         linalg<CPU>::geinv(lmmax_, rlm_forward_);
     }
     
-    if (debug_level > 0)
+    #if (__VERIFICATION > 0)
     {
         double dr = 0;
         double dy = 0;
@@ -211,8 +211,8 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
                     zt -= 1.0;
                     t -= 1.0;
                 }
-                dr += fabs(t);
-                dy += abs(zt);
+                dr += std::abs(t);
+                dy += std::abs(zt);
             }
         }
         dr = dr / lmmax_ / lmmax_;
@@ -231,14 +231,14 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         std::vector<double> ftp(num_points_);
         for (int lm = 0; lm < lmmax_; lm++)
         {
-            memset(&flm[0], 0, lmmax_ * sizeof(double));
+            std::memset(&flm[0], 0, lmmax_ * sizeof(double));
             flm[lm] = 1.0;
             backward_transform(lmmax_, &flm[0], 1, lmmax_, &ftp[0]);
             forward_transform(&ftp[0], 1, lmmax_, lmmax_, &flm[0]);
             flm[lm] -= 1.0;
 
             double t = 0.0;
-            for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
+            for (int lm1 = 0; lm1 < lmmax_; lm1++) t += std::abs(flm[lm1]);
 
             t /= lmmax_;
 
@@ -251,6 +251,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             }
         }
     }
+    #endif
 }
 
 vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
@@ -268,11 +269,11 @@ vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
     } 
     else
     {
-        vs[1] = acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
+        vs[1] = std::acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
 
-        if (fabs(vc[0]) > eps || fabs(vc[1]) > eps)
+        if (std::abs(vc[0]) > eps || std::abs(vc[1]) > eps)
         {
-            vs[2] = atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
+            vs[2] = std::atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
             if (vs[2] < 0.0) vs[2] += twopi;
         }
         else
@@ -286,25 +287,22 @@ vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
 
 void SHT::spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)
 {
-    double x = cos(theta);
+    double x = std::cos(theta);
     std::vector<double> result_array(lmax + 1);
 
-    for (int m = 0; m <= lmax; m++)
+    for (int l = 0; l <= lmax; l++)
     {
-        double_complex z = exp(double_complex(0.0, m * phi)); 
-        
-        gsl_sf_legendre_sphPlm_array(lmax, m, x, &result_array[0]);
-
-        for (int l = m; l <= lmax; l++)
+        for (int m = 0; m <= l; m++)
         {
-            ylm[Utils::lm_by_l_m(l, m)] = result_array[l - m] * z;
+            double_complex z = std::exp(double_complex(0.0, m * phi)); 
+            ylm[Utils::lm_by_l_m(l, m)] = gsl_sf_legendre_sphPlm(l, m, x) * z;
             if (m % 2) 
             {
-                ylm[Utils::lm_by_l_m(l, -m)] = -conj(ylm[Utils::lm_by_l_m(l, m)]);
+                ylm[Utils::lm_by_l_m(l, -m)] = -std::conj(ylm[Utils::lm_by_l_m(l, m)]);
             }
             else
             {
-                ylm[Utils::lm_by_l_m(l, -m)] = conj(ylm[Utils::lm_by_l_m(l, m)]);        
+                ylm[Utils::lm_by_l_m(l, -m)] = std::conj(ylm[Utils::lm_by_l_m(l, m)]);        
             }
         }
     }
@@ -316,19 +314,19 @@ void SHT::spherical_harmonics(int lmax, double theta, double phi, double* rlm)
     std::vector<double_complex> ylm(lmmax);
     spherical_harmonics(lmax, theta, phi, &ylm[0]);
     
-    double t = sqrt(2.0);
+    double t = std::sqrt(2.0);
     
     rlm[0] = y00;
 
     for (int l = 1; l <= lmax; l++)
     {
         for (int m = -l; m < 0; m++) 
-            rlm[Utils::lm_by_l_m(l, m)] = t * imag(ylm[Utils::lm_by_l_m(l, m)]);
+            rlm[Utils::lm_by_l_m(l, m)] = t * ylm[Utils::lm_by_l_m(l, m)].imag();
         
-        rlm[Utils::lm_by_l_m(l, 0)] = real(ylm[Utils::lm_by_l_m(l, 0)]);
+        rlm[Utils::lm_by_l_m(l, 0)] = ylm[Utils::lm_by_l_m(l, 0)].real();
          
         for (int m = 1; m <= l; m++) 
-            rlm[Utils::lm_by_l_m(l, m)] = t * real(ylm[Utils::lm_by_l_m(l, m)]);
+            rlm[Utils::lm_by_l_m(l, m)] = t * ylm[Utils::lm_by_l_m(l, m)].real();
     }
 }
                 
@@ -336,7 +334,7 @@ double_complex SHT::ylm_dot_rlm(int l, int m1, int m2)
 {
     const double isqrt2 = 0.70710678118654752440;
 
-    assert(l >= 0 && abs(m1) <= l && abs(m2) <= l);
+    assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
 
     if (!((m1 == m2) || (m1 == -m2))) return double_complex(0, 0);
 

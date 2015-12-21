@@ -30,7 +30,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft()->size(i);
+        for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft(0)->grid().size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
         jw.single("num_atoms", ctx.unit_cell().num_atoms());
@@ -103,8 +103,6 @@ void dft_loop(cmd_args args)
     
     int num_mag_dims = parser["num_mag_dims"].get(0);
 
-    int bs = parameters.cyclic_block_size();
-    
     parameters.set_num_mag_dims(num_mag_dims);
 
     Communicator comm(MPI_COMM_WORLD);
@@ -115,7 +113,7 @@ void dft_loop(cmd_args args)
     
     BLACS_grid blacs_grid(ctx.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
                           ctx.mpi_grid().dimension_size(_dim_row_),
-                          ctx.mpi_grid().dimension_size(_dim_col_), bs);
+                          ctx.mpi_grid().dimension_size(_dim_col_));
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -133,7 +131,7 @@ void dft_loop(cmd_args args)
     int use_symmetry = parser["use_symmetry"].get(0);
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
-             vector3d<int>(&ngridk[0]), vector3d<int>(0), use_symmetry);
+             vector3d<int>(ngridk[0], ngridk[1], ngridk[1]), vector3d<int>(0, 0, 0), use_symmetry);
 
     ks.initialize();
     

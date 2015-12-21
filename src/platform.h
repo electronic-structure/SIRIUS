@@ -29,13 +29,13 @@
 #include <omp.h>
 #include <signal.h>
 #include <unistd.h>
-#ifdef __GPU
-#include "gpu_interface.h"
-#endif
 #include <vector>
 #include <fstream>
+#include "config.h"
+#ifdef __GPU
+#include "gpu.h"
+#endif
 #include "typedefs.h"
-#include "communicator.h"
 
 /// Platform specific functions.
 class Platform
@@ -52,10 +52,10 @@ class Platform
 
         static void abort();
 
-        static int rank()
+        static int rank() // TODO: global rank should never be referenced; all calculations "live" inside thier own communicator
         {
             int r;
-            CALL_MPI(MPI_Comm_rank, (MPI_COMM_WORLD, &r));
+            MPI_Comm_rank(MPI_COMM_WORLD, &r);
             return r;
         }
 

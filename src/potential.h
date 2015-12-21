@@ -42,7 +42,6 @@ class Potential
         Simulation_context& ctx_;
 
         Simulation_parameters const& parameters_;
-        //Global& parameters_;
 
         Unit_cell const& unit_cell_;
 
@@ -50,8 +49,8 @@ class Potential
 
         Communicator const& comm_;
 
-        /// alias for FFT driver
-        FFT3D<CPU>* fft_;
+        /// Alias for FFT driver.
+        FFT3D* fft_;
 
         Periodic_function<double>* effective_potential_;
 
@@ -61,7 +60,7 @@ class Potential
         Periodic_function<double>* xc_potential_;
         Periodic_function<double>* xc_energy_density_;
         
-        /// local part of pseudopotential
+        /// Local part of pseudopotential.
         Periodic_function<double>* local_potential_;
 
         mdarray<double, 3> sbessel_mom_;
@@ -81,6 +80,12 @@ class Potential
         std::vector<double_complex> zilm_;
 
         std::vector<int> l_by_lm_;
+
+        mdarray<double_complex, 2> gvec_ylm_;
+
+        splindex<block> spl_num_gvec_;
+
+        //mdarray<double_complex, 2> gvec_phase_factors_;
 
         double energy_vha_;
         
@@ -380,8 +385,19 @@ class Potential
 
         /// Generate plane-wave coefficients of the potential in the interstitial region
         void generate_pw_coefs();
-
-        void generate_d_mtrx();
+        
+        /// Calculate D operator from potential and augmentation charge.
+        /** The following matrix is computed:
+         *  \f[
+         *      D_{ij}^{\alpha} = \int Q_{ij}^{\alpha}({\bf r}) V({\bf r}) d{\bf r}
+         *  \f]
+         *  In the plane-wave domain this integrals transforms to a sum:
+         *  \f[
+         *      D_{ij}^{\alpha} = \sum_{\bf G} \langle Q_{ij}^{\alpha}|{\bf G}\rangle \langle{\bf G}|V \rangle = 
+         *        \sum_{\bf G} e^{i{\bf r}_{\alpha}{\bf G}} Q_{ij}^{A *}({\bf G}) V({\bf G})
+         *  \f]
+         */
+        void generate_D_operator_matrix();
 
         void check_potential_continuity_at_mt();
 
@@ -452,8 +468,8 @@ class Potential
         
         void allocate()
         {
-            effective_potential_->allocate(true, true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate(true, true);
+            effective_potential_->allocate(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate(true);
         }
 
         inline double vh_el(int ia)

@@ -30,16 +30,16 @@ void Density::reduce_density_matrix(Atom_type* atom_type, int ialoc, mdarray<dou
                         {
                             case 3:
                             {
-                                mt_density_matrix(lm3, offs, 2) += 2.0 * real(zdens(xi1, xi2, 2, ialoc) * gc); 
-                                mt_density_matrix(lm3, offs, 3) -= 2.0 * imag(zdens(xi1, xi2, 2, ialoc) * gc);
+                                mt_density_matrix(lm3, offs, 2) += 2.0 * std::real(zdens(xi1, xi2, 2, ialoc) * gc); 
+                                mt_density_matrix(lm3, offs, 3) -= 2.0 * std::imag(zdens(xi1, xi2, 2, ialoc) * gc);
                             }
                             case 1:
                             {
-                                mt_density_matrix(lm3, offs, 1) += real(zdens(xi1, xi2, 1, ialoc) * gc);
+                                mt_density_matrix(lm3, offs, 1) += std::real(zdens(xi1, xi2, 1, ialoc) * gc);
                             }
                             case 0:
                             {
-                                mt_density_matrix(lm3, offs, 0) += real(zdens(xi1, xi2, 0, ialoc) * gc);
+                                mt_density_matrix(lm3, offs, 0) += std::real(zdens(xi1, xi2, 0, ialoc) * gc);
                             }
                         }
                     }

@@ -31,6 +31,7 @@
 #include "real_space_prj.h"
 #include "version.h"
 #include "debug.hpp"
+#include "fft3d_context.h"
 
 namespace sirius {
 
@@ -42,10 +43,15 @@ class Simulation_context
         Simulation_parameters parameters_; 
     
         /// Communicator for this simulation.
-        Communicator comm_;
+        Communicator const& comm_;
 
         /// MPI grid for this simulation.
-        MPI_grid mpi_grid_;
+        MPI_grid* mpi_grid_;
+
+        MPI_grid* mpi_grid_fft_;
+
+        FFT3D_context* fft_ctx_;
+        FFT3D_context* fft_coarse_ctx_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -56,17 +62,11 @@ class Simulation_context
         /// Step function is used in full-potential methods.
         Step_function* step_function_;
 
-        /// FFT wrapper for dense grid.
-        FFT3D<CPU>* fft_;
+        Gvec gvec_;
 
-        /// FFT wrapper for coarse grid.
-        FFT3D<CPU>* fft_coarse_;
+        Gvec gvec_coarse_;
 
-        #ifdef __GPU
-        FFT3D<GPU>* fft_gpu_;
-
-        FFT3D<GPU>* fft_gpu_coarse_;
-        #endif
+        //int gpu_thread_id_;
 
         Real_space_prj* real_space_prj_;
 
@@ -77,7 +77,15 @@ class Simulation_context
 
         double iterative_solver_tolerance_;
 
+        ev_solver_t std_evp_solver_type_;
+
+        ev_solver_t gen_evp_solver_type_;
+
+        double time_active_;
+        
         bool initialized_;
+
+        void init_fft();
 
     public:
         
@@ -85,20 +93,20 @@ class Simulation_context
                            Communicator const& comm__)
             : parameters_(parameters__),
               comm_(comm__),
+              mpi_grid_(nullptr),
+              mpi_grid_fft_(nullptr),
+              fft_ctx_(nullptr),
+              fft_coarse_ctx_(nullptr),
               unit_cell_(parameters_, comm_),
               reciprocal_lattice_(nullptr),
               step_function_(nullptr),
-              fft_(nullptr),
-              fft_coarse_(nullptr),
-              #ifdef __GPU
-              fft_gpu_(nullptr),
-              fft_gpu_coarse_(nullptr),
-              #endif
               real_space_prj_(nullptr),
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
+              std_evp_solver_type_(ev_lapack),
+              gen_evp_solver_type_(ev_lapack),
               initialized_(false)
         {
-            LOG_FUNC_BEGIN();
+            PROFILE();
 
             gettimeofday(&start_time_, NULL);
             
@@ -109,164 +117,30 @@ class Simulation_context
 
             unit_cell_.import(parameters_.unit_cell_input_section());
 
-            LOG_FUNC_END();
         }
 
         ~Simulation_context()
         {
-            if (fft_ != nullptr) delete fft_;
-            if (fft_coarse_ != nullptr) delete fft_coarse_;
-            #ifdef __GPU
-            if (fft_gpu_ != nullptr) delete fft_gpu_;
-            if (fft_gpu_coarse_ != nullptr) delete fft_gpu_coarse_;
-            #endif
+            PROFILE();
+
+            time_active_ += Utils::current_time();
+
+            if (Platform::rank() == 0)
+            {
+                printf("Simulation_context active time: %.4f sec.\n", time_active_);
+            }
+
             if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
+            if (fft_ctx_ != nullptr) delete fft_ctx_;
+            if (fft_coarse_ctx_ != nullptr) delete fft_coarse_ctx_;
+            if (mpi_grid_ != nullptr) delete mpi_grid_;
+            if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }
 
         /// Initialize the similation (can only be called once).
-        void initialize()
-        {
-            LOG_FUNC_BEGIN();
-
-            if (initialized_) TERMINATE("Simulation context is already initialized.");
-
-            switch (parameters_.esm_type())
-            {
-                case full_potential_lapwlo:
-                {
-                    break;
-                }
-                case full_potential_pwlo:
-                {
-                    parameters_.set_lmax_pw(parameters_.lmax_apw());
-                    parameters_.set_lmax_apw(-1);
-                    break;
-                }
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
-                {
-                    parameters_.set_lmax_apw(-1);
-                    parameters_.set_lmax_rho(-1);
-                    parameters_.set_lmax_pot(-1);
-                    break;
-                }
-            }
-
-            /* check MPI grid dimensions and set a default grid if needed */
-            auto mpi_grid_dims = parameters_.mpi_grid_dims();
-            if (!mpi_grid_dims.size()) 
-            {
-                mpi_grid_dims = std::vector<int>(1);
-                mpi_grid_dims[0] = comm_.size();
-            }
-            parameters_.set_mpi_grid_dims(mpi_grid_dims);
-
-            /* setup MPI grid */
-            mpi_grid_ = MPI_grid(mpi_grid_dims, comm_);
-
-            /* initialize variables, related to the unit cell */
-            unit_cell_.initialize();
-
-            #ifdef __PRINT_MEMORY_USAGE
-            MEMORY_USAGE_INFO();
-            #endif
-
-            if (comm_.rank() == 0)
-            {
-                unit_cell_.write_cif();
-                unit_cell_.write_json();
-            }
-
-            parameters_.set_lmax_beta(unit_cell_.lmax_beta());
-
-            /* create FFT interface */
-            fft_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors()),
-                                  parameters_.num_fft_threads(), parameters_.num_fft_workers());
-            
-            fft_->init_gvec(parameters_.pw_cutoff(), unit_cell_.reciprocal_lattice_vectors());
-
-            #ifdef __GPU
-            fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 1);
-            #endif
-            
-            if (!parameters_.full_potential())
-            {
-                /* create FFT interface for coarse grid */
-                fft_coarse_ = new FFT3D<CPU>(Utils::find_translation_limits(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors()),
-                                             parameters_.num_fft_threads(), parameters_.num_fft_workers());
-                
-                fft_coarse_->init_gvec(parameters_.gk_cutoff() * 2, unit_cell_.reciprocal_lattice_vectors());
-
-                #ifdef __GPU
-                fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
-                #endif
-            }
-
-            #ifdef __PRINT_MEMORY_USAGE
-            MEMORY_USAGE_INFO();
-            #endif
-    
-            if (unit_cell_.num_atoms() != 0) unit_cell_.symmetry()->check_gvec_symmetry(fft_);
-
-            /* create a reciprocal lattice */
-            int lmax = -1;
-            switch (parameters_.esm_type())
-            {
-                case full_potential_lapwlo:
-                {
-                    lmax = parameters_.lmax_pot();
-                    break;
-                }
-                case full_potential_pwlo:
-                {
-                    STOP();
-                }
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
-                {
-                    lmax = 2 * parameters_.lmax_beta();
-                    break;
-                }
-            }
-            
-            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), fft_, lmax, comm_);
-
-            #ifdef __PRINT_MEMORY_USAGE
-            MEMORY_USAGE_INFO();
-            #endif
-
-            if (parameters_.full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_, fft_, comm_);
-
-            if (parameters_.iterative_solver_input_section().real_space_prj_) 
-            {
-                real_space_prj_ = new Real_space_prj(unit_cell_, comm_, parameters_.iterative_solver_input_section().R_mask_scale_,
-                                                     parameters_.iterative_solver_input_section().mask_alpha_,
-                                                     parameters_.gk_cutoff(), parameters_.num_fft_threads(),
-                                                     parameters_.num_fft_workers());
-            }
-
-            /* take 20% of empty non-magnetic states */
-            if (parameters_.num_fv_states() < 0) 
-            {
-                int nfv = int(1e-8 + unit_cell_.num_valence_electrons() / 2.0) +
-                              std::max(10, int(0.1 * unit_cell_.num_valence_electrons()));
-                parameters_.set_num_fv_states(nfv);
-            }
-            
-            if (parameters_.num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
-                TERMINATE("not enough first-variational states");
-            
-            /* total number of bands */
-            parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
-            
-            if (comm_.rank() == 0 && verbosity_level >= 1) print_info();
-
-            initialized_ = true;
-
-            LOG_FUNC_END();
-        }
+        void initialize();
 
         Simulation_parameters const& parameters() const
         {
@@ -288,27 +162,25 @@ class Simulation_context
             return reciprocal_lattice_;
         }
 
-        inline FFT3D<CPU>* fft() const
+        inline FFT3D* fft(int thread_id__) const
         {
-            return fft_;
+            return fft_ctx_->fft(thread_id__);
         }
 
-        inline FFT3D<CPU>* fft_coarse() const
+        inline FFT3D* fft_coarse(int thread_id__) const
         {
-            return fft_coarse_;
+            return fft_coarse_ctx_->fft(thread_id__);
         }
 
-        #ifdef __GPU
-        inline FFT3D<GPU>* fft_gpu() const
+        Gvec const& gvec() const
         {
-            return fft_gpu_;
+            return gvec_;
         }
 
-        inline FFT3D<GPU>* fft_gpu_coarse() const
+        Gvec const& gvec_coarse() const
         {
-            return fft_gpu_coarse_;
+            return gvec_coarse_;
         }
-        #endif
 
         Communicator const& comm() const
         {
@@ -317,7 +189,22 @@ class Simulation_context
 
         MPI_grid const& mpi_grid() const
         {
-            return mpi_grid_;
+            return *mpi_grid_;
+        }
+
+        MPI_grid const& mpi_grid_fft() const
+        {
+            return *mpi_grid_fft_;
+        }
+
+        FFT3D_context& fft_ctx()
+        {
+            return *fft_ctx_;
+        }
+
+        FFT3D_context& fft_coarse_ctx()
+        {
+            return *fft_coarse_ctx_;
         }
         
         void create_storage_file() const
@@ -354,7 +241,7 @@ class Simulation_context
             printf("\n");
             printf("number of MPI ranks           : %i\n", comm_.size());
             printf("MPI grid                      :");
-            for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
+            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->size(1 << i));
             printf("\n");
             printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
             printf("number of OMP threads for FFT   : %i\n", parameters_.num_fft_threads()); 
@@ -365,21 +252,24 @@ class Simulation_context
         
             printf("\n");
             printf("plane wave cutoff                     : %f\n", parameters_.pw_cutoff());
-            printf("number of G-vectors within the cutoff : %i\n", fft_->num_gvec());
-            printf("number of G-shells                    : %i\n", fft_->num_gvec_shells_inner());
-            printf("FFT grid size   : %i %i %i   total : %i\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size());
-            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_->grid_limits(0).first, fft_->grid_limits(0).second,
-                                                                fft_->grid_limits(1).first, fft_->grid_limits(1).second,
-                                                                fft_->grid_limits(2).first, fft_->grid_limits(2).second);
+            printf("number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
+            printf("number of G-shells                    : %i\n", gvec_.num_shells());
+            printf("number of independent FFTs : %i\n", mpi_grid_fft_->dimension_size(0));
+            printf("FFT comm size              : %i\n", mpi_grid_fft_->dimension_size(1));
+            auto fft_grid = fft_ctx_->fft_grid();
+            printf("FFT grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
+            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
+                                                                fft_grid.limits(1).first, fft_grid.limits(1).second,
+                                                                fft_grid.limits(2).first, fft_grid.limits(2).second);
             
-            if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-                parameters_.esm_type() == norm_conserving_pseudopotential)
+            if (!parameters_.full_potential())
             {
-                printf("number of G-vectors on the coarse grid within the cutoff : %i\n", fft_coarse_->num_gvec());
-                printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2), fft_coarse_->size());
-                printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_coarse_->grid_limits(0).first, fft_coarse_->grid_limits(0).second,
-                                                                           fft_coarse_->grid_limits(1).first, fft_coarse_->grid_limits(1).second,
-                                                                           fft_coarse_->grid_limits(2).first, fft_coarse_->grid_limits(2).second);
+                fft_grid = fft_coarse_ctx_->fft_grid();
+                printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
+                printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
+                printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
+                                                                           fft_grid.limits(1).first, fft_grid.limits(1).second,
+                                                                           fft_grid.limits(2).first, fft_grid.limits(2).second);
             }
         
             for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i)->print_info();
@@ -472,9 +362,8 @@ class Simulation_context
             
             printf("\n");
             printf("XC functionals : \n");
-            for (int i = 0; i < (int)parameters_.xc_functionals_input_section().xc_functional_names_.size(); i++)
+            for (auto& xc_label: parameters_.xc_functionals())
             {
-                std::string xc_label = parameters_.xc_functionals_input_section().xc_functional_names_[i];
                 XC_functional xc(xc_label, parameters_.num_spins());
                 printf("\n");
                 printf("%s\n", xc_label.c_str());
@@ -497,6 +386,27 @@ class Simulation_context
         {
             return iterative_solver_tolerance_;
         }
+
+        inline ev_solver_t std_evp_solver_type() const
+        {
+            return std_evp_solver_type_;
+        }
+    
+        inline ev_solver_t gen_evp_solver_type() const
+        {
+            return gen_evp_solver_type_;
+        }
+
+        //inline int num_fft_threads() const
+        //{
+        //    return (int)fft_.size();
+        //}
+
+        //inline int gpu_thread_id() const
+        //{
+        //    return gpu_thread_id_;
+        //}
+
 
         //== void write_json_output()
         //== {

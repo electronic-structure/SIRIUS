@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -33,7 +33,8 @@ extern "C" {
 #include "matrix3d.h"
 #include "constants.h"
 #include "utils.h"
-#include "fft3d.h"
+//#include "fft3d.h"
+#include "gvec.h"
 
 namespace sirius {
 
@@ -60,13 +61,16 @@ struct magnetic_group_symmetry_descriptor
 
     int isym;
 
+    /// Proper rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation;
 };
 
 class Symmetry
 {
     private:
-        
+       
+        /// Matrix of lattice vectors.
+        /** Spglib requires this matrix to have a positively defined determinant. */
         matrix3d<double> lattice_vectors_;
 
         matrix3d<double> inverse_lattice_vectors_;
@@ -79,10 +83,12 @@ class Symmetry
 
         double tolerance_;
 
+        /// Crystal structure descriptor returned by spglib.
         SpglibDataset* spg_dataset_;
-
-        //std::vector< std::pair<int, int> > mag_sym_;
-
+        
+        /// Symmetry table for atoms.
+        /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
+         *  transforms under symmetry operation. */
         mdarray<int, 2> sym_table_;
         
         std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
@@ -90,11 +96,6 @@ class Symmetry
         std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
 
         /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.
-        /** 
-
-        */
-        //vector3d<double> euler_angles(int isym__);
-
         vector3d<double> euler_angles(matrix3d<double> const& rot__) const;
 
         /// Generate rotation matrix from three Euler angles
@@ -139,11 +140,6 @@ class Symmetry
 
         ~Symmetry();
 
-        //inline int num_sym_op()
-        //{
-        //    return spg_dataset_->n_operations;
-        //}
-
         inline int atom_symmetry_class(int ia__)
         {
             return spg_dataset_->equivalent_atoms[ia__];
@@ -171,12 +167,14 @@ class Symmetry
 
         vector3d<double> origin_shift() const
         {
-            return vector3d<double>(spg_dataset_->origin_shift);
+            return vector3d<double>(spg_dataset_->origin_shift[0],
+                                    spg_dataset_->origin_shift[1],
+                                    spg_dataset_->origin_shift[2]);
         }
 
         inline int num_spg_sym() const
         {
-            return (int)space_group_symmetry_.size();
+            return static_cast<int>(space_group_symmetry_.size());
         }
 
         inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
@@ -186,7 +184,7 @@ class Symmetry
         }
         inline int num_mag_sym() const
         {
-            return (int)magnetic_group_symmetry_.size();
+            return static_cast<int>(magnetic_group_symmetry_.size());
         }
 
         inline magnetic_group_symmetry_descriptor const& magnetic_group_symmetry(int isym__) const
@@ -195,23 +193,7 @@ class Symmetry
             return magnetic_group_symmetry_[isym__];
         }
 
-        //int proper_rotation(int isym);
-
-        /// Rotation matrix in Cartesian coordinates.
-        //matrix3d<double> rot_mtrx_cart(int isym__);
-
-        /// Rotation matrix in fractional coordinates.
-        //matrix3d<int> rot_mtrx(int isym__);
-        
-        
-        //vector3d<double> fractional_translation(int isym__)
-        //{
-        //    vector3d<double> t;
-        //    for (int x = 0; x < 3; x++) t[x] =  spg_dataset_->translations[isym__][x];
-        //    return t;
-        //}
-
-        void check_gvec_symmetry(FFT3D<CPU>* fft__) const;
+        void check_gvec_symmetry(Gvec const& gvec__) const;
 
         /// Symmetrize scalar function.
         /** The following operation is performed:
@@ -231,18 +213,29 @@ class Symmetry
          *  \f]
          */
         void symmetrize_function(double_complex* f_pw__,
-                                 FFT3D<CPU>* fft__,
+                                 Gvec const& gvec__,
                                  Communicator const& comm__) const;
         
         void symmetrize_function(mdarray<double, 3>& frlm__,
                                  Communicator const& comm__) const;
         
         void symmetrize_vector_z_component(double_complex* f_pw__,
-                                           FFT3D<CPU>* fft__,
+                                           Gvec const& gvec__,
                                            Communicator const& comm__) const;
 
-        void symmetrize_vector_z_component(mdarray<double, 3>& frlm__,
+        void symmetrize_vector_z_component(mdarray<double, 3>& vz_rlm__,
                                            Communicator const& comm__) const;
+
+        void symmetrize_vector(double_complex* fx_pw__,
+                               double_complex* fy_pw__,
+                               double_complex* fz_pw__,
+                               Gvec const& gvec__,
+                               Communicator const& comm__) const;
+
+        void symmetrize_vector(mdarray<double, 3>& vx_rlm__,
+                               mdarray<double, 3>& vy_rlm__,
+                               mdarray<double, 3>& vz_rlm__,
+                               Communicator const& comm__) const;
 
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
@@ -253,46 +246,46 @@ class Symmetry
 }
 
 /** \page sym Symmetry
-    \section section1 Definition of symmetry operation
-
-    SIRIUS uses Spglib to find the spacial symmetry operations. Spglib defines symmetry operation in fractional 
-    coordinates:
-    \f[
-        {\bf x'} = \{ {\bf R} | {\bf t} \} {\bf x} \equiv {\bf R}{\bf x} + {\bf t}
-    \f]
-    where \b R is the proper or improper rotation matrix with elements equal to -1,0,1 and determinant of 1 
-    (pure rotation) or -1 (rotoreflection) and \b t is the fractional translation, associated with the symmetry 
-    operation. The inverse of the symmetry operation is:
-    \f[
-        {\bf x} = \{ {\bf R} | {\bf t} \}^{-1} {\bf x'} = {\bf R}^{-1} ({\bf x'} - {\bf t}) = 
-            {\bf R}^{-1} {\bf x'} - {\bf R}^{-1} {\bf t}
-    \f]
-
-    We will always use an \a active transformation (transformation of vectors or functions) and never a passive
-    transformation (transformation of coordinate system). However one should remember definition of the function
-    transformation:
-    \f[
-        \hat {\bf P} f({\bf r}) \equiv f(\hat {\bf P}^{-1} {\bf r})
-    \f]
-
-    It is straightforward to get the rotation matrix in Cartesian coordinates. We know how the vector in Cartesian 
-    coordinates is obtained from the vector in fractional coordinates:
-    \f[
-        {\bf v} = {\bf L} {\bf x}
-    \f]
-    where \b L is the 3x3 matrix which clomuns are three lattice vectors. The backward transformation is simply
-    \f[
-        {\bf x} = {\bf L}^{-1} {\bf v}
-    \f]
-    Now we write rotation operation in fractional coordinates and apply the backward transformation to Cartesian 
-    coordinates:
-    \f[
-        {\bf x'} = {\bf R}{\bf x} \rightarrow {\bf L}^{-1} {\bf v'} = {\bf R} {\bf L}^{-1} {\bf v}
-    \f]
-    from which we derive the rotation operation in Cartesian coordinates:
-    \f[
-        {\bf v'} = {\bf L} {\bf R} {\bf L}^{-1} {\bf v}
-    \f]
-*/
+ *  \section section1 Definition of symmetry operation
+ *
+ *  SIRIUS uses Spglib to find the spacial symmetry operations. Spglib defines symmetry operation in fractional 
+ *  coordinates:
+ *  \f[
+ *      {\bf x'} = \{ {\bf R} | {\bf t} \} {\bf x} \equiv {\bf R}{\bf x} + {\bf t}
+ *  \f]
+ *  where \b R is the proper or improper rotation matrix with elements equal to -1,0,1 and determinant of 1 
+ *  (pure rotation) or -1 (rotoreflection) and \b t is the fractional translation, associated with the symmetry 
+ *  operation. The inverse of the symmetry operation is:
+ *  \f[
+ *      {\bf x} = \{ {\bf R} | {\bf t} \}^{-1} {\bf x'} = {\bf R}^{-1} ({\bf x'} - {\bf t}) = 
+ *          {\bf R}^{-1} {\bf x'} - {\bf R}^{-1} {\bf t}
+ *  \f]
+ *
+ *  We will always use an \a active transformation (transformation of vectors or functions) and never a passive
+ *  transformation (transformation of coordinate system). However one should remember definition of the function
+ *  transformation:
+ *  \f[
+ *      \hat {\bf P} f({\bf r}) \equiv f(\hat {\bf P}^{-1} {\bf r})
+ *  \f]
+ *
+ *  It is straightforward to get the rotation matrix in Cartesian coordinates. We know how the vector in Cartesian 
+ *  coordinates is obtained from the vector in fractional coordinates:
+ *  \f[
+ *      {\bf v} = {\bf L} {\bf x}
+ *  \f]
+ *  where \b L is the 3x3 matrix which clomuns are three lattice vectors. The backward transformation is simply
+ *  \f[
+ *      {\bf x} = {\bf L}^{-1} {\bf v}
+ *  \f]
+ *  Now we write rotation operation in fractional coordinates and apply the backward transformation to Cartesian 
+ *  coordinates:
+ *  \f[
+ *      {\bf x'} = {\bf R}{\bf x} \rightarrow {\bf L}^{-1} {\bf v'} = {\bf R} {\bf L}^{-1} {\bf v}
+ *  \f]
+ *  from which we derive the rotation operation in Cartesian coordinates:
+ *  \f[
+ *      {\bf v'} = {\bf L} {\bf R} {\bf L}^{-1} {\bf v}
+ *  \f]
+ */
 
 #endif // __SYMMETRY_H__

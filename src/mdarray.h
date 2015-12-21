@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -36,9 +36,10 @@
 #include <cstring>
 #include <initializer_list>
 #ifdef __GPU
-#include "gpu_interface.h"
+#include "gpu.h"
 #endif
 #include "typedefs.h"
+#include "debug.hpp"
 
 #ifdef __LIBSCI_ACC
 extern "C" int libsci_acc_HostAlloc(void**, size_t);
@@ -55,6 +56,7 @@ extern "C" int libsci_acc_HostFree(void*);
         {                                                                       \
             printf("Assertion (%s) failed ", #condition__);                     \
             printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+            printf("array label: %s\n", label_.c_str());                        \
             for (int i = 0; i < N; i++)                                         \
                 printf("dim[%i].size = %li\n", i, dims_[i].size());             \
             void *array[10];                                                    \
@@ -75,8 +77,10 @@ extern "C" int libsci_acc_HostFree(void*);
         {                                                                       \
             printf("Assertion (%s) failed ", #condition__);                     \
             printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+            printf("array label: %s\n", label_.c_str());                        \
             for (int i = 0; i < N; i++)                                         \
                 printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+            debug::Profiler::stack_trace();                                     \
             raise(SIGTERM);                                                     \
             exit(-13);                                                          \
         }                                                                       \
@@ -124,6 +128,15 @@ class mdarray_index_descriptor
         mdarray_index_descriptor(int64_t const begin__, int64_t const end__)
             : begin_(begin__), 
               end_(end__) , 
+              size_(end_ - begin_ + 1)
+        {
+            assert(end_ >= begin_);
+        };
+        
+        /// Constructor for index range [begin, end]
+        mdarray_index_descriptor(std::pair<int, int> const range__)
+            : begin_(range__.first), 
+              end_(range__.second) , 
               size_(end_ - begin_ + 1)
         {
             assert(end_ >= begin_);
@@ -232,6 +245,8 @@ template <typename T, int N>
 class mdarray_base
 {
     protected:
+        
+        std::string label_;
     
         /// Unique pointer to the allocated memory.
         std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_;
@@ -276,43 +291,43 @@ class mdarray_base
 
         inline int64_t idx(int64_t const i0) const
         {
-            assert(N == 1);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(N == 1);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
             size_t i = offsets_[0] + i0;
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
         inline int64_t idx(int64_t const i0, int64_t const i1) const
         {
-            assert(N == 2);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+            mdarray_assert(N == 2);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
             size_t i = offsets_[0] + i0 + i1 * offsets_[1];
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
         inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2) const
         {
-            assert(N == 3);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-            assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+            mdarray_assert(N == 3);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+            mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
             size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2];
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
         inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
         {
-            assert(N == 4);
-            assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-            assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-            assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-            assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
+            mdarray_assert(N == 4);
+            mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+            mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+            mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+            mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
             size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3];
-            assert(i >= 0 && i < size());
+            mdarray_assert(i >= 0 && i < size());
             return i;
         }
 
@@ -364,6 +379,12 @@ class mdarray_base
             return nullptr;
         }
 
+        /// Copy constructor is forbidden
+        mdarray_base(mdarray_base<T, N> const& src) = delete;
+        
+        /// Assignment operator is forbidden
+        mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
+
     public:
         
         /// Constructor of an empty array.
@@ -387,12 +408,6 @@ class mdarray_base
             #endif
         }
 
-        /// Copy constructor is forbidden
-        mdarray_base(mdarray_base<T, N> const& src) = delete;
-        
-        /// Assignment operator is forbidden
-        mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
-        
         /// Move constructor
         mdarray_base(mdarray_base<T, N>&& src) 
             : unique_ptr_(std::move(src.unique_ptr_)),
@@ -435,13 +450,13 @@ class mdarray_base
 
         inline T& operator()(int64_t const i0) 
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0)];
         }
 
         inline T const& operator()(int64_t const i0) const
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0)];
         }
 
@@ -459,26 +474,38 @@ class mdarray_base
 
         inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2) 
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2)];
         }
 
         inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2) const
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2)];
         }
 
         inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3)
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2, i3)];
         }
 
         inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
         {
-            assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2, i3)];
+        }
+
+        inline T& operator[](size_t const idx__)
+        {
+            mdarray_assert(idx__ >= 0 && idx__ < size());
+            return ptr_[idx__];
+        }
+
+        inline T const& operator[](size_t const idx__) const
+        {
+            assert(idx__ >= 0 && idx__ < size());
+            return ptr_[idx__];
         }
 
         template <processing_unit_t pu>
@@ -542,14 +569,14 @@ class mdarray_base
         /// Return size of particular dimension.
         inline size_t size(int i) const
         {
-           assert(i < N);
+           mdarray_assert(i < N);
            return dims_[i].size();
         }
         
         /// Return leading dimension size.
         inline uint32_t ld() const
         {
-            assert(dims_[0].size() < size_t(1 << 31));
+            mdarray_assert(dims_[0].size() < size_t(1 << 31));
 
             return (int32_t)dims_[0].size();
         }
@@ -613,7 +640,7 @@ class mdarray_base
         {
             if (size() > 0)
             {
-                assert(ptr_ != nullptr);
+                mdarray_assert(ptr_ != nullptr);
                 memset(ptr_, 0, size() * sizeof(T));
             }
         }
@@ -648,7 +675,7 @@ class mdarray_base
                     exit(-1);
                 }
             }
-            memcpy(dest__.ptr_, ptr_, size() * sizeof(T));
+            std::memcpy(dest__.ptr_, ptr_, size() * sizeof(T));
         }
 
         #ifdef __GPU
@@ -672,20 +699,36 @@ class mdarray_base
             allocate(1);
         }
 
-        void copy_to_device() 
+        void copy_to_device()
         {
-            assert(ptr_ != nullptr);
-            assert(ptr_device_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
 
-            cuda_copy_to_device(ptr_device_, ptr_, size() * sizeof(T));
+            acc::copyin(ptr_device_, ptr_, size());
+        }
+
+        void copy_to_device(int n__)
+        {
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
+
+            acc::copyin(ptr_device_, ptr_, n__);
         }
 
         void copy_to_host() 
         {
-            assert(ptr_ != nullptr);
-            assert(ptr_device_ != nullptr);
-            
-            cuda_copy_to_host(ptr_, ptr_device_, size() * sizeof(T));
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
+
+            acc::copyout(ptr_, ptr_device_, size());
+        }
+
+        void copy_to_host(int n__)
+        {
+            mdarray_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_device_ != nullptr);
+
+            acc::copyout(ptr_, ptr_device_, n__);
         }
 
         void async_copy_to_device(int stream_id__ = -1) 
@@ -726,7 +769,6 @@ class mdarray_base
         #endif
 };
 
-
 template <typename T, int N> 
 class mdarray: public mdarray_base<T, N>
 {
@@ -736,40 +778,46 @@ class mdarray: public mdarray_base<T, N>
         {
         }
         
-        mdarray(mdarray_index_descriptor const& d0)
+        mdarray(mdarray_index_descriptor const& d0, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0});
             this->allocate();
         }
 
-        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1});
             this->allocate();
         }
 
         mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2});
             this->allocate();
         }
 
         mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2, d3});
             this->allocate();
         }
 
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0});
             this->ptr_ = ptr__;
         }
 
-        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0)
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0});
             this->ptr_ = ptr__;
             #ifdef __GPU
@@ -777,28 +825,32 @@ class mdarray: public mdarray_base<T, N>
             #endif
         }
 
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1});
             this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2});
             this->ptr_ = ptr__;
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2, d3});
             this->ptr_ = ptr__;
         }
 
-        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1});
             this->ptr_ = ptr__;
             #ifdef __GPU
@@ -807,19 +859,14 @@ class mdarray: public mdarray_base<T, N>
         }
 
         mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2, std::string label__ = "")
         {
+            this->label_ = label__;
             this->init_dimensions({d0, d1, d2});
             this->ptr_ = ptr__;
             #ifdef __GPU
             this->ptr_device_ = ptr_device__;
             #endif
-        }
-
-        mdarray<T, 2> submatrix(int idx)
-        {
-            T* ptr = &(*this)(0, 0, idx);
-            return mdarray<T, 2>(ptr, this->dims_[0], this->dims_[1]);
         }
 };
 

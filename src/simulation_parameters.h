@@ -88,9 +88,9 @@ class Simulation_parameters
         /// Starting time of the program.
         timeval start_time_;
     
-        ev_solver_t std_evp_solver_type_;
-    
-        ev_solver_t gen_evp_solver_type_;
+        std::string std_evp_solver_name_;
+
+        std::string gen_evp_solver_name_;
     
         /// Type of the processing unit.
         processing_unit_t processing_unit_;
@@ -108,35 +108,31 @@ class Simulation_parameters
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
-        XC_functionals_input_section xc_functionals_input_section_;
-        
         Mixer_input_section mixer_input_section_;
 
         Unit_cell_input_section unit_cell_input_section_;
 
-        std::map<std::string, ev_solver_t> str_to_ev_solver_t_;
+        std::vector<std::string> xc_functionals_;
         
         /// Import data from initial input parameters.
         void import(Input_parameters const& iip__)
         {
-            mpi_grid_dims_  = iip__.common_input_section_.mpi_grid_dims_;
-            num_fv_states_  = iip__.common_input_section_.num_fv_states_;
-            smearing_width_ = iip__.common_input_section_.smearing_width_;
-            
-            std::string evsn[] = {iip__.common_input_section_.std_evp_solver_type_, iip__.common_input_section_.gen_evp_solver_type_};
-            ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
+            mpi_grid_dims_                  = iip__.common_input_section_.mpi_grid_dims_;
+            num_fv_states_                  = iip__.common_input_section_.num_fv_states_;
+            smearing_width_                 = iip__.common_input_section_.smearing_width_;
+            std_evp_solver_name_            = iip__.common_input_section_.std_evp_solver_type_;
+            gen_evp_solver_name_            = iip__.common_input_section_.gen_evp_solver_type_;
+            iterative_solver_input_section_ = iip__.iterative_solver_input_section();
+            mixer_input_section_            = iip__.mixer_input_section();
+            unit_cell_input_section_        = iip__.unit_cell_input_section();
+            cyclic_block_size_              = iip__.common_input_section_.cyclic_block_size_;
+            num_fft_threads_                = iip__.common_input_section_.num_fft_threads_;
+            num_fft_workers_                = iip__.common_input_section_.num_fft_workers_;
+            xc_functionals_                 = iip__.xc_functionals_input_section().xc_functional_names_;
+            std::string pu                  = iip__.common_input_section_.processing_unit_;
+            std::string esm                 = iip__.common_input_section_.electronic_structure_method_;
 
-            for (int i = 0; i < 2; i++)
-            {
-                auto name = evsn[i];
-
-                if (str_to_ev_solver_t_.count(name) == 0) TERMINATE("wrong eigen value solver");
-                *evst[i] = str_to_ev_solver_t_[name];
-            }
-
-            std::string pu = iip__.common_input_section_.processing_unit_;
             std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
-
             if (pu == "cpu")
             {
                 processing_unit_ = CPU;
@@ -150,38 +146,8 @@ class Simulation_parameters
                 TERMINATE("wrong processing unit");
             }
 
-            std::string esm = iip__.common_input_section_.electronic_structure_method_;
             std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
-            if (esm == "full_potential_lapwlo")
-            {
-                esm_type_ = full_potential_lapwlo;
-            }
-            else if (esm == "full_potential_pwlo")
-            {
-                esm_type_ = full_potential_pwlo;
-            }
-            else if (esm == "ultrasoft_pseudopotential")
-            {
-                esm_type_ = ultrasoft_pseudopotential;
-            } 
-            else if (esm == "norm_conserving_pseudopotential")
-            {
-                esm_type_ = norm_conserving_pseudopotential;
-            }
-            else
-            {
-                TERMINATE("wrong type of electronic structure method");
-            }
-
-            iterative_solver_input_section_ = iip__.iterative_solver_input_section();
-            xc_functionals_input_section_   = iip__.xc_functionals_input_section();
-            mixer_input_section_            = iip__.mixer_input_section();
-            unit_cell_input_section_        = iip__.unit_cell_input_section();
-
-            cyclic_block_size_              = iip__.common_input_section_.cyclic_block_size_;
-
-            num_fft_threads_                = iip__.common_input_section_.num_fft_threads_;
-            num_fft_workers_                = iip__.common_input_section_.num_fft_workers_;
+            set_esm_type(esm);
         }
     
     public:
@@ -207,30 +173,18 @@ class Simulation_parameters
               num_mag_dims_(0), 
               so_correction_(false), 
               uj_correction_(false),
-              std_evp_solver_type_(ev_lapack),
-              gen_evp_solver_type_(ev_lapack),
               processing_unit_(CPU),
               smearing_width_(0.001), 
               cyclic_block_size_(32),
               esm_type_(full_potential_lapwlo)
         {
-            LOG_FUNC_BEGIN();
-
-            /* get the starting time */
-            //gettimeofday(&start_time_, NULL);
-
-            str_to_ev_solver_t_["lapack"]    = ev_lapack;
-            str_to_ev_solver_t_["scalapack"] = ev_scalapack;
-            str_to_ev_solver_t_["elpa1"]     = ev_elpa1;
-            str_to_ev_solver_t_["elpa2"]     = ev_elpa2;
-            str_to_ev_solver_t_["magma"]     = ev_magma;
-            str_to_ev_solver_t_["plasma"]    = ev_plasma;
-            str_to_ev_solver_t_["rs_cpu"]    = ev_rs_cpu;
-            str_to_ev_solver_t_["rs_gpu"]    = ev_rs_gpu;
+            PROFILE();
 
             import(iip__);
+        }
 
-            LOG_FUNC_END();
+        Simulation_parameters()
+        {
         }
             
         ~Simulation_parameters()
@@ -261,11 +215,6 @@ class Simulation_parameters
         {
             lmax_beta_ = lmax_beta__;
         }
-    
-        //void set_num_spins(int num_spins__)
-        //{
-        //    num_spins_ = num_spins__;
-        //}
     
         void set_num_mag_dims(int num_mag_dims__)
         {
@@ -306,14 +255,43 @@ class Simulation_parameters
             uj_correction_ = uj_correction__; 
         }
 
-        inline void set_num_bands(int num_bands__)
-        {
-            num_bands_ = num_bands__;
-        }
+        //inline void set_num_bands(int num_bands__)
+        //{
+        //    num_bands_ = num_bands__;
+        //}
 
         inline void set_mpi_grid_dims(std::vector<int> const& mpi_grid_dims__)
         {
             mpi_grid_dims_ = mpi_grid_dims__;
+        }
+
+        inline void add_xc_functional(std::string name__)
+        {
+            xc_functionals_.push_back(name__);
+        }
+
+        inline void set_esm_type(std::string name__)
+        {
+            if (name__ == "full_potential_lapwlo")
+            {
+                esm_type_ = full_potential_lapwlo;
+            }
+            else if (name__ == "full_potential_pwlo")
+            {
+                esm_type_ = full_potential_pwlo;
+            }
+            else if (name__ == "ultrasoft_pseudopotential")
+            {
+                esm_type_ = ultrasoft_pseudopotential;
+            } 
+            else if (name__ == "norm_conserving_pseudopotential")
+            {
+                esm_type_ = norm_conserving_pseudopotential;
+            }
+            else
+            {
+                TERMINATE("wrong type of electronic structure method");
+            }
         }
     
         inline int lmax_apw() const
@@ -382,16 +360,17 @@ class Simulation_parameters
             return num_fv_states_;
         }
     
-        inline int num_bands() const
-        {
-            return num_bands_;
-        }
-        
         inline int num_spins() const
         {
             assert(num_spins_ == 1 || num_spins_ == 2);
             
             return num_spins_;
+        }
+
+        inline int num_bands() const
+        {
+            return num_fv_states() * num_spins();
+            //return num_bands_;
         }
     
         inline int num_mag_dims() const
@@ -457,48 +436,9 @@ class Simulation_parameters
             return esm_type_;
         }
     
-        inline wave_function_distribution_t wave_function_distribution() const
-        {
-            switch (esm_type_)
-            {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
-                {
-                    return block_cyclic_2d;
-                    break;
-                }
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
-                {
-                    return slab;
-                    break;
-                }
-                default:
-                {
-                    TERMINATE("wrong method type");
-                }
-            }
-            return block_cyclic_2d;
-        }
-    
-        inline ev_solver_t std_evp_solver_type() const
-        {
-            return std_evp_solver_type_;
-        }
-    
-        inline ev_solver_t gen_evp_solver_type() const
-        {
-            return gen_evp_solver_type_;
-        }
-
         inline Mixer_input_section const& mixer_input_section() const
         {
             return mixer_input_section_;
-        }
-
-        inline XC_functionals_input_section const& xc_functionals_input_section() const
-        {
-            return xc_functionals_input_section_;
         }
 
         inline Iterative_solver_input_section const& iterative_solver_input_section() const
@@ -514,6 +454,21 @@ class Simulation_parameters
         inline bool full_potential() const
         {
             return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
+        }
+
+        inline std::vector<std::string> const& xc_functionals() const
+        {
+            return xc_functionals_;
+        }
+
+        inline std::string const& std_evp_solver_name() const
+        {
+            return std_evp_solver_name_;
+        }
+
+        inline std::string const& gen_evp_solver_name() const
+        {
+            return gen_evp_solver_name_;
         }
 };
 

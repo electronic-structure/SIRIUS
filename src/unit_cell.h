@@ -82,7 +82,16 @@ class Unit_cell
          */
         matrix3d<double> inverse_lattice_vectors_;
 
-        /// Vectors of reciprocal lattice in column order.
+        /// Reciprocal lattice vectors in column order.
+        /** The following convention is used:
+         *  \f[
+         *    \vec a_{i} \vec b_{j} = 2 \pi \delta_{ij}
+         *  \f]
+         *  or in matrix notation
+         *  \f[
+         *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
+         *  \f]
+         */
         matrix3d<double> reciprocal_lattice_vectors_;
         
         /// Volume \f$ \Omega \f$ of the unit cell. Volume of Brillouin zone is then \f$ (2\Pi)^3 / \Omega \f$.
@@ -155,10 +164,7 @@ class Unit_cell
 
         Communicator_bundle comm_bundle_atoms_;
         
-        splindex<block> spl_atoms_;
-
-        /// Total number of beta-projectors among atom types.
-        int num_beta_t_;
+        //splindex<block> spl_atoms_;
 
         mdarray<double, 2> atom_pos_;
 
@@ -166,20 +172,9 @@ class Unit_cell
 
         Communicator const& comm_;
 
-        struct beta_chunk
-        {
-            int num_beta_;
-            int num_atoms_;
-            mdarray<int, 2> desc_;
-            mdarray<double, 2> atom_pos_;
-        };
-
-        std::vector<beta_chunk> beta_chunks_;
-
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-         *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. 
-         */
+         *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
         std::vector<double> find_mt_radii();
         
         /// Check if MT spheres overlap
@@ -245,10 +240,10 @@ class Unit_cell
         void add_atom_type(const std::string label, const std::string file_name);
         
         /// Add new atom to the list of atom types.
-        void add_atom(const std::string label, double* position, double* vector_field);
+        void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field);
 
         /// Add new atom without vector field to the list of atom types.
-        void add_atom(const std::string label, double* position);
+        void add_atom(const std::string label, vector3d<double> position);
         
         /// Print basic info.
         void print_info();
@@ -299,9 +294,9 @@ class Unit_cell
         } 
 
         template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a) const
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
         {
-            return lattice_vectors_ * a;
+            return lattice_vectors_ * a__;
         }
 
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a) const
@@ -528,15 +523,15 @@ class Unit_cell
             return symmetry_;
         }
 
-        inline int num_beta_chunks() const
-        {
-            return (int)beta_chunks_.size();
-        }
+        //inline int num_beta_chunks() const
+        //{
+        //    return (int)beta_chunks_.size();
+        //}
 
-        inline beta_chunk& beta_chunk(int idx)
-        {
-            return beta_chunks_[idx];
-        }
+        //inline beta_chunk& beta_chunk(int idx)
+        //{
+        //    return beta_chunks_[idx];
+        //}
 
         inline matrix3d<double> const& lattice_vectors() const
         {
@@ -553,10 +548,10 @@ class Unit_cell
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
         }
 
-        inline int num_beta_t() const
-        {
-            return num_beta_t_;
-        }
+        //inline int num_beta_t() const
+        //{
+        //    return num_beta_t_;
+        //}
 
         void import(Unit_cell_input_section const& inp__)
         {
@@ -570,7 +565,9 @@ class Unit_cell
                     for (int ia = 0; ia < (int)inp__.coordinates_[iat].size(); ia++)
                     {
                         auto v = inp__.coordinates_[iat][ia];
-                        add_atom(label, &v[0], &v[3]);
+                        vector3d<double> p(v[0], v[1], v[2]);
+                        vector3d<double> f(v[3], v[4], v[5]);
+                        add_atom(label, p, f);
                     }
                 }
 

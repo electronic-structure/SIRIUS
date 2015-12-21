@@ -1,0 +1,64 @@
+#include "density.h"
+
+namespace sirius {
+
+void Density::generate(K_set& ks__)
+{
+    PROFILE_WITH_TIMER("sirius::Density::generate");
+
+    generate_valence(ks__);
+
+    if (parameters_.full_potential())
+    {
+        generate_core_charge_density();
+
+        /* add core contribution */
+        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        {
+            int ia = unit_cell_.spl_num_atoms(ialoc);
+            for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
+                rho_->f_mt<local>(0, ir, ialoc) += unit_cell_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
+        }
+
+        /* synchronize muffin-tin part (interstitial is already syncronized with allreduce) */
+        rho_->sync(true, false);
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
+    }
+    
+    double nel = 0;
+    if (parameters_.full_potential())
+    {
+        std::vector<double> nel_mt;
+        double nel_it;
+        nel = rho_->integrate(nel_mt, nel_it);
+    }
+    else
+    {
+        nel = rho_->f_pw(0).real() * unit_cell_.omega();
+    }
+
+    if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5)
+    {
+        std::stringstream s;
+        s << "wrong charge density after k-point summation" << std::endl
+          << "obtained value : " << nel << std::endl 
+          << "target value : " << unit_cell_.num_electrons() << std::endl
+          << "difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
+        if (parameters_.full_potential())
+        {
+            s << "total core leakage : " << core_leakage();
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) 
+                s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
+        }
+        warning_global(__FILE__, __LINE__, s);
+    }
+
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(rhomt): %16llX", rho_->f_mt().hash());
+    DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
+    #endif
+
+    //if (debug_level > 1) check_density_continuity_at_mt();
+}
+
+};

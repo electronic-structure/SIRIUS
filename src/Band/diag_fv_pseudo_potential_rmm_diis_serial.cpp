@@ -8,7 +8,7 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
 {
     if (ctx_.iterative_solver_tolerance() > 1e-5)
     {
-        diag_fv_pseudo_potential_davidson_serial(kp__, v0__, veff_it_coarse__);
+        diag_fv_pseudo_potential_davidson(kp__, v0__, veff_it_coarse__);
         return;
     }
 
@@ -35,10 +35,10 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
 
-    auto& itso = kp__->iterative_solver_input_section_;
+    //auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    matrix<double_complex>& psi = kp__->fv_states_slab();
+    matrix<double_complex>& psi = kp__->fv_states<false>().coeffs();
 
     int niter = 4; //itso.num_steps_;
 
@@ -217,9 +217,10 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         }
 
         if (n == 0) return 0;
-
-        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, n, phi_tmp, hphi_tmp, ophi_tmp, kappa, packed_mtrx_offset,
-                         d_mtrx_packed, q_mtrx_packed);
+        
+        STOP();
+        //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, n, phi_tmp, hphi_tmp, ophi_tmp, kappa, packed_mtrx_offset,
+        //                 d_mtrx_packed, q_mtrx_packed);
 
         n = 0;
         for (int i = 0; i < num_bands; i++)
@@ -273,9 +274,9 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         }
     };
 
-
-    apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
-                     d_mtrx_packed, q_mtrx_packed);
+    STOP();
+    //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi[0], ophi[0], kappa, packed_mtrx_offset,
+    //                 d_mtrx_packed, q_mtrx_packed);
 
     update_res(res_norm_start);
 
@@ -429,8 +430,9 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         memcpy(&hphi_tmp(0, i), &hphi[last[i]](0, i), kp__->num_gkvec() * sizeof(double_complex));
         memcpy(&ophi_tmp(0, i), &ophi[last[i]](0, i), kp__->num_gkvec() * sizeof(double_complex));
     }
-
-    set_fv_h_o_serial(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
+    
+    STOP();
+    //set_fv_h_o_serial(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old, kappa);
  
     Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp", kp__->comm());
     if (gen_evp_solver()->solve(num_bands, num_bands, num_bands, num_bands, hmlt.at<CPU>(), hmlt.ld(), ovlp.at<CPU>(), ovlp.ld(), 

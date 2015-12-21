@@ -107,8 +107,7 @@ namespace sirius
  *  This is our final answer: radial components of density and magnetization are expressed as a linear combination of
  *  quadratic forms in radial functions. 
  *
- *  \note density and potential are allocated as global function because it's easier to load and save them.
- */
+ *  \note density and potential are allocated as global function because it's easier to load and save them. */
 class Density
 {
     private:
@@ -116,32 +115,24 @@ class Density
         Simulation_context& ctx_;
         
         /// Global set of parameters.
-        //Global& parameters_;
         Simulation_parameters const& parameters_;
 
         Unit_cell& unit_cell_;
 
-        /// Alias for FFT driver.
-        FFT3D<CPU>* fft_;
-        
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
-         *  In the case of pseudopotential this is the valence charge density. 
-         */ 
+         *  In the case of pseudopotential this is the valence charge density. */ 
         Periodic_function<double>* rho_;
 
         /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
-         *  this density integrated does not reproduce the total number of core elctrons. 
-         */
+         *  this density integrated does not reproduce the total number of core elctrons. */
         Periodic_function<double>* rho_pseudo_core_;
         
         Periodic_function<double>* magnetization_[3];
         
-        std::vector< std::pair<int, int> > dmat_spins_;
-
         /// Non-zero Gaunt coefficients.
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
         
@@ -152,12 +143,8 @@ class Density
         Mixer<double_complex>* low_freq_mixer_;
         Mixer<double>* mixer_;
 
-        /// Get the local list of occupied bands
-        /** Initially bands are distributed over k-points and columns of the MPI grid used 
-         *  for the diagonalization. Additionaly bands are sub split over rows of the 2D MPI grid, 
-         *  so each MPI rank in the total MPI grid gets it's local fraction of the bands.
-         */
-        std::vector< std::pair<int, double> > get_occupied_bands_list(Band* band, K_point* kp);
+        std::vector<int> lf_gvec_;
+        std::vector<int> hf_gvec_;
 
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
@@ -165,7 +152,7 @@ class Density
          *      d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
          *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
          *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
-         *  \f]
+         *  \f] 
          */
         template <int num_mag_dims> 
         void reduce_density_matrix(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
@@ -193,11 +180,9 @@ class Density
          *        \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
          *  \f]
          *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
-         *  the occupancy operator written in spectral representation.
-         */
-        template <processing_unit_t pu, electronic_structure_method_t basis>
+         *  the occupancy operator written in spectral representation. */
+        template <electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
-                                      std::vector< std::pair<int, double> >& occupied_bands__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
         /// Restore valence density by adding the Q-operator constribution
@@ -225,7 +210,8 @@ class Density
         void add_q_contribution_to_valence_density(K_set& kset);
 
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_k_point_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
+        template <bool mt_spheres>
+        void add_k_point_contribution_it(K_point* kp__);
 
         #ifdef __GPU
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
@@ -245,21 +231,6 @@ class Density
         void generate_core_charge_density();
 
         void generate_pseudo_core_charge_density();
-
-        int num_occupied_bands(K_point* kp__)
-        {
-            if (parameters_.num_spins() == 2)
-            {
-                STOP();
-            }
-            int n = 0;
-            for (int j = 0; j < parameters_.num_fv_states(); j++)
-            {
-                double wo = kp__->band_occupancy(j) * kp__->weight();
-                if (wo > 1e-14) n++;
-            }
-            return n;
-        }
 
     public:
 
@@ -356,8 +327,8 @@ class Density
 
         void allocate()
         {
-            rho_->allocate(true, true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true, true);
+            rho_->allocate(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true);
         }
 
         void mixer_input()
@@ -369,15 +340,17 @@ class Density
             else
             {
                 int k = 0;
-                for (int ig = 0; ig < ctx_.fft_coarse()->num_gvec(); ig++)
+                for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
                 {
-                    low_freq_mixer_->input(k++, rho_->f_pw(ig));
+                    //low_freq_mixer_->input(k++, rho_->f_pw(ig));
+                    low_freq_mixer_->input(k++, rho_->f_pw(lf_gvec_[i]));
                 }
 
                 k = 0;
-                for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
+                //for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
+                for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
                 {
-                    high_freq_mixer_->input(k++, rho_->f_pw(ig));
+                    high_freq_mixer_->input(k++, rho_->f_pw(hf_gvec_[i]));
                 }
             }
         }
@@ -390,11 +363,20 @@ class Density
             }
             else
             {
-                int ngv = ctx_.fft()->num_gvec();
-                int ngvc = ctx_.fft_coarse()->num_gvec();
+                int ngv = ctx_.gvec().num_gvec();
+                int ngvc = ctx_.gvec_coarse().num_gvec();
+                
+                for (int i = 0; i < ngvc; i++)
+                {
+                    rho_->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(i);
+                }
+                for (int i = 0; i < ngv - ngvc; i++)
+                {
+                    rho_->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(i);
+                }
 
-                memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
-                memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+                //memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
+                //memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
             }
         }
 

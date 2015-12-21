@@ -4,36 +4,34 @@ namespace sirius {
 
 void Density::initial_density()
 {
+    PROFILE();
+
     Timer t("sirius::Density::initial_density");
 
     zero();
     
     auto rl = ctx_.reciprocal_lattice();
 
-    /* let rho(r) = a*Exp[-b*r]
-       \int rho(r) dr = 4pi * a * \int Exp[-b*r]*r*r*dr = 4pi*a * (2/b^3) = Z
-       a = Z * b^3 / 2 / 4 / pi
-    */
-
     if (parameters_.full_potential())
     {
+        splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+
         /* initialize smooth density of free atoms */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(true);
 
-        //== /* compute radial integrals */
+        /* compute radial integrals */
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
-        //auto rho_radial_integrals = generate_rho_radial_integrals(5);
 
         /* compute contribution from free atoms to the interstitial density */
-        auto v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        auto v = rl->make_periodic_function(rho_radial_integrals, ctx_.gvec().num_gvec());
         
         #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z = mdarray<double_complex, 1>(&v[0], rl->num_gvec()).checksum();
+        double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
         DUMP("checksum(rho_pw): %18.10f %18.10f", std::real(z), std::imag(z));
         #endif
 
         /* set plane-wave coefficients of the charge density */
-        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
+        std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
         /* convert charge deisnty to real space mesh */
         rho_->fft_transform(1);
 
@@ -48,12 +46,12 @@ void Density::initial_density()
         #endif
 
         /* remove possible negative noise */
-        for (int ir = 0; ir < fft_->size(); ir++)
+        for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
-            if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
+            if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;
         }
 
-        int ngv_loc = (int)rl->spl_num_gvec().local_size();
+        int ngv_loc = spl_num_gvec.local_size();
 
         /* mapping between G-shell (global index) and a list of G-vectors (local index) */
         std::map<int, std::vector<int> > gsh_map;
@@ -61,9 +59,9 @@ void Density::initial_density()
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
             /* global index of the G-vector */
-            int ig = (int)rl->spl_num_gvec(igloc);
+            int ig = (int)spl_num_gvec[igloc];
             /* index of the G-vector shell */
-            int igsh = rl->gvec_shell(ig);
+            int igsh = ctx_.gvec().shell(ig);
             if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
             gsh_map[igsh].push_back(igloc);
         }
@@ -75,24 +73,32 @@ void Density::initial_density()
         int lmax = parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         
-        sbessel_approx sba(&unit_cell_, lmax, rl->gvec_shell_len(1), rl->gvec_shell_len(rl->num_gvec_shells_inner() - 1), 1e-6);
+        sbessel_approx sba(&unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
         
         std::vector<double> gvec_len(gsh_list.size());
         for (int i = 0; i < (int)gsh_list.size(); i++)
         {
-            gvec_len[i] = rl->gvec_shell_len(gsh_list[i].first);
+            gvec_len[i] = ctx_.gvec().shell_len(gsh_list[i].first);
         }
         sba.approximate(gvec_len);
 
         auto l_by_lm = Utils::l_by_lm(lmax);
 
         std::vector<double_complex> zil(lmax + 1);
-        for (int l = 0; l <= lmax; l++) zil[l] = pow(double_complex(0, 1), l);
+        for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
 
         Timer t3("sirius::Density::initial_density|znulm");
 
         mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
         znulm.zero();
+
+        auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ngv_loc);
+        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        {
+            int ig = spl_num_gvec[igloc];
+            auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
+            SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
+        }
         
         #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -100,7 +106,7 @@ void Density::initial_density()
             int iat = unit_cell_.atom(ia)->type_id();
 
             /* loop over local fraction of G-shells */
-            for (int i = 0; i < (int)gsh_list.size(); i++)
+            for (int i = 0; i < static_cast<int>(gsh_list.size()); i++)
             {
                 auto& gv = gsh_list[i].second;
                 
@@ -108,9 +114,9 @@ void Density::initial_density()
                 for (int igloc: gv)
                 {
                     /* global index of the G-vector */
-                    int ig = rl->spl_num_gvec(igloc);
+                    int ig = spl_num_gvec[igloc];
 
-                    double_complex z1 = rl->gvec_phase_factor<local>(igloc, ia) * v[ig] * fourpi; 
+                    auto z1 = rl->gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
 
                     for (int lm = 0; lm < lmmax; lm++)
                     {
@@ -119,7 +125,7 @@ void Density::initial_density()
                         /* number of expansion coefficients */
                         int nqnu = sba.nqnu(l, iat);
 
-                        double_complex z2 = z1 * zil[l] * rl->gvec_ylm(lm, igloc);
+                        auto z2 = z1 * zil[l] * gvec_ylm(lm, igloc);
                     
                         for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z2 * sba.coeff(iq, i, l, iat);
                     }
@@ -138,16 +144,10 @@ void Density::initial_density()
         
         SHT sht(lmax);
 
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             int iat = unit_cell_.atom(ia)->type_id();
-            //double b = 4;
-            //double R = parameters_.unit_cell()->atom(ia)->mt_radius();
-            //int Z = parameters_.unit_cell()->atom(ia)->zn();
-
-            //double c2 = (std::pow(b,3)*(3 + b*R)*Z)/(8.*std::exp(b*R)*pi*std::pow(R,2));
-            //double c3 = -(std::pow(b,3)*(2 + b*R)*Z)/(8.*std::exp(b*R)*pi*std::pow(R,3));
 
             Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia)->radial_grid());
             rhoylm.zero();
@@ -170,7 +170,6 @@ void Density::initial_density()
             {
                 double x = unit_cell_.atom(ia)->radial_grid(ir);
                 rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia)->type()->free_atom_density(x)) / y00;
-                //rhoylm(0, ir) += (v[0] - (c2 * std::pow(x, 2) + c3*std::pow(x, 3))) / y00;
             }
             sht.convert(rhoylm, rho_->f_mt(ialoc));
         }
@@ -182,9 +181,6 @@ void Density::initial_density()
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            //double b = 8;
-            //int Z = parameters_.unit_cell()->atom(ia)->zn();
-
             auto p = unit_cell_.spl_num_atoms().location(ia);
             
             if (p.second == ctx_.comm().rank())
@@ -202,9 +198,9 @@ void Density::initial_density()
         /* initialize the magnetization */
         if (parameters_.num_mag_dims())
         {
-            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = (int)unit_cell_.spl_num_atoms(ialoc);
+                int ia = unit_cell_.spl_num_atoms(ialoc);
                 vector3d<double> v = unit_cell_.atom(ia)->vector_field();
                 double len = v.length();
 
@@ -247,20 +243,23 @@ void Density::initial_density()
         }
     }
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential) 
+    if (!parameters_.full_potential())
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
         #endif
 
-        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, ctx_.gvec().num_gvec());
         #ifdef __PRINT_OBJECT_HASH
-        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], rl->num_gvec() * sizeof(double_complex)));
+        DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
         #endif
-
-        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
+        DUMP("checksum(rho(G)) : %18.10f %18.10f", std::real(z1), std::imag(z1));
+        #endif
+        
+        memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
         double charge = real(rho_->f_pw(0) * unit_cell_.omega());
         if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
@@ -271,20 +270,20 @@ void Density::initial_density()
               << "  target number of electrons : " << unit_cell_.num_valence_electrons();
             warning_global(__FILE__, __LINE__, s);
         }
-
-        fft_->input(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
-        fft_->transform(1);
-        fft_->output(&rho_->f_it<global>(0));
+        rho_->fft_transform(1);
 
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
         #endif
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        DUMP("checksum(rho(r)) : %18.10f", rho_->f_it().checksum());
+        #endif
         
         /* remove possible negative noise */
-        for (int ir = 0; ir < fft_->size(); ir++)
+        for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
-            rho_->f_it<global>(ir) = rho_->f_it<global>(ir) *  unit_cell_.num_valence_electrons() / charge;
-            if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
+            rho_->f_it(ir) = rho_->f_it(ir) * unit_cell_.num_valence_electrons() / charge;
+            if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;
         }
 
         #ifdef __PRINT_OBJECT_HASH
@@ -440,10 +439,8 @@ void Density::initial_density()
         //==               "  </Domain>\n"
         //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fclose(fout);
-        
-        fft_->input(&rho_->f_it<global>(0));
-        fft_->transform(-1);
-        fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
+
+        rho_->fft_transform(-1);
     }
 
     rho_->sync(true, true);

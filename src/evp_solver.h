@@ -148,7 +148,8 @@ class standard_evp_scalapack: public standard_evp
 {
     private:
 
-        int32_t block_size_;
+        int32_t bs_row_;
+        int32_t bs_col_;
         int num_ranks_row_;
         int num_ranks_col_;
         int blacs_context_;
@@ -176,15 +177,13 @@ class standard_evp_scalapack: public standard_evp
 
     public:
 
-        //standard_evp_scalapack(int num_ranks_row__, int num_ranks_col__, int blacs_context__) 
-        standard_evp_scalapack(BLACS_grid const& blacs_grid__) 
-            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+        standard_evp_scalapack(BLACS_grid const& blacs_grid__, int32_t bs_row__, int32_t bs_col__)  
+            : bs_row_(bs_row__),
+              bs_col_(bs_col__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()), 
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               blacs_context_(blacs_grid__.context())
         {
-            #ifdef __SCALAPACK
-            block_size_ = blacs_grid__.cyclic_block_size();
-            #endif
         }
 
         #ifdef __SCALAPACK
@@ -192,13 +191,13 @@ class standard_evp_scalapack: public standard_evp
         {
 
             int desca[9];
-            linalg_base::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, lda);
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
             
             int descz[9];
-            linalg_base::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, ldz);
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
             
-            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
-                                                             blacs_context_);
+            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, std::max(bs_row_, bs_col_),
+                                                             num_ranks_row_, num_ranks_col_, blacs_context_);
             
             std::vector<double_complex> work(work_sizes[0]);
             std::vector<double> rwork(work_sizes[1]);
@@ -329,7 +328,8 @@ class generalized_evp_scalapack: public generalized_evp
 {
     private:
 
-        int32_t block_size_;
+        int32_t bs_row_;
+        int32_t bs_col_;
         int num_ranks_row_;
         int num_ranks_col_;
         int blacs_context_;
@@ -374,15 +374,14 @@ class generalized_evp_scalapack: public generalized_evp
     
     public:
 
-        generalized_evp_scalapack(BLACS_grid const& blacs_grid__, double abstol__) 
-            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+        generalized_evp_scalapack(BLACS_grid const& blacs_grid__, double abstol__, int32_t bs_row__, int32_t bs_col__)
+            : bs_row_(bs_row__),
+              bs_col_(bs_col__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()), 
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               blacs_context_(blacs_grid__.context()),
               abstol_(abstol__)
         {
-            #ifdef __SCALAPACK
-            block_size_ = blacs_grid__.cyclic_block_size();
-            #endif
         }
 
         #ifdef __SCALAPACK
@@ -393,16 +392,16 @@ class generalized_evp_scalapack: public generalized_evp
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
-            linalg_base::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, lda);
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
 
             int32_t descb[9];
-            linalg_base::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, ldb); 
+            linalg_base::descinit(descb, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldb); 
 
             int32_t descz[9];
-            linalg_base::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, ldz); 
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz); 
 
-            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
-                                                             blacs_context_);
+            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, std::max(bs_row_, bs_col_), 
+                                                             num_ranks_row_, num_ranks_col_, blacs_context_);
             
             std::vector<double_complex> work(work_sizes[0]);
             std::vector<double> rwork(work_sizes[1]);
@@ -488,7 +487,8 @@ class generalized_evp_rs_gpu: public generalized_evp
 {
     private:
 
-        int32_t block_size_;
+        int32_t bs_row_;
+        int32_t bs_col_;
         int num_ranks_row_;
         int rank_row_;
         int num_ranks_col_;
@@ -497,16 +497,15 @@ class generalized_evp_rs_gpu: public generalized_evp
         
     public:
 
-        generalized_evp_rs_gpu(BLACS_grid const& blacs_grid__) 
-            : num_ranks_row_(blacs_grid__.num_ranks_row()),
+        generalized_evp_rs_gpu(BLACS_grid const& blacs_grid__, int32_t bs_row__, int32_t bs_col__)
+            : bs_row_(bs_row__),
+              bs_col_(bs_col__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()),
               rank_row_(blacs_grid__.rank_row()),
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               rank_col_(blacs_grid__.rank_col()),
               blacs_context_(blacs_grid__.context())
         {
-            #ifdef __SCALAPACK
-            block_size_ = blacs_grid__.cyclic_block_size();
-            #endif
         }
 
         #ifdef __RS_GEN_EIG
@@ -566,7 +565,8 @@ class generalized_evp_rs_cpu: public generalized_evp
 {
     private:
 
-        int32_t block_size_;
+        int32_t bs_row_;
+        int32_t bs_col_;
         int num_ranks_row_;
         int rank_row_;
         int num_ranks_col_;
@@ -575,16 +575,15 @@ class generalized_evp_rs_cpu: public generalized_evp
         
     public:
 
-        generalized_evp_rs_cpu(BLACS_grid const& blacs_grid__) 
-            : num_ranks_row_(blacs_grid__.num_ranks_row()),
+        generalized_evp_rs_cpu(BLACS_grid const& blacs_grid__, int32_t bs_row__, int32_t bs_col__)
+            : bs_row_(bs_row__),
+              bs_col_(bs_col__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()),
               rank_row_(blacs_grid__.rank_row()),
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               rank_col_(blacs_grid__.rank_col()),
               blacs_context_(blacs_grid__.context())
         {
-            #ifdef __SCALAPACK
-            block_size_ = blacs_grid__.cyclic_block_size();
-            #endif
         }
 
         #ifdef __RS_GEN_EIG
@@ -650,13 +649,14 @@ class generalized_evp_elpa1: public generalized_evp
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
-        Communicator comm_row_;
-        Communicator comm_col_;
+        Communicator const& comm_row_;
+        Communicator const& comm_col_;
 
     public:
         
-        generalized_evp_elpa1(BLACS_grid const& blacs_grid__)
-            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+        generalized_evp_elpa1(BLACS_grid const& blacs_grid__, int32_t block_size__)
+            : block_size_(block_size__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()), 
               rank_row_(blacs_grid__.rank_row()),
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               rank_col_(blacs_grid__.rank_col()),
@@ -664,9 +664,6 @@ class generalized_evp_elpa1: public generalized_evp
               comm_row_(blacs_grid__.comm_row()), 
               comm_col_(blacs_grid__.comm_col())
         {
-            #ifdef __SCALAPACK
-            block_size_ = blacs_grid__.cyclic_block_size();
-            #endif
         }
         
         #ifdef __ELPA
@@ -762,14 +759,15 @@ class generalized_evp_elpa2: public generalized_evp
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
-        Communicator comm_row_;
-        Communicator comm_col_;
-        Communicator comm_all_;
+        Communicator const& comm_row_;
+        Communicator const& comm_col_;
+        Communicator const& comm_all_;
 
     public:
         
-        generalized_evp_elpa2(BLACS_grid const& blacs_grid__)
-            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+        generalized_evp_elpa2(BLACS_grid const& blacs_grid__, int32_t block_size__)
+            : block_size_(block_size__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()), 
               rank_row_(blacs_grid__.rank_row()),
               num_ranks_col_(blacs_grid__.num_ranks_col()), 
               rank_col_(blacs_grid__.rank_col()),
@@ -778,9 +776,6 @@ class generalized_evp_elpa2: public generalized_evp
               comm_col_(blacs_grid__.comm_col()),
               comm_all_(blacs_grid__.comm())
         {
-            #ifdef __SCALAPACK
-            block_size_ = blacs_grid__.cyclic_block_size();
-            #endif
         }
         
         #ifdef __ELPA

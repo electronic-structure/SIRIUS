@@ -100,10 +100,10 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
 
     if (mask(1, 1) > 1e-13) TERMINATE("wrong mask function");
 
-    fft_ = new FFT3D<CPU>(Utils::find_translation_limits(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
-                          num_fft_threads__, num_fft_workers__);
+    fft_ = new FFT3D(Utils::find_translations(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
+                         num_fft_workers__, MPI_COMM_SELF, CPU);
 
-    fft_->init_gvec(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors());
+    gvec_ = Gvec(vector3d<double>(0, 0, 0), unit_cell_.reciprocal_lattice_vectors(), pw_cutoff__, fft_->grid(), fft_->comm(), 1, false, false);
 
     //double rmin = 15 / fft_->gvec_shell_len(fft_->num_gvec_shells_inner() - 1) / R_mask_scale_;
 
@@ -183,23 +183,24 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
             for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
             {
                 int ig = (int)spl_num_gvec_[ig_loc];
-                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_.atom(ia)->position())));
+                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (gvec_[ig] * unit_cell_.atom(ia)->position())));
 
-                beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * conj(phase_factor);
+                beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * std::conj(phase_factor);
             }
             comm_.allgather(&beta_pw[0], (int)spl_num_gvec_.global_offset(), (int)spl_num_gvec_.local_size());
             
             memset(&fft_->buffer(0), 0, fft_->size() * sizeof(double_complex));
             for (int ig = 0; ig < fft_->size(); ig++)
             {
-                auto gvec = fft_->gvec(ig);
+                auto gv = gvec_[ig];
                 double_complex z = beta_pw[ig];
                 //auto gvec_cart = fft_->gvec_cart(ig);
                 //if (gvec_cart.length() > pw_cutoff__) z *= std::exp(-mask_alpha_ * std::pow(gvec_cart.length() / pw_cutoff__ - 1, 2));
-                fft_->buffer(fft_->index(gvec[0], gvec[1], gvec[2])) = z;
+                fft_->buffer(fft_->grid().index_by_gvec(gv[0], gv[1], gv[2])) = z;
             }
             //fft_->input(fft_->num_gvec(), fft_->index_map(), &beta_pw[0]);
-            fft_->transform(1);
+            STOP();
+            //fft_->transform(1, );
 
             //== double p = 0;
             //== for (int i = 0; i < fft_->size(); i++)
@@ -255,18 +256,18 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
                 for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
                 {
                     int ig = (int)spl_num_gvec_[ig_loc];
-                    double_complex phase_factor = std::exp(double_complex(0.0, twopi * (fft_->gvec(ig) * unit_cell_.atom(ia)->position())));
+                    double_complex phase_factor = std::exp(double_complex(0.0, twopi * (gvec_[ig] * unit_cell_.atom(ia)->position())));
 
-                    beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * conj(phase_factor);
+                    beta_pw[ig] = beta_pw_t(ig_loc, atom_type->offset_lo() + xi) * std::conj(phase_factor);
                 }
                 comm_.allgather(&beta_pw[0], (int)spl_num_gvec_.global_offset(), (int)spl_num_gvec_.local_size());
 
-                for (int ig = 0; ig < fft_->num_gvec(); ig++)
+                for (int ig = 0; ig < gvec_.num_gvec(); ig++)
                 {
                     double_complex z(0, 0);
                     for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
                     {
-                        double phase = twopi * (beta_projectors_[ia].r_[i] * fft_->gvec(ig));
+                        double phase = twopi * (beta_projectors_[ia].r_[i] * gvec_[ig]);
                         z += std::exp(double_complex(0, -phase)) * beta_projectors_[ia].beta_(i, xi);
                     }
                     err += std::abs(beta_pw[ig] - z / std::sqrt(unit_cell_.omega()));
@@ -327,9 +328,9 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 
     mdarray<double, 3> beta_radial_integrals(unit_cell_.max_mt_radial_basis_size(),
                                              unit_cell_.num_atom_types(),
-                                             fft_->num_gvec_shells_total());
+                                             gvec_.num_shells());
 
-    splindex<block> spl_gsh(fft_->num_gvec_shells_total(), comm_.size(), comm_.rank());
+    splindex<block> spl_gsh(gvec_.num_shells(), comm_.size(), comm_.rank());
     #pragma omp parallel
     {
         mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
@@ -344,7 +345,7 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
             int igsh = (int)spl_gsh[igsh_loc];
 
             /* get spherical Bessel functions */
-            double G = fft_->gvec_shell_len(igsh);
+            double G = gvec_.shell_len(igsh);
             std::vector<double> v(unit_cell_.lmax_beta() + 1);
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
@@ -381,37 +382,38 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(mdarray<double, 3>& beta_radial_integrals__)
 {
     Timer t("sirius::Real_space_prj::generate_beta_pw_t");
+    STOP();
 
-    mdarray<double_complex, 2> beta_pw_t(spl_num_gvec_.local_size(), unit_cell_.num_beta_t());
+    mdarray<double_complex, 2> beta_pw_t;//(spl_num_gvec_.local_size(), unit_cell_.num_beta_t());
     
-    #pragma omp parallel
-    {
-        std::vector<double> gvec_rlm(Utils::lmmax(unit_cell_.lmax_beta()));
-        #pragma omp for
-        for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
-        {
-            int ig = (int)spl_num_gvec_[ig_loc];
+    //#pragma omp parallel
+    //{
+    //    std::vector<double> gvec_rlm(Utils::lmmax(unit_cell_.lmax_beta()));
+    //    #pragma omp for
+    //    for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
+    //    {
+    //        int ig = (int)spl_num_gvec_[ig_loc];
 
-            auto rtp = SHT::spherical_coordinates(fft_->gvec_cart(ig));
-            SHT::spherical_harmonics(unit_cell_.lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
+    //        auto rtp = SHT::spherical_coordinates(gvec_.cart(ig));
+    //        SHT::spherical_harmonics(unit_cell_.lmax_beta(), rtp[1], rtp[2], &gvec_rlm[0]);
 
-            int igsh = fft_->gvec_shell(ig);
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                auto atom_type = unit_cell_.atom_type(iat);
-            
-                for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-                {
-                    int l = atom_type->indexb(xi).l;
-                    int lm = atom_type->indexb(xi).lm;
-                    int idxrf = atom_type->indexb(xi).idxrf;
+    //        int igsh = gvec_.shell(ig);
+    //        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    //        {
+    //            auto atom_type = unit_cell_.atom_type(iat);
+    //        
+    //            for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+    //            {
+    //                int l = atom_type->indexb(xi).l;
+    //                int lm = atom_type->indexb(xi).lm;
+    //                int idxrf = atom_type->indexb(xi).idxrf;
 
-                    double_complex z = std::pow(double_complex(0, -1), l) * fourpi / unit_cell_.omega();
-                    beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_rlm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
-                }
-            }
-        }
-    }
+    //                double_complex z = std::pow(double_complex(0, -1), l) * fourpi / unit_cell_.omega();
+    //                beta_pw_t(ig_loc, atom_type->offset_lo() + xi) = z * gvec_rlm[lm] * beta_radial_integrals__(idxrf, iat, igsh);
+    //            }
+    //        }
+    //    }
+    //}
 
     return beta_pw_t;
 }
@@ -929,16 +931,16 @@ void Real_space_prj::get_beta_grid()
         beta_projectors_[ia].offset_ = num_points_;
 
         /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft_->size(0); j0++)
+        for (int j0 = 0; j0 < fft_->grid().size(0); j0++)
         {
-            for (int j1 = 0; j1 < fft_->size(1); j1++)
+            for (int j1 = 0; j1 < fft_->grid().size(1); j1++)
             {
-                for (int j2 = 0; j2 < fft_->size(2); j2++)
+                for (int j2 = 0; j2 < fft_->grid().size(2); j2++)
                 {
                     /* get real space fractional coordinate */
-                    vector3d<double> v0(double(j0) / fft_->size(0), double(j1) / fft_->size(1), double(j2) / fft_->size(2));
+                    vector3d<double> v0(double(j0) / fft_->grid().size(0), double(j1) / fft_->grid().size(1), double(j2) / fft_->grid().size(2));
                     /* index of real space point */
-                    int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+                    int ir = fft_->grid().index_by_coord(j0, j1, j2);
 
                     bool found = false;
 

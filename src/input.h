@@ -71,7 +71,6 @@ struct Unit_cell_input_section
 
             double scale = section["lattice_vectors_scale"].get(1.0);
 
-
             for (int x = 0; x < 3; x++)
             {
                 lattice_vectors_[0][x] = a0[x] * scale;
@@ -150,6 +149,12 @@ struct Mixer_input_section
     }
 };
 
+/// Parse XC functionals input section.
+/** The following part of the input file is parsed:
+ *  \code{.json}
+ *      "xc_functionals" : ["name1", "name2", ...]
+ *  \endcode
+ */
 struct XC_functionals_input_section
 {
     /// List of XC functionals.
@@ -158,8 +163,8 @@ struct XC_functionals_input_section
     /// Set default variables.
     XC_functionals_input_section()
     {
-        xc_functional_names_.push_back("XC_LDA_X");
-        xc_functional_names_.push_back("XC_LDA_C_VWN");
+        //== xc_functional_names_.push_back("XC_LDA_X");
+        //== xc_functional_names_.push_back("XC_LDA_C_VWN");
     }
 
     void read(JSON_tree const& parser)
@@ -190,11 +195,11 @@ struct Iterative_solver_input_section
     double mask_alpha_;
 
     Iterative_solver_input_section() 
-        : num_steps_(4),
+        : num_steps_(10),
           subspace_size_(4),
           tolerance_(1e-5),
           type_("davidson"),
-          converge_by_energy_(0),
+          converge_by_energy_(1),
           real_space_prj_(0),
           R_mask_scale_(1.5),
           mask_alpha_(3)
@@ -287,9 +292,13 @@ class Input_parameters
                   cyclic_block_size_(64),
                   num_fv_states_(-1),
                   smearing_width_(0.001),
-                  std_evp_solver_type_("lapack"),
-                  gen_evp_solver_type_("lapack"),
+                  std_evp_solver_type_(""),
+                  gen_evp_solver_type_(""),
+                  #ifdef __GPU
+                  processing_unit_("gpu"),
+                  #else
                   processing_unit_("cpu"),
+                  #endif
                   electronic_structure_method_("full_potential_lapwlo")
             {
             }

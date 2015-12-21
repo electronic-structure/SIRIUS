@@ -30,8 +30,7 @@ namespace sirius {
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 {
-    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-        rho_->set_mt_ptr(rhomt);
+    if (parameters_.full_potential()) rho_->set_mt_ptr(rhomt);
     rho_->set_it_ptr(rhoir);
 }
 
@@ -43,7 +42,7 @@ void Density::set_magnetization_ptr(double* magmt, double* magir)
     // set temporary array wrapper
     mdarray<double, 4> magmt_tmp(magmt, parameters_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
                                  unit_cell_.num_atoms(), parameters_.num_mag_dims());
-    mdarray<double, 2> magir_tmp(magir, fft_->size(), parameters_.num_mag_dims());
+    mdarray<double, 2> magir_tmp(magir, ctx_.fft(0)->size(), parameters_.num_mag_dims());
     
     if (parameters_.num_mag_dims() == 1)
     {
@@ -91,7 +90,7 @@ void Density::generate_core_charge_density()
 {
     Timer t("sirius::Density::generate_core_charge_density");
 
-    for (int icloc = 0; icloc < (int)unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
         unit_cell_.atom_symmetry_class(ic)->generate_core_charge_density();
@@ -104,95 +103,12 @@ void Density::generate_core_charge_density()
     }
 }
 
-void Density::generate_pseudo_core_charge_density()
-{
-    Timer t("sirius::Density::generate_pseudo_core_charge_density");
-
-    auto rl = ctx_.reciprocal_lattice();
-    auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
-
-    std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
-
-    fft_->input(fft_->num_gvec(), fft_->index_map(), &v[0]);
-    fft_->transform(1);
-    fft_->output(&rho_pseudo_core_->f_it<global>(0));
-}
-
-void Density::generate_valence(K_set& ks__)
-{
-    Timer t("sirius::Density::generate_valence", ctx_.comm());
-    
-    double wt = 0.0;
-    double ot = 0.0;
-    for (int ik = 0; ik < ks__.num_kpoints(); ik++)
-    {
-        wt += ks__[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
-    }
-
-    if (std::abs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
-
-    if (std::abs(ot - unit_cell_.num_valence_electrons()) > 1e-8)
-    {
-        std::stringstream s;
-        s << "wrong occupancies" << std::endl
-          << "  computed : " << ot << std::endl
-          << "  required : " << unit_cell_.num_valence_electrons() << std::endl
-          << "  difference : " << fabs(ot - unit_cell_.num_valence_electrons());
-        warning_local(__FILE__, __LINE__, s);
-    }
-    
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        for (int ikloc = 0; ikloc < (int)ks__.spl_num_kpoints().local_size(); ikloc++)
-        {
-            int ik = ks__.spl_num_kpoints(ikloc);
-            splindex<block> spl_bands(num_occupied_bands(ks__[ik]), ks__[ik]->comm().size(), ks__[ik]->comm().rank());
-            ks__[ik]->collect_all_gkvec(spl_bands, ks__[ik]->fv_states_slab().at<CPU>(), ks__[ik]->fv_states().at<CPU>()); 
-        }
-    }
-
-    /* zero density and magnetization */
-    zero();
-
-    /* interstitial part is independent of basis type */
-    generate_valence_density_it(ks__);
-
-    /* for muffin-tin part */
-    switch (parameters_.esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            generate_valence_density_mt(ks__);
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            STOP();
-        }
-        default:
-        {
-            break;
-        }
-    }
-
-    for (int ir = 0; ir < fft_->size(); ir++)
-    {
-        if (rho_->f_it<global>(ir) < 0) TERMINATE("density is wrong");
-    }
-    
-    /* get rho(G) */
-    rho_->fft_transform(-1);
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
-        parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        augment(ks__);
-    }
-}
-
 void Density::augment(K_set& ks__)
 {
+    PROFILE();
+
+    Timer t("sirius::Density::augment", ctx_.comm());
+
     switch (parameters_.esm_type())
     {
         case ultrasoft_pseudopotential:
@@ -223,68 +139,6 @@ void Density::augment(K_set& ks__)
             break;
         }
     }
-}
-
-void Density::generate(K_set& ks__)
-{
-    LOG_FUNC_BEGIN();
-
-    Timer t("sirius::Density::generate", ctx_.comm());
-    
-    generate_valence(ks__);
-
-    if (parameters_.full_potential())
-    {
-        generate_core_charge_density();
-
-        /* add core contribution */
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
-        {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
-                rho_->f_mt<local>(0, ir, ialoc) += unit_cell_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
-        }
-
-        /* synchronize muffin-tin part (interstitial is already syncronized with allreduce) */
-        rho_->sync(true, false);
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
-    }
-    
-    double nel = 0;
-    if (parameters_.full_potential())
-    {
-        std::vector<double> nel_mt;
-        double nel_it;
-        nel = rho_->integrate(nel_mt, nel_it);
-    }
-    else
-    {
-        nel = real(rho_->f_pw(0)) * unit_cell_.omega();
-    }
-
-    if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5)
-    {
-        std::stringstream s;
-        s << "wrong charge density after k-point summation" << std::endl
-          << "obtained value : " << nel << std::endl 
-          << "target value : " << unit_cell_.num_electrons() << std::endl
-          << "difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
-        if (parameters_.full_potential())
-        {
-            s << "total core leakage : " << core_leakage();
-            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) 
-                s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
-        }
-        warning_global(__FILE__, __LINE__, s);
-    }
-
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rhomt): %16llX", rho_->f_mt().hash());
-    DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
-    #endif
-
-    //if (debug_level > 1) check_density_continuity_at_mt();
-    LOG_FUNC_END();
 }
 
 //void Density::check_density_continuity_at_mt()
@@ -322,7 +176,6 @@ void Density::generate(K_set& ks__)
 //    printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / parameters_.num_atoms() / sht.num_points());
 //}
 
-
 void Density::save()
 {
     if (ctx_.comm().rank() == 0)
@@ -345,9 +198,7 @@ void Density::load()
 
 void Density::generate_pw_coefs()
 {
-    fft_->input(&rho_->f_it<global>(0));
-    fft_->transform(-1);
-    fft_->output(fft_->num_gvec(), fft_->index_map(), &rho_->f_pw(0));
+    rho_->fft_transform(-1);
 }
 
 }

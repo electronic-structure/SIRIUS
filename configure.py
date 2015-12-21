@@ -7,19 +7,19 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--enable-fortran", "--disable-mpi", "--enable-openmp", "--enable-threads"]
+              []
              ],
-    "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
+    "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-2.0.tar.gz", 
               ["--disable-shared"]
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.15-patch1.tar.gz",
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.16.tar.gz",
               ["--enable-fortran", "--disable-shared", "--enable-static=yes", 
                "--disable-deprecated-symbols", "--disable-filters","--disable-parallel", "--with-zlib=no","--with-szlib=no"]
              ],
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.7/spglib-1.7.3.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.8/spglib-1.8.3.tar.gz",
               []
              ]
 }
@@ -56,6 +56,7 @@ def configure_package(package_name, platform):
     tf.extractall("./libs/")
 
     new_env = os.environ.copy()
+    
     new_env["CC"] = platform["CC"]
     new_env["CXX"] = platform["CXX"]
     new_env["FC"] = platform["FC"]
@@ -87,7 +88,7 @@ def configure_package(package_name, platform):
 
     if (package_name == "fftw"):
         retval = ["-I" + cwdlibs + package_dir + "/api", 
-                  cwdlibs + package_dir + "/.libs/libfftw3.a " + cwdlibs + package_dir + "/threads/.libs/libfftw3_threads.a",
+                  cwdlibs + package_dir + "/.libs/libfftw3.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 

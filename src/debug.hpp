@@ -2,9 +2,133 @@
 #define __DEBUG_HPP__
 
 #include <fstream>
+#include <sys/time.h>
+#include "platform.h"
+#include "communicator.h"
+#include "timer.h"
 
 namespace debug
 {
+
+class Profiler
+{
+    private:
+
+        std::string name_;
+        std::string file_;
+        int line_;
+        sirius::Timer* timer_;
+
+        std::string timestamp()
+        {
+            timeval t;
+            gettimeofday(&t, NULL);
+        
+            char buf[100]; 
+        
+            tm* ptm = localtime(&t.tv_sec); 
+            //strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm); 
+            strftime(buf, sizeof(buf), "%H:%M:%S", ptm); 
+            return std::string(buf);
+        }
+
+        #ifdef __PROFILE_STACK
+        static std::vector<std::string>& call_stack()
+        {
+            static std::vector<std::string> call_stack_;
+            return call_stack_;
+        }
+        #endif
+
+        inline void init(char const* name__, char const* file__, int line__)
+        {
+            #if defined(__PROFILE_STACK) || defined(__PROFILE_FUNC)
+            name_ = std::string(name__);
+            file_ = std::string(file__);
+            line_ = line__;
+
+            char str[1024];
+            snprintf(str, 1024, "%s at %s:%i", name__, file__, line__);
+            #endif
+            
+            #ifdef __PROFILE_STACK
+            call_stack().push_back(std::string(str));
+            #endif
+
+
+            #ifdef __PROFILE_FUNC
+            int tab = 0;
+            #ifdef __PROFILE_STACK
+            tab = static_cast<int>(call_stack().size());
+            #endif
+            for (int i = 0; i < tab; i++) printf(" ");
+            printf("rank%04i + %s\n", mpi_comm_world.rank(), name_.c_str());
+            #endif
+        }
+
+    public:
+
+        Profiler(char const* name__, char const* file__, int line__) : timer_(nullptr)
+        {
+            init(name__, file__, line__);
+        }
+
+        Profiler(char const* name__, char const* file__, int line__, char const* timer_name_)
+        {
+            init(name__, file__, line__);
+            
+            #ifdef __PROFILE_TIME
+            timer_ = new sirius::Timer(timer_name_);
+            #endif
+        }
+
+        ~Profiler()
+        {
+            #ifdef __PROFILE_TIME
+            if (timer_ != nullptr) delete timer_;
+            #endif
+
+            #ifdef __PROFILE_FUNC
+            int tab = 0;
+            #ifdef __PROFILE_STACK
+            tab = static_cast<int>(call_stack().size());
+            #endif
+            for (int i = 0; i < tab; i++) printf(" ");
+            printf("rank%04i - %s\n", mpi_comm_world.rank(), name_.c_str());
+            #endif
+
+            #ifdef __PROFILE_STACK
+            call_stack().pop_back();
+            #endif
+        }
+
+        static void stack_trace()
+        {
+            #ifdef __PROFILE_STACK
+            int t = 0;
+            for (auto it = call_stack().rbegin(); it != call_stack().rend(); it++)
+            {
+                for (int i = 0; i < t; i++) printf(" ");
+                printf("[%s]\n", it->c_str());
+                t++;
+            }
+            #endif
+        }
+};
+
+#ifdef __GNUC__
+#define __function_name__ __PRETTY_FUNCTION__
+#else
+#define __function_name__ __func__
+#endif
+
+#ifdef __PROFILE
+  #define PROFILE() debug::Profiler profiler__(__function_name__, __FILE__, __LINE__)
+  #define PROFILE_WITH_TIMER(name) debug::Profiler profiler__(__function_name__, __FILE__, __LINE__, name)
+#else
+  #define PROFILE(...)
+  #define PROFILE_WITH_TIMER(name) 
+#endif
 
 inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)
 {
@@ -79,19 +203,6 @@ inline int get_num_threads()
     }
 
     return num_threds;
-}
-
-template <typename T>
-inline T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
-{
-    T sum = 0;
-
-    for (int j = 0; j < ncol; j++)
-    {
-        for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
-    }
-
-    return sum;
 }
 
 #define MEMORY_USAGE_INFO()                                                                 \

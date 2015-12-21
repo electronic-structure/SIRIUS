@@ -19,6 +19,7 @@ void K_point::generate_beta_phi(int nbeta__,
     #endif
     #endif
 
+    double wt = -MPI_Wtime();
     if (parameters_.processing_unit() == CPU)
     {
         /* compute <beta|phi> */
@@ -57,6 +58,12 @@ void K_point::generate_beta_phi(int nbeta__,
         #else
         TERMINATE_NO_GPU
         #endif
+    }
+    wt += MPI_Wtime();
+    if (comm().rank() == 0)
+    {
+        DUMP("effective zgemm performance: %12.4f GFlops/rank",
+             8e-9 * nbeta__ * nphi__ * num_gkvec() / wt / comm().size());
     }
 }
 

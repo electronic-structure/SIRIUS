@@ -31,16 +31,12 @@ void K_set::initialize()
     /* distribute k-points along the 1-st dimension of the MPI grid */
     spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
 
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
 
-    if (verbosity_level >= 2) print_info();
-}
-
-void K_set::update()
-{
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
-        kpoints_[spl_num_kpoints_[ikloc]]->update();
+    #if (__VERBOSITY > 0)
+    print_info();
+    #endif
 }
 
 void K_set::sync_band_energies()
@@ -53,15 +49,15 @@ void K_set::sync_band_energies()
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
     comm_k_.allgather(band_energies.at<CPU>(), 
-                      static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
-                      static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()));
+                      parameters_.num_bands() * spl_num_kpoints_.global_offset(),
+                      parameters_.num_bands() * spl_num_kpoints_.local_size());
 
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::K_set::find_eigen_states", comm_k_);
+    Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
     
     if (precompute && parameters_.full_potential())
     {
@@ -71,8 +67,10 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         unit_cell_.generate_radial_integrals();
     }
 
+    // TODO: mapping to coarse effective potential is k-point independent
+
     /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
         if (use_second_variation)
@@ -90,8 +88,9 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
 
     /* synchronize eigen-values */
     sync_band_energies();
-
-    if (comm_k_.rank() == 0 && blacs_grid_.comm().rank() == 0 && verbosity_level >= 5)
+    
+    #if (__VERBOSITY > 0)
+    if (ctx_.comm().rank() == 0)
     {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < num_kpoints(); ik++)
@@ -122,6 +121,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         //== }
         //== fclose(fout);
     }
+    #endif
 }
 
 double K_set::valence_eval_sum()
@@ -379,7 +379,7 @@ void K_set::load()
 int K_set::max_num_gkvec()
 {
     int max_num_gkvec_ = 0;
-    for (size_t ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
         auto ik = spl_num_kpoints_[ikloc];
         max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());

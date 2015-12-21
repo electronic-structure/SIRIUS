@@ -64,24 +64,25 @@ class linalg<CPU>: public linalg_base
         static void hemm(int side, int uplo, ftn_int m, ftn_int n, T alpha, matrix<T>& A, 
                          matrix<T>& B, T beta, matrix<T>& C);
         
-        /// Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers.
+        /// General matrix-matrix multiplication.
+        /** Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers. */
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T beta, T* C, ftn_int ldc);
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T beta, T* C, ftn_int ldc);
         
         /// Compute C = op(A) * op(B) operation with raw pointers.
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* A, ftn_int lda, T* B, ftn_int ldb, 
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda, T const* B, ftn_int ldb, 
                          T* C, ftn_int ldc);
 
         /// Compute C = alpha * op(A) * op(B) + beta * op(C) with matrix objects.
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, matrix<T>& A, matrix<T>& B,
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, matrix<T> const& A, matrix<T> const& B,
                          T beta, matrix<T>& C);
 
         /// Compute C = op(A) * op(B) operation with matrix objects.
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T>& A, matrix<T>& B,
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
                          matrix<T>& C);
                          
         /// Compute C = alpha * op(A) * op(B) + beta * op(C), generic interface
@@ -170,20 +171,20 @@ class linalg<GPU>: public linalg_base
                          T* beta, T* y, ftn_int incy, int stream_id);
 
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T* beta, T* C, ftn_int ldc, int stream_id);
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T* beta, T* C, ftn_int ldc, int stream_id);
 
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T* beta, T* C, ftn_int ldc);
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T* C, ftn_int ldc, int stream_id);
+
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T* beta, T* C, ftn_int ldc);
         
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T* C, ftn_int ldc, int stream_id);
-
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T* C, ftn_int ldc);
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T* C, ftn_int ldc);
 };
 #endif
 

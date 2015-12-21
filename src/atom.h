@@ -96,7 +96,7 @@ class Atom
     public:
     
         /// Constructor.
-        Atom(Atom_type* type__, double* position__, double* vector_field__);
+        Atom(Atom_type* type__, vector3d<double> position__, vector3d<double> vector_field__);
         
         /// Initialize atom.
         void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__);

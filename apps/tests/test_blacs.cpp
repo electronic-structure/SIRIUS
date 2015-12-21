@@ -2,24 +2,58 @@
 
 using namespace sirius;
 
+class A
+{
+    public:
+    BLACS_grid const& src_;
+    BLACS_grid a;
+    BLACS_grid b;
+
+    A(BLACS_grid const& src) : src_(src), a(src.comm(), src.comm().size(), 1), b(src.comm(), 1, src.comm().size())
+    {
+    }
+};
+
+void test_blacs()
+{
+    Communicator comm(MPI_COMM_WORLD);
+
+    std::vector<int> dims = {comm.size()};
+    MPI_grid mpi_grid(dims, comm);
+
+    BLACS_grid blacs_grid(mpi_grid.communicator(1 << 1 | 1 << 2), 
+                          mpi_grid.dimension_size(1),
+                          mpi_grid.dimension_size(2));
+    
+    A t(blacs_grid);
+}
+
+void test_blacs_grid_order()
+{
+    Communicator comm(MPI_COMM_WORLD);
+    BLACS_grid grid(comm, 3, 2);
+    
+    if (comm.rank() == 0)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                int rank = grid.cart_rank(j, i);
+                printf("%2i ", rank);
+            }
+            printf("\n");
+        }
+    }
+}
+
 int main(int argn, char** argv)
 {
     Platform::initialize(1);
 
-    for (int x = 0; x < 10; x++)
-    {
-        Global g;
-        double a1[] = {6, 0, 0};
-        double a2[] = {0, 6, 0};
-        double a3[] = {0, 0, 6};
-    
-        g.unit_cell()->set_lattice_vectors(a1, a2, a3);
-        g.set_pw_cutoff(9.0);
-        g.initialize();
+    test_blacs();
 
-        //int context = linalg<scalapack>::create_blacs_context(MPI_COMM_WORLD);
-        //std::cout << "context : " << context << std::endl;
-        //linalg<scalapack>::free_blacs_context(context);
-    }
+    test_blacs_grid_order();
+
     Platform::finalize();
 }

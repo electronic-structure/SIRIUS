@@ -119,3 +119,5 @@ class CUDA_timer
         }
 };
 
+extern cudaStream_t* streams;
+

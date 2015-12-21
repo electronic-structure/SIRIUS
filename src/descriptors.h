@@ -117,7 +117,9 @@ class uspp_descriptor
         std::vector<double> q_functions_inner_radii;
         
         /// Radial functions of Q-operator.
-        mdarray<double, 2> q_radial_functions;
+        //mdarray<double, 2> q_radial_functions;
+
+        mdarray<double, 3> q_radial_functions_l;
 
         std::vector<double> core_charge_density;
 
@@ -206,8 +208,7 @@ struct unit_cell_parameters_descriptor
 /** This data structure describes one of the following basis sets:
  *      - LAPW+lo basis, which consists of G+k labeled augmented plane-waves and of local orbitals
  *      - PW+lo basis, which consists of G+k plane-waves and of local orbitals
- *      - pure G+k plane-wave basis
- */
+ *      - pure G+k plane-wave basis */
 struct gklo_basis_descriptor
 {
     /// ID (global index) of the basis function.
@@ -215,6 +216,8 @@ struct gklo_basis_descriptor
 
     /// Global index of the G+k vector.
     int igk;
+
+    vector3d<int> gvec;
 
     /// G+k vector in fractional coordinates.
     vector3d<double> gkvec;
@@ -236,8 +239,7 @@ struct gklo_basis_descriptor
 
     /// Order of the local orbital radial function for the given orbital quantum number \f$ \ell \f$.
     /** All radial functions for the given orbital quantum number \f$ \ell \f$ are ordered in the following way: 
-     *  augmented radial functions come first followed by the local orbital radial function. 
-     */
+     *  augmented radial functions come first followed by the local orbital radial function. */
     int order;
 
     /// Index of the local orbital radial function.
@@ -248,6 +250,67 @@ struct mt_basis_descriptor
 {
     int ia;
     int xi;
+};
+
+//== struct occupied_bands_descriptor
+//== {
+//==     int num_occupied_bands_;
+//== 
+//==     std::vector<int> idx_bnd_loc;
+//==     std::vector<int> idx_bnd_glob;
+//==     std::vector<double> weight;
+//== 
+//==     /// Total number of occupied bands.
+//==     int num_occupied_bands() const
+//==     {
+//==         return num_occupied_bands_;
+//==     }
+//== 
+//==     /// Local freaction of occupied bands.
+//==     int num_occupied_bands_local() const
+//==     {
+//==         assert(idx_bnd_loc.size() == idx_bnd_glob.size());
+//==         assert(idx_bnd_loc.size() == weight.size());
+//==         return static_cast<int>(idx_bnd_loc.size());
+//==     }
+//== };
+
+struct block_data_descriptor
+{
+    int num_ranks;
+    std::vector<int> counts;
+    std::vector<int> offsets;
+
+    block_data_descriptor()
+    {
+    }
+
+    block_data_descriptor(int num_ranks__) : num_ranks(num_ranks__)
+    {
+        counts = std::vector<int>(num_ranks, 0);
+        offsets = std::vector<int>(num_ranks, 0);
+    }
+
+    void calc_offsets()
+    {
+        for (int i = 1; i < num_ranks; i++) offsets[i] = offsets[i - 1] + counts[i - 1];
+    }
+};
+
+struct z_column_descriptor
+{
+    int x;
+    int y;
+    int offset;
+    std::vector<int> z;
+
+    z_column_descriptor()
+    {
+    }
+
+    z_column_descriptor(int x__, int y__, std::vector<int> z__) : x(x__), y(y__), z(z__)
+    {
+    }
 };
 
 #endif

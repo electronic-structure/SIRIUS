@@ -39,9 +39,6 @@
 namespace sirius 
 {
 
-const int _local_timer_ = 0;
-const int _global_timer_ = 1;
-
 struct timer_stats
 {
     int count;
@@ -49,7 +46,6 @@ struct timer_stats
     double max_value;
     double total_value;
     double average_value;
-    int timer_type;
 };
 
 /// Simple timer interface.
@@ -57,10 +53,11 @@ class Timer
 {
     private:
         
-        /// string label of the timer
+        #ifdef __TIMER
+        /// String label of the timer.
         std::string label_;
         
-        /// starting time
+        /// Starting time.
         #if defined(__TIMER_TIMEOFDAY)
         timeval starting_time_;
         #elif defined(__TIMER_MPI_WTIME)
@@ -74,78 +71,66 @@ class Timer
         /// true if timer is running
         bool active_;
 
-        int timer_type_;
-
-        /// mapping between timer name and timer values
-        static std::map< std::string, std::vector<double> > timers_;
-
-        static std::map< std::string, std::vector<double> > global_timers_;
+        #endif
     
     public:
         
+        #ifdef __TIMER
         Timer(std::string const& label__) 
             : label_(label__),
               comm_(nullptr),
-              active_(false),
-              timer_type_(_local_timer_)
+              active_(false)
         {
-            if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
+            if (timers().count(label_) == 0) timers()[label_] = std::vector<double>();
 
             start();
         }
-
-        Timer(std::string const& label__, int timer_type__) 
-            : label_(label__),
-              comm_(nullptr),
-              active_(false),
-              timer_type_(timer_type__)
+        #else
+        Timer(std::string const& label__)
         {
-            switch (timer_type_)
-            {
-                case _local_timer_:
-                {
-                    if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
-                    break;
-                }
-                case _global_timer_:
-                {
-                    if (global_timers_.count(label_) == 0) global_timers_[label_] = std::vector<double>();
-                    break;
-                }
-            }
-
-            start();
         }
-
+        #endif
+        
+        #ifdef __TIMER
         Timer(std::string const& label__, Communicator const& comm__) 
             : label_(label__),
               comm_(&comm__),
-              active_(false),
-              timer_type_(_local_timer_)
+              active_(false)
         {
-            if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
+            if (timers().count(label_) == 0) timers()[label_] = std::vector<double>();
 
             start();
         }
+        #else
+        Timer(std::string const& label__, Communicator const& comm__)
+        {
+        }
+        #endif
 
         ~Timer()
         {
+            #ifdef __TIMER
             if (active_) stop();
+            #endif
         }
 
         void start();
 
         double stop();
 
-        double value();
+        //double value();
 
         static void clear()
         {
-            timers_.clear();
+            #ifdef __TIMER
+            timers().clear();
+            #endif
         }
-
+        
+        #ifdef __TIMER
         static std::map< std::string, std::vector<double> >& timers()
         {
+            static std::map< std::string, std::vector<double> > timers_;
             return timers_;
         }
 
@@ -153,16 +138,15 @@ class Timer
 
         static double value(std::string const& label__)
         {
-            auto values = timers_[label__];
+            auto values = timers()[label__];
 
             double d = 0;
-            for (int i = 0; i < (int)values.size(); i++) d += values[i];
+            for (double v: values) d += v;
             return d;
         }
 
         static void print();
-
-        static void delay(double dsec);
+        #endif
 };
 
 };

@@ -55,7 +55,7 @@ int main(int argn, char **argv)
     Platform::initialize(1);
 
     f2();
-    
+
     #ifndef NDEBUG
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
     #endif

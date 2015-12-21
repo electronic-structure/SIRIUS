@@ -26,6 +26,8 @@
 #define __COMMUNICATOR_H__
 
 #include <mpi.h>
+#include <memory>
+#include <vector>
 #include "typedefs.h"
 
 #define CALL_MPI(func__, args__)                                                    \
@@ -37,6 +39,14 @@
     }                                                                               \
 }
 
+struct alltoall_descriptor
+{
+    std::vector<int> sendcounts;
+    std::vector<int> sdispls;
+    std::vector<int> recvcounts;
+    std::vector<int> rdispls;
+};
+
 /// MPI communicator wrapper.
 class Communicator
 {
@@ -44,11 +54,7 @@ class Communicator
 
         MPI_Comm mpi_comm_;
 
-        inline void set_comm(MPI_Comm const& mpi_comm_orig__)
-        {
-            assert(mpi_comm_orig__ != MPI_COMM_NULL);
-            CALL_MPI(MPI_Comm_dup, (mpi_comm_orig__, &mpi_comm_));
-        }
+        Communicator(Communicator const& src__) = delete;
 
     public:
     
@@ -56,32 +62,25 @@ class Communicator
         {
         }
 
-        Communicator(MPI_Comm const& mpi_comm__)
+        Communicator(MPI_Comm mpi_comm__) : mpi_comm_(mpi_comm__)
         {
-            set_comm(mpi_comm__);
-        }
-
-        Communicator(Communicator const& comm__)
-        {
-            set_comm(comm__.mpi_comm_);
-        }
-
-        Communicator& operator=(Communicator const& comm__)
-        {
-            set_comm(comm__.mpi_comm_);
-            return *this;
         }
 
         ~Communicator()
         {
-            if (mpi_comm_ != MPI_COMM_NULL) 
+            if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF))
             {
                 CALL_MPI(MPI_Comm_free, (&mpi_comm_));
                 mpi_comm_ = MPI_COMM_NULL;
             }
         }
 
-        inline MPI_Comm mpi_comm() const
+        inline MPI_Comm& mpi_comm()
+        {
+            return mpi_comm_;
+        }
+
+        inline MPI_Comm const& mpi_comm() const
         {
             return mpi_comm_;
         }
@@ -111,6 +110,15 @@ class Communicator
             int s;
             CALL_MPI(MPI_Comm_size, (mpi_comm_, &s));
             return s;
+        }
+
+        inline std::pair<int, int> p()
+        {
+            assert(mpi_comm_ != MPI_COMM_NULL);
+            std::pair<int, int> p;
+            CALL_MPI(MPI_Comm_size, (mpi_comm_, &p.first));
+            CALL_MPI(MPI_Comm_rank, (mpi_comm_, &p.second));
+            return p;
         }
 
         inline void barrier() const
@@ -170,7 +178,7 @@ class Communicator
         template <typename T, mpi_op_t op__ = op_sum>
         inline void allreduce(std::vector<T>& buffer__) const
         {
-            allreduce<T, op__>(&buffer__[0], (int)buffer__.size());
+            allreduce<T, op__>(&buffer__[0], static_cast<int>(buffer__.size()));
         }
         
         /// Perform buffer broadcast.
@@ -210,6 +218,7 @@ class Communicator
         template <typename T>
         void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
         {
+            // TODO: pack in one call
             std::vector<int> counts(size());
             counts[rank()] = count__;
             CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, type_wrapper<int>::mpi_type_id(), mpi_comm_));
@@ -244,6 +253,12 @@ class Communicator
         }
 
         template <typename T>
+        void irecv(T* buffer__, int count__, int source__, int tag__, MPI_Request* request__) const
+        {
+            CALL_MPI(MPI_Irecv, (buffer__, count__, type_wrapper<T>::mpi_type_id(), source__, tag__, mpi_comm_, request__));
+        }
+
+        template <typename T>
         void gather(T const* sendbuf__, T* recvbuf__, int const* recvcounts__, int const* displs__, int root__) const
         {
             int sendcount = recvcounts__[rank()];
@@ -261,12 +276,93 @@ class Communicator
         }
 
         template <typename T>
+        void alltoall(T const* sendbuf__, int sendcounts__, T* recvbuf__, int recvcounts__) const
+        {
+            CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, type_wrapper<T>::mpi_type_id(),
+                                    recvbuf__, recvcounts__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
+
+        template <typename T>
         void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, 
                       T* recvbuf__, int const* recvcounts__, int const* rdispls__) const
         {
             CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, type_wrapper<T>::mpi_type_id(),
                                      recvbuf__, recvcounts__, rdispls__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
         }
+
+        //==alltoall_descriptor map_alltoall(std::vector<int> local_sizes_in, std::vector<int> local_sizes_out) const
+        //=={
+        //==    alltoall_descriptor a2a;
+        //==    a2a.sendcounts = std::vector<int>(size(), 0);
+        //==    a2a.sdispls    = std::vector<int>(size(), -1);
+        //==    a2a.recvcounts = std::vector<int>(size(), 0);
+        //==    a2a.rdispls    = std::vector<int>(size(), -1);
+
+        //==    std::vector<int> offs_in(size(), 0);
+        //==    std::vector<int> offs_out(size(), 0);
+
+        //==    for (int i = 1; i < size(); i++)
+        //==    {
+        //==        offs_in[i] = offs_in[i - 1] + local_sizes_in[i - 1];
+        //==        offs_out[i] = offs_out[i - 1] + local_sizes_out[i - 1];
+        //==    }
+
+        //==    /* loop over sending ranks */
+        //==    for (int sr = 0; sr < size(); sr++)
+        //==    {
+        //==        if (!local_sizes_in[sr]) continue;
+
+        //==        /* beginning of index */
+        //==        int i0 = offs_in[sr];
+        //==        /* end of index */
+        //==        int i1 = offs_in[sr] + local_sizes_in[sr] - 1;
+
+        //==        /* loop over receiving ranks */
+        //==        for (int rr = 0; rr < size(); rr++)
+        //==        {
+        //==            if (!local_sizes_out[rr]) continue;
+
+        //==            int j0 = offs_out[rr];
+        //==            int j1 = offs_out[rr] + local_sizes_out[rr] - 1;
+
+        //==            /* rank rr recieves nothing from rank sr*/
+        //==            if (j1 < i0 || i1 < j0) continue;
+
+        //==            int s_ofs = std::max(j0 - i0, 0);
+        //==            int r_ofs = std::max(i0 - j0, 0);
+        //==            int sz = std::min(i1, j1) - std::max(i0, j0) + 1;
+        //==            
+        //==            if (rank() == sr)
+        //==            {
+        //==                a2a.sendcounts[rr] = sz;
+        //==                a2a.sdispls[rr] = s_ofs;
+        //==            }
+        //==            if (rank() == rr)
+        //==            {
+        //==                a2a.recvcounts[sr] = sz;
+        //==                a2a.rdispls[sr] = r_ofs;
+        //==            }
+        //==        }
+        //==    }
+
+        //==    int n1 = 0;
+        //==    int n2 = 0;
+        //==    for (int i = 0; i < size(); i++)
+        //==    {
+        //==        n1 += a2a.sendcounts[i];
+        //==        n2 += a2a.recvcounts[i];
+        //==    }
+        //==    if (n1 != local_sizes_in[rank()] || n2 != local_sizes_out[rank()])
+        //==    {
+        //==        printf("wrong sizes");
+        //==        MPI_Abort(MPI_COMM_WORLD, -1);
+        //==    }
+
+        //==    return a2a;
+        //==}
 };
+
+extern Communicator mpi_comm_self;
+extern Communicator mpi_comm_world;
 
 #endif // __COMMUNICATOR_H__

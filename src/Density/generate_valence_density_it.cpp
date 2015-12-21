@@ -2,22 +2,41 @@
 
 namespace sirius {
 
-void Density::generate_valence_density_it(K_set& ks)
+void Density::generate_valence_density_it(K_set& ks__)
 {
-    Timer t("sirius::Density::generate_valence_density_it", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_it");
+
+    ctx_.fft_ctx().allocate_workspace();
 
     /* add k-point contribution */
-    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = ks.spl_num_kpoints(ikloc);
-        auto occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
-        add_k_point_contribution_it(ks[ik], occupied_bands);
+        int ik = ks__.spl_num_kpoints(ikloc);
+        auto kp = ks__[ik];
+        
+        if (parameters_.full_potential())
+        {
+            add_k_point_contribution_it<true>(kp);
+        }
+        else
+        {
+            add_k_point_contribution_it<false>(kp);
+        }
     }
-    
+
     /* reduce arrays; assume that each rank did it's own fraction of the density */
-    ctx_.comm().allreduce(&rho_->f_it<global>(0), fft_->size()); 
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        ctx_.comm().allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
+    if (ctx_.fft(0)->parallel())
+    {
+        ctx_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(&rho_->f_it(0), ctx_.fft(0)->local_size()); 
+    }
+    else
+    {
+        ctx_.comm().allreduce(&rho_->f_it(0), ctx_.fft(0)->size()); 
+        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
+    }
+
+    ctx_.fft_ctx().deallocate_workspace();
 }
 
 };

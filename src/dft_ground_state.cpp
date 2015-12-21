@@ -31,9 +31,9 @@ double DFT_ground_state::energy_enuc()
     double enuc = 0.0;
     if (parameters_.full_potential())
     {
-        for (size_t ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
-            int ia = unit_cell_.spl_num_atoms((int)ialoc);
+            int ia = unit_cell_.spl_num_atoms(ialoc);
             int zn = unit_cell_.atom(ia)->type()->zn();
             enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
         }
@@ -58,7 +58,8 @@ void DFT_ground_state::move_atoms(int istep)
 {
     mdarray<double, 2> atom_force(3, unit_cell_.num_atoms());
     forces(atom_force);
-    if (verbosity_level >= 6 && ctx_.comm().rank() == 0)
+    #if (__VERBOSITY > 0)
+    if (ctx_.comm().rank() == 0)
     {
         printf("\n");
         printf("Atomic forces\n");
@@ -67,25 +68,20 @@ void DFT_ground_state::move_atoms(int istep)
             printf("ia : %i, force : %12.6f %12.6f %12.6f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
         }
     }
+    #endif
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         vector3d<double> pos = unit_cell_.atom(ia)->position();
-
-        vector3d<double> forcef = unit_cell_.get_fractional_coordinates(vector3d<double>(&atom_force(0, ia)));
+        
+        vector3d<double> f(atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
+        vector3d<double> forcef = unit_cell_.get_fractional_coordinates(f);
 
         for (int x = 0; x < 3; x++) pos[x] += forcef[x];
         
         unit_cell_.atom(ia)->set_position(pos);
     }
 }
-
-//void DFT_ground_state::update()
-//{
-//    parameters_.update();
-//    potential_->update();
-//    kset_->update();
-//}
 
 void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {

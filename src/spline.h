@@ -44,8 +44,9 @@ class Spline
 
         mdarray<T, 2> coefs_;
 
+        /* forbid copy constructor */
         Spline(Spline<T> const& src__) = delete;
-
+        /* forbid assigment operator */
         Spline<T>& operator=(Spline<T> const& src__) = delete;
 
     public:
@@ -72,12 +73,14 @@ class Spline
             interpolate();
         }
 
+        /// Move constructor.
         Spline(Spline<T>&& src__)
         {
             radial_grid_ = src__.radial_grid_;
             coefs_ = std::move(src__.coefs_);
         }
-
+    
+        /// Move assigment operator.
         Spline<T>& operator=(Spline<T>&& src__)
         {
             if (this != &src__)
@@ -366,9 +369,6 @@ inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
 
     return std::move(s12);
 }
-
-//extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double* f__, double* g__, int stream_id__);
-//
 
 extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
                                               double const* g__, double* d_buf__, double* h_buf__, int stream_id__);

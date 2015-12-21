@@ -42,30 +42,30 @@ class sbessel_pw
 
         int lmax_;
 
-        mdarray<Spline<T>*, 2> sjl_; 
+        mdarray<Spline<T>, 2> sjl_; 
 
     public:
 
         sbessel_pw(Unit_cell const& unit_cell__, int lmax__) : unit_cell_(unit_cell__), lmax_(lmax__)
         {
-            sjl_ = mdarray<Spline<T>*, 2>(lmax_ + 1, unit_cell_.num_atom_types());
+            sjl_ = mdarray<Spline<T>, 2>(lmax_ + 1, unit_cell_.num_atom_types());
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int l = 0; l <= lmax_; l++)
                 {
-                    sjl_(l, iat) = new Spline<T>(unit_cell_.atom_type(iat)->radial_grid());
+                    sjl_(l, iat) = Spline<T>(unit_cell_.atom_type(iat)->radial_grid());
                 }
             }
         }
         
         ~sbessel_pw()
         {
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                for (int l = 0; l <= lmax_; l++) delete sjl_(l, iat);
-            }
-            sjl_.deallocate();
+            //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            //{
+            //    for (int l = 0; l <= lmax_; l++) delete sjl_(l, iat);
+            //}
+            //sjl_.deallocate();
         }
 
         void load(double q)
@@ -77,7 +77,7 @@ class sbessel_pw
                 {
                     double x = unit_cell_.atom_type(iat)->radial_grid(ir) * q;
                     gsl_sf_bessel_jl_array(lmax_, x, &jl[0]);
-                    for (int l = 0; l <= lmax_; l++) (*sjl_(l, iat))[ir] = jl[l];
+                    for (int l = 0; l <= lmax_; l++) sjl_(l, iat)[ir] = jl[l];
                 }
             }
         }
@@ -88,16 +88,16 @@ class sbessel_pw
             
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                for (int l = 0; l <= lmax_; l++) sjl_(l, iat)->interpolate();
+                for (int l = 0; l <= lmax_; l++) sjl_(l, iat).interpolate();
             }
         }
 
         inline T operator()(int ir, int l, int iat)
         {
-            return (*sjl_(l, iat))[ir];
+            return sjl_(l, iat)[ir];
         }
 
-        inline Spline<T>* operator()(int l, int iat)
+        inline Spline<T>& operator()(int l, int iat)
         {
             return sjl_(l, iat);
         }
@@ -107,34 +107,29 @@ class Spherical_Bessel_functions
 {
     private:
 
-        std::vector< Spline<double>* > sbessel_;
+        std::vector< Spline<double> > sbessel_;
 
     public:
 
         Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double nu__)
         {
-            sbessel_ = std::vector< Spline<double>* >(lmax__ + 1);
-            for (int l = 0; l <= lmax__; l++) sbessel_[l] = new Spline<double>(rgrid__);
+            sbessel_ = std::vector< Spline<double> >(lmax__ + 1);
+            for (int l = 0; l <= lmax__; l++) sbessel_[l] = Spline<double>(rgrid__);
 
             std::vector<double> jl(lmax__ + 1);
             for (int ir = 0; ir < rgrid__.num_points(); ir++)
             {
                 double v = rgrid__[ir] * nu__;
                 gsl_sf_bessel_jl_array(lmax__, v, &jl[0]);
-                for (int l = 0; l <= lmax__; l++) (*sbessel_[l])[ir] = jl[l];
+                for (int l = 0; l <= lmax__; l++) sbessel_[l][ir] = jl[l];
             }
             
-            for (int l = 0; l < lmax__; l++) sbessel_[l]->interpolate();
-        }
-
-        ~Spherical_Bessel_functions()
-        {
-            for (auto s: sbessel_) delete s;
+            for (int l = 0; l < lmax__; l++) sbessel_[l].interpolate();
         }
 
         Spline<double> const& operator()(int i__) const
         {
-            return *sbessel_[i__];
+            return sbessel_[i__];
         }
 };
 

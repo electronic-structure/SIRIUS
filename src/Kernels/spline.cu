@@ -63,21 +63,28 @@ __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
             //double v6 = dxi * ((k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25 + v5);
             //double v7 = dxi * ((k0 + xi * (2.0 * k5 + k3 * xi)) / 3.0 + v6);
             //double v8 = dxi * ((xi * (2.0 * k0 + xi * k5)) * 0.5 + v7);
-            double r1 = k4 * 0.125 + k6 * xi * 0.25;
-            double r2 = (k1 + xi * (2.0 * k4 + k6 * xi)) * 0.14285714285714285714;
-            double r3 = (k2 + xi * (2.0 * k1 + k4 * xi)) * 0.16666666666666666667;
-            double r4 = (k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2;
-            double r5 = (k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25;
-            double r6 = (k0 + xi * (2.0 * k5 + k3 * xi)) * 0.33333333333333333333;
-            double r7 = (xi * (2.0 * k0 + xi * k5)) * 0.5;
 
             double v = dxi * k6 * 0.11111111111111111111;
+            
+            double r1 = k4 * 0.125 + k6 * xi * 0.25;
             v = dxi * (r1 + v);
+
+            double r2 = (k1 + xi * (2.0 * k4 + k6 * xi)) * 0.14285714285714285714;
             v = dxi * (r2 + v);
+
+            double r3 = (k2 + xi * (2.0 * k1 + k4 * xi)) * 0.16666666666666666667;
             v = dxi * (r3 + v);
+
+            double r4 = (k3 + xi * (2.0 * k2 + k1 * xi)) * 0.2;
             v = dxi * (r4 + v);
+
+            double r5 = (k5 + xi * (2.0 * k3 + k2 * xi)) * 0.25;
             v = dxi * (r5 + v); 
+
+            double r6 = (k0 + xi * (2.0 * k5 + k3 * xi)) * 0.33333333333333333333;
             v = dxi * (r6 + v);
+
+            double r7 = (xi * (2.0 * k0 + xi * k5)) * 0.5;
             v = dxi * (r7 + v);
 
             sdata[threadIdx.x] += dxi * (k0 * xi * xi + v);
