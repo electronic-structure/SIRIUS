@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file generate_d_operator_matrix.h
+ *   
+ *  \brief Contains implementation of sirius::Potential::generate_D_operator_matrix method.
+ */
+
 #include "potential.h"
 
 namespace sirius {
@@ -13,9 +37,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
 
 void Potential::generate_D_operator_matrix()
 {
-    PROFILE();
-
-    Timer t("sirius::Potential::generate_D_operator_matrix");
+    PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
@@ -43,9 +65,9 @@ void Potential::generate_D_operator_matrix()
             }
         
             gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
-            for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+            for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
             {
-                for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[(int)spl_num_gvec_[igloc]][x];
+                for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[spl_num_gvec_[igloc]][x];
             }
             gvec.allocate_on_device();
             gvec.copy_to_device();
@@ -67,16 +89,16 @@ void Potential::generate_D_operator_matrix()
                 {
                     int ia = atom_type->atom_id(i);
 
-                    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+                    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
-                        int ig = (int)spl_num_gvec_[igloc];
+                        int ig = spl_num_gvec_[igloc];
                         veff_a(igloc, i) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor(ig, ia);
                     }
                 }
 
-                linalg<CPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
-                                  atom_type->uspp().q_pw.at<CPU>(), (int)spl_num_gvec_.local_size(),
-                                  veff_a.at<CPU>(), (int)spl_num_gvec_.local_size(), d_tmp.at<CPU>(), d_tmp.ld());
+                linalg<CPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), spl_num_gvec_.local_size(),
+                                  atom_type->uspp().q_pw.at<CPU>(), spl_num_gvec_.local_size(),
+                                  veff_a.at<CPU>(), spl_num_gvec_.local_size(), d_tmp.at<CPU>(), d_tmp.ld());
             }
             if (parameters_.processing_unit() == GPU)
             {
@@ -96,15 +118,15 @@ void Potential::generate_D_operator_matrix()
                 atom_pos.copy_to_device();
 
                 mul_veff_with_phase_factors_gpu(atom_type->num_atoms(),
-                                                (int)spl_num_gvec_.local_size(),
+                                                spl_num_gvec_.local_size(),
                                                 veff.at<GPU>(),
                                                 gvec.at<GPU>(),
                                                 atom_pos.at<GPU>(),
                                                 veff_a.at<GPU>());
 
-                linalg<GPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), (int)spl_num_gvec_.local_size(),
-                                  atom_type->uspp().q_pw.at<GPU>(), (int)spl_num_gvec_.local_size(),
-                                  veff_a.at<GPU>(), (int)spl_num_gvec_.local_size(), d_tmp.at<GPU>(), d_tmp.ld());
+                linalg<GPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), spl_num_gvec_.local_size(),
+                                  atom_type->uspp().q_pw.at<GPU>(), spl_num_gvec_.local_size(),
+                                  veff_a.at<GPU>(), spl_num_gvec_.local_size(), d_tmp.at<GPU>(), d_tmp.ld());
 
                 d_tmp.copy_to_host();
                 #else
