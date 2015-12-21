@@ -237,14 +237,15 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
     {
+        auto gkvec_col_cart = unit_cell_.reciprocal_lattice_vectors() * kp->gklo_basis_descriptor_col(igk_col).gkvec;
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
+            auto gkvec_row_cart = unit_cell_.reciprocal_lattice_vectors() * kp->gklo_basis_descriptor_row(igk_row).gkvec;
             int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
                                              kp->gklo_basis_descriptor_col(igk_col).gvec);
             
             /* pw kinetic energy */
-            double t1 = 0.5 * (kp->gklo_basis_descriptor_row(igk_row).gkvec_cart *
-                               kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
+            double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
                               
             switch (sblock)
             {
