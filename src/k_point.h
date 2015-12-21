@@ -275,37 +275,6 @@ class K_point
                                         double_complex alpha,
                                         matrix<double_complex>& work__);
 
-        /// Return G+k vector in fractional or Cartesian coordinates
-        template <coordinates_t coord__>
-        inline vector3d<double> gkvec(int igk__) const
-        {
-            auto G = gkvec_[igk__];
-            auto Gk = vector3d<double>(G[0], G[1], G[2]) + vk_;
-            switch (coord__)
-            {
-                case cartesian:
-                {
-                    return unit_cell_.reciprocal_lattice_vectors() * Gk;
-                    break;
-                }
-                case fractional:
-                {
-                    return Gk;
-                    break;
-                }
-                default:
-                {
-                    TERMINATE("wrong type of coordinates");
-                    return vector3d<double>(); // make compiler happy
-                }
-            }
-        }
-        
-        //inline double_complex gkvec_phase_factor(int igk__, int ia__) const
-        //{
-        //    return gkvec_phase_factors_(igk__, ia__);
-        //}
-
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
         {
@@ -581,7 +550,11 @@ class K_point
         std::vector<double> get_pw_ekin() const
         {
             std::vector<double> pw_ekin(num_gkvec());
-            for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * std::pow(gkvec<cartesian>(igk).length(), 2);
+            for (int igk = 0; igk < num_gkvec(); igk++)
+            {
+                auto gv = unit_cell_.reciprocal_lattice_vectors() * gkvec_.gvec_shifted(igk);
+                pw_ekin[igk] = 0.5 * (gv * gv);
+            }
             return pw_ekin; 
         }
 
