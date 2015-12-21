@@ -150,16 +150,17 @@ void Force::ibs_force(Simulation_context& ctx__,
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
         {
+            auto gkvec_col_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_col(igk_col).gkvec;
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
             {
+                auto gkvec_row_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_row(igk_row).gkvec;
                 int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
                                                   kp__->gklo_basis_descriptor_col(igk_col).gvec);
                 int igs = ctx__.gvec().shell(ig12);
 
                 double_complex zt = std::conj(rl->gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
 
-                double t1 = 0.5 * (kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart * 
-                                   kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
+                double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
 
                 h(igk_row, igk_col) -= t1 * zt;
                 o(igk_row, igk_col) -= zt;
@@ -185,9 +186,9 @@ void Force::ibs_force(Simulation_context& ctx__,
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    vector3d<double> const& vgk = kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart;
-                    h1(igk_row, icol) = double_complex(0.0, vgk[x]) * h(igk_row, icol);
-                    o1(igk_row, icol) = double_complex(0.0, vgk[x]) * o(igk_row, icol);
+                    auto gkvec_row_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_row(igk_row).gkvec;
+                    h1(igk_row, icol) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol);
+                    o1(igk_row, icol) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol);
                 }
             }
                     
@@ -195,9 +196,9 @@ void Force::ibs_force(Simulation_context& ctx__,
             {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++)
                 {
-                    vector3d<double> const& vgk = kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart;
-                    h1(irow, igk_col) = double_complex(0.0, -vgk[x]) * h(irow, igk_col);
-                    o1(irow, igk_col) = double_complex(0.0, -vgk[x]) * o(irow, igk_col);
+                    auto gkvec_col_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_col(igk_col).gkvec;
+                    h1(irow, igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow, igk_col);
+                    o1(irow, igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow, igk_col);
                 }
             }
 
