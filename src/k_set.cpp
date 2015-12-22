@@ -43,9 +43,9 @@ void K_set::sync_band_energies()
 {
     mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
 
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
-        int ik = (int)spl_num_kpoints_[ikloc];
+        int ik = spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
     comm_k_.allgather(band_energies.at<CPU>(), 

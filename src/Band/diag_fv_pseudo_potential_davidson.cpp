@@ -30,9 +30,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
                                              double v0__,
                                              std::vector<double>& veff_it_coarse__)
 {
-    PROFILE();
-
-    Timer t("sirius::Band::diag_fv_pseudo_potential_davidsonl");
+    PROFILE_WITH_TIMER("sirius::Band::diag_fv_pseudo_potential_davidsonl");
 
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();

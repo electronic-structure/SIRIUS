@@ -438,6 +438,8 @@ class Band
         /// Solve second-variational problem
         void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);
 
+        void solve_sv_pp(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);
+
         void solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3]);
 

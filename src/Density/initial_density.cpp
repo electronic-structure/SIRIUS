@@ -4,9 +4,7 @@ namespace sirius {
 
 void Density::initial_density()
 {
-    PROFILE();
-
-    Timer t("sirius::Density::initial_density");
+    PROFILE_WITH_TIMER("sirius::Density::initial_density");
 
     zero();
     
@@ -259,7 +257,7 @@ void Density::initial_density()
         DUMP("checksum(rho(G)) : %18.10f %18.10f", std::real(z1), std::imag(z1));
         #endif
         
-        memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
+        std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
         double charge = real(rho_->f_pw(0) * unit_cell_.omega());
         if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
@@ -318,7 +316,7 @@ void Density::initial_density()
         {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                //vector3d<double> v = unit_cell_.atom(ia)->vector_field();
+                vector3d<double> v = unit_cell_.atom(ia)->vector_field();
                 //double len = v.length();
 
                 for (int j0 = 0; j0 < ctx_.fft(0)->grid().size(0); j0++)
@@ -342,9 +340,11 @@ void Density::initial_density()
                                     {
                                         vector3d<double> v1 = v0 - (unit_cell_.atom(ia)->position() + vector3d<double>(t0, t1, t2));
                                         auto r = unit_cell_.get_cartesian_coordinates(v1);
-                                        if (r.length() <= 2.0)
+                                        auto a = r.length();
+
+                                        if (a <= 2.0)
                                         {
-                                            magnetization_[0]->f_it(ir) = 1.0;
+                                            magnetization_[0]->f_it(ir) += v[2] * (1.0 - 0.5 * a);
                                         }
                                     }
                                 }

@@ -147,16 +147,6 @@ Density::Density(Simulation_context& ctx__)
             TERMINATE("wrong mixer type");
         }
     }
-
-    //splindex<block> spl_num_gvec(fft_->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-    
-    //== gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec.local_size(), unit_cell_.num_atoms());
-    //== #pragma omp parallel for
-    //== for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
-    //== {
-    //==     int ig = (int)spl_num_gvec[igloc];
-    //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = ctx_.reciprocal_lattice()->gvec_phase_factor(ig, ia);
-    //== }
 }
 
 Density::~Density()

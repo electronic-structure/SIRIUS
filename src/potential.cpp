@@ -23,7 +23,6 @@
  */
 
 #include "potential.h"
-//#include "smooth_periodic_function.h"
 
 namespace sirius {
 
@@ -73,9 +72,17 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
-
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
+    
+    if (parameters_.full_potential())
+    {
+        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
+    }
+    else
+    {
+        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
+    }
     
     hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
     hartree_potential_->allocate(false);
@@ -457,10 +464,8 @@ void Potential::generate_pw_coefs()
 void Potential::generate_effective_potential(Periodic_function<double>* rho, 
                                              Periodic_function<double>* magnetization[3])
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
 
-    Timer t("sirius::Potential::generate_effective_potential", ctx_.comm());
-    
     /* zero effective potential and magnetic field */
     zero();
 
@@ -484,9 +489,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
                                              Periodic_function<double>* rho_core, 
                                              Periodic_function<double>* magnetization[3])
 {
-    PROFILE();
-
-    Timer t("sirius::Potential::generate_effective_potential", comm_);
+    PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
