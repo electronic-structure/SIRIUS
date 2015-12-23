@@ -73,16 +73,8 @@ Potential::Potential(Simulation_context& ctx__)
 
     effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
     
-    if (parameters_.full_potential())
-    {
-        for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    }
-    else
-    {
-        for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
-    }
+    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), !parameters_.full_potential());
     
     hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
     hartree_potential_->allocate(false);

@@ -91,7 +91,7 @@ class Atom
         int uj_correction_l_;
 
         /// D_{ij} matrix of the pseudo-potential method.
-        mdarray<double_complex, 2> d_mtrx_;
+        mdarray<double_complex, 3> d_mtrx_;
 
     public:
     
@@ -104,13 +104,13 @@ class Atom
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
          *  \f[
-         *      \hat H=-\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
+         *      \hat H = -\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
          *        \underbrace{-\frac{1}{2} \nabla^2+V_{00}(r)R_{00}}_{H_{s}(r)} +\sum_{\ell=1} \sum_{m=-\ell}^{\ell} 
          *         V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) = \sum_{\ell m} \widetilde V_{\ell m}(r) R_{\ell m}(\hat {\bf r})
          *  \f]
          *  where
          *  \f[
-         *      \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll}
+         *      \widetilde V_{\ell m}(r) = \left\{ \begin{array}{ll}
          *        \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
@@ -327,15 +327,15 @@ class Atom
              return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
         }
 
-        inline double_complex& d_mtrx(int xi1, int xi2)
+        inline double_complex& d_mtrx(int xi1, int xi2, int iv)
         {
-            return d_mtrx_(xi1, xi2);
+            return d_mtrx_(xi1, xi2, iv);
         }
         
-        inline mdarray<double_complex, 2>& d_mtrx()
-        {
-            return d_mtrx_;
-        }
+        //inline mdarray<double_complex, 3>& d_mtrx()
+        //{
+        //    return d_mtrx_;
+        //}
 
         inline int mt_basis_size()
         {

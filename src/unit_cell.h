@@ -376,7 +376,7 @@ class Unit_cell
         /// Number of atoms in the unit cell.
         inline int num_atoms() const
         {
-            return (int)atoms_.size();
+            return static_cast<int>(atoms_.size());
         }
        
         /// Maximum number of muffin-tin points across all atom types

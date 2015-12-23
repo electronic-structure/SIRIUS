@@ -1030,7 +1030,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 
 void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__)
 {
-    if (kp__->gklo_basis_size() < parameters_.num_fv_states()) error_global(__FILE__, __LINE__, "basis size is too small");
+    if (kp__->gklo_basis_size() < parameters_.num_fv_states()) TERMINATE("basis size is too small");
 
     switch (parameters_.esm_type())
     {
@@ -1049,11 +1049,23 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
     }
 }
 
-void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
-                    Periodic_function<double>* effective_magnetic_field[3])
+void Band::solve_fd(K_point* kp__,
+                    Periodic_function<double>* effective_potential__, 
+                    Periodic_function<double>* effective_magnetic_field__[3])
 {
-    Timer t("sirius::Band::solve_fd");
-
+    switch (parameters_.esm_type())
+    {
+        case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
+        {
+            diag_pseudo_potential(kp__, effective_potential__, effective_magnetic_field__);
+            break;
+        }
+        default:
+        {
+            TERMINATE_NOT_IMPLEMENTED
+        }
+    }
     //== if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
     //==     error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 

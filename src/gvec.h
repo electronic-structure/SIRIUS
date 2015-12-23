@@ -275,14 +275,14 @@ class Gvec
                 
                 gsh[len].push_back(ig);
             }
-            num_gvec_shells_ = (int)gsh.size();
+            num_gvec_shells_ = static_cast<int>(gsh.size());
             gvec_shell_ = mdarray<int, 1>(num_gvec_);
             gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
             
             int n = 0;
             for (auto it = gsh.begin(); it != gsh.end(); it++)
             {
-                gvec_shell_len_(n) = double(it->first) * 1e-10;
+                gvec_shell_len_(n) = static_cast<double>(it->first) * 1e-10;
                 for (int ig: it->second) gvec_shell_(ig) = n;
                 n++;
             }

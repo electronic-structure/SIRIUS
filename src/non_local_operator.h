@@ -139,7 +139,7 @@ class D_operator: public Non_local_operator
                 {
                     for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1) = uc.atom(ia)->d_mtrx(xi1, xi2);
+                        //op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1) = uc.atom(ia)->d_mtrx(xi1, xi2);
                     }
                 }
             }
@@ -150,6 +150,8 @@ class D_operator: public Non_local_operator
                 op_.copy_to_device();
             }
             #endif
+
+            STOP(); // add d_ion here
         }
 };
 

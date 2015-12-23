@@ -119,9 +119,10 @@ class Band
                                              double v0__,
                                              std::vector<double>& veff_it_coarse__);
 
-
+        void diag_pseudo_potential(K_point* kp__, 
+                                   Periodic_function<double>* effective_potential__,
+                                   Periodic_function<double>* effective_magnetic_field__[3]);
         #ifdef __SCALAPACK
-
         void apply_h_o_fast_parallel_rs(K_point* kp__,
                                         std::vector<double> const& effective_potential__,
                                         std::vector<double> const& pw_ekin__,
@@ -144,7 +145,6 @@ class Band
 
         void diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
                                                          std::vector<double> const& veff_it_coarse__);
-    
         #endif
         
         /// Exact (not iterative) diagonalization of the Hamiltonian.

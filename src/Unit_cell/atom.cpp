@@ -38,7 +38,7 @@ Atom::Atom(Atom_type* type__, vector3d<double> position__, vector3d<double> vect
 {
     assert(type__);
         
-    for (int x = 0; x < 3; x++)
+    for (int x: {0, 1, 2})
     {
         if (position__[x] < 0 || position__[x] >= 1)
         {
@@ -79,22 +79,22 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     if (!type()->parameters().full_potential())
     {
         int nbf = type()->mt_lo_basis_size();
-        d_mtrx_ = matrix<double_complex>(nbf, nbf);
+        d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, num_mag_dims_ + 1);
 
-        /* initialize d-matrix */
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            int lm2 = type()->indexb(xi2).lm;
-            int idxrf2 = type()->indexb(xi2).idxrf;
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
-            {
-                int lm1 = type()->indexb(xi1).lm;
-                int idxrf1 = type()->indexb(xi1).idxrf;
+        //== /* initialize d-matrix */
+        //== for (int xi2 = 0; xi2 < nbf; xi2++)
+        //== {
+        //==     int lm2 = type()->indexb(xi2).lm;
+        //==     int idxrf2 = type()->indexb(xi2).idxrf;
+        //==     for (int xi1 = 0; xi1 <= xi2; xi1++)
+        //==     {
+        //==         int lm1 = type()->indexb(xi1).lm;
+        //==         int idxrf1 = type()->indexb(xi1).idxrf;
 
-                d_mtrx_(xi1, xi2) = (lm1 == lm2) ? type()->uspp().d_mtrx_ion(idxrf1, idxrf2) : 0.0;
-                d_mtrx_(xi2, xi1) = conj(d_mtrx_(xi1, xi2));
-            }
-        }
+        //==         d_mtrx_(xi1, xi2) = (lm1 == lm2) ? type()->uspp().d_mtrx_ion(idxrf1, idxrf2) : 0.0;
+        //==         d_mtrx_(xi2, xi1) = conj(d_mtrx_(xi1, xi2));
+        //==     }
+        //== }
     }
 }
 

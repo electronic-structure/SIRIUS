@@ -279,6 +279,11 @@ class Periodic_function
             return f_pw_;
         }
 
+        inline Gvec const& gvec() const
+        {
+            return gvec_;
+        }
+
         static T inner(Periodic_function<T> const* f__, Periodic_function<T> const* g__)
         {
             assert(f__->fft_ == g__->fft_);

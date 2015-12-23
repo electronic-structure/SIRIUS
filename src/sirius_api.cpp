@@ -2520,11 +2520,12 @@ void sirius_get_d_mtrx_(int32_t* ia__, double* d_mtrx__, int32_t* ld__)
 
     mdarray<double_complex, 2> z1(nbf, nbf);
     mdarray<double_complex, 2> z2(nbf, nbf);
-
-    for (int xi1 = 0; xi1 < nbf; xi1++)
-    {
-        for (int xi2 = 0; xi2 < nbf; xi2++) z1(xi1, xi2) = atom->d_mtrx(xi1, xi2);
-    }
+    
+    STOP();
+    //for (int xi1 = 0; xi1 < nbf; xi1++)
+    //{
+    //    for (int xi2 = 0; xi2 < nbf; xi2++) z1(xi1, xi2) = atom->d_mtrx(xi1, xi2);
+    //}
     linalg<CPU>::gemm(0, 2, nbf, nbf, nbf, double_complex(1, 0), z1, sirius_Ylm_to_QE_Rlm, double_complex(0, 0), z2);
     linalg<CPU>::gemm(0, 0, nbf, nbf, nbf, double_complex(1, 0), sirius_Ylm_to_QE_Rlm, z2, double_complex(0, 0), z1);
 

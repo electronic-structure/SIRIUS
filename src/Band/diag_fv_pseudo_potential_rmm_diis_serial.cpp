@@ -86,19 +86,21 @@ void Band::diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
     mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
     mdarray<double_complex, 1> q_mtrx_packed;
     if (with_overlap) q_mtrx_packed = mdarray<double_complex, 1>(packed_mtrx_size);
+    
+    STOP();
 
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    {
-        int nbf = unit_cell_.atom(ia)->mt_basis_size();
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 < nbf; xi1++)
-            {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
-                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-            }
-        }
-    }
+    //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    //{
+    //    int nbf = unit_cell_.atom(ia)->mt_basis_size();
+    //    for (int xi2 = 0; xi2 < nbf; xi2++)
+    //    {
+    //        for (int xi1 = 0; xi1 < nbf; xi1++)
+    //        {
+    //            d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
+    //            if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+    //        }
+    //    }
+    //}
 
     bool economize_gpu_memory = true;
     mdarray<double_complex, 1> kappa;

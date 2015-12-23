@@ -2,6 +2,7 @@
 #define __HLOC_OPERATOR_H__
 
 #include "wave_functions.h"
+#include "periodic_function.h"
 
 namespace sirius {
 
@@ -14,10 +15,11 @@ class Hloc_operator
 
         Gvec const& gkvec_;
 
-        std::vector<double> const& pw_ekin_;
+        std::vector<double> pw_ekin_;
 
-        //std::vector<double> const& effective_potential_;
         mdarray<double, 1> veff_;
+
+        mdarray<double, 2> veff_vec_;
 
         mdarray<double_complex, 2> vphi_;
 
@@ -40,6 +42,62 @@ class Hloc_operator
             }
             #endif
             vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
+        }
+
+        /** \param [in] fft_ctx FFT context of the coarse grid used to apply effective field.
+         *  \param [in] gvec G-vectors of the coarse FFT grid.
+         *  \param [in] gkvec G-vectors of the wave-functions.
+         */
+        Hloc_operator(FFT3D_context& fft_ctx__,
+                      Gvec const& gvec__,
+                      Gvec const& gkvec__,
+                      int num_mag_dims__,
+                      Periodic_function<double>* effective_potential__,
+                      Periodic_function<double>* effective_magnetic_field__[3]) 
+            : fft_ctx_(fft_ctx__),
+              gkvec_(gkvec__)
+        {
+            pw_ekin_ = std::vector<double>(gkvec_.num_gvec_fft());
+            for (int ig_loc = 0; ig_loc < gkvec_.num_gvec_fft(); ig_loc++)
+            {
+                /* global index of G-vector */
+                int ig = gkvec_.offset_gvec_fft() + ig_loc;
+                /* get G+k in Cartesian coordinates */
+                auto gv = gkvec_.cart_shifted(ig);
+                pw_ekin_[ig_loc] = 0.5 * (gv * gv);
+            }
+
+            std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
+            veff_vec[0] = effective_potential__;
+            for (int j = 0; j < num_mag_dims__; j++) veff_vec[1 + j] = effective_magnetic_field__[j];
+
+            veff_vec_ = mdarray<double, 2>(fft_ctx_.fft()->local_size(), num_mag_dims__ + 1);
+
+            /* map components of effective potential to a corase grid */
+            for (int j = 0; j < num_mag_dims__ + 1; j++)
+            {
+                auto& gv = veff_vec[j]->gvec();
+                std::vector<double_complex> v_pw_coarse(gvec__.num_gvec_fft());
+
+                for (int ig = 0; ig < gvec__.num_gvec_fft(); ig++)
+                {
+                    auto G = gvec__[ig + gvec__.offset_gvec_fft()];
+                    v_pw_coarse[ig] = veff_vec[j]->f_pw(gv.index_by_gvec(G));
+                }
+                fft_ctx_.fft()->transform<1>(gvec__, &v_pw_coarse[0]);
+                fft_ctx_.fft()->output(&veff_vec_(0, j));
+            }
+
+            if (num_mag_dims__ != 0)
+            {
+                for (int ir = 0; ir < fft_ctx_.fft()->local_size(); ir++)
+                {
+                    double v0 = veff_vec_(ir, 0);
+                    double v1 = veff_vec_(ir, 1);
+                    veff_vec_(ir, 0) = v0 + v1; // v + Bz
+                    veff_vec_(ir, 1) = v0 - v1; // v - Bz
+                }
+            }
         }
         
         void apply(Wave_functions<false>& hphi__, int idx0__, int n__)
