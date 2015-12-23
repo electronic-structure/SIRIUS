@@ -35,22 +35,42 @@ void K_point::generate_spinor_wave_functions()
         }
         else
         {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            if (parameters_.full_potential())
             {
-                int s, o;
-                if (parameters_.num_mag_dims() == 3) // in case of non-collinear magnetism sv_eigen_vectors_ is
-                {                                    // a single 2Nx2N matrix
-                    s = 0;
-                    o = ispn * nfv; // offset for spin up is 0, for spin dn is nfv
-                }
-                else // sv_eigen_vectors_ is composed of two NxN matrices
+                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                 {
-                    s = ispn;
-                    o = 0;
+                    int s, o;
+                    if (parameters_.num_mag_dims() == 3) // in case of non-collinear magnetism sv_eigen_vectors_ is
+                    {                                    // a single 2Nx2N matrix
+                        s = 0;
+                        o = ispn * nfv; // offset for spin up is 0, for spin dn is nfv
+                    }
+                    else // sv_eigen_vectors_ is composed of two NxN matrices
+                    {
+                        s = ispn;
+                        o = 0;
+                    }
+                    /* multiply consecutively up and dn blocks */
+                    linalg<CPU>::gemm(0, 0, wf_size(), nbnd, nfv, double_complex(1, 0), fv_states<true>().coeffs(), 0, 0,
+                                      sv_eigen_vectors_[s], o, 0, double_complex(0, 0), spinor_wave_functions<true>(ispn).coeffs(), 0, 0);
                 }
-                /* multiply consecutively up and dn blocks */
-                linalg<CPU>::gemm(0, 0, wf_size(), nbnd, nfv, double_complex(1, 0), fv_states<true>().coeffs(), 0, 0,
-                                  sv_eigen_vectors_[s], o, 0, double_complex(0, 0), spinor_wave_functions<true>(ispn).coeffs(), 0, 0);
+            }
+            else
+            {
+                matrix<double_complex> evec(nfv, nfv);
+                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                {
+                    evec.zero();
+                    for (int i = 0; i < sv_eigen_vectors_[ispn].num_cols_local(); i++)
+                    {
+                        for (int j = 0; j < sv_eigen_vectors_[ispn].num_rows_local(); j++)
+                        {
+                            evec(sv_eigen_vectors_[ispn].irow(j), sv_eigen_vectors_[ispn].icol(i)) = sv_eigen_vectors_[ispn](j, i);
+                        }
+                    }
+                    comm().allreduce(evec.at<CPU>(), nfv * nfv);
+                    spinor_wave_functions<false>(ispn).transform_from(fv_states<false>(), parameters_.num_fv_states(), evec, parameters_.num_fv_states());
+                }
             }
         }
  

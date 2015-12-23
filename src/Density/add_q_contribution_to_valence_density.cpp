@@ -6,11 +6,11 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 {
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric. */
-    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+    int ndm = (parameters_.num_mag_dims() == 3) ? 3 : parameters_.num_spins();
 
     /* complex density matrix */
     mdarray<double_complex, 4> pp_complex_density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
-                                                         num_zdmat, unit_cell_.num_atoms());
+                                                         ndm, unit_cell_.num_atoms());
     pp_complex_density_matrix.zero();
     
     /* add k-point contribution */
@@ -29,24 +29,43 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     /* split local fraction of G-vectors between threads */
     splindex<block> spl_ngv_loc(spl_gvec.local_size(), Platform::max_num_threads(), 0);
 
-    mdarray<double, 2> timers(3, Platform::max_num_threads());
-    timers.zero();
+    //mdarray<double, 2> timers(3, Platform::max_num_threads());
+    //timers.zero();
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         auto atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type->mt_basis_size();
 
-        mdarray<double_complex, 2> d_mtrx_packed(atom_type->num_atoms(), nbf * nbf);
-        for (int i = 0; i < atom_type->num_atoms(); i++)
+        mdarray<double_complex, 3> d_mtrx_packed(atom_type->num_atoms(), nbf * nbf, ndm);
+        if (parameters_.num_mag_dims() == 0)
         {
-            int ia = atom_type->atom_id(i);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++)
+            for (int i = 0; i < atom_type->num_atoms(); i++)
             {
-                for (int xi1 = 0; xi1 < nbf; xi1++)
+                int ia = atom_type->atom_id(i);
+
+                for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
-                    d_mtrx_packed(i, xi2 * nbf + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+                    for (int xi1 = 0; xi1 < nbf; xi1++)
+                    {
+                        d_mtrx_packed(i, xi2 * nbf + xi1, 0) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+                    }
+                }
+            }
+        }
+        if (parameters_.num_mag_dims() == 1)
+        {
+            for (int i = 0; i < atom_type->num_atoms(); i++)
+            {
+                int ia = atom_type->atom_id(i);
+
+                for (int xi2 = 0; xi2 < nbf; xi2++)
+                {
+                    for (int xi1 = 0; xi1 < nbf; xi1++)
+                    {
+                        d_mtrx_packed(i, xi2 * nbf + xi1, 0) = pp_complex_density_matrix(xi2, xi1, 0, ia) + pp_complex_density_matrix(xi2, xi1, 1, ia);
+                        d_mtrx_packed(i, xi2 * nbf + xi1, 1) = pp_complex_density_matrix(xi2, xi1, 0, ia) - pp_complex_density_matrix(xi2, xi1, 1, ia);
+                    }
                 }
             }
         }
@@ -58,7 +77,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     
             int thread_id = Platform::thread_id();
             
-            double t = -omp_get_wtime();
+            //double t = -omp_get_wtime();
             for (int i = 0; i < atom_type->num_atoms(); i++)
             {
                 int ia = atom_type->atom_id(i);
@@ -70,17 +89,17 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     phase_factors(igloc_t, i) = std::conj(rl->gvec_phase_factor(ig, ia));
                 }
             }
-            t += omp_get_wtime();
-            timers(0, thread_id) += t;
+            //t += omp_get_wtime();
+            //timers(0, thread_id) += t;
 
-            t = -omp_get_wtime();
+            //t = -omp_get_wtime();
             linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type->num_atoms(),
-                              &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
+                              &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 0), d_mtrx_packed.ld(), 
                               &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
-            t += omp_get_wtime();
-            timers(1, thread_id) += t;
+            //t += omp_get_wtime();
+            //timers(1, thread_id) += t;
 
-            t = -omp_get_wtime();
+            //t = -omp_get_wtime();
             /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
@@ -110,24 +129,59 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     }
                 }
             }
-            t += omp_get_wtime();
-            timers(2, thread_id) += t;
+
+            if (parameters_.num_mag_dims() == 1)
+            {
+                linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type->num_atoms(),
+                                  &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 1), d_mtrx_packed.ld(), 
+                                  &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+
+                /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
+                for (int xi2 = 0; xi2 < nbf; xi2++)
+                {
+                    int idx12 = xi2 * (xi2 + 1) / 2;
+
+                    /* add diagonal term */
+                    for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
+                    {
+                        int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
+                        /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
+                        magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
+                                                                    atom_type->uspp().q_pw(igloc, idx12 + xi2);
+
+                    }
+                    /* add non-diagonal terms */
+                    for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                    {
+                        for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
+                        {
+                            int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
+                            
+                            /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
+                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
+
+                            /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type->uspp().q_pw(igloc, idx12));
+                        }
+                    }
+                }
+            }
         }
     }
 
-    if (ctx_.comm().rank() == 0)
-    {
-        std::cout << "-------------------------------------------" << std::endl;
-        std::cout << "thread_id  | phase    | zgemm    | update  " << std::endl;
-        std::cout << "-------------------------------------------" << std::endl;
-        for (int i = 0; i < Platform::max_num_threads(); i++)
-        {
-            printf("   %2i      | %8.4f | %8.4f | %8.4f \n", i, timers(0, i), timers(1, i), timers(2, i));
-        }
-        std::cout << "-------------------------------------------" << std::endl;
-    }
+    //if (ctx_.comm().rank() == 0)
+    //{
+    //    std::cout << "-------------------------------------------" << std::endl;
+    //    std::cout << "thread_id  | phase    | zgemm    | update  " << std::endl;
+    //    std::cout << "-------------------------------------------" << std::endl;
+    //    for (int i = 0; i < Platform::max_num_threads(); i++)
+    //    {
+    //        printf("   %2i      | %8.4f | %8.4f | %8.4f \n", i, timers(0, i), timers(1, i), timers(2, i));
+    //    }
+    //    std::cout << "-------------------------------------------" << std::endl;
+    //}
     
-    ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
+    ctx_.comm().allgather(&rho_->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
 }
 
 #ifdef __GPU

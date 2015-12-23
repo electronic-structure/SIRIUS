@@ -292,29 +292,48 @@ class DFT_ground_state
                     density_->magnetization(j)->fft_transform(-1);
             }
 
+            /* symmetrize PW components */
             unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), ctx_.gvec(), comm);
+            switch (parameters_.num_mag_dims())
+            {
+                case 1:
+                {
+                    unit_cell_.symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), ctx_.gvec(), comm);
+                    break;
+                }
+                case 3:
+                {
+                    unit_cell_.symmetry()->symmetrize_vector(&density_->magnetization(1)->f_pw(0),
+                                                             &density_->magnetization(2)->f_pw(0), 
+                                                             &density_->magnetization(0)->f_pw(0),
+                                                             ctx_.gvec(), comm);
+                    break;
+                }
+            }
 
             if (parameters_.full_potential())
+            {
+                /* symmetrize MT components */
                 unit_cell_.symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
-
-            if (parameters_.num_mag_dims() == 1)
-            {
-                unit_cell_.symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), ctx_.gvec(), comm);
-                unit_cell_.symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
+                switch (parameters_.num_mag_dims())
+                {
+                    case 1:
+                    {
+                        unit_cell_.symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
+                        break;
+                    }
+                    case 3:
+                    {
+                        unit_cell_.symmetry()->symmetrize_vector(density_->magnetization(1)->f_mt(),
+                                                                 density_->magnetization(2)->f_mt(),
+                                                                 density_->magnetization(0)->f_mt(),
+                                                                 comm);
+                        break;
+                    }
+                }
             }
-            if (parameters_.num_mag_dims() == 3)
-            {
-                unit_cell_.symmetry()->symmetrize_vector(&density_->magnetization(1)->f_pw(0),
-                                                         &density_->magnetization(2)->f_pw(0), 
-                                                         &density_->magnetization(0)->f_pw(0),
-                                                         ctx_.gvec(), comm);
-                unit_cell_.symmetry()->symmetrize_vector(density_->magnetization(1)->f_mt(),
-                                                         density_->magnetization(2)->f_mt(),
-                                                         density_->magnetization(0)->f_mt(),
-                                                         comm);
-            }
 
-            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            if (parameters_.full_potential())
             {
                 density_->rho()->fft_transform(1);
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)

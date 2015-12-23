@@ -78,17 +78,18 @@ Density::Density(Simulation_context& ctx__)
 
         assert((int)hf_gvec_.size() == (ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()));
 
-        high_freq_mixer_ = new Linear_mixer<double_complex>((ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()),
+        high_freq_mixer_ = new Linear_mixer<double_complex>((ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()) * (1 + parameters_.num_mag_dims()),
                                                             parameters_.mixer_input_section().beta_, ctx_.comm());
 
-        std::vector<double> weights(ctx_.gvec_coarse().num_gvec());
-        weights[0] = 0;
-        for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++)
-            weights[ig] = fourpi * unit_cell_.omega() / std::pow(ctx_.gvec_coarse().gvec_len(ig), 2);
+        std::vector<double> weights;
+        //std::vector<double> weights(ctx_.gvec_coarse().num_gvec());
+        //weights[0] = 0;
+        //for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++)
+        //    weights[ig] = fourpi * unit_cell_.omega() / std::pow(ctx_.gvec_coarse().gvec_len(ig), 2);
 
         if (parameters_.mixer_input_section().type_ == "linear")
         {
-            low_freq_mixer_ = new Linear_mixer<double_complex>(ctx_.gvec_coarse().num_gvec(),
+            low_freq_mixer_ = new Linear_mixer<double_complex>(ctx_.gvec_coarse().num_gvec() * (1 + parameters_.num_mag_dims()),
                                                                parameters_.mixer_input_section().beta_,
                                                                ctx_.comm());
         }

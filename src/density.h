@@ -341,16 +341,23 @@ class Density
             {
                 int k = 0;
                 for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
-                {
-                    //low_freq_mixer_->input(k++, rho_->f_pw(ig));
                     low_freq_mixer_->input(k++, rho_->f_pw(lf_gvec_[i]));
+
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                {
+                    for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
+                        low_freq_mixer_->input(k++, magnetization_[j]->f_pw(lf_gvec_[i]));
                 }
 
                 k = 0;
                 //for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
                 for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
-                {
                     high_freq_mixer_->input(k++, rho_->f_pw(hf_gvec_[i]));
+
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                {
+                    for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
+                        high_freq_mixer_->input(k++, magnetization_[j]->f_pw(hf_gvec_[i]));
                 }
             }
         }
@@ -366,17 +373,25 @@ class Density
                 int ngv = ctx_.gvec().num_gvec();
                 int ngvc = ctx_.gvec_coarse().num_gvec();
                 
+                int k = 0;
                 for (int i = 0; i < ngvc; i++)
-                {
-                    rho_->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(i);
-                }
-                for (int i = 0; i < ngv - ngvc; i++)
-                {
-                    rho_->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(i);
-                }
+                    rho_->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(k++);
 
-                //memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
-                //memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                {
+                    for (int i = 0; i < ngvc; i++)
+                        magnetization_[j]->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(k++);
+                }
+                
+                k = 0;
+                for (int i = 0; i < ngv - ngvc; i++)
+                    rho_->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(k++);
+
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                {
+                    for (int i = 0; i < ngv - ngvc; i++)
+                        magnetization_[j]->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(k++);
+                }
             }
         }
 
@@ -415,6 +430,7 @@ class Density
                 rms += high_freq_mixer_->mix();
                 mixer_output();
                 rho_->fft_transform(1);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
             }
 
             return rms;

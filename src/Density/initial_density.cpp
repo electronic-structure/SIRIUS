@@ -443,6 +443,7 @@ void Density::initial_density()
         //== fclose(fout);
 
         rho_->fft_transform(-1);
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
     }
 
     rho_->sync(true, true);
@@ -461,7 +462,7 @@ void Density::initial_density()
         std::vector<double> nel_mt;
         double nel_it;
         double nel = rho_->integrate(nel_mt, nel_it);
-        if (unit_cell_.num_electrons() > 1e-8 && std::abs(nel - unit_cell_.num_electrons()) / unit_cell_.num_electrons()  > 1e-3)
+        if (unit_cell_.num_electrons() > 1e-8 && std::abs(nel - unit_cell_.num_electrons()) / unit_cell_.num_electrons() > 1e-3)
         {
             std::stringstream s;
             s << "wrong initial charge density" << std::endl

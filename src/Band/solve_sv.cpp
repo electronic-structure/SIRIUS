@@ -83,33 +83,51 @@ void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magne
     {
         for (int j = 0; j < hpsi[0]->num_gvec_loc(); j++) (*hpsi[1])(j, i) = -(*hpsi[0])(j, i);
     }
-    
+
+
+
+    int bs = parameters_.cyclic_block_size();
     int nfv = parameters_.num_fv_states();
     if (parameters_.num_mag_dims() != 3)
     {
         matrix<double_complex> h(nfv, nfv);
-        matrix<double_complex> sv_evec(nfv, nfv);
+        dmatrix<double_complex> h_dist(nfv, nfv, kp__->blacs_grid(), bs, bs);
 
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
             kp__->fv_states<false>().inner(0, nfv, (*hpsi[ispn]), 0, nfv, h, 0, 0);
-            
             for (int i = 0; i < nfv; i++) h(i, i) += kp__->fv_eigen_value(i);
-        
-            std_evp_solver()->solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
-                                    sv_evec.at<CPU>(), sv_evec.ld());
+
+            if (kp__->comm().size() > 1 && std_evp_solver()->parallel())
+            {
+                for (int jloc = 0; jloc < h_dist.num_cols_local(); jloc++)
+                {
+                    int j = h_dist.icol(jloc);
+                    for (int iloc = 0; iloc < h_dist.num_rows_local(); iloc++)
+                    {
+                        int i = h_dist.irow(iloc);
+                        h_dist(iloc, jloc) = (i > j) ? std::conj(h(j, i)) : h(i, j);
+                    }
+                }
+            }
+
+            if (std_evp_solver()->parallel())
+            {
+                std_evp_solver()->solve(nfv, h_dist.at<CPU>(), h_dist.ld(), &band_energies[ispn * nfv],
+                                        kp__->sv_eigen_vectors(ispn).at<CPU>(), kp__->sv_eigen_vectors(ispn).ld());
+
+            }
+            else
+            {
+                std_evp_solver()->solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
+                                        kp__->sv_eigen_vectors(ispn).at<CPU>(), kp__->sv_eigen_vectors(ispn).ld());
+            }
         }
     }
 
-    for (int i = 0; i < parameters_.num_bands(); i++)
-    {
-        printf("e[%i] = %f\n", i, band_energies[i]);
-    }
-
-
-    STOP();
     for (auto e: hpsi) delete e;
+    kp__->set_band_energies(&band_energies[0]);
 }
 
 void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])

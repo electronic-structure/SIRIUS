@@ -286,6 +286,7 @@ class Simulation_context
             printf("lmax_rho                           : %i\n", parameters_.lmax_rho());
             printf("lmax_pot                           : %i\n", parameters_.lmax_pot());
             printf("lmax_beta                          : %i\n", parameters_.lmax_beta());
+            printf("smearing width:                    : %f\n", parameters_.smearing_width());
         
             //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
             //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};

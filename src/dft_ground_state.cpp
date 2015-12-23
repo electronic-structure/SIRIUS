@@ -115,6 +115,50 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         if (!parameters_.full_potential()) rms = density_->mix();
 
+        if (parameters_.num_mag_dims())
+        {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            {
+                vector3d<double> mag(0, 0, 0);
+
+                for (int j0 = 0; j0 < ctx_.fft(0)->grid().size(0); j0++)
+                {
+                    for (int j1 = 0; j1 < ctx_.fft(0)->grid().size(1); j1++)
+                    {
+                        for (int j2 = 0; j2 < ctx_.fft(0)->local_size_z(); j2++)
+                        {
+                            /* get real space fractional coordinate */
+                            auto v0 = vector3d<double>(double(j0) / ctx_.fft(0)->grid().size(0), 
+                                                       double(j1) / ctx_.fft(0)->grid().size(1), 
+                                                       double(ctx_.fft(0)->offset_z() + j2) / ctx_.fft(0)->grid().size(2));
+                            /* index of real space point */
+                            int ir = ctx_.fft(0)->grid().index_by_coord(j0, j1, j2);
+
+                            for (int t0 = -1; t0 <= 1; t0++)
+                            {
+                                for (int t1 = -1; t1 <= 1; t1++)
+                                {
+                                    for (int t2 = -1; t2 <= 1; t2++)
+                                    {
+                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia)->position() + vector3d<double>(t0, t1, t2));
+                                        auto r = unit_cell_.get_cartesian_coordinates(v1);
+                                        auto a = r.length();
+
+                                        if (a <= 2.0)
+                                        {
+                                            mag[2] += density_->magnetization(0)->f_it(ir);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (int x: {0, 1, 2}) mag[x] *= (unit_cell_.omega() / ctx_.fft(0)->size());
+                printf("atom: %i, mag: %f %f %f\n", ia, mag[0], mag[1], mag[2]);
+            }
+        }
+
         /* compute new potential */
         generate_effective_potential();
 
