@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file non_local_operator.h
+ *   
+ *  \brief Contains declaration and implementation of sirius::Non_local_operator class.
+ */
+
 #ifndef __NON_LOCAL_OPERATOR_H__
 #define __NON_LOCAL_OPERATOR_H__
 
@@ -195,6 +219,18 @@ class Non_local_operator
             }
             #endif
         }
+
+        inline double_complex operator()(int xi1__, int xi2__, int ia__)
+        {
+            int nbf = beta_.unit_cell().atom(ia__)->mt_basis_size();
+            return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, 0);
+        }
+
+        inline double_complex operator()(int xi1__, int xi2__, int ispn__, int ia__)
+        {
+            int nbf = beta_.unit_cell().atom(ia__)->mt_basis_size();
+            return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
+        }
 };
 
 class D_operator: public Non_local_operator
@@ -203,6 +239,8 @@ class D_operator: public Non_local_operator
 
         D_operator(Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
         {
+            STOP();
+
             auto& uc = beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++)
             {
@@ -222,8 +260,6 @@ class D_operator: public Non_local_operator
                 op_.copy_to_device();
             }
             #endif
-
-            STOP(); // add d_ion here
         }
 
         D_operator(Beta_projectors& beta__, int num_mag_dims__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
@@ -262,32 +298,6 @@ class D_operator: public Non_local_operator
                     }
                 }
             }
-            ///* add d_ion to diagonal (in spin) components of D-operator */
-            //for (int ia = 0; ia < uc.num_atoms(); ia++)
-            //{
-            //    auto atom_type = uc.atom(ia)->type();
-            //    int nbf = uc.atom(ia)->mt_basis_size();
-
-            //    for (int xi2 = 0; xi2 < nbf; xi2++)
-            //    {
-            //        int lm2 = atom_type->indexb(xi2).lm;
-            //        int idxrf2 = atom_type->indexb(xi2).idxrf;
-            //        for (int xi1 = 0; xi1 < nbf; xi1++)
-            //        {
-            //            int lm1 = atom_type->indexb(xi1).lm;
-            //            int idxrf1 = atom_type->indexb(xi1).idxrf;
-            //            
-            //            if (lm1 == lm2)
-            //            {
-            //                for (int ispn = 0; ispn < std::min(1 + num_mag_dims__, 2); ispn++)
-            //                {
-            //                    op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ispn) +=  atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-            //                }
-            //            }
-            //        }
-            //    }
-            //}
-
             #ifdef __GPU
             if (pu_ == GPU)
             {
@@ -295,12 +305,6 @@ class D_operator: public Non_local_operator
                 op_.copy_to_device();
             }
             #endif
-        }
-
-        inline double_complex operator()(int xi1__, int xi2__, int ispn__, int ia__)
-        {
-            int nbf = beta_.unit_cell().atom(ia__)->mt_basis_size();
-            return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
         }
 };
 
@@ -310,6 +314,7 @@ class Q_operator: public Non_local_operator
         
         Q_operator(Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
         {
+            /* Q-operator is independent of spin */
             op_ = mdarray<double_complex, 2>(packed_mtrx_size_, 1);
             auto& uc = beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++)
@@ -330,12 +335,6 @@ class Q_operator: public Non_local_operator
                 op_.copy_to_device();
             }
             #endif
-        }
-
-        inline double_complex operator()(int xi1__, int xi2__, int ia__)
-        {
-            int nbf = beta_.unit_cell().atom(ia__)->mt_basis_size();
-            return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, 0);
         }
 };
 
