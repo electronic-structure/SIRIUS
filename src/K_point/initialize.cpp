@@ -179,9 +179,10 @@ void K_point::initialize()
 
             fv_states<false>().coeffs().zero();
 
+            double norm = 1.0 / std::sqrt(num_gkvec());
             for (int i = 0; i < parameters_.num_fv_states(); i++) // TODO: init from atomic WFs
             {
-                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states<false>()(igk, i) = type_wrapper<double_complex>::random();
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states<false>()(igk, i) = type_wrapper<double_complex>::random() * norm;
             }
 
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
