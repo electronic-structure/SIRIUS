@@ -361,8 +361,7 @@ class K_point
 
         inline void get_band_energies(double* band_energies) const
         {
-            assert((int)band_energies_.size() == parameters_.num_bands());
-            
+            assert(static_cast<int>(band_energies_.size()) == parameters_.num_bands());
             std::memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
         }
 
@@ -382,6 +381,11 @@ class K_point
             return band_energies_[j];
         }
 
+        inline double& band_energy(int j__)
+        {
+            return band_energies_[j__];
+        }
+
         inline double fv_eigen_value(int i) const
         {
             return fv_eigen_values_[i];
@@ -389,7 +393,7 @@ class K_point
 
         void set_fv_eigen_values(double* eval)
         {
-            memcpy(&fv_eigen_values_[0], eval, parameters_.num_fv_states() * sizeof(double));
+            std::memcpy(&fv_eigen_values_[0], eval, parameters_.num_fv_states() * sizeof(double));
         }
         
         inline double weight() const

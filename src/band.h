@@ -83,14 +83,18 @@ class Band
         void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
 
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
-        void set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                           mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
+        void set_fv_h_o_it(K_point* kp,
+                           Periodic_function<double>* effective_potential, 
+                           matrix<double_complex>& h,
+                           matrix<double_complex>& o);
 
         void set_o_it(K_point* kp, mdarray<double_complex, 2>& o);
 
         template <spin_block_t sblock>
-        void set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
+        void set_h_it(K_point* kp,
+                      Periodic_function<double>* effective_potential, 
+                      Periodic_function<double>* effective_magnetic_field[3],
+                      matrix<double_complex>& h);
         
         /// Setup lo-lo block of Hamiltonian and overlap matrices
         void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
@@ -155,6 +159,12 @@ class Band
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
         
+        void diag_pseudo_potential_davidson(K_point* kp__,
+                                            int ispn__,
+                                            Hloc_operator& h_op__,
+                                            D_operator& d_op__,
+                                            Q_operator& q_op__);
+
         void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                       double v0__,
                                                       std::vector<double>& veff_it_coarse__);
@@ -182,6 +192,17 @@ class Band
                       std::vector<double>& eval__);
 
         void apply_h_o(K_point* kp__, 
+                       int N__,
+                       int n__,
+                       Wave_functions<false>& phi__,
+                       Wave_functions<false>& hphi__,
+                       Wave_functions<false>& ophi__,
+                       Hloc_operator &h_op,
+                       D_operator& d_op,
+                       Q_operator& q_op);
+
+        void apply_h_o(K_point* kp__,
+                       int ispn__, 
                        int N__,
                        int n__,
                        Wave_functions<false>& phi__,
@@ -460,6 +481,22 @@ class Band
                           std::vector<double> const& pw_ekin__,
                           std::vector<double>& h_diag__,
                           std::vector<double>& o_diag__);
+
+        void get_h_o_diag(K_point* kp__,
+                          int ispn__,
+                          double v0__,
+                          D_operator& d_op__,
+                          Q_operator& q_op__,
+                          std::vector<double>& h_diag__,
+                          std::vector<double>& o_diag__);
+
+        std::vector<double> get_h_diag(K_point* kp__,
+                                       int ispn__,
+                                       double v0__,
+                                       D_operator& d_op__);
+
+        std::vector<double> get_o_diag(K_point* kp__,
+                                       Q_operator& q_op__);
 
 };
 

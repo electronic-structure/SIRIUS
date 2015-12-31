@@ -78,12 +78,12 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
             band_->solve_fv(kpoints_[ik], potential->effective_potential());
             kpoints_[ik]->generate_fv_states();
             band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+            kpoints_[ik]->generate_spinor_wave_functions();
         }
         else
         {
             band_->solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
         }
-        kpoints_[ik]->generate_spinor_wave_functions();
     }
 
     /* synchronize eigen-values */

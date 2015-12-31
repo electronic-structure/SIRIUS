@@ -155,46 +155,57 @@ void Potential::generate_D_operator_matrix()
 
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
-                    //int lm2 = atom_type->indexb(xi2).lm;
-                    //int idxrf2 = atom_type->indexb(xi2).idxrf;
                     for (int xi1 = 0; xi1 <= xi2; xi1++)
                     {
-                        //int lm1 = atom_type->indexb(xi1).lm;
-                        //int idxrf1 = atom_type->indexb(xi1).idxrf;
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
                         if (xi1 == xi2)
                         {
                             assert(std::abs(d_tmp(idx12, i).imag()) < 1e-10);
-                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i).real() * unit_cell_.omega(); //+
-                                                                        //atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i).real() * unit_cell_.omega();
                         }
                         else
                         {
                             unit_cell_.atom(ia)->d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i) * unit_cell_.omega();
                             unit_cell_.atom(ia)->d_mtrx(xi2, xi1, iv) = std::conj(d_tmp(idx12, i)) * unit_cell_.omega();
-                            //if (lm1 == lm2)
-                            //{
-                            //    unit_cell_.atom(ia)->d_mtrx(xi1, xi2, iv) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                            //    unit_cell_.atom(ia)->d_mtrx(xi2, xi1, iv) += atom_type->uspp().d_mtrx_ion(idxrf2, idxrf1);
-                            //}
                         }
                     }
                 }
             }
         }
+    }
 
-        #ifdef __GPU
-        if (parameters_.processing_unit() == GPU)
+    /* add d_ion to the effective potential component of D-operator */
+    #pragma omp parallel for schedule(static)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    {
+        auto atom_type = unit_cell_.atom(ia)->type();
+        int nbf = unit_cell_.atom(ia)->mt_basis_size();
+
+        for (int xi2 = 0; xi2 < nbf; xi2++)
         {
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            int lm2 = atom_type->indexb(xi2).lm;
+            int idxrf2 = atom_type->indexb(xi2).idxrf;
+            for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                 auto type = unit_cell_.atom_type(iat);
-                 type->uspp().q_pw.deallocate_on_device();
+                int lm1 = atom_type->indexb(xi1).lm;
+                int idxrf1 = atom_type->indexb(xi1).idxrf;
+                
+                if (lm1 == lm2) unit_cell_.atom(ia)->d_mtrx(xi1, xi2, 0) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
             }
         }
-        #endif
     }
+
+    #ifdef __GPU
+    if (parameters_.processing_unit() == GPU)
+    {
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+        {
+             auto type = unit_cell_.atom_type(iat);
+             type->uspp().q_pw.deallocate_on_device();
+        }
+    }
+    #endif
 }
 
 };

@@ -332,11 +332,6 @@ class Atom
             return d_mtrx_(xi1, xi2, iv);
         }
         
-        //inline mdarray<double_complex, 3>& d_mtrx()
-        //{
-        //    return d_mtrx_;
-        //}
-
         inline int mt_basis_size()
         {
             return type_->mt_basis_size();

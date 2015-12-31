@@ -23,6 +23,8 @@ class Hloc_operator
 
         mdarray<double_complex, 2> vphi_;
 
+        double v0_[2];
+
     public:
 
         Hloc_operator(FFT3D_context& fft_ctx__,
@@ -66,7 +68,8 @@ class Hloc_operator
                 auto gv = gkvec_.cart_shifted(ig);
                 pw_ekin_[ig_loc] = 0.5 * (gv * gv);
             }
-
+            
+            /* group effective fields into single vector */
             std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
             veff_vec[0] = effective_potential__;
             for (int j = 0; j < num_mag_dims__; j++) veff_vec[1 + j] = effective_magnetic_field__[j];
@@ -86,9 +89,10 @@ class Hloc_operator
                 }
                 fft_ctx_.fft()->transform<1>(gvec__, &v_pw_coarse[0]);
                 fft_ctx_.fft()->output(&veff_vec_(0, j));
+
             }
 
-            if (num_mag_dims__ != 0)
+            if (num_mag_dims__)
             {
                 for (int ir = 0; ir < fft_ctx_.fft()->local_size(); ir++)
                 {
@@ -98,6 +102,18 @@ class Hloc_operator
                     veff_vec_(ir, 1) = v0 - v1; // v - Bz
                 }
             }
+
+            if (num_mag_dims__ == 0)
+            {
+                v0_[0] = veff_vec[0]->f_pw(0).real();
+            }
+            else
+            {
+                v0_[0] = veff_vec[0]->f_pw(0).real() + veff_vec[1]->f_pw(0).real();
+                v0_[1] = veff_vec[0]->f_pw(0).real() - veff_vec[1]->f_pw(0).real();
+            }
+
+            vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
         }
         
         void apply(Wave_functions<false>& hphi__, int idx0__, int n__)
@@ -149,6 +165,62 @@ class Hloc_operator
             omp_set_nested(nested);
 
             hphi__.swap_backward(idx0__, n__);
+        }
+
+        void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
+        {
+            PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
+
+            hphi__.swap_forward(idx0__, n__);
+            
+            /* save omp_nested flag */
+            int nested = omp_get_nested();
+            omp_set_nested(1);
+            #pragma omp parallel num_threads(fft_ctx_.num_fft_streams())
+            {
+                int thread_id = omp_get_thread_num();
+
+                #pragma omp for schedule(dynamic, 1)
+                for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
+                {
+                    /* phi(G) -> phi(r) */
+                    fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
+                    /* multiply by effective potential */
+                    if (fft_ctx_.fft(thread_id)->hybrid())
+                    {
+                        #ifdef __GPU
+                        STOP();
+                        scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+                                              fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
+
+                        #else
+                        TERMINATE_NO_GPU
+                        #endif
+                    }
+                    else
+                    {
+                        for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
+                            fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
+                    }
+                    /* V(r)phi(r) -> [V*phi](G) */
+                    fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
+
+                    /* add kinetic energy */
+                    for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
+                    {
+                        hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
+                    }
+                }
+            }
+            /* restore the nested flag */
+            omp_set_nested(nested);
+
+            hphi__.swap_backward(idx0__, n__);
+        }
+
+        inline double v0(int ispn__)
+        {
+            return v0_[ispn__];
         }
 };
 
