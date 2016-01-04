@@ -21,7 +21,7 @@ void Density::initial_density()
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
 
         /* compute contribution from free atoms to the interstitial density */
-        auto v = rl->make_periodic_function(rho_radial_integrals, ctx_.gvec().num_gvec());
+        auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
         
         #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
@@ -248,7 +248,7 @@ void Density::initial_density()
         DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
         #endif
 
-        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, ctx_.gvec().num_gvec());
+        std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
         #endif

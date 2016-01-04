@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,7 +19,7 @@
 
 /** \file unit_cell.cpp
  *   
- *  \brief Contains remaining implementation of sirius::Unit_cell class.
+ *  \brief Contains implementation of sirius::Unit_cell class methods.
  */
 
 #include "unit_cell.h"
@@ -363,58 +363,6 @@ void Unit_cell::initialize()
     
     volume_it_ = omega() - volume_mt_;
 
-    //== if (!parameters_.full_potential())
-    //== {
-    //==     /* split beta-projectors into chunks */
-    //==     int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
-    //==     int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
-    //==     splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
-    //==     beta_chunks_.resize(num_beta_chunks);
-    //==     
-    //==     for (int ib = 0; ib < num_beta_chunks; ib++)
-    //==     {
-    //==         /* number of atoms in chunk */
-    //==         int na = (int)spl_beta_chunks.local_size(ib);
-    //==         beta_chunks_[ib].num_atoms_ = na;
-    //==         beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
-    //==         beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
-
-    //==         int num_beta = 0;
-    //== 
-    //==         for (int i = 0; i < na; i++)
-    //==         {
-    //==             int ia = (int)spl_beta_chunks.global_index(i, ib);
-    //==             auto type = atom(ia)->type();
-    //==             /* atom fractional coordinates */
-    //==             for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
-    //==             /* number of beta functions for atom */
-    //==             beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
-    //==             /* offset in beta_gk*/
-    //==             beta_chunks_[ib].desc_(1, i) = num_beta;
-    //==             /* offset in beta_gk_t */
-    //==             beta_chunks_[ib].desc_(2, i) = type->offset_lo();
-    //==             beta_chunks_[ib].desc_(3, i) = ia;
-    //== 
-    //==             num_beta += type->mt_basis_size();
-    //==         }
-    //==         beta_chunks_[ib].num_beta_ = num_beta;
-
-    //==         if (parameters_.processing_unit() == GPU)
-    //==         {
-    //==             #ifdef __GPU
-    //==             beta_chunks_[ib].desc_.allocate_on_device();
-    //==             beta_chunks_[ib].desc_.copy_to_device();
-
-    //==             beta_chunks_[ib].atom_pos_.allocate_on_device();
-    //==             beta_chunks_[ib].atom_pos_.copy_to_device();
-    //==             #endif
-    //==         }
-    //==     }
-
-    //==     num_beta_t_ = 0;
-    //==     for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
-    //== }
-            
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
     for (int ia = 0, n = 0; ia < num_atoms(); ia++)
     {
@@ -880,6 +828,37 @@ std::string Unit_cell::chemical_formula()
     }
 
     return name;
+}
+
+std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const
+{
+    PROFILE_WITH_TIMER("Unit_cell::make_periodic_function");
+
+    assert((int)form_factors__.size(0) == num_atom_types());
+    
+    std::vector<double_complex> f_pw(gvec__.num_gvec(), double_complex(0, 0));
+
+    double fourpi_omega = fourpi / omega();
+
+    splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
+
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+    {
+        int ig = spl_ngv[igloc];
+        int igs = gvec__.shell(ig);
+
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {            
+            int iat = atom(ia)->type_id();
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__[ig] * atom(ia)->position())));
+            f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
+        }
+    }
+
+    comm_.allgather(&f_pw[0], (int)spl_ngv.global_offset(), (int)spl_ngv.local_size());
+
+    return std::move(f_pw);
 }
 
 }

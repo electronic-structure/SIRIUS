@@ -73,36 +73,6 @@ void Reciprocal_lattice::init(int lmax)
     }
 }
 
-std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv) const
-{
-    PROFILE();
-
-    assert((int)form_factors.size(0) == unit_cell_.num_atom_types());
-    
-    std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
-
-    double fourpi_omega = fourpi / unit_cell_.omega();
-
-    splindex<block> spl_ngv(ngv, comm_.size(), comm_.rank());
-
-    #pragma omp parallel for
-    for (int igloc = 0; igloc < (int)spl_ngv.local_size(); igloc++)
-    {
-        int ig = (int)spl_ngv[igloc];
-        int igs = gvec_.shell(ig);
-
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {            
-            int iat = unit_cell_.atom(ia)->type_id();
-            f_pw[ig] += fourpi_omega * std::conj(gvec_phase_factor(ig, ia)) * form_factors(iat, igs);
-        }
-    }
-
-    comm_.allgather(&f_pw[0], (int)spl_ngv.global_offset(), (int)spl_ngv.local_size());
-
-    return f_pw;
-}
-
 
 void Reciprocal_lattice::fix_q_radial_functions(mdarray<double, 4>& qrf)
 {
@@ -187,44 +157,6 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
         }
     }
               
-    //#pragma omp parallel
-    //{
-    //    sbessel_pw<double> jl(unit_cell_, lmax);
-    //    #pragma omp for
-    //    for (int ishloc = 0; ishloc < (int)spl_num_gvec_shells.local_size(); ishloc++)
-    //    {
-    //        int igs = (int)spl_num_gvec_shells[ishloc];
-    //        jl.load(gvec_.shell_len(igs));
-
-    //        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    //        {
-    //            auto atom_type = unit_cell_.atom_type(iat);
-    //            Spline<double> s(atom_type->radial_grid());
-
-    //            for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
-    //            {
-    //                for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
-    //                {
-    //                    int l2 = atom_type->indexr(idxrf2).l;
-    //                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-    //                    {
-    //                        int l1 = atom_type->indexr(idxrf1).l;
-
-    //                        int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-    //                        
-    //                        if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
-    //                        {
-    //                            for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
-    //                                s[ir] = jl(ir, l3, iat) * qrf(ir, l3, idx, iat);
-
-    //                            qri(idx, l3, iat, igs) = s.interpolate().integrate(0);
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
     int ld = (int)(qri.size(0) * qri.size(1) * qri.size(2));
     comm_.allgather(&qri(0, 0, 0, 0), ld * (int)spl_num_gvec_shells.global_offset(), ld * (int)spl_num_gvec_shells.local_size());
 }

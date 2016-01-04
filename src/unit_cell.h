@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -214,27 +214,8 @@ class Unit_cell
          *    4. Check MT overlap 
          *    5. Create radial grid for each atom type
          *    6. Find symmetry and assign symmetry class to each atom
-         *    7. Create split indices for atoms and atom classes
-         *
-         *  Initialization must be broken into two parts: one is called once, and the second one is called
-         *  each time the atoms change the position.
-         */
+         *    7. Create split indices for atoms and atom classes */
         void initialize();
-
-        /// Update the unit cell after moving the atoms.
-        /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
-         *  must be recomputed:
-         *    1. New atom positions may lead to a new symmetry, which can give a different number of atom 
-         *       symmetry classes. Symmetry information must be updated.
-         *    2. New atom positions can lead to new MT radii if they are determined automatically. MT radii and 
-         *       radial meshes must be updated. 
-         *  
-         *  Becasue of (1) the G and G+k phase factors must be updated. Because of (2) Bessel funcion moments
-         *  and G+k APW basis must be also updated. Because of (1 and 2) step function must be updated.
-         *
-         *  \todo Think how to implement this dependency in a reliable way without any handwork.
-         */
-        void update();
 
         /// Add new atom type to the list of atom types and read necessary data from the .json file
         void add_atom_type(const std::string label, const std::string file_name);
@@ -253,8 +234,7 @@ class Unit_cell
         /// Get crystal symmetries and equivalent atoms.
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
          *  and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
-         *  atoms is then used to make a list of atom symmetry classes and related data.
-         */
+         *  atoms is then used to make a list of atom symmetry classes and related data. */
         void get_symmetry();
 
         /// Write structure to CIF file.
@@ -264,8 +244,7 @@ class Unit_cell
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
-         *  unit cell volume. 
-         */
+         *  unit cell volume. */
         void set_lattice_vectors(double const* a0__, double const* a1__, double const* a2__);
        
         /// Find the cluster of nearest neighbours around each atom
@@ -279,16 +258,16 @@ class Unit_cell
         
         std::string chemical_formula();
 
+        /// Make periodic function out of form factors.
+        /** Return vector of plane-wave coefficients */
+        std::vector<double_complex> make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const;
+
         int atom_id_by_position(vector3d<double> position__)
         {
-            const double eps = 1e-10;
-
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                vector3d<double> pos = atom(ia)->position();
-                if (fabs(pos[0] - position__[0]) < eps && 
-                    fabs(pos[1] - position__[1]) < eps && 
-                    fabs(pos[2] - position__[2]) < eps) return ia;
+                auto vd = atom(ia)->position() - position__;
+                if (vd.length() < 1e-10) return ia;
             }
             return -1;
         } 
@@ -400,8 +379,7 @@ class Unit_cell
         /// Total number of the muffin-tin basis functions.
         /** Total number of MT basis functions equals to the sum of the total number of augmented wave
          *  basis functions and the total number of local orbital basis functions across all atoms. It controls 
-         *  the size of the muffin-tin part of the first-variational states and second-variational wave functions. 
-         */
+         *  the size of the muffin-tin part of the first-variational states and second-variational wave functions. */
         inline int mt_basis_size() const
         {
             return mt_basis_size_;
@@ -488,11 +466,6 @@ class Unit_cell
             return lmax_beta_;
         }
 
-        //inline bool full_potential() const
-        //{
-        //    return (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo);
-        //}
-
         inline int num_nearest_neighbours(int ia) const
         {
             return (int)nearest_neighbours_[ia].size();
@@ -523,16 +496,6 @@ class Unit_cell
             return symmetry_;
         }
 
-        //inline int num_beta_chunks() const
-        //{
-        //    return (int)beta_chunks_.size();
-        //}
-
-        //inline beta_chunk& beta_chunk(int idx)
-        //{
-        //    return beta_chunks_[idx];
-        //}
-
         inline matrix3d<double> const& lattice_vectors() const
         {
             return lattice_vectors_;
@@ -547,11 +510,6 @@ class Unit_cell
         {
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
         }
-
-        //inline int num_beta_t() const
-        //{
-        //    return num_beta_t_;
-        //}
 
         void import(Unit_cell_input_section const& inp__)
         {

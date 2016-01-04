@@ -81,7 +81,7 @@ void Step_function::init()
     step_function_pw_.resize(gvec_.num_gvec());
     step_function_.resize(fft_->local_size());
     
-    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, gvec_.num_gvec());
+    std::vector<double_complex> f_pw = unit_cell_.make_periodic_function(ffac, gvec_);
     for (int ig = 0; ig < gvec_.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
     
