@@ -110,70 +110,35 @@ class Band
         void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
                    Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
        
-        /// Diagonalize a full-potential Hamiltonian
+        /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
                                     Periodic_function<double>* effective_potential__);
 
-        ///// Diagonalize a pseudo-potential Hamiltonian
-        //void diag_fv_pseudo_potential(K_point* kp__,
-        //                              Periodic_function<double>* effective_potential__);
-        //
-        ///// Serial implementation of diagonalziation.
-        //void diag_fv_pseudo_potential_serial(K_point* kp__,
-        //                                     double v0__,
-        //                                     std::vector<double>& veff_it_coarse__);
-
+        /// Diagonalize a pseudo-potential Hamiltonian.
         void diag_pseudo_potential(K_point* kp__, 
                                    Periodic_function<double>* effective_potential__,
                                    Periodic_function<double>* effective_magnetic_field__[3]);
-        #ifdef __SCALAPACK
-        void apply_h_o_fast_parallel_rs(K_point* kp__,
-                                        std::vector<double> const& effective_potential__,
-                                        std::vector<double> const& pw_ekin__,
-                                        int N__,
-                                        int n__,
-                                        matrix<double_complex>& phi_slice__,
-                                        matrix<double_complex>& hphi_slice__,
-                                        matrix<double_complex>& ophi_slice__,
-                                        matrix<double_complex>& phi_slab__,
-                                        matrix<double_complex>& hphi_slab__,
-                                        matrix<double_complex>& ophi_slab__,
-                                        mdarray<int, 1>& packed_mtrx_offset__,
-                                        mdarray<double_complex, 1>& d_mtrx_packed__,
-                                        mdarray<double_complex, 1>& q_mtrx_packed__,
-                                        mdarray<double_complex, 1>& kappa__);
 
-        void diag_fv_pseudo_potential_parallel(K_point* kp__,
-                                               double v0__,
-                                               std::vector<double>& veff_it_coarse__);
-
-        void diag_fv_pseudo_potential_chebyshev_parallel(K_point* kp__,
-                                                         std::vector<double> const& veff_it_coarse__);
-        #endif
-        
         /// Exact (not iterative) diagonalization of the Hamiltonian.
-        void diag_fv_pseudo_potential_exact_serial(K_point* kp__,
-                                                   std::vector<double>& veff_it_coarse__);
-
-        void diag_fv_pseudo_potential_davidson(K_point* kp__,
-                                               double v0__,
-                                               std::vector<double>& veff_it_coarse__);
-        
-        void diag_pseudo_potential_davidson(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator& d_op__,
-                                            Q_operator& q_op__);
-
         void diag_pseudo_potential_exact(K_point* kp__,
                                          int ispn__,
                                          Hloc_operator& h_op__,
                                          D_operator& d_op__,
                                          Q_operator& q_op__);
 
-        void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
-                                                      double v0__,
-                                                      std::vector<double>& veff_it_coarse__);
+        /// Iterative Davidson diagonalization.
+        void diag_pseudo_potential_davidson(K_point* kp__,
+                                            int ispn__,
+                                            Hloc_operator& h_op__,
+                                            D_operator& d_op__,
+                                            Q_operator& q_op__);
+
+        //void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
+        //                                              double v0__,
+        //                                              std::vector<double>& veff_it_coarse__);
+
+        //void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
+        //                                               std::vector<double> const& veff_it_coarse__);
 
         void apply_h_serial(K_point* kp__, 
                             std::vector<double> const& effective_potential__, 
@@ -196,16 +161,6 @@ class Band
                       dmatrix<double_complex>& ovlp_dist__,
                       dmatrix<double_complex>& evec_dist__,
                       std::vector<double>& eval__);
-
-        void apply_h_o(K_point* kp__, 
-                       int N__,
-                       int n__,
-                       Wave_functions<false>& phi__,
-                       Wave_functions<false>& hphi__,
-                       Wave_functions<false>& ophi__,
-                       Hloc_operator &h_op,
-                       D_operator& d_op,
-                       Q_operator& q_op);
 
         void apply_h_o(K_point* kp__,
                        int ispn__, 
@@ -272,9 +227,6 @@ class Band
                            mdarray<double_complex, 1>& d_mtrx_packed__,
                            mdarray<double_complex, 1>& q_mtrx_packed__,
                            mdarray<double_complex, 1>& kappa__);
-
-        void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
-                                                       std::vector<double> const& veff_it_coarse__);
 
     public:
         
@@ -480,27 +432,13 @@ class Band
             return gen_evp_solver_;
         }
 
-        /// Get diagonal elements of Hamiltonian and (if needed) overlap.
-        template <bool need_o_diag = true>
-        void get_h_o_diag(K_point* kp__,
-                          double v0__,
-                          std::vector<double> const& pw_ekin__,
-                          std::vector<double>& h_diag__,
-                          std::vector<double>& o_diag__);
-
-        void get_h_o_diag(K_point* kp__,
-                          int ispn__,
-                          double v0__,
-                          D_operator& d_op__,
-                          Q_operator& q_op__,
-                          std::vector<double>& h_diag__,
-                          std::vector<double>& o_diag__);
-
+        /// Get diagonal elements of Hamiltonian.
         std::vector<double> get_h_diag(K_point* kp__,
                                        int ispn__,
                                        double v0__,
                                        D_operator& d_op__);
 
+        /// Get diagonal elements of overlap matrix.
         std::vector<double> get_o_diag(K_point* kp__,
                                        Q_operator& q_op__);
 

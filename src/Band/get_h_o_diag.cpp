@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file get_h_o_diag.cpp
+ *   
+ *  \brief Contains implementation of sirius::Band::get_h_diag and sirius::Band::get_o_diag methods.
+ */
+
 #include "band.h"
 
 namespace sirius {
@@ -7,6 +31,8 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
                                      double v0__,
                                      D_operator& d_op__)
 {
+    PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
+
     std::vector<double> h_diag(kp__->num_gkvec_loc());
 
     /* local H contribution */
@@ -62,8 +88,10 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
 std::vector<double> Band::get_o_diag(K_point* kp__,
                                      Q_operator& q_op__)
 {
+    PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
+
     std::vector<double> o_diag(kp__->num_gkvec_loc(), 1.0);
-    if (parameters_.esm_type() != ultrasoft_pseudopotential) STOP();
+    if (parameters_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do here
 
     /* non-local O contribution */
     auto& beta_gk_t = kp__->beta_projectors().beta_gk_t();

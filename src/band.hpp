@@ -19,7 +19,7 @@
 
 /** \file band.hpp
  *   
- *   \brief Contains implementation of templated methods of sirius::Band class.
+ *  \brief Contains implementation of templated methods of sirius::Band class.
  */
 
 // TODO: look at multithreading in apw_lo and lo_apw blocks 
@@ -351,84 +351,4 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 //==     halm.deallocate();
 //== }
 
-template <bool need_o_diag>
-void Band::get_h_o_diag(K_point* kp__,
-                  double v0__,
-                  std::vector<double> const& pw_ekin__,
-                  std::vector<double>& h_diag__,
-                  std::vector<double>& o_diag__)
-{
-    Timer t("sirius::Band::get_h_o_diag");
-    STOP();
-
-    //h_diag__.resize(kp__->num_gkvec_loc());
-    //o_diag__.resize(kp__->num_gkvec_loc());
-
-    ///* local H contribution */
-    //for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-    //{
-    //    int igk = kp__->gklo_basis_descriptor_row(igk_loc).ig;
-    //    h_diag__[igk_loc] = pw_ekin__[igk] + v0__;
-    //    o_diag__[igk_loc] = 1.0;
-    //}
-
-    ///* non-local H contribution */
-    //auto& beta_gk_t = kp__->beta_projectors().beta_gk_t();
-    //matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
-
-    //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    //{
-    //    auto atom_type = unit_cell_.atom_type(iat);
-    //    int nbf = atom_type->mt_basis_size();
-    //    matrix<double_complex> d_sum(nbf, nbf);
-    //    d_sum.zero();
-
-    //    matrix<double_complex> q_sum;
-    //    if (need_o_diag)
-    //    {
-    //        q_sum = matrix<double_complex>(nbf, nbf);
-    //        q_sum.zero();
-    //    }
-
-    //    for (int i = 0; i < atom_type->num_atoms(); i++)
-    //    {
-    //        int ia = atom_type->atom_id(i);
-    //    
-    //        for (int xi2 = 0; xi2 < nbf; xi2++)
-    //        {
-    //            for (int xi1 = 0; xi1 < nbf; xi1++)
-    //            {
-    //                d_sum(xi1, xi2) += unit_cell_.atom(ia)->d_mtrx(xi1, xi2);
-    //                if (need_o_diag) q_sum(xi1, xi2) += unit_cell_.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-    //            }
-    //        }
-    //    }
-
-    //    int ofs = unit_cell_.atom_type(iat)->offset_lo();
-    //    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-    //    {
-    //        for (int xi = 0; xi < nbf; xi++) beta_gk_tmp(xi, igk_loc) = beta_gk_t(igk_loc, ofs + xi);
-    //    }
-
-    //    std::vector< std::pair<int, int> > idx(nbf * nbf);
-    //    for (int xi2 = 0, n = 0; xi2 < nbf; xi2++)
-    //    {
-    //        for (int xi1 = 0; xi1 < nbf; xi1++) idx[n++] = std::pair<int, int>(xi1, xi2);
-    //    }
-
-    //    #pragma omp parallel for
-    //    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-    //    {
-    //        for (auto& it: idx)
-    //        {
-    //            int xi1 = it.first;
-    //            int xi2 = it.second;
-    //            double_complex z = beta_gk_tmp(xi1, igk_loc) * conj(beta_gk_tmp(xi2, igk_loc));
-
-    //            h_diag__[igk_loc] += real(z * d_sum(xi1, xi2));
-    //            if (need_o_diag) o_diag__[igk_loc] += real(z * q_sum(xi1, xi2));
-    //        }
-    //    }
-    //}
-}
 

@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file hloc_operator.h
+ *   
+ *  \brief Contains declaration and implementation of sirius::Hloc_operator class.
+ */
+
 #ifndef __HLOC_OPERATOR_H__
 #define __HLOC_OPERATOR_H__
 
@@ -10,7 +34,6 @@ class Hloc_operator
 {
     private:
 
-        //Simulation_context const& ctx_;
         FFT3D_context& fft_ctx_;
 
         Gvec const& gkvec_;
@@ -22,7 +45,8 @@ class Hloc_operator
         mdarray<double, 2> veff_vec_;
 
         mdarray<double_complex, 2> vphi_;
-
+        
+        /// V(G=0) matrix elements.
         double v0_[2];
 
     public:
@@ -59,6 +83,7 @@ class Hloc_operator
             : fft_ctx_(fft_ctx__),
               gkvec_(gkvec__)
         {
+            /* cache kinteic energy of plane-waves */
             pw_ekin_ = std::vector<double>(gkvec_.num_gvec_fft());
             for (int ig_loc = 0; ig_loc < gkvec_.num_gvec_fft(); ig_loc++)
             {
@@ -79,7 +104,6 @@ class Hloc_operator
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++)
             {
-                //auto& gv = veff_vec[j]->gvec();
                 std::vector<double_complex> v_pw_coarse(gvec__.num_gvec_fft());
 
                 for (int ig = 0; ig < gvec__.num_gvec_fft(); ig++)
@@ -115,57 +139,6 @@ class Hloc_operator
             vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
         }
         
-        void apply(Wave_functions<false>& hphi__, int idx0__, int n__)
-        {
-            PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
-
-            hphi__.swap_forward(idx0__, n__);
-            
-            /* save omp_nested flag */
-            int nested = omp_get_nested();
-            omp_set_nested(1);
-            #pragma omp parallel num_threads(fft_ctx_.num_fft_streams())
-            {
-                int thread_id = omp_get_thread_num();
-
-                #pragma omp for schedule(dynamic, 1)
-                for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
-                {
-                    /* phi(G) -> phi(r) */
-                    fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
-                    /* multiply by effective potential */
-                    if (fft_ctx_.fft(thread_id)->hybrid())
-                    {
-                        #ifdef __GPU
-                        scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                                              fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
-
-                        #else
-                        TERMINATE_NO_GPU
-                        #endif
-                    }
-                    else
-                    {
-                        for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                            fft_ctx_.fft(thread_id)->buffer(ir) *= veff_[ir];
-                    }
-                    /* V(r)phi(r) -> [V*phi](G) */
-                    fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
-
-                    /* add kinetic energy */
-                    for (int igk_loc = 0; igk_loc < gkvec_.num_gvec_fft(); igk_loc++)
-                    {
-                        int igk = gkvec_.offset_gvec_fft() + igk_loc;
-                        hphi__[i][igk_loc] = hphi__[i][igk_loc] * pw_ekin_[igk] + vphi_(igk_loc, thread_id);
-                    }
-                }
-            }
-            /* restore the nested flag */
-            omp_set_nested(nested);
-
-            hphi__.swap_backward(idx0__, n__);
-        }
-
         void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
@@ -206,9 +179,7 @@ class Hloc_operator
 
                     /* add kinetic energy */
                     for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
-                    {
                         hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
-                    }
                 }
             }
             /* restore the nested flag */
