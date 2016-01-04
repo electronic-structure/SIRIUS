@@ -16,17 +16,13 @@ void Simulation_context::init_fft()
 
     if (do_parallel_fft)
     {
+        nfft_workers *= nfft_threads;
+        nfft_threads = 1;
         mpi_grid_fft_ = new MPI_grid({mpi_grid_->dimension_size(_dim_col_), mpi_grid_->dimension_size(_dim_row_)}, comm);
     }
     else
     {
         mpi_grid_fft_ = new MPI_grid({comm.size(), 1}, comm);
-    }
-
-    if (do_parallel_fft)
-    {
-        nfft_workers *= nfft_threads;
-        nfft_threads = 1;
     }
 
     FFT3D_grid fft_grid(parameters_.pw_cutoff(), rlv);
@@ -171,9 +167,6 @@ void Simulation_context::initialize()
     if (parameters_.num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
         TERMINATE("not enough first-variational states");
     
-    /* total number of bands */
-    //parameters_.set_num_bands(parameters_.num_fv_states() * parameters_.num_spins());
-
     std::map<std::string, ev_solver_t> str_to_ev_solver_t;
 
     str_to_ev_solver_t["lapack"]    = ev_lapack;
