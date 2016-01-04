@@ -179,13 +179,11 @@ class Periodic_function
             return f_mt_local_(ialoc);
         }
 
-        //template <index_domain_t index_domain>
         inline T& f_it(int ir)
         {
             return f_it_(ir);
         }
 
-        //template <index_domain_t index_domain>
         inline T const& f_it(int ir) const
         {
             return f_it_(ir);
@@ -194,6 +192,11 @@ class Periodic_function
         inline complex_t& f_pw(int ig)
         {
             return f_pw_(ig);
+        }
+
+        inline complex_t& f_pw(vector3d<int> const& G__)
+        {
+            return f_pw_(gvec_.index_by_gvec(G__));
         }
 
         double value(vector3d<double>& vc)

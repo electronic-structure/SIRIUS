@@ -1040,11 +1040,9 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
             diag_fv_full_potential(kp__, effective_potential__);
             break;
         }
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
+        default:
         {
-            diag_fv_pseudo_potential(kp__, effective_potential__);
-            break;
+            TERMINATE_NOT_IMPLEMENTED
         }
     }
 }

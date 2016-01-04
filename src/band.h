@@ -114,14 +114,14 @@ class Band
         void diag_fv_full_potential(K_point* kp__,
                                     Periodic_function<double>* effective_potential__);
 
-        /// Diagonalize a pseudo-potential Hamiltonian
-        void diag_fv_pseudo_potential(K_point* kp__,
-                                      Periodic_function<double>* effective_potential__);
-        
-        /// Serial implementation of diagonalziation.
-        void diag_fv_pseudo_potential_serial(K_point* kp__,
-                                             double v0__,
-                                             std::vector<double>& veff_it_coarse__);
+        ///// Diagonalize a pseudo-potential Hamiltonian
+        //void diag_fv_pseudo_potential(K_point* kp__,
+        //                              Periodic_function<double>* effective_potential__);
+        //
+        ///// Serial implementation of diagonalziation.
+        //void diag_fv_pseudo_potential_serial(K_point* kp__,
+        //                                     double v0__,
+        //                                     std::vector<double>& veff_it_coarse__);
 
         void diag_pseudo_potential(K_point* kp__, 
                                    Periodic_function<double>* effective_potential__,
@@ -164,6 +164,12 @@ class Band
                                             Hloc_operator& h_op__,
                                             D_operator& d_op__,
                                             Q_operator& q_op__);
+
+        void diag_pseudo_potential_exact(K_point* kp__,
+                                         int ispn__,
+                                         Hloc_operator& h_op__,
+                                         D_operator& d_op__,
+                                         Q_operator& q_op__);
 
         void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
                                                       double v0__,

@@ -79,17 +79,16 @@ class Hloc_operator
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++)
             {
-                auto& gv = veff_vec[j]->gvec();
+                //auto& gv = veff_vec[j]->gvec();
                 std::vector<double_complex> v_pw_coarse(gvec__.num_gvec_fft());
 
                 for (int ig = 0; ig < gvec__.num_gvec_fft(); ig++)
                 {
                     auto G = gvec__[ig + gvec__.offset_gvec_fft()];
-                    v_pw_coarse[ig] = veff_vec[j]->f_pw(gv.index_by_gvec(G));
+                    v_pw_coarse[ig] = veff_vec[j]->f_pw(G);
                 }
                 fft_ctx_.fft()->transform<1>(gvec__, &v_pw_coarse[0]);
                 fft_ctx_.fft()->output(&veff_vec_(0, j));
-
             }
 
             if (num_mag_dims__)

@@ -410,7 +410,7 @@ class Gvec
             return 0;
         }
 
-        inline int index_by_gvec(vector3d<int>& G__) const
+        inline int index_by_gvec(vector3d<int> const& G__) const
         {
             return index_by_gvec_(G__[0], G__[1], G__[2]);
         }
