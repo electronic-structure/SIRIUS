@@ -281,11 +281,12 @@ void generate_radial_integrals(int lmax__,
                             //h_radial_integrals__(lm, i1, i2, ispn) += sirius::inner<CPU>(svrf, srf[i2], 2);
                             //h_radial_integrals__(lm, i1, i2, ispn) += sirius::Spline<double>::integrate(&svrf, &srf[i2], 2);
 
-                            double r = sirius::spline_inner_product_gpu_v2(rgrid__.num_points(), rgrid__.x().template at<GPU>(), rgrid__.dx().template at<GPU>(), 
-                                               svrf.coefs().template at<GPU>(), srf[i2].coefs().template at<GPU>(), 
-                                               buf.at<GPU>(0, thread_id), buf.at<CPU>(0, thread_id), thread_id);
+                            //double r = sirius::spline_inner_product_gpu_v2(rgrid__.num_points(), rgrid__.x().template at<GPU>(), rgrid__.dx().template at<GPU>(), 
+                            //                   svrf.coefs().template at<GPU>(), srf[i2].coefs().template at<GPU>(), 
+                            //                   buf.at<GPU>(0, thread_id), buf.at<CPU>(0, thread_id), thread_id);
                             
-                            h_radial_integrals__(lm, i1, i2, ispn) += r; //sirius::inner<GPU>(svrf, srf[i2], 2);
+                            //h_radial_integrals__(lm, i1, i2, ispn) += r; //sirius::inner<GPU>(svrf, srf[i2], 2);
+                            h_radial_integrals__(lm, i1, i2, ispn) += sirius::inner(svrf, srf[i2], 2);
                         }
                         h_radial_integrals__(lm, i2, i1, ispn) = h_radial_integrals__(lm, i1, i2, ispn);
                     }
