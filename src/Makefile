@@ -31,12 +31,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/apply_h_o_fast_parallel_rs.cpp \
        Band/get_h_o_diag.cpp \
        Band/diag_pseudo_potential.cpp \
-       Band/diag_fv_pseudo_potential.cpp \
-       Band/diag_fv_pseudo_potential_exact_serial.cpp \
-       Band/diag_fv_pseudo_potential_rmm_diis_serial.cpp \
-       Band/diag_fv_pseudo_potential_chebyshev_serial.cpp \
-       Band/diag_fv_pseudo_potential_chebyshev_parallel.cpp \
-       Band/diag_fv_pseudo_potential_davidson.cpp \
+       Band/diag_pseudo_potential_exact.cpp \
+       Band/diag_pseudo_potential_davidson.cpp \
        Band/diag_h_o.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_aux.cpp \
