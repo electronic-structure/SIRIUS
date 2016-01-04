@@ -25,10 +25,6 @@
 #ifndef __UNIT_CELL_H__
 #define __UNIT_CELL_H__
 
-extern "C" {
-#include <spglib.h>
-}
-
 #include <algorithm>
 #include "descriptors.h"
 #include "atom_type.h"
@@ -38,6 +34,7 @@ extern "C" {
 #include "symmetry.h"
 #include "input.h"
 #include "simulation_parameters.h"
+#include "augmentation_operator.h"
 
 namespace sirius {
 
@@ -203,6 +200,8 @@ class Unit_cell
         ~Unit_cell()
         {
             if (symmetry_ != nullptr) delete symmetry_;
+            for (auto e: atom_types_) delete e;
+            for (auto e: atoms_) delete e;
         }
 
         

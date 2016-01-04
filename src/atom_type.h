@@ -306,16 +306,16 @@ class Atom_type
         /// Beginning of the radial grid.
         double radial_grid_origin_;
         
-        /// list of atomic levels 
+        /// List of atomic levels.
         std::vector<atomic_level_descriptor> atomic_levels_;
 
-        /// number of core electrons
+        /// Number of core electrons.
         double num_core_electrons_;
 
-        /// number of valence electrons
+        /// Number of valence electrons.
         double num_valence_electrons_;
         
-        /// default augmented wave configuration
+        /// Default augmented wave configuration.
         radial_solution_descriptor_set aw_default_l_;
         
         /// augmented wave configuration for specific l

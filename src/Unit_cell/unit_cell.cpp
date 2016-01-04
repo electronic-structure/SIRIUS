@@ -26,18 +26,18 @@
 
 namespace sirius {
 
-int Unit_cell::next_atom_type_id(const std::string label)
+int Unit_cell::next_atom_type_id(const std::string label__)
 {
     /* check if the label was already added */
-    if (atom_type_id_map_.count(label) != 0) 
+    if (atom_type_id_map_.count(label__) != 0) 
     {   
         std::stringstream s;
-        s << "atom type with label " << label << " is already in list";
-        error_local(__FILE__, __LINE__, s);
+        s << "atom type with label " << label__ << " is already in list";
+        TERMINATE(s);
     }
     /* take text id */
-    atom_type_id_map_[label] = (int)atom_types_.size();
-    return atom_type_id_map_[label];
+    atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
+    return atom_type_id_map_[label__];
 }
 
 void Unit_cell::add_atom_type(const std::string label, const std::string file_name)
@@ -52,19 +52,18 @@ void Unit_cell::add_atom(const std::string label, vector3d<double> position, vec
     {
         std::stringstream s;
         s << "atom type with label " << label << " is not found";
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
     if (atom_id_by_position(position) >= 0)
     {
         std::stringstream s;
         s << "atom with the same position is already in list" << std::endl
           << "  position : " << position[0] << " " << position[1] << " " << position[2];
-        
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     atoms_.push_back(new Atom(atom_type(label), position, vector_field));
-    atom_type(label)->add_atom_id((int)atoms_.size() - 1);
+    atom_type(label)->add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 
 void Unit_cell::add_atom(const std::string label, vector3d<double> position)
