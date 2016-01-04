@@ -246,7 +246,8 @@ class Gvec
                     gvec_full_index_(ig++) = static_cast<int>((i << 12) + j);
                 }
             }
-
+            
+            /* first G-vector must be (0, 0, 0); never reomove this check!!! */
             auto g0 = gvec_by_full_index(gvec_full_index_(0));
             if (g0[0] || g0[1] || g0[2]) TERMINATE("first G-vector is not zero");
         

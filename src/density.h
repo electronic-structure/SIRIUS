@@ -340,24 +340,21 @@ class Density
             else
             {
                 int k = 0;
-                for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
-                    low_freq_mixer_->input(k++, rho_->f_pw(lf_gvec_[i]));
-
+                for (int ig: lf_gvec_)
+                    low_freq_mixer_->input(k++, rho_->f_pw(ig));
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
-                        low_freq_mixer_->input(k++, magnetization_[j]->f_pw(lf_gvec_[i]));
+                    for (int ig: lf_gvec_)
+                        low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
                 }
 
                 k = 0;
-                //for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
-                for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
-                    high_freq_mixer_->input(k++, rho_->f_pw(hf_gvec_[i]));
-
+                for (int ig: hf_gvec_)
+                    high_freq_mixer_->input(k++, rho_->f_pw(ig));
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
-                        high_freq_mixer_->input(k++, magnetization_[j]->f_pw(hf_gvec_[i]));
+                    for (int ig: hf_gvec_)
+                        high_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
                 }
             }
         }
@@ -370,27 +367,23 @@ class Density
             }
             else
             {
-                int ngv = ctx_.gvec().num_gvec();
-                int ngvc = ctx_.gvec_coarse().num_gvec();
-                
+
                 int k = 0;
-                for (int i = 0; i < ngvc; i++)
-                    rho_->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(k++);
-
+                for (int ig: lf_gvec_)
+                    rho_->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    for (int i = 0; i < ngvc; i++)
-                        magnetization_[j]->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(k++);
+                    for (int ig: lf_gvec_)
+                        magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
                 }
-                
-                k = 0;
-                for (int i = 0; i < ngv - ngvc; i++)
-                    rho_->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(k++);
 
+                k = 0;
+                for (int ig: hf_gvec_)
+                    rho_->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    for (int i = 0; i < ngv - ngvc; i++)
-                        magnetization_[j]->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(k++);
+                    for (int ig: hf_gvec_)
+                        magnetization_[j]->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
                 }
             }
         }

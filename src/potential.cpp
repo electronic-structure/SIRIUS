@@ -99,11 +99,11 @@ Potential::Potential(Simulation_context& ctx__)
     init();
 
     std::vector<double> weights;
-    mixer_ = new Broyden_modified_mixer<double>(size(),
-                                       parameters_.mixer_input_section().max_history_,
-                                       parameters_.mixer_input_section().beta_,
-                                       weights,
-                                       comm_);
+    mixer_ = new Broyden1<double>(size(),
+                                  parameters_.mixer_input_section().max_history_,
+                                  parameters_.mixer_input_section().beta_,
+                                  weights,
+                                  comm_);
 
     spl_num_gvec_ = splindex<block>(ctx_.gvec().num_gvec(), comm_.size(), comm_.rank());
     
