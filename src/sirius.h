@@ -60,6 +60,7 @@
 #include "force.h"
 #include "dft_ground_state.h"
 #include "simulation_context.h"
+#include "simulation_parameters.h"
 
 #endif // __SIRIUS_H__
 
