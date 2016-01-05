@@ -15,7 +15,7 @@ void Density::initial_density()
         splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
         /* initialize smooth density of free atoms */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(true);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) const_cast<Atom_type&>(unit_cell_.atom_type(iat)).init_free_atom(true);
 
         /* compute radial integrals */
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
@@ -71,7 +71,7 @@ void Density::initial_density()
         int lmax = parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         
-        sbessel_approx sba(&unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
+        sbessel_approx sba(unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
         
         std::vector<double> gvec_len(gsh_list.size());
         for (int i = 0; i < (int)gsh_list.size(); i++)
@@ -175,7 +175,7 @@ void Density::initial_density()
         t4.stop();
 
         /* initialize density of free atoms (not smoothed) */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(false);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) const_cast<Atom_type&>(unit_cell_.atom_type(iat)).init_free_atom(false);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
@@ -187,7 +187,7 @@ void Density::initial_density()
                 for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
                 {
                     double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                    rho_->f_mt<local>(0, ir, (int)p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
+                    rho_->f_mt<local>(0, ir, p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
                 }
             }
         }

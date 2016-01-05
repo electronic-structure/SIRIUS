@@ -296,25 +296,11 @@ class Unit_cell
             return static_cast<int>(atom_types_.size());
         }
 
-        /// Return atom type instance by id.
-        inline Atom_type& atom_type(int id__)
-        {
-            assert(id__ >= 0 && id__ < (int)atom_types_.size());
-            return (*atom_types_[id__]);
-        }
-
         /// Return const atom type instance by id.
         inline Atom_type const& atom_type(int id__) const
         {
             assert(id__ >= 0 && id__ < (int)atom_types_.size());
             return (*atom_types_[id__]);
-        }
-
-        /// Return atom type instance by label.
-        inline Atom_type& atom_type(std::string const label__)
-        {
-            int id = const_cast<std::map<std::string, int>&>(atom_type_id_map_)[label__];
-            return atom_type(id);
         }
 
         /// Return atom type instance by label.

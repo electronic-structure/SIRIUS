@@ -117,7 +117,7 @@ class Density
         /// Global set of parameters.
         Simulation_parameters const& parameters_;
 
-        Unit_cell& unit_cell_;
+        Unit_cell const& unit_cell_;
 
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.

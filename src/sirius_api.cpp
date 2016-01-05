@@ -219,7 +219,7 @@ void sirius_set_atom_type_properties(char const* label__,
                                      int32_t* num_mt_points__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.set_symbol(std::string(symbol__));
     type.set_zn(*zn__);
     type.set_mass(*mass__);
@@ -243,7 +243,7 @@ void sirius_set_atom_type_radial_grid(char const* label__,
                                       int32_t const* num_radial_points__, 
                                       double const* radial_points__)
 {
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.set_radial_grid(type.num_mt_points(), radial_points__);
     type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
@@ -252,7 +252,7 @@ void sirius_set_free_atom_potential(char const* label__,
                                     int32_t const* num_points__,
                                     double const* vs__)
 {
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.set_free_atom_potential(*num_points__, vs__);
 }
 
@@ -285,7 +285,7 @@ void sirius_set_atom_type_configuration(char* label__,
                                         int32_t* core__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     bool core = *core__;
     type.set_configuration(*n__, *l__, *k__, *occupancy__, core);
 }
@@ -440,7 +440,7 @@ void sirius_get_num_mt_points(char* label__, int32_t* num_mt_points__)
 void sirius_get_mt_points(char* label__, double* mt_points__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     for (int i = 0; i < type.num_mt_points(); i++) mt_points__[i] = type.radial_grid(i);
 }
 
@@ -1190,7 +1190,7 @@ void sirius_add_atom_type_aw_descriptor(char const* label__,
                                         int32_t const* auto_enu__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.add_aw_descriptor(*n__, *l__, *enu__, *dme__, *auto_enu__);
 }
 
@@ -1204,7 +1204,7 @@ void sirius_add_atom_type_lo_descriptor(char const* label__,
 {
     PROFILE();
     std::string label(label__);
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(label);
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.add_lo_descriptor(*ilo__ - 1, *n__, *l__, *enu__, *dme__, *auto_enu__);
 }
 
@@ -2035,7 +2035,7 @@ void sirius_set_atom_type_dion(char* label__,
                                double* dion__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     matrix<double> d_mtrx_ion(dion__, *num_beta__, *num_beta__);
     type.set_d_mtrx_ion(d_mtrx_ion);
 }
@@ -2049,7 +2049,7 @@ void sirius_set_atom_type_beta_rf(char* label__,
                                   int32_t* ld__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
 
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
     type.uspp().lmax = 0;
@@ -2075,7 +2075,7 @@ void sirius_set_atom_type_q_rf(char* label__,
                                int32_t* lmax__)
 {
     PROFILE();
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     
     type.uspp().num_q_coefs = *num_q_coefs__;
     int nbeta = type.uspp().num_beta_radial_functions;
@@ -2130,7 +2130,7 @@ void sirius_set_atom_type_rho_core(char const* label__,
                                    int32_t* num_points__,
                                    double* rho_core__)
 {
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.uspp().core_charge_density = std::vector<double>(*num_points__);
     for (int i = 0; i < *num_points__; i++) type.uspp().core_charge_density[i] = rho_core__[i];
 }
@@ -2139,7 +2139,7 @@ void sirius_set_atom_type_rho_tot(char const* label__,
                                   int32_t* num_points__,
                                   double* rho_tot__)
 {
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.uspp().total_charge_density = std::vector<double>(*num_points__);
     for (int i = 0; i < *num_points__; i++) type.uspp().total_charge_density[i] = rho_tot__[i];
 }
@@ -2148,7 +2148,7 @@ void sirius_set_atom_type_vloc(char const* label__,
                                int32_t* num_points__,
                                double* vloc__)
 {
-    sirius::Atom_type& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    auto& type = const_cast<sirius::Atom_type&>(sim_ctx->unit_cell().atom_type(std::string(label__)));
     type.uspp().vloc = std::vector<double>(*num_points__);
     for (int i = 0; i < *num_points__; i++) type.uspp().vloc[i] = vloc__[i];
 }

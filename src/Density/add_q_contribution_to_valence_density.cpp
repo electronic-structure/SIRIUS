@@ -225,7 +225,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-         auto& type = unit_cell_.atom_type(iat);
+         auto& type = const_cast<Atom_type&>(unit_cell_.atom_type(iat));
          type.uspp().q_pw.allocate_on_device();
          type.uspp().q_pw.copy_to_device();
     }
@@ -286,18 +286,19 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
         sum_q_pw_d_mtrx_pw_gpu((int)spl_gvec.local_size(), 
                                nbf,
-                               type.uspp().q_pw.at<GPU>(),
+                               const_cast<double_complex*>(type.uspp().q_pw.at<GPU>()),
                                d_mtrx_pw.at<GPU>(),
                                rho_pw_gpu.at<GPU>());
     }
 
     rho_pw_gpu.copy_to_host();
-    for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
-        rho_->f_pw((int)spl_gvec[igloc]) += rho_pw_gpu(igloc);
+    for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
+        rho_->f_pw(spl_gvec[igloc]) += rho_pw_gpu(igloc);
 
     ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
     
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).uspp().q_pw.deallocate_on_device();
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+        const_cast<Atom_type&>(unit_cell_.atom_type(iat)).uspp().q_pw.deallocate_on_device();
 }
 #endif
 
