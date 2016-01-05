@@ -185,6 +185,7 @@ class Band
                         matrix<double_complex>& o_old__);
 
         int residuals(K_point* kp__,
+                      int ispn__,
                       int N__,
                       int num_bands__,
                       std::vector<double>& eval__,

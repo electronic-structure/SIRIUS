@@ -159,15 +159,18 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
+            if (kp__->band_occupancy(i + ispn__ * parameters_.num_fv_states()) > 1e-2 &&
+                std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
+            {
                 occ_band_converged = false;
+            }
         }
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1 && !occ_band_converged)
         {
             /* get new preconditionined residuals, and also hpss and opsi as a by-product */
-            n = residuals(kp__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */

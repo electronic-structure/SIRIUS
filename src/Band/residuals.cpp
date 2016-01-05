@@ -3,6 +3,7 @@
 namespace sirius {
 
 int Band::residuals(K_point* kp__,
+                    int ispn__,
                     int N__,
                     int num_bands__,
                     std::vector<double>& eval__,
@@ -33,13 +34,14 @@ int Band::residuals(K_point* kp__,
         double tol = ctx_.iterative_solver_tolerance();
         for (int i = 0; i < num_bands__; i++)
         {
-            if (kp__->band_occupancy(i) > 1e-10 && std::abs(eval__[i] - eval_old__[i]) > tol)
+            if (kp__->band_occupancy(i + ispn__ * parameters_.num_fv_states()) > 1e-10 &&
+                std::abs(eval__[i] - eval_old__[i]) > tol)
             {
                 std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(double_complex));
                 eval_tmp[n++] = eval__[i];
             }
         }
-        //TODO: do this on GPU
+        // TODO: do this on GPU
 
         /* create alias for eigen-vectors corresponding to unconverged residuals */
         matrix<double_complex> evec_tmp;

@@ -50,9 +50,9 @@ void test_gemm(int M, int N, int K, int transa)
     printf("c.ld() = %i\n", c.ld());
     sirius::Timer t1("gemm_only"); 
     linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
-    t1.stop();
-    printf("execution time (sec) : %12.6f\n", t1.value());
-    printf("performance (GFlops) : %12.6f\n", nop_gemm * 1e-9 * M * N * K / t1.value());
+    double tval = t1.stop();
+    printf("execution time (sec) : %12.6f\n", tval);
+    printf("performance (GFlops) : %12.6f\n", nop_gemm * 1e-9 * M * N * K / tval);
 }
 
 #ifdef _SCALAPACK_

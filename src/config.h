@@ -65,9 +65,9 @@
 //== #endif
 
 #define __PROFILE
-#define __PROFILE_STACK
+//#define __PROFILE_STACK
 #define __PROFILE_TIME
-#define __PROFILE_FUNC
+//#define __PROFILE_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"
@@ -105,7 +105,7 @@ const bool check_pseudo_charge = false;
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
 #ifndef __VERBOSITY
-#define __VERBOSITY 2
+#define __VERBOSITY 0
 #endif
 
 const bool fix_apwlo_linear_dependence = false;

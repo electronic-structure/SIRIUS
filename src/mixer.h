@@ -219,6 +219,31 @@ class Broyden1: public Mixer<T>
         {
             Timer t("sirius::Broyden1::mix");
             
+            //== /* weights as a functor */
+            //== struct w_functor
+            //== {
+            //==     std::vector<double> const& weights_;
+            //==     typedef double (w_functor::*fptr_t)(size_t);
+            //==     fptr_t fptr_;
+            //==     w_functor(std::vector<double> const& weights__) : weights_(weights__)
+            //==     {
+            //==         fptr_ = (weights_.size()) ? (&w_functor::f1) : (&w_functor::f2);
+            //==     }
+            //==     inline double f1(size_t idx__)
+            //==     {
+            //==         return weights_[idx__];
+            //==     }
+            //==     inline double f2(size_t idx__)
+            //==     {
+            //==         return 1.0;
+            //==     }
+            //==     inline double operator()(size_t idx__)
+            //==     {
+            //==         return (this->*fptr_)(idx__);
+            //==     }
+            //== };
+            //== w_functor w(weights_);
+            
             /* weights as a lambda function */
             auto w = [this](size_t idx)
             {

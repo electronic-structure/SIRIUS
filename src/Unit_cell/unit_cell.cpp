@@ -826,7 +826,7 @@ std::string Unit_cell::chemical_formula()
 
 std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const
 {
-    PROFILE_WITH_TIMER("Unit_cell::make_periodic_function");
+    PROFILE_WITH_TIMER("sirius::Unit_cell::make_periodic_function");
 
     assert((int)form_factors__.size(0) == num_atom_types());
     
