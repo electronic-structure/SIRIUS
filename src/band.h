@@ -346,8 +346,8 @@ class Band
 
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
         void set_fv_h_o_apw_lo(K_point* kp,
-                               Atom_type* type,
-                               Atom* atom,
+                               Atom_type const& type,
+                               Atom const& atom,
                                int ia,
                                mdarray<double_complex, 2>& alm_row,
                                mdarray<double_complex, 2>& alm_col,

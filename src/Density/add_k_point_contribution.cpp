@@ -19,8 +19,8 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                int offset_wf = unit_cell_.atom(ia)->offset_wf();
-                int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
+                int offset_wf = unit_cell_.atom(ia).offset_wf();
+                int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
 
                 for (int i = 0; i < nbnd; i++)
                 {
@@ -53,8 +53,8 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int offset_wf = unit_cell_.atom(ia)->offset_wf();
-            int mt_basis_size = unit_cell_.atom(ia)->type()->mt_basis_size();
+            int offset_wf = unit_cell_.atom(ia).offset_wf();
+            int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
 
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {

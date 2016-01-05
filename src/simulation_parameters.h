@@ -17,9 +17,9 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file simulation.h
+/** \file simulation_parameters.h
  *   
- *  \brief Contains definition and implementation of Simulation_parameters and Simulation_context classes.
+ *  \brief Contains definition and implementation of sirius::Simulation_parameters class.
  */
 
 #ifndef __SIMULATION_PARAMETERS_H__
@@ -32,7 +32,7 @@
 namespace sirius {
 
 /// Parameters of the simulation. 
-/** Parameters are first initialized from the initial input parameters and then by set..() methods.
+/** Parameters are first initialized from the initial input parameters and then by set_..() methods.
  *  Any parameter used in the simulation must be first initialized here. Then the instance of the 
  *  Simulation_context class can be created where proper values of some parameters are set.
  */
@@ -113,6 +113,27 @@ class Simulation_parameters
         Unit_cell_input_section unit_cell_input_section_;
 
         std::vector<std::string> xc_functionals_;
+
+        void set_defaults()
+        {
+            lmax_apw_          = -1;
+            lmax_pw_           = -1;
+            lmax_rho_          = -1;
+            lmax_pot_          = -1;
+            lmax_beta_         = -1;
+            aw_cutoff_         = 7.0;
+            pw_cutoff_         = 20.0;
+            gk_cutoff_         = 6.0;
+            num_fv_states_     = -1;
+            num_spins_         = 1;
+            num_mag_dims_      = 0;
+            so_correction_     = false;
+            uj_correction_     = false;
+            processing_unit_   = CPU;
+            smearing_width_    = 0.001;
+            cyclic_block_size_ = 32;
+            esm_type_          = full_potential_lapwlo;
+        }
         
         /// Import data from initial input parameters.
         void import(Input_parameters const& iip__)
@@ -154,37 +175,22 @@ class Simulation_parameters
 
         /// Create and initialize simulation parameters.
         /** The order of initialization is the following:
-         *    - first, the default parameter values are set in the constructor
+         *    - first, the default parameter values are set with set_defaults()
          *    - second, import() method is called and the parameters are overwritten with the input parameters
-         *    - third, the user sets the values with set...() metods
-         *    - fourh, the Simulation_context creates the copy of parameters and chekcs/sets the correct values
+         *    - third, the user sets the values with set_...() metods
+         *    - fourh, the Simulation_context creates the copy of parameters and checks/sets the correct values
          */
         Simulation_parameters(Input_parameters const& iip__)
-            : lmax_apw_(8), 
-              lmax_pw_(-1), 
-              lmax_rho_(8), 
-              lmax_pot_(8),
-              lmax_beta_(-1),
-              aw_cutoff_(7.0), 
-              pw_cutoff_(20.0), 
-              gk_cutoff_(5.0), 
-              num_fv_states_(-1), 
-              num_spins_(1), 
-              num_mag_dims_(0), 
-              so_correction_(false), 
-              uj_correction_(false),
-              processing_unit_(CPU),
-              smearing_width_(0.001), 
-              cyclic_block_size_(32),
-              esm_type_(full_potential_lapwlo)
         {
             PROFILE();
-
+            set_defaults();
             import(iip__);
         }
 
         Simulation_parameters()
         {
+            PROFILE();
+            set_defaults();
         }
             
         ~Simulation_parameters()
@@ -255,12 +261,7 @@ class Simulation_parameters
             uj_correction_ = uj_correction__; 
         }
 
-        //inline void set_num_bands(int num_bands__)
-        //{
-        //    num_bands_ = num_bands__;
-        //}
-
-        inline void set_mpi_grid_dims(std::vector<int> const& mpi_grid_dims__)
+        inline void set_mpi_grid_dims(std::vector<int> mpi_grid_dims__)
         {
             mpi_grid_dims_ = mpi_grid_dims__;
         }
@@ -370,7 +371,6 @@ class Simulation_parameters
         inline int num_bands() const
         {
             return num_fv_states() * num_spins();
-            //return num_bands_;
         }
     
         inline int num_mag_dims() const

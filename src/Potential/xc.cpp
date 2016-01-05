@@ -347,8 +347,8 @@ void Potential::xc_mt(Periodic_function<double>* rho,
     for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = unit_cell_.spl_num_atoms(ialoc);
-        auto& rgrid = unit_cell_.atom(ia)->radial_grid();
-        int nmtp = unit_cell_.atom(ia)->num_mt_points();
+        auto& rgrid = unit_cell_.atom(ia).radial_grid();
+        int nmtp = unit_cell_.atom(ia).num_mt_points();
 
         /* backward transform density from Rlm to (theta, phi) */
         auto rho_tp = sht_->transform(rho->f_mt(ialoc));

@@ -61,39 +61,12 @@ void Simulation_context::initialize()
         #endif
     }
 
-    switch (parameters_.esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            parameters_.set_lmax_pw(parameters_.lmax_apw());
-            parameters_.set_lmax_apw(-1);
-            break;
-        }
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
-        {
-            parameters_.set_lmax_apw(-1);
-            parameters_.set_lmax_rho(-1);
-            parameters_.set_lmax_pot(-1);
-            break;
-        }
-    }
-
     /* check MPI grid dimensions and set a default grid if needed */
     auto mpi_grid_dims = parameters_.mpi_grid_dims();
-    if (!mpi_grid_dims.size()) 
-    {
-        mpi_grid_dims = std::vector<int>(1);
-        mpi_grid_dims[0] = comm_.size();
-    }
-    parameters_.set_mpi_grid_dims(mpi_grid_dims);
+    if (!mpi_grid_dims.size()) parameters_.set_mpi_grid_dims({comm_.size()});
 
     /* setup MPI grid */
-    mpi_grid_ = new MPI_grid(mpi_grid_dims, comm_);
+    mpi_grid_ = new MPI_grid(parameters_.mpi_grid_dims(), comm_);
 
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
@@ -156,7 +129,7 @@ void Simulation_context::initialize()
                                              parameters_.num_fft_workers());
     }
 
-    /* take 20% of empty non-magnetic states */
+    /* take 10% of empty non-magnetic states */
     if (parameters_.num_fv_states() < 0) 
     {
         int nfv = static_cast<int>(1e-8 + unit_cell_.num_valence_electrons() / 2.0) +
@@ -206,7 +179,7 @@ void Simulation_context::initialize()
 
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
-    for (int i = 0; i < 2; i++)
+    for (int i: {0, 1})
     {
         auto name = evsn[i];
 

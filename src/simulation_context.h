@@ -39,7 +39,7 @@ class Simulation_context
 {
     private:
 
-        /// Parameters of simulcaiton.
+        /// Copy of simulation parameters.
         Simulation_parameters parameters_; 
     
         /// Communicator for this simulation.
@@ -116,7 +116,6 @@ class Simulation_context
             start_time_tag_ = std::string(buf);
 
             unit_cell_.import(parameters_.unit_cell_input_section());
-
         }
 
         ~Simulation_context()
@@ -272,7 +271,7 @@ class Simulation_context
                                                                            fft_grid.limits(2).first, fft_grid.limits(2).second);
             }
         
-            for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i)->print_info();
+            for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
         
             printf("\n");
             printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
@@ -397,17 +396,6 @@ class Simulation_context
         {
             return gen_evp_solver_type_;
         }
-
-        //inline int num_fft_threads() const
-        //{
-        //    return (int)fft_.size();
-        //}
-
-        //inline int gpu_thread_id() const
-        //{
-        //    return gpu_thread_id_;
-        //}
-
 
         //== void write_json_output()
         //== {

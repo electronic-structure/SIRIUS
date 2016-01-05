@@ -978,7 +978,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
         {
             if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
-                Atom* atom = unit_cell_.atom(ia);
+                auto& atom = unit_cell_.atom(ia);
                 int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
 
                 if (lm1 == lm2)
@@ -986,7 +986,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
                     int l = kp->gklo_basis_descriptor_row(irow).l;
                     int order1 = kp->gklo_basis_descriptor_row(irow).order; 
                     int order2 = kp->gklo_basis_descriptor_col(icol).order; 
-                    o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
+                    o(irow, icol) += atom.symmetry_class().o_radial_integral(l, order1, order2);
                 }
             }
         }

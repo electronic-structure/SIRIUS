@@ -119,8 +119,8 @@ void Force::ibs_force(Simulation_context& ctx__,
         h.zero();
         o.zero();
 
-        Atom* atom = uc.atom(ia);
-        Atom_type* type = atom->type();
+        auto& atom = uc.atom(ia);
+        auto& type = atom.type();
 
         /* generate matching coefficients for current atom */
         kp__->alm_coeffs_row()->generate(ia, alm_row);
@@ -133,20 +133,20 @@ void Force::ibs_force(Simulation_context& ctx__,
         band__->apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
 
         /* conjugate row (<bra|) matching coefficients */
-        for (int i = 0; i < type->mt_aw_basis_size(); i++)
+        for (int i = 0; i < type.mt_aw_basis_size(); i++)
         {
-            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, i) = conj(alm_row(igk, i));
+            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, i) = std::conj(alm_row(igk, i));
         }
 
         /* apw-apw block of the overlap matrix */
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(), 
                           alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
             
         /* apw-apw block of the Hamiltonian matrix */
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(), 
                           alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
         
-        int iat = type->id();
+        int iat = type.id();
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
         {
@@ -282,7 +282,7 @@ void Force::total_force(Simulation_context& ctx__,
     {
         int ia = uc.spl_num_atoms(ialoc);
         auto g = gradient(potential__->hartree_potential_mt(ialoc));
-        for (int x = 0; x < 3; x++) forcehf(x, ia) = uc.atom(ia)->type()->zn() * g[x](0, 0) * y00;
+        for (int x = 0; x < 3; x++) forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
     }
     ctx__.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
 

@@ -17,7 +17,7 @@ void Potential::generate_local_potential()
         std::vector< Spline<double> > sa(unit_cell_.num_atom_types());
         
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            sa[iat] = Spline<double>(unit_cell_.atom_type(iat)->radial_grid());
+            sa[iat] = Spline<double>(unit_cell_.atom_type(iat).radial_grid());
     
         #pragma omp for
         for (int igsloc = 0; igsloc < spl_gshells.local_size(); igsloc++)
@@ -26,14 +26,14 @@ void Potential::generate_local_potential()
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = unit_cell_.atom_type(iat);
+                auto& atom_type = unit_cell_.atom_type(iat);
 
                 if (igs == 0)
                 {
-                    for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
+                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) 
                     {
-                        double x = atom_type->radial_grid(ir);
-                        sa[iat][ir] = (x * atom_type->uspp().vloc[ir] + atom_type->zn()) * x;
+                        double x = atom_type.radial_grid(ir);
+                        sa[iat][ir] = (x * atom_type.uspp().vloc[ir] + atom_type.zn()) * x;
                     }
                     vloc_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0);
                 }
@@ -41,12 +41,12 @@ void Potential::generate_local_potential()
                 {
                     double g = ctx_.gvec().shell_len(igs);
                     double g2 = std::pow(g, 2);
-                    for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
+                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) 
                     {
-                        double x = atom_type->radial_grid(ir);
-                        sa[iat][ir] = (x * atom_type->uspp().vloc[ir] + atom_type->zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                        double x = atom_type.radial_grid(ir);
+                        sa[iat][ir] = (x * atom_type.uspp().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     }
-                    vloc_radial_integrals(iat, igs) = (sa[iat].interpolate().integrate(0) / g - atom_type->zn() * std::exp(-g2 / 4) / g2);
+                    vloc_radial_integrals(iat, igs) = (sa[iat].interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
                 }
             }
         }

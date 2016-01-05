@@ -96,23 +96,23 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
                             mdarray<double_complex, 2>& alm__,
                             mdarray<double_complex, 2>& halm__)
 {
-    Atom* atom = unit_cell_.atom(ia__);
-    Atom_type* type = atom->type();
+    auto& atom = unit_cell_.atom(ia__);
+    auto& type = atom.type();
 
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is available
-    mdarray<double_complex, 2> hmt(type->mt_aw_basis_size(), type->mt_aw_basis_size());
-    for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+    mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+    for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++)
     {
-        int lm2 = type->indexb(j2).lm;
-        int idxrf2 = type->indexb(j2).idxrf;
-        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
+        int lm2 = type.indexb(j2).lm;
+        int idxrf2 = type.indexb(j2).idxrf;
+        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++)
         {
-            int lm1 = type->indexb(j1).lm;
-            int idxrf1 = type->indexb(j1).idxrf;
-            hmt(j1, j2) = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+            int lm1 = type.indexb(j1).lm;
+            int idxrf1 = type.indexb(j1).idxrf;
+            hmt(j1, j2) = atom.hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
         }
     }
-    linalg<CPU>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__, hmt, halm__);
+    linalg<CPU>::gemm(0, 1, num_gkvec__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
 }
 
 //== template <spin_block_t sblock>

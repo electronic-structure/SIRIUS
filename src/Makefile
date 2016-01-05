@@ -3,10 +3,9 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
-       radial_solver.cpp sht.cpp \
-       reciprocal_lattice.cpp step_function.cpp band.cpp potential.cpp \
+       radial_solver.cpp sht.cpp reciprocal_lattice.cpp step_function.cpp band.cpp potential.cpp \
        k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
-       real_space_prj.cpp \
+       real_space_prj.cpp fft3d.cpp communicator.cpp simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
        Unit_cell/atom.cpp \
        Unit_cell/atom_type.cpp \
        Unit_cell/atom_symmetry_class.cpp \
@@ -55,12 +54,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
-       K_point/num_occupied_bands.cpp \
-       fft3d.cpp \
-       communicator.cpp \
-       simulation_context.cpp \
-       wave_functions.cpp \
-       beta_projectors.cpp
+       K_point/num_occupied_bands.cpp
 
 OBJ = $(SRC:.cpp=.o) 
 

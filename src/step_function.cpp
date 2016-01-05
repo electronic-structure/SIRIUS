@@ -57,7 +57,7 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {            
-            double R = unit_cell_.atom_type(iat)->mt_radius();
+            double R = unit_cell_.atom_type(iat).mt_radius();
             double GR = G * R;
 
             ffac(iat, igs) = (igs) ? (sin(GR) - GR * cos(GR)) * g3inv : pow(R, 3) / 3.0;

@@ -16,55 +16,6 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     /* split G-shells between MPI ranks */
     splindex<block> spl_gshells(ctx_.gvec().num_shells(), ctx_.comm().size(), ctx_.comm().rank());
 
-    if (type__ == 5)
-    {
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-        {
-            DUMP("iat: %i, checksum(radial_grid): %18.10f %18.10f", iat, unit_cell_.atom_type(iat)->radial_grid().x().checksum(),
-                                                                    unit_cell_.atom_type(iat)->radial_grid().dx().checksum());
-        }
-        #endif
-        #ifdef __PRINT_OBJECT_HASH
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-        {
-            DUMP("iat: %i, hash(radial_grid): %16llX", iat, unit_cell_.atom_type(iat)->radial_grid().hash());
-            DUMP("iat: %i, hash(free_atom_radial_grid): %16llX", iat, unit_cell_.atom_type(iat)->free_atom_radial_grid().hash());
-        }
-        #endif
-
-        double b = 8;
-        for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++)
-        {
-            double G = ctx_.gvec().shell_len(igs);
-
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
-            {
-                int Z = unit_cell_.atom_type(iat)->zn();
-                double R = unit_cell_.atom_type(iat)->mt_radius();
-                if (igs != 0)
-                {
-                    rho_radial_integrals(iat, igs) = (std::pow(b,3)*Z*((std::pow(G,5)*(G*(2*b + (std::pow(b,2) + std::pow(G,2))*R)*std::cos(G*R) +
-                                                     (std::pow(b,2) - std::pow(G,2) + b*(std::pow(b,2) + std::pow(G,2))*R)*std::sin(G*R)))/
-                                                     std::pow(std::pow(b,2) + std::pow(G,2),2) + (G*(3 + b*R)*(G*R*(6 - std::pow(G,2)*std::pow(R,2))*std::cos(G*R) +
-                                                     3*(-2 + std::pow(G,2)*std::pow(R,2))*std::sin(G*R)))/std::pow(R,2) +
-                                                     ((2 + b*R)*((24 - 12*std::pow(G,2)*std::pow(R,2) + std::pow(G,4)*std::pow(R,4))*std::cos(G*R) -
-                                                     4*(6 + G*R*(-6 + std::pow(G,2)*std::pow(R,2))*std::sin(G*R))))/std::pow(R,3)))/
-                                                     (8.*std::exp(b*R)*std::pow(G,6)*pi);
-                }
-                else
-                {
-                    rho_radial_integrals(iat, igs) = ((60 + 60*b*R + 30*std::pow(b,2)*std::pow(R,2) + 8*std::pow(b,3)*std::pow(R,3) +
-                                                      std::pow(b,4)*std::pow(R,4))*Z)/(240.*std::exp(b*R)*pi);
-                }
-            }
-        }
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        DUMP("checksum(rho_radial_integrals): %18.10f", rho_radial_integrals.checksum());
-        #endif
-        return rho_radial_integrals;
-    }
-
     if (type__ == 4)
     {
         /* rho[r_] := Z*b^3/8/Pi*Exp[-b*r]
@@ -78,7 +29,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
             {
-                rho_radial_integrals(iat, igs) = std::pow(b, 4) * unit_cell_.atom_type(iat)->zn() / (4 * std::pow(std::pow(b, 2) + std::pow(G, 2), 2) * pi);
+                rho_radial_integrals(iat, igs) = std::pow(b, 4) * unit_cell_.atom_type(iat).zn() / (4 * std::pow(std::pow(b, 2) + std::pow(G, 2), 2) * pi);
             }
         }
         return rho_radial_integrals;
@@ -93,11 +44,11 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
             /* full potential radial integrals requre a free atom grid */
             if (type__ == 0) 
             {
-                sa[iat] = Spline<double>(unit_cell_.atom_type(iat)->free_atom_radial_grid());
+                sa[iat] = Spline<double>(unit_cell_.atom_type(iat).free_atom_radial_grid());
             }
             else
             {
-                sa[iat] = Spline<double>(unit_cell_.atom_type(iat)->radial_grid());
+                sa[iat] = Spline<double>(unit_cell_.atom_type(iat).radial_grid());
             }
         }
         
@@ -114,13 +65,13 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                auto atom_type = unit_cell_.atom_type(iat);
+                auto& atom_type = unit_cell_.atom_type(iat);
 
                 if (type__ == 0)
                 {
                     if (igs == 0)
                     {
-                        for (int ir = 0; ir < sa[iat].num_points(); ir++) sa[iat][ir] = atom_type->free_atom_density(ir);
+                        for (int ir = 0; ir < sa[iat].num_points(); ir++) sa[iat][ir] = atom_type.free_atom_density(ir);
                         rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
                     }
                     else
@@ -128,8 +79,8 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                         double G = ctx_.gvec().shell_len(igs);
                         for (int ir = 0; ir < sa[iat].num_points(); ir++) 
                         {
-                            sa[iat][ir] = atom_type->free_atom_density(ir) *
-                                          sin(G * atom_type->free_atom_radial_grid(ir)) / G;
+                            sa[iat][ir] = atom_type.free_atom_density(ir) *
+                                          std::sin(G * atom_type.free_atom_radial_grid(ir)) / G;
                         }
                         rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(1);
                     }
@@ -138,14 +89,14 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                 if (type__ == 1)
                 {
                     for (int ir = 0; ir < sa[iat].num_points(); ir++) 
-                        sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
+                        sa[iat][ir] = jl(ir, 0, iat) * atom_type.uspp().total_charge_density[ir];
                     rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
                 }
 
                 if (type__ == 2)
                 {
                     for (int ir = 0; ir < sa[iat].num_points(); ir++) 
-                        sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
+                        sa[iat][ir] = jl(ir, 0, iat) * atom_type.uspp().core_charge_density[ir];
                     rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
                 }
             }

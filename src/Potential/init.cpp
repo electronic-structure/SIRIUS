@@ -16,7 +16,7 @@ void Potential::init()
             for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++)
             {
                 gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order + 1, 
-                                       ctx_.gvec().shell_len(igs) * unit_cell_.atom_type(iat)->mt_radius(), 
+                                       ctx_.gvec().shell_len(igs) * unit_cell_.atom_type(iat).mt_radius(), 
                                        &sbessel_mt_(0, iat, igs));
             }
         }
@@ -35,12 +35,12 @@ void Potential::init()
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            sbessel_mom_(0, iat, 0) = std::pow(unit_cell_.atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
+            sbessel_mom_(0, iat, 0) = std::pow(unit_cell_.atom_type(iat).mt_radius(), 3) / 3.0; // for |G|=0
             for (int igs = 1; igs < ctx_.gvec().num_shells(); igs++)
             {
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                 {
-                    sbessel_mom_(l, iat, igs) = std::pow(unit_cell_.atom_type(iat)->mt_radius(), l + 2) * 
+                    sbessel_mom_(l, iat, igs) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) * 
                                                 sbessel_mt_(l + 1, iat, igs) / ctx_.gvec().shell_len(igs);
                 }
             }
@@ -57,7 +57,7 @@ void Potential::init()
         {
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
             {
-                long double Rl = pow(unit_cell_.atom_type(iat)->mt_radius(), l);
+                long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
 
                 int n_min = (2 * l + 3);
                 int n_max = (2 * l + 1) + (2 * pseudo_density_order + 2);

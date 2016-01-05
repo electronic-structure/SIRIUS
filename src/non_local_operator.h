@@ -56,7 +56,7 @@ class Non_local_operator
             packed_mtrx_size_ = 0;
             for (int ia = 0; ia < uc.num_atoms(); ia++)
             {   
-                int nbf = uc.atom(ia)->mt_basis_size();
+                int nbf = uc.atom(ia).mt_basis_size();
                 packed_mtrx_offset_(ia) = packed_mtrx_size_;
                 packed_mtrx_size_ += nbf * nbf;
             }
@@ -149,13 +149,13 @@ class Non_local_operator
 
         inline double_complex operator()(int xi1__, int xi2__, int ia__)
         {
-            int nbf = beta_.unit_cell().atom(ia__)->mt_basis_size();
+            int nbf = beta_.unit_cell().atom(ia__).mt_basis_size();
             return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, 0);
         }
 
         inline double_complex operator()(int xi1__, int xi2__, int ispn__, int ia__)
         {
-            int nbf = beta_.unit_cell().atom(ia__)->mt_basis_size();
+            int nbf = beta_.unit_cell().atom(ia__).mt_basis_size();
             return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
         }
 };
@@ -163,31 +163,6 @@ class Non_local_operator
 class D_operator: public Non_local_operator
 {
     public:
-
-        D_operator(Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
-        {
-            STOP();
-
-            auto& uc = beta_.unit_cell();
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-            {
-                int nbf = uc.atom(ia)->mt_basis_size();
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
-                    {
-                        //op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1) = uc.atom(ia)->d_mtrx(xi1, xi2);
-                    }
-                }
-            }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                op_.allocate_on_device();
-                op_.copy_to_device();
-            }
-            #endif
-        }
 
         D_operator(Beta_projectors& beta__, int num_mag_dims__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
         {
@@ -198,12 +173,12 @@ class D_operator: public Non_local_operator
             {
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
-                    int nbf = uc.atom(ia)->mt_basis_size();
+                    int nbf = uc.atom(ia).mt_basis_size();
                     for (int xi2 = 0; xi2 < nbf; xi2++)
                     {
                         for (int xi1 = 0; xi1 < nbf; xi1++)
                         {
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia)->d_mtrx(xi1, xi2, j);
+                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
                         }
                     }
                 }
@@ -212,7 +187,7 @@ class D_operator: public Non_local_operator
             {
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
-                    int nbf = uc.atom(ia)->mt_basis_size();
+                    int nbf = uc.atom(ia).mt_basis_size();
                     for (int xi2 = 0; xi2 < nbf; xi2++)
                     {
                         for (int xi1 = 0; xi1 < nbf; xi1++)
@@ -246,12 +221,12 @@ class Q_operator: public Non_local_operator
             auto& uc = beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++)
             {
-                int nbf = uc.atom(ia)->mt_basis_size();
+                int nbf = uc.atom(ia).mt_basis_size();
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
                     for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = uc.atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = uc.atom(ia).type().uspp().q_mtrx(xi1, xi2);
                     }
                 }
             }

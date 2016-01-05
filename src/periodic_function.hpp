@@ -67,7 +67,7 @@ void Periodic_function<T>::allocate(bool allocate_global_mt)
             for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) 
             {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
-                f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia)->radial_grid());
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
             }
         }
     }
@@ -186,9 +186,9 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
-            int nmtp = unit_cell_.atom(ia)->num_mt_points();
+            int nmtp = unit_cell_.atom(ia).num_mt_points();
             
-            Spline<T> s(unit_cell_.atom(ia)->type()->radial_grid());
+            Spline<T> s(unit_cell_.atom(ia).type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) s[ir] = f_mt<local>(0, ir, ialoc);
             mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
         }
@@ -224,8 +224,8 @@ size_t Periodic_function<T>::size()
     {
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
         {
-            size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic)->atom_type()->num_mt_points() * 
-                    unit_cell_.atom_symmetry_class(ic)->num_atoms();
+            size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points() * 
+                    unit_cell_.atom_symmetry_class(ic).num_atoms();
         }
     }
     return size;
@@ -240,7 +240,7 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            for (int i1 = 0; i1 < unit_cell_.atom(ia)->num_mt_points(); i1++)
+            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++)
             {
                 for (int i0 = 0; i0 < angular_domain_size_; i0++) mixer__->input(offset__ + n++, f_mt_(i0, i1, ia));
             }
@@ -261,7 +261,7 @@ size_t Periodic_function<T>::unpack(T const* array__)
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            for (int i1 = 0; i1 < unit_cell_.atom(ia)->num_mt_points(); i1++)
+            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++)
             {
                 for (int i0 = 0; i0 < angular_domain_size_; i0++) f_mt_(i0, i1, ia) = array__[n++];
             }

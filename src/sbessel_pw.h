@@ -54,18 +54,13 @@ class sbessel_pw
             {
                 for (int l = 0; l <= lmax_; l++)
                 {
-                    sjl_(l, iat) = Spline<T>(unit_cell_.atom_type(iat)->radial_grid());
+                    sjl_(l, iat) = Spline<T>(unit_cell_.atom_type(iat).radial_grid());
                 }
             }
         }
         
         ~sbessel_pw()
         {
-            //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            //{
-            //    for (int l = 0; l <= lmax_; l++) delete sjl_(l, iat);
-            //}
-            //sjl_.deallocate();
         }
 
         void load(double q)
@@ -73,9 +68,9 @@ class sbessel_pw
             std::vector<double> jl(lmax_ + 1);
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
-                for (int ir = 0; ir < unit_cell_.atom_type(iat)->num_mt_points(); ir++)
+                for (int ir = 0; ir < unit_cell_.atom_type(iat).num_mt_points(); ir++)
                 {
-                    double x = unit_cell_.atom_type(iat)->radial_grid(ir) * q;
+                    double x = unit_cell_.atom_type(iat).radial_grid(ir) * q;
                     gsl_sf_bessel_jl_array(lmax_, x, &jl[0]);
                     for (int l = 0; l <= lmax_; l++) sjl_(l, iat)[ir] = jl[l];
                 }
@@ -182,7 +177,7 @@ class sbessel_approx
             {
                 for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
                 {
-                    qnu_(l, iat) = build_approx_freq(qmin__, qmax__, l, unit_cell_->atom_type(iat)->mt_radius(), eps__);
+                    qnu_(l, iat) = build_approx_freq(qmin__, qmax__, l, unit_cell_->atom_type(iat).mt_radius(), eps__);
                 }
             }
 
@@ -215,7 +210,7 @@ class sbessel_approx
                         for (int jq = 0; jq <= iq; jq++)
                         {
                             A(jq, iq) = A(iq, jq) = overlap(qnu_(l, iat)[jq], qnu_(l, iat)[iq], l,
-                                                            unit_cell_->atom_type(iat)->mt_radius());
+                                                            unit_cell_->atom_type(iat).mt_radius());
                         }
 
                         for (int j = 0; j < (int)q__.size(); j++)
@@ -227,7 +222,7 @@ class sbessel_approx
                             else
                             {
                                 coeffs_(iq, j, l, iat) = overlap(qnu_(l, iat)[iq], q__[j], l, 
-                                                                 unit_cell_->atom_type(iat)->mt_radius());
+                                                                 unit_cell_->atom_type(iat).mt_radius());
                             }
                         }
                     }

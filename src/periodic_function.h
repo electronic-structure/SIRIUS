@@ -109,7 +109,7 @@ class Periodic_function
             for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
             {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
-                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_.atom(ia)->radial_grid());
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_.atom(ia).radial_grid());
             }
         }
         
@@ -213,7 +213,7 @@ class Periodic_function
                 for (int lm = 0; lm < angular_domain_size_; lm++)
                 {
                     double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / 
-                               (unit_cell_.atom(ja)->type()->radial_grid(jr + 1) - unit_cell_.atom(ja)->type()->radial_grid(jr));
+                               (unit_cell_.atom(ja).type().radial_grid(jr + 1) - unit_cell_.atom(ja).type().radial_grid(jr));
         
                     p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
                 }

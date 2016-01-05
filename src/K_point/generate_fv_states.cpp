@@ -215,8 +215,8 @@ void K_point::generate_fv_states()
             #pragma omp for
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-                int offset_wf = unit_cell_.atom(ia)->offset_wf();
+                int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
+                int offset_wf = unit_cell_.atom(ia).offset_wf();
                 alm_coeffs_->generate(ia, alm);
                 
                 /* multiply eigen-vectors and matching coefficients */
@@ -228,8 +228,8 @@ void K_point::generate_fv_states()
                 {
                     /* lo block */
                     std::memcpy(&fv_states<true>()[i][offset_wf + mt_aw_size],
-                                &(*fv_eigen_vectors_)[i][num_gkvec() + unit_cell_.atom(ia)->offset_lo()],
-                                unit_cell_.atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
+                                &(*fv_eigen_vectors_)[i][num_gkvec() + unit_cell_.atom(ia).offset_lo()],
+                                unit_cell_.atom(ia).mt_lo_basis_size() * sizeof(double_complex));
                 }
             }
             #pragma omp for

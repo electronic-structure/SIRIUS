@@ -106,10 +106,10 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
         std::vector<int> offsets(num_atoms_in_block);
         for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
         {
-            auto atom = unit_cell_.atom(ia);
-            auto type = atom->type();
+            auto& atom = unit_cell_.atom(ia);
+            auto& type = atom.type();
             offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
-            num_mt_aw += type->mt_aw_basis_size();
+            num_mt_aw += type.mt_aw_basis_size();
         }
         
         #ifdef __PRINT_OBJECT_CHECKSUM
@@ -126,15 +126,15 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                 if (ia % Platform::num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
-                    auto atom = unit_cell_.atom(ia);
-                    auto type = atom->type();
+                    auto& atom = unit_cell_.atom(ia);
+                    auto& type = atom.type();
 
-                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type->mt_aw_basis_size());
-                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
-                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type.mt_aw_basis_size());
+                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type.mt_aw_basis_size());
+                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
                     kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-                    for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
                     {
                         for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
                     }
@@ -225,10 +225,10 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
         std::vector<int> offsets(num_atoms_in_block);
         for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
         {
-            auto atom = unit_cell_.atom(ia);
-            auto type = atom->type();
+            auto& atom = unit_cell_.atom(ia);
+            auto& type = atom.type();
             offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
-            num_mt_aw += type->mt_aw_basis_size();
+            num_mt_aw += type.mt_aw_basis_size();
         }
 
         int s = iblk % 2;
@@ -241,23 +241,23 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                 if (ia % Platform::num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
-                    auto atom = unit_cell_.atom(ia);
-                    auto type = atom->type();
+                    auto& atom = unit_cell_.atom(ia);
+                    auto& type = atom.type();
 
                     mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc], s),
                                                            alm_row.at<GPU>(0, offsets[ialoc], s),
-                                                           kp__->num_gkvec_row(), type->mt_aw_basis_size());
+                                                           kp__->num_gkvec_row(), type.mt_aw_basis_size());
 
                     mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc], s),
                                                            alm_col.at<GPU>(0, offsets[ialoc], s),
-                                                           kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                                                           kp__->num_gkvec_col(), type.mt_aw_basis_size());
                     
                     mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc], s),
                                                             halm_col.at<GPU>(0, offsets[ialoc], s),
-                                                            kp__->num_gkvec_col(), type->mt_aw_basis_size());
+                                                            kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
                     kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-                    for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
                     {
                         for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
                     }
@@ -310,8 +310,8 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
 #endif
 
 void Band::set_fv_h_o_apw_lo(K_point* kp, 
-                             Atom_type* type, 
-                             Atom* atom, 
+                             Atom_type const& type, 
+                             Atom const& atom, 
                              int ia, 
                              mdarray<double_complex, 2>& alm_row, // alm_row comes conjugated 
                              mdarray<double_complex, 2>& alm_col, 
@@ -328,25 +328,25 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
         int idxrf = kp->gklo_basis_descriptor_col(icol).idxrf;
         int order = kp->gklo_basis_descriptor_col(icol).order;
         
-        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
+        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) 
         {
-            int lm1 = type->indexb(j1).lm;
-            int idxrf1 = type->indexb(j1).idxrf;
+            int lm1 = type.indexb(j1).lm;
+            int idxrf1 = type.indexb(j1).idxrf;
                     
-            double_complex zsum = gaunt_coefs_->sum_L3_gaunt(lm1, lm, atom->h_radial_integrals(idxrf, idxrf1));
+            double_complex zsum = gaunt_coefs_->sum_L3_gaunt(lm1, lm, atom.h_radial_integrals(idxrf, idxrf1));
 
-            if (abs(zsum) > 1e-14)
+            if (std::abs(zsum) > 1e-14)
             {
                 for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) h(igkloc, icol) += zsum * alm_row(igkloc, j1);
             }
         }
 
-        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+        for (int order1 = 0; order1 < (int)type.aw_descriptor(l).size(); order1++)
         {
             for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
             {
-                o(igkloc, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order) * 
-                                   alm_row(igkloc, type->indexb_by_lm_order(lm, order1));
+                o(igkloc, icol) += atom.symmetry_class().o_radial_integral(l, order1, order) * 
+                                   alm_row(igkloc, type.indexb_by_lm_order(lm, order1));
             }
         }
     }
@@ -364,14 +364,14 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
 
         memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
     
-        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
+        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) 
         {
-            int lm1 = type->indexb(j1).lm;
-            int idxrf1 = type->indexb(j1).idxrf;
+            int lm1 = type.indexb(j1).lm;
+            int idxrf1 = type.indexb(j1).idxrf;
                     
-            double_complex zsum = gaunt_coefs_->sum_L3_gaunt(lm, lm1, atom->h_radial_integrals(idxrf, idxrf1));
+            double_complex zsum = gaunt_coefs_->sum_L3_gaunt(lm, lm1, atom.h_radial_integrals(idxrf, idxrf1));
 
-            if (abs(zsum) > 1e-14)
+            if (std::abs(zsum) > 1e-14)
             {
                 for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
                     ztmp[igkloc] += zsum * alm_col(igkloc, j1);
@@ -380,12 +380,12 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
 
         for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++) h(irow, igkloc) += ztmp[igkloc]; 
 
-        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+        for (int order1 = 0; order1 < (int)type.aw_descriptor(l).size(); order1++)
         {
             for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
             {
-                o(irow, igkloc) += atom->symmetry_class()->o_radial_integral(l, order, order1) * 
-                                   alm_col(igkloc, type->indexb_by_lm_order(lm, order1));
+                o(irow, igkloc) += atom.symmetry_class().o_radial_integral(l, order, order1) * 
+                                   alm_col(igkloc, type.indexb_by_lm_order(lm, order1));
             }
         }
     }
@@ -436,18 +436,18 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
         {
             if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
-                Atom* atom = unit_cell_.atom(ia);
+                auto& atom = unit_cell_.atom(ia);
                 int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
                 int idxrf1 = kp->gklo_basis_descriptor_row(irow).idxrf; 
 
-                h(irow, icol) += gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom->h_radial_integrals(idxrf1, idxrf2));
+                h(irow, icol) += gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.h_radial_integrals(idxrf1, idxrf2));
 
                 if (lm1 == lm2)
                 {
                     int l = kp->gklo_basis_descriptor_row(irow).l;
                     int order1 = kp->gklo_basis_descriptor_row(irow).order; 
                     int order2 = kp->gklo_basis_descriptor_col(icol).order; 
-                    o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
+                    o(irow, icol) += atom.symmetry_class().o_radial_integral(l, order1, order2);
                 }
             }
         }

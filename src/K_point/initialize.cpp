@@ -110,11 +110,11 @@ void K_point::initialize()
 
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        alm_coeffs_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec(),
+        alm_coeffs_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec(),
                                                 gklo_basis_descriptors_);
-        alm_coeffs_row_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_row(),
+        alm_coeffs_row_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec_row(),
                                                     gklo_basis_descriptors_row_);
-        alm_coeffs_col_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
+        alm_coeffs_col_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
                                                     gklo_basis_descriptors_col_);
     }
 

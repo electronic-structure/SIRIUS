@@ -46,9 +46,9 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        Atom* atom = unit_cell_.atom(ia);
-        int offset = atom->offset_wf();
-        int mt_basis_size = atom->type()->mt_basis_size();
+        auto& atom = unit_cell_.atom(ia);
+        int offset = atom.offset_wf();
+        int mt_basis_size = atom.type().mt_basis_size();
         
         zm.zero();
         
@@ -56,17 +56,17 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
         #pragma omp parallel for default(shared)
         for (int j2 = 0; j2 < mt_basis_size; j2++)
         {
-            int lm2 = atom->type()->indexb(j2).lm;
-            int idxrf2 = atom->type()->indexb(j2).idxrf;
+            int lm2 = atom.type().indexb(j2).lm;
+            int idxrf2 = atom.type().indexb(j2).idxrf;
             
             for (int i = 0; i < parameters_.num_mag_dims(); i++)
             {
                 for (int j1 = 0; j1 <= j2; j1++)
                 {
-                    int lm1 = atom->type()->indexb(j1).lm;
-                    int idxrf1 = atom->type()->indexb(j1).idxrf;
+                    int lm1 = atom.type().indexb(j1).lm;
+                    int idxrf1 = atom.type().indexb(j1).idxrf;
 
-                    zm(j1, j2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom->b_radial_integrals(idxrf1, idxrf2, i)); 
+                    zm(j1, j2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i)); 
                 }
             }
         }

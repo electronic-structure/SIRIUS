@@ -34,15 +34,15 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_.atom_type(iat);
-        int nbf = atom_type->mt_basis_size();
+        auto& atom_type = unit_cell_.atom_type(iat);
+        int nbf = atom_type.mt_basis_size();
 
-        mdarray<double_complex, 3> d_mtrx_packed(atom_type->num_atoms(), nbf * nbf, ndm);
+        mdarray<double_complex, 3> d_mtrx_packed(atom_type.num_atoms(), nbf * nbf, ndm);
         if (parameters_.num_mag_dims() == 0)
         {
-            for (int i = 0; i < atom_type->num_atoms(); i++)
+            for (int i = 0; i < atom_type.num_atoms(); i++)
             {
-                int ia = atom_type->atom_id(i);
+                int ia = atom_type.atom_id(i);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
@@ -55,9 +55,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         }
         if (parameters_.num_mag_dims() == 1)
         {
-            for (int i = 0; i < atom_type->num_atoms(); i++)
+            for (int i = 0; i < atom_type.num_atoms(); i++)
             {
-                int ia = atom_type->atom_id(i);
+                int ia = atom_type.atom_id(i);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
@@ -71,16 +71,16 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         }
         #pragma omp parallel
         {
-            mdarray<double_complex, 2> phase_factors(spl_ngv_loc.local_size(), atom_type->num_atoms());
+            mdarray<double_complex, 2> phase_factors(spl_ngv_loc.local_size(), atom_type.num_atoms());
             
             mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * nbf);
     
             int thread_id = Platform::thread_id();
             
             //double t = -omp_get_wtime();
-            for (int i = 0; i < atom_type->num_atoms(); i++)
+            for (int i = 0; i < atom_type.num_atoms(); i++)
             {
-                int ia = atom_type->atom_id(i);
+                int ia = atom_type.atom_id(i);
 
                 for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
                 {
@@ -93,7 +93,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
             //timers(0, thread_id) += t;
 
             //t = -omp_get_wtime();
-            linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type->num_atoms(),
+            linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type.num_atoms(),
                               &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 0), d_mtrx_packed.ld(), 
                               &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
             //t += omp_get_wtime();
@@ -111,7 +111,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
                     /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
                     rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                                                   atom_type->uspp().q_pw(igloc, idx12 + xi2);
+                                                   atom_type.uspp().q_pw(igloc, idx12 + xi2);
 
                 }
                 /* add non-diagonal terms */
@@ -122,17 +122,17 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                         int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
                         
                         /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
+                        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
 
                         /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type->uspp().q_pw(igloc, idx12));
+                        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
                     }
                 }
             }
 
             if (parameters_.num_mag_dims() == 1)
             {
-                linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type->num_atoms(),
+                linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type.num_atoms(),
                                   &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 1), d_mtrx_packed.ld(), 
                                   &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
 
@@ -147,7 +147,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                         int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
                         /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
                         magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                                                                    atom_type->uspp().q_pw(igloc, idx12 + xi2);
+                                                                    atom_type.uspp().q_pw(igloc, idx12 + xi2);
 
                     }
                     /* add non-diagonal terms */
@@ -158,10 +158,10 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                             int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
                             
                             /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type->uspp().q_pw(igloc, idx12);
+                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
 
                             /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type->uspp().q_pw(igloc, idx12));
+                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
                         }
                     }
                 }
@@ -225,9 +225,9 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-         auto type = unit_cell_.atom_type(iat);
-         type->uspp().q_pw.allocate_on_device();
-         type->uspp().q_pw.copy_to_device();
+         auto& type = unit_cell_.atom_type(iat);
+         type.uspp().q_pw.allocate_on_device();
+         type.uspp().q_pw.copy_to_device();
     }
 
     /* split G-vectors between ranks */
@@ -247,15 +247,15 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto type = unit_cell_.atom_type(iat);
-        int nbf = type->mt_basis_size();
+        auto& type = unit_cell_.atom_type(iat);
+        int nbf = type.mt_basis_size();
 
-        mdarray<double_complex, 2> d_mtrx_packed(nbf * nbf, type->num_atoms());
-        mdarray<double, 2> atom_pos(type->num_atoms(), 3);
+        mdarray<double_complex, 2> d_mtrx_packed(nbf * nbf, type.num_atoms());
+        mdarray<double, 2> atom_pos(type.num_atoms(), 3);
         #pragma omp parallel for
-        for (int i = 0; i < type->num_atoms(); i++)
+        for (int i = 0; i < type.num_atoms(); i++)
         {
-            int ia = type->atom_id(i);
+            int ia = type.atom_id(i);
 
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
@@ -264,7 +264,8 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
                     d_mtrx_packed(xi2 * nbf + xi1, i) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
-            for (int x = 0; x < 3; x++) atom_pos(i, x) = unit_cell_.atom(ia)->position(x);
+            auto pos = unit_cell_.atom(ia).position();
+            for (int x = 0; x < 3; x++) atom_pos(i, x) = pos[x];
         }
         d_mtrx_packed.allocate_on_device();
         d_mtrx_packed.copy_to_device();
@@ -275,7 +276,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         d_mtrx_pw.allocate_on_device();
         d_mtrx_pw.zero_on_device();
 
-        generate_d_mtrx_pw_gpu(type->num_atoms(),
+        generate_d_mtrx_pw_gpu(type.num_atoms(),
                                (int)spl_gvec.local_size(),
                                nbf,
                                atom_pos.at<GPU>(),
@@ -285,7 +286,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
         sum_q_pw_d_mtrx_pw_gpu((int)spl_gvec.local_size(), 
                                nbf,
-                               type->uspp().q_pw.at<GPU>(),
+                               type.uspp().q_pw.at<GPU>(),
                                d_mtrx_pw.at<GPU>(),
                                rho_pw_gpu.at<GPU>());
     }
@@ -296,7 +297,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
     
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->uspp().q_pw.deallocate_on_device();
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).uspp().q_pw.deallocate_on_device();
 }
 #endif
 

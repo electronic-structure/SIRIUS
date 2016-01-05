@@ -265,7 +265,7 @@ class Unit_cell
         {
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                auto vd = atom(ia)->position() - position__;
+                auto vd = atom(ia).position() - position__;
                 if (vd.length() < 1e-10) return ia;
             }
             return -1;
@@ -287,52 +287,81 @@ class Unit_cell
         {
             return omega_;
         }
-        
-        /// Pointer to atom by atom id.
-        inline Atom* atom(int id__) const
-        {
-            assert(id__ >= 0 && id__ < (int)atoms_.size());
-            return atoms_[id__];
-        }
-        
+
         /// Number of atom types.
         inline int num_atom_types() const
         {
             assert(atom_types_.size() == atom_type_id_map_.size());
 
-            return (int)atom_types_.size();
+            return static_cast<int>(atom_types_.size());
         }
 
-        /// Pointer to atom type by label.
-        inline Atom_type* atom_type(std::string const label)
-        {
-            return atom_types_[atom_type_id_map_[label]];
-        }
-
-        /// Pointer to atom type by internal id.
-        inline Atom_type* atom_type(int id__) const
+        /// Return atom type instance by id.
+        inline Atom_type& atom_type(int id__)
         {
             assert(id__ >= 0 && id__ < (int)atom_types_.size());
-            return atom_types_[id__];
+            return (*atom_types_[id__]);
         }
-       
+
+        /// Return const atom type instance by id.
+        inline Atom_type const& atom_type(int id__) const
+        {
+            assert(id__ >= 0 && id__ < (int)atom_types_.size());
+            return (*atom_types_[id__]);
+        }
+
+        /// Return atom type instance by label.
+        inline Atom_type& atom_type(std::string const label__)
+        {
+            int id = const_cast<std::map<std::string, int>&>(atom_type_id_map_)[label__];
+            return atom_type(id);
+        }
+
+        /// Return atom type instance by label.
+        inline Atom_type const& atom_type(std::string const label__) const
+        {
+            int id = const_cast<std::map<std::string, int>&>(atom_type_id_map_)[label__];
+            return atom_type(id);
+        }
+
         /// Number of atom symmetry classes.
         inline int num_atom_symmetry_classes() const
         {
-            return (int)atom_symmetry_classes_.size();
+            return static_cast<int>(atom_symmetry_classes_.size());
         }
        
-        /// Pointer to symmetry class by class id.
-        inline Atom_symmetry_class* atom_symmetry_class(int id)
+        /// Return const symmetry class instance by class id.
+        inline Atom_symmetry_class const& atom_symmetry_class(int id__) const
         {
-            return atom_symmetry_classes_[id];
+            return (*atom_symmetry_classes_[id__]);
         }
 
-        inline Atom_symmetry_class const* atom_symmetry_class(int id) const
+        /// Return symmetry class instance by class id.
+        inline Atom_symmetry_class& atom_symmetry_class(int id__)
         {
-            return atom_symmetry_classes_[id];
+            return (*atom_symmetry_classes_[id__]);
+        }
+
+        /// Number of atoms in the unit cell.
+        inline int num_atoms() const
+        {
+            return static_cast<int>(atoms_.size());
         }
         
+        /// Return const atom instance by id.
+        inline Atom const& atom(int id__) const
+        {
+            assert(id__ >= 0 && id__ < (int)atoms_.size());
+            return (*atoms_[id__]);
+        }
+
+        /// Return atom instance by id.
+        inline Atom& atom(int id__)
+        {
+            assert(id__ >= 0 && id__ < (int)atoms_.size());
+            return (*atoms_[id__]);
+        }
+       
         /// Total number of electrons (core + valence)
         inline double num_electrons() const
         {
@@ -351,12 +380,6 @@ class Unit_cell
             return num_core_electrons_;
         }
         
-        /// Number of atoms in the unit cell.
-        inline int num_atoms() const
-        {
-            return static_cast<int>(atoms_.size());
-        }
-       
         /// Maximum number of muffin-tin points across all atom types
         inline int max_num_mt_points() const
         {

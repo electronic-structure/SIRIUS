@@ -49,21 +49,21 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_.atom_type(iat);
-        int nbf = atom_type->mt_basis_size();
+        auto& atom_type = unit_cell_.atom_type(iat);
+        int nbf = atom_type.mt_basis_size();
         matrix<double_complex> d_sum(nbf, nbf);
         d_sum.zero();
 
-        for (int i = 0; i < atom_type->num_atoms(); i++)
+        for (int i = 0; i < atom_type.num_atoms(); i++)
         {
-            int ia = atom_type->atom_id(i);
+            int ia = atom_type.atom_id(i);
         
             for (int xi2 = 0; xi2 < nbf; xi2++)
                 for (int xi1 = 0; xi1 < nbf; xi1++) 
                     d_sum(xi1, xi2) += d_op__(xi1, xi2, ispn__, ia);
         }
 
-        int offs = unit_cell_.atom_type(iat)->offset_lo();
+        int offs = unit_cell_.atom_type(iat).offset_lo();
         for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
             for (int xi = 0; xi < nbf; xi++)
                 beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);
@@ -99,22 +99,22 @@ std::vector<double> Band::get_o_diag(K_point* kp__,
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_.atom_type(iat);
-        int nbf = atom_type->mt_basis_size();
+        auto& atom_type = unit_cell_.atom_type(iat);
+        int nbf = atom_type.mt_basis_size();
 
         matrix<double_complex> q_sum(nbf, nbf);
         q_sum.zero();
         
-        for (int i = 0; i < atom_type->num_atoms(); i++)
+        for (int i = 0; i < atom_type.num_atoms(); i++)
         {
-            int ia = atom_type->atom_id(i);
+            int ia = atom_type.atom_id(i);
         
             for (int xi2 = 0; xi2 < nbf; xi2++)
                 for (int xi1 = 0; xi1 < nbf; xi1++) 
                     q_sum(xi1, xi2) += q_op__(xi1, xi2, ia);
         }
 
-        int offs = unit_cell_.atom_type(iat)->offset_lo();
+        int offs = unit_cell_.atom_type(iat).offset_lo();
         for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
             for (int xi = 0; xi < nbf; xi++)
                 beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);

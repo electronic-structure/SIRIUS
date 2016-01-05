@@ -26,7 +26,7 @@ void Potential::poisson_sum_G(int lmmax__,
     int ngv_loc = (int)spl_num_gvec_.local_size();
 
     int na_max = 0;
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) na_max = std::max(na_max, unit_cell_.atom_type(iat)->num_atoms());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
     
     matrix<double_complex> phase_factors(ngv_loc, na_max);
     matrix<double_complex> zm(lmmax__, ngv_loc);
@@ -36,14 +36,14 @@ void Potential::poisson_sum_G(int lmmax__,
     {
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            int na = unit_cell_.atom_type(iat)->num_atoms();
+            int na = unit_cell_.atom_type(iat).num_atoms();
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
                 int ig = (int)spl_num_gvec_[igloc];
                 for (int i = 0; i < na; i++)
                 {
-                    int ia = unit_cell_.atom_type(iat)->atom_id(i);
+                    int ia = unit_cell_.atom_type(iat).atom_id(i);
                     phase_factors(igloc, i) = rl->gvec_phase_factor(ig, ia);
                 }
                 for (int lm = 0; lm < lmmax__; lm++)
@@ -57,7 +57,7 @@ void Potential::poisson_sum_G(int lmmax__,
                               tmp.at<CPU>(), tmp.ld());
             for (int i = 0; i < na; i++)
             {
-                int ia = unit_cell_.atom_type(iat)->atom_id(i);
+                int ia = unit_cell_.atom_type(iat).atom_id(i);
                 for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
             }
         }
@@ -83,13 +83,14 @@ void Potential::poisson_sum_G(int lmmax__,
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            int na = unit_cell_.atom_type(iat)->num_atoms();
+            int na = unit_cell_.atom_type(iat).num_atoms();
             
             mdarray<double, 2> atom_pos(3, na);
             for (int i = 0; i < na; i++)
             {
-                int ia = unit_cell_.atom_type(iat)->atom_id(i);
-                for (int x = 0; x < 3; x++) atom_pos(x, i) = unit_cell_.atom(ia)->position(x);
+                int ia = unit_cell_.atom_type(iat).atom_id(i);
+                auto pos = unit_cell_.atom(ia).position();
+                for (int x = 0; x < 3; x++) atom_pos(x, i) = pos[x];
             }
             atom_pos.allocate_on_device();
             atom_pos.copy_to_device();
@@ -113,7 +114,7 @@ void Potential::poisson_sum_G(int lmmax__,
             tmp.copy_to_host();
             for (int i = 0; i < na; i++)
             {
-                int ia = unit_cell_.atom_type(iat)->atom_id(i);
+                int ia = unit_cell_.atom_type(iat).atom_id(i);
                 for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
             }
         }
@@ -147,9 +148,9 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int iat = unit_cell_.atom(ia)->type_id();
+            int iat = unit_cell_.atom(ia).type_id();
 
-            double R = unit_cell_.atom(ia)->mt_radius();
+            double R = unit_cell_.atom(ia).mt_radius();
 
             /* compute G-vector independent prefactor */
             std::vector<double_complex> zp(parameters_.lmmax_rho());
@@ -190,10 +191,10 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
 
         /* add pseudo_density to interstitial charge density;
          * now rho(G) has the correct multipole moments in the muffin-tins */
-        for (int igloc_t = 0; igloc_t < (int)spl_gv_t.local_size(); igloc_t++)
+        for (int igloc_t = 0; igloc_t < spl_gv_t.local_size(); igloc_t++)
         {
-            int igloc = (int)spl_gv_t[igloc_t];
-            int ig = (int)spl_num_gvec_[igloc];
+            int igloc = spl_gv_t[igloc_t];
+            int ig = spl_num_gvec_[igloc];
             rho_pw[ig] += pseudo_pw_t[igloc_t];
         }
     }
@@ -213,8 +214,8 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
     {
         int ia = unit_cell_.spl_num_atoms(ialoc);
 
-        double R = unit_cell_.atom(ia)->mt_radius();
-        int nmtp = unit_cell_.atom(ia)->num_mt_points();
+        double R = unit_cell_.atom(ia).mt_radius();
+        int nmtp = unit_cell_.atom(ia).num_mt_points();
 
         std::vector<double> qmt(parameters_.lmmax_rho(), 0);
        
@@ -241,7 +242,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                     double d2 = 1.0 / double(2 * l + 1); 
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        double r = unit_cell_.atom(ia)->radial_grid(ir);
+                        double r = unit_cell_.atom(ia).radial_grid(ir);
 
                         double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
                                       (g2[nmtp - 1] - g2[ir]) * std::pow(r, l) - (g1[nmtp - 1] - g1[ir]) * std::pow(r, l) * d1;
@@ -254,16 +255,12 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
 
         SHT::convert(parameters_.lmax_rho(), &qmt[0], &qmt__(0, ia));
 
-        /* constant part of nuclear potential */
+        /* constant part of nuclear potential -z*(1/r - 1/R) */
         for (int ir = 0; ir < nmtp; ir++)
-        {
-            //double r = unit_cell_.atom(ia)->radial_grid(ir);
-            //vh_ylm[ialoc](0, ir) -= unit_cell_.atom(ia)->zn() * (1 / r - 1 / R) / y00;
-            vh__->f_mt(ialoc)(0, ir) += unit_cell_.atom(ia)->zn() / R / y00;
-        }
+            vh__->f_mt(ialoc)(0, ir) += unit_cell_.atom(ia).zn() / R / y00;
 
         /* nuclear multipole moment */
-        qmt__(0, ia) -= unit_cell_.atom(ia)->zn() * y00;
+        qmt__(0, ia) -= unit_cell_.atom(ia).zn() * y00;
     }
 
     ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
@@ -357,19 +354,19 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
-            int nmtp = unit_cell_.atom(ia)->num_mt_points();
+            int nmtp = unit_cell_.atom(ia).num_mt_points();
 
-            if (unit_cell_.atom(ia)->type_id() != type_id_prev)
+            if (unit_cell_.atom(ia).type_id() != type_id_prev)
             {
-                type_id_prev = unit_cell_.atom(ia)->type_id();
+                type_id_prev = unit_cell_.atom(ia).type_id();
             
-                double R = unit_cell_.atom(ia)->mt_radius();
+                double R = unit_cell_.atom(ia).mt_radius();
 
                 #pragma omp parallel for default(shared)
                 for (int l = 0; l <= parameters_.lmax_pot(); l++)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        rRl(ir, l) = std::pow(unit_cell_.atom(ia)->type()->radial_grid(ir) / R, l);
+                        rRl(ir, l) = std::pow(unit_cell_.atom(ia).type().radial_grid(ir) / R, l);
                 }
             }
 
@@ -411,15 +408,15 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
-            auto atom = unit_cell_.atom(ia);
-            Spline<double> srho(atom->radial_grid());
-            for (int ir = 0; ir < atom->num_mt_points(); ir++)
+            auto& atom = unit_cell_.atom(ia);
+            Spline<double> srho(atom.radial_grid());
+            for (int ir = 0; ir < atom.num_mt_points(); ir++)
             {
-                double r = atom->radial_grid(ir);
-                hartree_potential_->f_mt<local>(0, ir, ialoc) -= atom->zn() / r / y00;
+                double r = atom.radial_grid(ir);
+                hartree_potential_->f_mt<local>(0, ir, ialoc) -= atom.zn() / r / y00;
                 srho[ir] = rho->f_mt<local>(0, ir, ialoc);
             }
-            evha_nuc_ -= atom->zn() * srho.interpolate().integrate(1) / y00;
+            evha_nuc_ -= atom.zn() * srho.interpolate().integrate(1) / y00;
         }
         ctx_.comm().allreduce(&evha_nuc_, 1);
         energy_vha_ += evha_nuc_;

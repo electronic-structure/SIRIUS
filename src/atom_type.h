@@ -353,12 +353,6 @@ class Atom_type
 
         bool initialized_;
        
-        /* forbid copy constructor */
-        Atom_type(const Atom_type& src) = delete;
-        
-        /* forbid assignment operator */
-        Atom_type& operator=(const Atom_type& src) = delete;
-        
         void read_input_core(JSON_tree& parser);
 
         void read_input_aw(JSON_tree& parser);
@@ -369,6 +363,12 @@ class Atom_type
     
         void init_aw_descriptors(int lmax);
     
+        /* forbid copy constructor */
+        Atom_type(const Atom_type& src) = delete;
+        
+        /* forbid assignment operator */
+        Atom_type& operator=(const Atom_type& src) = delete;
+        
     protected:
 
         /// Radial grid.
@@ -400,7 +400,7 @@ class Atom_type
 
         ~Atom_type();
         
-        void init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_lo__);
+        void init(int offset_lo__);
 
         void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
 
@@ -416,7 +416,7 @@ class Atom_type
 
         void init_free_atom(bool smooth);
 
-        void print_info();
+        void print_info() const;
         
         void fix_q_radial_function(int l, int i, int j, double* qrf);
         
@@ -627,6 +627,11 @@ class Atom_type
             return uspp_;
         }
 
+        inline uspp_descriptor const& uspp() const
+        {
+            return uspp_;
+        }
+
         inline void set_symbol(const std::string symbol__)
         {
             symbol_ = symbol__;
@@ -706,8 +711,8 @@ class Atom_type
 
         inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
         {
-            uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
-            d_mtrx_ion__ >> uspp().d_mtrx_ion;
+            uspp_.d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
+            d_mtrx_ion__ >> uspp_.d_mtrx_ion;
         }
 
         inline mdarray<int, 2> const& idx_radial_integrals() const

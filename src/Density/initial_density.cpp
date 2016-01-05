@@ -15,7 +15,7 @@ void Density::initial_density()
         splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
         /* initialize smooth density of free atoms */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(true);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(true);
 
         /* compute radial integrals */
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
@@ -101,7 +101,7 @@ void Density::initial_density()
         #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int iat = unit_cell_.atom(ia)->type_id();
+            int iat = unit_cell_.atom(ia).type_id();
 
             /* loop over local fraction of G-shells */
             for (int i = 0; i < static_cast<int>(gsh_list.size()); i++)
@@ -145,9 +145,9 @@ void Density::initial_density()
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
-            int iat = unit_cell_.atom(ia)->type_id();
+            int iat = unit_cell_.atom(ia).type_id();
 
-            Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia)->radial_grid());
+            Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia).radial_grid());
             rhoylm.zero();
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++)
@@ -157,17 +157,17 @@ void Density::initial_density()
                 {
                     double qnu = sba.qnu(iq, l, iat);
 
-                    for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
+                    for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
                     {
-                        double x = unit_cell_.atom(ia)->radial_grid(ir);
+                        double x = unit_cell_.atom(ia).radial_grid(ir);
                         rhoylm(lm, ir) += znulm(iq, lm, ia) * gsl_sf_bessel_jl(l, x * qnu);
                     }
                 }
             }
-            for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
+            for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
             {
-                double x = unit_cell_.atom(ia)->radial_grid(ir);
-                rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia)->type()->free_atom_density(x)) / y00;
+                double x = unit_cell_.atom(ia).radial_grid(ir);
+                rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
             }
             sht.convert(rhoylm, rho_->f_mt(ialoc));
         }
@@ -175,7 +175,7 @@ void Density::initial_density()
         t4.stop();
 
         /* initialize density of free atoms (not smoothed) */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat)->init_free_atom(false);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(false);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
@@ -184,11 +184,10 @@ void Density::initial_density()
             if (p.second == ctx_.comm().rank())
             {
                 /* add density of a free atom */
-                for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
+                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
                 {
-                    double x = unit_cell_.atom(ia)->type()->radial_grid(ir);
-                    rho_->f_mt<local>(0, ir, (int)p.first) += unit_cell_.atom(ia)->type()->free_atom_density(x) / y00;
-                    //rho_->f_mt<local>(0, ir, (int)p.first) += Z * std::pow(b, 3) * std::exp(-b * x) / 8 / pi / y00;
+                    double x = unit_cell_.atom(ia).type().radial_grid(ir);
+                    rho_->f_mt<local>(0, ir, (int)p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
                 }
             }
         }
@@ -199,15 +198,15 @@ void Density::initial_density()
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
             {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
-                vector3d<double> v = unit_cell_.atom(ia)->vector_field();
+                vector3d<double> v = unit_cell_.atom(ia).vector_field();
                 double len = v.length();
 
-                int nmtp = unit_cell_.atom(ia)->type()->num_mt_points();
-                Spline<double> rho(unit_cell_.atom(ia)->type()->radial_grid());
-                double R = unit_cell_.atom(ia)->type()->mt_radius();
+                int nmtp = unit_cell_.atom(ia).num_mt_points();
+                Spline<double> rho(unit_cell_.atom(ia).type().radial_grid());
+                double R = unit_cell_.atom(ia).mt_radius();
                 for (int ir = 0; ir < nmtp; ir++)
                 {
-                    double x = unit_cell_.atom(ia)->type()->radial_grid(ir);
+                    double x = unit_cell_.atom(ia).type().radial_grid(ir);
                     rho[ir] = rho_->f_mt<local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
                 }
 
@@ -305,8 +304,8 @@ void Density::initial_density()
         //== fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
         //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         //== {
-        //==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia)->position());
-        //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia)->zn(), pos[0], pos[1], pos[2]);
+        //==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
+        //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
         //== }
         //== fclose(fout);
 
@@ -316,7 +315,7 @@ void Density::initial_density()
         {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                vector3d<double> v = unit_cell_.atom(ia)->vector_field();
+                vector3d<double> v = unit_cell_.atom(ia).vector_field();
                 //double len = v.length();
 
                 for (int j0 = 0; j0 < ctx_.fft(0)->grid().size(0); j0++)
@@ -338,7 +337,7 @@ void Density::initial_density()
                                 {
                                     for (int t2 = -1; t2 <= 1; t2++)
                                     {
-                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia)->position() + vector3d<double>(t0, t1, t2));
+                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
                                         auto r = unit_cell_.get_cartesian_coordinates(v1);
                                         auto a = r.length();
 

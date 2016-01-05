@@ -63,7 +63,7 @@ void Unit_cell::add_atom(const std::string label, vector3d<double> position, vec
     }
 
     atoms_.push_back(new Atom(atom_type(label), position, vector_field));
-    atom_type(label)->add_atom_id(static_cast<int>(atoms_.size()) - 1);
+    const_cast<Atom_type&>(atom_type(label)).add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 
 void Unit_cell::add_atom(const std::string label, vector3d<double> position)
@@ -83,7 +83,7 @@ void Unit_cell::get_symmetry()
         for (int ic = 0; ic < (int)atom_symmetry_classes_.size(); ic++) delete atom_symmetry_classes_[ic];
         atom_symmetry_classes_.clear();
 
-        for (int ia = 0; ia < num_atoms(); ia++) atom(ia)->set_symmetry_class(NULL);
+        for (int ia = 0; ia < num_atoms(); ia++) const_cast<Atom&>(atom(ia)).set_symmetry_class(nullptr);
     }
 
     if (symmetry_ != nullptr)
@@ -96,13 +96,14 @@ void Unit_cell::get_symmetry()
     std::vector<int> types(num_atoms());
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        auto vf = atom(ia)->vector_field();
-        for (int x = 0; x < 3; x++)
+        auto vp = atom(ia).position();
+        auto vf = atom(ia).vector_field();
+        for (int x: {0, 1, 2})
         {
-            positions(x, ia) = atom(ia)->position(x);
+            positions(x, ia) = vp[x];
             spins(x, ia) = vf[x];
         }
-        types[ia] = atom(ia)->type_id();
+        types[ia] = atom(ia).type_id();
     }
     
     symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, 1e-4);
@@ -114,7 +115,7 @@ void Unit_cell::get_symmetry()
     for (int i = 0; i < num_atoms(); i++)
     {
         /* if symmetry class is not assigned to this atom */
-        if (!atoms_[i]->symmetry_class())
+        if (atom(i).symmetry_class_id() == -1)
         {
             /* take next id */
             atom_class_id++;
@@ -146,7 +147,7 @@ std::vector<double> Unit_cell::find_mt_radii()
     
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        int id1 = atom(ia)->type_id();
+        int id1 = atom(ia).type_id();
         if (nearest_neighbours_[ia].size() > 1)
         {
             /* don't allow spheres to touch: take a smaller value than half a distance */
@@ -173,12 +174,12 @@ std::vector<double> Unit_cell::find_mt_radii()
         std::vector<bool> scale_Rmt(num_atom_types(), true);
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            int id1 = atom(ia)->type_id();
+            int id1 = atom(ia).type_id();
 
             if (nearest_neighbours_[ia].size() > 1)
             {
                 int ja = nearest_neighbours_[ia][1].atom_id;
-                int id2 = atom(ja)->type_id();
+                int id2 = atom(ja).type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
             
                 if (Rmt[id1] + Rmt[id2] > dist * 0.94)
@@ -191,11 +192,11 @@ std::vector<double> Unit_cell::find_mt_radii()
 
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            int id1 = atom(ia)->type_id();
+            int id1 = atom(ia).type_id();
             if (nearest_neighbours_[ia].size() > 1)
             {
                 int ja = nearest_neighbours_[ia][1].atom_id;
-                int id2 = atom(ja)->type_id();
+                int id2 = atom(ja).type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
                 
                 if (scale_Rmt[id1]) Rmt[id1] = 0.95 * (dist - Rmt[id2]);
@@ -215,7 +216,7 @@ std::vector<double> Unit_cell::find_mt_radii()
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
     if (num_atoms() != 0 && nearest_neighbours_.size() == 0) 
-        error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
+        TERMINATE("array of nearest neighbours is empty");
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -223,13 +224,13 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
         {
             std::stringstream s;
             s << "array of nearest neighbours for atom " << ia << " is empty";
-            error_local(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
 
         int ja = nearest_neighbours_[ia][1].atom_id;
         double dist = nearest_neighbours_[ia][1].distance;
         
-        if ((atom(ia)->type()->mt_radius() + atom(ja)->type()->mt_radius()) > dist)
+        if ((atom(ia).mt_radius() + atom(ja).mt_radius()) > dist)
         {
             ia__ = ia;
             ja__ = ja;
@@ -270,13 +271,13 @@ void Unit_cell::initialize()
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(iat)->init(parameters_.lmax_apw(), parameters_.lmax_pot(), parameters_.num_mag_dims(), offs_lo);
-        max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
-        max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
-        max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
-        max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom_type(iat)->mt_aw_basis_size());
-        lmax_beta_ = std::max(lmax_beta_, atom_type(iat)->indexr().lmax());
-        offs_lo += atom_type(iat)->mt_lo_basis_size(); 
+        const_cast<Atom_type&>(atom_type(iat)).init(offs_lo);
+        max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
+        max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
+        max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
+        max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
+        lmax_beta_ = std::max(lmax_beta_, atom_type(iat).indexr().lmax());
+        offs_lo += atom_type(iat).mt_lo_basis_size(); 
     }
     
     /* find the charges */
@@ -285,9 +286,9 @@ void Unit_cell::initialize()
     num_valence_electrons_ = 0;
     for (int i = 0; i < num_atoms(); i++)
     {
-        total_nuclear_charge_ += atom(i)->type()->zn();
-        num_core_electrons_ += atom(i)->type()->num_core_electrons();
-        num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
+        total_nuclear_charge_ += atom(i).zn();
+        num_core_electrons_ += atom(i).type().num_core_electrons();
+        num_valence_electrons_ += atom(i).type().num_valence_electrons();
     }
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
     
@@ -297,19 +298,18 @@ void Unit_cell::initialize()
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        atom(ia)->init(parameters_.lmax_pot(), parameters_.num_mag_dims(), mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
-        mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
-        mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
-        mt_basis_size_ += atom(ia)->type()->mt_basis_size();
+        const_cast<Atom&>(atom(ia)).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
+        mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
+        mt_basis_size_ += atom(ia).mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
     
-    vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
-    vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
-    vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
+    auto v0 = lattice_vector(0);
+    auto v1 = lattice_vector(1);
+    auto v2 = lattice_vector(2);
 
-    //== find_nearest_neighbours(v0.length() + v1.length() + v2.length());
     double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
     find_nearest_neighbours(r);
 
@@ -321,8 +321,8 @@ void Unit_cell::initialize()
             std::vector<double> Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) 
             {
-                atom_type(iat)->set_mt_radius(Rmt[iat]);
-                atom_type(iat)->set_radial_grid();
+                const_cast<Atom_type&>(atom_type(iat)).set_mt_radius(Rmt[iat]);
+                const_cast<Atom_type&>(atom_type(iat)).set_radial_grid();
             }
         }
         
@@ -330,20 +330,20 @@ void Unit_cell::initialize()
         if (check_mt_overlap(ia, ja))
         {
             std::stringstream s;
-            s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia)->type()->symbol() << ")" << " and " 
-              << ja << "(" << atom(ja)->type()->symbol() << ")" << std::endl 
-              << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
-              << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius() << std::endl
+            s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")" << " and " 
+              << ja << "(" << atom(ja).type().symbol() << ")" << std::endl 
+              << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
+              << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
               << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-            error_local(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
         
         min_mt_radius_ = 1e100;
         max_mt_radius_ = 0;
         for (int i = 0; i < num_atom_types(); i++)
         {
-             min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
-             max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
+             min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
+             max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
         }
     }
     
@@ -356,7 +356,7 @@ void Unit_cell::initialize()
     {
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            volume_mt_ += fourpi * pow(atom(ia)->mt_radius(), 3) / 3.0; 
+            volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0; 
         }
     }
     
@@ -365,7 +365,7 @@ void Unit_cell::initialize()
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
     for (int ia = 0, n = 0; ia < num_atoms(); ia++)
     {
-        for (int xi = 0; xi < atom(ia)->mt_aw_basis_size(); xi++, n++)
+        for (int xi = 0; xi < atom(ia).mt_aw_basis_size(); xi++, n++)
         {
             mt_aw_basis_descriptors_[n].ia = ia;
             mt_aw_basis_descriptors_[n].xi = xi;
@@ -375,7 +375,7 @@ void Unit_cell::initialize()
     mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
     for (int ia = 0, n = 0; ia < num_atoms(); ia++)
     {
-        for (int xi = 0; xi < atom(ia)->mt_lo_basis_size(); xi++, n++)
+        for (int xi = 0; xi < atom(ia).mt_lo_basis_size(); xi++, n++)
         {
             mt_lo_basis_descriptors_[n].ia = ia;
             mt_lo_basis_descriptors_[n].xi = xi;
@@ -414,9 +414,9 @@ void Unit_cell::print_info()
     printf("number of atom types : %i\n", num_atom_types());
     for (int i = 0; i < num_atom_types(); i++)
     {
-        int id = atom_type(i)->id();
-        printf("type id : %i   symbol : %2s   mt_radius : %10.6f\n", id, atom_type(i)->symbol().c_str(), 
-                                                                         atom_type(i)->mt_radius()); 
+        int id = atom_type(i).id();
+        printf("type id : %i   symbol : %2s   mt_radius : %10.6f\n", id, atom_type(i).symbol().c_str(), 
+                                                                         atom_type(i).mt_radius()); 
     }
 
     printf("number of atoms : %i\n", num_atoms());
@@ -426,19 +426,16 @@ void Unit_cell::print_info()
     printf("------------------------------------------------------------\n");
     for (int i = 0; i < num_atoms(); i++)
     {
-        printf("%6i      %f %f %f   %6i      %6i\n", i, atom(i)->position(0), 
-                                                        atom(i)->position(1), 
-                                                        atom(i)->position(2), 
-                                                        atom(i)->type_id(),
-                                                        atom(i)->symmetry_class_id());
+        auto pos = atom(i).position();
+        printf("%6i      %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], atom(i).type_id(), atom(i).symmetry_class_id());
     }
    
     printf("\n");
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         printf("class id : %i   atom id : ", ic);
-        for (int i = 0; i < atom_symmetry_class(ic)->num_atoms(); i++)
-            printf("%i ", atom_symmetry_class(ic)->atom_id(i));  
+        for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++)
+            printf("%i ", atom_symmetry_class(ic).atom_id(i));  
         printf("\n");
     }
 
@@ -541,10 +538,8 @@ void Unit_cell::write_cif()
         fprintf(fout, "_atom_site_fract_z\n");
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            std::stringstream s;
-            s << ia + 1 << " " << atom(ia)->type()->label() << " " << atom(ia)->position(0) << " " << 
-                 atom(ia)->position(1) << " " << atom(ia)->position(2);
-            fprintf(fout,"%s\n",s.str().c_str());
+            auto pos = atom(ia).position();
+            fprintf(fout,"%i %s %f %f %f\n", ia + 1, atom(ia).type().label().c_str(), pos[0], pos[1], pos[2]);
         }
         fclose(fout);
     }
@@ -566,21 +561,20 @@ void Unit_cell::write_json()
         }
         out.end_array();
         out.begin_array("atom_types");
-        for (int iat = 0; iat < num_atom_types(); iat++) out.write(atom_type(iat)->label());
+        for (int iat = 0; iat < num_atom_types(); iat++) out.write(atom_type(iat).label());
         out.end_array();
         out.begin_set("atom_files");
-        for (int iat = 0; iat < num_atom_types(); iat++) out.single(atom_type(iat)->label().c_str(), atom_type(iat)->file_name().c_str());
+        for (int iat = 0; iat < num_atom_types(); iat++) out.single(atom_type(iat).label().c_str(), atom_type(iat).file_name().c_str());
         out.end_set();
 
         out.begin_set("atoms");
         for (int iat = 0; iat < num_atom_types(); iat++)
         {
-            out.begin_array(atom_type(iat)->label().c_str());
-            for (int i = 0; i < atom_type(iat)->num_atoms(); i++)
+            out.begin_array(atom_type(iat).label().c_str());
+            for (int i = 0; i < atom_type(iat).num_atoms(); i++)
             {
-                int ia = atom_type(iat)->atom_id(i);
-                std::vector<double> v(3);
-                for (int x = 0; x < 3; x++) v[x] = atom(ia)->position(x);
+                int ia = atom_type(iat).atom_id(i);
+                auto v = atom(ia).position();
                 out.write(v);
             }
             out.end_array();
@@ -615,7 +609,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     #pragma omp parallel for default(shared)
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        vector3d<double> iapos = get_cartesian_coordinates(atom(ia)->position());
+        vector3d<double> iapos = get_cartesian_coordinates(atom(ia).position());
         
         std::vector<nearest_neighbour_descriptor> nn;
 
@@ -638,7 +632,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
                     {
                         nnd.atom_id = ja;
 
-                        vector3d<double> japos = get_cartesian_coordinates(atom(ja)->position());
+                        vector3d<double> japos = get_cartesian_coordinates(atom(ja).position());
 
                         vector3d<double> v = japos + vt - iapos;
 
@@ -666,7 +660,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     //==     FILE* fout = fopen("nghbr.txt", "w");
     //==     for (int ia = 0; ia < num_atoms(); ia++)
     //==     {
-    //==         fprintf(fout, "Central atom: %s (%i)\n", atom(ia)->type()->symbol().c_str(), ia);
+    //==         fprintf(fout, "Central atom: %s (%i)\n", atom(ia).type()->symbol().c_str(), ia);
     //==         for (int i = 0; i < 80; i++) fprintf(fout, "-");
     //==         fprintf(fout, "\n");
     //==         fprintf(fout, "atom (  id)       D [a.u.]    translation  R\n");
@@ -700,7 +694,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
                 for (int i2 = -1; i2 <= 1; i2++)
                 {
                     /* atom position */
-                    vector3d<double> posf = vector3d<double>(i0, i1, i2) + atom(ia)->position();
+                    vector3d<double> posf = vector3d<double>(i0, i1, i2) + atom(ia).position();
 
                     /* vector connecting center of atom and reduced point */
                     vector3d<double> vf = vr.first - posf;
@@ -708,25 +702,25 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
                     /* convert to spherical coordinates */
                     auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));
 
-                    if (vs[0] < atom(ia)->mt_radius())
+                    if (vs[0] < atom(ia).mt_radius())
                     {
                         ja = ia;
                         tp[0] = vs[1]; // theta
                         tp[1] = vs[2]; // phi
 
-                        if (vs[0] < atom(ia)->type()->radial_grid(0))
+                        if (vs[0] < atom(ia).type().radial_grid(0))
                         {
                             jr = 0;
                             dr = 0.0;
                         }
                         else
                         {
-                            for (int ir = 0; ir < atom(ia)->num_mt_points() - 1; ir++)
+                            for (int ir = 0; ir < atom(ia).num_mt_points() - 1; ir++)
                             {
-                                if (vs[0] >= atom(ia)->type()->radial_grid(ir) && vs[0] < atom(ia)->type()->radial_grid(ir + 1))
+                                if (vs[0] >= atom(ia).type().radial_grid(ir) && vs[0] < atom(ia).type().radial_grid(ir + 1))
                                 {
                                     jr = ir;
-                                    dr = vs[0] - atom(ia)->type()->radial_grid(ir);
+                                    dr = vs[0] - atom(ia).type().radial_grid(ir);
                                     break;
                                 }
                             }
@@ -751,12 +745,15 @@ void Unit_cell::generate_radial_functions()
     Timer t("sirius::Unit_cell::generate_radial_functions");
    
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
-        atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
+    {
+        int ic = spl_num_atom_symmetry_classes(icloc);
+        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).generate_radial_functions();
+    }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        atom_symmetry_class(ic)->sync_radial_functions(comm_, rank);
+        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).sync_radial_functions(comm_, rank);
     }
 
     #if (__VERBOSITY > 0) 
@@ -765,7 +762,7 @@ void Unit_cell::generate_radial_functions()
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic)->write_enu(pout);
+        atom_symmetry_class(ic).write_enu(pout);
     }
 
     if (comm_.rank() == 0)
@@ -781,29 +778,27 @@ void Unit_cell::generate_radial_integrals()
     PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_integrals");
 
     for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-        atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
+    {
+        int ic = spl_num_atom_symmetry_classes(icloc);
+        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).generate_radial_integrals();
+    }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        atom_symmetry_class(ic)->sync_radial_integrals(comm_, rank);
+        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).sync_radial_integrals(comm_, rank);
     }
 
-    //for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
-    //{
-    //    int ia = spl_atoms_[ialoc];
-    //    atom(ia)->generate_radial_integrals(parameters_.processing_unit(), comm_bundle_atoms_.comm());
-    //}
     for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++)
     {
         int ia = spl_num_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self);
+        const_cast<Atom&>(atom(ia)).generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self);
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
     {
         int rank = spl_num_atoms().local_rank(ia);
-        atom(ia)->sync_radial_integrals(comm_, rank);
+        const_cast<Atom&>(atom(ia)).sync_radial_integrals(comm_, rank);
     }
 }
 
@@ -812,11 +807,11 @@ std::string Unit_cell::chemical_formula()
     std::string name;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        name += atom_type(iat)->symbol();
+        name += atom_type(iat).symbol();
         int n = 0;
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            if (atom(ia)->type_id() == atom_type(iat)->id()) n++;
+            if (atom(ia).type_id() == atom_type(iat).id()) n++;
         }
         if (n != 1) 
         {
@@ -849,8 +844,8 @@ std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>
 
         for (int ia = 0; ia < num_atoms(); ia++)
         {            
-            int iat = atom(ia)->type_id();
-            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__[ig] * atom(ia)->position())));
+            int iat = atom(ia).type_id();
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__[ig] * atom(ia).position())));
             f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
         }
     }

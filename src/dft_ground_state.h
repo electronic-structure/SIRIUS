@@ -77,7 +77,7 @@ class DFT_ground_state
                     double_complex rho(0, 0);
                     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
                     {
-                        rho += rl->gvec_phase_factor(ig, ia) * double(unit_cell_.atom(ia)->zn());
+                        rho += rl->gvec_phase_factor(ig, ia) * double(unit_cell_.atom(ia).zn());
                     }
                     double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
                     if (ig)
@@ -99,7 +99,7 @@ class DFT_ground_state
             /* remove self-interaction */
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                ewald_g -= sqrt(alpha / pi) * std::pow(unit_cell_.atom(ia)->zn(), 2);
+                ewald_g -= sqrt(alpha / pi) * std::pow(unit_cell_.atom(ia).zn(), 2);
             }
 
             double ewald_r = 0;
@@ -114,8 +114,8 @@ class DFT_ground_state
                     {
                         int ja = unit_cell_.nearest_neighbour(i, ia).atom_id;
                         double d = unit_cell_.nearest_neighbour(i, ia).distance;
-                        ewald_r_pt += 0.5 * unit_cell_.atom(ia)->zn() * 
-                                            unit_cell_.atom(ja)->zn() * gsl_sf_erfc(sqrt(alpha) * d) / d;
+                        ewald_r_pt += 0.5 * unit_cell_.atom(ia).zn() * unit_cell_.atom(ja).zn() *
+                                      gsl_sf_erfc(std::sqrt(alpha) * d) / d;
                     }
                 }
 

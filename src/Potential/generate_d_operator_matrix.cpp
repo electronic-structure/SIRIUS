@@ -53,9 +53,9 @@ void Potential::generate_D_operator_matrix()
     {
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-             auto type = unit_cell_.atom_type(iat);
-             type->uspp().q_pw.allocate_on_device();
-             type->uspp().q_pw.copy_to_device();
+             auto& type = const_cast<Atom_type&>(unit_cell_.atom_type(iat));
+             type.uspp().q_pw.allocate_on_device();
+             type.uspp().q_pw.copy_to_device();
         }
     
         gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
@@ -85,18 +85,18 @@ void Potential::generate_D_operator_matrix()
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            auto atom_type = unit_cell_.atom_type(iat);
-            int nbf = atom_type->mt_basis_size();
-            matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type->num_atoms()); 
+            auto& atom_type = unit_cell_.atom_type(iat);
+            int nbf = atom_type.mt_basis_size();
+            matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms()); 
 
             if (parameters_.processing_unit() == CPU)
             {
-                matrix<double_complex> veff_a(spl_num_gvec_.local_size(), atom_type->num_atoms());
+                matrix<double_complex> veff_a(spl_num_gvec_.local_size(), atom_type.num_atoms());
 
                 #pragma omp parallel for schedule(static)
-                for (int i = 0; i < atom_type->num_atoms(); i++)
+                for (int i = 0; i < atom_type.num_atoms(); i++)
                 {
-                    int ia = atom_type->atom_id(i);
+                    int ia = atom_type.atom_id(i);
 
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
@@ -105,36 +105,37 @@ void Potential::generate_D_operator_matrix()
                     }
                 }
 
-                linalg<CPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), spl_num_gvec_.local_size(),
-                                  atom_type->uspp().q_pw.at<CPU>(), spl_num_gvec_.local_size(),
+                linalg<CPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), spl_num_gvec_.local_size(),
+                                  atom_type.uspp().q_pw.at<CPU>(), spl_num_gvec_.local_size(),
                                   veff_a.at<CPU>(), spl_num_gvec_.local_size(), d_tmp.at<CPU>(), d_tmp.ld());
             }
             #ifdef __GPU
             if (parameters_.processing_unit() == GPU)
             {
-                matrix<double_complex> veff_a(nullptr, spl_num_gvec_.local_size(), atom_type->num_atoms());
+                matrix<double_complex> veff_a(nullptr, spl_num_gvec_.local_size(), atom_type.num_atoms());
                 veff_a.allocate_on_device();
                 
                 d_tmp.allocate_on_device();
 
-                mdarray<double, 2> atom_pos(3, atom_type->num_atoms());
-                for (int i = 0; i < atom_type->num_atoms(); i++)
+                mdarray<double, 2> atom_pos(3, atom_type.num_atoms());
+                for (int i = 0; i < atom_type.num_atoms(); i++)
                 {
-                    int ia = atom_type->atom_id(i);
-                    for (int x: {0, 1, 2}) atom_pos(x, i) = unit_cell_.atom(ia)->position(x);
+                    int ia = atom_type.atom_id(i);
+                    auto pos = unit_cell_.atom(ia).position();
+                    for (int x: {0, 1, 2}) atom_pos(x, i) = pos[x];
                 }
                 atom_pos.allocate_on_device();
                 atom_pos.copy_to_device();
 
-                mul_veff_with_phase_factors_gpu(atom_type->num_atoms(),
+                mul_veff_with_phase_factors_gpu(atom_type.num_atoms(),
                                                 spl_num_gvec_.local_size(),
                                                 veff.at<GPU>(),
                                                 gvec.at<GPU>(),
                                                 atom_pos.at<GPU>(),
                                                 veff_a.at<GPU>());
 
-                linalg<GPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type->num_atoms(), spl_num_gvec_.local_size(),
-                                  atom_type->uspp().q_pw.at<GPU>(), spl_num_gvec_.local_size(),
+                linalg<GPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), spl_num_gvec_.local_size(),
+                                  atom_type.uspp().q_pw.at<GPU>(), spl_num_gvec_.local_size(),
                                   veff_a.at<GPU>(), spl_num_gvec_.local_size(), d_tmp.at<GPU>(), d_tmp.ld());
 
                 d_tmp.copy_to_host();
@@ -149,9 +150,10 @@ void Potential::generate_D_operator_matrix()
             #endif
 
             #pragma omp parallel for schedule(static)
-            for (int i = 0; i < atom_type->num_atoms(); i++)
+            for (int i = 0; i < atom_type.num_atoms(); i++)
             {
-                int ia = atom_type->atom_id(i);
+                int ia = atom_type.atom_id(i);
+                auto& atom = const_cast<Atom&>(unit_cell_.atom(ia));
 
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
@@ -162,12 +164,12 @@ void Potential::generate_D_operator_matrix()
                         if (xi1 == xi2)
                         {
                             assert(std::abs(d_tmp(idx12, i).imag()) < 1e-10);
-                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i).real() * unit_cell_.omega();
+                            atom.d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i).real() * unit_cell_.omega();
                         }
                         else
                         {
-                            unit_cell_.atom(ia)->d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i) * unit_cell_.omega();
-                            unit_cell_.atom(ia)->d_mtrx(xi2, xi1, iv) = std::conj(d_tmp(idx12, i)) * unit_cell_.omega();
+                            atom.d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i) * unit_cell_.omega();
+                            atom.d_mtrx(xi2, xi1, iv) = std::conj(d_tmp(idx12, i)) * unit_cell_.omega();
                         }
                     }
                 }
@@ -179,19 +181,19 @@ void Potential::generate_D_operator_matrix()
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        auto atom_type = unit_cell_.atom(ia)->type();
-        int nbf = unit_cell_.atom(ia)->mt_basis_size();
+        auto& atom_type = unit_cell_.atom(ia).type();
+        int nbf = unit_cell_.atom(ia).mt_basis_size();
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
-            int lm2 = atom_type->indexb(xi2).lm;
-            int idxrf2 = atom_type->indexb(xi2).idxrf;
+            int lm2 = atom_type.indexb(xi2).lm;
+            int idxrf2 = atom_type.indexb(xi2).idxrf;
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                int lm1 = atom_type->indexb(xi1).lm;
-                int idxrf1 = atom_type->indexb(xi1).idxrf;
+                int lm1 = atom_type.indexb(xi1).lm;
+                int idxrf1 = atom_type.indexb(xi1).idxrf;
                 
-                if (lm1 == lm2) unit_cell_.atom(ia)->d_mtrx(xi1, xi2, 0) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                if (lm1 == lm2) const_cast<Atom&>(unit_cell_.atom(ia)).d_mtrx(xi1, xi2, 0) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
             }
         }
     }
@@ -201,8 +203,8 @@ void Potential::generate_D_operator_matrix()
     {
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-             auto type = unit_cell_.atom_type(iat);
-             type->uspp().q_pw.deallocate_on_device();
+             auto& type = const_cast<Atom_type&>(unit_cell_.atom_type(iat));
+             type.uspp().q_pw.deallocate_on_device();
         }
     }
     #endif
