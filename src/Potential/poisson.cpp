@@ -22,8 +22,7 @@ void Potential::poisson_sum_G(int lmmax__,
 {
     Timer t("sirius::Potential::poisson_sum_G");
     
-    auto rl = ctx_.reciprocal_lattice();
-    int ngv_loc = (int)spl_num_gvec_.local_size();
+    int ngv_loc = spl_num_gvec_.local_size();
 
     int na_max = 0;
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
@@ -44,7 +43,7 @@ void Potential::poisson_sum_G(int lmmax__,
                 for (int i = 0; i < na; i++)
                 {
                     int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    phase_factors(igloc, i) = rl->gvec_phase_factor(ig, ia);
+                    phase_factors(igloc, i) = ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position());
                 }
                 for (int lm = 0; lm < lmmax__; lm++)
                 {
@@ -129,9 +128,6 @@ void Potential::poisson_sum_G(int lmmax__,
 void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw)
 {
     Timer t("sirius::Potential::poisson_add_pseudo_pw");
-    auto rl = ctx_.reciprocal_lattice();
-    //std::vector<double_complex> pseudo_pw(rl->num_gvec());
-    //memset(&pseudo_pw[0], 0, rl->num_gvec() * sizeof(double_complex));
     
     /* The following term is added to the plane-wave coefficients of the charge density:
      * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -167,7 +163,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
 
                 double gR = ctx_.gvec().gvec_len(ig) * R;
                 
-                double_complex zt = fourpi * std::conj(rl->gvec_phase_factor(ig, ia)) / unit_cell_.omega();
+                double_complex zt = fourpi * std::conj(ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position())) / unit_cell_.omega();
 
                 if (ig)
                 {

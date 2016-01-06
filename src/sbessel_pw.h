@@ -114,17 +114,17 @@ class Spherical_Bessel_functions
             std::vector<double> jl(lmax__ + 1);
             for (int ir = 0; ir < rgrid__.num_points(); ir++)
             {
-                double v = rgrid__[ir] * nu__;
-                gsl_sf_bessel_jl_array(lmax__, v, &jl[0]);
+                double t = rgrid__[ir] * nu__;
+                gsl_sf_bessel_jl_array(lmax__, t, &jl[0]);
                 for (int l = 0; l <= lmax__; l++) sbessel_[l][ir] = jl[l];
             }
             
-            for (int l = 0; l < lmax__; l++) sbessel_[l].interpolate();
+            for (int l = 0; l <= lmax__; l++) sbessel_[l].interpolate();
         }
 
-        Spline<double> const& operator()(int i__) const
+        Spline<double> const& operator()(int l__) const
         {
-            return sbessel_[i__];
+            return sbessel_[l__];
         }
 };
 

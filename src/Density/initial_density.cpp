@@ -8,14 +8,12 @@ void Density::initial_density()
 
     zero();
     
-    auto rl = ctx_.reciprocal_lattice();
-
     if (parameters_.full_potential())
     {
         splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
         /* initialize smooth density of free atoms */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) const_cast<Atom_type&>(unit_cell_.atom_type(iat)).init_free_atom(true);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(true);
 
         /* compute radial integrals */
         auto rho_radial_integrals = generate_rho_radial_integrals(0);
@@ -114,7 +112,7 @@ void Density::initial_density()
                     /* global index of the G-vector */
                     int ig = spl_num_gvec[igloc];
 
-                    auto z1 = rl->gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
+                    auto z1 = ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position()) * v[ig] * fourpi; 
 
                     for (int lm = 0; lm < lmmax; lm++)
                     {
@@ -175,7 +173,7 @@ void Density::initial_density()
         t4.stop();
 
         /* initialize density of free atoms (not smoothed) */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) const_cast<Atom_type&>(unit_cell_.atom_type(iat)).init_free_atom(false);
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(false);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {

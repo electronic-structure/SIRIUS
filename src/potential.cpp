@@ -582,7 +582,7 @@ void Potential::update_atomic_potential()
        
        for (int ir = 0; ir < nmtp; ir++) veff[ir] = y00 * effective_potential_->f_mt<global>(0, ir, ia);
 
-       const_cast<Atom_symmetry_class&>(unit_cell_.atom_symmetry_class(ic)).set_spherical_potential(veff);
+       unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
     }
     
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -592,7 +592,7 @@ void Potential::update_atomic_potential()
         double* beff[] = {nullptr, nullptr, nullptr};
         for (int i = 0; i < parameters_.num_mag_dims(); i++) beff[i] = &effective_magnetic_field_[i]->f_mt<global>(0, 0, ia);
         
-        const_cast<Atom&>(unit_cell_.atom(ia)).set_nonspherical_potential(veff, beff);
+        unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -495,7 +495,7 @@ void Atom_symmetry_class::find_enu()
     {
         for (size_t order = 0; order < aw_descriptor(l).size(); order++)
         {
-            auto& rsd = const_cast<radial_solution_descriptor&>(aw_descriptor(l)[order]);
+            auto& rsd = aw_descriptor(l)[order];
             if (rsd.auto_enu) rs_with_auto_enu.push_back(&rsd);
         }
     }
@@ -508,7 +508,7 @@ void Atom_symmetry_class::find_enu()
 
         for (size_t order = 0; order < num_rs; order++)
         {
-            auto& rsd = const_cast<radial_solution_descriptor&>(lo_descriptor(idxlo).rsd_set[order]);
+            auto& rsd = lo_descriptor(idxlo).rsd_set[order];
             if (rsd.auto_enu) rs_with_auto_enu.push_back(&rsd);
         }
     }

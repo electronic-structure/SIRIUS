@@ -40,8 +40,6 @@ class Hloc_operator
 
         std::vector<double> pw_ekin_;
 
-        mdarray<double, 1> veff_;
-
         mdarray<double, 2> veff_vec_;
 
         mdarray<double_complex, 2> vphi_;
@@ -50,25 +48,6 @@ class Hloc_operator
         double v0_[2];
 
     public:
-
-        Hloc_operator(FFT3D_context& fft_ctx__,
-                      Gvec const& gkvec__,
-                      std::vector<double> const& pw_ekin__,
-                      std::vector<double> const& effective_potential__) 
-            : fft_ctx_(fft_ctx__),
-              gkvec_(gkvec__),
-              pw_ekin_(pw_ekin__)
-        {
-            veff_ = mdarray<double, 1>(const_cast<double*>(&effective_potential__[0]), effective_potential__.size(), "veff_");
-            #ifdef __GPU
-            if (fft_ctx_.pu() == GPU)
-            {
-                veff_.allocate_on_device();
-                veff_.copy_to_device();
-            }
-            #endif
-            vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
-        }
 
         /** \param [in] fft_ctx FFT context of the coarse grid used to apply effective field.
          *  \param [in] gvec G-vectors of the coarse FFT grid.
@@ -162,8 +141,8 @@ class Hloc_operator
                     {
                         #ifdef __GPU
                         STOP();
-                        scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                                              fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
+                        //scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+                        //                      fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
 
                         #else
                         TERMINATE_NO_GPU

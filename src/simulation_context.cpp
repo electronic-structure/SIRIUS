@@ -91,35 +91,18 @@ void Simulation_context::initialize()
     #endif
 
     if (unit_cell_.num_atoms() != 0) unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
-
-    /* create a reciprocal lattice */
-    int lmax = -1;
-    switch (parameters_.esm_type())
+    
+    if (!parameters_.full_potential())
     {
-        case full_potential_lapwlo:
-        {
-            lmax = parameters_.lmax_pot();
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            STOP();
-        }
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
-        {
-            lmax = 2 * parameters_.lmax_beta();
-            break;
-        }
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
     }
     
-    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, parameters_.esm_type(), gvec_, lmax, comm_);
-
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
 
-    if (parameters_.full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_, fft_ctx_->fft(0), gvec_, comm_);
+    if (parameters_.full_potential()) step_function_ = new Step_function(unit_cell_, fft_ctx_->fft(0), gvec_, comm_);
 
     if (parameters_.iterative_solver_input_section().real_space_prj_) 
     {

@@ -76,10 +76,10 @@ class Atom_symmetry_class
         double core_leakage_;
         
         /// list of radial descriptor sets used to construct augmented waves 
-        std::vector<radial_solution_descriptor_set> aw_descriptors_;
+        mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
         
         /// list of radial descriptor sets used to construct local orbitals
-        std::vector<local_orbital_descriptor> lo_descriptors_;
+        mutable std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// Generate radial functions for augmented waves
         void generate_aw_radial_functions();
@@ -222,7 +222,7 @@ class Atom_symmetry_class
             return static_cast<int>(aw_descriptors_.size());
         }
 
-        inline radial_solution_descriptor_set const& aw_descriptor(int idx__) const
+        inline radial_solution_descriptor_set& aw_descriptor(int idx__) const
         {
             return aw_descriptors_[idx__];
         }
@@ -232,7 +232,7 @@ class Atom_symmetry_class
             return static_cast<int>(lo_descriptors_.size());
         }
 
-        inline local_orbital_descriptor const& lo_descriptor(int idx__) const
+        inline local_orbital_descriptor& lo_descriptor(int idx__) const
         {
             return lo_descriptors_[idx__];
         }

@@ -92,7 +92,7 @@ void Force::ibs_force(Simulation_context& ctx__,
 
     auto param = ctx__.parameters();
     auto& uc = ctx__.unit_cell();
-    auto rl = ctx__.reciprocal_lattice();
+    //auto rl = ctx__.reciprocal_lattice();
 
     forcek__.zero();
 
@@ -158,7 +158,7 @@ void Force::ibs_force(Simulation_context& ctx__,
                                                   kp__->gklo_basis_descriptor_col(igk_col).gvec);
                 int igs = ctx__.gvec().shell(ig12);
 
-                double_complex zt = std::conj(rl->gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
+                double_complex zt = std::conj(ctx__.gvec().gvec_phase_factor(ig12, uc.atom(ia).position())) * ffac__(iat, igs) * fourpi / uc.omega();
 
                 double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
 

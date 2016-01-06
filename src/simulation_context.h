@@ -32,6 +32,7 @@
 #include "version.h"
 #include "debug.hpp"
 #include "fft3d_context.h"
+#include "augmentation_operator.h"
 
 namespace sirius {
 
@@ -51,13 +52,11 @@ class Simulation_context
         MPI_grid* mpi_grid_fft_;
 
         FFT3D_context* fft_ctx_;
+
         FFT3D_context* fft_coarse_ctx_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
-
-        /// Reciprocal lattice of the unit cell.
-        Reciprocal_lattice* reciprocal_lattice_;
 
         /// Step function is used in full-potential methods.
         Step_function* step_function_;
@@ -66,7 +65,7 @@ class Simulation_context
 
         Gvec gvec_coarse_;
 
-        //int gpu_thread_id_;
+        std::vector<Augmentation_operator*> augmentation_op_;
 
         Real_space_prj* real_space_prj_;
 
@@ -98,7 +97,6 @@ class Simulation_context
               fft_ctx_(nullptr),
               fft_coarse_ctx_(nullptr),
               unit_cell_(parameters_, comm_),
-              reciprocal_lattice_(nullptr),
               step_function_(nullptr),
               real_space_prj_(nullptr),
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
@@ -129,7 +127,7 @@ class Simulation_context
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }
 
-            if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
+            for (auto e: augmentation_op_) delete e;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
             if (fft_ctx_ != nullptr) delete fft_ctx_;
@@ -154,11 +152,6 @@ class Simulation_context
         Step_function const* step_function() const
         {
             return step_function_;
-        }
-
-        Reciprocal_lattice const* reciprocal_lattice() const
-        {
-            return reciprocal_lattice_;
         }
 
         inline FFT3D* fft(int thread_id__) const
@@ -395,6 +388,11 @@ class Simulation_context
         inline ev_solver_t gen_evp_solver_type() const
         {
             return gen_evp_solver_type_;
+        }
+
+        Augmentation_operator const& augmentation_op(int iat__) const
+        {
+            return (*augmentation_op_[iat__]);
         }
 
         //== void write_json_output()

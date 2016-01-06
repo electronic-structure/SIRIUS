@@ -70,9 +70,9 @@ class radial_functions_index
         void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<local_orbital_descriptor>& lo_descriptors)
         {
-            lmax_aw_ = (int)aw_descriptors.size() - 1;
+            lmax_aw_ = static_cast<int>(aw_descriptors.size()) - 1;
             lmax_lo_ = -1;
-            for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
+            for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++)
             {
                 int l = lo_descriptors[idxlo].l;
                 lmax_lo_ = std::max(lmax_lo_, l);
@@ -348,8 +348,8 @@ class Atom_type
 
         mdarray<int, 2> idx_radial_integrals_;
 
-        mdarray<double, 3> rf_coef_;
-        mdarray<double, 3> vrf_coef_;
+        mutable mdarray<double, 3> rf_coef_;
+        mutable mdarray<double, 3> vrf_coef_;
 
         bool initialized_;
        
@@ -418,7 +418,7 @@ class Atom_type
 
         void print_info() const;
         
-        void fix_q_radial_function(int l, int i, int j, double* qrf);
+        void fix_q_radial_function(int l, int i, int j, double* qrf) const;
         
         inline int id() const
         {
@@ -720,12 +720,12 @@ class Atom_type
             return idx_radial_integrals_;
         }
         
-        inline mdarray<double, 3>& rf_coef()
+        inline mdarray<double, 3>& rf_coef() const
         {
             return rf_coef_;
         }
 
-        inline mdarray<double, 3>& vrf_coef()
+        inline mdarray<double, 3>& vrf_coef() const
         {
             return vrf_coef_;
         }

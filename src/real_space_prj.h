@@ -3,7 +3,10 @@
 
 #include <vector>
 #include "typedefs.h"
-#include "reciprocal_lattice.h"
+#include "vector3d.h"
+#include "mdarray.h"
+#include "unit_cell.h"
+#include "fft3d.h"
 
 namespace sirius {
 

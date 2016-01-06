@@ -141,8 +141,8 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     {
         #ifdef __GPU
         auto& rgrid = type().radial_grid();
-        auto& rf_coef = const_cast<Atom_type&>(type()).rf_coef();
-        auto& vrf_coef = const_cast<Atom_type&>(type()).vrf_coef();
+        auto& rf_coef = type().rf_coef();
+        auto& vrf_coef = type().vrf_coef();
 
         Timer t1("sirius::Atom::generate_radial_integrals|interp");
         #pragma omp parallel
@@ -152,7 +152,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
             for (int i = 0; i < nrf; i++)
             {
                 rf_spline[i].interpolate();
-                memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
+                std::memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
                 //cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 * sizeof(double), tid);
             }
             #pragma omp for
@@ -169,7 +169,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
                 {
                     int idx = lm + lmmax * i + lmmax * nrf * j;
                     vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-                    memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coefs().at<CPU>(), nmtp * 4 * sizeof(double));
+                    std::memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
                     //cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4 *sizeof(double), tid);
                 }
             }

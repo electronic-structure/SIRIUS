@@ -63,7 +63,7 @@ void Unit_cell::add_atom(const std::string label, vector3d<double> position, vec
     }
 
     atoms_.push_back(new Atom(atom_type(label), position, vector_field));
-    const_cast<Atom_type&>(atom_type(label)).add_atom_id(static_cast<int>(atoms_.size()) - 1);
+    atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 
 void Unit_cell::add_atom(const std::string label, vector3d<double> position)
@@ -83,7 +83,7 @@ void Unit_cell::get_symmetry()
         for (int ic = 0; ic < (int)atom_symmetry_classes_.size(); ic++) delete atom_symmetry_classes_[ic];
         atom_symmetry_classes_.clear();
 
-        for (int ia = 0; ia < num_atoms(); ia++) const_cast<Atom&>(atom(ia)).set_symmetry_class(nullptr);
+        for (int ia = 0; ia < num_atoms(); ia++) atom(ia).set_symmetry_class(nullptr);
     }
 
     if (symmetry_ != nullptr)
@@ -271,7 +271,7 @@ void Unit_cell::initialize()
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        const_cast<Atom_type&>(atom_type(iat)).init(offs_lo);
+        atom_type(iat).init(offs_lo);
         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
         max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
@@ -298,7 +298,7 @@ void Unit_cell::initialize()
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        const_cast<Atom&>(atom(ia)).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
         mt_basis_size_ += atom(ia).mt_basis_size();
@@ -321,8 +321,8 @@ void Unit_cell::initialize()
             std::vector<double> Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) 
             {
-                const_cast<Atom_type&>(atom_type(iat)).set_mt_radius(Rmt[iat]);
-                const_cast<Atom_type&>(atom_type(iat)).set_radial_grid();
+                atom_type(iat).set_mt_radius(Rmt[iat]);
+                atom_type(iat).set_radial_grid();
             }
         }
         
@@ -747,13 +747,13 @@ void Unit_cell::generate_radial_functions()
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = spl_num_atom_symmetry_classes(icloc);
-        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).generate_radial_functions();
+        atom_symmetry_class(ic).generate_radial_functions();
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).sync_radial_functions(comm_, rank);
+        atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
 
     #if (__VERBOSITY > 0) 
@@ -780,25 +780,25 @@ void Unit_cell::generate_radial_integrals()
     for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = spl_num_atom_symmetry_classes(icloc);
-        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).generate_radial_integrals();
+        atom_symmetry_class(ic).generate_radial_integrals();
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        const_cast<Atom_symmetry_class&>(atom_symmetry_class(ic)).sync_radial_integrals(comm_, rank);
+        atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
     }
 
     for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++)
     {
         int ia = spl_num_atoms_[ialoc];
-        const_cast<Atom&>(atom(ia)).generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self);
+        atom(ia).generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self);
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
     {
         int rank = spl_num_atoms().local_rank(ia);
-        const_cast<Atom&>(atom(ia)).sync_radial_integrals(comm_, rank);
+        atom(ia).sync_radial_integrals(comm_, rank);
     }
 }
 

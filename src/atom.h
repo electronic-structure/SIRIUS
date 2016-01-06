@@ -43,7 +43,7 @@ class Atom
         Atom_type const& type_;
 
         /// Symmetry class of the given atom.
-        Atom_symmetry_class const* symmetry_class_;
+        Atom_symmetry_class* symmetry_class_;
         
         /// Position in fractional coordinates.
         vector3d<double> position_;
@@ -124,6 +124,12 @@ class Atom
         }
 
         /// Return corresponding atom symmetry class.
+        inline Atom_symmetry_class& symmetry_class()
+        {
+            return (*symmetry_class_);
+        }
+
+        /// Return const referenced to atom symmetry class.
         inline Atom_symmetry_class const& symmetry_class() const
         {
             return (*symmetry_class_);
@@ -136,7 +142,7 @@ class Atom
         }
         
         /// Return atom position in fractional coordinates.
-        inline vector3d<double> position() const
+        inline vector3d<double> const& position() const
         {
             return position_;
         }
@@ -167,7 +173,7 @@ class Atom
         }
 
         /// Set symmetry class of the atom.
-        inline void set_symmetry_class(Atom_symmetry_class const* symmetry_class__)
+        inline void set_symmetry_class(Atom_symmetry_class* symmetry_class__)
         {
             symmetry_class_ = symmetry_class__;
         }

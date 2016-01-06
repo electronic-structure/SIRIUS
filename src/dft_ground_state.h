@@ -61,8 +61,6 @@ class DFT_ground_state
             
             double ewald_g = 0;
 
-            auto rl = ctx_.reciprocal_lattice();
-
             splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
             #pragma omp parallel
@@ -70,14 +68,14 @@ class DFT_ground_state
                 double ewald_g_pt = 0;
 
                 #pragma omp for
-                for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
+                for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
                 {
-                    int ig = (int)spl_num_gvec[igloc];
+                    int ig = spl_num_gvec[igloc];
 
                     double_complex rho(0, 0);
                     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
                     {
-                        rho += rl->gvec_phase_factor(ig, ia) * double(unit_cell_.atom(ia).zn());
+                        rho += ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position()) * double(unit_cell_.atom(ia).zn());
                     }
                     double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
                     if (ig)

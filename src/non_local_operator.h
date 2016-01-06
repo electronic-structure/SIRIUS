@@ -214,19 +214,20 @@ class Q_operator: public Non_local_operator
 {
     public:
         
-        Q_operator(Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
+        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
         {
             /* Q-operator is independent of spin */
             op_ = mdarray<double_complex, 2>(packed_mtrx_size_, 1);
             auto& uc = beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++)
             {
+                int iat = uc.atom(ia).type().id();
                 int nbf = uc.atom(ia).mt_basis_size();
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
                     for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = uc.atom(ia).type().uspp().q_mtrx(xi1, xi2);
+                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                     }
                 }
             }

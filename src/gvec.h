@@ -355,6 +355,8 @@ class Gvec
             return fft_grid_.gvec_by_coord(x, y, z);
         }
 
+        // TODO: better names for the 4 functions below
+
         /// Return corresponding G-vector for an index in the range [0, num_gvec).
         inline vector3d<int> operator[](int ig__) const
         {
@@ -449,6 +451,13 @@ class Gvec
         inline mdarray<int, 2> const& z_columns_pos() const
         {
             return z_columns_pos_;
+        }
+
+        /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
+        inline double_complex gvec_phase_factor(int ig__, vector3d<double> const& apos__) const
+        {
+            auto G = gvec_by_full_index(gvec_full_index_(ig__));
+            return std::exp(double_complex(0.0, twopi * (G * apos__)));
         }
 };
 

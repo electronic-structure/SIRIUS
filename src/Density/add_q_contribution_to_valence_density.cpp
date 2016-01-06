@@ -21,8 +21,6 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     }
     ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), static_cast<int>(pp_complex_density_matrix.size()));
 
-    auto rl = ctx_.reciprocal_lattice();
-
     /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
@@ -31,6 +29,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     //mdarray<double, 2> timers(3, Platform::max_num_threads());
     //timers.zero();
+
+    STOP();
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
@@ -86,7 +86,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 {
                     int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
                     int ig = spl_gvec[igloc];
-                    phase_factors(igloc_t, i) = std::conj(rl->gvec_phase_factor(ig, ia));
+                    phase_factors(igloc_t, i) = std::conj(ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position()));
                 }
             }
             //t += omp_get_wtime();
@@ -109,63 +109,64 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
                 {
                     int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
+                    STOP();
                     /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                    rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                                                   atom_type.uspp().q_pw(igloc, idx12 + xi2);
+                    //rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
+                    //                               atom_type.uspp().q_pw(igloc, idx12 + xi2);
 
                 }
-                /* add non-diagonal terms */
-                for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-                {
-                    for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-                    {
-                        int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-                        
-                        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
+                ///* add non-diagonal terms */
+                //for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                //{
+                //    for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
+                //    {
+                //        int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
+                //        
+                //        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
+                //        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
 
-                        /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
-                    }
-                }
+                //        /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+                //        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
+                //    }
+                //}
             }
 
-            if (parameters_.num_mag_dims() == 1)
-            {
-                linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type.num_atoms(),
-                                  &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 1), d_mtrx_packed.ld(), 
-                                  &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+            //if (parameters_.num_mag_dims() == 1)
+            //{
+            //    linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type.num_atoms(),
+            //                      &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 1), d_mtrx_packed.ld(), 
+            //                      &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
 
-                /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    int idx12 = xi2 * (xi2 + 1) / 2;
+            //    /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
+            //    for (int xi2 = 0; xi2 < nbf; xi2++)
+            //    {
+            //        int idx12 = xi2 * (xi2 + 1) / 2;
 
-                    /* add diagonal term */
-                    for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-                    {
-                        int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-                        /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                        magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                                                                    atom_type.uspp().q_pw(igloc, idx12 + xi2);
+            //        /* add diagonal term */
+            //        for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
+            //        {
+            //            int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
+            //            /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
+            //            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
+            //                                                        atom_type.uspp().q_pw(igloc, idx12 + xi2);
 
-                    }
-                    /* add non-diagonal terms */
-                    for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-                    {
-                        for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-                        {
-                            int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-                            
-                            /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
+            //        }
+            //        /* add non-diagonal terms */
+            //        for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+            //        {
+            //            for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
+            //            {
+            //                int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
+            //                
+            //                /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
+            //                magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
 
-                            /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
-                        }
-                    }
-                }
-            }
+            //                /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+            //                magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
+            //            }
+            //        }
+            //    }
+            //}
         }
     }
 
@@ -202,103 +203,105 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
 
 void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 {
-    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
-     * because density matrix is symmetric.  */
-    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+    STOP();
 
-    /* complex density matrix */
-    mdarray<double_complex, 4> pp_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
-                                                         unit_cell_.max_mt_basis_size(),
-                                                         num_zdmat, unit_cell_.num_atoms());
-    pp_complex_density_matrix.zero();
-    
-    /* add k-point contribution */
-    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = ks.spl_num_kpoints(ikloc);
-        auto kp = ks[ik];
-
-        add_k_point_contribution<ultrasoft_pseudopotential>(kp, pp_complex_density_matrix);
-    }
-
-    ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
-         auto& type = const_cast<Atom_type&>(unit_cell_.atom_type(iat));
-         type.uspp().q_pw.allocate_on_device();
-         type.uspp().q_pw.copy_to_device();
-    }
-
-    /* split G-vectors between ranks */
-    splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-
-    mdarray<int, 2> gvec(3, spl_gvec.local_size());
-    for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
-    {
-        for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[(int)spl_gvec[igloc]][x];
-    }
-    gvec.allocate_on_device();
-    gvec.copy_to_device();
-
-    mdarray<double_complex, 1> rho_pw_gpu(spl_gvec.local_size());
-    rho_pw_gpu.allocate_on_device();
-    rho_pw_gpu.zero_on_device();
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
-        auto& type = unit_cell_.atom_type(iat);
-        int nbf = type.mt_basis_size();
-
-        mdarray<double_complex, 2> d_mtrx_packed(nbf * nbf, type.num_atoms());
-        mdarray<double, 2> atom_pos(type.num_atoms(), 3);
-        #pragma omp parallel for
-        for (int i = 0; i < type.num_atoms(); i++)
-        {
-            int ia = type.atom_id(i);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
-                    d_mtrx_packed(xi2 * nbf + xi1, i) = pp_complex_density_matrix(xi2, xi1, 0, ia);
-                }
-            }
-            auto pos = unit_cell_.atom(ia).position();
-            for (int x = 0; x < 3; x++) atom_pos(i, x) = pos[x];
-        }
-        d_mtrx_packed.allocate_on_device();
-        d_mtrx_packed.copy_to_device();
-        atom_pos.allocate_on_device();
-        atom_pos.copy_to_device();
-
-        mdarray<double_complex, 2> d_mtrx_pw(nullptr, spl_gvec.local_size(), nbf * nbf);
-        d_mtrx_pw.allocate_on_device();
-        d_mtrx_pw.zero_on_device();
-
-        generate_d_mtrx_pw_gpu(type.num_atoms(),
-                               (int)spl_gvec.local_size(),
-                               nbf,
-                               atom_pos.at<GPU>(),
-                               gvec.at<GPU>(),
-                               d_mtrx_packed.at<GPU>(),
-                               d_mtrx_pw.at<GPU>());
-
-        sum_q_pw_d_mtrx_pw_gpu((int)spl_gvec.local_size(), 
-                               nbf,
-                               const_cast<double_complex*>(type.uspp().q_pw.at<GPU>()),
-                               d_mtrx_pw.at<GPU>(),
-                               rho_pw_gpu.at<GPU>());
-    }
-
-    rho_pw_gpu.copy_to_host();
-    for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-        rho_->f_pw(spl_gvec[igloc]) += rho_pw_gpu(igloc);
-
-    ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
-    
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-        const_cast<Atom_type&>(unit_cell_.atom_type(iat)).uspp().q_pw.deallocate_on_device();
+//    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
+//     * because density matrix is symmetric.  */
+//    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+//
+//    /* complex density matrix */
+//    mdarray<double_complex, 4> pp_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
+//                                                         unit_cell_.max_mt_basis_size(),
+//                                                         num_zdmat, unit_cell_.num_atoms());
+//    pp_complex_density_matrix.zero();
+//    
+//    /* add k-point contribution */
+//    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
+//    {
+//        int ik = ks.spl_num_kpoints(ikloc);
+//        auto kp = ks[ik];
+//
+//        add_k_point_contribution<ultrasoft_pseudopotential>(kp, pp_complex_density_matrix);
+//    }
+//
+//    ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), (int)pp_complex_density_matrix.size());
+//
+//    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+//    {
+//         auto& type = const_cast<Atom_type&>(unit_cell_.atom_type(iat));
+//         type.uspp().q_pw.allocate_on_device();
+//         type.uspp().q_pw.copy_to_device();
+//    }
+//
+//    /* split G-vectors between ranks */
+//    splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+//
+//    mdarray<int, 2> gvec(3, spl_gvec.local_size());
+//    for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+//    {
+//        for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[(int)spl_gvec[igloc]][x];
+//    }
+//    gvec.allocate_on_device();
+//    gvec.copy_to_device();
+//
+//    mdarray<double_complex, 1> rho_pw_gpu(spl_gvec.local_size());
+//    rho_pw_gpu.allocate_on_device();
+//    rho_pw_gpu.zero_on_device();
+//
+//    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+//    {
+//        auto& type = unit_cell_.atom_type(iat);
+//        int nbf = type.mt_basis_size();
+//
+//        mdarray<double_complex, 2> d_mtrx_packed(nbf * nbf, type.num_atoms());
+//        mdarray<double, 2> atom_pos(type.num_atoms(), 3);
+//        #pragma omp parallel for
+//        for (int i = 0; i < type.num_atoms(); i++)
+//        {
+//            int ia = type.atom_id(i);
+//
+//            for (int xi2 = 0; xi2 < nbf; xi2++)
+//            {
+//                for (int xi1 = 0; xi1 < nbf; xi1++)
+//                {
+//                    d_mtrx_packed(xi2 * nbf + xi1, i) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+//                }
+//            }
+//            auto pos = unit_cell_.atom(ia).position();
+//            for (int x = 0; x < 3; x++) atom_pos(i, x) = pos[x];
+//        }
+//        d_mtrx_packed.allocate_on_device();
+//        d_mtrx_packed.copy_to_device();
+//        atom_pos.allocate_on_device();
+//        atom_pos.copy_to_device();
+//
+//        mdarray<double_complex, 2> d_mtrx_pw(nullptr, spl_gvec.local_size(), nbf * nbf);
+//        d_mtrx_pw.allocate_on_device();
+//        d_mtrx_pw.zero_on_device();
+//
+//        generate_d_mtrx_pw_gpu(type.num_atoms(),
+//                               (int)spl_gvec.local_size(),
+//                               nbf,
+//                               atom_pos.at<GPU>(),
+//                               gvec.at<GPU>(),
+//                               d_mtrx_packed.at<GPU>(),
+//                               d_mtrx_pw.at<GPU>());
+//
+//        sum_q_pw_d_mtrx_pw_gpu((int)spl_gvec.local_size(), 
+//                               nbf,
+//                               const_cast<double_complex*>(type.uspp().q_pw.at<GPU>()),
+//                               d_mtrx_pw.at<GPU>(),
+//                               rho_pw_gpu.at<GPU>());
+//    }
+//
+//    rho_pw_gpu.copy_to_host();
+//    for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
+//        rho_->f_pw(spl_gvec[igloc]) += rho_pw_gpu(igloc);
+//
+//    ctx_.comm().allgather(&rho_->f_pw(0), (int)spl_gvec.global_offset(), (int)spl_gvec.local_size());
+//    
+//    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+//        const_cast<Atom_type&>(unit_cell_.atom_type(iat)).uspp().q_pw.deallocate_on_device();
 }
 #endif
 

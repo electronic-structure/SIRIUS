@@ -93,21 +93,19 @@ void Density::generate_core_charge_density()
     for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
-        const_cast<Atom_symmetry_class&>(unit_cell_.atom_symmetry_class(ic)).generate_core_charge_density();
+        unit_cell_.atom_symmetry_class(ic).generate_core_charge_density();
     }
 
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
         int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
-        const_cast<Atom_symmetry_class&>(unit_cell_.atom_symmetry_class(ic)).sync_core_charge_density(ctx_.comm(), rank);
+        unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
     }
 }
 
 void Density::augment(K_set& ks__)
 {
-    PROFILE();
-
-    Timer t("sirius::Density::augment", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Density::augment");
 
     switch (parameters_.esm_type())
     {
@@ -129,7 +127,7 @@ void Density::augment(K_set& ks__)
                 #endif
                 default:
                 {
-                    error_local(__FILE__, __LINE__, "wrong processing unit");
+                    TERMINATE("wrong processing unit");
                 }
             }
             break;

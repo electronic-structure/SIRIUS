@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -42,7 +42,7 @@ class Spline
         /// Radial grid.
         Radial_grid const* radial_grid_;
 
-        mdarray<T, 2> coefs_;
+        mdarray<T, 2> coeffs_;
 
         /* forbid copy constructor */
         Spline(Spline<T> const& src__) = delete;
@@ -59,8 +59,8 @@ class Spline
         /// Constructor of a new empty spline.
         Spline(Radial_grid const& radial_grid__) : radial_grid_(&radial_grid__)
         {
-            coefs_ = mdarray<T, 2>(radial_grid_->num_points(), 4);
-            coefs_.zero();
+            coeffs_ = mdarray<T, 2>(radial_grid_->num_points(), 4);
+            coeffs_.zero();
         }
 
         /// Constructor of a spline from a list of values.
@@ -68,8 +68,8 @@ class Spline
         {
             assert(radial_grid_->num_points() == (int)y__.size());
             int np = num_points();
-            coefs_ = mdarray<T, 2>(np, 4);
-            for (int i = 0; i < np; i++) coefs_(i, 0) = y__[i];
+            coeffs_ = mdarray<T, 2>(np, 4);
+            for (int i = 0; i < np; i++) coeffs_(i, 0) = y__[i];
             interpolate();
         }
 
@@ -77,7 +77,7 @@ class Spline
         Spline(Spline<T>&& src__)
         {
             radial_grid_ = src__.radial_grid_;
-            coefs_ = std::move(src__.coefs_);
+            coeffs_ = std::move(src__.coeffs_);
         }
     
         /// Move assigment operator.
@@ -86,7 +86,7 @@ class Spline
             if (this != &src__)
             {
                 radial_grid_ = src__.radial_grid_;
-                coefs_ = std::move(src__.coefs_);
+                coeffs_ = std::move(src__.coeffs_);
             }
             return *this;
         }
@@ -101,7 +101,7 @@ class Spline
         inline std::vector<T> values() const
         {
             std::vector<T> a(num_points());
-            for (int i = 0; i < num_points(); i++) a[i] = coefs_(i, 0);
+            for (int i = 0; i < num_points(); i++) a[i] = coeffs_(i, 0);
             return a;
         }
         
@@ -111,14 +111,14 @@ class Spline
             return radial_grid_->num_points();
         }
 
-        inline std::array<T, 4> coefs(int i__) const
+        inline std::array<T, 4> coeffs(int i__) const
         {
-            return {coefs_(i__, 0), coefs_(i__, 1), coefs_(i__, 2), coefs_(i__, 3)};
+            return {coeffs_(i__, 0), coeffs_(i__, 1), coeffs_(i__, 2), coeffs_(i__, 3)};
         }
 
-        inline mdarray<T, 2> const& coefs() const
+        inline mdarray<T, 2> const& coeffs() const
         {
-            return coefs_;
+            return coeffs_;
         }
 
         inline double x(int i__) const
@@ -150,7 +150,7 @@ class Spline
                 }
                 if (j == np - 1) 
                 {
-                    return coefs_(np - 1, 0);
+                    return coeffs_(np - 1, 0);
                 }
                 else
                 {
@@ -168,19 +168,19 @@ class Spline
         /// Return value at \f$ x_i \f$.
         inline T& operator[](const int i)
         {
-            return coefs_(i, 0);
+            return coeffs_(i, 0);
         }
 
         inline T operator[](const int i) const
         {
-            return coefs_(i, 0);
+            return coeffs_(i, 0);
         }
 
         inline T operator()(const int i, double dx) const
         {
             assert(i >= 0);
             assert(i < num_points() - 1);
-            return coefs_(i, 0) + dx * (coefs_(i, 1) + dx * (coefs_(i, 2) + dx * coefs_(i, 3)));
+            return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
         }
         
         inline T deriv(const int dm, const int i, const double dx)
@@ -192,27 +192,27 @@ class Spline
             {
                 case 0:
                 {
-                    return coefs_(i, 0) + dx * (coefs_(i, 1) + dx * (coefs_(i, 2) + dx * coefs_(i, 3)));
+                    return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
                     break;
                 }
                 case 1:
                 {
-                    return coefs_(i, 1) + (coefs_(i, 2) * 2.0 + coefs_(i, 3) * dx * 3.0) * dx;
+                    return coeffs_(i, 1) + (coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 3.0) * dx;
                     break;
                 }
                 case 2:
                 {
-                    return coefs_(i, 2) * 2.0 + coefs_(i, 3) * dx * 6.0;
+                    return coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 6.0;
                     break;
                 }
                 case 3:
                 {
-                    return coefs_(i, 3) * 6.0;
+                    return coeffs_(i, 3) * 6.0;
                     break;
                 }
                 default:
                 {
-                    error_local(__FILE__, __LINE__, "wrong order of derivative");
+                    TERMINATE("wrong order of derivative");
                     return 0.0; // make compiler happy
                     break;
                 }
@@ -251,7 +251,7 @@ class Spline
             std::vector<T> dy(np - 1);
             
             /* derivative of y */
-            for (int i = 0; i < np - 1; i++) dy[i] = (coefs_(i + 1, 0) - coefs_(i, 0)) / radial_grid_->dx(i);
+            for (int i = 0; i < np - 1; i++) dy[i] = (coeffs_(i + 1, 0) - coeffs_(i, 0)) / radial_grid_->dx(i);
             
             /* setup "B" vector of AX=B equation */
             for (int i = 0; i < np - 2; i++) d[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
@@ -285,33 +285,19 @@ class Spline
             {
                 std::stringstream s;
                 s << "gtsv returned " << info;
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
             
-            //std::vector<T> c1(np - 1);
-            //std::vector<T> d1(np);
-            //
-            //std::vector<T> x(np);
-
-            //c1[0] = c[0] / b[0];
-            //for (int i = 1; i < np - 1; i++) c1[i] = c[i] / (b[i] - a[i - 1] * c1[i - 1]);
-
-            //d1[0] = d[0] / b[0];
-            //for (int i = 1; i < np; i++) d1[i] = (d[i] - a[i - 1] * d1[i - 1]) / (b[i] - a[i - 1] * c1[i - 1]);
-
-            //x[np - 1] = d1[np - 1];
-            //for (int i = np - 2; i >= 0; i--) x[i] = d1[i] - c1[i] * x[i + 1];
-
             for (int i = 0; i < np - 1; i++)
             {
-                coefs_(i, 2) = x[i] / 2.0;
+                coeffs_(i, 2) = x[i] / 2.0;
                 T t = (x[i + 1] - x[i]) / 6.0;
-                coefs_(i, 1) = dy[i] - (coefs_(i, 2) + t) * radial_grid_->dx(i);
-                coefs_(i, 3) = t / radial_grid_->dx(i);
+                coeffs_(i, 1) = dy[i] - (coeffs_(i, 2) + t) * radial_grid_->dx(i);
+                coeffs_(i, 3) = t / radial_grid_->dx(i);
             }
-            coefs_(np - 1, 1) = 0;
-            coefs_(np - 1, 2) = 0;
-            coefs_(np - 1, 3) = 0;
+            coeffs_(np - 1, 1) = 0;
+            coeffs_(np - 1, 2) = 0;
+            coeffs_(np - 1, 3) = 0;
 
             return *this;
         }
@@ -320,10 +306,10 @@ class Spline
         {
             for (int i = 0; i < num_points(); i++)
             {
-                coefs_(i, 0) *= a__;
-                coefs_(i, 1) *= a__;
-                coefs_(i, 2) *= a__;
-                coefs_(i, 3) *= a__;
+                coeffs_(i, 0) *= a__;
+                coeffs_(i, 1) *= a__;
+                coeffs_(i, 2) *= a__;
+                coeffs_(i, 3) *= a__;
             }
         }
 
@@ -331,20 +317,20 @@ class Spline
 
         uint64_t hash() const
         {
-            return coefs_.hash();
+            return coeffs_.hash();
         }
 
         #ifdef __GPU
         void copy_to_device()
         {
-            coefs_.allocate_on_device();
-            coefs_.copy_to_device();
+            coeffs_.allocate_on_device();
+            coeffs_.copy_to_device();
         }
 
         void async_copy_to_device(int thread_id__)
         {
-            coefs_.allocate_on_device();
-            coefs_.async_copy_to_device(thread_id__);
+            coeffs_.allocate_on_device();
+            coeffs_.async_copy_to_device(thread_id__);
         }
         #endif
 };
@@ -355,16 +341,16 @@ inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
     assert(a__.radial_grid().hash() == b__.radial_grid().hash());
     Spline<double> s12(a__.radial_grid());
 
-    auto& coefs_a = a__.coefs();
-    auto& coefs_b = b__.coefs();
-    auto& coefs = const_cast<mdarray<double, 2>&>(s12.coefs());
+    auto& coeffs_a = a__.coeffs();
+    auto& coeffs_b = b__.coeffs();
+    auto& coeffs = const_cast<mdarray<double, 2>&>(s12.coeffs());
 
     for (int ir = 0; ir < a__.radial_grid().num_points(); ir++)
     {
-        coefs(ir, 0) = coefs_a(ir, 0) * coefs_b(ir, 0);
-        coefs(ir, 1) = coefs_a(ir, 1) * coefs_b(ir, 0) + coefs_a(ir, 0) * coefs_b(ir, 1);
-        coefs(ir, 2) = coefs_a(ir, 2) * coefs_b(ir, 0) + coefs_a(ir, 1) * coefs_b(ir, 1) + coefs_a(ir, 0) * coefs_b(ir, 2);
-        coefs(ir, 3) = coefs_a(ir, 3) * coefs_b(ir, 0) + coefs_a(ir, 2) * coefs_b(ir, 1) + coefs_a(ir, 1) * coefs_b(ir, 2) + coefs_a(ir, 0) * coefs_b(ir, 3);
+        coeffs(ir, 0) = coeffs_a(ir, 0) * coeffs_b(ir, 0);
+        coeffs(ir, 1) = coeffs_a(ir, 1) * coeffs_b(ir, 0) + coeffs_a(ir, 0) * coeffs_b(ir, 1);
+        coeffs(ir, 2) = coeffs_a(ir, 2) * coeffs_b(ir, 0) + coeffs_a(ir, 1) * coeffs_b(ir, 1) + coeffs_a(ir, 0) * coeffs_b(ir, 2);
+        coeffs(ir, 3) = coeffs_a(ir, 3) * coeffs_b(ir, 0) + coeffs_a(ir, 2) * coeffs_b(ir, 1) + coeffs_a(ir, 1) * coeffs_b(ir, 2) + coeffs_a(ir, 0) * coeffs_b(ir, 3);
     }
 
     return std::move(s12);
@@ -388,8 +374,8 @@ T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
             {
                 double dx = f__.dx(i);
                 
-                auto f = f__.coefs(i);
-                auto g = g__.coefs(i);
+                auto f = f__.coeffs(i);
+                auto g = g__.coeffs(i);
 
                 T faga = f[0] * g[0];
                 T fdgd = f[3] * g[3];
@@ -417,8 +403,8 @@ T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
                 double x0 = f__.x(i);
                 double dx = f__.dx(i);
                 
-                auto f = f__.coefs(i);
-                auto g = g__.coefs(i);
+                auto f = f__.coeffs(i);
+                auto g = g__.coeffs(i);
 
                 T faga = f[0] * g[0];
                 T fdgd = f[3] * g[3];
@@ -447,8 +433,8 @@ T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
                 double x0 = f__.x(i);
                 double dx = f__.dx(i);
 
-                auto f = f__.coefs(i);
-                auto g = g__.coefs(i);
+                auto f = f__.coeffs(i);
+                auto g = g__.coeffs(i);
 
                 T k0 = f[0] * g[0];
                 T k1 = f[3] * g[1] + f[2] * g[2] + f[1] * g[3];

@@ -26,7 +26,7 @@
 #define __STEP_FUNCTION_H__
 
 #include "unit_cell.h"
-#include "reciprocal_lattice.h"
+#include "fft3d.h"
 
 namespace sirius {
 
@@ -72,9 +72,6 @@ class Step_function
 
         Unit_cell const& unit_cell_;
         
-        /// Reciprocal lattice for the unit cell.
-        Reciprocal_lattice const* reciprocal_lattice_;
-        
         /// Plane wave expansion coefficients of the step function.
         std::vector<double_complex> step_function_pw_;
         
@@ -93,7 +90,6 @@ class Step_function
         
         /// Constructor
         Step_function(Unit_cell const& unit_cell_, 
-                      Reciprocal_lattice const* reciprocal_lattice__,
                       FFT3D* fft__,
                       Gvec const& gvec__,
                       Communicator const& comm__);

@@ -155,13 +155,13 @@ void Atom_type::init(int offset_lo__)
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
     
-    /* allocate Q matrix */
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
+    ///= /* allocate Q matrix */
+    ///= if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    ///= {
+    ///=     if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
 
-        uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
-    }
+    ///=     //uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
+    ///= }
    
     /* get the number of core electrons */
     num_core_electrons_ = 0;
@@ -793,7 +793,7 @@ void Atom_type::read_input(const std::string& fname)
     }
 }
 
-void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf)
+void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf) const
 {
     for (int ir = 0; ir < num_mt_points(); ir++)
     {

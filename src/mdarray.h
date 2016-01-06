@@ -256,10 +256,10 @@ class mdarray_base
         
         #ifdef __GPU
         /// Unique pointer to the allocated GPU memory.
-        std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_device_;
+        mutable std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_device_;
         
         /// Raw pointer to GPU memory
-        T* ptr_device_;  
+        mutable T* ptr_device_;  
         #endif
 
         bool pinned_;
@@ -679,7 +679,7 @@ class mdarray_base
         }
 
         #ifdef __GPU
-        void allocate_on_device()
+        void allocate_on_device() const
         {
             size_t sz = size();
 
@@ -688,18 +688,18 @@ class mdarray_base
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T> >(ptr_device_, mdarray_mem_mgr<T>(sz, 2));
         }
 
-        void deallocate_on_device()
+        void deallocate_on_device() const
         {
             unique_ptr_device_.reset(nullptr);
             ptr_device_ = nullptr;
         }
 
-        void allocate_page_locked()
+        void allocate_page_locked() const
         {
             allocate(1);
         }
 
-        void copy_to_device()
+        void copy_to_device() const
         {
             mdarray_assert(ptr_ != nullptr);
             mdarray_assert(ptr_device_ != nullptr);
@@ -707,7 +707,7 @@ class mdarray_base
             acc::copyin(ptr_device_, ptr_, size());
         }
 
-        void copy_to_device(int n__)
+        void copy_to_device(int n__) const
         {
             mdarray_assert(ptr_ != nullptr);
             mdarray_assert(ptr_device_ != nullptr);
@@ -715,7 +715,7 @@ class mdarray_base
             acc::copyin(ptr_device_, ptr_, n__);
         }
 
-        void copy_to_host() 
+        void copy_to_host()
         {
             mdarray_assert(ptr_ != nullptr);
             mdarray_assert(ptr_device_ != nullptr);

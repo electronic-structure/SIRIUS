@@ -43,7 +43,7 @@ class Potential
 
         Simulation_parameters const& parameters_;
 
-        Unit_cell const& unit_cell_;
+        Unit_cell& unit_cell_;
 
         Step_function const* step_function_;
 
