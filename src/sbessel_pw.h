@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,7 +19,7 @@
 
 /** \file sbessel_pw.h
  *   
- *  \brief Contains implementation of sirius::sbessel_pw class.
+ *  \brief Contains implementation of sirius::Spherical_Bessel_functions and sirius::sbessel_approx classes.
  */
 
 #ifndef __SBESSEL_PW_H__
@@ -32,72 +32,7 @@
 namespace sirius
 {
 
-/// Spherical bessel functions of a plane-wave expansion inside muffin-tins.
-template <typename T> 
-class sbessel_pw
-{
-    private:
-
-        Unit_cell const& unit_cell_;
-
-        int lmax_;
-
-        mdarray<Spline<T>, 2> sjl_; 
-
-    public:
-
-        sbessel_pw(Unit_cell const& unit_cell__, int lmax__) : unit_cell_(unit_cell__), lmax_(lmax__)
-        {
-            sjl_ = mdarray<Spline<T>, 2>(lmax_ + 1, unit_cell_.num_atom_types());
-
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                for (int l = 0; l <= lmax_; l++)
-                {
-                    sjl_(l, iat) = Spline<T>(unit_cell_.atom_type(iat).radial_grid());
-                }
-            }
-        }
-        
-        ~sbessel_pw()
-        {
-        }
-
-        void load(double q)
-        {
-            std::vector<double> jl(lmax_ + 1);
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                for (int ir = 0; ir < unit_cell_.atom_type(iat).num_mt_points(); ir++)
-                {
-                    double x = unit_cell_.atom_type(iat).radial_grid(ir) * q;
-                    gsl_sf_bessel_jl_array(lmax_, x, &jl[0]);
-                    for (int l = 0; l <= lmax_; l++) sjl_(l, iat)[ir] = jl[l];
-                }
-            }
-        }
-
-        void interpolate(double q)
-        {
-            load(q);
-            
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                for (int l = 0; l <= lmax_; l++) sjl_(l, iat).interpolate();
-            }
-        }
-
-        inline T operator()(int ir, int l, int iat)
-        {
-            return sjl_(l, iat)[ir];
-        }
-
-        inline Spline<T>& operator()(int l, int iat)
-        {
-            return sjl_(l, iat);
-        }
-};
-
+/// Spherical Bessel functions \f$ j_{\ell}(\nu x) \f$ up to lmax.
 class Spherical_Bessel_functions
 {
     private:
@@ -105,6 +40,10 @@ class Spherical_Bessel_functions
         std::vector< Spline<double> > sbessel_;
 
     public:
+
+        Spherical_Bessel_functions()
+        {
+        }
 
         Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double nu__)
         {

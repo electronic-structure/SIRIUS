@@ -42,30 +42,24 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) 
         {
             /* full potential radial integrals requre a free atom grid */
-            if (type__ == 0) 
-            {
-                sa[iat] = Spline<double>(unit_cell_.atom_type(iat).free_atom_radial_grid());
-            }
-            else
-            {
-                sa[iat] = Spline<double>(unit_cell_.atom_type(iat).radial_grid());
-            }
+            sa[iat] = (type__ == 0) ? Spline<double>(unit_cell_.atom_type(iat).free_atom_radial_grid())
+                                    : Spline<double>(unit_cell_.atom_type(iat).radial_grid());
         }
         
         /* spherical Bessel functions */
-        sbessel_pw<double> jl(unit_cell_, 0);
+        Spherical_Bessel_functions jl;
 
         #pragma omp for
         for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
         {
             int igs = (int)spl_gshells[igsloc];
 
-            /* for pseudopotential valence or core charge density */
-            if (type__ == 1 || type__ == 2) jl.load(ctx_.gvec().shell_len(igs));
-
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 auto& atom_type = unit_cell_.atom_type(iat);
+                
+                if (type__ == 1 || type__ == 2) 
+                    jl = Spherical_Bessel_functions(0, atom_type.radial_grid(), ctx_.gvec().shell_len(igs));
 
                 if (type__ == 0)
                 {
@@ -89,14 +83,14 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                 if (type__ == 1)
                 {
                     for (int ir = 0; ir < sa[iat].num_points(); ir++) 
-                        sa[iat][ir] = jl(ir, 0, iat) * atom_type.uspp().total_charge_density[ir];
+                        sa[iat][ir] = jl(0)[ir] * atom_type.uspp().total_charge_density[ir];
                     rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
                 }
 
                 if (type__ == 2)
                 {
                     for (int ir = 0; ir < sa[iat].num_points(); ir++) 
-                        sa[iat][ir] = jl(ir, 0, iat) * atom_type.uspp().core_charge_density[ir];
+                        sa[iat][ir] = jl(0)[ir] * atom_type.uspp().core_charge_density[ir];
                     rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
                 }
             }
@@ -107,7 +101,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     ctx_.comm().allgather(rho_radial_integrals.at<CPU>(), static_cast<int>(ld * spl_gshells.global_offset()), 
                           static_cast<int>(ld * spl_gshells.local_size()));
 
-    return rho_radial_integrals;
+    return std::move(rho_radial_integrals);
 }
 
 };

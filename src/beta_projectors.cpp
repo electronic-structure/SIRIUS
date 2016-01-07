@@ -38,18 +38,25 @@ void Beta_projectors::generate_beta_gk_t()
             beta_rf(idxrf, iat).interpolate();
         }
     }
+
+    // TODO: use bessel function interpolation?
     
     /* compute <G+k|beta> */
     #pragma omp parallel
     {
         std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
         std::vector<double> beta_radial_integrals_(unit_cell_.max_mt_radial_basis_size());
-        sbessel_pw<double> jl(unit_cell_, lmax_beta_);
+        std::vector<Spherical_Bessel_functions> jl(unit_cell_.num_atom_types());
         #pragma omp for
         for (size_t ish = 0; ish < gkvec_shells.size(); ish++)
         {
-            /* find spherical bessel function for |G+k|r argument */
-            jl.interpolate(gkvec_shells[ish].first);
+            /* find spherical Bessel function for |G+k|r argument */
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            {
+                auto& atom_type = unit_cell_.atom_type(iat);
+                jl[iat] = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), gkvec_shells[ish].first);
+            }
+
             for (size_t i = 0; i < gkvec_shells[ish].second.size(); i++)
             {
                 int igk_loc = gkvec_shells[ish].second[i];
@@ -68,7 +75,7 @@ void Beta_projectors::generate_beta_gk_t()
                         int nr = atom_type.uspp().num_beta_radial_points[idxrf];
                         /* compute \int j_l(|G+k|r) beta_l(r) r dr */
                         /* remeber that beta(r) are defined as miltiplied by r */
-                        beta_radial_integrals_[idxrf] = sirius::inner(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
+                        beta_radial_integrals_[idxrf] = sirius::inner(jl[iat](l), beta_rf(idxrf, iat), 1, nr);
                     }
 
                     for (int xi = 0; xi < atom_type.mt_basis_size(); xi++)
