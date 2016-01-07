@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -58,7 +58,7 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
             double R = unit_cell_.atom_type(iat).mt_radius();
             double GR = G * R;
 
-            ffac(iat, igs) = (igs) ? (sin(GR) - GR * cos(GR)) * g3inv : pow(R, 3) / 3.0;
+            ffac(iat, igs) = (igs) ? (std::sin(GR) - GR * std::cos(GR)) * g3inv : std::pow(R, 3) / 3.0;
         }
     }
     
@@ -83,10 +83,10 @@ void Step_function::init()
     for (int ig = 0; ig < gvec_.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
     
-    fft_->allocate_workspace();
+    fft_->prepare();
     fft_->transform<1>(gvec_, &step_function_pw_[gvec_.offset_gvec_fft()]);
     fft_->output(&step_function_[0]);
-    fft_->deallocate_workspace();
+    fft_->dismiss();
     
     double vit = 0.0;
     for (int i = 0; i < fft_->size(); i++) vit += step_function_[i] * unit_cell_.omega() / fft_->size();

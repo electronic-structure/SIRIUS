@@ -97,12 +97,12 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
                     /* add diagonal term */
                     /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                    z += dm_pw(xi2 * nbf + xi2, igloc) * ctx_.augmentation_op(iat).q_pw(igloc, idx12 + xi2);
+                    z += dm_pw(xi2 * nbf + xi2, igloc) * ctx_.augmentation_op(iat).q_pw(idx12 + xi2, igloc);
 
                     /* add non-diagonal terms */
                     for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
                     {
-                        double_complex q = ctx_.augmentation_op(iat).q_pw(igloc, idx12);
+                        double_complex q = ctx_.augmentation_op(iat).q_pw(idx12, igloc);
 
                         /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
                         z += (dm_pw(xi2 * nbf + xi1, igloc) * q + dm_pw(xi1 * nbf + xi2, igloc) * std::conj(q));

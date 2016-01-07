@@ -239,7 +239,7 @@ class FFT3D
             return num_fft_workers_;
         }
 
-        void allocate_workspace()
+        void prepare()
         {
             #ifdef __GPU
             if (pu_ == GPU)
@@ -250,7 +250,7 @@ class FFT3D
             #endif
         }
 
-        void deallocate_workspace()
+        void dismiss()
         {
             #ifdef __GPU
             if (pu_ == GPU)

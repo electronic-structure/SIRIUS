@@ -6,7 +6,7 @@ void Density::generate_valence_density_it(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_it");
 
-    ctx_.fft_ctx().allocate_workspace();
+    ctx_.fft_ctx().prepare();
 
     /* add k-point contribution */
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++)
@@ -36,7 +36,7 @@ void Density::generate_valence_density_it(K_set& ks__)
             ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
     }
 
-    ctx_.fft_ctx().deallocate_workspace();
+    ctx_.fft_ctx().dismiss();
 }
 
 };

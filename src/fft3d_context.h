@@ -98,14 +98,14 @@ class FFT3D_context
             return fft_grid_;
         }
 
-        void allocate_workspace()
+        void prepare()
         {
-            for (auto obj: fft_) obj->allocate_workspace();
+            for (auto obj: fft_) obj->prepare();
         }
 
-        void deallocate_workspace()
+        void dismiss()
         {
-            for (auto obj: fft_) obj->deallocate_workspace();
+            for (auto obj: fft_) obj->dismiss();
         }
 
         inline processing_unit_t pu() const

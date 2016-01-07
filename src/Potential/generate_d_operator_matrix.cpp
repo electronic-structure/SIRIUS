@@ -95,13 +95,12 @@ void Potential::generate_D_operator_matrix()
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
                         int ig = spl_num_gvec_[igloc];
-                        veff_a(igloc, i) = veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia);
+                        veff_a(igloc, i) = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
                     }
                 }
 
-                linalg<CPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), spl_num_gvec_.local_size(),
-                                  ctx_.augmentation_op(iat).q_pw().at<CPU>(), spl_num_gvec_.local_size(),
-                                  veff_a.at<CPU>(), spl_num_gvec_.local_size(), d_tmp.at<CPU>(), d_tmp.ld());
+                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), spl_num_gvec_.local_size(),
+                                  ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
             }
             #ifdef __GPU
             if (parameters_.processing_unit() == GPU)
@@ -193,7 +192,7 @@ void Potential::generate_D_operator_matrix()
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-        ctx_.augmentation_op(iat).release();
+        ctx_.augmentation_op(iat).dismiss();
 }
 
 };

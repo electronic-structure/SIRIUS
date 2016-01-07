@@ -157,50 +157,54 @@ class Augmentation_operator
             q_mtrx_.zero();
 
             /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double_complex, 2>(spl_num_gvec.local_size(), nbf * (nbf + 1) / 2);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++)
+            q_pw_ = mdarray<double_complex, 2>(nbf * (nbf + 1) / 2, spl_num_gvec.local_size());
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
             {
-                int lm2 = atom_type_.indexb(xi2).lm;
-                int idxrf2 = atom_type_.indexb(xi2).idxrf;
-        
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                int ig = spl_num_gvec[igloc];
+                int igs = gvec__.shell(ig);
+
+                std::vector<double_complex> v(lmmax);
+
+                for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
-                    int lm1 = atom_type_.indexb(xi1).lm;
-                    int idxrf1 = atom_type_.indexb(xi1).idxrf;
-                    
-                    /* packed orbital index */
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    /* packed radial-function index */
-                    int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                    
-                    #pragma omp parallel
+                    int lm2 = atom_type_.indexb(xi2).lm;
+                    int idxrf2 = atom_type_.indexb(xi2).idxrf;
+        
+                    for (int xi1 = 0; xi1 <= xi2; xi1++)
                     {
-                        std::vector<double_complex> v(lmmax);
-                        #pragma omp for
-                        for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
-                        {
-                            int ig = spl_num_gvec[igloc];
-                            int igs = gvec__.shell(ig);
-                            for (int lm3 = 0; lm3 < lmmax; lm3++)
-                            {
-                                v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
-                            }
+                        int lm1 = atom_type_.indexb(xi1).lm;
+                        int idxrf1 = atom_type_.indexb(xi1).idxrf;
+                        
+                        /* packed orbital index */
+                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                        /* packed radial-function index */
+                        int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                        
+                        for (int lm3 = 0; lm3 < lmmax; lm3++)
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
         
-                            q_pw_(igloc, idx12) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
-        
-                            if (igs == 0)
-                            {
-                                q_mtrx_(xi1, xi2) = omega__ * q_pw_(0, idx12);
-                                q_mtrx_(xi2, xi1) = std::conj(q_mtrx_(xi1, xi2));
-                            }
-                        }
+                        q_pw_(idx12, igloc) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
                     }
                 }
             }
-            
+    
+            if (comm_.rank() == 0)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++)
+                {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++)
+                    {
+                        /* packed orbital index */
+                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                        q_mtrx_(xi1, xi2) = omega__ * q_pw_(idx12, 0);
+                        q_mtrx_(xi2, xi1) = std::conj(q_mtrx_(xi1, xi2));
+                    }
+                }
+            }
             /* broadcast from rank#0 */
             comm_.bcast(&q_mtrx_(0, 0), nbf * nbf , 0);
+
             #ifdef __PRINT_OBJECT_CHECKSUM
             auto z = q_pw_.checksum();
             DUMP("checksum(Q(G)) : %18.10f %18.10f", std::real(z), std::imag(z));
@@ -230,7 +234,7 @@ class Augmentation_operator
             #endif
         }
 
-        void release() const
+        void dismiss() const
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU)
@@ -245,9 +249,9 @@ class Augmentation_operator
             return q_pw_;
         }
 
-        double_complex const& q_pw(int ig__, int idx__) const
+        double_complex const& q_pw(int idx__, int ig__) const
         { 
-            return q_pw_(ig__, idx__);
+            return q_pw_(idx__, ig__);
         }
 
         double_complex const& q_mtrx(int xi1__, int xi2__) const
