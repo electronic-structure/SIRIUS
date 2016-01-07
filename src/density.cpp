@@ -31,7 +31,7 @@ namespace sirius {
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 {
     if (parameters_.full_potential()) rho_->set_mt_ptr(rhomt);
-    rho_->set_it_ptr(rhoir);
+    rho_->set_rg_ptr(rhoir);
 }
 
 void Density::set_magnetization_ptr(double* magmt, double* magir)
@@ -48,20 +48,20 @@ void Density::set_magnetization_ptr(double* magmt, double* magir)
     {
         // z component is the first and only one
         magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-        magnetization_[0]->set_it_ptr(&magir_tmp(0, 0));
+        magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
     }
 
     if (parameters_.num_mag_dims() == 3)
     {
         // z component is the first
         magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
-        magnetization_[0]->set_it_ptr(&magir_tmp(0, 2));
+        magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
         // x component is the second
         magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-        magnetization_[1]->set_it_ptr(&magir_tmp(0, 0));
+        magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
         // y component is the third
         magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
-        magnetization_[2]->set_it_ptr(&magir_tmp(0, 1));
+        magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
     }
 }
     

@@ -491,8 +491,8 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     double rhomin = 0.0;
     for (int ir = 0; ir < fft_->local_size(); ir++)
     {
-        rhomin = std::min(rhomin, rho->f_it(ir));
-        if (rho->f_it(ir) < 0.0)  rho->f_it(ir) = 0.0;
+        rhomin = std::min(rhomin, rho->f_rg(ir));
+        if (rho->f_rg(ir) < 0.0)  rho->f_rg(ir) = 0.0;
     }
     if (rhomin < 0.0)
     {
@@ -508,7 +508,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     
     if (is_gga) 
     {
-        Smooth_periodic_function<spatial, double> rho_it(&rho->f_it(0), ctx_.fft(0), &ctx_.gvec());
+        Smooth_periodic_function<spatial, double> rho_it(&rho->f_rg(0), ctx_.fft(0), &ctx_.gvec());
 
         /* get plane-wave coefficients of the density */
         Smooth_periodic_function<spectral, double_complex> rho_pw = transform(rho_it);
@@ -555,7 +555,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
             {
                 std::vector<double> vxc_t(spl_t.local_size());
 
-                ixc->get_lda((int)spl_t.local_size(), &rho->f_it((int)spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
+                ixc->get_lda((int)spl_t.local_size(), &rho->f_rg((int)spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
 
                 for (int i = 0; i < (int)spl_t.local_size(); i++)
                 {
@@ -572,7 +572,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
                 std::vector<double> vsigma_t(spl_t.local_size());
                 
                 ixc->get_gga((int)spl_t.local_size(), 
-                             &rho->f_it((int)spl_t.global_offset()), 
+                             &rho->f_rg((int)spl_t.global_offset()), 
                              &grad_rho_grad_rho_it((int)spl_t.global_offset()), 
                              &vrho_t[0], 
                              &vsigma_t[0], 
@@ -620,8 +620,8 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
 
     for (int irloc = 0; irloc < num_loc_points; irloc++)
     {
-        vxc->f_it(irloc) = vxc_tmp(irloc);
-        exc->f_it(irloc) = exc_tmp(irloc);
+        vxc->f_rg(irloc) = vxc_tmp(irloc);
+        exc->f_rg(irloc) = exc_tmp(irloc);
     }
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(vxc_tmp): %18.10f", vxc_tmp.checksum());
@@ -655,21 +655,21 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     for (int ir = 0; ir < fft_->local_size(); ir++)
     {
         double mag = 0.0;
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) mag += std::pow(magnetization[j]->f_it(ir), 2);
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) mag += std::pow(magnetization[j]->f_rg(ir), 2);
         mag = std::sqrt(mag);
 
         /* remove numerical noise at high values of magnetization */
-        mag = std::min(mag, rho->f_it(ir));
+        mag = std::min(mag, rho->f_rg(ir));
 
-        rhomin = std::min(rhomin, rho->f_it(ir));
-        if (rho->f_it(ir) < 0.0)
+        rhomin = std::min(rhomin, rho->f_rg(ir));
+        if (rho->f_rg(ir) < 0.0)
         {
-            rho->f_it(ir) = 0.0;
+            rho->f_rg(ir) = 0.0;
             mag = 0.0;
         }
         
-        rho_up_it(ir) = 0.5 * (rho->f_it(ir) + mag);
-        rho_dn_it(ir) = 0.5 * (rho->f_it(ir) - mag);
+        rho_up_it(ir) = 0.5 * (rho->f_rg(ir) + mag);
+        rho_dn_it(ir) = 0.5 * (rho->f_rg(ir) - mag);
     }
 
     if (rhomin < 0.0)
@@ -865,19 +865,19 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
 
     for (int irloc = 0; irloc < num_loc_points; irloc++)
     {
-        exc->f_it(irloc) = exc_tmp(irloc);
-        vxc->f_it(irloc) = 0.5 * (vxc_up_tmp(irloc) + vxc_dn_tmp(irloc));
+        exc->f_rg(irloc) = exc_tmp(irloc);
+        vxc->f_rg(irloc) = 0.5 * (vxc_up_tmp(irloc) + vxc_dn_tmp(irloc));
         double m = rho_up_it(irloc) - rho_dn_it(irloc);
 
         if (m > 1e-8)
         {
             double b = 0.5 * (vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
-               bxc[j]->f_it(irloc) = b * magnetization[j]->f_it(irloc) / m;
+               bxc[j]->f_rg(irloc) = b * magnetization[j]->f_rg(irloc) / m;
        }
        else
        {
-           for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it(irloc) = 0.0;
+           for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_rg(irloc) = 0.0;
        }
     }
 }

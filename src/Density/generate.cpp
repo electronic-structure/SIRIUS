@@ -20,9 +20,9 @@ void Density::generate(K_set& ks__)
                 rho_->f_mt<local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;
         }
 
-        /* synchronize muffin-tin part (interstitial is already syncronized with allreduce) */
-        rho_->sync(true, false);
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
+        /* synchronize muffin-tin part */
+        rho_->sync_mt();
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync_mt();
     }
     
     double nel = 0;

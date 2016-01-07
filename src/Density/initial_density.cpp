@@ -44,7 +44,7 @@ void Density::initial_density()
         /* remove possible negative noise */
         for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
-            if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;
+            if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
         }
 
         int ngv_loc = spl_num_gvec.local_size();
@@ -55,7 +55,7 @@ void Density::initial_density()
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
             /* global index of the G-vector */
-            int ig = (int)spl_num_gvec[igloc];
+            int ig = spl_num_gvec[igloc];
             /* index of the G-vector shell */
             int igsh = ctx_.gvec().shell(ig);
             if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
@@ -277,8 +277,8 @@ void Density::initial_density()
         /* remove possible negative noise */
         for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
-            rho_->f_it(ir) = rho_->f_it(ir) * unit_cell_.num_valence_electrons() / charge;
-            if (rho_->f_it(ir) < 0) rho_->f_it(ir) = 0;
+            rho_->f_rg(ir) = rho_->f_rg(ir) * unit_cell_.num_valence_electrons() / charge;
+            if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
         }
 
         #ifdef __PRINT_OBJECT_HASH
@@ -341,7 +341,7 @@ void Density::initial_density()
 
                                         if (a <= 2.0)
                                         {
-                                            magnetization_[0]->f_it(ir) += v[2] * (1.0 - 0.5 * a);
+                                            magnetization_[0]->f_rg(ir) += v[2] * (1.0 - 0.5 * a);
                                         }
                                     }
                                 }
@@ -442,12 +442,12 @@ void Density::initial_density()
         rho_->fft_transform(-1);
         for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
     }
-
-    rho_->sync(true, true);
-    for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync(true, true);
-
+    
     if (parameters_.full_potential())
     {
+        rho_->sync_mt();
+        for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync_mt();
+
         #ifdef __PRINT_OBJECT_CHECKSUM
         DUMP("checksum(rhomt): %18.10f", rho_->f_mt().checksum());
         #endif

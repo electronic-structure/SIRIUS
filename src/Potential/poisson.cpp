@@ -20,7 +20,7 @@ void Potential::poisson_sum_G(int lmmax__,
                               mdarray<double, 3>& fl__,
                               matrix<double_complex>& flm__)
 {
-    Timer t("sirius::Potential::poisson_sum_G");
+    PROFILE_WITH_TIMER("sirius::Potential::poisson_sum_G");
     
     int ngv_loc = spl_num_gvec_.local_size();
 
@@ -127,7 +127,7 @@ void Potential::poisson_sum_G(int lmmax__,
 
 void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw)
 {
-    Timer t("sirius::Potential::poisson_add_pseudo_pw");
+    PROFILE_WITH_TIMER("sirius::Potential::poisson_add_pseudo_pw");
     
     /* The following term is added to the plane-wave coefficients of the charge density:
      * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -202,7 +202,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                             Periodic_function<double>* vh__,
                             mdarray<double_complex, 2>& qmt__)
 {
-    Timer t("sirius::Potential::poisson_vmt");
+    PROFILE_WITH_TIMER("sirius::Potential::poisson_vmt");
 
     qmt__.zero();
     
@@ -265,9 +265,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
 
 void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {
-    PROFILE();
-
-    Timer t("sirius::Potential::poisson");
+    PROFILE_WITH_TIMER("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */
     if (parameters_.full_potential())

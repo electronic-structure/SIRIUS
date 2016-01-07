@@ -25,16 +25,12 @@ void Density::generate_valence_density_it(K_set& ks__)
     }
 
     /* reduce arrays; assume that each rank did it's own fraction of the density */
-    if (ctx_.fft(0)->parallel())
-    {
-        ctx_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_).allreduce(&rho_->f_it(0), ctx_.fft(0)->local_size()); 
-    }
-    else
-    {
-        ctx_.comm().allreduce(&rho_->f_it(0), ctx_.fft(0)->size()); 
-        for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            ctx_.comm().allreduce(&magnetization_[j]->f_it(0), ctx_.fft(0)->size()); 
-    }
+    auto& comm = (ctx_.fft(0)->parallel()) ? ctx_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_)
+                                           : ctx_.comm();
+
+    comm.allreduce(&rho_->f_rg(0), ctx_.fft(0)->local_size()); 
+    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+        comm.allreduce(&magnetization_[j]->f_rg(0), ctx_.fft(0)->local_size()); 
 
     ctx_.fft_ctx().dismiss();
 }

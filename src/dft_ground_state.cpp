@@ -148,7 +148,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
                                         if (a <= 2.0)
                                         {
-                                            mag[2] += density_->magnetization(0)->f_it(ir);
+                                            mag[2] += density_->magnetization(0)->f_rg(ir);
                                         }
                                     }
                                 }

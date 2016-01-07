@@ -71,24 +71,24 @@ Potential::Potential(Simulation_context& ctx__)
         for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
     }
 
-    effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
+    effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), &ctx_.gvec());
     
+    Gvec const* gvec_ptr = (parameters_.full_potential()) ? nullptr : &ctx_.gvec();
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), !parameters_.full_potential());
+        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), gvec_ptr);
     
-    hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
-    hartree_potential_->allocate(false);
+    hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), &ctx_.gvec());
+    hartree_potential_->allocate_mt(false);
     
-    xc_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    xc_potential_->allocate(false);
+    xc_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), nullptr);
+    xc_potential_->allocate_mt(false);
     
-    xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    xc_energy_density_->allocate(false);
+    xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), nullptr);
+    xc_energy_density_->allocate_mt(false);
 
     if (!parameters_.full_potential())
     {
-        local_potential_ = new Periodic_function<double>(ctx_, 0);
-        local_potential_->allocate(false);
+        local_potential_ = new Periodic_function<double>(ctx_, 0, nullptr);
         local_potential_->zero();
 
         generate_local_potential();
@@ -363,7 +363,7 @@ Potential::~Potential()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->local_size(); ir++)
-        fft_->buffer(ir) = effective_potential()->f_it(ir) * ctx_.step_function()->theta_r(ir);
+        fft_->buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function()->theta_r(ir);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
@@ -385,7 +385,7 @@ void Potential::generate_pw_coefs()
         for (int i = 0; i < parameters_.num_mag_dims(); i++)
         {
             for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->buffer(ir) = effective_magnetic_field(i)->f_it(ir) * ctx_.step_function()->theta_r(ir);
+                fft_->buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function()->theta_r(ir);
             
             STOP();
             //fft_->transform(-1, ctx_.gvec().z_sticks_coord());
@@ -455,9 +455,8 @@ void Potential::generate_pw_coefs()
 
 void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)
 {
-    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-        effective_potential_->set_mt_ptr(veffmt);
-    effective_potential_->set_it_ptr(veffit);
+    if (parameters_.full_potential()) effective_potential_->set_mt_ptr(veffmt);
+    effective_potential_->set_rg_ptr(veffit);
 }
 
 //void Potential::copy_to_global_ptr(double* fmt__, double* fit__, Periodic_function<double>* src)
@@ -548,20 +547,20 @@ void Potential::set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
     {
         // z
         effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-        effective_magnetic_field_[0]->set_it_ptr(&beffit_tmp(0, 0));
+        effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
     }
     
     if (parameters_.num_mag_dims() == 3)
     {
         // z
         effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
-        effective_magnetic_field_[0]->set_it_ptr(&beffit_tmp(0, 2));
+        effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
         // x
         effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-        effective_magnetic_field_[1]->set_it_ptr(&beffit_tmp(0, 0));
+        effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
         // y
         effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
-        effective_magnetic_field_[2]->set_it_ptr(&beffit_tmp(0, 1));
+        effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
     }
 }
          

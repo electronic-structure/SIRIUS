@@ -327,8 +327,8 @@ class Density
 
         void allocate()
         {
-            rho_->allocate(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true);
+            rho_->allocate_mt(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate_mt(true);
         }
 
         void mixer_input()

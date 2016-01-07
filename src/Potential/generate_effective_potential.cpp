@@ -19,9 +19,12 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     xc(rho, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
    
     effective_potential_->add(xc_potential_);
-
-    effective_potential_->sync(true, true);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(true, true);
+    
+    if (parameters_.full_potential())
+    {
+        effective_potential_->sync_mt();
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync_mt();
+    }
 
     //if (debug_level > 1) check_potential_continuity_at_mt();
 }
@@ -42,12 +45,10 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     effective_potential_->add(hartree_potential_);
 
     /* create temporary function for rho + rho_core */
-    Periodic_function<double> rhovc(ctx_, 0, false);
-    rhovc.allocate(false);
+    Periodic_function<double> rhovc(ctx_, 0, nullptr);
     rhovc.zero();
     rhovc.add(rho);
     rhovc.add(rho_core);
-    rhovc.sync(false, true);
 
     /* construct XC potentials from rho + rho_core */
     xc(&rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
@@ -57,10 +58,6 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     
     /* add local ionic potential to the effective potential */
     effective_potential_->add(local_potential_);
-
-    /* synchronize effective potential */
-    effective_potential_->sync(false, true);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
 
     generate_D_operator_matrix();
 }

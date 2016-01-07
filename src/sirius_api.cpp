@@ -2733,10 +2733,10 @@ void FORTRAN(sirius_scf_loop)()
     dft_ground_state->scf_loop(1e-6, 1e-6, 20);
 }
 
-void FORTRAN(sirius_potential_checksum)()
-{
-    potential->checksum();
-}
+//void FORTRAN(sirius_potential_checksum)()
+//{
+//    potential->checksum();
+//}
 
 void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
 {
