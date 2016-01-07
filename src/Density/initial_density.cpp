@@ -112,7 +112,7 @@ void Density::initial_density()
                     /* global index of the G-vector */
                     int ig = spl_num_gvec[igloc];
 
-                    auto z1 = ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position()) * v[ig] * fourpi; 
+                    auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[ig] * fourpi; 
 
                     for (int lm = 0; lm < lmmax; lm++)
                     {

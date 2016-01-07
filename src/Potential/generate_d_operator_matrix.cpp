@@ -95,7 +95,7 @@ void Potential::generate_D_operator_matrix()
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
                         int ig = spl_num_gvec_[igloc];
-                        veff_a(igloc, i) = veff_vec[iv]->f_pw(ig) * ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position());
+                        veff_a(igloc, i) = veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia);
                     }
                 }
 

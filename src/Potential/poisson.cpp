@@ -43,7 +43,7 @@ void Potential::poisson_sum_G(int lmmax__,
                 for (int i = 0; i < na; i++)
                 {
                     int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    phase_factors(igloc, i) = ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position());
+                    phase_factors(igloc, i) = ctx_.gvec_phase_factor(ig, ia);
                 }
                 for (int lm = 0; lm < lmmax__; lm++)
                 {
@@ -163,7 +163,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
 
                 double gR = ctx_.gvec().gvec_len(ig) * R;
                 
-                double_complex zt = fourpi * std::conj(ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position())) / unit_cell_.omega();
+                double_complex zt = fourpi * std::conj(ctx_.gvec_phase_factor(ig, ia)) / unit_cell_.omega();
 
                 if (ig)
                 {

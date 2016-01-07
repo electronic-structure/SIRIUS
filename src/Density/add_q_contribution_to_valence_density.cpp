@@ -9,164 +9,107 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     int ndm = (parameters_.num_mag_dims() == 3) ? 3 : parameters_.num_spins();
 
     /* complex density matrix */
-    mdarray<double_complex, 4> pp_complex_density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
-                                                         ndm, unit_cell_.num_atoms());
-    pp_complex_density_matrix.zero();
+    mdarray<double_complex, 4> density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
+                                              ndm, unit_cell_.num_atoms());
+    density_matrix.zero();
     
     /* add k-point contribution */
     for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        add_k_point_contribution<ultrasoft_pseudopotential>(ks[ik], pp_complex_density_matrix);
+        add_k_point_contribution<ultrasoft_pseudopotential>(ks[ik], density_matrix);
     }
-    ctx_.comm().allreduce(pp_complex_density_matrix.at<CPU>(), static_cast<int>(pp_complex_density_matrix.size()));
+    ctx_.comm().allreduce(density_matrix.at<CPU>(), static_cast<int>(density_matrix.size()));
 
     /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
-    /* split local fraction of G-vectors between threads */
-    splindex<block> spl_ngv_loc(spl_gvec.local_size(), Platform::max_num_threads(), 0);
+    std::vector<Periodic_function<double>*> rho_vec(parameters_.num_mag_dims() + 1);
+    rho_vec[0] = rho_;
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) rho_vec[1 + j] = magnetization_[j];
 
     //mdarray<double, 2> timers(3, Platform::max_num_threads());
     //timers.zero();
-
-    STOP();
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type.mt_basis_size();
 
-        mdarray<double_complex, 3> d_mtrx_packed(atom_type.num_atoms(), nbf * nbf, ndm);
-        if (parameters_.num_mag_dims() == 0)
+        mdarray<double_complex, 3> dm(nbf * nbf, atom_type.num_atoms(), ndm);
+        #pragma omp parallel for
+        for (int i = 0; i < atom_type.num_atoms(); i++)
         {
-            for (int i = 0; i < atom_type.num_atoms(); i++)
-            {
-                int ia = atom_type.atom_id(i);
+            int ia = atom_type.atom_id(i);
 
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
-                    {
-                        d_mtrx_packed(i, xi2 * nbf + xi1, 0) = pp_complex_density_matrix(xi2, xi1, 0, ia);
-                    }
-                }
-            }
-        }
-        if (parameters_.num_mag_dims() == 1)
-        {
-            for (int i = 0; i < atom_type.num_atoms(); i++)
-            {
-                int ia = atom_type.atom_id(i);
-
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
-                    {
-                        d_mtrx_packed(i, xi2 * nbf + xi1, 0) = pp_complex_density_matrix(xi2, xi1, 0, ia) + pp_complex_density_matrix(xi2, xi1, 1, ia);
-                        d_mtrx_packed(i, xi2 * nbf + xi1, 1) = pp_complex_density_matrix(xi2, xi1, 0, ia) - pp_complex_density_matrix(xi2, xi1, 1, ia);
-                    }
-                }
-            }
-        }
-        #pragma omp parallel
-        {
-            mdarray<double_complex, 2> phase_factors(spl_ngv_loc.local_size(), atom_type.num_atoms());
-            
-            mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * nbf);
-    
-            int thread_id = Platform::thread_id();
-            
-            //double t = -omp_get_wtime();
-            for (int i = 0; i < atom_type.num_atoms(); i++)
-            {
-                int ia = atom_type.atom_id(i);
-
-                for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-                {
-                    int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-                    int ig = spl_gvec[igloc];
-                    phase_factors(igloc_t, i) = std::conj(ctx_.gvec().gvec_phase_factor(ig, unit_cell_.atom(ia).position()));
-                }
-            }
-            //t += omp_get_wtime();
-            //timers(0, thread_id) += t;
-
-            //t = -omp_get_wtime();
-            linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type.num_atoms(),
-                              &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 0), d_mtrx_packed.ld(), 
-                              &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
-            //t += omp_get_wtime();
-            //timers(1, thread_id) += t;
-
-            //t = -omp_get_wtime();
-            /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
-                int idx12 = xi2 * (xi2 + 1) / 2;
-
-                /* add diagonal term */
-                for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
+                for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-                    STOP();
-                    /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                    //rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-                    //                               atom_type.uspp().q_pw(igloc, idx12 + xi2);
-
+                    switch (parameters_.num_mag_dims())
+                    {
+                        case 0:
+                        {
+                            dm(xi2 * nbf + xi1, i, 0) = density_matrix(xi2, xi1, 0, ia);
+                            break;
+                        }
+                        case 1:
+                        {
+                            dm(xi2 * nbf + xi1, i, 0) = density_matrix(xi2, xi1, 0, ia) + density_matrix(xi2, xi1, 1, ia);
+                            dm(xi2 * nbf + xi1, i, 1) = density_matrix(xi2, xi1, 0, ia) - density_matrix(xi2, xi1, 1, ia);
+                            break;
+                        }
+                    }
                 }
-                ///* add non-diagonal terms */
-                //for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-                //{
-                //    for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-                //    {
-                //        int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-                //        
-                //        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                //        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
-
-                //        /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                //        rho_->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
-                //    }
-                //}
             }
+        }
 
-            //if (parameters_.num_mag_dims() == 1)
-            //{
-            //    linalg<CPU>::gemm(0, 0, spl_ngv_loc.local_size(thread_id), nbf * nbf, atom_type.num_atoms(),
-            //                      &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0, 1), d_mtrx_packed.ld(), 
-            //                      &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+        mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), spl_gvec.local_size());
 
-            //    /* remember that d_mtrx_pw is not a Hermitian matrix in xi1,xi2 indices */
-            //    for (int xi2 = 0; xi2 < nbf; xi2++)
-            //    {
-            //        int idx12 = xi2 * (xi2 + 1) / 2;
+        #pragma omp parallel for
+        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
+        {
+            int ig = spl_gvec[igloc];
+            for (int i = 0; i < atom_type.num_atoms(); i++)
+            {
+                int ia = atom_type.atom_id(i);
+                phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
+            }
+        }
 
-            //        /* add diagonal term */
-            //        for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-            //        {
-            //            int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-            //            /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-            //            magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi2) * 
-            //                                                        atom_type.uspp().q_pw(igloc, idx12 + xi2);
+        mdarray<double_complex, 2> dm_pw(nbf * nbf, spl_gvec.local_size());
 
-            //        }
-            //        /* add non-diagonal terms */
-            //        for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-            //        {
-            //            for (int igloc_t = 0; igloc_t < spl_ngv_loc.local_size(thread_id); igloc_t++)
-            //            {
-            //                int igloc = spl_ngv_loc.global_index(igloc_t, thread_id);
-            //                
-            //                /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-            //                magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi2 * nbf + xi1) * atom_type.uspp().q_pw(igloc, idx12);
+        for (int iv = 0; iv < parameters_.num_mag_dims() + 1; iv++)
+        {
+            linalg<CPU>::gemm(0, 0, nbf * nbf, spl_gvec.local_size(), atom_type.num_atoms(),
+                              &dm(0, 0, iv), dm.ld(), &phase_factors(0, 0), phase_factors.ld(),
+                              &dm_pw(0, 0), dm.ld());
 
-            //                /* D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-            //                magnetization_[0]->f_pw(spl_gvec[igloc]) += d_mtrx_pw(igloc_t, xi1 * nbf + xi2) * std::conj(atom_type.uspp().q_pw(igloc, idx12));
-            //            }
-            //        }
-            //    }
-            //}
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
+            {
+                double_complex z(0, 0);
+
+                /* remember that dm_pw is not a Hermitian matrix in xi1,xi2 indices */
+                for (int xi2 = 0; xi2 < nbf; xi2++)
+                {
+                    int idx12 = xi2 * (xi2 + 1) / 2;
+
+                    /* add diagonal term */
+                    /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
+                    z += dm_pw(xi2 * nbf + xi2, igloc) * ctx_.augmentation_op(iat).q_pw(igloc, idx12 + xi2);
+
+                    /* add non-diagonal terms */
+                    for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                    {
+                        double_complex q = ctx_.augmentation_op(iat).q_pw(igloc, idx12);
+
+                        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+                        z += (dm_pw(xi2 * nbf + xi1, igloc) * q + dm_pw(xi1 * nbf + xi2, igloc) * std::conj(q));
+                    }
+                }
+                rho_vec[iv]->f_pw(igloc) += z;
+            }
         }
     }
 
@@ -182,7 +125,8 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     //    std::cout << "-------------------------------------------" << std::endl;
     //}
     
-    ctx_.comm().allgather(&rho_->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
+    for (auto e: rho_vec)
+        ctx_.comm().allgather(&e->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
 }
 
 #ifdef __GPU

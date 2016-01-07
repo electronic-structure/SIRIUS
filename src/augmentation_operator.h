@@ -15,7 +15,7 @@ class Augmentation_operator
 
         mdarray<double_complex, 2> q_mtrx_;
 
-        mutable mdarray<double_complex, 2> q_pw_;
+        mdarray<double_complex, 2> q_pw_;
         
         /// Get Q-operator radial functions.
         mdarray<double, 3> get_radial_functions()
@@ -243,6 +243,11 @@ class Augmentation_operator
         mdarray<double_complex, 2> const& q_pw() const
         {
             return q_pw_;
+        }
+
+        double_complex const& q_pw(int ig__, int idx__) const
+        { 
+            return q_pw_(ig__, idx__);
         }
 
         double_complex const& q_mtrx(int xi1__, int xi2__) const

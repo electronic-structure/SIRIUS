@@ -395,6 +395,13 @@ class Simulation_context
             return (*augmentation_op_[iat__]);
         }
 
+        /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
+        inline double_complex gvec_phase_factor(int ig__, int ia__) const
+        {
+            auto G = gvec_[ig__];
+            return std::exp(twopi * double_complex(0.0, G * unit_cell_.atom(ia__).position()));
+        }
+
         //== void write_json_output()
         //== {
         //==     auto ts = Timer::collect_timer_stats();

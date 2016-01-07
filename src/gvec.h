@@ -452,13 +452,6 @@ class Gvec
         {
             return z_columns_pos_;
         }
-
-        /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-        inline double_complex gvec_phase_factor(int ig__, vector3d<double> const& apos__) const
-        {
-            auto G = gvec_by_full_index(gvec_full_index_(ig__));
-            return std::exp(double_complex(0.0, twopi * (G * apos__)));
-        }
 };
 
 };
