@@ -29,7 +29,7 @@
 #include "communicator.h"
 #include "unit_cell.h"
 #include "wave_functions.h"
-#include "sbessel_pw.h"
+#include "sbessel.h"
 
 #ifdef __GPU
 extern "C" void create_beta_gk_gpu(int num_atoms,

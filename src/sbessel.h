@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file sbessel_pw.h
+/** \file sbessel.h
  *   
  *  \brief Contains implementation of sirius::Spherical_Bessel_functions and sirius::sbessel_approx classes.
  */

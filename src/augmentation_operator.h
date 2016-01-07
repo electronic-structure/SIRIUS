@@ -1,7 +1,7 @@
 #ifndef __AUGMENTATION_OPERATOR_H__
 #define __AUGMENTATION_OPERATOR_H__
 
-#include "sbessel_pw.h"
+#include "sbessel.h"
 
 namespace sirius {
 
