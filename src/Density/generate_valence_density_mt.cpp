@@ -110,10 +110,10 @@ void Density::generate_valence_density_mt(K_set& ks)
     for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = (int)unit_cell_.spl_num_atoms(ialoc);
-        Atom_type* atom_type = unit_cell_.atom(ia)->type();
+        auto& atom_type = unit_cell_.atom(ia).type();
 
-        int nmtp = atom_type->num_mt_points();
-        int num_rf_pairs = atom_type->mt_radial_basis_size() * (atom_type->mt_radial_basis_size() + 1) / 2;
+        int nmtp = atom_type.num_mt_points();
+        int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
         
         Timer t1("sirius::Density::generate|sum_zdens");
         switch (parameters_.num_mag_dims())
@@ -137,18 +137,18 @@ void Density::generate_valence_density_mt(K_set& ks)
         t1.stop();
         
         Timer t2("sirius::Density::generate|expand_lm");
-        // collect radial functions
-        for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
+        /* collect radial functions */
+        for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++)
         {
             int offs = idxrf2 * (idxrf2 + 1) / 2;
             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
             {
                 /* off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2 */
                 int n = (idxrf1 == idxrf2) ? 1 : 2; 
-                for (int ir = 0; ir < unit_cell_.atom(ia)->type()->num_mt_points(); ir++)
+                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
                 {
-                    rf_pairs(ir, offs + idxrf1) = n * unit_cell_.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
-                                                      unit_cell_.atom(ia)->symmetry_class()->radial_function(ir, idxrf2); 
+                    rf_pairs(ir, offs + idxrf1) = n * unit_cell_.atom(ia).symmetry_class().radial_function(ir, idxrf1) * 
+                                                      unit_cell_.atom(ia).symmetry_class().radial_function(ir, idxrf2); 
                 }
             }
         }

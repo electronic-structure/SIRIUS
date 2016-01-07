@@ -40,26 +40,24 @@ void test1a(void)
     }
 }
 
-void test2()
-{
-    printf("\n");
-    printf("test2\n");
-
-    for (int i = 0; i < 4; i++)
-    {
-        printf("rank : %i\n", i);
-        splindex<block> spl(17, 4, i);
-        
-        #pragma omp parallel
-        for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
-        {
-            #pragma omp flush
-            printf("thread_id: %i, local index : %i, global index : %i\n", Platform::thread_id(), (int)it.idx_local(), (int)it.idx());
-        }
-    }
-    
-
-}
+//void test2()
+//{
+//    printf("\n");
+//    printf("test2\n");
+//
+//    for (int i = 0; i < 4; i++)
+//    {
+//        printf("rank : %i\n", i);
+//        splindex<block> spl(17, 4, i);
+//        
+//        #pragma omp parallel
+//        for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
+//        {
+//            #pragma omp flush
+//            printf("thread_id: %i, local index : %i, global index : %i\n", Platform::thread_id(), (int)it.idx_local(), (int)it.idx());
+//        }
+//    }
+//}
 
 void test3()
 {
@@ -79,7 +77,7 @@ void test3()
                 std::cout << "global index size: " << N << std::endl;
                 std::cout << "computed global index size: " << sz << std::endl;
                 std::cout << "number of ranks: " << num_ranks << std::endl;
-                std::cout << "block size: " << spl.block_size() << std::endl;
+                //std::cout << "block size: " << spl.block_size() << std::endl;
                 
                 for (int i = 0; i < num_ranks; i++) std::cout << "i, local_size(i): " << i << ", " << spl.local_size(i) << std::endl;
 
@@ -96,7 +94,7 @@ void test3()
                     std::cout << "number of ranks: " << num_ranks << std::endl;
                     std::cout << "global index: " << i << std::endl;
                     std::cout << "rank, offset: " << rank << ", " << offset << std::endl;
-                    std::cout << "block size: " << spl.block_size() << std::endl;
+                    //std::cout << "block size: " << spl.block_size() << std::endl;
                     std::cout << "computed global index: " << spl.global_index(offset, rank) << std::endl;
                     exit(0);
                 }
@@ -151,7 +149,7 @@ int main(int argn, char** argv)
     Platform::initialize(1);
     test1();
     test1a();
-    test2();
+    //test2();
     test3();
     test4();
     Platform::finalize();

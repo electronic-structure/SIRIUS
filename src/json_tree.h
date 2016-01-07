@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <libjson.h>
 #include "utils.h"
+#include "vector3d.h"
 
 /// Auxiliary class for parsing JSONNode of the libjson
 class JSON_value_parser 
@@ -334,7 +335,19 @@ class JSON_write
         {
             new_line();
             fprintf(fout_, "[");
-            for (int i = 0; i < (int)v.size(); i++)
+            for (size_t i = 0; i < v.size(); i++)
+            {
+                if (i != 0) fprintf(fout_, ", ");
+                fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
+            }
+            fprintf(fout_, "]");
+        } 
+
+        inline void write(vector3d<double>& v)
+        {
+            new_line();
+            fprintf(fout_, "[");
+            for (int i = 0; i < 3; i++)
             {
                 if (i != 0) fprintf(fout_, ", ");
                 fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());

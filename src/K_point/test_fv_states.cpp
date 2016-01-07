@@ -14,22 +14,22 @@ void K_point::test_fv_states()
         std::memset(o_fv[i], 0, wf_size() * sizeof(double_complex));
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            int offset_wf = unit_cell_.atom(ia)->offset_wf();
-            Atom_type* type = unit_cell_.atom(ia)->type();
-            Atom_symmetry_class* symmetry_class = unit_cell_.atom(ia)->symmetry_class();
+            int offset_wf = unit_cell_.atom(ia).offset_wf();
+            auto& type = unit_cell_.atom(ia).type();
+            auto& symmetry_class = unit_cell_.atom(ia).symmetry_class();
 
             for (int l = 0; l <= parameters_.lmax_apw(); l++)
             {
-                int ordmax = type->indexr().num_rf(l);
+                int ordmax = type.indexr().num_rf(l);
                 for (int io1 = 0; io1 < ordmax; io1++)
                 {
                     for (int io2 = 0; io2 < ordmax; io2++)
                     {
                         for (int m = -l; m <= l; m++)
                         {
-                            o_fv[i][offset_wf + type->indexb_by_l_m_order(l, m, io2)] +=
-                                fv_states<true>()[i][offset_wf + type->indexb_by_l_m_order(l, m, io1)] *
-                                symmetry_class->o_radial_integral(l, io1, io2);
+                            o_fv[i][offset_wf + type.indexb_by_l_m_order(l, m, io2)] +=
+                                fv_states<true>()[i][offset_wf + type.indexb_by_l_m_order(l, m, io1)] *
+                                symmetry_class.o_radial_integral(l, io1, io2);
                         }
                     }
                 }

@@ -277,19 +277,23 @@ void Density::add_k_point_contribution_it(K_point* kp__)
             {
                 for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
                 {
-                    magnetization_[1]->f_it(ir) += it_density_matrix(ir, 2, i);
-                    magnetization_[2]->f_it(ir) += it_density_matrix(ir, 3, i);
+                    magnetization_[1]->f_rg(ir) += it_density_matrix(ir, 2, i);
+                    magnetization_[2]->f_rg(ir) += it_density_matrix(ir, 3, i);
                 }
             }
         }
         case 1:
         {
-            for (int i = 0; i < num_fft_streams; i++)
+            #pragma omp parallel
             {
-                for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+                for (int i = 0; i < num_fft_streams; i++)
                 {
-                    rho_->f_it(ir) += (it_density_matrix(ir, 0, i) + it_density_matrix(ir, 1, i));
-                    magnetization_[0]->f_it(ir) += (it_density_matrix(ir, 0, i) - it_density_matrix(ir, 1, i));
+                    #pragma omp for schedule(static)
+                    for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+                    {
+                        rho_->f_rg(ir) += (it_density_matrix(ir, 0, i) + it_density_matrix(ir, 1, i));
+                        magnetization_[0]->f_rg(ir) += (it_density_matrix(ir, 0, i) - it_density_matrix(ir, 1, i));
+                    }
                 }
             }
             break;
@@ -301,7 +305,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
                 for (int i = 0; i < num_fft_streams; i++)
                 {
                     #pragma omp for schedule(static)
-                    for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++) rho_->f_it(ir) += it_density_matrix(ir, 0, i);
+                    for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++) rho_->f_rg(ir) += it_density_matrix(ir, 0, i);
                 }
             }
         }

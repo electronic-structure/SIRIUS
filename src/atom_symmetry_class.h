@@ -46,7 +46,7 @@ class Atom_symmetry_class
         std::vector<int> atom_id_;
         
         /// Pointer to atom type.
-        Atom_type* atom_type_;
+        Atom_type const& atom_type_;
 
         /// Spherical part of the effective potential.
         std::vector<double> spherical_potential_;
@@ -76,10 +76,10 @@ class Atom_symmetry_class
         double core_leakage_;
         
         /// list of radial descriptor sets used to construct augmented waves 
-        std::vector<radial_solution_descriptor_set> aw_descriptors_;
+        mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
         
         /// list of radial descriptor sets used to construct local orbitals
-        std::vector<local_orbital_descriptor> lo_descriptors_;
+        mutable std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// Generate radial functions for augmented waves
         void generate_aw_radial_functions();
@@ -100,13 +100,13 @@ class Atom_symmetry_class
     public:
     
         /// Constructor
-        Atom_symmetry_class(int id_, Atom_type* atom_type_) 
+        Atom_symmetry_class(int id_, Atom_type const& atom_type_) 
             : id_(id_), 
               atom_type_(atom_type_), 
               core_eval_sum_(0.0), 
               core_leakage_(0.0)
         {
-            if (atom_type_->initialized()) initialize();
+            if (atom_type_.initialized()) initialize();
         }
 
         /// Initialize the symmetry class
@@ -125,14 +125,14 @@ class Atom_symmetry_class
         void sync_core_charge_density(Communicator const& comm__, int const rank__);
        
         /// Compute m-th order radial derivative at the MT surface.
-        double aw_surface_dm(int l, int order, int dm);
+        double aw_surface_dm(int l, int order, int dm) const;
         
         /// Find core states and generate core density.
         void generate_core_charge_density();
 
         void find_enu();
 
-        void write_enu(pstdout& pout);
+        void write_enu(pstdout& pout) const;
         
         /// Generate radial overlap and SO integrals
         /** In the case of spin-orbit interaction the following integrals are computed:
@@ -202,7 +202,7 @@ class Atom_symmetry_class
             return core_charge_density_[ir];
         }
 
-        inline Atom_type const* atom_type() const
+        inline Atom_type const& atom_type() const
         {
             return atom_type_;
         }
@@ -219,22 +219,22 @@ class Atom_symmetry_class
         
         inline int num_aw_descriptors() const
         {
-            return (int)aw_descriptors_.size();
+            return static_cast<int>(aw_descriptors_.size());
         }
 
-        inline radial_solution_descriptor_set& aw_descriptor(int idx)
+        inline radial_solution_descriptor_set& aw_descriptor(int idx__) const
         {
-            return aw_descriptors_[idx];
+            return aw_descriptors_[idx__];
         }
         
         inline int num_lo_descriptors() const
         {
-            return (int)lo_descriptors_.size();
+            return static_cast<int>(lo_descriptors_.size());
         }
 
-        inline local_orbital_descriptor& lo_descriptor(int idx)
+        inline local_orbital_descriptor& lo_descriptor(int idx__) const
         {
-            return lo_descriptors_[idx];
+            return lo_descriptors_[idx__];
         }
 
         inline void set_aw_enu(int l, int order, double enu)

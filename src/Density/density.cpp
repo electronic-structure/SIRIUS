@@ -12,13 +12,12 @@ Density::Density(Simulation_context& ctx__)
       low_freq_mixer_(nullptr),
       mixer_(nullptr)
 {
-    rho_ = new Periodic_function<double>(ctx_, parameters_.lmmax_rho());
+    rho_ = new Periodic_function<double>(ctx_, parameters_.lmmax_rho(), &ctx_.gvec());
 
     /* core density of the pseudopotential method */
     if (!parameters_.full_potential())
     {
-        rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
-        rho_pseudo_core_->allocate(false);
+        rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, nullptr);
         rho_pseudo_core_->zero();
 
         generate_pseudo_core_charge_density();
@@ -26,7 +25,7 @@ Density::Density(Simulation_context& ctx__)
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new Periodic_function<double>(ctx_, parameters_.lmmax_rho());
+        magnetization_[i] = new Periodic_function<double>(ctx_, parameters_.lmmax_rho(), &ctx_.gvec());
     }
     
     switch (parameters_.esm_type())
@@ -54,61 +53,62 @@ Density::Density(Simulation_context& ctx__)
 
     if (!parameters_.full_potential())
     {
-        for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
+        lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
+        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + parameters_.num_mag_dims()), 1.0);
+
+        weights[0] = 0;
+        lf_gvec_[0] = 0;
+
+        for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++)
         {
-            if (ctx_.gvec().cart(ig).length() <= 2 * parameters_.gk_cutoff())
-            {
-                lf_gvec_.push_back(ig);
-            }
-            else
-            {
-                hf_gvec_.push_back(ig);
-            }
+            auto G = ctx_.gvec_coarse()[ig];
+            /* save index of low-frequency G-vector */
+            lf_gvec_[ig] = ctx_.gvec().index_by_gvec(G);
+            weights[ig] = fourpi * unit_cell_.omega() / std::pow(ctx_.gvec_coarse().gvec_len(ig), 2);
         }
 
-        if ((int)lf_gvec_.size() != ctx_.gvec_coarse().num_gvec())
+        /* find high-frequency G-vectors */
+        for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
+        {
+            if (ctx_.gvec().gvec_len(ig) > 2 * parameters_.gk_cutoff())
+                hf_gvec_.push_back(ig);
+        }
+
+        if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec())
         {
             std::stringstream s;
-            s << "Wrong count of low-frequency G-vectors" << std::endl
-              << "number of found low-frequency G-vectors: " << lf_gvec_.size() << std::endl
-              << "number of coarse G-vectors: " << ctx_.gvec_coarse().num_gvec() << std::endl
+            s << "Wrong count of high-frequency G-vectors" << std::endl
+              << "number of found high-frequency G-vectors: " << hf_gvec_.size() << std::endl
+              << "expectd number of high-frequency G-vectors: " << ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec() << std::endl
               << "G-vector cutoff: " <<  parameters_.gk_cutoff();
             TERMINATE(s);
         }
 
-        assert((int)hf_gvec_.size() == (ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()));
-
-        high_freq_mixer_ = new Linear_mixer<double_complex>((ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()),
+        high_freq_mixer_ = new Linear_mixer<double_complex>(hf_gvec_.size() * (1 + parameters_.num_mag_dims()),
                                                             parameters_.mixer_input_section().beta_, ctx_.comm());
-
-        std::vector<double> weights(ctx_.gvec_coarse().num_gvec());
-        weights[0] = 0;
-        for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++)
-            weights[ig] = fourpi * unit_cell_.omega() / std::pow(ctx_.gvec_coarse().gvec_len(ig), 2);
 
         if (parameters_.mixer_input_section().type_ == "linear")
         {
-            low_freq_mixer_ = new Linear_mixer<double_complex>(ctx_.gvec_coarse().num_gvec(),
-                                                               parameters_.mixer_input_section().beta_,
-                                                               ctx_.comm());
+            low_freq_mixer_ = new Linear_mixer<double_complex>(lf_gvec_.size() * (1 + parameters_.num_mag_dims()),
+                                                               parameters_.mixer_input_section().beta_, ctx_.comm());
         }
-        else if (parameters_.mixer_input_section().type_ == "broyden2")
-        {
-            low_freq_mixer_ = new Broyden_mixer<double_complex>(ctx_.gvec_coarse().num_gvec(),
-                                                                parameters_.mixer_input_section().max_history_,
-                                                                parameters_.mixer_input_section().beta_,
-                                                                weights,
-                                                                ctx_.comm());
-        } 
         else if (parameters_.mixer_input_section().type_ == "broyden1")
         {
 
-            low_freq_mixer_ = new Broyden_modified_mixer<double_complex>(ctx_.gvec_coarse().num_gvec(),
-                                                                         parameters_.mixer_input_section().max_history_,
-                                                                         parameters_.mixer_input_section().beta_,
-                                                                         weights,
-                                                                         ctx_.comm());
+            low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + parameters_.num_mag_dims()),
+                                                           parameters_.mixer_input_section().max_history_,
+                                                           parameters_.mixer_input_section().beta_,
+                                                           weights,
+                                                           ctx_.comm());
         }
+        else if (parameters_.mixer_input_section().type_ == "broyden2")
+        {
+            low_freq_mixer_ = new Broyden2<double_complex>(lf_gvec_.size() * (1 + parameters_.num_mag_dims()),
+                                                           parameters_.mixer_input_section().max_history_,
+                                                           parameters_.mixer_input_section().beta_,
+                                                           weights,
+                                                           ctx_.comm());
+        } 
         else
         {
             TERMINATE("wrong mixer type");
@@ -123,40 +123,30 @@ Density::Density(Simulation_context& ctx__)
                                               parameters_.mixer_input_section().beta_,
                                               ctx_.comm());
         }
-        else if (parameters_.mixer_input_section().type_ == "broyden2")
-        {
-            std::vector<double> weights;
-            mixer_ = new Broyden_mixer<double>(size(),
-                                               parameters_.mixer_input_section().max_history_,
-                                               parameters_.mixer_input_section().beta_,
-                                               weights,
-                                               ctx_.comm());
-
-        }
         else if (parameters_.mixer_input_section().type_ == "broyden1")
         {
             std::vector<double> weights;
-            mixer_ = new Broyden_modified_mixer<double>(size(),
-                                                        parameters_.mixer_input_section().max_history_,
-                                                        parameters_.mixer_input_section().beta_,
-                                                        weights,
-                                                        ctx_.comm());
+            mixer_ = new Broyden1<double>(size(),
+                                          parameters_.mixer_input_section().max_history_,
+                                          parameters_.mixer_input_section().beta_,
+                                          weights,
+                                          ctx_.comm());
+        }
+        else if (parameters_.mixer_input_section().type_ == "broyden2")
+        {
+            std::vector<double> weights;
+            mixer_ = new Broyden2<double>(size(),
+                                          parameters_.mixer_input_section().max_history_,
+                                          parameters_.mixer_input_section().beta_,
+                                          weights,
+                                          ctx_.comm());
+
         }
         else
         {
             TERMINATE("wrong mixer type");
         }
     }
-
-    //splindex<block> spl_num_gvec(fft_->num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-    
-    //== gvec_phase_factors_ = mdarray<double_complex, 2>(spl_num_gvec.local_size(), unit_cell_.num_atoms());
-    //== #pragma omp parallel for
-    //== for (int igloc = 0; igloc < (int)spl_num_gvec.local_size(); igloc++)
-    //== {
-    //==     int ig = (int)spl_num_gvec[igloc];
-    //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = ctx_.reciprocal_lattice()->gvec_phase_factor(ig, ia);
-    //== }
 }
 
 Density::~Density()

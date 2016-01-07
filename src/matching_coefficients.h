@@ -50,7 +50,7 @@ class Matching_coefficients
 {
     private:
 
-        Unit_cell const* unit_cell_;
+        Unit_cell const& unit_cell_;
 
         std::vector<gklo_basis_descriptor> const& gklo_basis_descriptors_;
 
@@ -89,7 +89,7 @@ class Matching_coefficients
                 case 1:
                 {
                     #if (__VERIFICATION > 0)
-                    if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_->omega()))
+                    if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
@@ -107,7 +107,7 @@ class Matching_coefficients
                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
                     
                     #if (__VERIFICATION > 0)
-                    if (std::abs(det) < 1.0 / std::sqrt(unit_cell_->omega()))
+                    if (std::abs(det) < 1.0 / std::sqrt(unit_cell_.omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
@@ -162,7 +162,7 @@ class Matching_coefficients
 
     public:
 
-        Matching_coefficients(Unit_cell const* unit_cell__,
+        Matching_coefficients(Unit_cell const& unit_cell__,
                               int lmax_apw__,
                               int num_gkvec__, 
                               std::vector<gklo_basis_descriptor>& gklo_basis_descriptors__)
@@ -184,7 +184,7 @@ class Matching_coefficients
                 #pragma omp for
                 for (int igk = 0; igk < num_gkvec_; igk++)
                 {
-                    auto gkvec_cart = unit_cell__->reciprocal_lattice_vectors() * gklo_basis_descriptors_[igk].gkvec;
+                    auto gkvec_cart = unit_cell__.reciprocal_lattice_vectors() * gklo_basis_descriptors_[igk].gkvec;
                     /* get r, theta, phi */
                     auto vs = SHT::spherical_coordinates(gkvec_cart);
 
@@ -196,7 +196,7 @@ class Matching_coefficients
                 }
             }
             
-            alm_b_ = mdarray<double_complex, 4>(3, num_gkvec_, lmax_apw__ + 1, unit_cell_->num_atom_types());
+            alm_b_ = mdarray<double_complex, 4>(3, num_gkvec_, lmax_apw__ + 1, unit_cell_.num_atom_types());
             alm_b_.zero();
             
             /* value and first two derivatives of spherical Bessel functions */
@@ -204,9 +204,9 @@ class Matching_coefficients
 
             for (int igk = 0; igk < num_gkvec_; igk++)
             {
-                for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
                 {
-                    double R = unit_cell_->atom_type(iat)->mt_radius();
+                    double R = unit_cell_.atom_type(iat).mt_radius();
 
                     double RGk = R * gkvec_len_[igk];
 
@@ -231,7 +231,7 @@ class Matching_coefficients
                     for (int l = 0; l <= lmax_apw__; l++)
                     {
                         double_complex z = std::pow(complex_i, l);
-                        double f = fourpi / std::sqrt(unit_cell_->omega());
+                        double f = fourpi / std::sqrt(unit_cell_.omega());
                         alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0); 
                         alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);
                         alm_b_(2, igk, l, iat) = z * f * sbessel_mt(l, 2);
@@ -246,35 +246,35 @@ class Matching_coefficients
          */
         void generate(int ia, mdarray<double_complex, 2>& alm) const
         {
-            auto atom = unit_cell_->atom(ia);
-            auto type = atom->type();
+            auto& atom = unit_cell_.atom(ia);
+            auto& type = atom.type();
 
-            assert(type->max_aw_order() <= 3);
+            assert(type.max_aw_order() <= 3);
 
-            int iat = type->id();
+            int iat = type.id();
                 
             matrix3d<double> A;
 
             std::vector<double_complex> phase_factors(num_gkvec_);
             for (int igk = 0; igk < num_gkvec_; igk++)
             {
-                double phase = twopi * (gklo_basis_descriptors_[igk].gkvec * unit_cell_->atom(ia)->position());
+                double phase = twopi * (gklo_basis_descriptors_[igk].gkvec * unit_cell_.atom(ia).position());
                 phase_factors[igk] = std::exp(double_complex(0, phase));
             }
 
-            for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+            for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
             {
-                int l = type->indexb(xi).l;
-                int lm = type->indexb(xi).lm;
-                int nu = type->indexb(xi).order; 
+                int l = type.indexb(xi).l;
+                int lm = type.indexb(xi).lm;
+                int nu = type.indexb(xi).order; 
 
                 /* order of augmentation for a given orbital quantum number */
-                int num_aw = static_cast<int>(type->aw_descriptor(l).size());
+                int num_aw = static_cast<int>(type.aw_descriptor(l).size());
                 
                 /* create matrix of radial derivatives */
                 for (int order = 0; order < num_aw; order++)
                 {
-                    for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                    for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom.symmetry_class().aw_surface_dm(l, order, dm);
                 }
 
                 switch (num_aw)

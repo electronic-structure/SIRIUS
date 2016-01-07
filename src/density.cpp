@@ -31,7 +31,7 @@ namespace sirius {
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 {
     if (parameters_.full_potential()) rho_->set_mt_ptr(rhomt);
-    rho_->set_it_ptr(rhoir);
+    rho_->set_rg_ptr(rhoir);
 }
 
 void Density::set_magnetization_ptr(double* magmt, double* magir)
@@ -48,20 +48,20 @@ void Density::set_magnetization_ptr(double* magmt, double* magir)
     {
         // z component is the first and only one
         magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-        magnetization_[0]->set_it_ptr(&magir_tmp(0, 0));
+        magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
     }
 
     if (parameters_.num_mag_dims() == 3)
     {
         // z component is the first
         magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
-        magnetization_[0]->set_it_ptr(&magir_tmp(0, 2));
+        magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
         // x component is the second
         magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-        magnetization_[1]->set_it_ptr(&magir_tmp(0, 0));
+        magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
         // y component is the third
         magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
-        magnetization_[2]->set_it_ptr(&magir_tmp(0, 1));
+        magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
     }
 }
     
@@ -76,38 +76,36 @@ double Density::core_leakage()
     double sum = 0.0;
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
-        sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic)->num_atoms();
+        sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
     }
     return sum;
 }
 
 double Density::core_leakage(int ic)
 {
-    return unit_cell_.atom_symmetry_class(ic)->core_leakage();
+    return unit_cell_.atom_symmetry_class(ic).core_leakage();
 }
 
 void Density::generate_core_charge_density()
 {
-    Timer t("sirius::Density::generate_core_charge_density");
+    PROFILE_WITH_TIMER("sirius::Density::generate_core_charge_density");
 
     for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
-        unit_cell_.atom_symmetry_class(ic)->generate_core_charge_density();
+        unit_cell_.atom_symmetry_class(ic).generate_core_charge_density();
     }
 
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
         int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
-        unit_cell_.atom_symmetry_class(ic)->sync_core_charge_density(ctx_.comm(), rank);
+        unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
     }
 }
 
 void Density::augment(K_set& ks__)
 {
-    PROFILE();
-
-    Timer t("sirius::Density::augment", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Density::augment");
 
     switch (parameters_.esm_type())
     {
@@ -129,7 +127,7 @@ void Density::augment(K_set& ks__)
                 #endif
                 default:
                 {
-                    error_local(__FILE__, __LINE__, "wrong processing unit");
+                    TERMINATE("wrong processing unit");
                 }
             }
             break;

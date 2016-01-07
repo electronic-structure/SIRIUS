@@ -35,9 +35,9 @@ typedef std::complex<double> double_complex;
 
 enum spin_block_t {nm, uu, ud, dd, du};
 
-enum lattice_t {direct, reciprocal};
+//enum lattice_t {direct, reciprocal};
 
-enum coordinates_t {cartesian, fractional};
+//enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
 

@@ -30,17 +30,17 @@ void K_point::build_gklo_basis_descriptors()
         /* local orbital basis functions */
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            Atom* atom = unit_cell_.atom(ia);
-            Atom_type* type = atom->type();
+            auto& atom = unit_cell_.atom(ia);
+            auto& type = atom.type();
         
-            int lo_index_offset = type->mt_aw_basis_size();
+            int lo_index_offset = type.mt_aw_basis_size();
             
-            for (int j = 0; j < type->mt_lo_basis_size(); j++) 
+            for (int j = 0; j < type.mt_lo_basis_size(); j++) 
             {
-                int l           = type->indexb(lo_index_offset + j).l;
-                int lm          = type->indexb(lo_index_offset + j).lm;
-                int order       = type->indexb(lo_index_offset + j).order;
-                int idxrf       = type->indexb(lo_index_offset + j).idxrf;
+                int l           = type.indexb(lo_index_offset + j).l;
+                int lm          = type.indexb(lo_index_offset + j).lm;
+                int order       = type.indexb(lo_index_offset + j).order;
+                int idxrf       = type.indexb(lo_index_offset + j).idxrf;
                 gklo.gvec       = vector3d<int>(0, 0, 0);
                 gklo.gkvec      = vector3d<double>(0, 0, 0);
                 gklo.ig         = -1;

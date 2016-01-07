@@ -29,7 +29,7 @@
 #include "communicator.h"
 #include "unit_cell.h"
 #include "wave_functions.h"
-#include "sbessel_pw.h"
+#include "sbessel.h"
 
 #ifdef __GPU
 extern "C" void create_beta_gk_gpu(int num_atoms,
@@ -129,31 +129,6 @@ class Beta_projectors
             #endif
 
             beta_gk_ = matrix<double_complex>(num_gkvec_loc_, max_num_beta_);
-
-            //beta_gk_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_basis_size());
-
-            //for (int i = 0; i < unit_cell_.mt_basis_size(); i++)
-            //{
-            //    int ia = unit_cell_.mt_lo_basis_descriptor(i).ia;
-            //    int xi = unit_cell_.mt_lo_basis_descriptor(i).xi;
-
-            //    auto atom_type = unit_cell_.atom(ia)->type();
-
-            //    for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
-            //    {
-            //        int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-
-            //        double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia)->position());
-
-            //        beta_gk_(igk_loc, i) = beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) *
-            //                               std::exp(double_complex(0.0, -phase));
-            //    }
-            //}
-
-            //#ifdef __PRINT_OBJECT_CHECKSUM
-            //auto c1 = beta_gk_.checksum();
-            //DUMP("checksum(beta_gk) : %18.10f %18.10f", c1.real(), c1.imag());
-            //#endif
         }
 
         matrix<double_complex>& beta_gk_t()

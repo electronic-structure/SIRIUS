@@ -23,8 +23,6 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
-#include "reciprocal_lattice.h"
-
 namespace sirius {
 
 /// Smooth periodic function on the real-space mesh or plane-wave domain.

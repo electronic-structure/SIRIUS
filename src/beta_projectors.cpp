@@ -28,28 +28,35 @@ void Beta_projectors::generate_beta_gk_t()
     mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        auto atom_type = unit_cell_.atom_type(iat);
-        for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
+        auto& atom_type = unit_cell_.atom_type(iat);
+        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++)
         {
-            int nr = atom_type->uspp().num_beta_radial_points[idxrf];
-            beta_rf(idxrf, iat) = Spline<double>(atom_type->radial_grid());
+            int nr = atom_type.uspp().num_beta_radial_points[idxrf];
+            beta_rf(idxrf, iat) = Spline<double>(atom_type.radial_grid());
             for (int ir = 0; ir < nr; ir++) 
-                beta_rf(idxrf, iat)[ir] = atom_type->uspp().beta_radial_functions(ir, idxrf);
+                beta_rf(idxrf, iat)[ir] = atom_type.uspp().beta_radial_functions(ir, idxrf);
             beta_rf(idxrf, iat).interpolate();
         }
     }
+
+    // TODO: use bessel function interpolation?
     
     /* compute <G+k|beta> */
     #pragma omp parallel
     {
         std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
         std::vector<double> beta_radial_integrals_(unit_cell_.max_mt_radial_basis_size());
-        sbessel_pw<double> jl(unit_cell_, lmax_beta_);
+        std::vector<Spherical_Bessel_functions> jl(unit_cell_.num_atom_types());
         #pragma omp for
         for (size_t ish = 0; ish < gkvec_shells.size(); ish++)
         {
-            /* find spherical bessel function for |G+k|r argument */
-            jl.interpolate(gkvec_shells[ish].first);
+            /* find spherical Bessel function for |G+k|r argument */
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            {
+                auto& atom_type = unit_cell_.atom_type(iat);
+                jl[iat] = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), gkvec_shells[ish].first);
+            }
+
             for (size_t i = 0; i < gkvec_shells[ish].second.size(); i++)
             {
                 int igk_loc = gkvec_shells[ish].second[i];
@@ -61,24 +68,24 @@ void Beta_projectors::generate_beta_gk_t()
 
                 for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
                 {
-                    auto atom_type = unit_cell_.atom_type(iat);
-                    for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
+                    auto& atom_type = unit_cell_.atom_type(iat);
+                    for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++)
                     {
-                        int l = atom_type->indexr(idxrf).l;
-                        int nr = atom_type->uspp().num_beta_radial_points[idxrf];
+                        int l = atom_type.indexr(idxrf).l;
+                        int nr = atom_type.uspp().num_beta_radial_points[idxrf];
                         /* compute \int j_l(|G+k|r) beta_l(r) r dr */
                         /* remeber that beta(r) are defined as miltiplied by r */
-                        beta_radial_integrals_[idxrf] = sirius::inner(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
+                        beta_radial_integrals_[idxrf] = sirius::inner(jl[iat](l), beta_rf(idxrf, iat), 1, nr);
                     }
 
-                    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+                    for (int xi = 0; xi < atom_type.mt_basis_size(); xi++)
                     {
-                        int l = atom_type->indexb(xi).l;
-                        int lm = atom_type->indexb(xi).lm;
-                        int idxrf = atom_type->indexb(xi).idxrf;
+                        int l = atom_type.indexb(xi).l;
+                        int lm = atom_type.indexb(xi).lm;
+                        int idxrf = atom_type.indexb(xi).idxrf;
 
                         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                        beta_gk_t_(igk_loc, atom_type->offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_[idxrf];
+                        beta_gk_t_(igk_loc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_[idxrf];
                     }
                 }
             }
@@ -95,7 +102,7 @@ void Beta_projectors::generate_beta_gk_t()
 void Beta_projectors::split_in_chunks()
 {
     /* split beta-projectors into chunks */
-    int num_atoms_in_chunk = 1; //(comm_.size() == 1) ? unit_cell_.num_atoms() : std::min(unit_cell_.num_atoms(), 256);
+    int num_atoms_in_chunk = (comm_.size() == 1) ? unit_cell_.num_atoms() : std::min(unit_cell_.num_atoms(), 256);
     int num_beta_chunks = unit_cell_.num_atoms() / num_atoms_in_chunk + std::min(1, unit_cell_.num_atoms() % num_atoms_in_chunk);
     splindex<block> spl_beta_chunks(unit_cell_.num_atoms(), num_beta_chunks, 0);
     beta_chunks_.resize(num_beta_chunks);
@@ -116,19 +123,20 @@ void Beta_projectors::split_in_chunks()
         {
             /* global index of atom by local index and chunk */
             int ia = spl_beta_chunks.global_index(i, ib);
-            auto type = unit_cell_.atom(ia)->type();
+            auto pos = unit_cell_.atom(ia).position();
+            auto& type = unit_cell_.atom(ia).type();
             /* atom fractional coordinates */
-            for (int x: {0, 1, 2}) beta_chunks_[ib].atom_pos_(x, i) = unit_cell_.atom(ia)->position(x);
+            for (int x: {0, 1, 2}) beta_chunks_[ib].atom_pos_(x, i) = pos[x];
             /* number of beta functions for atom */
-            beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
+            beta_chunks_[ib].desc_(0, i) = type.mt_basis_size();
             /* offset in beta_gk*/
             beta_chunks_[ib].desc_(1, i) = num_beta;
             /* offset in beta_gk_t */
-            beta_chunks_[ib].desc_(2, i) = type->offset_lo();
+            beta_chunks_[ib].desc_(2, i) = type.offset_lo();
             /* global index of atom */
             beta_chunks_[ib].desc_(3, i) = ia;
 
-            num_beta += type->mt_basis_size();
+            num_beta += type.mt_basis_size();
         }
         /* number of beta-projectors in this chunk */
         beta_chunks_[ib].num_beta_ = num_beta;
@@ -154,7 +162,7 @@ void Beta_projectors::split_in_chunks()
     }
 
     num_beta_t_ = 0;
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) num_beta_t_ += unit_cell_.atom_type(iat)->mt_lo_basis_size();
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) num_beta_t_ += unit_cell_.atom_type(iat).mt_lo_basis_size();
 }
 
 void Beta_projectors::generate(int chunk__)
@@ -175,7 +183,7 @@ void Beta_projectors::generate(int chunk__)
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
                 {
                     int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-                    double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia)->position());
+                    double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
 
                     beta_gk_(igk_loc, desc(1, i) + xi) = 
                         beta_gk_t_(igk_loc, desc(2, i) + xi) * std::exp(double_complex(0.0, -phase));

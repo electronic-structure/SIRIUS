@@ -43,7 +43,7 @@ class Potential
 
         Simulation_parameters const& parameters_;
 
-        Unit_cell const& unit_cell_;
+        Unit_cell& unit_cell_;
 
         Step_function const* step_function_;
 
@@ -468,8 +468,8 @@ class Potential
         
         void allocate()
         {
-            effective_potential_->allocate(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate(true);
+            effective_potential_->allocate_mt(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate_mt(true);
         }
 
         inline double vh_el(int ia)
@@ -496,10 +496,10 @@ class Potential
             return rms;
         }
 
-        inline void checksum()
-        {
-            DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
-        }
+        //inline void checksum()
+        //{
+        //    DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
+        //}
 };
 
 };

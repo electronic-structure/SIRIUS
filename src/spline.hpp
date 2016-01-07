@@ -150,7 +150,7 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
             for (int i = 0; i < num_points() - 1; i++)
             {
                 double dx = radial_grid_->dx(i);
-                g__[i + 1] = g__[i] + (((coefs_(i, 3) * dx * 0.25 + coefs_(i, 2) * t) * dx + coefs_(i, 1) * 0.5) * dx + coefs_(i, 0)) * dx;
+                g__[i + 1] = g__[i] + (((coeffs_(i, 3) * dx * 0.25 + coeffs_(i, 2) * t) * dx + coeffs_(i, 1) * 0.5) * dx + coeffs_(i, 0)) * dx;
             }
             break;
         }
@@ -161,10 +161,10 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
                 double x0 = (*radial_grid_)[i];
                 double x1 = (*radial_grid_)[i + 1];
                 double dx = radial_grid_->dx(i);
-                T a0 = coefs_(i, 0);
-                T a1 = coefs_(i, 1);
-                T a2 = coefs_(i, 2);
-                T a3 = coefs_(i, 3);
+                T a0 = coeffs_(i, 0);
+                T a1 = coeffs_(i, 1);
+                T a2 = coeffs_(i, 2);
+                T a3 = coeffs_(i, 3);
 
                 double x0_2 = x0 * x0;
                 double x0_3 = x0_2 * x0;
@@ -183,10 +183,10 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
             {
                 double x0 = (*radial_grid_)[i];
                 double x1 = (*radial_grid_)[i + 1];
-                T a0 = coefs_(i, 0);
-                T a1 = coefs_(i, 1);
-                T a2 = coefs_(i, 2);
-                T a3 = coefs_(i, 3);
+                T a0 = coeffs_(i, 0);
+                T a1 = coeffs_(i, 1);
+                T a2 = coeffs_(i, 2);
+                T a3 = coeffs_(i, 3);
 
                 // obtained with the following Mathematica code:
                 //   FullSimplify[Integrate[x^(-1)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
@@ -203,10 +203,10 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
             {
                 double x0 = (*radial_grid_)[i];
                 double x1 = (*radial_grid_)[i + 1];
-                T a0 = coefs_(i, 0);
-                T a1 = coefs_(i, 1);
-                T a2 = coefs_(i, 2);
-                T a3 = coefs_(i, 3);
+                T a0 = coeffs_(i, 0);
+                T a1 = coeffs_(i, 1);
+                T a2 = coeffs_(i, 2);
+                T a3 = coeffs_(i, 3);
 
                 // obtained with the following Mathematica code:
                 //   FullSimplify[Integrate[x^(-2)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
@@ -224,10 +224,10 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
             {
                 double x0 = (*radial_grid_)[i];
                 double x1 = (*radial_grid_)[i + 1];
-                T a0 = coefs_(i, 0);
-                T a1 = coefs_(i, 1);
-                T a2 = coefs_(i, 2);
-                T a3 = coefs_(i, 3);
+                T a0 = coeffs_(i, 0);
+                T a1 = coeffs_(i, 1);
+                T a2 = coeffs_(i, 2);
+                T a3 = coeffs_(i, 3);
 
                 // obtained with the following Mathematica code:
                 //   FullSimplify[Integrate[x^(-3)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
@@ -245,10 +245,10 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
             {
                 double x0 = (*radial_grid_)[i];
                 double x1 = (*radial_grid_)[i + 1];
-                T a0 = coefs_(i, 0);
-                T a1 = coefs_(i, 1);
-                T a2 = coefs_(i, 2);
-                T a3 = coefs_(i, 3);
+                T a0 = coeffs_(i, 0);
+                T a1 = coeffs_(i, 1);
+                T a2 = coeffs_(i, 2);
+                T a3 = coeffs_(i, 3);
 
                 // obtained with the following Mathematica code:
                 //   FullSimplify[Integrate[x^(-4)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
@@ -267,10 +267,10 @@ T Spline<T>::integrate(std::vector<T>& g__, int m__) const
             {
                 double x0 = (*radial_grid_)[i];
                 double x1 = (*radial_grid_)[i + 1];
-                T a0 = coefs_(i, 0);
-                T a1 = coefs_(i, 1);
-                T a2 = coefs_(i, 2);
-                T a3 = coefs_(i, 3);
+                T a0 = coeffs_(i, 0);
+                T a1 = coeffs_(i, 1);
+                T a2 = coeffs_(i, 2);
+                T a3 = coeffs_(i, 3);
 
                 // obtained with the following Mathematica code:
                 //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}], 

@@ -16,13 +16,13 @@ void Density::generate(K_set& ks__)
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
-            for (int ir = 0; ir < unit_cell_.atom(ia)->num_mt_points(); ir++)
-                rho_->f_mt<local>(0, ir, ialoc) += unit_cell_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
+            for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
+                rho_->f_mt<local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;
         }
 
-        /* synchronize muffin-tin part (interstitial is already syncronized with allreduce) */
-        rho_->sync(true, false);
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
+        /* synchronize muffin-tin part */
+        rho_->sync_mt();
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync_mt();
     }
     
     double nel = 0;

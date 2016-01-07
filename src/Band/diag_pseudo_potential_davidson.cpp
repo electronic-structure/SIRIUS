@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file diag_fv_pseudo_potential.cpp
+/** \file diag_pseudo_potential_davidson.cpp
  *   
  *  \brief Implementation of Davidson iterative solver.
  */
@@ -26,31 +26,17 @@
 
 namespace sirius {
 
-void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
-                                             double v0__,
-                                             std::vector<double>& veff_it_coarse__)
+void Band::diag_pseudo_potential_davidson(K_point* kp__,
+                                          int ispn__,
+                                          Hloc_operator& h_op__,
+                                          D_operator& d_op__,
+                                          Q_operator& q_op__)
 {
-    PROFILE();
-
-    Timer t("sirius::Band::diag_fv_pseudo_potential_davidsonl");
-
-    /* cache kinetic energy */
-    std::vector<double> pw_ekin = kp__->get_pw_ekin();
-
-    /* we need to apply overlap operator in case of ultrasoft pseudopotential */
-    bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
+    PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_davidson");
 
     /* get diagonal elements for preconditioning */
-    std::vector<double> h_diag;
-    std::vector<double> o_diag;
-    if (with_overlap) 
-    {
-        get_h_o_diag<true>(kp__, v0__, pw_ekin, h_diag, o_diag);
-    } 
-    else 
-    {
-        get_h_o_diag<false>(kp__, v0__, pw_ekin, h_diag, o_diag);
-    }
+    auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
+    auto o_diag = get_o_diag(kp__, q_op__);
 
     auto pu = parameters_.processing_unit();
 
@@ -63,7 +49,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     auto& itso = kp__->iterative_solver_input_section_;
 
     /* short notation for target wave-functions */
-    auto& psi = kp__->fv_states<false>();
+    auto& psi = kp__->spinor_wave_functions<false>(ispn__);
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
@@ -122,10 +108,6 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     
     kp__->beta_projectors().allocate_workspace();
 
-    D_operator d_op(kp__->beta_projectors(), pu);
-    Q_operator q_op(kp__->beta_projectors(), pu);
-    Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
-
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)
     {
@@ -158,7 +140,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o(kp__, N, n, phi, hphi, ophi, h_op, d_op, q_op);
+        apply_h_o(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -177,15 +159,18 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
+            if (kp__->band_occupancy(i + ispn__ * parameters_.num_fv_states()) > 1e-2 &&
+                std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
+            {
                 occ_band_converged = false;
+            }
         }
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1 && !occ_band_converged)
         {
             /* get new preconditionined residuals, and also hpss and opsi as a by-product */
-            n = residuals(kp__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -220,7 +205,7 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
                     ovlp_old(i, i) = complex_one;
                 }
 
-                /* need to recompute hpsi and opsi */
+                /* need to compute all hpsi and opsi states (not only unconverged) */
                 if (converge_by_energy)
                 {
                     hpsi.transform_from(hphi, N, evec, num_bands);
@@ -242,7 +227,8 @@ void Band::diag_fv_pseudo_potential_davidson(K_point* kp__,
 
     kp__->beta_projectors().deallocate_workspace();
 
-    kp__->set_fv_eigen_values(&eval[0]);
+    for (int j = 0; j < parameters_.num_fv_states(); j++)
+        kp__->band_energy(j + ispn__ * parameters_.num_fv_states()) = eval[j];
 
     #ifdef __GPU
     if (parameters_.processing_unit() == GPU)

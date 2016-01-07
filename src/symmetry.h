@@ -33,7 +33,6 @@ extern "C" {
 #include "matrix3d.h"
 #include "constants.h"
 #include "utils.h"
-//#include "fft3d.h"
 #include "gvec.h"
 
 namespace sirius {

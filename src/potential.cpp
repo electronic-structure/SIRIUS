@@ -23,7 +23,6 @@
  */
 
 #include "potential.h"
-//#include "smooth_periodic_function.h"
 
 namespace sirius {
 
@@ -72,24 +71,24 @@ Potential::Potential(Simulation_context& ctx__)
         for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
     }
 
-    effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
-
+    effective_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), &ctx_.gvec());
+    
+    Gvec const* gvec_ptr = (parameters_.full_potential()) ? nullptr : &ctx_.gvec();
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
+        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), gvec_ptr);
     
-    hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot());
-    hartree_potential_->allocate(false);
+    hartree_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), &ctx_.gvec());
+    hartree_potential_->allocate_mt(false);
     
-    xc_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    xc_potential_->allocate(false);
+    xc_potential_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), nullptr);
+    xc_potential_->allocate_mt(false);
     
-    xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), false);
-    xc_energy_density_->allocate(false);
+    xc_energy_density_ = new Periodic_function<double>(ctx_, parameters_.lmmax_pot(), nullptr);
+    xc_energy_density_->allocate_mt(false);
 
     if (!parameters_.full_potential())
     {
-        local_potential_ = new Periodic_function<double>(ctx_, 0);
-        local_potential_->allocate(false);
+        local_potential_ = new Periodic_function<double>(ctx_, 0, nullptr);
         local_potential_->zero();
 
         generate_local_potential();
@@ -100,11 +99,11 @@ Potential::Potential(Simulation_context& ctx__)
     init();
 
     std::vector<double> weights;
-    mixer_ = new Broyden_modified_mixer<double>(size(),
-                                       parameters_.mixer_input_section().max_history_,
-                                       parameters_.mixer_input_section().beta_,
-                                       weights,
-                                       comm_);
+    mixer_ = new Broyden1<double>(size(),
+                                  parameters_.mixer_input_section().max_history_,
+                                  parameters_.mixer_input_section().beta_,
+                                  weights,
+                                  comm_);
 
     spl_num_gvec_ = splindex<block>(ctx_.gvec().num_gvec(), comm_.size(), comm_.rank());
     
@@ -364,7 +363,7 @@ Potential::~Potential()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->local_size(); ir++)
-        fft_->buffer(ir) = effective_potential()->f_it(ir) * ctx_.step_function()->theta_r(ir);
+        fft_->buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function()->theta_r(ir);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
@@ -386,7 +385,7 @@ void Potential::generate_pw_coefs()
         for (int i = 0; i < parameters_.num_mag_dims(); i++)
         {
             for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->buffer(ir) = effective_magnetic_field(i)->f_it(ir) * ctx_.step_function()->theta_r(ir);
+                fft_->buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function()->theta_r(ir);
             
             STOP();
             //fft_->transform(-1, ctx_.gvec().z_sticks_coord());
@@ -454,142 +453,10 @@ void Potential::generate_pw_coefs()
 //    printf("Total and average potential difference at MT boundary : %.12f %.12f\n", diff, diff / parameters_.num_atoms() / sht.num_points());
 //}
 
-void Potential::generate_effective_potential(Periodic_function<double>* rho, 
-                                             Periodic_function<double>* magnetization[3])
-{
-    PROFILE();
-
-    Timer t("sirius::Potential::generate_effective_potential", ctx_.comm());
-    
-    /* zero effective potential and magnetic field */
-    zero();
-
-    /* solve Poisson equation */
-    poisson(rho, hartree_potential_);
-
-    /* add Hartree potential to the total potential */
-    effective_potential_->add(hartree_potential_);
-
-    xc(rho, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
-   
-    effective_potential_->add(xc_potential_);
-
-    effective_potential_->sync(true, true);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(true, true);
-
-    //if (debug_level > 1) check_potential_continuity_at_mt();
-}
-
-void Potential::generate_effective_potential(Periodic_function<double>* rho, 
-                                             Periodic_function<double>* rho_core, 
-                                             Periodic_function<double>* magnetization[3])
-{
-    PROFILE();
-
-    Timer t("sirius::Potential::generate_effective_potential", comm_);
-
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        /* zero effective potential and magnetic field */
-        zero();
-
-        /* solve Poisson equation with valence density */
-        poisson(rho, hartree_potential_);
-
-        /* add Hartree potential to the effective potential */
-        effective_potential_->add(hartree_potential_);
-
-        /* create temporary function for rho + rho_core */
-        Periodic_function<double>* rhovc = new Periodic_function<double>(ctx_, 0, false);
-        rhovc->allocate(false);
-        rhovc->zero();
-        rhovc->add(rho);
-        rhovc->add(rho_core);
-        rhovc->sync(false, true);
-
-        /* construct XC potentials from rho + rho_core */
-        xc(rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
-        
-        /* destroy temporary function */
-        delete rhovc;
-        
-        /* add XC potential to the effective potential */
-        effective_potential_->add(xc_potential_);
-        
-        /* add local ionic potential to the effective potential */
-        effective_potential_->add(local_potential_);
-
-        /* synchronize effective potential */
-        effective_potential_->sync(false, true);
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
-    }
-
-    if (parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        STOP();
-
-        //zero();
-
-        ///* create temporary function for rho + rho_core */
-        //Periodic_function<double>* rhovc = new Periodic_function<double>(ctx_, 0, false);
-        //rhovc->allocate(false, true);
-        //rhovc->zero();
-        //rhovc->add(rho);
-        //rhovc->add(rho_core);
-        ////rhovc->sync(false, true);
-
-        ///* construct XC potentials from rho + rho_core */
-        //xc(rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
-        //
-        ///* destroy temporary function */
-        //delete rhovc;
-
-        ///* add XC potential to the effective potential */
-        //effective_potential_->add(xc_potential_);
-        //
-        ///* add local ionic potential to the effective potential */
-        //effective_potential_->add(local_potential_);
-        //effective_potential_->sync(false, true);
-        //
-        //Timer t1("sirius::Potential::generate_effective_potential|fft");
-        //effective_potential_->fft_transform(-1);
-
-        ///* get plane-wave coefficients of the charge density */
-        //rho->fft_transform(-1);
-        //t1.stop();
-
-        //std::vector<double_complex> vtmp(spl_num_gvec_.local_size());
-        //
-        //energy_vha_ = 0.0;
-        //for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
-        //{
-        //    int ig = (int)spl_num_gvec_[igloc];
-        //    vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / std::pow(fft_->gvec_len(ig), 2);
-        //    energy_vha_ += std::real(std::conj(rho->f_pw(ig)) * vtmp[igloc]);
-        //    vtmp[igloc] += effective_potential_->f_pw(ig);
-        //}
-        //comm_.allreduce(&energy_vha_, 1);
-        //energy_vha_ *= unit_cell_.omega();
-
-        //auto offsets = spl_num_gvec_.offsets();
-        //auto counts = spl_num_gvec_.counts();
-        ////parameters_.comm().allgather(&vtmp[0], spl_num_gvec_.local_size(), &hartree_potential_->f_pw(0), &counts[0], &offsets[0]);
-        //comm_.allgather(&vtmp[0], (int)spl_num_gvec_.local_size(), &effective_potential_->f_pw(0), &counts[0], &offsets[0]);
-
-        ////for (int ig = 0; ig < rl->num_gvec(); ig++)
-        ////    effective_potential_->f_pw(ig) += hartree_potential_->f_pw(ig);
-
-
-    }
-
-    generate_D_operator_matrix();
-}
-
 void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)
 {
-    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-        effective_potential_->set_mt_ptr(veffmt);
-    effective_potential_->set_it_ptr(veffit);
+    if (parameters_.full_potential()) effective_potential_->set_mt_ptr(veffmt);
+    effective_potential_->set_rg_ptr(veffit);
 }
 
 //void Potential::copy_to_global_ptr(double* fmt__, double* fit__, Periodic_function<double>* src)
@@ -680,20 +547,20 @@ void Potential::set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
     {
         // z
         effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-        effective_magnetic_field_[0]->set_it_ptr(&beffit_tmp(0, 0));
+        effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
     }
     
     if (parameters_.num_mag_dims() == 3)
     {
         // z
         effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
-        effective_magnetic_field_[0]->set_it_ptr(&beffit_tmp(0, 2));
+        effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
         // x
         effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-        effective_magnetic_field_[1]->set_it_ptr(&beffit_tmp(0, 0));
+        effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
         // y
         effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
-        effective_magnetic_field_[2]->set_it_ptr(&beffit_tmp(0, 1));
+        effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
     }
 }
          
@@ -707,14 +574,14 @@ void Potential::update_atomic_potential()
 {
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
     {
-       int ia = unit_cell_.atom_symmetry_class(ic)->atom_id(0);
-       int nmtp = unit_cell_.atom(ia)->num_mt_points();
+       int ia = unit_cell_.atom_symmetry_class(ic).atom_id(0);
+       int nmtp = unit_cell_.atom(ia).num_mt_points();
        
        std::vector<double> veff(nmtp);
        
        for (int ir = 0; ir < nmtp; ir++) veff[ir] = y00 * effective_potential_->f_mt<global>(0, ir, ia);
 
-       const_cast<Atom_symmetry_class*>(unit_cell_.atom_symmetry_class(ic))->set_spherical_potential(veff);
+       unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
     }
     
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -724,7 +591,7 @@ void Potential::update_atomic_potential()
         double* beff[] = {nullptr, nullptr, nullptr};
         for (int i = 0; i < parameters_.num_mag_dims(); i++) beff[i] = &effective_magnetic_field_[i]->f_mt<global>(0, 0, ia);
         
-        unit_cell_.atom(ia)->set_nonspherical_potential(veff, beff);
+        unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
     }
 }
 

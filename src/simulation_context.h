@@ -32,6 +32,7 @@
 #include "version.h"
 #include "debug.hpp"
 #include "fft3d_context.h"
+#include "augmentation_operator.h"
 
 namespace sirius {
 
@@ -39,7 +40,7 @@ class Simulation_context
 {
     private:
 
-        /// Parameters of simulcaiton.
+        /// Copy of simulation parameters.
         Simulation_parameters parameters_; 
     
         /// Communicator for this simulation.
@@ -51,13 +52,11 @@ class Simulation_context
         MPI_grid* mpi_grid_fft_;
 
         FFT3D_context* fft_ctx_;
+
         FFT3D_context* fft_coarse_ctx_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
-
-        /// Reciprocal lattice of the unit cell.
-        Reciprocal_lattice* reciprocal_lattice_;
 
         /// Step function is used in full-potential methods.
         Step_function* step_function_;
@@ -66,7 +65,7 @@ class Simulation_context
 
         Gvec gvec_coarse_;
 
-        //int gpu_thread_id_;
+        std::vector<Augmentation_operator*> augmentation_op_;
 
         Real_space_prj* real_space_prj_;
 
@@ -98,7 +97,6 @@ class Simulation_context
               fft_ctx_(nullptr),
               fft_coarse_ctx_(nullptr),
               unit_cell_(parameters_, comm_),
-              reciprocal_lattice_(nullptr),
               step_function_(nullptr),
               real_space_prj_(nullptr),
               iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
@@ -116,7 +114,6 @@ class Simulation_context
             start_time_tag_ = std::string(buf);
 
             unit_cell_.import(parameters_.unit_cell_input_section());
-
         }
 
         ~Simulation_context()
@@ -130,7 +127,7 @@ class Simulation_context
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }
 
-            if (reciprocal_lattice_ != nullptr) delete reciprocal_lattice_;
+            for (auto e: augmentation_op_) delete e;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
             if (fft_ctx_ != nullptr) delete fft_ctx_;
@@ -155,11 +152,6 @@ class Simulation_context
         Step_function const* step_function() const
         {
             return step_function_;
-        }
-
-        Reciprocal_lattice const* reciprocal_lattice() const
-        {
-            return reciprocal_lattice_;
         }
 
         inline FFT3D* fft(int thread_id__) const
@@ -272,7 +264,7 @@ class Simulation_context
                                                                            fft_grid.limits(2).first, fft_grid.limits(2).second);
             }
         
-            for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i)->print_info();
+            for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
         
             printf("\n");
             printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
@@ -286,6 +278,7 @@ class Simulation_context
             printf("lmax_rho                           : %i\n", parameters_.lmax_rho());
             printf("lmax_pot                           : %i\n", parameters_.lmax_pot());
             printf("lmax_beta                          : %i\n", parameters_.lmax_beta());
+            printf("smearing width:                    : %f\n", parameters_.smearing_width());
         
             //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
             //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
@@ -397,16 +390,17 @@ class Simulation_context
             return gen_evp_solver_type_;
         }
 
-        //inline int num_fft_threads() const
-        //{
-        //    return (int)fft_.size();
-        //}
+        Augmentation_operator const& augmentation_op(int iat__) const
+        {
+            return (*augmentation_op_[iat__]);
+        }
 
-        //inline int gpu_thread_id() const
-        //{
-        //    return gpu_thread_id_;
-        //}
-
+        /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
+        inline double_complex gvec_phase_factor(int ig__, int ia__) const
+        {
+            auto G = gvec_[ig__];
+            return std::exp(twopi * double_complex(0.0, G * unit_cell_.atom(ia__).position()));
+        }
 
         //== void write_json_output()
         //== {

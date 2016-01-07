@@ -67,7 +67,7 @@ Atom_type::~Atom_type()
 {
 }
 
-void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_lo__)
+void Atom_type::init(int offset_lo__)
 {
     /* check if the class instance was already initialized */
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
@@ -116,7 +116,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     }
     
     /* check the nuclear charge */
-    if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
+    if (zn_ == 0) TERMINATE("zero atom charge");
 
     /* set default radial grid if it was not done by user */
     if (radial_grid_.num_points() == 0) set_radial_grid();
@@ -127,15 +127,15 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
         init_free_atom(false);
 
         /* initialize aw descriptors if they were not set manually */
-        if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax__);
+        if (aw_descriptors_.size() == 0) init_aw_descriptors(parameters_.lmax_apw());
 
-        if ((int)aw_descriptors_.size() != (lmax__ + 1)) 
-            error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
+        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) 
+            TERMINATE("wrong size of augmented wave descriptors");
 
         max_aw_order_ = 0;
-        for (int l = 0; l <= lmax__; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+        for (int l = 0; l <= parameters_.lmax_apw(); l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
 
-        if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
+        if (max_aw_order_ > 3) TERMINATE("maximum aw order > 3");
     }
 
     if (!parameters_.full_potential())
@@ -155,13 +155,13 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
     
-    /* allocate Q matrix */
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
+    ///= /* allocate Q matrix */
+    ///= if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    ///= {
+    ///=     if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
 
-        uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
-    }
+    ///=     //uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
+    ///= }
    
     /* get the number of core electrons */
     num_core_electrons_ = 0;
@@ -176,8 +176,8 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
     /* get number of valence electrons */
     num_valence_electrons_ = zn_ - num_core_electrons_;
 
-    int lmmax_pot = Utils::lmmax(lmax_pot__);
-    auto l_by_lm = Utils::l_by_lm(lmax_pot__);
+    int lmmax_pot = Utils::lmmax(parameters_.lmax_pot());
+    auto l_by_lm = Utils::l_by_lm(parameters_.lmax_pot());
 
     /* index the non-zero radial integrals */
     std::vector< std::pair<int, int> > non_zero_elements;
@@ -196,7 +196,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
                 if ((l + l1 + l2) % 2 == 0)
                 {
                     if (lm) non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1));
-                    for (int j = 0; j < num_mag_dims__; j++)
+                    for (int j = 0; j < parameters_.num_mag_dims(); j++)
                     {
                         int offs = (j + 1) * lmmax_pot * indexr().size();
                         non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1 + offs));
@@ -206,7 +206,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
         }
     }
     idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
-    for (int j = 0; j < (int)non_zero_elements.size(); j++)
+    for (size_t j = 0; j < non_zero_elements.size(); j++)
     {
         idx_radial_integrals_(0, j) = non_zero_elements[j].first;
         idx_radial_integrals_(1, j) = non_zero_elements[j].second;
@@ -220,7 +220,7 @@ void Atom_type::init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_
         rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
         rf_coef_.allocate(1);
         rf_coef_.allocate_on_device();
-        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (num_mag_dims__ + 1)); 
+        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1)); 
         vrf_coef_.allocate(1);
         vrf_coef_.allocate_on_device();
         #else
@@ -440,7 +440,7 @@ void Atom_type::init_free_atom(bool smooth)
    }
 }
 
-void Atom_type::print_info()
+void Atom_type::print_info() const
 {
     printf("\n");
     printf("symbol         : %s\n", symbol_.c_str());
@@ -793,7 +793,7 @@ void Atom_type::read_input(const std::string& fname)
     }
 }
 
-void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf)
+void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf) const
 {
     for (int ir = 0; ir < num_mt_points(); ir++)
     {

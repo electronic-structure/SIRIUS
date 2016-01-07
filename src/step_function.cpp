@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -27,12 +27,10 @@
 namespace sirius {
 
 Step_function::Step_function(Unit_cell const& unit_cell__,
-                             Reciprocal_lattice const* reciprocal_lattice__,
                              FFT3D* fft__,
                              Gvec const& gvec__,
                              Communicator const& comm__)
     : unit_cell_(unit_cell__),
-      reciprocal_lattice_(reciprocal_lattice__),
       comm_(comm__),
       fft_(fft__),
       gvec_(gvec__)
@@ -57,10 +55,10 @@ mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh) co
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {            
-            double R = unit_cell_.atom_type(iat)->mt_radius();
+            double R = unit_cell_.atom_type(iat).mt_radius();
             double GR = G * R;
 
-            ffac(iat, igs) = (igs) ? (sin(GR) - GR * cos(GR)) * g3inv : pow(R, 3) / 3.0;
+            ffac(iat, igs) = (igs) ? (std::sin(GR) - GR * std::cos(GR)) * g3inv : std::pow(R, 3) / 3.0;
         }
     }
     
@@ -81,14 +79,14 @@ void Step_function::init()
     step_function_pw_.resize(gvec_.num_gvec());
     step_function_.resize(fft_->local_size());
     
-    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, gvec_.num_gvec());
+    std::vector<double_complex> f_pw = unit_cell_.make_periodic_function(ffac, gvec_);
     for (int ig = 0; ig < gvec_.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
     
-    fft_->allocate_workspace();
+    fft_->prepare();
     fft_->transform<1>(gvec_, &step_function_pw_[gvec_.offset_gvec_fft()]);
     fft_->output(&step_function_[0]);
-    fft_->deallocate_workspace();
+    fft_->dismiss();
     
     double vit = 0.0;
     for (int i = 0; i < fft_->size(); i++) vit += step_function_[i] * unit_cell_.omega() / fft_->size();

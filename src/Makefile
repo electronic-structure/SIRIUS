@@ -3,10 +3,9 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
-       radial_solver.cpp sht.cpp \
-       reciprocal_lattice.cpp step_function.cpp band.cpp potential.cpp \
-       k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
-       real_space_prj.cpp \
+       radial_solver.cpp sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp density.cpp symmetry.cpp \
+       xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp fft3d.cpp \
+       communicator.cpp simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
        Unit_cell/atom.cpp \
        Unit_cell/atom_type.cpp \
        Unit_cell/atom_symmetry_class.cpp \
@@ -29,11 +28,10 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Band/apply_h_o.cpp \
        Band/apply_h_serial.cpp \
        Band/apply_h_o_fast_parallel_rs.cpp \
-       Band/diag_fv_pseudo_potential_exact_serial.cpp \
-       Band/diag_fv_pseudo_potential_rmm_diis_serial.cpp \
-       Band/diag_fv_pseudo_potential_chebyshev_serial.cpp \
-       Band/diag_fv_pseudo_potential_chebyshev_parallel.cpp \
-       Band/diag_fv_pseudo_potential_davidson.cpp \
+       Band/get_h_o_diag.cpp \
+       Band/diag_pseudo_potential.cpp \
+       Band/diag_pseudo_potential_exact.cpp \
+       Band/diag_pseudo_potential_davidson.cpp \
        Band/diag_h_o.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_aux.cpp \
@@ -45,6 +43,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Potential/xc.cpp \
        Potential/generate_d_operator_matrix.cpp \
        Potential/generate_local_potential.cpp \
+       Potential/generate_effective_potential.cpp \
        K_point/add_non_local_contribution.cpp \
        K_point/generate_beta_phi.cpp \
        K_point/distribute_basis_index.cpp \
@@ -55,12 +54,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
-       K_point/num_occupied_bands.cpp \
-       fft3d.cpp \
-       communicator.cpp \
-       simulation_context.cpp \
-       wave_functions.cpp \
-       beta_projectors.cpp
+       K_point/num_occupied_bands.cpp
 
 OBJ = $(SRC:.cpp=.o) 
 

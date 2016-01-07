@@ -49,7 +49,6 @@
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "unit_cell.h"
-#include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "periodic_function.h"
 #include "k_point.h"
@@ -60,6 +59,7 @@
 #include "force.h"
 #include "dft_ground_state.h"
 #include "simulation_context.h"
+#include "simulation_parameters.h"
 
 #endif // __SIRIUS_H__
 

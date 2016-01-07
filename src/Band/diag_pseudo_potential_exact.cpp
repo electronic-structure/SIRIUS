@@ -4,16 +4,16 @@
 
 namespace sirius {
 
-void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
-                                                 std::vector<double>& veff_it_coarse__)
+void Band::diag_pseudo_potential_exact(K_point* kp__,
+                                       int ispn__,
+                                       Hloc_operator& h_op__,
+                                       D_operator& d_op__,
+                                       Q_operator& q_op__)
 {
     PROFILE();
 
-    /* cache kinetic energy */
-    std::vector<double> pw_ekin = kp__->get_pw_ekin();
-
     /* short notation for target wave-functions */
-    auto& psi = kp__->fv_states<false>();
+    auto& psi = kp__->spinor_wave_functions<false>(ispn__);
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
@@ -23,7 +23,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     auto pu = parameters_.processing_unit();
 
     Wave_functions<false> phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hphi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> hphi(ngk, ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
     Wave_functions<false> ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
     
     std::vector<double> eval(ngk);
@@ -31,12 +31,7 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
     phi.coeffs().zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
-    D_operator d_op(kp__->beta_projectors(), pu);
-    Q_operator q_op(kp__->beta_projectors(), pu);
-
-    Hloc_operator h_op(ctx_.fft_coarse_ctx(), kp__->gkvec(), pw_ekin, veff_it_coarse__);
-
-    apply_h_o(kp__, 0, ngk, phi, hphi, ophi, h_op, d_op, q_op);
+    apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
     Utils::check_hermitian("h", hphi.coeffs(), ngk);
     Utils::check_hermitian("o", ophi.coeffs(), ngk);
@@ -60,7 +55,8 @@ void Band::diag_fv_pseudo_potential_exact_serial(K_point* kp__,
         TERMINATE("error in evp solve");
     }
 
-    kp__->set_fv_eigen_values(&eval[0]);
+    for (int j = 0; j < parameters_.num_fv_states(); j++)
+        kp__->band_energy(j + ispn__ * parameters_.num_fv_states()) = eval[j];
 }
 
 };

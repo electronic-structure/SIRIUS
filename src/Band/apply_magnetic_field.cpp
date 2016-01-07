@@ -46,9 +46,9 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
-        Atom* atom = unit_cell_.atom(ia);
-        int offset = atom->offset_wf();
-        int mt_basis_size = atom->type()->mt_basis_size();
+        auto& atom = unit_cell_.atom(ia);
+        int offset = atom.offset_wf();
+        int mt_basis_size = atom.type().mt_basis_size();
         
         zm.zero();
         
@@ -56,17 +56,17 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
         #pragma omp parallel for default(shared)
         for (int j2 = 0; j2 < mt_basis_size; j2++)
         {
-            int lm2 = atom->type()->indexb(j2).lm;
-            int idxrf2 = atom->type()->indexb(j2).idxrf;
+            int lm2 = atom.type().indexb(j2).lm;
+            int idxrf2 = atom.type().indexb(j2).idxrf;
             
             for (int i = 0; i < parameters_.num_mag_dims(); i++)
             {
                 for (int j1 = 0; j1 <= j2; j1++)
                 {
-                    int lm1 = atom->type()->indexb(j1).lm;
-                    int idxrf1 = atom->type()->indexb(j1).idxrf;
+                    int lm1 = atom.type().indexb(j1).lm;
+                    int idxrf1 = atom.type().indexb(j1).idxrf;
 
-                    zm(j1, j2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom->b_radial_integrals(idxrf1, idxrf2, i)); 
+                    zm(j1, j2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i)); 
                 }
             }
         }
@@ -119,7 +119,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
         for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
         {
             /* hpsi(r) = psi(r) * B_z(r) * Theta(r) */
-            ctx_.fft(0)->buffer(ir) *= (effective_magnetic_field__[0]->f_it(ir) * ctx_.step_function()->theta_r(ir));
+            ctx_.fft(0)->buffer(ir) *= (effective_magnetic_field__[0]->f_rg(ir) * ctx_.step_function()->theta_r(ir));
         }
         ctx_.fft(0)->transform<-1>(gkvec__, &(*hpsi__[0])[i][wf_pw_offset]);
 
@@ -129,8 +129,8 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
             {
                 /* hpsi(r) = psi(r) * (B_x(r) - iB_y(r)) * Theta(r) */
                 ctx_.fft(0)->buffer(ir) = psi_r[ir] * ctx_.step_function()->theta_r(ir) * 
-                                          (effective_magnetic_field__[1]->f_it(ir) - 
-                                           complex_i * effective_magnetic_field__[2]->f_it(ir));
+                                          (effective_magnetic_field__[1]->f_rg(ir) - 
+                                           complex_i * effective_magnetic_field__[2]->f_rg(ir));
             }
             ctx_.fft(0)->transform<-1>(gkvec__, &(*hpsi__[2])[i][wf_pw_offset]);
         }

@@ -155,7 +155,7 @@ class Density
          *  \f] 
          */
         template <int num_mag_dims> 
-        void reduce_density_matrix(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
+        void reduce_density_matrix(Atom_type const& atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
 
         /// Add k-point contribution to the auxiliary density matrix.
         /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -327,8 +327,8 @@ class Density
 
         void allocate()
         {
-            rho_->allocate(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true);
+            rho_->allocate_mt(true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate_mt(true);
         }
 
         void mixer_input()
@@ -340,17 +340,21 @@ class Density
             else
             {
                 int k = 0;
-                for (int i = 0; i < ctx_.gvec_coarse().num_gvec(); i++)
+                for (int ig: lf_gvec_)
+                    low_freq_mixer_->input(k++, rho_->f_pw(ig));
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    //low_freq_mixer_->input(k++, rho_->f_pw(ig));
-                    low_freq_mixer_->input(k++, rho_->f_pw(lf_gvec_[i]));
+                    for (int ig: lf_gvec_)
+                        low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
                 }
 
                 k = 0;
-                //for (int ig = ctx_.fft_coarse()->num_gvec(); ig < ctx_.fft()->num_gvec(); ig++)
-                for (int i = 0; i < ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec(); i++)
+                for (int ig: hf_gvec_)
+                    high_freq_mixer_->input(k++, rho_->f_pw(ig));
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    high_freq_mixer_->input(k++, rho_->f_pw(hf_gvec_[i]));
+                    for (int ig: hf_gvec_)
+                        high_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
                 }
             }
         }
@@ -363,20 +367,24 @@ class Density
             }
             else
             {
-                int ngv = ctx_.gvec().num_gvec();
-                int ngvc = ctx_.gvec_coarse().num_gvec();
-                
-                for (int i = 0; i < ngvc; i++)
+
+                int k = 0;
+                for (int ig: lf_gvec_)
+                    rho_->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 {
-                    rho_->f_pw(lf_gvec_[i]) = low_freq_mixer_->output_buffer(i);
-                }
-                for (int i = 0; i < ngv - ngvc; i++)
-                {
-                    rho_->f_pw(hf_gvec_[i]) = high_freq_mixer_->output_buffer(i);
+                    for (int ig: lf_gvec_)
+                        magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
                 }
 
-                //memcpy(&rho_->f_pw(0), low_freq_mixer_->output_buffer(), ngvc * sizeof(double_complex));
-                //memcpy(&rho_->f_pw(ngvc), high_freq_mixer_->output_buffer(), (ngv - ngvc) * sizeof(double_complex));
+                k = 0;
+                for (int ig: hf_gvec_)
+                    rho_->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                {
+                    for (int ig: hf_gvec_)
+                        magnetization_[j]->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
+                }
             }
         }
 
@@ -415,6 +423,7 @@ class Density
                 rms += high_freq_mixer_->mix();
                 mixer_output();
                 rho_->fft_transform(1);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
             }
 
             return rms;

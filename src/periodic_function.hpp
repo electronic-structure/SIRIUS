@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,49 +25,44 @@
 template <typename T>
 Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
                                         int angular_domain_size__,
-                                        bool alloc_pw__)
+                                        Gvec const* gvec__)
     : parameters_(ctx__.parameters()),
       unit_cell_(ctx__.unit_cell()), 
       step_function_(ctx__.step_function()),
       comm_(ctx__.comm()),
       fft_(ctx__.fft(0)),
-      gvec_(ctx__.gvec()),
+      gvec_(gvec__),
       angular_domain_size_(angular_domain_size__),
       num_gvec_(0)
 {
-    if (alloc_pw__)
+    f_rg_ = mdarray<T, 1>(fft_->local_size());
+
+    if (gvec_ != nullptr)
     {
-        num_gvec_ = gvec_.num_gvec();
+        num_gvec_ = gvec_->num_gvec();
         f_pw_ = mdarray<double_complex, 1>(num_gvec_);
     }
 
     if (parameters_.full_potential())
-        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>((int)unit_cell_.spl_num_atoms().local_size());
+        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
 }
 
 template <typename T>
-Periodic_function<T>::~Periodic_function()
+void Periodic_function<T>::allocate_mt(bool allocate_global__)
 {
-}
-
-template <typename T>
-void Periodic_function<T>::allocate(bool allocate_global_mt)
-{
-    f_it_ = mdarray<T, 1>(fft_->local_size());
-
     if (parameters_.full_potential())
     {
-        if (allocate_global_mt)
+        if (allocate_global__)
         {
             f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
             set_local_mt_ptr();
         }
         else
         {
-            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) 
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) 
             {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
-                f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia)->radial_grid());
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
             }
         }
     }
@@ -77,11 +72,11 @@ template <typename T>
 void Periodic_function<T>::zero()
 {
     f_mt_.zero();
-    f_it_.zero();
+    f_rg_.zero();
     f_pw_.zero();
     if (parameters_.full_potential())
     {
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
     }
 }
 
@@ -102,24 +97,13 @@ inline T& Periodic_function<T>::f_mt(int idx0, int ir, int ia)
 }
 
 template <typename T>
-inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
+inline void Periodic_function<T>::sync_mt()
 {
-    Timer t("sirius::Periodic_function::sync");
+    Timer t("sirius::Periodic_function::sync_mt");
+    assert(f_mt_.size() != 0); 
 
-    if (f_it_.size () !=0 && sync_it)
-    {
-        //splindex<block> spl_fft_size(fft_->size(), comm_.size(), comm_.rank());
-        //auto offsets = spl_fft_size.offsets();
-        //auto counts = spl_fft_size.counts();
-        //comm_.allgather(&f_it_(0), &counts[0], &offsets[0]);
-    }
-    
-    if (f_mt_.size() != 0 && sync_mt)
-    {
-        comm_.allgather(&f_mt_(0, 0, 0), 
-                        (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_.spl_num_atoms().global_offset()), 
-                        (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_.spl_num_atoms().local_size()));
-    }
+    int ld = angular_domain_size_ * unit_cell_.max_num_mt_points(); 
+    comm_.allgather(&f_mt_(0, 0, 0), ld * unit_cell_.spl_num_atoms().global_offset(), ld * unit_cell_.spl_num_atoms().local_size());
 }
 
 template <typename T>
@@ -149,7 +133,7 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
     Timer t("sirius::Periodic_function::add");
 
     for (int irloc = 0; irloc < fft_->local_size(); irloc++)
-        f_it_(irloc) += g->f_it(irloc);
+        f_rg_(irloc) += g->f_rg(irloc);
     
     if (parameters_.full_potential())
     {
@@ -165,13 +149,13 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
     
     if (step_function_ == nullptr)
     {
-        for (int irloc = 0; irloc < fft_->local_size(); irloc++) it_val += f_it_(irloc);
+        for (int irloc = 0; irloc < fft_->local_size(); irloc++) it_val += f_rg_(irloc);
     }
     else
     {
         for (int irloc = 0; irloc < fft_->local_size(); irloc++)
         {
-            it_val += f_it_(irloc) * step_function_->theta_r(irloc);
+            it_val += f_rg_(irloc) * step_function_->theta_r(irloc);
         }
     }
     it_val *= (unit_cell_.omega() / fft_->size());
@@ -186,9 +170,9 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
-            int nmtp = unit_cell_.atom(ia)->num_mt_points();
+            int nmtp = unit_cell_.atom(ia).num_mt_points();
             
-            Spline<T> s(unit_cell_.atom(ia)->type()->radial_grid());
+            Spline<T> s(unit_cell_.atom(ia).type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) s[ir] = f_mt<local>(0, ir, ialoc);
             mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
         }
@@ -204,7 +188,7 @@ template <typename T>
 void Periodic_function<T>::hdf5_write(HDF5_tree h5f)
 {
     if (parameters_.full_potential()) h5f.write("f_mt", f_mt_);
-    h5f.write("f_it", f_it_);
+    h5f.write("f_rg", f_rg_);
     if (num_gvec_) h5f.write("f_pw", f_pw_);
 }
 
@@ -212,7 +196,7 @@ template <typename T>
 void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 {
     if (parameters_.full_potential()) h5f.read_mdarray("f_mt", f_mt_);
-    h5f.read_mdarray("f_it", f_it_);
+    h5f.read_mdarray("f_rg", f_rg_);
     if (num_gvec_) h5f.read_mdarray("f_pw", f_pw_);
 }
 
@@ -224,8 +208,8 @@ size_t Periodic_function<T>::size()
     {
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
         {
-            size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic)->atom_type()->num_mt_points() * 
-                    unit_cell_.atom_symmetry_class(ic)->num_atoms();
+            size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points() * 
+                    unit_cell_.atom_symmetry_class(ic).num_atoms();
         }
     }
     return size;
@@ -240,14 +224,14 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            for (int i1 = 0; i1 < unit_cell_.atom(ia)->num_mt_points(); i1++)
+            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++)
             {
                 for (int i0 = 0; i0 < angular_domain_size_; i0++) mixer__->input(offset__ + n++, f_mt_(i0, i1, ia));
             }
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) mixer__->input(offset__ + n++, f_it_(ir));
+    for (int ir = 0; ir < fft_->size(); ir++) mixer__->input(offset__ + n++, f_rg_(ir));
 
     return n;
 }
@@ -261,14 +245,14 @@ size_t Periodic_function<T>::unpack(T const* array__)
     {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
-            for (int i1 = 0; i1 < unit_cell_.atom(ia)->num_mt_points(); i1++)
+            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++)
             {
                 for (int i0 = 0; i0 < angular_domain_size_; i0++) f_mt_(i0, i1, ia) = array__[n++];
             }
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) f_it_(ir) = array__[n++];
+    for (int ir = 0; ir < fft_->size(); ir++) f_rg_(ir) = array__[n++];
 
     return n;
 }

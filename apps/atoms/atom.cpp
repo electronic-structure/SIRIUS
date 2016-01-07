@@ -24,6 +24,7 @@ class Free_atom : public sirius::Atom_type
     private:
 
         mdarray<double, 2> free_atom_radial_functions_;
+        sirius::Simulation_parameters parameters_;
 
     public:
     
@@ -34,7 +35,7 @@ class Free_atom : public sirius::Atom_type
                   int zn, 
                   double mass, 
                   std::vector<atomic_level_descriptor>& levels_nl) 
-            : Atom_type(symbol, name, zn, mass, levels_nl, scaled_pow_grid), 
+            : Atom_type(parameters_, symbol, name, zn, mass, levels_nl, scaled_pow_grid), 
               NIST_LDA_Etot(0.0)
         {
             radial_grid_ = sirius::Radial_grid(exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 

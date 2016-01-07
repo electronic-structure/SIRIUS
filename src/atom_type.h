@@ -70,9 +70,9 @@ class radial_functions_index
         void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<local_orbital_descriptor>& lo_descriptors)
         {
-            lmax_aw_ = (int)aw_descriptors.size() - 1;
+            lmax_aw_ = static_cast<int>(aw_descriptors.size()) - 1;
             lmax_lo_ = -1;
-            for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
+            for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++)
             {
                 int l = lo_descriptors[idxlo].l;
                 lmax_lo_ = std::max(lmax_lo_, l);
@@ -306,16 +306,16 @@ class Atom_type
         /// Beginning of the radial grid.
         double radial_grid_origin_;
         
-        /// list of atomic levels 
+        /// List of atomic levels.
         std::vector<atomic_level_descriptor> atomic_levels_;
 
-        /// number of core electrons
+        /// Number of core electrons.
         double num_core_electrons_;
 
-        /// number of valence electrons
+        /// Number of valence electrons.
         double num_valence_electrons_;
         
-        /// default augmented wave configuration
+        /// Default augmented wave configuration.
         radial_solution_descriptor_set aw_default_l_;
         
         /// augmented wave configuration for specific l
@@ -348,17 +348,11 @@ class Atom_type
 
         mdarray<int, 2> idx_radial_integrals_;
 
-        mdarray<double, 3> rf_coef_;
-        mdarray<double, 3> vrf_coef_;
+        mutable mdarray<double, 3> rf_coef_;
+        mutable mdarray<double, 3> vrf_coef_;
 
         bool initialized_;
        
-        /* forbid copy constructor */
-        Atom_type(const Atom_type& src) = delete;
-        
-        /* forbid assignment operator */
-        Atom_type& operator=(const Atom_type& src) = delete;
-        
         void read_input_core(JSON_tree& parser);
 
         void read_input_aw(JSON_tree& parser);
@@ -369,6 +363,12 @@ class Atom_type
     
         void init_aw_descriptors(int lmax);
     
+        /* forbid copy constructor */
+        Atom_type(const Atom_type& src) = delete;
+        
+        /* forbid assignment operator */
+        Atom_type& operator=(const Atom_type& src) = delete;
+        
     protected:
 
         /// Radial grid.
@@ -400,7 +400,7 @@ class Atom_type
 
         ~Atom_type();
         
-        void init(int lmax__, int lmax_pot__, int num_mag_dims__, int offset_lo__);
+        void init(int offset_lo__);
 
         void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
 
@@ -416,9 +416,9 @@ class Atom_type
 
         void init_free_atom(bool smooth);
 
-        void print_info();
+        void print_info() const;
         
-        void fix_q_radial_function(int l, int i, int j, double* qrf);
+        void fix_q_radial_function(int l, int i, int j, double* qrf) const;
         
         inline int id() const
         {
@@ -627,6 +627,11 @@ class Atom_type
             return uspp_;
         }
 
+        inline uspp_descriptor const& uspp() const
+        {
+            return uspp_;
+        }
+
         inline void set_symbol(const std::string symbol__)
         {
             symbol_ = symbol__;
@@ -706,8 +711,8 @@ class Atom_type
 
         inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
         {
-            uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
-            d_mtrx_ion__ >> uspp().d_mtrx_ion;
+            uspp_.d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
+            d_mtrx_ion__ >> uspp_.d_mtrx_ion;
         }
 
         inline mdarray<int, 2> const& idx_radial_integrals() const
@@ -715,12 +720,12 @@ class Atom_type
             return idx_radial_integrals_;
         }
         
-        inline mdarray<double, 3>& rf_coef()
+        inline mdarray<double, 3>& rf_coef() const
         {
             return rf_coef_;
         }
 
-        inline mdarray<double, 3>& vrf_coef()
+        inline mdarray<double, 3>& vrf_coef() const
         {
             return vrf_coef_;
         }

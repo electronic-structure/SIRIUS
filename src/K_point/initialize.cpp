@@ -110,11 +110,11 @@ void K_point::initialize()
 
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        alm_coeffs_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec(),
+        alm_coeffs_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec(),
                                                 gklo_basis_descriptors_);
-        alm_coeffs_row_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_row(),
+        alm_coeffs_row_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec_row(),
                                                     gklo_basis_descriptors_row_);
-        alm_coeffs_col_ = new Matching_coefficients(&unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
+        alm_coeffs_col_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
                                                     gklo_basis_descriptors_col_);
     }
 
@@ -175,20 +175,20 @@ void K_point::initialize()
         {
             assert(parameters_.num_fv_states() < num_gkvec());
 
-            fv_states_ = new Wave_functions<false>(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
+            //fv_states_ = new Wave_functions<false>(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
 
-            fv_states<false>().coeffs().zero();
-
-            double norm = 1.0 / std::sqrt(num_gkvec());
-            for (int i = 0; i < parameters_.num_fv_states(); i++) // TODO: init from atomic WFs
-            {
-                for (int igk = 0; igk < num_gkvec_loc(); igk++) fv_states<false>()(igk, i) = type_wrapper<double_complex>::random() * norm;
-            }
+            //fv_states<false>().coeffs().zero();
 
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
                                                                          parameters_.processing_unit());
+
+                for (int i = 0; i < nst; i++) // TODO: init from atomic WFs
+                {
+                    double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
+                    for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
+                }
             }
         }
     }

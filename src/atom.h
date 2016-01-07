@@ -40,7 +40,7 @@ class Atom
     private:
 
         /// Type of the given atom.
-        Atom_type* type_;
+        Atom_type const& type_;
 
         /// Symmetry class of the given atom.
         Atom_symmetry_class* symmetry_class_;
@@ -91,26 +91,26 @@ class Atom
         int uj_correction_l_;
 
         /// D_{ij} matrix of the pseudo-potential method.
-        mdarray<double_complex, 2> d_mtrx_;
+        mdarray<double_complex, 3> d_mtrx_;
 
     public:
     
         /// Constructor.
-        Atom(Atom_type* type__, vector3d<double> position__, vector3d<double> vector_field__);
+        Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__);
         
         /// Initialize atom.
-        void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__);
+        void init(int offset_aw__, int offset_lo__, int offset_wf__);
 
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
          *  \f[
-         *      \hat H=-\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
+         *      \hat H = -\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
          *        \underbrace{-\frac{1}{2} \nabla^2+V_{00}(r)R_{00}}_{H_{s}(r)} +\sum_{\ell=1} \sum_{m=-\ell}^{\ell} 
          *         V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) = \sum_{\ell m} \widetilde V_{\ell m}(r) R_{\ell m}(\hat {\bf r})
          *  \f]
          *  where
          *  \f[
-         *      \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll}
+         *      \widetilde V_{\ell m}(r) = \left\{ \begin{array}{ll}
          *        \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
@@ -118,25 +118,31 @@ class Atom
         void generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__);
         
         /// Return pointer to corresponding atom type class.
-        inline Atom_type* type()
+        inline Atom_type const& type() const
         {
             return type_;
         }
 
-        /// Return pointer to corresponding atom symmetry class.
-        inline Atom_symmetry_class* symmetry_class()
+        /// Return corresponding atom symmetry class.
+        inline Atom_symmetry_class& symmetry_class()
         {
-            return symmetry_class_;
+            return (*symmetry_class_);
+        }
+
+        /// Return const referenced to atom symmetry class.
+        inline Atom_symmetry_class const& symmetry_class() const
+        {
+            return (*symmetry_class_);
         }
 
         /// Return atom type id.
-        inline int type_id()
+        inline int type_id() const
         {
-            return type_->id();
+            return type_.id();
         }
         
         /// Return atom position in fractional coordinates.
-        inline vector3d<double> position()
+        inline vector3d<double> const& position() const
         {
             return position_;
         }
@@ -147,24 +153,18 @@ class Atom
             position_ = position__;
         }
         
-        /// Return specific coordinate of position.
-        inline double position(int i)
-        {
-            return position_[i];
-        }
-        
         /// Return vector field.
-        inline vector3d<double> vector_field()
+        inline vector3d<double> vector_field() const
         {
             return vector_field_;
         }
         
         /// Return id of the symmetry class.
-        inline int symmetry_class_id()
+        inline int symmetry_class_id() const
         {
-            if (symmetry_class()) 
+            if (symmetry_class_ != nullptr) 
             {
-                return symmetry_class()->id();
+                return symmetry_class_->id();
             }
             else
             {
@@ -181,9 +181,9 @@ class Atom
         /// Set muffin-tin potential and magnetic field.
         void set_nonspherical_potential(double* veff__, double* beff__[3])
         {
-            veff_ = mdarray<double, 2>(veff__, Utils::lmmax(lmax_pot_), type()->num_mt_points());
+            veff_ = mdarray<double, 2>(veff__, Utils::lmmax(lmax_pot_), type().num_mt_points());
             for (int j = 0; j < 3; j++) 
-                beff_[j] = mdarray<double, 2>(beff__[j], Utils::lmmax(lmax_pot_), type()->num_mt_points());
+                beff_[j] = mdarray<double, 2>(beff__[j], Utils::lmmax(lmax_pot_), type().num_mt_points());
         }
 
         void sync_radial_integrals(Communicator const& comm__, int const rank__)
@@ -197,19 +197,19 @@ class Atom
             comm__.bcast(occupation_matrix_.at<CPU>(), (int)occupation_matrix_.size(), rank__);
         }
 
-        inline int offset_aw()
+        inline int offset_aw() const
         {
             assert(offset_aw_ >= 0);
             return offset_aw_;  
         }
         
-        inline int offset_lo()
+        inline int offset_lo() const
         {
             assert(offset_lo_ >= 0);
             return offset_lo_;  
         }
         
-        inline int offset_wf()
+        inline int offset_wf() const
         {
             assert(offset_wf_ >= 0);
             return offset_wf_;  
@@ -269,40 +269,55 @@ class Atom
             return zsum;
         }
 
-        inline int num_mt_points()
+        inline int num_mt_points() const
         {
-            return type_->num_mt_points();
+            return type_.num_mt_points();
         }
 
         inline Radial_grid const& radial_grid() const
         {
-            return type_->radial_grid();
+            return type_.radial_grid();
         }
 
-        inline double radial_grid(int idx)
+        inline double radial_grid(int idx) const
         {
-            return type_->radial_grid(idx);
+            return type_.radial_grid(idx);
         }
 
-        inline double mt_radius()
+        inline double mt_radius() const
         {
-            return type_->mt_radius();
+            return type_.mt_radius();
         }
 
-        inline int zn()
+        inline int zn() const
         {
-            return type_->zn();
+            return type_.zn();
+        }
+
+        inline int mt_basis_size() const
+        {
+            return type_.mt_basis_size();
+        }
+
+        inline int mt_aw_basis_size() const
+        {
+            return type_.mt_aw_basis_size();
+        }
+
+        inline int mt_lo_basis_size() const
+        {
+            return type_.mt_lo_basis_size();
         }
 
         inline void set_occupation_matrix(const double_complex* source)
         {
-            memcpy(occupation_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+            std::memcpy(occupation_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = false;
         }
         
         inline void get_occupation_matrix(double_complex* destination)
         {
-            memcpy(destination, occupation_matrix_.at<CPU>(), 16 * 16 * 2 * 2 * sizeof(double_complex));
+            std::memcpy(destination, occupation_matrix_.at<CPU>(), 16 * 16 * 2 * 2 * sizeof(double_complex));
         }
 
         inline void set_uj_correction_matrix(const int l, const double_complex* source)
@@ -327,29 +342,14 @@ class Atom
              return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
         }
 
-        inline double_complex& d_mtrx(int xi1, int xi2)
+        inline double_complex& d_mtrx(int xi1, int xi2, int iv)
         {
-            return d_mtrx_(xi1, xi2);
-        }
-        
-        inline mdarray<double_complex, 2>& d_mtrx()
-        {
-            return d_mtrx_;
+            return d_mtrx_(xi1, xi2, iv);
         }
 
-        inline int mt_basis_size()
+        inline double_complex const& d_mtrx(int xi1, int xi2, int iv) const
         {
-            return type_->mt_basis_size();
-        }
-
-        inline int mt_aw_basis_size()
-        {
-            return type_->mt_aw_basis_size();
-        }
-
-        inline int mt_lo_basis_size()
-        {
-            return type_->mt_lo_basis_size();
+            return d_mtrx_(xi1, xi2, iv);
         }
 };
 

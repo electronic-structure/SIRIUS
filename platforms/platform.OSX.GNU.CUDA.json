@@ -12,7 +12,7 @@
     "NVCC"        : "/Developer/NVIDIA/CUDA-7.5/bin/nvcc",
     "NVCC_OPT"    : "-ccbin=clang++-mp-3.6 -arch=sm_30 -m64 -DNDEBUG",
 
-    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a /opt/local/lib/libatlas.a /opt/local/lib/libptf77blas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -L/Developer/NVIDIA/CUDA-7.5/lib -lcublas -lcudart -lcufft -Wl,-rpath,/Developer/NVIDIA/CUDA-7.5/lib -lstdc++ -lc++",
+    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a /Users/antonk/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -L/Developer/NVIDIA/CUDA-7.5/lib -lcublas -lcudart -lcufft -Wl,-rpath,/Developer/NVIDIA/CUDA-7.5/lib -lstdc++ -lc++",
 
     "install"     : ["gsl", "fftw", "xc", "spg", "hdf5"]
 }

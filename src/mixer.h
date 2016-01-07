@@ -19,8 +19,8 @@
 
 /** \file mixer.h
  *   
- *   \brief Contains definition of and implementation of sirius::Mixer, sirius::Linear_mixer and 
- *          sirius::Broyden_mixer clases.
+ *   \brief Contains definition and implementation of sirius::Mixer, sirius::Linear_mixer, sirius::Broyden1 and 
+ *          sirius::Broyden2 classes.
  */    
 
 #ifndef __MIXER_H__
@@ -39,7 +39,7 @@ class Mixer
         size_t size_;
         
         /// Split size of the vectors beteen all MPI ranks.
-        splindex<block> spl_size_;
+        splindex<block, size_t> spl_size_;
         
         /// Maximum number of stored vectors.
         int max_history_;
@@ -66,39 +66,39 @@ class Mixer
         double rss_;
 
         /// Return position in the list of mixed vectors for the given mixing step.
-        inline int offset(int step__) const
+        inline int idx_hist(int step__) const
         {
+            assert(step__ >= 0);
             return step__ % max_history_;
         }
 
-        inline int idx_hist(int offset__ = 0) const
-        {
-            assert(count_ - offset__ >= 0);
-            return (count_ - offset__) % max_history_;
-        }
-        
         /// Compute RMS deviation between current vector and input vector.
         double rms_deviation() const
         {
             double rms = 0.0;
             if (size_ != 0)
             {
-                for (int i = 0; i < (int)spl_size_.local_size(); i++)
-                {
-                    rms += std::pow(std::abs(vectors_(i, offset(count_)) - input_buffer_(i)), 2);
-                }
+                int ipos = idx_hist(count_); 
+
+                for (size_t i = 0; i < spl_size_.local_size(); i++)
+                    rms += std::pow(std::abs(vectors_(i, ipos) - input_buffer_(i)), 2);
+
                 comm_.allreduce(&rms, 1);
                 rms = std::sqrt(rms / double(size_));
             }
             return rms;
         }
-
+        
+        /// Mix input buffer and previous vector and store result in the current vector.
         void mix_linear(double beta__)
         {
-            for (int i = 0; i < (int)spl_size_.local_size(); i++)
-                vectors_(i, offset(count_)) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, offset(count_ - 1));
+            int i1 = idx_hist(count_); 
+            int i2 = idx_hist(count_ - 1); 
 
-            comm_.allgather(&vectors_(0, offset(count_)), output_buffer_.template at<CPU>(), (int)spl_size_.global_offset(), 
+            for (size_t i = 0; i < spl_size_.local_size(); i++)
+                vectors_(i, i1) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, i2);
+
+            comm_.allgather(&vectors_(0, i1), output_buffer_.template at<CPU>(), (int)spl_size_.global_offset(), 
                             (int)spl_size_.local_size());
         }
 
@@ -112,7 +112,7 @@ class Mixer
               comm_(comm__),
               rss_(0)
         {
-            spl_size_ = splindex<block>((int)size_, comm_.size(), comm_.rank());
+            spl_size_ = splindex<block, size_t>(size_, comm_.size(), comm_.rank());
             /* allocate input buffer (local size) */
             input_buffer_ = mdarray<T, 1>(spl_size_.local_size());
             /* allocate output bffer (global size) */
@@ -130,7 +130,7 @@ class Mixer
             assert(idx < size_t(1 << 31));
             assert(idx >= 0 && idx < size_);
 
-            auto offs_and_rank = spl_size_.location((int)idx);
+            auto offs_and_rank = spl_size_.location(idx);
             if (offs_and_rank.second == comm_.rank()) input_buffer_(offs_and_rank.first) = value;
         }
 
@@ -162,7 +162,7 @@ class Mixer
         virtual double mix() = 0;
 };
 
-/// Primitive linear adaptive mixer
+/// Primitive linear mixer.
 template <typename T>
 class Linear_mixer: public Mixer<T>
 {
@@ -188,12 +188,191 @@ class Linear_mixer: public Mixer<T>
         }
 };
 
-/// Broyden mixer
-/** Reference paper: "Robust acceleration of self consistent field calculations for 
+/// Broyden mixer.
+/** First version of the Broyden mixer, which requres inversion of the Jacobian matrix.
+ *  Reference paper: "Robust acceleration of self consistent field calculations for 
  *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
  */
 template <typename T>
-class Broyden_mixer: public Mixer<T>
+class Broyden1: public Mixer<T>
+{
+    private:
+
+        mdarray<T, 2> residuals_;
+
+        std::vector<double> weights_;
+
+    public:
+
+        Broyden1(size_t size__,
+                 int max_history__,
+                 double beta__,
+                 std::vector<double>& weights__,
+                 Communicator const& comm__) 
+            : Mixer<T>(size__, max_history__, beta__, comm__)
+        {
+            residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
+            weights_ = weights__;
+        }
+
+        double mix()
+        {
+            Timer t("sirius::Broyden1::mix");
+            
+            //== /* weights as a functor */
+            //== struct w_functor
+            //== {
+            //==     std::vector<double> const& weights_;
+            //==     typedef double (w_functor::*fptr_t)(size_t);
+            //==     fptr_t fptr_;
+            //==     w_functor(std::vector<double> const& weights__) : weights_(weights__)
+            //==     {
+            //==         fptr_ = (weights_.size()) ? (&w_functor::f1) : (&w_functor::f2);
+            //==     }
+            //==     inline double f1(size_t idx__)
+            //==     {
+            //==         return weights_[idx__];
+            //==     }
+            //==     inline double f2(size_t idx__)
+            //==     {
+            //==         return 1.0;
+            //==     }
+            //==     inline double operator()(size_t idx__)
+            //==     {
+            //==         return (this->*fptr_)(idx__);
+            //==     }
+            //== };
+            //== w_functor w(weights_);
+            
+            /* weights as a lambda function */
+            auto w = [this](size_t idx)
+            {
+                return (this->weights_.size()) ? weights_[idx] : 1.0;
+            };
+
+            /* current position in history */
+            int ipos = this->idx_hist(this->count_);
+
+            /* compute residual square sum */
+            this->rss_ = 0;
+            for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
+            {
+                residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
+                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * w(this->spl_size_[i]);
+            }
+            this->comm_.allreduce(&this->rss_, 1);
+
+            /* exit if the vector has converged */
+            if (this->rss_ < 1e-11) return 0.0;
+
+            double rms = this->rms_deviation();
+            
+            /* number of previous vectors */
+            int N = std::min(this->count_, this->max_history_ - 1);
+            
+            if (N > 0)
+            {
+                mdarray<double, 2> S(N, N);
+                S.zero();
+                for (int j1 = 0; j1 < N; j1++)
+                {
+                    int i1 = this->idx_hist(this->count_ - j1);
+                    int i2 = this->idx_hist(this->count_ - j1 - 1);
+                    for (int j2 = 0; j2 <= j1; j2++)
+                    {
+                        int i3 = this->idx_hist(this->count_ - j2);
+                        int i4 = this->idx_hist(this->count_ - j2 - 1);
+                        for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
+                        {
+                            T dr1 = residuals_(i, i1) - residuals_(i, i2);
+                            T dr2 = residuals_(i, i3) - residuals_(i, i4);
+
+                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * w(this->spl_size_[i]);
+                        }
+                        S(j2, j1) = S(j1, j2);
+                    }
+                }
+                this->comm_.allreduce(S.at<CPU>(), (int)S.size());
+
+                // printf("[mixer] S matrix\n");
+                // for (int i = 0; i < N; i++)
+                // {
+                //     for (int j = 0; j < N; j++) printf("%18.10f ", S(i, j));
+                //     printf("\n");
+                // }
+
+                /* invert matrix */
+                linalg<CPU>::syinv(N, S);
+                /* restore lower triangular part */
+                for (int j1 = 0; j1 < N; j1++)
+                {
+                    for (int j2 = 0; j2 < j1; j2++) S(j1, j2) = S(j2, j1);
+                }
+
+                // printf("[mixer] S^{-1} matrix\n");
+                // for (int i = 0; i < N; i++)
+                // {
+                //     for (int j = 0; j < N; j++) printf("%18.10f ", S(i, j));
+                //     printf("\n");
+                // }
+
+                mdarray<double, 1> c(N);
+                c.zero();
+                for (int j = 0; j < N; j++)
+                {
+                    int i1 = this->idx_hist(this->count_ - j);
+                    int i2 = this->idx_hist(this->count_ - j - 1);
+                    for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
+                    {
+                        T dr = residuals_(i, i1) - residuals_(i, i2);
+                        c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, ipos) * w(this->spl_size_[i]));
+                    }
+                }
+                this->comm_.allreduce(c.at<CPU>(), (int)c.size());
+
+                /* store new vector in the input buffer */
+                this->input_buffer_.zero();
+
+                for (int j = 0; j < N; j++)
+                {
+                    double gamma = 0;
+                    for (int i = 0; i < N; i++) gamma += c(i) * S(i, j);
+
+                    int i1 = this->idx_hist(this->count_ - j);
+                    int i2 = this->idx_hist(this->count_ - j - 1);
+                
+                    for (size_t i = 0; i < this->spl_size_.local_size(); i++)
+                    {
+                        T dr = residuals_(i, i1) - residuals_(i, i2);
+                        T dv = this->vectors_(i, i1) - this->vectors_(i, i2);
+
+                        this->input_buffer_(i) -= gamma * (dr * this->beta_ + dv);
+                    }
+                }
+            }
+            int i1 = this->idx_hist(this->count_ + 1);
+            /* linear part */
+            for (size_t i = 0; i < this->spl_size_.local_size(); i++)
+            {
+                this->vectors_(i, i1) = this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
+            }
+
+            this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
+                                  (int)this->spl_size_.global_offset(), (int)this->spl_size_.local_size());
+            /* increment the history step */
+            this->count_++;
+
+            return rms;
+        }
+};
+
+/// Broyden mixer.
+/** Second version of the Broyden mixer, which doesn't requre inversion of the Jacobian matrix.
+ *  Reference paper: "Robust acceleration of self consistent field calculations for 
+ *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
+ */
+template <typename T>
+class Broyden2: public Mixer<T>
 {
     private:
 
@@ -203,11 +382,11 @@ class Broyden_mixer: public Mixer<T>
     
     public:
 
-        Broyden_mixer(size_t size__,
-                      int max_history__,
-                      double beta__,
-                      std::vector<double>& weights__,
-                      Communicator const& comm__) 
+        Broyden2(size_t size__,
+                 int max_history__,
+                 double beta__,
+                 std::vector<double>& weights__,
+                 Communicator const& comm__) 
             : Mixer<T>(size__, max_history__, beta__, comm__)
         {
             weights_ = weights__;
@@ -216,36 +395,33 @@ class Broyden_mixer: public Mixer<T>
 
         double mix()
         {
-            Timer t("sirius::Broyden_mixer::mix");
+            Timer t("sirius::Broyden2::mix");
 
-            /* curent residual f_k = x_k - g(x_k) */
-            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                residuals_(i, this->offset(this->count_)) = this->vectors_(i, this->offset(this->count_)) - this->input_buffer_(i);
+            /* weights as a lambda function */
+            auto w = [this](size_t idx)
+            {
+                return (this->weights_.size()) ? weights_[idx] : 1.0;
+            };
 
+            /* current position in history */
+            int ipos = this->idx_hist(this->count_);
+
+            /* compute residual square sum */
             this->rss_ = 0;
-            if (weights_.size())
+            for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
             {
-                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                {
-                    int ipos = this->offset(this->count_);
-                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
-                }
+                /* curent residual f_k = x_k - g(x_k) */
+                residuals_(i, ipos) = this->vectors_(i, ipos) - this->input_buffer_(i);
+                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * w(this->spl_size_[i]);
             }
-            else
-            {
-                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                {
-                    int ipos = this->offset(this->count_);
-                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
-                }
-            }
-
             this->comm_.allreduce(&this->rss_, 1);
 
-            if (this->rss_ < 1e-11) return 0;
+            /* exit if the vector has converged */
+            if (this->rss_ < 1e-11) return 0.0;
 
             double rms = this->rms_deviation();
 
+            /* increment the history step */
             this->count_++;
 
             /* at this point we have min(count_, max_history_) residuals and vectors from the previous iterations */
@@ -257,12 +433,14 @@ class Broyden_mixer: public Mixer<T>
                 S.zero();
                 /* S = F^T * F, where F is the matrix of residual vectors */
                 for (int j1 = 0; j1 < N; j1++)
-                { 
+                {
+                    int i1 = this->idx_hist(this->count_ - N + j1);
                     for (int j2 = 0; j2 <= j1; j2++)
                     {
-                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
+                        int i2 = this->idx_hist(this->count_ - N + j2);
+                        for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
                         {
-                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, this->offset(this->count_ - N + j1))) * residuals_(i, this->offset(this->count_ - N + j2)));
+                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, i1)) * residuals_(i, i2));
                         }
                         S(j2, j1) = S(j1, j2);
                     }
@@ -301,21 +479,19 @@ class Broyden_mixer: public Mixer<T>
                     }
                 }
  
-                memset(&v2[0], 0, 2 * N * sizeof(long double));
+                std::memset(&v2[0], 0, 2 * N * sizeof(long double));
                 for (int j = 0; j < 2 * N; j++) v2[j] = -gamma_k(j, N - 1);
                 v2[2 * N - 1] += 1;
                 
-                /* use input_buffer as a temporary storage */
+                /* store new vector in the input buffer */
                 this->input_buffer_.zero();
 
                 /* make linear combination of vectors and residuals; this is the update vector \tilda x */
                 for (int j = 0; j < N; j++)
                 {
-                    for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                    {
-                        this->input_buffer_(i) += ((double)v2[j] * residuals_(i, this->offset(this->count_ - N + j)) + 
-                                                   (double)v2[j + N] * this->vectors_(i, this->offset(this->count_ - N + j)));
-                    }
+                    int i1 = this->idx_hist(this->count_ - N + j);
+                    for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
+                        this->input_buffer_(i) += ((double)v2[j] * residuals_(i, i1) + (double)v2[j + N] * this->vectors_(i, i1));
                 }
                 /* mix last vector with the update vector \tilda x */
                 this->mix_linear(this->beta_);
@@ -329,272 +505,6 @@ class Broyden_mixer: public Mixer<T>
         }
 };
 
-template <typename T>
-class Broyden_modified_mixer: public Mixer<T>
-{
-    private:
-
-        mdarray<T, 2> residuals_;
-
-        std::vector<double> weights_;
-
-    public:
-
-        Broyden_modified_mixer(size_t size__,
-                               int max_history__,
-                               double beta__,
-                               std::vector<double>& weights__,
-                               Communicator const& comm__) 
-            : Mixer<T>(size__, max_history__, beta__, comm__)
-        {
-            residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
-            weights_ = weights__;
-        }
-
-        double mix()
-        {
-            Timer t("sirius::Broyden_modified_mixer::mix");
-            
-            this->rss_ = 0;
-
-            if (weights_.size())
-            {
-                int ipos = this->idx_hist();
-                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                {
-                    residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
-                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * weights_[this->spl_size_[i]];
-                }
-            }
-            else
-            {
-                int ipos = this->idx_hist();
-                for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                {
-                    residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
-                    this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2);
-                }
-            }
-
-            this->comm_.allreduce(&this->rss_, 1);
-
-            if (this->rss_ < 1e-11) return 0.0;
-
-            double rms = this->rms_deviation();
-
-            int N = std::min(this->count_, this->max_history_ - 1);
-            
-            /* use input_buffer as a temporary storage */
-            this->input_buffer_.zero();
-
-            if (N > 0)
-            {
-                mdarray<double, 2> S(N, N);
-                S.zero();
-                if (weights_.size())
-                {
-                    for (int j1 = 0; j1 < N; j1++)
-                    { 
-                        for (int j2 = 0; j2 <= j1; j2++)
-                        {
-                            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                            {
-                                T dr1 = residuals_(i, this->offset(this->count_ - j1)) - residuals_(i, this->offset(this->count_ - j1 - 1));
-                                T dr2 = residuals_(i, this->offset(this->count_ - j2)) - residuals_(i, this->offset(this->count_ - j2 - 1));
-
-                                S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * weights_[this->spl_size_[i]];
-                            }
-                            S(j2, j1) = S(j1, j2);
-                        }
-                    }
-                }
-                else
-                {
-                    for (int j1 = 0; j1 < N; j1++)
-                    { 
-                        for (int j2 = 0; j2 <= j1; j2++)
-                        {
-                            for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                            {
-                                T dr1 = residuals_(i, this->offset(this->count_ - j1)) - residuals_(i, this->offset(this->count_ - j1 - 1));
-                                T dr2 = residuals_(i, this->offset(this->count_ - j2)) - residuals_(i, this->offset(this->count_ - j2 - 1));
-
-                                S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2);
-                            }
-                            S(j2, j1) = S(j1, j2);
-                        }
-                    }
-                }
-                this->comm_.allreduce(S.at<CPU>(), (int)S.size());
-
-                // printf("[mixer] S matrix\n");
-                // for (int i = 0; i < N; i++)
-                // {
-                //     for (int j = 0; j < N; j++) printf("%18.10f ", S(i, j));
-                //     printf("\n");
-                // }
-
-                linalg<CPU>::syinv(N, S);
-                /* restore lower triangular part */
-                for (int j1 = 0; j1 < N; j1++)
-                {
-                    for (int j2 = 0; j2 < j1; j2++) S(j1, j2) = S(j2, j1);
-                }
-
-                // printf("[mixer] S^{-1} matrix\n");
-                // for (int i = 0; i < N; i++)
-                // {
-                //     for (int j = 0; j < N; j++) printf("%18.10f ", S(i, j));
-                //     printf("\n");
-                // }
-
-                mdarray<double, 1> c(N);
-                c.zero();
-                if (weights_.size())
-                {
-                    for (int j = 0; j < N; j++)
-                    {
-                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                        {
-                            T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
-                            c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_))) * weights_[this->spl_size_[i]];
-                        }
-                    }
-                }
-                else
-                {
-                    for (int j = 0; j < N; j++)
-                    {
-                        for (int i = 0; i < (int)this->spl_size_.local_size(); i++) 
-                        {
-                            T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
-                            c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, this->offset(this->count_)));
-                        }
-                    }
-                }
-                this->comm_.allreduce(c.at<CPU>(), (int)c.size());
-
-                for (int j = 0; j < N; j++)
-                {
-                    double gamma = 0;
-                    for (int i = 0; i < N; i++) gamma += c(i) * S(i, j);
-
-                    for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
-                    {
-                        T dr = residuals_(i, this->offset(this->count_ - j)) - residuals_(i, this->offset(this->count_ - j - 1));
-                        T dv = this->vectors_(i, this->offset(this->count_ - j)) - this->vectors_(i, this->offset(this->count_ - j - 1));
-
-                        this->input_buffer_(i) -= gamma * (dr * this->beta_ + dv);
-                    }
-                }
-            }
-            
-            /* linear part */
-            for (int i = 0; i < (int)this->spl_size_.local_size(); i++)
-            {
-                int ipos = this->offset(this->count_);
-                this->vectors_(i, this->offset(this->count_ + 1)) = this->vectors_(i, ipos) +
-                                                                    this->beta_ * residuals_(i, ipos) +
-                                                                    this->input_buffer_(i);
-            }
-
-            this->comm_.allgather(&this->vectors_(0, this->offset(this->count_ + 1)), this->output_buffer_.template at<CPU>(),
-                                  (int)this->spl_size_.global_offset(), (int)this->spl_size_.local_size());
-            this->count_++;
-
-            return rms;
-        }
-};
-
-//== class Pulay_mixer: public Mixer
-//== {
-//==     private:
-//== 
-//==         mdarray<double, 2> residuals_;
-//==     
-//==     public:
-//== 
-//==         Pulay_mixer(size_t size__, int max_history__, double beta__) : Mixer(size__, max_history__, beta__)
-//==         {
-//==             residuals_.set_dimensions(spl_size_.local_size(), max_history__);
-//==             residuals_.allocate();
-//==         }
-//== 
-//==         double mix()
-//==         {
-//==             Timer t("sirius::Pulay_mixer::mix");
-//== 
-//==             for (int i = 0; i < (int)spl_size_.local_size(); i++) 
-//==                 residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
-//== 
-//==             int N = std::min(count_, max_history_ - 1);
-//== 
-//==             if (count_ > max_history_)
-//==             {
-//==                 mdarray<long double, 2> S(N, N);
-//==                 S.zero();
-//== 
-//==                 for (int j1 = 0; j1 < N; j1++)
-//==                 {
-//==                     for (int j2 = 0; j2 < N; j2++)
-//==                     {
-//==                         for (int i = 0; i < (int)spl_size_.local_size(); i++) 
-//==                         {
-//==                             S(j1, j2) += residuals_(i, offset(count_ - j1 - 1)) * residuals_(i, offset(count_ - j2 - 1));
-//==                         }
-//==                     }
-//==                 }
-//==                 Platform::allreduce(S.ptr(), (int)S.size());
-//==                 for (int j1 = 0; j1 < N; j1++)
-//==                 { 
-//==                     for (int j2 = 0; j2 < N; j2++) S(j1, j2) /= size_;
-//==                 }
-//== 
-//==                 mdarray<double, 2> s(N + 1, N + 1);
-//==                 s.zero();
-//==                 for (int j = 0; j < N; j++)
-//==                 {
-//==                     for (int i = 0; i < N; i++) s(i, j) = (double)S(i, j);
-//==                     s(j, N) = s(N, j) = 1.0;
-//==                 }
-//==                 
-//==                 std::cout << "matrix of residuals : " << std::endl;
-//==                 for (int i = 0; i <= N; i++)
-//==                 {
-//==                     for (int j = 0; j <= N; j++) printf("%18.10f ", s(j, i));
-//==                     printf("\n");
-//==                 }
-//== 
-//==                 linalg<lapack>::invert_ge(s.ptr(), N + 1);
-//== 
-//== 
-//==                 //memcpy(&vectors_(0, offset(count_ + 1)), &vectors_(0, offset(count_)), spl_size_.local_size() * sizeof(double));
-//==                 memset(&vectors_(0, offset(count_ + 1)), 0, spl_size_.local_size() * sizeof(double));
-//==                 for (int j = 0; j < N; j++)
-//==                 {
-//==                     for (int i = 0; i < (int)spl_size_.local_size(); i++)
-//==                     {
-//==                         vectors_(i, offset(count_ + 1)) += s(j, N) * vectors_(i, offset(count_ - j - 1));
-//==                         vectors_(i, offset(count_ + 1)) += beta_ * s(j, N) * residuals_(i, offset(count_ - j - 1));
-//==                     }
-//==                 }
-//== 
-//==                 Platform::allgather(&vectors_(0, offset(count_ + 1)), output_buffer_.ptr(), (int)spl_size_.global_offset(), 
-//==                                     (int)spl_size_.local_size());
-//== 
-//== 
-//==                 count_++;
-//==             }
-//==             else
-//==             {
-//==                 count_++;
-//==                 mix_linear(beta_);
-//==             }
-//== 
-//==             return rms_deviation();
-//==         }
-//== };
-//== 
 }
 
 #endif // __MIXER_H__

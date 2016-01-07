@@ -26,7 +26,6 @@
 #define __FFT3D_H__
 
 #include <fftw3.h>
-//#include <fftw3-mpi.h>
 #include <vector>
 #include <algorithm> 
 #include "typedefs.h"
@@ -240,7 +239,7 @@ class FFT3D
             return num_fft_workers_;
         }
 
-        void allocate_workspace()
+        void prepare()
         {
             #ifdef __GPU
             if (pu_ == GPU)
@@ -251,7 +250,7 @@ class FFT3D
             #endif
         }
 
-        void deallocate_workspace()
+        void dismiss()
         {
             #ifdef __GPU
             if (pu_ == GPU)

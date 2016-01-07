@@ -86,6 +86,7 @@ void Density::generate_valence(K_set& ks__)
     
     /* get rho(G) */
     rho_->fft_transform(-1);
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 
     //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
     //== STOP();

@@ -43,9 +43,9 @@ void K_set::sync_band_energies()
 {
     mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
 
-    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
-        int ik = (int)spl_num_kpoints_[ikloc];
+        int ik = spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
     comm_k_.allgather(band_energies.at<CPU>(), 
@@ -73,17 +73,17 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
-        if (use_second_variation)
+        if (use_second_variation && parameters_.full_potential())
         {
             band_->solve_fv(kpoints_[ik], potential->effective_potential());
             kpoints_[ik]->generate_fv_states();
             band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+            kpoints_[ik]->generate_spinor_wave_functions();
         }
         else
         {
             band_->solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
         }
-        kpoints_[ik]->generate_spinor_wave_functions();
     }
 
     /* synchronize eigen-values */
@@ -167,15 +167,14 @@ void K_set::find_band_occupancies()
             }
         }
 
-        if (fabs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
+        if (std::abs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
 
         sp = s;
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
 
-        de = s * fabs(de);
-
-        (s != sp) ? de *= 0.5 : de *= 1.25; 
-        
+        /* reduce de step if we change the direction, otherwise increase the step */
+        de = (s != sp) ? (-de * 0.5) : (de * 1.25); 
+        /* update Efermi */
         ef += de;
     } 
     energy_fermi_ = ef;
@@ -186,7 +185,7 @@ void K_set::find_band_occupancies()
     
     int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
     if (parameters_.num_spins() == 2 || 
-        (fabs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0))
+        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0))
     {
         /* find band gap */
         std::vector< std::pair<double, double> > eband;

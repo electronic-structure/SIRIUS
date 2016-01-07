@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -115,7 +115,7 @@ class Spheric_function
             return data_(i0, i1);
         }
 
-        inline T operator()(const int64_t i0, const int64_t i1) const 
+        inline T const& operator()(const int64_t i0, const int64_t i1) const 
         {
             return data_(i0, i1);
         }
@@ -132,7 +132,7 @@ class Spheric_function
 
         Spline<T> component(int lm__) const
         {
-            if (domain_t != spectral) TERMINATE("function domain is not spectral");
+            if (domain_t != spectral) TERMINATE("function is not is spectral domain");
 
             Spline<T> s(radial_grid());
             for (int ir = 0; ir < radial_grid_->num_points(); ir++) s[ir] = data_(lm__, ir);
@@ -161,8 +161,7 @@ template <function_domain_t domain_t, typename T>
 T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
 {
     /* check radial grid */
-    if (f1.radial_grid().hash() != f2.radial_grid().hash())
-        error_local(__FILE__, __LINE__, "wrong radial grids");
+    if (f1.radial_grid().hash() != f2.radial_grid().hash()) TERMINATE("radial grids don't match");
 
     Spline<T> s(f1.radial_grid());
 
@@ -228,10 +227,6 @@ class Spheric_function_gradient
         std::array<Spheric_function<domain_t, T>, 3> grad_;
     
     public:
-
-        //== Spheric_function_gradient() : radial_grid_(nullptr)
-        //== {
-        //== }
 
         Spheric_function_gradient(int angular_domain_size__, Radial_grid const& radial_grid__) 
             : radial_grid_(&radial_grid__),
