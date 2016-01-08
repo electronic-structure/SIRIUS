@@ -48,6 +48,27 @@ class Hloc_operator
         double v0_[2];
 
     public:
+        
+        /** This is used internally to benchmark and profile the Hloc kernel */
+        Hloc_operator(FFT3D_context& fft_ctx__,
+                      Gvec const& gkvec__,
+                      std::vector<double> veff__)
+            : fft_ctx_(fft_ctx__),
+              gkvec_(gkvec__)
+        {
+            pw_ekin_ = std::vector<double>(gkvec_.num_gvec_fft(), 0);
+            
+            veff_vec_ = mdarray<double, 2>(fft_ctx_.fft()->local_size(), 1);
+            std::memcpy(&veff_vec_[0], &veff__[0], fft_ctx_.fft()->local_size() * sizeof(double));
+            vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
+            #ifdef __GPU
+            if (fft_ctx_.pu() == GPU)
+            {
+                veff_vec_.allocate_on_device();
+                veff_vec_.copy_to_device();
+            }
+            #endif
+        }
 
         /** \param [in] fft_ctx FFT context of the coarse grid used to apply effective field.
          *  \param [in] gvec G-vectors of the coarse FFT grid.
@@ -140,16 +161,15 @@ class Hloc_operator
                     if (fft_ctx_.fft(thread_id)->hybrid())
                     {
                         #ifdef __GPU
-                        STOP();
-                        //scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                        //                      fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
-
+                        scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+                                              fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
                         #else
                         TERMINATE_NO_GPU
                         #endif
                     }
                     else
                     {
+                        #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                         for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
                             fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
                     }
@@ -157,6 +177,7 @@ class Hloc_operator
                     fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
 
                     /* add kinetic energy */
+                    #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                     for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
                         hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
                 }

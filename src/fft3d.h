@@ -101,10 +101,15 @@ class FFT3D
         #ifdef __GPU
         bool cufft3d_;
         cufftHandle cufft_plan_;
-        //cufftHandle cufft_plan_xy_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
         #endif
+        
+        /// Number of transfom calls.
+        size_t ncall_;
+
+        /// Timers for various parts of FFT.
+        double tcall_[5];
 
         template <int direction, bool use_reduction>
         void transform_z_serial(Gvec const& gvec__, double_complex* data__);
@@ -301,6 +306,16 @@ class FFT3D
             cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
         }
         #endif
+
+        inline size_t ncall() const
+        {
+            return ncall_;
+        }
+
+        inline double tcall(int i__) const
+        {
+            return tcall_[i__];
+        }
 };
 
 };

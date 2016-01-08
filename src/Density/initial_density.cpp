@@ -339,9 +339,12 @@ void Density::initial_density()
                                         auto r = unit_cell_.get_cartesian_coordinates(v1);
                                         auto a = r.length();
 
-                                        if (a <= 2.0)
+                                        const double R = 2.0;
+                                        const double norm = pi * std::pow(R, 3) / 3.0;
+
+                                        if (a <= R)
                                         {
-                                            magnetization_[0]->f_rg(ir) += v[2] * (1.0 - 0.5 * a);
+                                            magnetization_[0]->f_rg(ir) += v[2] * (1.0 - a / R) / norm;
                                         }
                                     }
                                 }

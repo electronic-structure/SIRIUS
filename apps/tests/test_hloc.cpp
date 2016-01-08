@@ -29,9 +29,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
     }
 
-    fft_ctx.allocate_workspace();
+    fft_ctx.prepare();
     
-    Hloc_operator hloc(fft_ctx, gvec, pw_ekin, veff);
+    Hloc_operator hloc(fft_ctx, gvec, veff);
 
     Wave_functions<false> phi(4 * num_bands__, gvec, mpi_grid, CPU);
     for (int i = 0; i < 4 * num_bands__; i++)
@@ -47,7 +47,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     for (int i = 0; i < 4; i++)
     {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
-        hloc.apply(hphi, i * num_bands__, num_bands__);
+        hloc.apply(0, hphi, i * num_bands__, num_bands__);
     }
     t1.stop();
 
@@ -65,7 +65,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("diff: %18.12f\n", diff);
     }
 
-    fft_ctx.deallocate_workspace();
+    fft_ctx.dismiss();
 }
 
 int main(int argn, char** argv)

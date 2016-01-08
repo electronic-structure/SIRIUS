@@ -75,7 +75,20 @@ class FFT3D_context
 
         ~FFT3D_context()
         {
-            for (auto obj: fft_) delete obj;
+            for (auto e: fft_)
+            {
+                if (e->comm().rank() == 0)
+                {
+                    printf("number of calls : %li\n", e->ncall());
+                    printf("total transform time          : %f\n", e->tcall(0));
+                    printf("transform xy time             : %f\n", e->tcall(1));
+                    printf("transform z serial time       : %f\n", e->tcall(2));
+                    printf("transform z parallel time     : %f\n", e->tcall(3));
+                    printf("transform z parallel a2a time : %f\n", e->tcall(4));
+                }
+            }
+
+            for (auto e: fft_) delete e;
         }
 
         inline int num_fft_streams() const
