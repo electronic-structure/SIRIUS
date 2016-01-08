@@ -15,16 +15,16 @@ void Band::diag_pseudo_potential(K_point* kp__,
     D_operator d_op(kp__->beta_projectors(), parameters_.num_mag_dims(), pu);
     Q_operator q_op(ctx_, kp__->beta_projectors(), pu);
 
-    auto h_diag1 = get_h_diag(kp__, 0, hloc.v0(0), d_op);
-    auto o_diag1 = get_o_diag(kp__, q_op);
-    auto h_diag2 = get_h_diag(kp__, 1, hloc.v0(1), d_op);
-    auto o_diag2 = get_o_diag(kp__, q_op);
+    //== auto h_diag1 = get_h_diag(kp__, 0, hloc.v0(0), d_op);
+    //== auto o_diag1 = get_o_diag(kp__, q_op);
+    //== auto h_diag2 = get_h_diag(kp__, 1, hloc.v0(1), d_op);
+    //== auto o_diag2 = get_o_diag(kp__, q_op);
 
-    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++)
-    {
-        if (std::abs(h_diag1[ig] - h_diag2[ig]) > 1e-10) printf("wrong hdiag!!!!\n");
-        if (std::abs(o_diag1[ig] - o_diag2[ig]) > 1e-10) printf("wrong odiag!!!!\n");
-    }
+    //== for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++)
+    //== {
+    //==     if (std::abs(h_diag1[ig] - h_diag2[ig]) > 1e-10) printf("wrong hdiag!!!!\n");
+    //==     if (std::abs(o_diag1[ig] - o_diag2[ig]) > 1e-10) printf("wrong odiag!!!!\n");
+    //== }
 
     //if (itso.type_ == "exact")
     //{
