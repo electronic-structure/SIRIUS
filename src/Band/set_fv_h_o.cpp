@@ -87,7 +87,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
     
-    int num_atoms_in_block = 2 * Platform::max_num_threads();
+    int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
                std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
@@ -123,7 +123,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
             int tid = Platform::thread_id();
             for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
-                if (ia % Platform::num_threads() == tid)
+                if (ia % omp_get_num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
                     auto& atom = unit_cell_.atom(ia);
@@ -198,7 +198,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
 
-    int num_atoms_in_block = 2 * Platform::max_num_threads();
+    int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
                std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
@@ -238,7 +238,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
             int tid = Platform::thread_id();
             for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
-                if (ia % Platform::num_threads() == tid)
+                if (ia % omp_get_num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
                     auto& atom = unit_cell_.atom(ia);
@@ -275,14 +275,14 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
             }
             cuda_stream_synchronize(tid);
         }
-        cuda_stream_synchronize(Platform::max_num_threads());
+        cuda_stream_synchronize(omp_get_max_threads());
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
                           alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone, 
-                          o__.at<GPU>(), o__.ld(), Platform::max_num_threads());
+                          o__.at<GPU>(), o__.ld(), omp_get_max_threads());
 
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
                           alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &zone,
-                          h__.at<GPU>(), h__.ld(), Platform::max_num_threads());
+                          h__.at<GPU>(), h__.ld(), omp_get_max_threads());
     }
 
     cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 

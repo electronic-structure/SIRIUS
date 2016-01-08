@@ -38,7 +38,6 @@
 #ifdef __GPU
 #include "gpu.h"
 #endif
-#include "typedefs.h"
 #include "debug.hpp"
 
 #ifdef __LIBSCI_ACC

@@ -235,7 +235,7 @@ class Simulation_context
             printf("MPI grid                      :");
             for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->size(1 << i));
             printf("\n");
-            printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
+            printf("maximum number of OMP threads   : %i\n", omp_get_max_threads()); 
             printf("number of OMP threads for FFT   : %i\n", parameters_.num_fft_threads()); 
             printf("number of pthreads for each FFT : %i\n", parameters_.num_fft_workers()); 
             printf("cyclic block size               : %i\n", parameters_.cyclic_block_size());

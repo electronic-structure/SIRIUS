@@ -42,7 +42,7 @@ class Platform
 {
     private:
 
-        static int num_fft_threads_;
+        //static int num_fft_threads_;
     
     public:
 
@@ -59,18 +59,18 @@ class Platform
             return r;
         }
 
-        /// Returm maximum number of OMP threads.
-        /** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
-        static inline int max_num_threads()
-        {
-            return omp_get_max_threads();
-        }
+        ///// Returm maximum number of OMP threads.
+        ///** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
+        //static inline int max_num_threads()
+        //{
+        //    return omp_get_max_threads();
+        //}
 
-        /// Returm number of actually running OMP threads. 
-        static inline int num_threads()
-        {
-            return omp_get_num_threads();
-        }
+        ///// Returm number of actually running OMP threads. 
+        //static inline int num_threads()
+        //{
+        //    return omp_get_num_threads();
+        //}
         
         /// Return thread id.
         static inline int thread_id()

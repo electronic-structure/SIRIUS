@@ -67,7 +67,7 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     mdarray<double_complex, 2> hphi_rs(kappa__.at<CPU>(),               fft->size(), parameters_.num_fft_threads());
     mdarray<double_complex, 2> ophi_rs(kappa__.at<CPU>(hphi_rs.size()), fft->size(), parameters_.num_fft_threads());
     
-    mdarray<double, 2> timers(4, Platform::max_num_threads());
+    mdarray<double, 2> timers(4, omp_get_max_threads());
     timers.zero();
 
     /* <\beta_{\xi}^{\alpha}|\phi_j> */

@@ -139,7 +139,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     #pragma omp parallel default(shared)
     {
         int tid = Platform::thread_id();
-        splindex<block> spl_gv_t(spl_num_gvec_.local_size(), Platform::num_threads(), tid);
+        splindex<block> spl_gv_t(spl_num_gvec_.local_size(), omp_get_num_threads(), tid);
         std::vector<double_complex> pseudo_pw_t(spl_gv_t.local_size(), complex_zero); 
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)

@@ -546,7 +546,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
+            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), Platform::thread_id());
 
             std::vector<double> exc_t(spl_t.local_size());
 
@@ -749,7 +749,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
+            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), Platform::thread_id());
 
             std::vector<double> exc_t(spl_t.local_size());
 

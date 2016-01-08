@@ -287,7 +287,7 @@ class Input_parameters
 
             common_input_section()
                 : mpi_grid_dims_({1}),
-                  num_fft_threads_(Platform::max_num_threads()),
+                  num_fft_threads_(omp_get_max_threads()),
                   num_fft_workers_(1),
                   cyclic_block_size_(64),
                   num_fv_states_(-1),
