@@ -58,7 +58,7 @@ void K_point::add_non_local_contribution(int num_atoms__,
                               op_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
                               beta_phi__.at<GPU>(ofs, 0), beta_phi__.ld(),
                               work__.at<GPU>(ofs, 0), work__.ld(), 
-                              Platform::thread_id());
+                              omp_get_thread_num());
 
         }
         cuda_device_synchronize();

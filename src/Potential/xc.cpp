@@ -546,7 +546,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), Platform::thread_id());
+            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), omp_get_thread_num());
 
             std::vector<double> exc_t(spl_t.local_size());
 
@@ -555,9 +555,9 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
             {
                 std::vector<double> vxc_t(spl_t.local_size());
 
-                ixc->get_lda((int)spl_t.local_size(), &rho->f_rg((int)spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
+                ixc->get_lda(spl_t.local_size(), &rho->f_rg(spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
 
-                for (int i = 0; i < (int)spl_t.local_size(); i++)
+                for (int i = 0; i < spl_t.local_size(); i++)
                 {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
@@ -749,7 +749,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), Platform::thread_id());
+            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), omp_get_thread_num());
 
             std::vector<double> exc_t(spl_t.local_size());
 
@@ -766,7 +766,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                              &vxc_dn_t[0], 
                              &exc_t[0]);
 
-                for (int i = 0; i < (int)spl_t.local_size(); i++)
+                for (int i = 0; i < spl_t.local_size(); i++)
                 {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];

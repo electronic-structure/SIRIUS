@@ -40,10 +40,6 @@
 /// Platform specific functions.
 class Platform
 {
-    private:
-
-        //static int num_fft_threads_;
-    
     public:
 
         static void initialize(bool call_mpi_init);
@@ -57,25 +53,6 @@ class Platform
             int r;
             MPI_Comm_rank(MPI_COMM_WORLD, &r);
             return r;
-        }
-
-        ///// Returm maximum number of OMP threads.
-        ///** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
-        //static inline int max_num_threads()
-        //{
-        //    return omp_get_max_threads();
-        //}
-
-        ///// Returm number of actually running OMP threads. 
-        //static inline int num_threads()
-        //{
-        //    return omp_get_num_threads();
-        //}
-        
-        /// Return thread id.
-        static inline int thread_id()
-        {
-            return omp_get_thread_num();
         }
 };
 

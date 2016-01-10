@@ -26,8 +26,6 @@
 #define __FFT3D_H__
 
 #include <fftw3.h>
-#include <vector>
-#include <algorithm> 
 #include "typedefs.h"
 #include "mdarray.h"
 #include "splindex.h"

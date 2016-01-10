@@ -22,8 +22,6 @@
  *  \brief Contains remaining implementation of sirius::Density class.
  */
 
-#include <thread>
-#include <mutex>
 #include "density.h"
 
 namespace sirius {

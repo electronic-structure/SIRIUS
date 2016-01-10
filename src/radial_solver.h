@@ -25,7 +25,6 @@
 #ifndef __RADIAL_SOLVER_H__
 #define __RADIAL_SOLVER_H__
 
-#include <vector>
 #include "radial_grid.h"
 #include "spline.h"
 #include "constants.h"

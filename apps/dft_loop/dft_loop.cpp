@@ -26,7 +26,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         jw.single("git_hash", git_hash);
         jw.single("build_date", build_date);
         jw.single("num_ranks", ctx.comm().size());
-        jw.single("max_num_threads", Platform::max_num_threads());
+        jw.single("max_num_threads", omp_get_max_threads());
         //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
         std::vector<int> fftgrid(3);

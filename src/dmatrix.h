@@ -25,7 +25,6 @@
 #ifndef __DMATRIX_H__
 #define __DMATRIX_H__
 
-#include <algorithm>
 #include "splindex.h"
 #include "mdarray.h"
 #include "communicator.h"

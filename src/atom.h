@@ -25,7 +25,6 @@
 #ifndef __ATOM_H__
 #define __ATOM_H__
 
-#include <vector>
 #include "gaunt.h"
 #include "atom_type.h"
 #include "atom_symmetry_class.h"

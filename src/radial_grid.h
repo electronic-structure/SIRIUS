@@ -25,9 +25,6 @@
 #ifndef __RADIAL_GRID_H__
 #define __RADIAL_GRID_H__
 
-#include <string.h>
-#include <vector>
-#include <string>
 #include "typedefs.h"
 #include "error_handling.h"
 #include "utils.h"

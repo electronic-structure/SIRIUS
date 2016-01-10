@@ -25,10 +25,9 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
-#include <algorithm>
+#include "sirius_internal.h"
 #include "input.h"
 
-/// SIRIUS namespace.
 namespace sirius {
 
 /// Parameters of the simulation. 

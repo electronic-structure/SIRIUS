@@ -26,8 +26,6 @@
 #include <fftw3.h>
 #include "platform.h"
 
-int Platform::num_fft_threads_ = -1;
-
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
 #endif

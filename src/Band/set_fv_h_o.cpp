@@ -120,7 +120,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
         #pragma omp parallel
         {
-            int tid = Platform::thread_id();
+            int tid = omp_get_thread_num();
             for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
                 if (ia % omp_get_num_threads() == tid)
@@ -235,7 +235,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
             
         #pragma omp parallel
         {
-            int tid = Platform::thread_id();
+            int tid = omp_get_thread_num();
             for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
                 if (ia % omp_get_num_threads() == tid)
