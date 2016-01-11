@@ -246,32 +246,6 @@ class K_point
         /// Get the number of occupied bands for each spin channel.
         int num_occupied_bands(int ispn__ = -1);
 
-        //-- /// Generate beta-proectors for a block of atoms.
-        //-- void generate_beta_gk(int num_atoms__,
-        //--                       mdarray<double, 2>& atom_pos__,
-        //--                       mdarray<int, 2> const& beta_desc__,
-        //--                       matrix<double_complex>& beta_gk__);
-
-        //-- void generate_beta_phi(int nbeta__,
-        //--                        matrix<double_complex>& phi__,
-        //--                        int nphi__,
-        //--                        int offs__,
-        //--                        matrix<double_complex>& beta_gk__,
-        //--                        matrix<double_complex>& beta_phi__);
-
-        //-- void add_non_local_contribution(int num_atoms__,
-        //--                                 int num_beta__,
-        //--                                 mdarray<int, 2> const& beta_desc__,
-        //--                                 matrix<double_complex>& beta_gk__,
-        //--                                 mdarray<double_complex, 1>& op_mtrx_packed__,
-        //--                                 mdarray<int, 1> const& packed_mtrx_offset__,
-        //--                                 matrix<double_complex>& beta_phi__,
-        //--                                 matrix<double_complex>& op_phi__,
-        //--                                 int nphi__,
-        //--                                 int offs__,
-        //--                                 double_complex alpha,
-        //--                                 matrix<double_complex>& work__);
-
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
         {
