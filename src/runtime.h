@@ -7,6 +7,7 @@
 
 #include <signal.h>
 #include <sys/time.h>
+#include <map>
 #include <fstream>
 #include <chrono>
 #include <omp.h>
