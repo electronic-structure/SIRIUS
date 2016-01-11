@@ -85,8 +85,7 @@ void dft_loop(cmd_args args)
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         TERMINATE("wrong task name");
     
-    Input_parameters iip("sirius.json");
-    Simulation_parameters parameters(iip);
+    Simulation_parameters parameters("sirius.json");
 
     std::vector<int> mpi_grid_dims = parameters.mpi_grid_dims();
     mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
