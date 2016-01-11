@@ -1,6 +1,6 @@
 import sys
 import os
-import urllib2
+import urllib.request
 import tarfile
 import subprocess
 import json
@@ -49,19 +49,19 @@ def configure_package(package_name, platform):
     
     if (not os.path.exists("./libs/" + local_file_name)):
         try:
-            print "Downloading " + file_url
-            req = urllib2.Request(file_url)
-            furl = urllib2.urlopen(req)
+            print("Downloading %s"%file_url)
+            req = urllib.request.Request(file_url)
+            furl = urllib.request.urlopen(req)
             
             local_file = open("./libs/" + local_file_name, "wb")
             local_file.write(furl.read())
             local_file.close()
         
-        except urllib2.HTTPError, e:
-            print "HTTP Error: ", e.code, url
+        except urllib2.HTTPError as err:
+            print("HTTP Error: %i %s"%(e.code, url))
 
-        except urllib2.URLError, e:
-            print "URL Error: ", e.reason, url
+        except urllib2.URLError as err:
+            print("URL Error: %i %s"%(err.reason, url))
 
     tf = tarfile.open("./libs/" + local_file_name)
     tf.extractall("./libs/")
@@ -116,24 +116,19 @@ def configure_package(package_name, platform):
 def main():
 
     if "--help" in sys.argv:
-        print ""
-        print "SIRIUS configuration script"
-        print ""
-        print "First, edit 'platform.json' and specify your system compilers, system libraries and"
-        print "libraries that you want to install. Then run:"
-        print ""
-        print "  python configure.py"
-        print ""
-        print "The \"install\" element in 'platform.json' contains the list of packages which are currently"
-        print "missing on your system and which will be downloaded and configured by the script."
-        print "The following package can be specified:"
-        print ""
-        print "  \"fftw\" - FFTW library"
-        print "  \"gsl\"  - GNU scientific library"
-        print "  \"hdf5\" - HDF5 library"
-        print "  \"xc\"   - XC library"
-        print "  \"spg\"  - Spglib"
-        print ""
+        print("\n" \
+              "SIRIUS configuration script\n\n" \
+              "First, edit 'platform.json' and specify your system compilers, system libraries and\n" \
+              "libraries that you want to install. Then run:\n\n" \
+              "  python configure.py\n\n" \
+              "The \"install\" element in 'platform.json' contains the list of packages which are currently\n" \
+              "missing on your system and which will be downloaded and configured by the script.\n" \
+              "The following package can be specified:\n\n" \
+              "  \"fftw\" - FFTW library\n" \
+              "  \"gsl\"  - GNU scientific library\n" \
+              "  \"hdf5\" - HDF5 library\n" \
+              "  \"xc\"   - XC library\n" \
+              "  \"spg\"  - Spglib\n")
         sys.exit(0)
     
     fin = open("platform.json", "r");
