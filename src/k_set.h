@@ -50,8 +50,6 @@ class K_set
     
         Simulation_context& ctx_;
 
-        Simulation_parameters const& parameters_;
-
         Band* band_;
 
         std::vector<K_point*> kpoints_;
@@ -84,7 +82,6 @@ class K_set
               Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__)
             : ctx_(ctx__),
-              parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__),
               blacs_grid_(blacs_grid__),
@@ -101,7 +98,6 @@ class K_set
               vector3d<int> k_shift__,
               int use_symmetry__) 
             : ctx_(ctx__),
-              parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__),
               blacs_grid_(blacs_grid__),

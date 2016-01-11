@@ -34,7 +34,7 @@ int Band::residuals(K_point* kp__,
         double tol = ctx_.iterative_solver_tolerance();
         for (int i = 0; i < num_bands__; i++)
         {
-            if (kp__->band_occupancy(i + ispn__ * parameters_.num_fv_states()) > 1e-10 &&
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-10 &&
                 std::abs(eval__[i] - eval_old__[i]) > tol)
             {
                 std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(double_complex));
@@ -45,12 +45,12 @@ int Band::residuals(K_point* kp__,
 
         /* create alias for eigen-vectors corresponding to unconverged residuals */
         matrix<double_complex> evec_tmp;
-        if (parameters_.processing_unit() == CPU)
+        if (ctx_.processing_unit() == CPU)
         {
             evec_tmp = matrix<double_complex>(&evec__(0, num_bands__), evec__.ld(), n);
         }
         #ifdef __GPU
-        if (parameters_.processing_unit() == GPU)
+        if (ctx_.processing_unit() == GPU)
         {
             evec_tmp = matrix<double_complex>(evec__.at<CPU>(0, num_bands__), evec__.at<GPU>(0, num_bands__), evec__.ld(), n);
             /* move matrix of eigen-vectors to GPU */
@@ -82,7 +82,7 @@ int Band::residuals(K_point* kp__,
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i)
                 {
-                    switch (parameters_.processing_unit())
+                    switch (ctx_.processing_unit())
                     {
                         case CPU:
                         {
@@ -105,7 +105,7 @@ int Band::residuals(K_point* kp__,
             }
         }
         //#ifdef __GPU
-        //if (parameters_.processing_unit() == GPU && economize_gpu_memory)
+        //if (ctx_.processing_unit() == GPU && economize_gpu_memory)
         //{
         //    /* copy residuals to CPU because the content of kappa array will be destroyed */
         //    cublas_get_matrix(ngk, n, sizeof(double_complex), res_tmp.at<GPU>(), res_tmp.ld(),

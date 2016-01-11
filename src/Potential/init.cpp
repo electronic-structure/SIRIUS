@@ -4,7 +4,7 @@ namespace sirius {
 
 void Potential::init()
 {
-    if (parameters_.esm_type() == full_potential_lapwlo)
+    if (ctx_.esm_type() == full_potential_lapwlo)
     {
         /* compute values of spherical Bessel functions at MT boundary */
         sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, unit_cell_.num_atom_types(), 
@@ -28,7 +28,7 @@ void Potential::init()
          *
          * and use relation between Bessel and spherical Bessel functions: 
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
-        sbessel_mom_ = mdarray<double, 3>(parameters_.lmax_rho() + 1, unit_cell_.num_atom_types(),
+        sbessel_mom_ = mdarray<double, 3>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(),
                                           ctx_.gvec().num_shells());
         sbessel_mom_.allocate();
         sbessel_mom_.zero();
@@ -38,7 +38,7 @@ void Potential::init()
             sbessel_mom_(0, iat, 0) = std::pow(unit_cell_.atom_type(iat).mt_radius(), 3) / 3.0; // for |G|=0
             for (int igs = 1; igs < ctx_.gvec().num_shells(); igs++)
             {
-                for (int l = 0; l <= parameters_.lmax_rho(); l++)
+                for (int l = 0; l <= ctx_.lmax_rho(); l++)
                 {
                     sbessel_mom_(l, iat, igs) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) * 
                                                 sbessel_mt_(l + 1, iat, igs) / ctx_.gvec().shell_len(igs);
@@ -52,10 +52,10 @@ void Potential::init()
         /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
          *
          * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi] */
-        gamma_factors_R_ = mdarray<double, 2>(parameters_.lmax_rho() + 1, unit_cell_.num_atom_types());
+        gamma_factors_R_ = mdarray<double, 2>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= parameters_.lmax_rho(); l++)
+            for (int l = 0; l <= ctx_.lmax_rho(); l++)
             {
                 long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
 

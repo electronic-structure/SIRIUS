@@ -164,7 +164,7 @@ void test6()
 
 int main(int argn, char **argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     test1(0.1, 7.13, 0, 0.3326313127230704);
     test1(0.1, 7.13, 1, -3.973877090504168);
@@ -194,4 +194,6 @@ int main(int argn, char **argv)
     test6();
 
     //test4(0.0001, 1.892184);
+
+    sirius::finalize();
 }

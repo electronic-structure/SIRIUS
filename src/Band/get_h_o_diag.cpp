@@ -91,7 +91,7 @@ std::vector<double> Band::get_o_diag(K_point* kp__,
     PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
 
     std::vector<double> o_diag(kp__->num_gkvec_loc(), 1.0);
-    if (parameters_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do here
+    if (ctx_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do here
 
     /* non-local O contribution */
     auto& beta_gk_t = kp__->beta_projectors().beta_gk_t();

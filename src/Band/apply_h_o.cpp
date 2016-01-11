@@ -23,12 +23,12 @@ void Band::apply_h_o(K_point* kp__,
     hphi__.copy_from(phi__, N__, n__);
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU) hphi__.copy_to_host(N__, n__);
+    if (ctx_.processing_unit() == GPU) hphi__.copy_to_host(N__, n__);
     #endif
     /* apply local part of Hamiltonian */
     h_op.apply(ispn__, hphi__, N__, n__);
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU) hphi__.copy_to_device(N__, n__);
+    if (ctx_.processing_unit() == GPU) hphi__.copy_to_device(N__, n__);
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM

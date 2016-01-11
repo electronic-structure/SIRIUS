@@ -17,19 +17,19 @@ void Density::add_k_point_contribution_it(K_point* kp__)
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_it");
 
-    int nfv = parameters_.num_fv_states();
+    int nfv = ctx_.num_fv_states();
     double omega = unit_cell_.omega();
     int num_fft_streams = ctx_.fft_ctx().num_fft_streams();
 
-    mdarray<double, 3> it_density_matrix(ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1, num_fft_streams);
+    mdarray<double, 3> it_density_matrix(ctx_.fft(0)->local_size(), ctx_.num_mag_dims() + 1, num_fft_streams);
     it_density_matrix.zero();
 
     #ifdef __GPU
     mdarray<double, 2> it_density_matrix_gpu;
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         /* density on GPU */
-        it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, 0), ctx_.fft(0)->local_size(), parameters_.num_mag_dims() + 1);
+        it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0, 0), ctx_.fft(0)->local_size(), ctx_.num_mag_dims() + 1);
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
@@ -47,9 +47,9 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     int wf_pw_offset = kp__->wf_pw_offset();
         
     /* non-magnetic or collinear case */
-    if (parameters_.num_mag_dims() != 3)
+    if (ctx_.num_mag_dims() != 3)
     {
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
             #pragma omp parallel num_threads(num_fft_streams)
             {
@@ -65,7 +65,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
                     /* transform to real space; in case of GPU wave-function stays in GPU memory */
                     ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
 
-                    if (thread_id == 0 && parameters_.processing_unit() == GPU)
+                    if (thread_id == 0 && ctx_.processing_unit() == GPU)
                     {
                         #ifdef __GPU
                         update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
@@ -113,7 +113,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
                 /* transform dn- component of spinor wave function */
                 ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(1)[i] + wf_pw_offset);
 
-                if (thread_id == 0 && parameters_.processing_unit() == GPU)
+                if (thread_id == 0 && ctx_.processing_unit() == GPU)
                 {
                     STOP();
                     //#ifdef __GPU
@@ -171,7 +171,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     //==         double w = occupied_bands__.weight[i] / omega;
     //==         double t1 = omp_get_wtime();
 
-    //==         if (thread_id == ctx_.gpu_thread_id() && parameters_.processing_unit() == GPU)
+    //==         if (thread_id == ctx_.gpu_thread_id() && ctx_.processing_unit() == GPU)
     //==         {
     //==             #ifdef __GPU
     //==             STOP();
@@ -260,7 +260,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     omp_set_nested(nested);
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         it_density_matrix_gpu.copy_to_host();
         it_density_matrix_gpu.deallocate_on_device();
@@ -269,7 +269,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     
     double t1 = -Utils::current_time();
     /* switch from real density matrix to density and magnetization */
-    switch (parameters_.num_mag_dims())
+    switch (ctx_.num_mag_dims())
     {
         case 3:
         {

@@ -42,9 +42,6 @@ class K_point
 
         /// Simulation context.
         Simulation_context& ctx_;
-
-        /// Parameters of simulation.
-        Simulation_parameters const& parameters_;
         
         /// Unit cell object.
         Unit_cell const& unit_cell_;
@@ -182,7 +179,7 @@ class K_point
             if (fv_eigen_vectors_ != nullptr) delete fv_eigen_vectors_;
             if (fv_states_ != nullptr)
             {
-                if (parameters_.full_potential())
+                if (ctx_.full_potential())
                 {
                     delete reinterpret_cast<Wave_functions<true>*>(fv_states_);
                 }
@@ -195,7 +192,7 @@ class K_point
             {
                 if (spinor_wave_functions_[ispn] != nullptr)
                 {   
-                    if (parameters_.full_potential())
+                    if (ctx_.full_potential())
                     {
                         delete reinterpret_cast<Wave_functions<true>*>(spinor_wave_functions_[ispn]);
                     }
@@ -249,31 +246,31 @@ class K_point
         /// Get the number of occupied bands for each spin channel.
         int num_occupied_bands(int ispn__ = -1);
 
-        /// Generate beta-proectors for a block of atoms.
-        void generate_beta_gk(int num_atoms__,
-                              mdarray<double, 2>& atom_pos__,
-                              mdarray<int, 2> const& beta_desc__,
-                              matrix<double_complex>& beta_gk__);
+        //-- /// Generate beta-proectors for a block of atoms.
+        //-- void generate_beta_gk(int num_atoms__,
+        //--                       mdarray<double, 2>& atom_pos__,
+        //--                       mdarray<int, 2> const& beta_desc__,
+        //--                       matrix<double_complex>& beta_gk__);
 
-        void generate_beta_phi(int nbeta__,
-                               matrix<double_complex>& phi__,
-                               int nphi__,
-                               int offs__,
-                               matrix<double_complex>& beta_gk__,
-                               matrix<double_complex>& beta_phi__);
+        //-- void generate_beta_phi(int nbeta__,
+        //--                        matrix<double_complex>& phi__,
+        //--                        int nphi__,
+        //--                        int offs__,
+        //--                        matrix<double_complex>& beta_gk__,
+        //--                        matrix<double_complex>& beta_phi__);
 
-        void add_non_local_contribution(int num_atoms__,
-                                        int num_beta__,
-                                        mdarray<int, 2> const& beta_desc__,
-                                        matrix<double_complex>& beta_gk__,
-                                        mdarray<double_complex, 1>& op_mtrx_packed__,
-                                        mdarray<int, 1> const& packed_mtrx_offset__,
-                                        matrix<double_complex>& beta_phi__,
-                                        matrix<double_complex>& op_phi__,
-                                        int nphi__,
-                                        int offs__,
-                                        double_complex alpha,
-                                        matrix<double_complex>& work__);
+        //-- void add_non_local_contribution(int num_atoms__,
+        //--                                 int num_beta__,
+        //--                                 mdarray<int, 2> const& beta_desc__,
+        //--                                 matrix<double_complex>& beta_gk__,
+        //--                                 mdarray<double_complex, 1>& op_mtrx_packed__,
+        //--                                 mdarray<int, 1> const& packed_mtrx_offset__,
+        //--                                 matrix<double_complex>& beta_phi__,
+        //--                                 matrix<double_complex>& op_phi__,
+        //--                                 int nphi__,
+        //--                                 int offs__,
+        //--                                 double_complex alpha,
+        //--                                 matrix<double_complex>& work__);
 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
@@ -304,7 +301,7 @@ class K_point
          *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */ 
         inline int wf_size() const // TODO: better name for this
         {
-            switch (ctx_.parameters().esm_type())
+            switch (ctx_.esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
@@ -324,7 +321,7 @@ class K_point
 
         inline int wf_pw_offset() const
         {
-            switch (ctx_.parameters().esm_type())
+            switch (ctx_.esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
@@ -348,27 +345,27 @@ class K_point
 
         inline void get_band_occupancies(double* band_occupancies) const
         {
-            assert(static_cast<int>(band_occupancies_.size()) == parameters_.num_bands());
+            assert(static_cast<int>(band_occupancies_.size()) == ctx_.num_bands());
             
-            std::memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
+            std::memcpy(band_occupancies, &band_occupancies_[0], ctx_.num_bands() * sizeof(double));
         }
 
         inline void set_band_occupancies(double* band_occupancies)
         {
-            band_occupancies_.resize(parameters_.num_bands());
-            std::memcpy(&band_occupancies_[0], band_occupancies, parameters_.num_bands() * sizeof(double));
+            band_occupancies_.resize(ctx_.num_bands());
+            std::memcpy(&band_occupancies_[0], band_occupancies, ctx_.num_bands() * sizeof(double));
         }
 
         inline void get_band_energies(double* band_energies) const
         {
-            assert(static_cast<int>(band_energies_.size()) == parameters_.num_bands());
-            std::memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
+            assert(static_cast<int>(band_energies_.size()) == ctx_.num_bands());
+            std::memcpy(band_energies, &band_energies_[0], ctx_.num_bands() * sizeof(double));
         }
 
         inline void set_band_energies(double* band_energies)
         {
-            band_energies_.resize(parameters_.num_bands()); 
-            std::memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
+            band_energies_.resize(ctx_.num_bands()); 
+            std::memcpy(&band_energies_[0], band_energies, ctx_.num_bands() * sizeof(double));
         }
 
         inline double band_occupancy(int j) const
@@ -393,7 +390,7 @@ class K_point
 
         void set_fv_eigen_values(double* eval)
         {
-            std::memcpy(&fv_eigen_values_[0], eval, parameters_.num_fv_states() * sizeof(double));
+            std::memcpy(&fv_eigen_values_[0], eval, ctx_.num_fv_states() * sizeof(double));
         }
         
         inline double weight() const
@@ -548,7 +545,7 @@ class K_point
 
         void bypass_sv()
         {
-            std::memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
+            std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(double));
         }
 
         std::vector<double> get_pw_ekin() const

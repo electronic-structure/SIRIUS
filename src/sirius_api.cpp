@@ -453,7 +453,7 @@ void sirius_get_num_fft_grid_points(int32_t* num_grid_points__)
 void sirius_get_num_bands(int32_t* num_bands)
 {
     PROFILE();
-    *num_bands = sim_param->num_bands();
+    *num_bands = sim_ctx->num_bands();
 }
 
 /// Get number of G-vectors within the plane-wave cutoff
@@ -1560,7 +1560,7 @@ void sirius_solve_fv(int32_t const* kset_id__,
         kset_list[*kset_id__]->band()->gen_evp_solver()->solve(kp->gklo_basis_size(),
                                                                kp->gklo_basis_size_row(),
                                                                kp->gklo_basis_size_col(),
-                                                               sim_param->num_fv_states(),
+                                                               sim_ctx->num_fv_states(),
                                                                h__,
                                                                kp->gklo_basis_size_row(), 
                                                                o__,
@@ -1904,7 +1904,7 @@ void sirius_get_sv_eigen_vectors(int32_t* kset_id, int32_t* ik, double_complex* 
 void sirius_get_num_fv_states(int32_t* num_fv_states__)
 {
     PROFILE();
-    *num_fv_states__ = sim_param->num_fv_states();
+    *num_fv_states__ = sim_ctx->num_fv_states();
 }
 
 void sirius_set_num_fv_states(int32_t* num_fv_states__)

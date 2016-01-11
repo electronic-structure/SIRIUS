@@ -1030,9 +1030,9 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 
 void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__)
 {
-    if (kp__->gklo_basis_size() < parameters_.num_fv_states()) TERMINATE("basis size is too small");
+    if (kp__->gklo_basis_size() < ctx_.num_fv_states()) TERMINATE("basis size is too small");
 
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case full_potential_pwlo:
         case full_potential_lapwlo:
@@ -1051,7 +1051,7 @@ void Band::solve_fd(K_point* kp__,
                     Periodic_function<double>* effective_potential__, 
                     Periodic_function<double>* effective_magnetic_field__[3])
 {
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:

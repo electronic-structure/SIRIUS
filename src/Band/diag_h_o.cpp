@@ -57,7 +57,7 @@ void Band::diag_h_o(K_point* kp__,
     }
     /* copy eigen-vectors to GPU */
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
         acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
     #endif
 }

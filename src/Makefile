@@ -44,8 +44,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Potential/generate_d_operator_matrix.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
-       K_point/add_non_local_contribution.cpp \
-       K_point/generate_beta_phi.cpp \
        K_point/distribute_basis_index.cpp \
        K_point/build_gklo_basis_descriptors.cpp \
        K_point/generate_fv_states.cpp \

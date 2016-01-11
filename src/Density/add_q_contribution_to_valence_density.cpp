@@ -6,7 +6,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 {
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric. */
-    int ndm = (parameters_.num_mag_dims() == 3) ? 3 : parameters_.num_spins();
+    int ndm = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
 
     /* complex density matrix */
     mdarray<double_complex, 4> density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
@@ -24,9 +24,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
-    std::vector<Periodic_function<double>*> rho_vec(parameters_.num_mag_dims() + 1);
+    std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
     rho_vec[0] = rho_;
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) rho_vec[1 + j] = magnetization_[j];
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) rho_vec[1 + j] = magnetization_[j];
 
     //mdarray<double, 2> timers(3, Platform::max_num_threads());
     //timers.zero();
@@ -46,7 +46,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
             {
                 for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    switch (parameters_.num_mag_dims())
+                    switch (ctx_.num_mag_dims())
                     {
                         case 0:
                         {
@@ -79,7 +79,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
         mdarray<double_complex, 2> dm_pw(nbf * nbf, spl_gvec.local_size());
 
-        for (int iv = 0; iv < parameters_.num_mag_dims() + 1; iv++)
+        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
         {
             linalg<CPU>::gemm(0, 0, nbf * nbf, spl_gvec.local_size(), atom_type.num_atoms(),
                               &dm(0, 0, iv), dm.ld(), &phase_factors(0, 0), phase_factors.ld(),
@@ -151,7 +151,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
 //    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
 //     * because density matrix is symmetric.  */
-//    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+//    int num_zdmat = (ctx_.num_mag_dims() == 3) ? 3 : (ctx_.num_mag_dims() + 1);
 //
 //    /* complex density matrix */
 //    mdarray<double_complex, 4> pp_complex_density_matrix(unit_cell_.max_mt_basis_size(), 

@@ -52,7 +52,7 @@ void f2()
 
 int main(int argn, char **argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     f2();
 
@@ -60,5 +60,5 @@ int main(int argn, char **argv)
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
     #endif
 
-    Platform::finalize();
+    sirius::finalize();
 }

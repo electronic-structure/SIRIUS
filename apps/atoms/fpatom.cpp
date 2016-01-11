@@ -50,7 +50,7 @@ struct basis_function_index_descriptor
 
 void generate_vha(sirius::Spheric_function<spectral, double> const& rho, sirius::Spheric_function<spectral, double>& vha)
 {
-    sirius::Timer t("generate_vha");
+    runtime::Timer t("generate_vha");
 
     std::vector<double> g1;
     std::vector<double> g2;
@@ -87,7 +87,7 @@ void generate_xc(int lmmax__,
                  std::array< sirius::Spheric_function<spectral, double>, 2>& vxclm__,
                  sirius::Spheric_function<spectral, double>& exclm__)
 {
-    sirius::Timer t("generate_vxc");
+    runtime::Timer t("generate_vxc");
 
     sirius::SHT sht(Utils::lmax_by_lmmax(lmmax__));
 
@@ -134,7 +134,7 @@ void generate_radial_functions(std::vector<fpatom::radial_function_index_descrip
                                mdarray<double, 2>& enu__,
                                mdarray<double, 4>& radial_functions__)
 {
-    sirius::Timer t("generate_radial_functions");
+    runtime::Timer t("generate_radial_functions");
     
     #pragma omp parallel
     {
@@ -171,7 +171,7 @@ void generate_radial_integrals(int lmax__,
                                mdarray<double, 4>& h_radial_integrals__,
                                mdarray<double, 3>& o_radial_integrals__)
 {
-    sirius::Timer t("generate_radial_integrals");
+    runtime::Timer t("generate_radial_integrals");
 
     h_radial_integrals__.zero();
     o_radial_integrals__.zero();
@@ -179,7 +179,7 @@ void generate_radial_integrals(int lmax__,
     int lmmax = Utils::lmmax(lmax__);
     
 
-    sirius::Timer t1("generate_radial_integrals|1");
+    runtime::Timer t1("generate_radial_integrals|1");
     for (int ispn: {0, 1})
     {
         #pragma omp parallel
@@ -225,11 +225,11 @@ void generate_radial_integrals(int lmax__,
     }
     t1.stop();
 
-    mdarray<double, 2> timers(3, Platform::max_num_threads());
+    mdarray<double, 2> timers(3, omp_get_max_threads());
     timers.zero();
 
-    sirius::Timer t2("generate_radial_integrals|2");
-    mdarray<double, 2> buf(196, Platform::max_num_threads());
+    runtime::Timer t2("generate_radial_integrals|2");
+    mdarray<double, 2> buf(196, omp_get_max_threads());
     buf.allocate_on_device();
     for (int ispn: {0, 1})
     {
@@ -237,7 +237,7 @@ void generate_radial_integrals(int lmax__,
         #pragma omp parallel for
         for (int i = 0; i < (int)radial_functions_desc__.size(); i++)
         {
-            int thread_id = Platform::thread_id();
+            int thread_id = omp_get_thread_num();
             double ts = omp_get_wtime();
 
             srf[i] = sirius::Spline<double>(rgrid__);
@@ -252,7 +252,7 @@ void generate_radial_integrals(int lmax__,
         #pragma omp parallel
         {
             sirius::Spline<double> svrf(rgrid__);
-            int thread_id = Platform::thread_id();
+            int thread_id = omp_get_thread_num();
             #pragma omp for
             for (int lm = 1; lm < lmmax; lm++)
             {
@@ -295,7 +295,7 @@ void generate_radial_integrals(int lmax__,
             }
         }
     }
-    for (int i = 0; i < Platform::max_num_threads(); i++)
+    for (int i = 0; i < omp_get_thread_num(); i++)
     {
         printf("thread: %i, timers: %12.6f %12.6f %12.6f\n", i, timers(0, i), timers(1, i), timers(2, i));
     }
@@ -308,7 +308,7 @@ std::pair< std::vector<double>, matrix<double_complex> > solve_gen_evp(int ispn_
                                                                        mdarray<double, 4> const& h_radial_integrals__,
                                                                        mdarray<double, 3> const& o_radial_integrals__)
 {
-    sirius::Timer t("solve_gen_evp");
+    runtime::Timer t("solve_gen_evp");
 
     generalized_evp_lapack evp_solver(-1.0);
     std::pair< std::vector<double>, matrix<double_complex> > result;
@@ -352,7 +352,7 @@ void generate_density(int lmmax__,
                       mdarray<double, 4> const& radial_functions__,
                       sirius::Spheric_function<spectral, double>& rholm__)
 {
-    sirius::Timer t("generate_density");
+    runtime::Timer t("generate_density");
 
     int N = (int)basis_functions_desc__.size();
 
@@ -612,11 +612,11 @@ int main(int argn, char **argv)
     int nmax = args.value<int>("nmax", 6);
     int lmax = args.value<int>("lmax", 6);
 
-    Platform::initialize(true);
+    sirius::initialize(true);
     cuda_device_info();
 
     scf(zn, mag_mom, niter, alpha, nmax, lmax);
 
-    sirius::Timer::print();
-    Platform::finalize();
+    runtime::Timer::print();
+    sirius::finalize();
 }

@@ -11,10 +11,10 @@ void K_point::generate_spinor_wave_functions()
 
     if (use_second_variation) 
     {
-        if (!parameters_.need_sv())
+        if (!ctx_.need_sv())
         {
             /* copy eigen-states and exit */
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
                 fv_states<true>().coeffs().panel() >> spinor_wave_functions<true>(0).coeffs().panel();
             }
@@ -25,22 +25,22 @@ void K_point::generate_spinor_wave_functions()
             return;
         }
 
-        int nfv = parameters_.num_fv_states();
-        int nbnd = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : nfv;
+        int nfv = ctx_.num_fv_states();
+        int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : nfv;
 
         /* serial GPU version */
-        if (num_ranks() == 1 && parameters_.processing_unit() == GPU)
+        if (num_ranks() == 1 && ctx_.processing_unit() == GPU)
         {
             STOP();
         }
         else
         {
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
-                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
                 {
                     int s, o;
-                    if (parameters_.num_mag_dims() == 3) // in case of non-collinear magnetism sv_eigen_vectors_ is
+                    if (ctx_.num_mag_dims() == 3) // in case of non-collinear magnetism sv_eigen_vectors_ is
                     {                                    // a single 2Nx2N matrix
                         s = 0;
                         o = ispn * nfv; // offset for spin up is 0, for spin dn is nfv
@@ -58,7 +58,7 @@ void K_point::generate_spinor_wave_functions()
             else
             {
                 matrix<double_complex> evec(nfv, nfv);
-                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
                 {
                     evec.zero();
                     for (int i = 0; i < sv_eigen_vectors_[ispn].num_cols_local(); i++)
@@ -69,7 +69,7 @@ void K_point::generate_spinor_wave_functions()
                         }
                     }
                     comm().allreduce(evec.at<CPU>(), nfv * nfv);
-                    spinor_wave_functions<false>(ispn).transform_from(fv_states<false>(), parameters_.num_fv_states(), evec, parameters_.num_fv_states());
+                    spinor_wave_functions<false>(ispn).transform_from(fv_states<false>(), ctx_.num_fv_states(), evec, ctx_.num_fv_states());
                 }
             }
         }
@@ -78,7 +78,7 @@ void K_point::generate_spinor_wave_functions()
         //if (num_ranks() == 1)
         //{
         //    //spinor_wave_functions_.zero();
-        //    if (parameters_.processing_unit() == GPU)
+        //    if (ctx_.processing_unit() == GPU)
         //    {
         //        #ifdef __GPU
         //        //fv_states_.allocate_on_device();
@@ -86,11 +86,11 @@ void K_point::generate_spinor_wave_functions()
         //        #endif
         //    }
  
-        //    for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         //    {
-        //        if (parameters_.num_mag_dims() != 3)
+        //        if (ctx_.num_mag_dims() != 3)
         //        {
-        //            if (parameters_.processing_unit() == GPU)
+        //            if (ctx_.processing_unit() == GPU)
         //            {
         //                #ifdef __GPU
         //                STOP();
@@ -111,7 +111,7 @@ void K_point::generate_spinor_wave_functions()
         //            }
         //        }
         //    }
-        //    if (parameters_.processing_unit() == GPU)
+        //    if (ctx_.processing_unit() == GPU)
         //    {
         //        #ifdef __GPU
         //        //fv_states_.deallocate_on_device();
@@ -126,7 +126,7 @@ void K_point::generate_spinor_wave_functions()
  
      //==     /** \todo generalize for non-collinear case */
      //==     spinor_wave_functions_.zero();
-     //==     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+     //==     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
      //==     {
      //==         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
      //==         {
@@ -152,8 +152,8 @@ void K_point::generate_spinor_wave_functions()
      //==               maybe the 'fv' should be renamed. */
      }
      //== 
-     //== for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
-     //==     Platform::allreduce(&spinor_wave_functions_(0, 0, i), wfld, parameters_.mpi_grid().communicator(1 << _dim_row_));
+     //== for (int i = 0; i < ctx_.spl_spinor_wf_col().local_size(); i++)
+     //==     Platform::allreduce(&spinor_wave_functions_(0, 0, i), wfld, ctx_.mpi_grid().communicator(1 << _dim_row_));
      //== 
 }
 

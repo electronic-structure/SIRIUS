@@ -20,10 +20,10 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
    
     effective_potential_->add(xc_potential_);
     
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         effective_potential_->sync_mt();
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync_mt();
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync_mt();
     }
 
     //if (debug_level > 1) check_potential_continuity_at_mt();

@@ -8,11 +8,11 @@ void Band::diag_pseudo_potential(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
 
-    Hloc_operator hloc(ctx_.fft_coarse_ctx(), ctx_.gvec_coarse(), kp__->gkvec(), parameters_.num_mag_dims(),
+    Hloc_operator hloc(ctx_.fft_coarse_ctx(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
-    auto pu = parameters_.processing_unit();
-    D_operator d_op(kp__->beta_projectors(), parameters_.num_mag_dims(), pu);
+    auto pu = ctx_.processing_unit();
+    D_operator d_op(kp__->beta_projectors(), ctx_.num_mag_dims(), pu);
     Q_operator q_op(ctx_, kp__->beta_projectors(), pu);
 
     //== auto h_diag1 = get_h_diag(kp__, 0, hloc.v0(0), d_op);
@@ -49,12 +49,12 @@ void Band::diag_pseudo_potential(K_point* kp__,
 
     //ctx_.fft_coarse_ctx().deallocate_workspace();
 
-    auto& itso = parameters_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input_section();
     if (itso.type_ == "exact")
     {
-        if (parameters_.num_mag_dims() != 3)
+        if (ctx_.num_mag_dims() != 3)
         {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
                 diag_pseudo_potential_exact(kp__, ispn, hloc, d_op, q_op);
         }
         else
@@ -64,9 +64,9 @@ void Band::diag_pseudo_potential(K_point* kp__,
     }
     else if (itso.type_ == "davidson")
     {
-        if (parameters_.num_mag_dims() != 3)
+        if (ctx_.num_mag_dims() != 3)
         {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
                 diag_pseudo_potential_davidson(kp__, ispn, hloc, d_op, q_op);
         }
         else

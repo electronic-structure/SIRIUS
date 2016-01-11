@@ -39,18 +39,18 @@ void Potential::generate_D_operator_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
 
-    if (parameters_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
+    if (ctx_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
 
-    std::vector<Periodic_function<double>*> veff_vec(parameters_.num_mag_dims() + 1);
+    std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
     veff_vec[0] = effective_potential_;
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) veff_vec[1 + j] = effective_magnetic_field_[j];
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) veff_vec[1 + j] = effective_magnetic_field_[j];
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         ctx_.augmentation_op(iat).prepare();
     
     #ifdef __GPU
     mdarray<int, 2> gvec;
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
         for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
@@ -62,14 +62,14 @@ void Potential::generate_D_operator_matrix()
     }
     #endif
 
-    for (int iv = 0; iv < parameters_.num_mag_dims() + 1; iv++)
+    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
     {
         /* get plane-wave coefficients of effective potential */
         veff_vec[iv]->fft_transform(-1);
 
         #ifdef __GPU
         mdarray<double_complex, 1> veff;
-        if (parameters_.processing_unit() == GPU)
+        if (ctx_.processing_unit() == GPU)
         {
             veff = mdarray<double_complex, 1>(&veff_vec[iv]->f_pw(spl_num_gvec_.global_offset()), spl_num_gvec_.local_size());
             veff.allocate_on_device();
@@ -83,7 +83,7 @@ void Potential::generate_D_operator_matrix()
             int nbf = atom_type.mt_basis_size();
             matrix<double_complex> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms()); 
 
-            if (parameters_.processing_unit() == CPU)
+            if (ctx_.processing_unit() == CPU)
             {
                 matrix<double_complex> veff_a(spl_num_gvec_.local_size(), atom_type.num_atoms());
 
@@ -103,7 +103,7 @@ void Potential::generate_D_operator_matrix()
                                   ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
             }
             #ifdef __GPU
-            if (parameters_.processing_unit() == GPU)
+            if (ctx_.processing_unit() == GPU)
             {
                 matrix<double_complex> veff_a(nullptr, spl_num_gvec_.local_size(), atom_type.num_atoms());
                 veff_a.allocate_on_device();

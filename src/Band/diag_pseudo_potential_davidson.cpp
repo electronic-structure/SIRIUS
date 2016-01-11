@@ -38,10 +38,10 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
 
-    auto pu = parameters_.processing_unit();
+    auto pu = ctx_.processing_unit();
 
     /* short notation for number of target wave-functions */
-    int num_bands = parameters_.num_fv_states();
+    int num_bands = ctx_.num_fv_states();
 
     /* short notation for number of G+k vectors */
     int ngk = kp__->num_gkvec();
@@ -83,7 +83,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         evec = matrix<double_complex>(num_phi, num_bands);
     }
 
-    int bs = parameters_.cyclic_block_size();
+    int bs = ctx_.cyclic_block_size();
 
     dmatrix<double_complex> hmlt_dist;
     dmatrix<double_complex> ovlp_dist;
@@ -109,7 +109,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     kp__->beta_projectors().allocate_workspace();
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         psi.allocate_on_device();
         psi.copy_to_device(0, num_bands);
@@ -159,7 +159,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i + ispn__ * parameters_.num_fv_states()) > 1e-2 &&
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-2 &&
                 std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
             {
                 occ_band_converged = false;
@@ -227,11 +227,11 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     kp__->beta_projectors().deallocate_workspace();
 
-    for (int j = 0; j < parameters_.num_fv_states(); j++)
-        kp__->band_energy(j + ispn__ * parameters_.num_fv_states()) = eval[j];
+    for (int j = 0; j < ctx_.num_fv_states(); j++)
+        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         psi.copy_to_host(0, num_bands);
         psi.deallocate_on_device();

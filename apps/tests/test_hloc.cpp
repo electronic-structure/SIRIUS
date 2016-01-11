@@ -5,7 +5,7 @@ using namespace sirius;
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
                int num_fft_streams__, int num_threads_fft__, int use_gpu, double gpu_workload__)
 {
-    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world); 
+    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
@@ -20,7 +20,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft_ctx.fft()->local_size(), 2.0);
 
-    if (mpi_comm_world.rank() == 0)
+    if (mpi_comm_world().rank() == 0)
     {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
@@ -43,7 +43,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
     Wave_functions<false> hphi(4 * num_bands__, num_bands__, gvec, mpi_grid, CPU);
     
-    Timer t1("h_loc");
+    runtime::Timer t1("h_loc");
     for (int i = 0; i < 4; i++)
     {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
@@ -59,8 +59,8 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
             diff += std::abs(2.0 * phi(j, i) - hphi(j, i));
         }
     }
-    mpi_comm_world.allreduce(&diff, 1);
-    if (mpi_comm_world.rank() == 0)
+    mpi_comm_world().allreduce(&diff, 1);
+    if (mpi_comm_world().rank() == 0)
     {
         printf("diff: %18.12f\n", diff);
     }
@@ -95,9 +95,9 @@ int main(int argn, char** argv)
     auto use_gpu = args.value<int>("use_gpu", 0);
     auto gpu_workload = args.value<double>("gpu_workload", 0.8);
 
-    Platform::initialize(1);
+    sirius::initialize(1);
     test_hloc(mpi_grid_dims, cutoff, num_bands, num_fft_streams, num_threads_fft, use_gpu, gpu_workload);
-    mpi_comm_world.barrier();
-    Timer::print();
-    Platform::finalize();
+    mpi_comm_world().barrier();
+    runtime::Timer::print();
+    sirius::finalize();
 }

@@ -14,7 +14,7 @@ void Density::generate_valence_density_it(K_set& ks__)
         int ik = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__[ik];
         
-        if (parameters_.full_potential())
+        if (ctx_.full_potential())
         {
             add_k_point_contribution_it<true>(kp);
         }
@@ -29,7 +29,7 @@ void Density::generate_valence_density_it(K_set& ks__)
                                            : ctx_.comm();
 
     comm.allreduce(&rho_->f_rg(0), ctx_.fft(0)->local_size()); 
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+    for (int j = 0; j < ctx_.num_mag_dims(); j++)
         comm.allreduce(&magnetization_[j]->f_rg(0), ctx_.fft(0)->local_size()); 
 
     ctx_.fft_ctx().dismiss();

@@ -8,7 +8,7 @@ void Density::initial_density()
 
     zero();
     
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
@@ -66,7 +66,7 @@ void Density::initial_density()
         std::vector<std::pair<int, std::vector<int> > > gsh_list;
         for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
 
-        int lmax = parameters_.lmax_rho();
+        int lmax = ctx_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         
         sbessel_approx sba(unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
@@ -191,7 +191,7 @@ void Density::initial_density()
         }
 
         /* initialize the magnetization */
-        if (parameters_.num_mag_dims())
+        if (ctx_.num_mag_dims())
         {
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
             {
@@ -225,7 +225,7 @@ void Density::initial_density()
                     for (int ir = 0; ir < nmtp; ir++)
                         magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
 
-                    if (parameters_.num_mag_dims() == 3)
+                    if (ctx_.num_mag_dims() == 3)
                     {
                         for (int ir = 0; ir < nmtp; ir++)
                         {
@@ -238,7 +238,7 @@ void Density::initial_density()
         }
     }
 
-    if (!parameters_.full_potential())
+    if (!ctx_.full_potential())
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
         #ifdef __PRINT_OBJECT_HASH
@@ -309,7 +309,7 @@ void Density::initial_density()
 
 
         /* initialize the magnetization */
-        if (parameters_.num_mag_dims())
+        if (ctx_.num_mag_dims())
         {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
@@ -374,10 +374,10 @@ void Density::initial_density()
         //==             double frv[] = {double(j0) / fft_->size(0), 
         //==                             double(j1) / fft_->size(1), 
         //==                             double(j2) / fft_->size(2)};
-        //==             vector3d<double> rv = parameters_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
+        //==             vector3d<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
         //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
-        //==             if (parameters_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
-        //==             if (parameters_.num_mag_dims() == 3) 
+        //==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
+        //==             if (ctx_.num_mag_dims() == 3) 
         //==             {
         //==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
         //==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
@@ -443,13 +443,13 @@ void Density::initial_density()
         //== fclose(fout);
 
         rho_->fft_transform(-1);
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
     }
     
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         rho_->sync_mt();
-        for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync_mt();
+        for (int i = 0; i < ctx_.num_mag_dims(); i++) magnetization_[i]->sync_mt();
 
         #ifdef __PRINT_OBJECT_CHECKSUM
         DUMP("checksum(rhomt): %18.10f", rho_->f_mt().checksum());

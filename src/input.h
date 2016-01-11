@@ -276,7 +276,7 @@ class Input_parameters
         struct common_input_section
         {
             std::vector<int> mpi_grid_dims_;
-            int num_fft_threads_;
+            int num_fft_streams_;
             int num_fft_workers_;
             int cyclic_block_size_;
             int num_fv_states_;
@@ -288,8 +288,8 @@ class Input_parameters
 
             common_input_section()
                 : mpi_grid_dims_({1}),
-                  num_fft_threads_(omp_get_max_threads()),
-                  num_fft_workers_(1),
+                  num_fft_streams_(1),
+                  num_fft_workers_(omp_get_max_threads()),
                   cyclic_block_size_(64),
                   num_fv_states_(-1),
                   smearing_width_(0.001),
@@ -308,7 +308,7 @@ class Input_parameters
             {
                 mpi_grid_dims_               = parser__["mpi_grid_dims"].get(mpi_grid_dims_); 
                 cyclic_block_size_           = parser__["cyclic_block_size"].get(cyclic_block_size_);
-                num_fft_threads_             = parser__["num_fft_threads"].get(num_fft_threads_);
+                num_fft_streams_             = parser__["num_fft_streams"].get(num_fft_streams_);
                 num_fft_workers_             = parser__["num_fft_workers"].get(num_fft_workers_);
                 num_fv_states_               = parser__["num_fv_states"].get(num_fv_states_);
                 smearing_width_              = parser__["smearing_width"].get(smearing_width_);

@@ -114,9 +114,6 @@ class Density
 
         Simulation_context& ctx_;
         
-        /// Global set of parameters.
-        Simulation_parameters const& parameters_;
-
         Unit_cell& unit_cell_;
 
         /// Pointer to charge density.
@@ -284,20 +281,20 @@ class Density
         inline size_t size()
         {
             size_t s = rho_->size();
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) s += magnetization_[i]->size();
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) s += magnetization_[i]->size();
             return s;
         }
 
         inline void pack(Mixer<double>* mixer__)
         {
             size_t n = rho_->pack(0, mixer__);
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
         }
 
         inline void unpack(double const* buffer__)
         {
             size_t n = rho_->unpack(buffer__);
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
         }
         
         Periodic_function<double>* rho()
@@ -328,7 +325,7 @@ class Density
         void allocate()
         {
             rho_->allocate_mt(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate_mt(true);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->allocate_mt(true);
         }
 
         void mixer_input()
@@ -342,7 +339,7 @@ class Density
                 int k = 0;
                 for (int ig: lf_gvec_)
                     low_freq_mixer_->input(k++, rho_->f_pw(ig));
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
                 {
                     for (int ig: lf_gvec_)
                         low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
@@ -351,7 +348,7 @@ class Density
                 k = 0;
                 for (int ig: hf_gvec_)
                     high_freq_mixer_->input(k++, rho_->f_pw(ig));
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
                 {
                     for (int ig: hf_gvec_)
                         high_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
@@ -371,7 +368,7 @@ class Density
                 int k = 0;
                 for (int ig: lf_gvec_)
                     rho_->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
                 {
                     for (int ig: lf_gvec_)
                         magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
@@ -380,7 +377,7 @@ class Density
                 k = 0;
                 for (int ig: hf_gvec_)
                     rho_->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
                 {
                     for (int ig: hf_gvec_)
                         magnetization_[j]->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
@@ -423,7 +420,7 @@ class Density
                 rms += high_freq_mixer_->mix();
                 mixer_output();
                 rho_->fft_transform(1);
-                for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
             }
 
             return rms;

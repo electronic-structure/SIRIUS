@@ -6,8 +6,8 @@ void K_point::test_fv_states()
 {
     PROFILE();
 
-    Wave_functions<true> o_fv(wf_size(), parameters_.num_fv_states(), parameters_.cyclic_block_size(), blacs_grid_, blacs_grid_slice_);
-    o_fv.set_num_swapped(parameters_.num_fv_states());
+    Wave_functions<true> o_fv(wf_size(), ctx_.num_fv_states(), ctx_.cyclic_block_size(), blacs_grid_, blacs_grid_slice_);
+    o_fv.set_num_swapped(ctx_.num_fv_states());
 
     for (int i = 0; i < o_fv.spl_num_swapped().local_size(); i++)
     {
@@ -18,7 +18,7 @@ void K_point::test_fv_states()
             auto& type = unit_cell_.atom(ia).type();
             auto& symmetry_class = unit_cell_.atom(ia).symmetry_class();
 
-            for (int l = 0; l <= parameters_.lmax_apw(); l++)
+            for (int l = 0; l <= ctx_.lmax_apw(); l++)
             {
                 int ordmax = type.indexr().num_rf(l);
                 for (int io1 = 0; io1 < ordmax; io1++)
@@ -39,12 +39,12 @@ void K_point::test_fv_states()
         for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++) ctx_.fft(0)->buffer(ir) *= ctx_.step_function()->theta_r(ir);
         ctx_.fft(0)->transform<-1>(gkvec_, &o_fv[i][unit_cell_.mt_basis_size()]);
     }
-    o_fv.swap_backward(0, parameters_.num_fv_states());
+    o_fv.swap_backward(0, ctx_.num_fv_states());
 
-    dmatrix<double_complex> ovlp(parameters_.num_fv_states(), parameters_.num_fv_states(), blacs_grid_,
-                                 parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+    dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), blacs_grid_,
+                                 ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
     
-    linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), wf_size(), double_complex(1, 0),
+    linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), wf_size(), double_complex(1, 0),
                       fv_states<true>().coeffs(), o_fv.coeffs(), double_complex(0, 0), ovlp);
     
     double max_err = 0;

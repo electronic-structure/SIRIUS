@@ -32,7 +32,7 @@ int main(int argn, char** argv)
     printf("Energy of {n,l} states is En = -(1/2) * z^2 / n^2 \n");
     printf("\n");
 
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     int num_points = 20000;
     if (args.exist("num_points")) num_points = args.value<int>("num_points");
@@ -64,7 +64,7 @@ int main(int argn, char** argv)
 
     std::vector<double> err(levels.size());
     
-    Timer t("all_states");
+    runtime::Timer t("all_states");
     #pragma omp parallel for
     for (int j = 0; j < (int)levels.size(); j++)
     {

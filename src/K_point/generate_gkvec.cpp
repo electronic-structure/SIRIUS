@@ -6,20 +6,20 @@ void K_point::generate_gkvec(double gk_cutoff)
 {
     PROFILE();
 
-    if (parameters_.full_potential() && (gk_cutoff * unit_cell_.max_mt_radius() > parameters_.lmax_apw()))
+    if (ctx_.full_potential() && (gk_cutoff * unit_cell_.max_mt_radius() > ctx_.lmax_apw()))
     {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
-          << parameters_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
+          << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
           << "suggested minimum value for lmax : " << int(gk_cutoff * unit_cell_.max_mt_radius()) + 1;
         WARNING(s);
     }
 
-    if (gk_cutoff * 2 > parameters_.pw_cutoff())
+    if (gk_cutoff * 2 > ctx_.pw_cutoff())
     {
         std::stringstream s;
         s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
-          << "  pw cutoff : " << parameters_.pw_cutoff() << std::endl
+          << "  pw cutoff : " << ctx_.pw_cutoff() << std::endl
           << "  doubled G+k cutoff : " << gk_cutoff * 2;
         TERMINATE(s);
     }

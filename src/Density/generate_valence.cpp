@@ -11,7 +11,7 @@ void Density::generate_valence(K_set& ks__)
     for (int ik = 0; ik < ks__.num_kpoints(); ik++)
     {
         wt += ks__[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+        for (int j = 0; j < ctx_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
     }
 
     if (std::abs(wt - 1.0) > 1e-12) TERMINATE("K_point weights don't sum to one");
@@ -32,9 +32,9 @@ void Density::generate_valence(K_set& ks__)
         int ik = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__[ik];
 
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
                 kp->spinor_wave_functions<true>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
             }
@@ -52,7 +52,7 @@ void Density::generate_valence(K_set& ks__)
     generate_valence_density_it(ks__);
 
     /* for muffin-tin part */
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case full_potential_lapwlo:
         {
@@ -86,12 +86,12 @@ void Density::generate_valence(K_set& ks__)
     
     /* get rho(G) */
     rho_->fft_transform(-1);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 
     //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
     //== STOP();
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential) augment(ks__);
+    if (ctx_.esm_type() == ultrasoft_pseudopotential) augment(ks__);
 }
 
 };

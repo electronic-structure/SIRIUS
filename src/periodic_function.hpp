@@ -26,7 +26,7 @@ template <typename T>
 Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
                                         int angular_domain_size__,
                                         Gvec const* gvec__)
-    : parameters_(ctx__.parameters()),
+    : parameters_(ctx__),
       unit_cell_(ctx__.unit_cell()), 
       step_function_(ctx__.step_function()),
       comm_(ctx__.comm()),

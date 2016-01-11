@@ -17,7 +17,7 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     auto rsp = ctx_.real_space_prj();
     auto fft = rsp->fft();
 
-    if (kappa__.size() < size_t(2 * fft->size() + rsp->max_num_points_) * parameters_.num_fft_threads())
+    if (kappa__.size() < size_t(2 * fft->size() + rsp->max_num_points_) * ctx_.num_fft_streams())
     {
         TERMINATE("wrong size of work array");
     }
@@ -64,27 +64,27 @@ void Band::add_nl_h_o_rs(K_point* kp__,
         }
     }
 
-    mdarray<double_complex, 2> hphi_rs(kappa__.at<CPU>(),               fft->size(), parameters_.num_fft_threads());
-    mdarray<double_complex, 2> ophi_rs(kappa__.at<CPU>(hphi_rs.size()), fft->size(), parameters_.num_fft_threads());
+    mdarray<double_complex, 2> hphi_rs(kappa__.at<CPU>(),               fft->size(), ctx_.num_fft_streams());
+    mdarray<double_complex, 2> ophi_rs(kappa__.at<CPU>(hphi_rs.size()), fft->size(), ctx_.num_fft_streams());
     
     mdarray<double, 2> timers(4, omp_get_max_threads());
     timers.zero();
 
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> beta_phi_re(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
-    mdarray<double, 2> beta_phi_im(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
+    mdarray<double, 2> beta_phi_re(unit_cell_.max_mt_basis_size(), ctx_.num_fft_streams());
+    mdarray<double, 2> beta_phi_im(unit_cell_.max_mt_basis_size(), ctx_.num_fft_streams());
 
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double, 2> d_beta_phi_re(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
-    mdarray<double, 2> d_beta_phi_im(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
-    mdarray<double, 2> q_beta_phi_re(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
-    mdarray<double, 2> q_beta_phi_im(unit_cell_.max_mt_basis_size(), parameters_.num_fft_threads());
+    mdarray<double, 2> d_beta_phi_re(unit_cell_.max_mt_basis_size(), ctx_.num_fft_streams());
+    mdarray<double, 2> d_beta_phi_im(unit_cell_.max_mt_basis_size(), ctx_.num_fft_streams());
+    mdarray<double, 2> q_beta_phi_re(unit_cell_.max_mt_basis_size(), ctx_.num_fft_streams());
+    mdarray<double, 2> q_beta_phi_im(unit_cell_.max_mt_basis_size(), ctx_.num_fft_streams());
     
     double* ptr = (double*)kappa__.at<CPU>(2 * hphi_rs.size());
-    mdarray<double, 2> phi_tmp_re(ptr,                     rsp->max_num_points_, parameters_.num_fft_threads());
-    mdarray<double, 2> phi_tmp_im(ptr + phi_tmp_re.size(), rsp->max_num_points_, parameters_.num_fft_threads());
+    mdarray<double, 2> phi_tmp_re(ptr,                     rsp->max_num_points_, ctx_.num_fft_streams());
+    mdarray<double, 2> phi_tmp_im(ptr + phi_tmp_re.size(), rsp->max_num_points_, ctx_.num_fft_streams());
 
-    mdarray<double_complex, 2> phase(rsp->max_num_points_, parameters_.num_fft_threads());
+    mdarray<double_complex, 2> phase(rsp->max_num_points_, ctx_.num_fft_streams());
     
     //double w1 = std::sqrt(unit_cell_.omega()) / fft->size();
     //double w2 = std::sqrt(unit_cell_.omega());
@@ -92,7 +92,7 @@ void Band::add_nl_h_o_rs(K_point* kp__,
     STOP();
 
     //Timer t5("sirius::Band::apply_h_o_serial|real_space_kernel");
-    //#pragma omp parallel num_threads(parameters_.num_fft_threads())
+    //#pragma omp parallel num_threads(ctx_.num_fft_threads())
     //{
     //    int thread_id = Platform::thread_id();
 

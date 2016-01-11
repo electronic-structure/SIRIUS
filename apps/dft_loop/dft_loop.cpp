@@ -28,16 +28,16 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         jw.single("num_ranks", ctx.comm().size());
         jw.single("max_num_threads", omp_get_max_threads());
         //jw.single("cyclic_block_size", p->cyclic_block_size());
-        jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
+        jw.single("mpi_grid", ctx.mpi_grid_dims());
         std::vector<int> fftgrid(3);
         for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft(0)->grid().size(i);
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
         jw.single("num_atoms", ctx.unit_cell().num_atoms());
-        jw.single("num_fv_states", ctx.parameters().num_fv_states());
-        jw.single("num_bands", ctx.parameters().num_bands());
-        jw.single("aw_cutoff", ctx.parameters().aw_cutoff());
-        jw.single("pw_cutoff", ctx.parameters().pw_cutoff());
+        jw.single("num_fv_states", ctx.num_fv_states());
+        jw.single("num_bands", ctx.num_bands());
+        jw.single("aw_cutoff", ctx.aw_cutoff());
+        jw.single("pw_cutoff", ctx.pw_cutoff());
         jw.single("omega", ctx.unit_cell().omega());
 
         jw.begin_set("energy");

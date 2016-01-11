@@ -34,52 +34,54 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
 
     dm__.zero();
 
-    /* trivial case */
-    if (!parameters__.need_sv())
-    {
-        for (int i = 0; i < parameters__.num_fv_states(); i++) dm__.set(i, i, double_complex(kp__->band_occupancy(i), 0));
-    }
-    else
-    {
-        if (parameters__.num_mag_dims() != 3)
-        {
-            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
-            for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
-            {
-                auto& ev = kp__->sv_eigen_vectors(ispn);
-                /* multiply second-variational eigen-vectors with band occupancies */
-                for (int j = 0; j < ev.num_cols_local(); j++)
-                {
-                    /* up- or dn- band index */
-                    int jb = ev.icol(j);
-                    for (int i = 0; i < ev.num_rows_local(); i++)
-                        ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
-                }
+    STOP();
 
-                linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
-                                  complex_one, ev1, ev, complex_one, dm__);
-            }
-        }
-        else
-        {
-            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
-            auto& ev = kp__->sv_eigen_vectors(0);
-            /* multiply second-variational eigen-vectors with band occupancies */
-            for (int j = 0; j < ev.num_cols_local(); j++)
-            {
-                /* band index */
-                int jb = ev.icol(j);
-                for (int i = 0; i < ev.num_rows_local(); i++) ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb);
-            }
-            for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
-            {
-                int offs = ispn * parameters__.num_fv_states();
+    ///* trivial case */
+    //if (!parameters__.need_sv())
+    //{
+    //    for (int i = 0; i < parameters__.num_fv_states(); i++) dm__.set(i, i, double_complex(kp__->band_occupancy(i), 0));
+    //}
+    //else
+    //{
+    //    if (parameters__.num_mag_dims() != 3)
+    //    {
+    //        dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
+    //        for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
+    //        {
+    //            auto& ev = kp__->sv_eigen_vectors(ispn);
+    //            /* multiply second-variational eigen-vectors with band occupancies */
+    //            for (int j = 0; j < ev.num_cols_local(); j++)
+    //            {
+    //                /* up- or dn- band index */
+    //                int jb = ev.icol(j);
+    //                for (int i = 0; i < ev.num_rows_local(); i++)
+    //                    ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
+    //            }
 
-                linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
-                                  complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
-            }
-        }
-    }
+    //            linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
+    //                              complex_one, ev1, ev, complex_one, dm__);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid(), parameters__.cyclic_block_size(), parameters__.cyclic_block_size());
+    //        auto& ev = kp__->sv_eigen_vectors(0);
+    //        /* multiply second-variational eigen-vectors with band occupancies */
+    //        for (int j = 0; j < ev.num_cols_local(); j++)
+    //        {
+    //            /* band index */
+    //            int jb = ev.icol(j);
+    //            for (int i = 0; i < ev.num_rows_local(); i++) ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb);
+    //        }
+    //        for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
+    //        {
+    //            int offs = ispn * parameters__.num_fv_states();
+
+    //            linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
+    //                              complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
+    //        }
+    //    }
+    //}
 }
 
 void Force::ibs_force(Simulation_context& ctx__,
@@ -90,13 +92,13 @@ void Force::ibs_force(Simulation_context& ctx__,
 {
     runtime::Timer timer("sirius::Force::ibs_force");
 
-    auto param = ctx__.parameters();
+    auto& param = ctx__;
     auto& uc = ctx__.unit_cell();
     //auto rl = ctx__.reciprocal_lattice();
 
     forcek__.zero();
 
-    dmatrix<double_complex> dm(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> dm(ctx__.num_fv_states(), ctx__.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
     auto& fv_evec = kp__->fv_eigen_vectors().coeffs();
@@ -107,8 +109,8 @@ void Force::ibs_force(Simulation_context& ctx__,
     dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
-    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
-    dmatrix<double_complex> zf(param.num_fv_states(), param.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
+    dmatrix<double_complex> zf(ctx__.num_fv_states(), ctx__.num_fv_states(), kp__->blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
@@ -203,15 +205,15 @@ void Force::ibs_force(Simulation_context& ctx__,
             }
 
             /* zm1 = H * V */
-            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), param.num_fv_states(), kp__->gklo_basis_size(), 
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->gklo_basis_size(), 
                               complex_one, h1, fv_evec, complex_zero, zm1);
 
             /* F = V^{+} * zm1 = V^{+} * H * V */
-            linalg<CPU>::gemm(2, 0, param.num_fv_states(), param.num_fv_states(), kp__->gklo_basis_size(),
+            linalg<CPU>::gemm(2, 0, ctx__.num_fv_states(), ctx__.num_fv_states(), kp__->gklo_basis_size(),
                               complex_one, fv_evec, zm1, complex_zero, zf);
 
             /* zm1 = O * V */
-            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), param.num_fv_states(), kp__->gklo_basis_size(), 
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->gklo_basis_size(), 
                               complex_one, o1, fv_evec, complex_zero, zm1);
             
             STOP();
@@ -223,7 +225,7 @@ void Force::ibs_force(Simulation_context& ctx__,
             //}
 
             /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
-            linalg<CPU>::gemm(2, 0, param.num_fv_states(), param.num_fv_states(), kp__->gklo_basis_size(),
+            linalg<CPU>::gemm(2, 0, ctx__.num_fv_states(), ctx__.num_fv_states(), kp__->gklo_basis_size(),
                               double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
 
             for (int i = 0; i < dm.num_cols_local(); i++)
@@ -243,7 +245,6 @@ void Force::total_force(Simulation_context& ctx__,
 {
     runtime::Timer t("sirius::Force::total_force");
 
-    auto param = ctx__.parameters();
     auto& uc = ctx__.unit_cell();
 
     auto ffac = ctx__.step_function()->get_step_function_form_factors(ctx__.gvec().num_shells());

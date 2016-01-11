@@ -35,13 +35,10 @@
 
 namespace sirius {
 
-class Simulation_context
+class Simulation_context: public Simulation_parameters
 {
     private:
 
-        /// Copy of simulation parameters.
-        Simulation_parameters parameters_; 
-    
         /// Communicator for this simulation.
         Communicator const& comm_;
 
@@ -73,6 +70,8 @@ class Simulation_context
 
         std::string start_time_tag_;
 
+        int num_fv_states_;
+
         double iterative_solver_tolerance_;
 
         ev_solver_t std_evp_solver_type_;
@@ -89,16 +88,17 @@ class Simulation_context
         
         Simulation_context(Simulation_parameters const& parameters__,
                            Communicator const& comm__)
-            : parameters_(parameters__),
+            : Simulation_parameters(parameters__),
               comm_(comm__),
               mpi_grid_(nullptr),
               mpi_grid_fft_(nullptr),
               fft_ctx_(nullptr),
               fft_coarse_ctx_(nullptr),
-              unit_cell_(parameters_, comm_),
+              unit_cell_(parameters__, comm_),
               step_function_(nullptr),
               real_space_prj_(nullptr),
-              iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
+              num_fv_states_(-1),
+              iterative_solver_tolerance_(iterative_solver_input_section().tolerance_),
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
               initialized_(false)
@@ -112,7 +112,7 @@ class Simulation_context
             strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
 
-            unit_cell_.import(parameters_.unit_cell_input_section());
+            unit_cell_.import(unit_cell_input_section());
         }
 
         ~Simulation_context()
@@ -137,11 +137,6 @@ class Simulation_context
 
         /// Initialize the similation (can only be called once).
         void initialize();
-
-        Simulation_parameters const& parameters() const
-        {
-            return parameters_;
-        }
 
         Unit_cell& unit_cell()
         {
@@ -197,6 +192,16 @@ class Simulation_context
         {
             return *fft_coarse_ctx_;
         }
+
+        inline int num_fv_states() const
+        {
+            return num_fv_states_;
+        }
+
+        inline int num_bands() const
+        {
+            return num_spins() * num_fv_states_;
+        }
         
         void create_storage_file() const
         {
@@ -210,9 +215,9 @@ class Simulation_context
                 fout.create_node("density");
                 fout.create_node("magnetization");
                 
-                fout["parameters"].write("num_spins", parameters_.num_spins());
-                fout["parameters"].write("num_mag_dims", parameters_.num_mag_dims());
-                fout["parameters"].write("num_bands", parameters_.num_bands());
+                fout["parameters"].write("num_spins", num_spins());
+                fout["parameters"].write("num_mag_dims", num_mag_dims());
+                fout["parameters"].write("num_bands", num_bands());
             }
             comm_.barrier();
         }
@@ -235,14 +240,14 @@ class Simulation_context
             for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->size(1 << i));
             printf("\n");
             printf("maximum number of OMP threads   : %i\n", omp_get_max_threads()); 
-            printf("number of OMP threads for FFT   : %i\n", parameters_.num_fft_threads()); 
-            printf("number of pthreads for each FFT : %i\n", parameters_.num_fft_workers()); 
-            printf("cyclic block size               : %i\n", parameters_.cyclic_block_size());
+            printf("number of FFT streams           : %i\n", num_fft_streams()); 
+            printf("number of pthreads for each FFT : %i\n", num_fft_workers()); 
+            printf("cyclic block size               : %i\n", cyclic_block_size());
         
             unit_cell_.print_info();
         
             printf("\n");
-            printf("plane wave cutoff                     : %f\n", parameters_.pw_cutoff());
+            printf("plane wave cutoff                     : %f\n", pw_cutoff());
             printf("number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
             printf("number of G-shells                    : %i\n", gvec_.num_shells());
             printf("number of independent FFTs : %i\n", mpi_grid_fft_->dimension_size(0));
@@ -253,7 +258,7 @@ class Simulation_context
                                                                 fft_grid.limits(1).first, fft_grid.limits(1).second,
                                                                 fft_grid.limits(2).first, fft_grid.limits(2).second);
             
-            if (!parameters_.full_potential())
+            if (!full_potential())
             {
                 fft_grid = fft_coarse_ctx_->fft_grid();
                 printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
@@ -268,16 +273,16 @@ class Simulation_context
             printf("\n");
             printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
             printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
-            printf("number of first-variational states : %i\n", parameters_.num_fv_states());
-            printf("number of bands                    : %i\n", parameters_.num_bands());
-            printf("number of spins                    : %i\n", parameters_.num_spins());
-            printf("number of magnetic dimensions      : %i\n", parameters_.num_mag_dims());
-            printf("lmax_apw                           : %i\n", parameters_.lmax_apw());
-            printf("lmax_pw                            : %i\n", parameters_.lmax_pw());
-            printf("lmax_rho                           : %i\n", parameters_.lmax_rho());
-            printf("lmax_pot                           : %i\n", parameters_.lmax_pot());
-            printf("lmax_beta                          : %i\n", parameters_.lmax_beta());
-            printf("smearing width:                    : %f\n", parameters_.smearing_width());
+            printf("number of first-variational states : %i\n", num_fv_states());
+            printf("number of bands                    : %i\n", num_bands());
+            printf("number of spins                    : %i\n", num_spins());
+            printf("number of magnetic dimensions      : %i\n", num_mag_dims());
+            printf("lmax_apw                           : %i\n", lmax_apw());
+            printf("lmax_pw                            : %i\n", lmax_pw());
+            printf("lmax_rho                           : %i\n", lmax_rho());
+            printf("lmax_pot                           : %i\n", lmax_pot());
+            //printf("lmax_beta                          : %i\n", parameters_.lmax_beta());
+            printf("smearing width:                    : %f\n", smearing_width());
         
             //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
             //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
@@ -338,7 +343,7 @@ class Simulation_context
         
             printf("\n");
             printf("processing unit : ");
-            switch (parameters_.processing_unit())
+            switch (processing_unit())
             {
                 case CPU:
                 {
@@ -354,9 +359,9 @@ class Simulation_context
             
             printf("\n");
             printf("XC functionals : \n");
-            for (auto& xc_label: parameters_.xc_functionals())
+            for (auto& xc_label: xc_functionals())
             {
-                XC_functional xc(xc_label, parameters_.num_spins());
+                XC_functional xc(xc_label, num_spins());
                 printf("\n");
                 printf("%s\n", xc_label.c_str());
                 printf("%s\n", xc.name().c_str());

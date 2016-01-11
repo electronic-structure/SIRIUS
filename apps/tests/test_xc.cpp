@@ -30,7 +30,7 @@ void test_xc()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     test_xc();
-    Platform::finalize();
+    sirius::finalize();
 }

@@ -8,9 +8,9 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
-    if (parameters_.num_mag_dims() != 3)
+    if (ctx_.num_mag_dims() != 3)
     {
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
             int nbnd = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped().local_size();
 
@@ -30,7 +30,7 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
                     {
                         wf1(xi, i) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
                         wf2(xi, i) = kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi] * 
-                                     kp__->band_occupancy(j + ispn * parameters_.num_fv_states()) *
+                                     kp__->band_occupancy(j + ispn * ctx_.num_fv_states()) *
                                      kp__->weight();
                     }
                 }
@@ -48,15 +48,15 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
 
         int nbnd = kp__->spinor_wave_functions<true>(0).spl_num_swapped().local_size();
 
-        mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, parameters_.num_spins());
-        mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, parameters_.num_spins());
+        mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
+        mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
         {
             int offset_wf = unit_cell_.atom(ia).offset_wf();
             int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
 
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
                 for (int i = 0; i < nbnd; i++)
                 {
@@ -97,16 +97,16 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
     kp__->beta_projectors().allocate_workspace();
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         STOP(); 
         //kp__->spinor_wave_functions<false>(0).allocate_on_device();
         //kp__->spinor_wave_functions<false>(0).copy_to_device(0, nbnd);
     }
     #endif
-    if (parameters_.num_mag_dims() != 3)
+    if (ctx_.num_mag_dims() != 3)
     {
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
             int nbnd = kp__->num_occupied_bands(ispn);
             int nbnd_loc = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size();
@@ -140,7 +140,7 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
                                 {
                                     bp1(xi, i) = beta_psi(offs + xi, j);
                                     bp2(xi, i) = std::conj(bp1(xi, i)) *
-                                                 kp__->band_occupancy(j + ispn * parameters_.num_fv_states()) *
+                                                 kp__->band_occupancy(j + ispn * ctx_.num_fv_states()) *
                                                  kp__->weight();
                                 }
                             }
@@ -162,7 +162,7 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         STOP();
         //kp__->spinor_wave_functions<false>(0).deallocate_on_device();
@@ -281,7 +281,7 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 //==     //== wo.allocate_on_device();
 //==     //== wo.copy_to_device();
 //== 
-//==     //== auto uc = parameters_.unit_cell();
+//==     //== auto uc = ctx_.unit_cell();
 //==     //== 
 //==     //== /* allocate space for <beta|psi> array */
 //==     //== int nbf_max = 0;

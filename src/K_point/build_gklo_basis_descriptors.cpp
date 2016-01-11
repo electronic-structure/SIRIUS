@@ -25,7 +25,7 @@ void K_point::build_gklo_basis_descriptors()
         gklo_basis_descriptors_.push_back(gklo);
     }
 
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         /* local orbital basis functions */
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)

@@ -132,7 +132,7 @@ class DFT_ground_state
                          K_set* kset__,
                          int use_symmetry__)
             : ctx_(ctx__),
-              parameters_(ctx__.parameters()),
+              parameters_(ctx__),
               unit_cell_(ctx__.unit_cell()),
               potential_(potential__), 
               density_(density__), 

@@ -30,6 +30,8 @@
 
 namespace sirius {
 
+//class Simulation_context;
+
 /// Parameters of the simulation. 
 /** Parameters are first initialized from the initial input parameters and then by set_..() methods.
  *  Any parameter used in the simulation must be first initialized here. Then the instance of the 
@@ -37,7 +39,7 @@ namespace sirius {
  */
 class Simulation_parameters
 {
-    private:
+    protected:
     
         /// Maximum l for APW functions.
         int lmax_apw_;
@@ -97,7 +99,7 @@ class Simulation_parameters
         /// Smearing function width.
         double smearing_width_;
 
-        int num_fft_threads_;
+        int num_fft_streams_;
 
         int num_fft_workers_;
 
@@ -132,6 +134,8 @@ class Simulation_parameters
             smearing_width_    = 0.001;
             cyclic_block_size_ = 32;
             esm_type_          = full_potential_lapwlo;
+            num_fft_streams_   = 1;
+            num_fft_workers_   = omp_get_max_threads();
         }
         
         /// Import data from initial input parameters.
@@ -146,7 +150,7 @@ class Simulation_parameters
             mixer_input_section_            = iip__.mixer_input_section();
             unit_cell_input_section_        = iip__.unit_cell_input_section();
             cyclic_block_size_              = iip__.common_input_section_.cyclic_block_size_;
-            num_fft_threads_                = iip__.common_input_section_.num_fft_threads_;
+            num_fft_streams_                = iip__.common_input_section_.num_fft_streams_;
             num_fft_workers_                = iip__.common_input_section_.num_fft_workers_;
             xc_functionals_                 = iip__.xc_functionals_input_section().xc_functional_names_;
             std::string pu                  = iip__.common_input_section_.processing_unit_;
@@ -334,10 +338,10 @@ class Simulation_parameters
             return Utils::lmmax(lmax_pot_);
         }
 
-        inline int lmax_beta() const
-        {
-            return lmax_beta_;
-        }
+        //== inline int lmax_beta() const
+        //== {
+        //==     return lmax_beta_;
+        //== }
     
         inline double aw_cutoff() const
         {
@@ -355,11 +359,6 @@ class Simulation_parameters
             return gk_cutoff_;
         }
     
-        inline int num_fv_states() const
-        {
-            return num_fv_states_;
-        }
-    
         inline int num_spins() const
         {
             assert(num_spins_ == 1 || num_spins_ == 2);
@@ -367,11 +366,6 @@ class Simulation_parameters
             return num_spins_;
         }
 
-        inline int num_bands() const
-        {
-            return num_fv_states() * num_spins();
-        }
-    
         inline int num_mag_dims() const
         {
             assert(num_mag_dims_ == 0 || num_mag_dims_ == 1 || num_mag_dims_ == 3);
@@ -415,9 +409,9 @@ class Simulation_parameters
             return mpi_grid_dims_;
         }
 
-        inline int num_fft_threads() const
+        inline int num_fft_streams() const
         {
-            return num_fft_threads_;
+            return num_fft_streams_;
         }
     
         inline int num_fft_workers() const

@@ -11,10 +11,10 @@ void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magne
     auto& gvc = ctx_.gvec_coarse();
 
     /* map effective magnetic field to a corase grid */
-    mdarray<double, 2> beff_r_coarse(fft_coarse->local_size(), parameters_.num_mag_dims());
+    mdarray<double, 2> beff_r_coarse(fft_coarse->local_size(), ctx_.num_mag_dims());
     std::vector<double_complex> beff_pw_coarse(gvc.num_gvec_fft());
 
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+    for (int j = 0; j < ctx_.num_mag_dims(); j++)
     {
         effective_magnetic_field__[j]->fft_transform(-1);
         for (int ig = 0; ig < gvc.num_gvec_fft(); ig++)
@@ -27,20 +27,20 @@ void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magne
     }
 
     /* number of h|\psi> components */
-    int nhpsi = (parameters_.num_mag_dims() == 3) ? 3 : parameters_.num_spins();
+    int nhpsi = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
 
-    std::vector<double> band_energies(parameters_.num_bands());
+    std::vector<double> band_energies(ctx_.num_bands());
 
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions<false>*> hpsi;
     for (int i = 0; i < nhpsi; i++)
     {
-        hpsi.push_back(new Wave_functions<false>(parameters_.num_fv_states(), parameters_.num_fv_states(), kp__->gkvec(),
-                                                 ctx_.mpi_grid_fft(), parameters_.processing_unit()));
+        hpsi.push_back(new Wave_functions<false>(ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gkvec(),
+                                                 ctx_.mpi_grid_fft(), ctx_.processing_unit()));
     }
 
-    hpsi[0]->copy_from(kp__->fv_states<false>(), 0, parameters_.num_fv_states());
-    hpsi[0]->swap_forward(0, parameters_.num_fv_states());
+    hpsi[0]->copy_from(kp__->fv_states<false>(), 0, ctx_.num_fv_states());
+    hpsi[0]->swap_forward(0, ctx_.num_fv_states());
     
     /* save omp_nested flag */
     int nested = omp_get_nested();
@@ -78,23 +78,23 @@ void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magne
     /* restore the nested flag */
     omp_set_nested(nested);
 
-    hpsi[0]->swap_backward(0, parameters_.num_fv_states());
-    for (int i = 0; i < parameters_.num_fv_states(); i++)
+    hpsi[0]->swap_backward(0, ctx_.num_fv_states());
+    for (int i = 0; i < ctx_.num_fv_states(); i++)
     {
         for (int j = 0; j < hpsi[0]->num_gvec_loc(); j++) (*hpsi[1])(j, i) = -(*hpsi[0])(j, i);
     }
 
 
 
-    int bs = parameters_.cyclic_block_size();
-    int nfv = parameters_.num_fv_states();
-    if (parameters_.num_mag_dims() != 3)
+    int bs = ctx_.cyclic_block_size();
+    int nfv = ctx_.num_fv_states();
+    if (ctx_.num_mag_dims() != 3)
     {
         matrix<double_complex> h(nfv, nfv);
         dmatrix<double_complex> h_dist(nfv, nfv, kp__->blacs_grid(), bs, bs);
 
         /* perform one or two consecutive diagonalizations */
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
             kp__->fv_states<false>().inner(0, nfv, (*hpsi[ispn]), 0, nfv, h, 0, 0);
             for (int i = 0; i < nfv; i++) h(i, i) += kp__->fv_eigen_value(i);
@@ -134,13 +134,13 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 {
     PROFILE_WITH_TIMER("sirius::Band::solve_sv");
 
-    if (!parameters_.need_sv())
+    if (!ctx_.need_sv())
     {
         kp->bypass_sv();
         return;
     }
 
-    if (!parameters_.full_potential())
+    if (!ctx_.full_potential())
     {
         solve_sv_pp(kp, effective_magnetic_field);
         return;
@@ -149,48 +149,48 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (kp->num_ranks() > 1 && !std_evp_solver()->parallel()) TERMINATE("eigen-value solver is not parallel");
 
     /* number of h|\psi> components */
-    int nhpsi = (parameters_.num_mag_dims() == 3) ? 3 : parameters_.num_spins();
+    int nhpsi = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
 
     /* size of the first-variational state */
     int fvsz = kp->wf_size();
 
-    std::vector<double> band_energies(parameters_.num_bands());
+    std::vector<double> band_energies(ctx_.num_bands());
 
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions<true>*> hpsi;
     for (int i = 0; i < nhpsi; i++)
     {
-        hpsi.push_back(new Wave_functions<true>(kp->wf_size(), parameters_.num_fv_states(), parameters_.cyclic_block_size(),
+        hpsi.push_back(new Wave_functions<true>(kp->wf_size(), ctx_.num_fv_states(), ctx_.cyclic_block_size(),
                                                 blacs_grid_, kp->blacs_grid_slice()));
     }
 
     /* compute product of magnetic field and wave-function */
-    if (parameters_.num_spins() == 2)
+    if (ctx_.num_spins() == 2)
     {
         apply_magnetic_field(kp->fv_states<true>(), kp->gkvec(), effective_magnetic_field, hpsi);
     }
     else
     {
-        hpsi[0]->set_num_swapped(parameters_.num_fv_states());
+        hpsi[0]->set_num_swapped(ctx_.num_fv_states());
         std::memset((*hpsi[0])[0], 0, kp->wf_size() * hpsi[0]->spl_num_swapped().local_size() * sizeof(double_complex));
     }
 
-    //== if (parameters_.uj_correction())
+    //== if (ctx_.uj_correction())
     //== {
     //==     apply_uj_correction<uu>(kp->fv_states_col(), hpsi);
-    //==     if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(kp->fv_states_col(), hpsi);
-    //==     if (parameters_.num_mag_dims() == 3) 
+    //==     if (ctx_.num_mag_dims() != 0) apply_uj_correction<dd>(kp->fv_states_col(), hpsi);
+    //==     if (ctx_.num_mag_dims() == 3) 
     //==     {
     //==         apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
-    //==         if (parameters_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
+    //==         if (ctx_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
     //==     }
     //== }
 
-    //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
+    //== if (ctx_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
-    for (auto e: hpsi) e->swap_backward(0, parameters_.num_fv_states());
+    for (auto e: hpsi) e->swap_backward(0, ctx_.num_fv_states());
 
-//==     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+//==     if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1)
 //==     {
 //==         #ifdef __GPU
 //==         STOP();
@@ -205,14 +205,14 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 //==     #endif
 //==
 
-    int nfv = parameters_.num_fv_states();
-    int bs = parameters_.cyclic_block_size();
+    int nfv = ctx_.num_fv_states();
+    int bs = ctx_.cyclic_block_size();
 
-    if (parameters_.num_mag_dims() != 3)
+    if (ctx_.num_mag_dims() != 3)
     {
         dmatrix<double_complex> h(nfv, nfv, kp->blacs_grid(), bs, bs);
 
-        //if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+        //if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1)
         //{
         //    #ifdef __GPU
         //    h.allocate_on_device();
@@ -220,23 +220,23 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         //}
 
         /* perform one or two consecutive diagonalizations */
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
-            if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+            if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1)
             {
                 #ifdef __GPU
                 STOP();
                 //Timer t4("sirius::Band::solve_sv|zgemm");
                 //hpsi[ispn].allocate_on_device();
                 //hpsi[ispn].copy_to_device();
-                //linalg<GPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, &alpha, 
+                //linalg<GPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), fvsz, &alpha, 
                 //                  kp->fv_states().at<GPU>(), kp->fv_states().ld(),
                 //                  hpsi[ispn].at<GPU>(), hpsi[ispn].ld(), &beta, h.at<GPU>(), h.ld());
                 //h.copy_to_host();
                 //hpsi[ispn].deallocate_on_device();
                 //double tval = t4.stop();
                 //DUMP("effective zgemm performance: %12.6f GFlops", 
-                //     8e-9 * parameters_.num_fv_states() * parameters_.num_fv_states() * fvsz / tval);
+                //     8e-9 * ctx_.num_fv_states() * ctx_.num_fv_states() * fvsz / tval);
                 #else
                 TERMINATE_NO_GPU
                 #endif
@@ -257,7 +257,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     }
     else
     {
-        int nb = parameters_.num_bands();
+        int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, kp->blacs_grid(), bs, bs);
 
         /* compute <wf_i | h * wf_j> for up-up block */
@@ -281,7 +281,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         
     }
 //== 
-//==     if (parameters_.processing_unit() == GPU && kp->num_ranks() == 1)
+//==     if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1)
 //==     {
 //==         #ifdef __GPU
 //==         //kp->fv_states().deallocate_on_device();

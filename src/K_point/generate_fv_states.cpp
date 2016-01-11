@@ -30,15 +30,15 @@ void K_point::generate_fv_states()
 {
     PROFILE_WITH_TIMER("sirius::K_point::generate_fv_states");
     
-    if (!parameters_.full_potential()) return;
+    if (!ctx_.full_potential()) return;
 
-    fv_eigen_vectors_->swap_forward(0, parameters_.num_fv_states());
+    fv_eigen_vectors_->swap_forward(0, ctx_.num_fv_states());
 
-    fv_states<true>().set_num_swapped(parameters_.num_fv_states());
+    fv_states<true>().set_num_swapped(ctx_.num_fv_states());
 
     assert(fv_eigen_vectors_->spl_num_swapped().local_size() == fv_states<true>().spl_num_swapped().local_size());
 
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         #ifdef __GPU
         STOP();
@@ -82,7 +82,7 @@ void K_point::generate_fv_states()
         //}
         //double tval = t1.stop();
         //DUMP("effective zgemm performance: %f GFlops / rank",
-        //     8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * parameters_.num_fv_states() / tval / comm().size());
+        //     8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * ctx_.num_fv_states() / tval / comm().size());
         ///* copy block of pw coefficients */
         //cuda_memcpy2D_device_to_device(fv_states_slice_.at<GPU>(unit_cell_.mt_basis_size(), 0),
         //                               fv_states_slice_.ld(),
@@ -97,7 +97,7 @@ void K_point::generate_fv_states()
         TERMINATE_NO_GPU
         #endif
     }
-    //if (parameters_.processing_unit() == GPU && num_ranks() == 1)
+    //if (ctx_.processing_unit() == GPU && num_ranks() == 1)
     //{
         //#ifdef __GPU
         ///* copy eigen-vectors to GPU */
@@ -159,7 +159,7 @@ void K_point::generate_fv_states()
         //    }
         //    cuda_stream_synchronize(Platform::max_num_threads());
         //    /* gnerate aw expansion coefficients */
-        //    linalg<GPU>::gemm(1, 0, num_mt_aw_blk, parameters_.num_fv_states(), num_gkvec_row(), &alpha,
+        //    linalg<GPU>::gemm(1, 0, num_mt_aw_blk, ctx_.num_fv_states(), num_gkvec_row(), &alpha,
         //                      alm_row.at<GPU>(0, 0, s), alm_row.ld(),
         //                      fv_eigen_vectors_panel_.panel().at<GPU>(), fv_eigen_vectors_panel_.panel().ld(),
         //                      &beta, fv_states_.at<GPU>(mt_aw_blk_offset, 0), fv_states_.ld(), Platform::max_num_threads());
@@ -168,7 +168,7 @@ void K_point::generate_fv_states()
         //cuda_stream_synchronize(Platform::max_num_threads());
         //alm_row.deallocate_on_device();
 
-        //mdarray<double_complex, 2> tmp_buf(nullptr, unit_cell_.max_mt_aw_basis_size(), parameters_.num_fv_states());
+        //mdarray<double_complex, 2> tmp_buf(nullptr, unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
         //tmp_buf.allocate_on_device();
 
         ///* copy aw coefficients starting from bottom */
@@ -181,23 +181,23 @@ void K_point::generate_fv_states()
         //    /* copy to temporary array */
         //    cuda_memcpy2D_device_to_device(tmp_buf.at<GPU>(), tmp_buf.ld(),
         //                                   fv_states_.at<GPU>(offset_aw, 0), fv_states_.ld(),
-        //                                   mt_aw_size, parameters_.num_fv_states(), sizeof(double_complex));
+        //                                   mt_aw_size, ctx_.num_fv_states(), sizeof(double_complex));
 
         //    /* copy to proper place in wave-function array */
         //    cuda_memcpy2D_device_to_device(fv_states_.at<GPU>(offset_wf, 0), fv_states_.ld(),
         //                                   tmp_buf.at<GPU>(), tmp_buf.ld(),
-        //                                   mt_aw_size, parameters_.num_fv_states(), sizeof(double_complex));
+        //                                   mt_aw_size, ctx_.num_fv_states(), sizeof(double_complex));
         //    
         //    /* copy block of local orbital coefficients */
         //    cuda_memcpy2D_device_to_device(fv_states_.at<GPU>(offset_wf + mt_aw_size, 0), fv_states_.ld(),
         //                                   fv_eigen_vectors_panel_.panel().at<GPU>(num_gkvec_row() + unit_cell_.atom(ia)->offset_lo(), 0),
         //                                   fv_eigen_vectors_panel_.panel().ld(),
-        //                                   unit_cell_.atom(ia)->mt_lo_basis_size(), parameters_.num_fv_states(), sizeof(double_complex));
+        //                                   unit_cell_.atom(ia)->mt_lo_basis_size(), ctx_.num_fv_states(), sizeof(double_complex));
         //}
         ///* copy block of pw coefficients */
         //cuda_memcpy2D_device_to_device(fv_states_.at<GPU>(unit_cell_.mt_basis_size(), 0), fv_states_.ld(),
         //                               fv_eigen_vectors_panel_.panel().at<GPU>(),  fv_eigen_vectors_panel_.panel().ld(),
-        //                               num_gkvec_row(), parameters_.num_fv_states(), sizeof(double_complex));
+        //                               num_gkvec_row(), ctx_.num_fv_states(), sizeof(double_complex));
 
         //fv_eigen_vectors_panel_.panel().deallocate_on_device();
         //fv_states_.copy_to_host();
@@ -242,7 +242,7 @@ void K_point::generate_fv_states()
         }
     }
 
-    fv_states<true>().swap_backward(0, parameters_.num_fv_states());
+    fv_states<true>().swap_backward(0, ctx_.num_fv_states());
 }
 
 };
