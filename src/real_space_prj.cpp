@@ -334,10 +334,10 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
     splindex<block> spl_gsh(gvec_.num_shells(), comm_.size(), comm_.rank());
     #pragma omp parallel
     {
-        mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+        mdarray<Spline<double>, 2> jl(unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_rf__(0, iat).radial_grid());
+            for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat) = Spline<double>(beta_rf__(0, iat).radial_grid());
         }
 
         #pragma omp for
@@ -347,16 +347,16 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 
             /* get spherical Bessel functions */
             double G = gvec_.shell_len(igsh);
-            std::vector<double> v(unit_cell_.lmax_beta() + 1);
+            std::vector<double> v(unit_cell_.lmax() + 1);
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < beta_rf__(0, iat).num_points(); ir++)
                 {
                     double x = beta_rf__(0, iat).x(ir) * G;
-                    gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), x, &v[0]);
-                    for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                    gsl_sf_bessel_jl_array(unit_cell_.lmax(), x, &v[0]);
+                    for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat)[ir] = v[l];
                 }
-                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat).interpolate();
+                for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat).interpolate();
             }
             
             /* compute radial integrals */
@@ -458,10 +458,10 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
     splindex<block> spl_nq(nq, comm_.size(), comm_.rank());
     #pragma omp parallel
     {
-        mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+        mdarray<Spline<double>, 2> jl(unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
+            for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
         }
 
         #pragma omp for
@@ -471,16 +471,16 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
             double q = pw_cutoff__ * iq / (nq - 1);
 
             /* get spherical Bessel functions */
-            std::vector<double> v(unit_cell_.lmax_beta() + 1);
+            std::vector<double> v(unit_cell_.lmax() + 1);
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < nr_beta_[iat]; ir++)
                 {
                     double qx = beta_radial_grid[iat][ir] * q;
-                    gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
-                    for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                    gsl_sf_bessel_jl_array(unit_cell_.lmax(), qx, &v[0]);
+                    for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat)[ir] = v[l];
                 }
-                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat).interpolate();
+                for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat).interpolate();
             }
             
             /* compute radial integrals */
@@ -522,10 +522,10 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
         }
     }
     
-    mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+    mdarray<Spline<double>, 2> jl(unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
+        for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat) = Spline<double>(beta_radial_grid[iat]);
     }
 
     for (int iq_loc = 0; iq_loc < (int)spl_nq.local_size(); iq_loc++)
@@ -536,14 +536,14 @@ void Real_space_prj::filter_radial_functions(double pw_cutoff__)
         double w = 1; //(q < qcut) ? 1 : std::exp(-b * std::pow(q / qcut - 1, 2));
 
         /* get spherical Bessel functions */
-        std::vector<double> v(unit_cell_.lmax_beta() + 1);
+        std::vector<double> v(unit_cell_.lmax() + 1);
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             for (int ir = 0; ir < N; ir++)
             {
                 double qx = beta_radial_grid[iat][ir] * q;
-                gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
-                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                gsl_sf_bessel_jl_array(unit_cell_.lmax(), qx, &v[0]);
+                for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat)[ir] = v[l];
             }
         }
         
@@ -640,10 +640,10 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
     splindex<block> spl_nq(nq0, comm_.size(), comm_.rank());
     #pragma omp parallel
     {
-        mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+        mdarray<Spline<double>, 2> jl(unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
-            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat) = Spline<double>(beta_rf(0, iat).radial_grid());
+            for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat) = Spline<double>(beta_rf(0, iat).radial_grid());
         }
 
         #pragma omp for
@@ -653,16 +653,16 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
             double q = iq * dq;
 
             /* get spherical Bessel functions */
-            std::vector<double> v(unit_cell_.lmax_beta() + 1);
+            std::vector<double> v(unit_cell_.lmax() + 1);
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < nr_beta_[iat]; ir++)
                 {
                     double qx = beta_rf(0, iat).x(ir) * q;
-                    gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
-                    for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat)[ir] = v[l];
+                    gsl_sf_bessel_jl_array(unit_cell_.lmax(), qx, &v[0]);
+                    for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat)[ir] = v[l];
                 }
-                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iat).interpolate();
+                for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iat).interpolate();
             }
             
             /* compute radial integrals */
@@ -687,19 +687,19 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
 
     int N = 3000;
 
-    mdarray<Spline<double>, 2> jl(unit_cell_.lmax_beta() + 1, nqmax);
+    mdarray<Spline<double>, 2> jl(unit_cell_.lmax() + 1, nqmax);
     auto jl_radial_grid = Radial_grid(linear_grid, N, 0, 100);
-    std::vector<double> v(unit_cell_.lmax_beta() + 1);
+    std::vector<double> v(unit_cell_.lmax() + 1);
     for (int iq = 0; iq < nqmax; iq++)
     {
-        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iq) = Spline<double>(jl_radial_grid);
+        for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iq) = Spline<double>(jl_radial_grid);
         for (int ir = 0; ir < N; ir++)
         {
             double qx = jl_radial_grid[ir] * iq * dq;
-            gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
-            for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iq)[ir] = v[l];
+            gsl_sf_bessel_jl_array(unit_cell_.lmax(), qx, &v[0]);
+            for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iq)[ir] = v[l];
         }
-        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) jl(l, iq).interpolate();
+        for (int l = 0; l <= unit_cell_.lmax(); l++) jl(l, iq).interpolate();
     }
 
 
@@ -721,9 +721,9 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         }
 
 
-        mdarray<double, 3> M01(nq0, nq1, unit_cell_.lmax_beta() + 1);
-        mdarray<double, 3> M11(nq1, nq1, unit_cell_.lmax_beta() + 1);
-        for (int l = 0; l <= unit_cell_.lmax_beta(); l++)
+        mdarray<double, 3> M01(nq0, nq1, unit_cell_.lmax() + 1);
+        mdarray<double, 3> M11(nq1, nq1, unit_cell_.lmax() + 1);
+        for (int l = 0; l <= unit_cell_.lmax(); l++)
         {
             for (int jq = 0; jq < nq1; jq++)
             {
@@ -795,10 +795,10 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         }
     }
     
-    mdarray<Spline<double>, 2> sf_bessel_jl(unit_cell_.lmax_beta() + 1, unit_cell_.num_atom_types());
+    mdarray<Spline<double>, 2> sf_bessel_jl(unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
-        for (int l = 0; l <= unit_cell_.lmax_beta(); l++) sf_bessel_jl(l, iat) = Spline<double>(beta_rf_filtered_(0, iat).radial_grid());
+        for (int l = 0; l <= unit_cell_.lmax(); l++) sf_bessel_jl(l, iat) = Spline<double>(beta_rf_filtered_(0, iat).radial_grid());
     }
     
     spl_nq = splindex<block>(nqmax, comm_.size(), comm_.rank());
@@ -809,14 +809,14 @@ void Real_space_prj::filter_radial_functions_v2(double pw_cutoff__)
         double q = iq * dq;
         
         /* get spherical Bessel functions */
-        std::vector<double> v(unit_cell_.lmax_beta() + 1);
+        std::vector<double> v(unit_cell_.lmax() + 1);
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
             for (int ir = 0; ir < N; ir++)
             {
                 double qx = beta_rf_filtered_(0, iat).x(ir) * q;
-                gsl_sf_bessel_jl_array(unit_cell_.lmax_beta(), qx, &v[0]);
-                for (int l = 0; l <= unit_cell_.lmax_beta(); l++) sf_bessel_jl(l, iat)[ir] = v[l];
+                gsl_sf_bessel_jl_array(unit_cell_.lmax(), qx, &v[0]);
+                for (int l = 0; l <= unit_cell_.lmax(); l++) sf_bessel_jl(l, iat)[ir] = v[l];
             }
         }
         

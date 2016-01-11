@@ -95,12 +95,11 @@ class Beta_projectors
         Beta_projectors(Communicator const& comm__,
                         Unit_cell const& unit_cell__,
                         Gvec const& gkvec__,
-                        int lmax_beta__,
                         processing_unit_t pu__)
             : comm_(comm__),
               unit_cell_(unit_cell__),
               gkvec_(gkvec__),
-              lmax_beta_(lmax_beta__),
+              lmax_beta_(unit_cell_.lmax()),
               pu_(pu__)
         {
             num_gkvec_loc_ = gkvec_.num_gvec(comm_.rank());

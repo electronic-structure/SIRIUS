@@ -138,30 +138,29 @@ class Unit_cell
 
         std::vector<mt_basis_descriptor> mt_lo_basis_descriptors_; 
         
-        /// total number of local orbital basis functions
+        /// Total number of local orbital basis functions.
         int mt_lo_basis_size_;
 
-        /// maximum AW basis size across all atoms
+        /// Maximum AW basis size across all atoms.
         int max_mt_aw_basis_size_;
 
-        /// list of nearest neighbours for each atom
+        /// List of nearest neighbours for each atom.
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
 
-        /// minimum muffin-tin radius
+        /// Minimum muffin-tin radius.
         double min_mt_radius_;
         
-        /// maximum muffin-tin radius
+        /// Maximum muffin-tin radius.
         double max_mt_radius_;
         
-        /// scale muffin-tin radii automatically
+        /// Scale muffin-tin radii automatically.
         int auto_rmt_;
 
-        int lmax_beta_;
+        /// Maximum orbital quantum number of radial functions between all atom types.
+        int lmax_;
 
         Communicator_bundle comm_bundle_atoms_;
         
-        //splindex<block> spl_atoms_;
-
         mdarray<double, 2> atom_pos_;
 
         Symmetry* symmetry_;
@@ -190,7 +189,7 @@ class Unit_cell
               num_valence_electrons_(0),
               num_electrons_(0),
               auto_rmt_(0), 
-              lmax_beta_(-1),
+              lmax_(-1),
               symmetry_(nullptr),
               comm_(comm__)
         {
@@ -482,14 +481,14 @@ class Unit_cell
             return volume_it_;
         }
 
-        inline int lmax_beta() const
+        inline int lmax() const
         {
-            return lmax_beta_;
+            return lmax_;
         }
 
         inline int num_nearest_neighbours(int ia) const
         {
-            return (int)nearest_neighbours_[ia].size();
+            return static_cast<int>(nearest_neighbours_[ia].size());
         }
 
         inline nearest_neighbour_descriptor const& nearest_neighbour(int i, int ia) const

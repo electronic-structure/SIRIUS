@@ -150,38 +150,38 @@ struct Mixer_input_section
     }
 };
 
-/// Parse XC functionals input section.
-/** The following part of the input file is parsed:
- *  \code{.json}
- *      "xc_functionals" : ["name1", "name2", ...]
- *  \endcode
- */
-struct XC_functionals_input_section
-{
-    /// List of XC functionals.
-    std::vector<std::string> xc_functional_names_;
-
-    /// Set default variables.
-    XC_functionals_input_section()
-    {
-        //== xc_functional_names_.push_back("XC_LDA_X");
-        //== xc_functional_names_.push_back("XC_LDA_C_VWN");
-    }
-
-    void read(JSON_tree const& parser)
-    {
-        if (parser.exist("xc_functionals"))
-        {
-            xc_functional_names_.clear();
-            for (int i = 0; i < parser["xc_functionals"].size(); i++)
-            {
-                std::string s;
-                parser["xc_functionals"][i] >> s;
-                xc_functional_names_.push_back(s);
-            }
-        }
-    }
-};
+//== /// Parse XC functionals input section.
+//== /** The following part of the input file is parsed:
+//==  *  \code{.json}
+//==  *      "xc_functionals" : ["name1", "name2", ...]
+//==  *  \endcode
+//==  */
+//== struct XC_functionals_input_section
+//== {
+//==     /// List of XC functionals.
+//==     std::vector<std::string> xc_functional_names_;
+//== 
+//==     /// Set default variables.
+//==     XC_functionals_input_section()
+//==     {
+//==         //== xc_functional_names_.push_back("XC_LDA_X");
+//==         //== xc_functional_names_.push_back("XC_LDA_C_VWN");
+//==     }
+//== 
+//==     void read(JSON_tree const& parser)
+//==     {
+//==         if (parser.exist("xc_functionals"))
+//==         {
+//==             xc_functional_names_.clear();
+//==             for (int i = 0; i < parser["xc_functionals"].size(); i++)
+//==             {
+//==                 std::string s;
+//==                 parser["xc_functionals"][i] >> s;
+//==                 xc_functional_names_.push_back(s);
+//==             }
+//==         }
+//==     }
+//== };
 
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
@@ -218,106 +218,6 @@ struct Iterative_solver_input_section
         R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
         mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);
     }
-};
-
-/// Initial input parameters from the input file and command line.
-/** The variables which are not found in the input are initialized to defalt values.
- *  \todo command line support 
- */
-class Input_parameters
-{
-    private:
-
-        Unit_cell_input_section unit_cell_input_section_;
-
-        Mixer_input_section mixer_input_section_;
-
-        XC_functionals_input_section xc_functionals_input_section_;
-
-        Iterative_solver_input_section iterative_solver_input_section_;
-
-    public:
-
-        Input_parameters()
-        {
-        }
-
-        Input_parameters(std::string const& fname__)
-        {
-            JSON_tree parser(fname__);
-
-            common_input_section_.read(parser);
-            xc_functionals_input_section_.read(parser);
-            mixer_input_section_.read(parser);
-            unit_cell_input_section_.read(parser);
-            iterative_solver_input_section_.read(parser);
-        }
-
-        inline Unit_cell_input_section const& unit_cell_input_section() const
-        {
-            return unit_cell_input_section_;
-        }
-
-        inline Mixer_input_section const& mixer_input_section() const
-        {
-            return mixer_input_section_;
-        }
-
-        inline XC_functionals_input_section const& xc_functionals_input_section() const
-        {
-            return xc_functionals_input_section_;
-        }
-
-        inline Iterative_solver_input_section const& iterative_solver_input_section() const
-        {
-            return iterative_solver_input_section_;
-        }
-
-        struct common_input_section
-        {
-            std::vector<int> mpi_grid_dims_;
-            int num_fft_streams_;
-            int num_fft_workers_;
-            int cyclic_block_size_;
-            int num_fv_states_;
-            double smearing_width_;
-            std::string std_evp_solver_type_;
-            std::string gen_evp_solver_type_;
-            std::string processing_unit_;
-            std::string electronic_structure_method_;
-
-            common_input_section()
-                : mpi_grid_dims_({1}),
-                  num_fft_streams_(1),
-                  num_fft_workers_(omp_get_max_threads()),
-                  cyclic_block_size_(64),
-                  num_fv_states_(-1),
-                  smearing_width_(0.001),
-                  std_evp_solver_type_(""),
-                  gen_evp_solver_type_(""),
-                  #ifdef __GPU
-                  processing_unit_("gpu"),
-                  #else
-                  processing_unit_("cpu"),
-                  #endif
-                  electronic_structure_method_("full_potential_lapwlo")
-            {
-            }
-
-            void read(JSON_tree const& parser__)
-            {
-                mpi_grid_dims_               = parser__["mpi_grid_dims"].get(mpi_grid_dims_); 
-                cyclic_block_size_           = parser__["cyclic_block_size"].get(cyclic_block_size_);
-                num_fft_streams_             = parser__["num_fft_streams"].get(num_fft_streams_);
-                num_fft_workers_             = parser__["num_fft_workers"].get(num_fft_workers_);
-                num_fv_states_               = parser__["num_fv_states"].get(num_fv_states_);
-                smearing_width_              = parser__["smearing_width"].get(smearing_width_);
-                std_evp_solver_type_         = parser__["std_evp_solver_type"].get(std_evp_solver_type_);
-                gen_evp_solver_type_         = parser__["gen_evp_solver_type"].get(gen_evp_solver_type_);
-                processing_unit_             = parser__["processing_unit"].get(processing_unit_);
-                electronic_structure_method_ = parser__["electronic_structure_method"].get(electronic_structure_method_);
-            }
-        } common_input_section_;
 };
 
 };

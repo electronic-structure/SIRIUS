@@ -112,7 +112,7 @@ class Simulation_context: public Simulation_parameters
             strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
 
-            unit_cell_.import(unit_cell_input_section());
+            unit_cell_.import(unit_cell_input_section_);
         }
 
         ~Simulation_context()

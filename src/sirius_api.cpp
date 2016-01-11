@@ -72,9 +72,8 @@ void sirius_platform_initialize(int32_t* call_mpi_init_)
 
 void sirius_create_global_parameters()
 {
-    auto iip = (Utils::file_exists("sirius.json")) ? sirius::Input_parameters("sirius.json") : sirius::Input_parameters();
-
-    sim_param = new sirius::Simulation_parameters(iip);
+    sim_param = (Utils::file_exists("sirius.json")) ? new sirius::Simulation_parameters("sirius.json")
+                                                    : new sirius::Simulation_parameters();
 }
 
 void sirius_create_simulation_context()
