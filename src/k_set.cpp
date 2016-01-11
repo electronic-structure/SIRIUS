@@ -57,7 +57,7 @@ void K_set::sync_band_energies()
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
+    runtime::Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
     
     if (precompute && parameters_.full_potential())
     {
@@ -140,7 +140,7 @@ double K_set::valence_eval_sum()
 
 void K_set::find_band_occupancies()
 {
-    Timer t("sirius::K_set::find_band_occupancies");
+    runtime::Timer t("sirius::K_set::find_band_occupancies");
 
     double ef = 0.15;
 
@@ -248,7 +248,7 @@ void K_set::print_info()
 
 void K_set::save()
 {
-    warning_local(__FILE__, __LINE__, "fix me");
+    TERMINATE("fix me");
     STOP();
 
     //==if (comm_.rank() == 0)

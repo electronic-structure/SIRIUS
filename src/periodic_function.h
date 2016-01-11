@@ -229,7 +229,7 @@ class Periodic_function
 
         void fft_transform(int direction__)
         {
-            Timer t("sirius::Periodic_function::fft_transform");
+            runtime::Timer t("sirius::Periodic_function::fft_transform");
             assert(gvec_ != nullptr);
 
             fft_->prepare();

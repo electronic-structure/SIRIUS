@@ -1,6 +1,7 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
+#include <omp.h>
 #include "json_tree.h"
 
 namespace sirius {
@@ -88,7 +89,7 @@ struct Unit_cell_input_section
                 for (int i = 0; i < (int)labels_.size(); i++)
                 {
                     if (labels_[i] == label) 
-                        error_global(__FILE__, __LINE__, "atom type with such label is already in list");
+                        TERMINATE("atom type with such label is already in list");
                 }
                 labels_.push_back(label);
             }
@@ -107,7 +108,7 @@ struct Unit_cell_input_section
                     std::vector<double> v;
                     section["atoms"][labels_[iat]][ia] >> v;
 
-                    if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
+                    if (!(v.size() == 3 || v.size() == 6)) TERMINATE("wrong coordinates size");
                     if (v.size() == 3) v.resize(6, 0.0);
 
                     coordinates_[iat].push_back(v);

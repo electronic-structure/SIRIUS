@@ -232,7 +232,7 @@ template <spin_block_t sblock>
 void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
                     Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
 {
-    Timer t("sirius::Band::set_h_it");
+    runtime::Timer t("sirius::Band::set_h_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
@@ -286,7 +286,7 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
 template <spin_block_t sblock>
 void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 {
-    Timer t("sirius::Band::set_h_lo_lo");
+    runtime::Timer t("sirius::Band::set_h_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)

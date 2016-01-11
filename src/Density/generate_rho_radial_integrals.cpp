@@ -9,7 +9,7 @@ namespace sirius
  */
 mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 {
-    Timer t("sirius::Density::generate_rho_radial_integrals");
+    runtime::Timer t("sirius::Density::generate_rho_radial_integrals");
 
     mdarray<double, 2> rho_radial_integrals(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
 

@@ -55,7 +55,7 @@ class DFT_ground_state
 
         double ewald_energy()
         {
-            Timer t("sirius::DFT_ground_state::ewald_energy");
+            runtime::Timer t("sirius::DFT_ground_state::ewald_energy");
 
             double alpha = 1.5;
             

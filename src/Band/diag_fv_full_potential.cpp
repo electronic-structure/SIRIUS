@@ -7,7 +7,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential");
 
     if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
-        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
+        TERMINATE("eigen-value solver is not parallel");
 
     int ngklo = kp->gklo_basis_size();
     int bs = parameters_.cyclic_block_size();
@@ -69,7 +69,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     {
         std::vector<double> eval(parameters_.num_fv_states());
     
-        Timer t("sirius::Band::diag_fv_full_potential|genevp");
+        runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
         if (gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
                                     parameters_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 

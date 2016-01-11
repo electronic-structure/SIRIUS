@@ -9,7 +9,7 @@ void K_point::generate_beta_phi(int nbeta__,
                                 matrix<double_complex>& beta_gk__,
                                 matrix<double_complex>& beta_phi__) // TODO: pass num_gkvec_loc or num_gkvec_row
 {
-    Timer t("sirius::K_point::generate_beta_phi");
+    runtime::Timer t("sirius::K_point::generate_beta_phi");
     #ifdef __GPU
     #ifdef __GPU_DIRECT
     // allrecue with gpu-direct is broken at the moment

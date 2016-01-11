@@ -105,7 +105,7 @@ class sbessel_approx
             : unit_cell_(unit_cell__),
               lmax_(lmax__)
         {
-            Timer t("sirius::sbessel_approx");
+            runtime::Timer t("sirius::sbessel_approx");
 
             qnu_ = mdarray<std::vector<double>, 2>(lmax_ + 1, unit_cell_.num_atom_types());
 
@@ -130,7 +130,7 @@ class sbessel_approx
 
         void approximate(std::vector<double> const& q__)
         {
-            Timer t("sirius::sbessel_approx::approximate");
+            runtime::Timer t("sirius::sbessel_approx::approximate");
 
             coeffs_ = mdarray<double, 4>(nqnu_max_, q__.size(), lmax_ + 1, unit_cell_.num_atom_types());
             

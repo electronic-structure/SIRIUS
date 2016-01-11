@@ -30,7 +30,6 @@
 #include "step_function.h"
 #include "real_space_prj.h"
 #include "version.h"
-#include "debug.hpp"
 #include "fft3d_context.h"
 #include "augmentation_operator.h"
 
@@ -122,7 +121,7 @@ class Simulation_context
 
             time_active_ += Utils::current_time();
 
-            if (Platform::rank() == 0)
+            if (mpi_comm_world().rank() == 0)
             {
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }

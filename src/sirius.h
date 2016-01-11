@@ -25,9 +25,6 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
 
-#include "platform.h"
-#include "timer.h"
-#include "error_handling.h"
 #include "input.h"
 #include "cmd_args.h"
 #include "constants.h"

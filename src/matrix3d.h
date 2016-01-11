@@ -27,8 +27,6 @@
 
 #include <string.h>
 #include "vector3d.h"
-#include "typedefs.h"
-#include "error_handling.h"
 
 /// Handling of a 3x3 matrix of numerical data types.
 template <typename T>
@@ -151,7 +149,11 @@ matrix3d<T> inverse(matrix3d<T> src)
     
     T t1 = src.det();
     
-    if (std::abs(t1) < 1e-10) error_local(__FILE__, __LINE__, "matix is degenerate");
+    if (std::abs(t1) < 1e-10)
+    {
+        printf("matix is degenerate");
+        exit(-1);
+    }
     
     t1 = 1.0 / t1;
 

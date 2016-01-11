@@ -948,7 +948,7 @@ namespace sirius {
 
 void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_o_it");
+    runtime::Timer t("sirius::Band::set_o_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
@@ -965,7 +965,7 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
 
 void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_o_lo_lo");
+    runtime::Timer t("sirius::Band::set_o_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)

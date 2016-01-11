@@ -37,7 +37,7 @@ Potential::Potential(Simulation_context& ctx__)
       fft_(ctx__.fft(0)),
       pseudo_density_order(9)
 {
-    Timer t("sirius::Potential::Potential");
+    runtime::Timer t("sirius::Potential::Potential");
     
     switch (parameters_.esm_type())
     {
@@ -412,7 +412,7 @@ void Potential::generate_pw_coefs()
             #endif
             default:
             {
-                error_local(__FILE__, __LINE__, "wrong processing unit");
+                TERMINATE("wrong processing unit");
             }
         }
     }

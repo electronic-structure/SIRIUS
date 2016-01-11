@@ -83,7 +83,7 @@ void Density::initial_density()
         std::vector<double_complex> zil(lmax + 1);
         for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
 
-        Timer t3("sirius::Density::initial_density|znulm");
+        runtime::Timer t3("sirius::Density::initial_density|znulm");
 
         mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
         znulm.zero();
@@ -136,7 +136,7 @@ void Density::initial_density()
         DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
         #endif
 
-        Timer t4("sirius::Density::initial_density|rholm");
+        runtime::Timer t4("sirius::Density::initial_density|rholm");
         
         SHT sht(lmax);
 
@@ -263,7 +263,7 @@ void Density::initial_density()
             s << "wrong initial charge density" << std::endl
               << "  integral of the density : " << real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
               << "  target number of electrons : " << unit_cell_.num_valence_electrons();
-            warning_global(__FILE__, __LINE__, s);
+            WARNING(s);
         }
         rho_->fft_transform(1);
 
@@ -468,7 +468,7 @@ void Density::initial_density()
             s << "wrong initial charge density" << std::endl
               << "  integral of the density : " << nel << std::endl
               << "  target number of electrons : " << unit_cell_.num_electrons();
-            warning_global(__FILE__, __LINE__, s);
+            WARNING(s);
         }
     }
 }

@@ -18,7 +18,7 @@ void Band::apply_h_serial(K_point* kp__,
                           mdarray<int, 1>& packed_mtrx_offset__,
                           mdarray<double_complex, 1>& d_mtrx_packed__)
 {
-    Timer t("sirius::Band::apply_h_serial");
+    runtime::Timer t("sirius::Band::apply_h_serial");
 
     matrix<double_complex> phi, hphi;
     

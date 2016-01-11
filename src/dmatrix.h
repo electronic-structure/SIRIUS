@@ -29,7 +29,6 @@
 #include "mdarray.h"
 #include "communicator.h"
 #include "blacs_grid.h"
-#include "timer.h"
 #include "utils.h"
 
 /// Distribued matrix.

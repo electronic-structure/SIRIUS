@@ -81,7 +81,7 @@ class BLACS_grid
                   << "            row | col | nrow | ncol " << std::endl
                   << " mpi_grid " << rank_row_ << " " << rank_col_ << " " << num_ranks_row__ << " " << num_ranks_col__ << std::endl  
                   << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
             #endif
         }

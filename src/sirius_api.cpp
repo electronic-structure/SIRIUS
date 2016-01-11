@@ -67,7 +67,7 @@ extern "C"
 void sirius_platform_initialize(int32_t* call_mpi_init_)
 {
     bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
-    Platform::initialize(call_mpi_init);
+    sirius::initialize(call_mpi_init);
 }
 
 void sirius_create_global_parameters()
@@ -780,22 +780,22 @@ void sirius_print_timers(void)
 {
     PROFILE();
 #ifdef __TIMER
-    sirius::Timer::print();
+    runtime::Timer::print();
 #endif
 }   
 
 void sirius_start_timer(char const* name__)
 {
     PROFILE();
-    extern std::map<std::string, sirius::Timer*> ftimers;
+    extern std::map<std::string, runtime::Timer*> ftimers;
     std::string name(name__);
-    ftimers[name] = new sirius::Timer(name);
+    ftimers[name] = new runtime::Timer(name);
 }
 
 void sirius_stop_timer(char const* name__)
 {
     PROFILE();
-    extern std::map<std::string, sirius::Timer*> ftimers;
+    extern std::map<std::string, runtime::Timer*> ftimers;
     std::string name(name__);
     if (ftimers.count(name)) delete ftimers[name];
 }
@@ -872,7 +872,7 @@ void sirius_load_kset(int32_t* kset_id)
 //==         }
 //==     }
 //== 
-//==     if (bz_path.size() < 2) error_local(__FILE__, __LINE__, "at least two BZ points are required");
+//==     if (bz_path.size() < 2) TERMINATE("at least two BZ points are required");
 //==    
 //==     // compute length of segments
 //==     std::vector<double> segment_length;
@@ -1031,8 +1031,8 @@ void sirius_write_json_output(void)
     PROFILE();
 
 #ifdef __TIMER
-    auto ts = sirius::Timer::collect_timer_stats();
-    if (Platform::rank() == 0)
+    auto ts = runtime::Timer::collect_timer_stats();
+    if (mpi_comm_world().rank() == 0)
     {
         std::string fname = std::string("output_") + sim_ctx->start_time_tag() + std::string(".json");
         JSON_write jw(fname);
@@ -1534,7 +1534,7 @@ void sirius_get_fv_h_o(int32_t const* kset_id__,
         
         if (*size__ != kp->gklo_basis_size())
         {
-            error_local(__FILE__, __LINE__, "wrong matrix size");
+            TERMINATE("wrong matrix size");
         }
 
         dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
@@ -1916,7 +1916,7 @@ void sirius_set_num_fv_states(int32_t* num_fv_states__)
 void sirius_ground_state_initialize(int32_t* kset_id__)
 {
     PROFILE();
-    if (dft_ground_state != nullptr) error_local(__FILE__, __LINE__, "dft_ground_state object is already allocate");
+    if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
 
     dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, potential, density, kset_list[*kset_id__], 1);
 }

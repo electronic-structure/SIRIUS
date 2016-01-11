@@ -26,7 +26,7 @@
 #define __MPI_GRID_H__
 
 #include "communicator.h"
-#include "error_handling.h"
+#include "runtime.h"
 
 /// MPI grid interface
 /** The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
@@ -93,7 +93,7 @@ class MPI_grid
                 s << std::endl
                   << "  available number of MPI ranks : " << parent_communicator_.size();
 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
             
             /* communicator of the entire grid */
@@ -155,17 +155,17 @@ class MPI_grid
             for (int i = 1; i < num_comm; i++)
             {
                 if (communicators_[i].size() != communicator_size_[i]) 
-                    error_local(__FILE__, __LINE__, "communicator sizes don't match");
+                    TERMINATE("communicator sizes don't match");
             }
 
             for (int i = 0; i < (int)dimensions_.size(); i++)
             {
                 if (communicator(1 << i).rank() != coordinate(i))
-                    error_local(__FILE__, __LINE__, "ranks don't match");
+                    TERMINATE("ranks don't match");
             }
 
             if (communicator().cart_rank(coordinates_) != parent_communicator_.rank())
-                error_local(__FILE__, __LINE__, "cartesian and communicator ranks don't match");
+                TERMINATE("cartesian and communicator ranks don't match");
         }
 
         void finalize()

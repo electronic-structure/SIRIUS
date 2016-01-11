@@ -26,6 +26,7 @@
 #define __SIRIUS_INTERNAL_H__
 
 #include <omp.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,8 +36,19 @@
 #include <complex>
 #include <iostream>
 #include <algorithm>
+#include "config.h"
 #include "communicator.h"
 #include "gpu.h"
+#include "runtime.h"
+
+#ifdef __PLASMA
+extern "C" void plasma_init(int num_cores);
+#endif
+
+#ifdef __LIBSCI_ACC
+extern "C" void libsci_acc_init();
+extern "C" void libsci_acc_finalize();
+#endif
 
 /// Namespace of the SIRIUS library.
 namespace sirius {
@@ -57,7 +69,7 @@ namespace sirius {
         magma_init_wrapper();
         #endif
         #ifdef __PLASMA
-        plasma_init(max_num_threads());
+        plasma_init(omp_get_max_threads());
         #endif
         #ifdef __LIBSCI_ACC
         libsci_acc_init();
@@ -83,8 +95,13 @@ namespace sirius {
         #endif
         fftw_cleanup();
     }
-
 };
+
+#define TERMINATE_NO_GPU TERMINATE("not compiled with GPU support");
+
+#define TERMINATE_NO_SCALAPACK TERMINATE("not compiled with ScaLAPACK support");
+
+#define TERMINATE_NOT_IMPLEMENTED TERMINATE("feature is not implemented");
 
 #endif // __SIRIUS_INTERNAL_H__
 

@@ -25,8 +25,8 @@
 #ifndef __SPLINDEX_H__
 #define __SPLINDEX_H__
 
+#include "sirius_internal.h"
 #include "typedefs.h"
-#include "error_handling.h"
 
 /// Base class for split index.
 template <typename T>

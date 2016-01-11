@@ -25,6 +25,7 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
+#include <complex>
 #include "atomic_conf.h"
 #include "atomic_symb.h"
 

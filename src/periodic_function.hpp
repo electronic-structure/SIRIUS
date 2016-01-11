@@ -99,7 +99,7 @@ inline T& Periodic_function<T>::f_mt(int idx0, int ir, int ia)
 template <typename T>
 inline void Periodic_function<T>::sync_mt()
 {
-    Timer t("sirius::Periodic_function::sync_mt");
+    runtime::Timer t("sirius::Periodic_function::sync_mt");
     assert(f_mt_.size() != 0); 
 
     int ld = angular_domain_size_ * unit_cell_.max_num_mt_points(); 
@@ -130,7 +130,7 @@ inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
 template <typename T>
 inline void Periodic_function<T>::add(Periodic_function<T>* g)
 {
-    Timer t("sirius::Periodic_function::add");
+    runtime::Timer t("sirius::Periodic_function::add");
 
     for (int irloc = 0; irloc < fft_->local_size(); irloc++)
         f_rg_(irloc) += g->f_rg(irloc);

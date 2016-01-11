@@ -26,7 +26,6 @@
 #define __RADIAL_GRID_H__
 
 #include "typedefs.h"
-#include "error_handling.h"
 #include "utils.h"
 
 namespace sirius {

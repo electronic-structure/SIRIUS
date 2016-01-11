@@ -14,7 +14,7 @@ void Density::generate_valence(K_set& ks__)
         for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
     }
 
-    if (std::abs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
+    if (std::abs(wt - 1.0) > 1e-12) TERMINATE("K_point weights don't sum to one");
 
     if (std::abs(ot - unit_cell_.num_valence_electrons()) > 1e-8)
     {
@@ -23,7 +23,7 @@ void Density::generate_valence(K_set& ks__)
           << "  computed : " << ot << std::endl
           << "  required : " << unit_cell_.num_valence_electrons() << std::endl
           << "  difference : " << std::abs(ot - unit_cell_.num_valence_electrons());
-        warning_local(__FILE__, __LINE__, s);
+        WARNING(s);
     }
 
     /* swap wave functions */

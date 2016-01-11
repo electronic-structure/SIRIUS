@@ -108,10 +108,10 @@ Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, d
     for (int x = 0; x < 3; x++)
     {
         if (f[x].radial_grid().hash() != g[x].radial_grid().hash())
-            error_local(__FILE__, __LINE__, "wrong radial grids");
+            TERMINATE("wrong radial grids");
         
         if (f[x].angular_domain_size() != g[x].angular_domain_size())
-            error_local(__FILE__, __LINE__, "wrong number of angular points");
+            TERMINATE("wrong number of angular points");
     }
 
     Spheric_function<spatial, double> result(f.angular_domain_size(), f.radial_grid());

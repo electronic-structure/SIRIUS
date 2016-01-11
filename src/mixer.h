@@ -217,7 +217,7 @@ class Broyden1: public Mixer<T>
 
         double mix()
         {
-            Timer t("sirius::Broyden1::mix");
+            runtime::Timer t("sirius::Broyden1::mix");
             
             //== /* weights as a functor */
             //== struct w_functor
@@ -395,7 +395,7 @@ class Broyden2: public Mixer<T>
 
         double mix()
         {
-            Timer t("sirius::Broyden2::mix");
+            runtime::Timer t("sirius::Broyden2::mix");
 
             /* weights as a lambda function */
             auto w = [this](size_t idx)

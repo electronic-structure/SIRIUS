@@ -321,7 +321,7 @@ class K_set
                 std::pair< vector3d<double>, vector3d<int> > vkqr = Utils::reduce_coordinates(kpoints_[ik]->vk() + vq);
                 
                 if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
-                    error_local(__FILE__, __LINE__, "index of reduced k+q point is not found");
+                    TERMINATE("index of reduced k+q point is not found");
 
                 kpq[ik].K = vkqr.second;
             }

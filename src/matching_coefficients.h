@@ -299,7 +299,7 @@ class Matching_coefficients
                     }
                     default:
                     {
-                        error_local(__FILE__, __LINE__, "wrong order of augmented wave");
+                        TERMINATE("wrong order of augmented wave");
                     }
                 }
             }

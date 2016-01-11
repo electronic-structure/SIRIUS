@@ -250,7 +250,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             
             for (int i = 0; i < nfv; i++) h.add(i, i, kp->fv_eigen_value(i));
         
-            Timer t1("sirius::Band::solve_sv|stdevp");
+            runtime::Timer t1("sirius::Band::solve_sv|stdevp");
             std_evp_solver()->solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
                                     kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
         }
@@ -275,7 +275,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             h.add(i, i, kp->fv_eigen_value(i));
             h.add(i + nfv, i + nfv, kp->fv_eigen_value(i));
         }
-        Timer t1("sirius::Band::solve_sv|stdevp");
+        runtime::Timer t1("sirius::Band::solve_sv|stdevp");
         std_evp_solver()->solve(nb, h.at<CPU>(), h.ld(), &band_energies[0],
                                 kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld());
         

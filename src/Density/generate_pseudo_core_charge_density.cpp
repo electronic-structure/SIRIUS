@@ -4,7 +4,7 @@ namespace sirius {
 
 void Density::generate_pseudo_core_charge_density()
 {
-    Timer t("sirius::Density::generate_pseudo_core_charge_density");
+    runtime::Timer t("sirius::Density::generate_pseudo_core_charge_density");
 
     auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 

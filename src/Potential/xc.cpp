@@ -34,7 +34,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                   Spheric_function<spatial, double>& vxc_tp, 
                                   Spheric_function<spatial, double>& exc_tp)
 {
-    Timer t("sirius::Potential::xc_mt_nonmagnetic");
+    runtime::Timer t("sirius::Potential::xc_mt_nonmagnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
@@ -159,7 +159,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
                                Spheric_function<spatial, double>& vxc_dn_tp, 
                                Spheric_function<spatial, double>& exc_tp)
 {
-    Timer t("sirius::Potential::xc_mt_magnetic");
+    runtime::Timer t("sirius::Potential::xc_mt_magnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
@@ -342,7 +342,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                       Periodic_function<double>* bxc[3], 
                       Periodic_function<double>* exc)
 {
-    Timer t2("sirius::Potential::xc_mt");
+    runtime::Timer t2("sirius::Potential::xc_mt");
 
     for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
@@ -379,7 +379,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             s << "Charge density for atom " << ia << " has negative values" << std::endl
               << "most negatve value : " << rhomin << std::endl
               << "current Rlm expansion of the charge density may be not sufficient, try to increase lmax_rho";
-            warning_local(__FILE__, __LINE__, s);
+            WARNING(s);
         }
 
         if (parameters_.num_spins() == 1)
@@ -478,9 +478,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
                                   Periodic_function<double>* vxc, 
                                   Periodic_function<double>* exc)
 {
-    PROFILE();
-
-    Timer t("sirius::Potential::xc_it_nonmagnetic");
+    PROFILE_WITH_TIMER("sirius::Potential::xc_it_nonmagnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
@@ -499,7 +497,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        warning_global(__FILE__, __LINE__, s);
+        WARNING(s);
     }
     
     Smooth_periodic_function_gradient<spatial, double> grad_rho_it;
@@ -640,7 +638,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                                Periodic_function<double>* bxc[3], 
                                Periodic_function<double>* exc)
 {
-    Timer t("sirius::Potential::xc_it_magnetic");
+    runtime::Timer t("sirius::Potential::xc_it_magnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
@@ -677,7 +675,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        warning_global(__FILE__, __LINE__, s);
+        WARNING(s);
     }
 
     Smooth_periodic_function_gradient<spatial, double> grad_rho_up_it;
@@ -889,9 +887,7 @@ void Potential::xc(Periodic_function<double>* rho,
                    Periodic_function<double>* bxc[3], 
                    Periodic_function<double>* exc)
 {
-    PROFILE();
-
-    Timer t("sirius::Potential::xc", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Potential::xc");
 
     if (parameters_.xc_functionals().size() == 0)
     {

@@ -26,7 +26,7 @@
 #define __COMMUNICATOR_H__
 
 #include <mpi.h>
-#include <assert.h>
+#include <cassert>
 #include <vector>
 #include <complex>
 

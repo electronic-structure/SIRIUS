@@ -176,7 +176,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
         {   
-            Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
+            runtime::Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             psi.transform_from(phi, N, evec, num_bands);

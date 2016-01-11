@@ -92,7 +92,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 
 void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
 {
-    Timer t("sirius::DFT_ground_state::scf_loop");
+    runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
     if (!parameters_.full_potential()) density_->mixer_init();
 
@@ -104,7 +104,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
-        Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+        runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);

@@ -24,11 +24,11 @@ void K_point::distribute_basis_index()
         int bs = parameters_.cyclic_block_size();
         int nr = linalg_base::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
         
-        if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
+        if (nr != gklo_basis_size_row()) TERMINATE("numroc returned a different local row size");
 
         int nc = linalg_base::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
         
-        if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
+        if (nc != gklo_basis_size_col()) TERMINATE("numroc returned a different local column size");
         #endif
 
         /* get number of column G+k vectors */

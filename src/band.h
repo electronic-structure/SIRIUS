@@ -315,7 +315,7 @@ class Band
             }
 
             if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
-                error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
+                TERMINATE("both eigen-value solvers must be serial or parallel");
         }
 
         ~Band()

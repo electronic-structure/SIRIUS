@@ -30,7 +30,6 @@
 #include "mdarray.h"
 #include "splindex.h"
 #include "vector3d.h"
-#include "timer.h"
 #include "descriptors.h"
 #include "fft3d_grid.h"
 #include "gvec.h"

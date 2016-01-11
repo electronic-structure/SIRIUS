@@ -341,7 +341,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         poisson_sum_G(parameters_.lmmax_pot(), &vh->f_pw(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
-        Timer t1("sirius::Potential::poisson|bc");
+        runtime::Timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), parameters_.lmax_pot() + 1);
         int type_id_prev = -1;
 

@@ -74,7 +74,7 @@ void Unit_cell::add_atom(const std::string label, vector3d<double> position)
 
 void Unit_cell::get_symmetry()
 {
-    Timer t("sirius::Unit_cell::get_symmetry");
+    runtime::Timer t("sirius::Unit_cell::get_symmetry");
     
     if (num_atoms() == 0) return;
     
@@ -141,7 +141,7 @@ void Unit_cell::get_symmetry()
 
 std::vector<double> Unit_cell::find_mt_radii()
 {
-    if (nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
+    if (nearest_neighbours_.size() == 0) TERMINATE("array of nearest neighbours is empty");
 
     std::vector<double> Rmt(num_atom_types(), 1e10);
     
@@ -207,7 +207,7 @@ std::vector<double> Unit_cell::find_mt_radii()
     for (int i = 0; i < num_atom_types(); i++) 
     {
         Rmt[i] = std::min(Rmt[i], 3.0);
-        if (Rmt[i] < 0.3) error_global(__FILE__, __LINE__, "Muffin-tin radius is too small");
+        if (Rmt[i] < 0.3) TERMINATE("Muffin-tin radius is too small");
     }
 
     return Rmt;
@@ -257,7 +257,7 @@ void Unit_cell::initialize()
     //        int rank = spl_num_atoms().local_rank(ia);
     //        if (comm_.rank() == rank)
     //        {
-    //            if (comm_bundle_atoms_.comm().rank() != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+    //            if (comm_bundle_atoms_.comm().rank() != 0) TERMINATE("wrong root rank");
     //        }
     //    }
     //}
@@ -599,7 +599,7 @@ void Unit_cell::set_lattice_vectors(double const* a0__, double const* a1__, doub
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
-    Timer t("sirius::Unit_cell::find_nearest_neighbours");
+    runtime::Timer t("sirius::Unit_cell::find_nearest_neighbours");
 
     vector3d<int> max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
    
@@ -740,9 +740,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 
 void Unit_cell::generate_radial_functions()
 {
-    PROFILE();
-
-    Timer t("sirius::Unit_cell::generate_radial_functions");
+    PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_functions");
    
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
     {

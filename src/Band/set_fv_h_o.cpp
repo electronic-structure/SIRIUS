@@ -99,7 +99,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), max_mt_aw);
     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), max_mt_aw);
 
-    Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
         int num_mt_aw = 0;
@@ -186,7 +186,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o");
+    runtime::Timer t("sirius::Band::set_fv_h_o");
     
     h__.zero();
     h__.allocate_on_device();
@@ -218,7 +218,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     halm_col.allocate(1);
     halm_col.allocate_on_device();
 
-    Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
         int num_mt_aw = 0;
@@ -394,7 +394,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
 void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
                          mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_fv_h_o_it");
+    runtime::Timer t("sirius::Band::set_fv_h_o_it");
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -422,7 +422,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
 
 void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_fv_h_o_lo_lo");
+    runtime::Timer t("sirius::Band::set_fv_h_o_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)

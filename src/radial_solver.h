@@ -692,7 +692,7 @@ class Bound_state: public Radial_soultion
                   << "l = " << l_ << std::endl
                   << "enu = " << enu_ << std::endl
                   << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1);
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
         }
         

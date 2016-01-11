@@ -29,13 +29,12 @@
 #include <fstream>
 #include <string>
 #include <complex>
+#include "sirius_internal.h"
 #include "typedefs.h"
 #include "constants.h"
 #include "mdarray.h"
-#include "timer.h"
 #include "vector3d.h"
 #include "matrix3d.h"
-#include "error_handling.h"
 
 /// Utility class.
 class Utils
@@ -56,7 +55,7 @@ class Utils
         static inline int lmax_by_lmmax(int lmmax__)
         {
             int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
-            if (lmmax(lmax) != lmmax__) error_local(__FILE__, __LINE__, "wrong lmmax");
+            if (lmmax(lmax) != lmmax__) TERMINATE("wrong lmmax");
             return lmax;
         }
 

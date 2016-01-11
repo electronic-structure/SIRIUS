@@ -17,7 +17,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
     //double core_leak = density_->core_leakage();
     double enuc = gs.energy_enuc();
 
-    auto ts = Timer::collect_timer_stats();
+    auto ts = runtime::Timer::collect_timer_stats();
     if (ctx.comm().rank() == 0)
     {
         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
@@ -83,7 +83,7 @@ void dft_loop(cmd_args args)
     std::string task_name = args.value<std::string>("task");
 
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
-        error_global(__FILE__, __LINE__, "wrong task name");
+        TERMINATE("wrong task name");
     
     Input_parameters iip("sirius.json");
     Simulation_parameters parameters(iip);
@@ -150,7 +150,7 @@ void dft_loop(cmd_args args)
 
     if (task_name == "gs_restart")
     {
-        if (!Utils::file_exists(storage_file_name)) error_global(__FILE__, __LINE__, "storage file is not found");
+        if (!Utils::file_exists(storage_file_name)) TERMINATE("storage file is not found");
         density->load();
         potential->load();
     }
@@ -184,12 +184,12 @@ void dft_loop(cmd_args args)
     delete density;
     delete potential;
 
-    Timer::print();
+    runtime::Timer::print();
 }
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     cmd_args args;
     args.register_key("--task=", "{string} name of the task");
@@ -205,5 +205,5 @@ int main(int argn, char** argv)
 
     dft_loop(args);
     
-    Platform::finalize();
+    sirius::finalize();
 }

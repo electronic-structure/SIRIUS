@@ -23,7 +23,6 @@
  */
 
 #include "k_point.h"
-#include "error_handling.h"
 
 namespace sirius {
 
@@ -417,7 +416,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
 
 void K_point::save(int id)
 {
-    if (num_ranks() > 1) error_local(__FILE__, __LINE__, "writing of distributed eigen-vectors is not implemented");
+    if (num_ranks() > 1) TERMINATE("writing of distributed eigen-vectors is not implemented");
 
     STOP();
 

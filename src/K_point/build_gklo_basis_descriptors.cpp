@@ -62,7 +62,7 @@ void K_point::build_gklo_basis_descriptors()
               << "size of apwlo_basis_descriptors_ : " << gklo_basis_descriptors_.size() << std::endl
               << "num_gkvec : " << num_gkvec() << std::endl 
               << "mt_lo_basis_size : " << unit_cell_.mt_lo_basis_size();
-            error_local(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
     }
 }

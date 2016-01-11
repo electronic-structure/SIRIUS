@@ -15,7 +15,7 @@ void K_point::add_non_local_contribution(int num_atoms__,
                                          double_complex alpha,
                                          matrix<double_complex>& work__)
 {
-    Timer t("sirius::K_point::add_non_local_contribution");
+    runtime::Timer t("sirius::K_point::add_non_local_contribution");
 
     double_complex beta = complex_one;
 

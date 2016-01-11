@@ -50,7 +50,7 @@ void Density::generate(K_set& ks__)
             for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) 
                 s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
         }
-        warning_global(__FILE__, __LINE__, s);
+        WARNING(s);
     }
 
     #ifdef __PRINT_OBJECT_HASH

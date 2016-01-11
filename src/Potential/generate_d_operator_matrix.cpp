@@ -39,7 +39,7 @@ void Potential::generate_D_operator_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
 
-    if (!parameters_.esm_type() == ultrasoft_pseudopotential) STOP(); // decide what to do in this case
+    if (parameters_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
 
     std::vector<Periodic_function<double>*> veff_vec(parameters_.num_mag_dims() + 1);
     veff_vec[0] = effective_potential_;
