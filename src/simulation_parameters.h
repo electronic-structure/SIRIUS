@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -80,9 +80,11 @@ class Simulation_parameters
 
         int cyclic_block_size_;
 
+        /// Initial number of independent FFT streams.
         int num_fft_streams_;
-
-        int num_fft_workers_;
+        
+        /// Initial number of threads dedicated to each independent FFT stream.
+        int num_threads_fft_;
         
         std::string std_evp_solver_name_;
 
@@ -124,7 +126,7 @@ class Simulation_parameters
             mpi_grid_dims_       = {1};
             cyclic_block_size_   = 32;
             num_fft_streams_     = 1;
-            num_fft_workers_     = omp_get_max_threads();
+            num_threads_fft_     = omp_get_max_threads();
             processing_unit_     = CPU;
             smearing_width_      = 0.001;
             esm_type_            = full_potential_lapwlo;
@@ -163,7 +165,7 @@ class Simulation_parameters
             mpi_grid_dims_       = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
             cyclic_block_size_   = parser["cyclic_block_size"].get(cyclic_block_size_);
             num_fft_streams_     = parser["num_fft_streams"].get(num_fft_streams_);
-            num_fft_workers_     = parser["num_fft_workers"].get(num_fft_workers_);
+            num_threads_fft_     = parser["num_threads_fft"].get(num_threads_fft_);
             num_fv_states_       = parser["num_fv_states"].get(num_fv_states_);
             smearing_width_      = parser["smearing_width"].get(smearing_width_);
             std_evp_solver_name_ = parser["std_evp_solver_type"].get(std_evp_solver_name_);
@@ -194,11 +196,9 @@ class Simulation_parameters
     public:
 
         /// Create and initialize simulation parameters.
-        /** The order of initialization is the following:
-         *    - first, the default parameter values are set with set_defaults()
-         *    - second, import() method is called and the parameters are overwritten with the input parameters
-         *    - third, the user sets the values with set_...() metods
-         *    - fourh, the Simulation_context creates the copy of parameters and checks/sets the correct values
+        /** The order of initialization is the following: first, the default parameter values are set 
+         *  with set_defaults(), then (optionally) import() method is called and the parameters are overwritten 
+         *  with the parameters from the input file, and finally, the user sets the values with set_...() metods.
          */
         Simulation_parameters(std::string const& fname__)
         {
@@ -414,16 +414,6 @@ class Simulation_parameters
         inline std::vector<int> const& mpi_grid_dims() const
         {
             return mpi_grid_dims_;
-        }
-
-        inline int num_fft_streams() const
-        {
-            return num_fft_streams_;
-        }
-    
-        inline int num_fft_workers() const
-        {
-            return num_fft_workers_;
         }
 
         inline int cyclic_block_size() const

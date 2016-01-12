@@ -70,8 +70,6 @@ class Simulation_context: public Simulation_parameters
 
         std::string start_time_tag_;
 
-        int num_fv_states_;
-
         double iterative_solver_tolerance_;
 
         ev_solver_t std_evp_solver_type_;
@@ -97,7 +95,6 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(parameters__, comm_),
               step_function_(nullptr),
               real_space_prj_(nullptr),
-              num_fv_states_(-1),
               iterative_solver_tolerance_(iterative_solver_input_section().tolerance_),
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
@@ -233,41 +230,61 @@ class Simulation_context: public Simulation_parameters
             printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
             printf("git hash       : %s\n", git_hash);
             printf("build date     : %s\n", build_date);
-            //= printf("start time     : %s\n", start_time("%c").c_str());
             printf("\n");
             printf("number of MPI ranks           : %i\n", comm_.size());
             printf("MPI grid                      :");
-            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->size(1 << i));
+            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->dimension_size(i));
             printf("\n");
-            printf("maximum number of OMP threads   : %i\n", omp_get_max_threads()); 
-            printf("number of FFT streams           : %i\n", num_fft_streams()); 
-            printf("number of pthreads for each FFT : %i\n", num_fft_workers()); 
-            printf("cyclic block size               : %i\n", cyclic_block_size());
-        
-            unit_cell_.print_info();
-        
+            printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
+            printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(0));
+            printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(1));
+
             printf("\n");
-            printf("plane wave cutoff                     : %f\n", pw_cutoff());
-            printf("number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
-            printf("number of G-shells                    : %i\n", gvec_.num_shells());
-            printf("number of independent FFTs : %i\n", mpi_grid_fft_->dimension_size(0));
-            printf("FFT comm size              : %i\n", mpi_grid_fft_->dimension_size(1));
+            printf("FFT context for density and potential\n");
+            printf("=====================================\n");
+            printf("  plane wave cutoff                     : %f\n", pw_cutoff());
             auto fft_grid = fft_ctx_->fft_grid();
-            printf("FFT grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
-            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
-                                                                fft_grid.limits(1).first, fft_grid.limits(1).second,
-                                                                fft_grid.limits(2).first, fft_grid.limits(2).second);
-            
+            printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
+                                                                                        fft_grid.size(1),
+                                                                                        fft_grid.size(2),
+                                                                                        fft_grid.size());
+            printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
+                                                                                        fft_grid.limits(0).second,
+                                                                                        fft_grid.limits(1).first,
+                                                                                        fft_grid.limits(1).second,
+                                                                                        fft_grid.limits(2).first,
+                                                                                        fft_grid.limits(2).second);
+            printf("  number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
+            printf("  number of G-shells                    : %i\n", gvec_.num_shells());
+            printf("  number of FFT streams                 : %i\n", fft_ctx_->num_fft_streams()); 
+            printf("  number of threads for each FFT stream :");
+            for (int i = 0; i < fft_ctx_->num_fft_streams(); i++) printf(" %i", fft_ctx_->fft(i)->num_fft_workers());
+            printf("\n");
             if (!full_potential())
             {
-                fft_grid = fft_coarse_ctx_->fft_grid();
-                printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
-                printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
-                printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
-                                                                           fft_grid.limits(1).first, fft_grid.limits(1).second,
-                                                                           fft_grid.limits(2).first, fft_grid.limits(2).second);
+                printf("\n");
+                printf("FFT context for applying Hloc\n");
+                printf("=============================\n");
+                auto fft_grid = fft_coarse_ctx_->fft_grid();
+                printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
+                                                                                            fft_grid.size(1),
+                                                                                            fft_grid.size(2),
+                                                                                            fft_grid.size());
+                printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
+                                                                                            fft_grid.limits(0).second,
+                                                                                            fft_grid.limits(1).first,
+                                                                                            fft_grid.limits(1).second,
+                                                                                            fft_grid.limits(2).first,
+                                                                                            fft_grid.limits(2).second);
+                printf("  number of G-vectors within the cutoff : %i\n", gvec_coarse_.num_gvec());
+                printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
+                printf("  number of FFT streams                 : %i\n", fft_coarse_ctx_->num_fft_streams()); 
+                printf("  number of threads for each FFT stream :");
+                for (int i = 0; i < fft_coarse_ctx_->num_fft_streams(); i++) printf(" %i", fft_coarse_ctx_->fft(i)->num_fft_workers());
+                printf("\n");
             }
-        
+
+            unit_cell_.print_info();
             for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
         
             printf("\n");
@@ -281,8 +298,9 @@ class Simulation_context: public Simulation_parameters
             printf("lmax_pw                            : %i\n", lmax_pw());
             printf("lmax_rho                           : %i\n", lmax_rho());
             printf("lmax_pot                           : %i\n", lmax_pot());
-            //printf("lmax_beta                          : %i\n", parameters_.lmax_beta());
-            printf("smearing width:                    : %f\n", smearing_width());
+            printf("lmax_rf                            : %i\n", unit_cell_.lmax());
+            printf("smearing width                     : %f\n", smearing_width());
+            printf("cyclic block size                  : %i\n", cyclic_block_size());
         
             //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
             //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
@@ -358,7 +376,8 @@ class Simulation_context: public Simulation_parameters
             }
             
             printf("\n");
-            printf("XC functionals : \n");
+            printf("XC functionals\n");
+            printf("==============\n");
             for (auto& xc_label: xc_functionals())
             {
                 XC_functional xc(xc_label, num_spins());

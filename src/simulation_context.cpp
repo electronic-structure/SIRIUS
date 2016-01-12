@@ -6,24 +6,23 @@ void Simulation_context::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    int nfft_streams = num_fft_streams();
-    int nfft_workers = num_fft_workers();
-
-    /* for now, use parallel fft only in pseudopotential part of the code */
-    bool do_parallel_fft = !full_potential();
-
     auto& comm = mpi_grid_->communicator(1 << _dim_col_ | 1 << _dim_row_);
 
-    mpi_grid_fft_ = (do_parallel_fft) ? new MPI_grid({mpi_grid_->dimension_size(_dim_col_), mpi_grid_->dimension_size(_dim_row_)}, comm)
-                                      : new MPI_grid({comm.size(), 1}, comm);
+    /* for now, use parallel fft only in pseudopotential part of the code */
+    mpi_grid_fft_ = (!full_potential()) ? new MPI_grid({mpi_grid_->dimension_size(_dim_col_),
+                                                        mpi_grid_->dimension_size(_dim_row_)},
+                                                       comm)
+                                        : new MPI_grid({comm.size(), 1}, comm);
 
+    /* fine FFT grid for density and potential */
     FFT3D_grid fft_grid(pw_cutoff(), rlv);
+    /* coarse FFT grid for applying Hloc */
     FFT3D_grid fft_coarse_grid(2 * gk_cutoff(), rlv);
 
-    fft_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_grid, nfft_streams, nfft_workers, processing_unit());
+    fft_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_grid, num_fft_streams_, num_threads_fft_, processing_unit());
     if (!full_potential())
     {
-        fft_coarse_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_coarse_grid, nfft_streams, nfft_workers,
+        fft_coarse_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_coarse_grid, num_fft_streams_, num_threads_fft_,
                                             processing_unit());
     }
 
@@ -97,9 +96,10 @@ void Simulation_context::initialize()
 
     if (iterative_solver_input_section().real_space_prj_) 
     {
-        real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iterative_solver_input_section().R_mask_scale_,
-                                             iterative_solver_input_section().mask_alpha_,
-                                             gk_cutoff(), num_fft_streams(), num_fft_workers());
+        STOP();
+        //real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iterative_solver_input_section().R_mask_scale_,
+        //                                     iterative_solver_input_section().mask_alpha_,
+        //                                     gk_cutoff(), num_fft_streams(), num_fft_workers());
     }
 
     /* take 10% of empty non-magnetic states */
