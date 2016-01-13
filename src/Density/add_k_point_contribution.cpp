@@ -91,28 +91,29 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
-    //int nbnd = kp__->num_occupied_bands(0);
-    //int nbnd_loc = kp__->spinor_wave_functions<false>(0).spl_num_swapped().local_size();
-    //if (!nbnd) return;
+    kp__->beta_projectors().prepare();
 
-    kp__->beta_projectors().allocate_workspace();
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU)
-    {
-        STOP(); 
-        //kp__->spinor_wave_functions<false>(0).allocate_on_device();
-        //kp__->spinor_wave_functions<false>(0).copy_to_device(0, nbnd);
-    }
-    #endif
-    if (ctx_.num_mag_dims() != 3)
     {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
             int nbnd = kp__->num_occupied_bands(ispn);
-            int nbnd_loc = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size();
-            for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
+            kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
+            kp__->spinor_wave_functions<false>(ispn).copy_to_device(0, nbnd);
+        }
+    }
+    #endif
+
+    if (ctx_.num_mag_dims() != 3)
+    {
+        for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
+        {
+            kp__->beta_projectors().generate(chunk);
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
-                kp__->beta_projectors().generate(chunk);
+                int nbnd = kp__->num_occupied_bands(ispn);
+                int nbnd_loc = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size();
                 kp__->beta_projectors().inner(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
                 int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 
@@ -151,7 +152,6 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
                         }
                     }
                 }
-
             }
         }
     }
@@ -160,15 +160,15 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
         STOP();
     }
 
-
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU)
     {
-        STOP();
-        //kp__->spinor_wave_functions<false>(0).deallocate_on_device();
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+            kp__->spinor_wave_functions<false>(ispn).deallocate_on_device();
     }
     #endif
-    kp__->beta_projectors().deallocate_workspace();
+
+    kp__->beta_projectors().dismiss();
 }
 
 //#ifdef __GPU

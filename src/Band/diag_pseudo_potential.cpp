@@ -8,6 +8,8 @@ void Band::diag_pseudo_potential(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
 
+    ctx_.fft_coarse_ctx().prepare();
+
     Hloc_operator hloc(ctx_.fft_coarse_ctx(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
@@ -47,7 +49,6 @@ void Band::diag_pseudo_potential(K_point* kp__,
     //    TERMINATE("unknown iterative solver type");
     //}
 
-    //ctx_.fft_coarse_ctx().deallocate_workspace();
 
     auto& itso = ctx_.iterative_solver_input_section();
     if (itso.type_ == "exact")
@@ -78,6 +79,8 @@ void Band::diag_pseudo_potential(K_point* kp__,
     {
         TERMINATE("unknown iterative solver type");
     }
+
+    ctx_.fft_coarse_ctx().dismiss();
 }
 
 };

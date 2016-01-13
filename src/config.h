@@ -67,7 +67,7 @@
 #define __PROFILE
 //#define __PROFILE_STACK
 #define __PROFILE_TIME
-//#define __PROFILE_FUNC
+#define __PROFILE_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)
 #error "GPU interface must be enabled for libsci_acc"

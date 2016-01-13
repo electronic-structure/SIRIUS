@@ -49,6 +49,7 @@ void Potential::generate_D_operator_matrix()
         ctx_.augmentation_op(iat).prepare();
     
     #ifdef __GPU
+    /* copy G-vectors to GPU */
     mdarray<int, 2> gvec;
     if (ctx_.processing_unit() == GPU)
     {
@@ -68,6 +69,7 @@ void Potential::generate_D_operator_matrix()
         veff_vec[iv]->fft_transform(-1);
 
         #ifdef __GPU
+        /* copy plane wave coefficients of effective potential to GPU */
         mdarray<double_complex, 1> veff;
         if (ctx_.processing_unit() == GPU)
         {
@@ -109,7 +111,8 @@ void Potential::generate_D_operator_matrix()
                 veff_a.allocate_on_device();
                 
                 d_tmp.allocate_on_device();
-
+                
+                /* copy atom positions to GPU */
                 mdarray<double, 2> atom_pos(3, atom_type.num_atoms());
                 for (int i = 0; i < atom_type.num_atoms(); i++)
                 {
@@ -127,9 +130,8 @@ void Potential::generate_D_operator_matrix()
                                                 atom_pos.at<GPU>(),
                                                 veff_a.at<GPU>());
 
-                linalg<GPU>::gemm(2, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), spl_num_gvec_.local_size(),
-                                  ctx_.augmentation_op(iat).q_pw().at<GPU>(), spl_num_gvec_.local_size(),
-                                  veff_a.at<GPU>(), spl_num_gvec_.local_size(), d_tmp.at<GPU>(), d_tmp.ld());
+                linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), spl_num_gvec_.local_size(),
+                                  ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
 
                 d_tmp.copy_to_host();
             }

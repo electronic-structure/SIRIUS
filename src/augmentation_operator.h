@@ -258,7 +258,6 @@ class Augmentation_operator
         {
             return q_mtrx_(xi1__, xi2__);
         }
-
 };
 
 };

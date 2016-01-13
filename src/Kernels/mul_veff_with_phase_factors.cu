@@ -20,7 +20,7 @@ __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
             
-        veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] = cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), sin(p)));
+        veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] = cuConj(cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), sin(p))));
     }
 }
  

@@ -119,7 +119,8 @@ void Density::augment(K_set& ks__)
                 #ifdef __GPU
                 case GPU:
                 {
-                    add_q_contribution_to_valence_density_gpu(ks__);
+                    //add_q_contribution_to_valence_density_gpu(ks__);
+                    add_q_contribution_to_valence_density(ks__);
                     break;
                 }
                 #endif

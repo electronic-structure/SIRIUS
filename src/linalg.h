@@ -185,6 +185,10 @@ class linalg<GPU>: public linalg_base
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda,
                          T const* B, ftn_int ldb, T* C, ftn_int ldc);
+        
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
+                         matrix<T>& C);
 };
 #endif
 

@@ -169,7 +169,7 @@ class Beta_projectors
 
         void inner(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__);
 
-        void allocate_workspace()
+        void prepare()
         {
             #ifdef __GPU
             if (pu_ == GPU)
@@ -180,7 +180,7 @@ class Beta_projectors
             #endif
         }
 
-        void deallocate_workspace()
+        void dismiss()
         {
             #ifdef __GPU
             if (pu_ == GPU)

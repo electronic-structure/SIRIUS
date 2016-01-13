@@ -106,7 +106,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     std::vector<double> eval_old(num_bands);
     std::vector<double> eval_tmp(num_bands);
     
-    kp__->beta_projectors().allocate_workspace();
+    kp__->beta_projectors().prepare();
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU)
@@ -176,7 +176,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
         {   
-            runtime::Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
+            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             psi.transform_from(phi, N, evec, num_bands);
@@ -225,7 +225,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         phi.copy_from(res, 0, n, N);
     }
 
-    kp__->beta_projectors().deallocate_workspace();
+    kp__->beta_projectors().dismiss();
 
     for (int j = 0; j < ctx_.num_fv_states(); j++)
         kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];

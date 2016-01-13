@@ -137,6 +137,14 @@ class Hloc_operator
             }
 
             vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
+
+            #ifdef __GPU
+            if (fft_ctx_.pu() == GPU)
+            {
+                veff_vec_.allocate_on_device();
+                veff_vec_.copy_to_device();
+            }
+            #endif
         }
         
         void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
