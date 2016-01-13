@@ -101,43 +101,6 @@ void Density::generate_core_charge_density()
     }
 }
 
-void Density::augment(K_set& ks__)
-{
-    PROFILE_WITH_TIMER("sirius::Density::augment");
-
-    switch (ctx_.esm_type())
-    {
-        case ultrasoft_pseudopotential:
-        {
-            switch (ctx_.processing_unit())
-            {
-                case CPU:
-                {
-                    add_q_contribution_to_valence_density(ks__);
-                    break;
-                }
-                #ifdef __GPU
-                case GPU:
-                {
-                    //add_q_contribution_to_valence_density_gpu(ks__);
-                    add_q_contribution_to_valence_density(ks__);
-                    break;
-                }
-                #endif
-                default:
-                {
-                    TERMINATE("wrong processing unit");
-                }
-            }
-            break;
-        }
-        default:
-        {
-            break;
-        }
-    }
-}
-
 //void Density::check_density_continuity_at_mt()
 //{
 //    // generate plane-wave coefficients of the potential in the interstitial region

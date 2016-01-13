@@ -16,12 +16,12 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Density/add_k_point_contribution_it.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
-       Density/add_q_contribution_to_valence_density.cpp \
        Density/generate.cpp \
        Density/generate_valence.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \
        Density/generate_pseudo_core_charge_density.cpp \
+       Density/augment.cpp \
        Band/set_fv_h_o.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
