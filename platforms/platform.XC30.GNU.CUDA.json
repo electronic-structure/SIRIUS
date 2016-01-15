@@ -21,7 +21,7 @@
     "comment"     : "Fortran preprocessor",
 
     "NVCC"        : "nvcc",
-    "NVCC_OPT"    : "-arch=sm_35 -m64",
+    "NVCC_OPT"    : "-arch=sm_35 -m64 -DNDEBUG",
     
     "SYSTEM_LIBS" : "-lcublas -lcudart -lcufft",
     "comment"     : "CUDA, cuFFT & MAGMA libraries",
