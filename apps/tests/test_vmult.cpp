@@ -1,5 +1,11 @@
 #include <sirius.h>
 
+inline void mul_veff(int n, double_complex* buff, double* veff)
+{
+    #pragma omp parallel for
+    for (int j = 0; j < n; j++) buff[j] *= veff[j];
+}
+
 namespace test_vmul {
 
 double kernel1(int repeat, int n, std::vector<double_complex>& v1, std::vector<double>& v2)
@@ -8,8 +14,9 @@ double kernel1(int repeat, int n, std::vector<double_complex>& v1, std::vector<d
     for (int i = 0; i < repeat; i++)
     {
         double t = omp_get_wtime();
-        #pragma omp parallel for
-        for (int j = 0; j < n; j++) v1[i] *= v2[i];
+        mul_veff(n, &v1[0], &v2[0]);
+        //#pragma omp parallel for
+        //for (int j = 0; j < n; j++) v1[i] *= v2[i];
 
         tloc += (omp_get_wtime() - t);
     }
@@ -49,13 +56,15 @@ void test_vmul_drv()
     int n = 216 * 216 * 216;
     int repeat = 20;
 
-    std::vector<double_complex> v1(n, double_complex(1, 0));
-    std::vector<double> v2(n, 1);
+    std::vector<double_complex> v1(n);
+    std::vector<double> v2(n);
 
     mdarray<double_complex, 1> f1(n);
     mdarray<double, 1> f2(n);
     for (int i = 0; i < n; i++)
     {
+        v1[i] = 1.0 / double_complex(i + 1, i + 1);
+        v2[i] = 2.0;
         f1[i] = 1.0 / double_complex(i + 1, i + 1);
         f2[i] = 2.0;
     }
@@ -63,72 +72,72 @@ void test_vmul_drv()
     std::cout << "vector size: " << n << std::endl;
 
     double t = kernel1(repeat, n, v1, v2);
-    std::cout << "kernel1 time: " << t << " speed: " << double(n * (sizeof(double_complex) + sizeof(double)) * repeat) / t / (1 << 30) << " GBs" << std::endl;
+    std::cout << "kernel1 time: " << t << " speed: " << double(n * (2 * sizeof(double_complex) + sizeof(double)) * repeat) / t / (1 << 30) << " GBs" << std::endl;
 
     t = kernel2(repeat, n, f1, f2);
-    std::cout << "kernel2 time: " << t << " speed: " << double(n * (sizeof(double_complex) + sizeof(double)) * repeat) / t / (1 << 30) << " GBs" << std::endl;
+    std::cout << "kernel2 time: " << t << " speed: " << double(n * (2 * sizeof(double_complex) + sizeof(double)) * repeat) / t / (1 << 30) << " GBs" << std::endl;
 
     t = kernel3(repeat, n, f1, v2);
-    std::cout << "kernel3 time: " << t << " speed: " << double(n * (sizeof(double_complex) + sizeof(double)) * repeat) / t / (1 << 30) << " GBs" << std::endl;
+    std::cout << "kernel3 time: " << t << " speed: " << double(n * (2 * sizeof(double_complex) + sizeof(double)) * repeat) / t / (1 << 30) << " GBs" << std::endl;
 
 }
 
 }
+
 
 using namespace sirius;
 
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
                int num_fft_streams__, int num_threads_fft__, int use_gpu, double gpu_workload__)
 {
-    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
-    
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-    FFT3D_grid fft_grid(2.01 * cutoff__, M);
+    //== MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
+    //== 
+    //== matrix3d<double> M;
+    //== M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+    //== FFT3D_grid fft_grid(2.01 * cutoff__, M);
 
-    FFT3D_context fft_ctx(mpi_grid, fft_grid, num_fft_streams__, num_threads_fft__,
-                          static_cast<processing_unit_t>(use_gpu), gpu_workload__);
+    //== FFT3D_context fft_ctx(mpi_grid, fft_grid, num_fft_streams__, num_threads_fft__,
+    //==                       static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1),
-              mpi_grid.dimension_size(0), false, false);
+    //== Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1),
+    //==           mpi_grid.dimension_size(0), false, false);
+    int n = 216 * 216 * 216; //fft_ctx.fft(0)->local_size();
 
-    std::vector<double> pw_ekin(gvec.num_gvec(), 0);
-    std::vector<double> veff(fft_ctx.fft()->local_size(), 2.0);
+    //== std::vector<double> pw_ekin(gvec.num_gvec(), 0);
+    std::vector<double> veff(n, 2.0);
 
-    if (mpi_comm_world().rank() == 0)
-    {
-        printf("total number of G-vectors: %i\n", gvec.num_gvec());
-        printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
-        printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
-        printf("number of FFT streams: %i\n", fft_ctx.num_fft_streams());
-        printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
-    }
+    //== if (mpi_comm_world().rank() == 0)
+    //== {
+    //==     printf("total number of G-vectors: %i\n", gvec.num_gvec());
+    //==     printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
+    //==     printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
+    //==     printf("number of FFT streams: %i\n", fft_ctx.num_fft_streams());
+    //==     printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
+    //== }
 
-    mdarray<double_complex, 1> buf1(fft_ctx.fft()->local_size());
-    
-    for (int j = 0; j < fft_ctx.fft(0)->local_size(); j++)
+    mdarray<double_complex, 1> buf1(n);
+    for (int j = 0; j < n; j++)
     {
         buf1(j) = double_complex(1, 0);
-        fft_ctx.fft(0)->buffer(j) = double_complex(1, 0);
+        //fft_ctx.fft(0)->buffer(j) = double_complex(1, 0);
     }
 
     test_vmul::test_vmul_drv();
 
     double tloc = 0;
-    int n = fft_ctx.fft(0)->local_size();
     std::cout << "vector size: " << n << std::endl;
     for (int i = 0; i < num_bands__; i++)
     {
         double t = omp_get_wtime();
-        #pragma omp parallel for //num_threads(fft_ctx.fft(0)->num_fft_workers())
-        for (int j = 0; j < n; j++)
-            //fft_ctx.fft(0)->buffer(j) *= veff[j];
-            buf1[j] *= veff[j];
+        #pragma omp parallel for
+        for (int j = 0; j < n; j++) buf1[j] *= veff[j];
 
         tloc += (omp_get_wtime() - t);
     }
 
-    std::cout << "time: " << tloc << " speed: " << double(n * (sizeof(double_complex) + sizeof(double)) * num_bands__) / tloc / (1 << 30) << " GBs" << std::endl;
+    std::cout << "time: " << tloc << " speed: " << double(n * (2 * sizeof(double_complex) + sizeof(double)) * num_bands__) / tloc / (1 << 30) << " GBs" << std::endl;
+
+    test_vmul::test_vmul_drv();
 
 
 
