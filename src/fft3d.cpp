@@ -199,13 +199,26 @@ void FFT3D::transform_xy(Gvec const& gvec__)
     }
     #endif
 
-    std::vector<int> idx_map(gvec__.z_columns().size());
+    std::vector<int> z_col_pos(gvec__.z_columns().size());
     #pragma omp parallel for num_threads(num_fft_workers_)
     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
     {
         int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
         int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
-        idx_map[i] = x + y * grid_.size(0);
+        z_col_pos[i] = x + y * grid_.size(0);
+    }
+    std::vector<int> z_col_ipos;
+    if (use_reduction)
+    {
+        z_col_ipos = std::vector<int>(gvec__.z_columns().size());
+        #pragma omp parallel for num_threads(num_fft_workers_)
+        for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+        {
+            /* x,y coordinates of inverse G-vectors */
+            int x = (-gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+            int y = (-gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+            z_col_ipos[i] = x + y * grid_.size(0);
+        }
     }
 
     #pragma omp parallel num_threads(num_fft_workers_)
@@ -224,20 +237,11 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                     /* load z-columns into proper location */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        //int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
-                        //int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
-
-                        //fftw_buffer_xy_[tid][x + y * grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
-
-                        fftw_buffer_xy_[tid][idx_map[i]] = fft_buffer_aux_[iz + local_size_z_ * i];
+                        fftw_buffer_xy_[tid][z_col_pos[i]] = fft_buffer_aux_[iz + local_size_z_ * i];
 
                         if (use_reduction && i)
                         {
-                            /* x,y coordinates of inverse G-vectors */
-                            int x = (-gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
-                            int y = (-gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
-                            
-                            fftw_buffer_xy_[tid][x + y * grid_.size(0)] = std::conj(fft_buffer_aux_[iz + local_size_z_ * i]);
+                            fftw_buffer_xy_[tid][z_col_ipos[i]] = std::conj(fft_buffer_aux_[iz + local_size_z_ * i]);
                         }
                     }
                     
@@ -261,13 +265,8 @@ void FFT3D::transform_xy(Gvec const& gvec__)
 
                     /* get z-columns */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-                    {
-                        //int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
-                        //int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][z_col_pos[i]];
 
-                        //fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * grid_.size(0)];
-                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][idx_map[i]];
-                    }
                     break;
                 }
                 default:

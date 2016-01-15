@@ -147,51 +147,102 @@ class Hloc_operator
             #endif
         }
         
+        void apply_simple(int ispn__, Wave_functions<false>& hphi__)
+        {
+            int thread_id = 0;
+
+            double tloc1 = 0;
+            double tloc2 = 0;
+
+            for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
+            {
+                /* phi(G) -> phi(r) */
+                fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
+                double t = omp_get_wtime();
+                /* multiply by effective potential */
+                if (fft_ctx_.fft(thread_id)->hybrid())
+                {
+                    #ifdef __GPU
+                    scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+                                          fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                }
+                else
+                {
+                    #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                    for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
+                        fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
+
+                }
+                tloc1 += (omp_get_wtime() - t);
+                /* V(r)phi(r) -> [V*phi](G) */
+                fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
+
+                t = omp_get_wtime();
+                /* add kinetic energy */
+                #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
+                    hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
+                tloc2 += (omp_get_wtime() - t);
+            }
+            printf("local time: %f %f, total: %f\n", tloc1, tloc2, tloc1 + tloc2);
+            printf("speed Gb/s: %f\n", double(fft_ctx_.fft(thread_id)->size() * sizeof(double_complex) * hphi__.spl_num_swapped().local_size() / tloc1 / (1<<30)));
+        }
+
         void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
             hphi__.swap_forward(idx0__, n__);
-            
-            /* save omp_nested flag */
-            int nested = omp_get_nested();
-            omp_set_nested(1);
-            #pragma omp parallel num_threads(fft_ctx_.num_fft_streams())
+
+            if (fft_ctx_.num_fft_streams() == 1)
             {
-                int thread_id = omp_get_thread_num();
-
-                #pragma omp for schedule(dynamic, 1)
-                for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
-                {
-                    /* phi(G) -> phi(r) */
-                    fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
-                    /* multiply by effective potential */
-                    if (fft_ctx_.fft(thread_id)->hybrid())
-                    {
-                        #ifdef __GPU
-                        scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                                              fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
-                        #else
-                        TERMINATE_NO_GPU
-                        #endif
-                    }
-                    else
-                    {
-                        #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
-                        for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                            fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
-                    }
-                    /* V(r)phi(r) -> [V*phi](G) */
-                    fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
-
-                    /* add kinetic energy */
-                    #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
-                    for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
-                        hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
-                }
+                apply_simple(ispn__, hphi__);
             }
-            /* restore the nested flag */
-            omp_set_nested(nested);
+            else
+            {
+                /* save omp_nested flag */
+                int nested = omp_get_nested();
+                omp_set_nested(1);
+                #pragma omp parallel num_threads(fft_ctx_.num_fft_streams())
+                {
+                    int thread_id = omp_get_thread_num();
+
+                    #pragma omp for schedule(dynamic, 1)
+                    for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
+                    {
+                        /* phi(G) -> phi(r) */
+                        fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
+                        /* multiply by effective potential */
+                        if (fft_ctx_.fft(thread_id)->hybrid())
+                        {
+                            #ifdef __GPU
+                            scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+                                                  fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
+                            #else
+                            TERMINATE_NO_GPU
+                            #endif
+                        }
+                        else
+                        {
+                            #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                            for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
+                                fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
+                        }
+                        /* V(r)phi(r) -> [V*phi](G) */
+                        fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
+
+                        /* add kinetic energy */
+                        #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                        for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
+                            hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
+                    }
+                }
+                /* restore the nested flag */
+                omp_set_nested(nested);
+            }
 
             hphi__.swap_backward(idx0__, n__);
         }
