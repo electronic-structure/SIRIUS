@@ -133,26 +133,33 @@ class dmatrix
         /* forbid assigment operator */
         dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
 
+        /* This is a correct declaration of default move assigment operator:        
+
         dmatrix<T>& operator=(dmatrix<T>&& src) = default;
-        //{
-        //    if (this != &src)
-        //    {
-        //        num_rows_      = src.num_rows_;
-        //        num_cols_      = src.num_cols_;
-        //        num_ranks_row_ = src.num_ranks_row_;
-        //        rank_row_      = src.rank_row_;
-        //        num_ranks_col_ = src.num_ranks_col_;
-        //        rank_col_      = src.rank_col_;
-        //        bs_row_        = src.bs_row_;
-        //        bs_col_        = src.bs_col_;
-        //        blacs_grid_    = src.blacs_grid_;
-        //        spl_row_       = src.spl_row_;
-        //        spl_col_       = src.spl_col_;
-        //        matrix_local_  = std::move(src.matrix_local_);
-        //        for (int i = 0; i < 9; i++) descriptor_[i] = src.descriptor_[i];
-        //    }
-        //    return *this;
-        //}
+
+           however Intel compiler refuses to recognize it and explicit definition must be introduced.
+           There is no such problem with GCC.
+        */
+        dmatrix<T>& operator=(dmatrix<T>&& src)
+        {
+            if (this != &src)
+            {
+                num_rows_      = src.num_rows_;
+                num_cols_      = src.num_cols_;
+                num_ranks_row_ = src.num_ranks_row_;
+                rank_row_      = src.rank_row_;
+                num_ranks_col_ = src.num_ranks_col_;
+                rank_col_      = src.rank_col_;
+                bs_row_        = src.bs_row_;
+                bs_col_        = src.bs_col_;
+                blacs_grid_    = src.blacs_grid_;
+                spl_row_       = src.spl_row_;
+                spl_col_       = src.spl_col_;
+                matrix_local_  = std::move(src.matrix_local_);
+                for (int i = 0; i < 9; i++) descriptor_[i] = src.descriptor_[i];
+            }
+            return *this;
+        }
 
         inline void allocate(int mode__ = 0)
         {
