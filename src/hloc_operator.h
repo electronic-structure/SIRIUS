@@ -173,7 +173,7 @@ class Hloc_operator
                 {
                     double_complex* v1 = &fft_ctx_.fft(thread_id)->buffer(0);
                     double* v2 = &veff_vec_(0, ispn__);
-                    #pragma omp parallel for //num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                    #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                     for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
                         v1[ir] *= v2[ir];
                         //fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
@@ -185,13 +185,13 @@ class Hloc_operator
 
                 t = omp_get_wtime();
                 /* add kinetic energy */
-                #pragma omp parallel for //num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                 for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
                     hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
                 tloc2 += (omp_get_wtime() - t);
             }
             printf("local time: %f %f, total: %f\n", tloc1, tloc2, tloc1 + tloc2);
-            printf("speed Gb/s: %f\n", double(fft_ctx_.fft(thread_id)->size() * sizeof(double_complex) * hphi__.spl_num_swapped().local_size() / tloc1 / (1<<30)));
+            printf("speed Gb/s: %f\n", double(2*16+8) * fft_ctx_.fft(thread_id)->local_size() * hphi__.spl_num_swapped().local_size() / tloc1 / (1<<30));
         }
 
         void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
