@@ -171,9 +171,12 @@ class Hloc_operator
                 }
                 else
                 {
-                    #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                    double_complex* v1 = &fft_ctx_.fft(thread_id)->buffer(0);
+                    double* v2 = &veff_vec_(0, ispn__);
+                    #pragma omp parallel for //num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                     for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                        fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
+                        v1[ir] *= v2[ir];
+                        //fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
 
                 }
                 tloc1 += (omp_get_wtime() - t);
@@ -182,7 +185,7 @@ class Hloc_operator
 
                 t = omp_get_wtime();
                 /* add kinetic energy */
-                #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
+                #pragma omp parallel for //num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                 for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
                     hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
                 tloc2 += (omp_get_wtime() - t);
