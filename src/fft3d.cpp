@@ -199,10 +199,19 @@ void FFT3D::transform_xy(Gvec const& gvec__)
     }
     #endif
 
+    std::vector<int> idx_map(gvec__.z_columns().size());
+    #pragma omp parallel for num_threads(num_fft_workers_)
+    for (size_t i = 0; i < gvec__.z_columns().size(); i++)
+    {
+        int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+        int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+        idx_map[i] = x + y * grid_.size(0);
+    }
+
     #pragma omp parallel num_threads(num_fft_workers_)
     {
         int tid = omp_get_thread_num();
-        #pragma omp for
+        #pragma omp for schedule(static)
         for (int iz = first_z; iz < local_size_z_; iz++)
         {
             switch (direction)
@@ -210,14 +219,17 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                 case 1:
                 {
                     /* clear xy-buffer */
-                    std::memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+                    //std::memset(fftw_buffer_xy_[tid], 0, sizeof(double_complex) * size_xy);
+                    sirius::memset_simple(fftw_buffer_xy_[tid], double_complex(0, 0), size_xy);
                     /* load z-columns into proper location */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
-                        int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+                        //int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+                        //int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
 
-                        fftw_buffer_xy_[tid][x + y * grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
+                        //fftw_buffer_xy_[tid][x + y * grid_.size(0)] = fft_buffer_aux_[iz + local_size_z_ * i];
+
+                        fftw_buffer_xy_[tid][idx_map[i]] = fft_buffer_aux_[iz + local_size_z_ * i];
 
                         if (use_reduction && i)
                         {
@@ -228,18 +240,21 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                             fftw_buffer_xy_[tid][x + y * grid_.size(0)] = std::conj(fft_buffer_aux_[iz + local_size_z_ * i]);
                         }
                     }
-
+                    
                     /* execute local FFT transform */
                     fftw_execute(plan_backward_xy_[tid]);
 
                     /* copy xy plane to the FFT buffer */
-                    std::memcpy(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                    //std::memcpy(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], sizeof(fftw_complex) * size_xy);
+                    sirius::memcpy_simple(&fft_buffer_[iz * size_xy], fftw_buffer_xy_[tid], size_xy);
+                    
                     break;
                 }
                 case -1:
                 {
                     /* copy xy plane from the fft buffer */
-                    std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+                    //std::memcpy(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], sizeof(fftw_complex) * size_xy);
+                    sirius::memcpy_simple(fftw_buffer_xy_[tid], &fft_buffer_[iz * size_xy], size_xy);
 
                     /* execute local FFT transform */
                     fftw_execute(plan_forward_xy_[tid]);
@@ -247,10 +262,11 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                     /* get z-columns */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
-                        int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
+                        //int x = (gvec__.z_column(i).x + grid_.size(0)) % grid_.size(0);
+                        //int y = (gvec__.z_column(i).y + grid_.size(1)) % grid_.size(1);
 
-                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * grid_.size(0)];
+                        //fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][x + y * grid_.size(0)];
+                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][idx_map[i]];
                     }
                     break;
                 }
