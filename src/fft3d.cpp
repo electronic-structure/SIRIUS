@@ -237,10 +237,12 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                     /* load z-columns into proper location */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        fftw_buffer_xy_[tid][z_col_pos[i]] = fft_buffer_aux_[iz + local_size_z_ * i];
+                        //fftw_buffer_xy_[tid][z_col_pos[i]] = fft_buffer_aux_[iz + local_size_z_ * i];
+                        fftw_buffer_xy_[tid][z_col_pos[i]] = fft_buffer_aux_[iz * gvec__.z_columns().size() + i];
 
                         if (use_reduction && i)
                         {
+                            STOP();
                             fftw_buffer_xy_[tid][z_col_ipos[i]] = std::conj(fft_buffer_aux_[iz + local_size_z_ * i]);
                         }
                     }
@@ -265,7 +267,8 @@ void FFT3D::transform_xy(Gvec const& gvec__)
 
                     /* get z-columns */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-                        fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][z_col_pos[i]];
+                        //fft_buffer_aux_(iz + local_size_z_ * i) = fftw_buffer_xy_[tid][z_col_pos[i]];
+                        fft_buffer_aux_(iz * gvec__.z_columns().size() + i) = fftw_buffer_xy_[tid][z_col_pos[i]];
 
                     break;
                 }
@@ -339,16 +342,22 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
                     /* execute 1D transform of a z-column */
                     fftw_execute(plan_backward_z_[tid]);
 
-                    /* load full column into auxiliary buffer */
-                    std::memcpy(&fft_buffer_aux_[i * grid_.size(2)], fftw_buffer_z_[tid],
-                                grid_.size(2) * sizeof(double_complex));
+                    for (int iz = 0; iz < grid_.size(2); iz++)
+                        fft_buffer_aux_[iz * gvec__.z_columns().size() + i] = fftw_buffer_z_[tid][iz];
+
+                    ///* load full column into auxiliary buffer */
+                    //std::memcpy(&fft_buffer_aux_[i * grid_.size(2)], fftw_buffer_z_[tid],
+                    //            grid_.size(2) * sizeof(double_complex));
                     break;
                 }
                 case -1:
                 {
+                    for (int iz = 0; iz < grid_.size(2); iz++)
+                        fftw_buffer_z_[tid][iz] = fft_buffer_aux_[iz * gvec__.z_columns().size() + i];
+
                     /* load full column from auxiliary buffer */
-                    std::memcpy(fftw_buffer_z_[tid], &fft_buffer_aux_[i * grid_.size(2)],
-                                grid_.size(2) * sizeof(double_complex));
+                    //std::memcpy(fftw_buffer_z_[tid], &fft_buffer_aux_[i * grid_.size(2)],
+                    //            grid_.size(2) * sizeof(double_complex));
 
                     /* execute 1D transform of a z-column */
                     fftw_execute(plan_forward_z_[tid]);
