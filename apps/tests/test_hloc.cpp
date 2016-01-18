@@ -26,6 +26,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
         printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
         printf("number of FFT streams: %i\n", fft_ctx.num_fft_streams());
+        printf("number of FFT threads: %i\n", num_threads_fft__);
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
     }
 
