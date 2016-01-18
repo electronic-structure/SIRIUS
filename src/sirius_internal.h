@@ -96,14 +96,12 @@ namespace sirius {
         fftw_cleanup();
     }
 
-    template <typename T>
-    inline void memset_simple(T* ptr__, T val__, size_t n__)
+    inline void memset_simple(double* ptr__, double val__, size_t n__)
     {
         for (size_t i = 0; i < n__; i++) ptr__[i] = val__;
     }
 
-    template <typename T>
-    inline void memcpy_simple(T* dest__, T const* src__, size_t n__)
+    inline void memcpy_simple(double* dest__, double const* src__, size_t n__)
     {
         for (size_t i = 0; i < n__; i++) dest__[i] = src__[i];
     }

@@ -151,14 +151,10 @@ class Hloc_operator
         {
             int thread_id = 0;
 
-            double tloc1 = 0;
-            double tloc2 = 0;
-
             for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
             {
                 /* phi(G) -> phi(r) */
                 fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
-                double t = omp_get_wtime();
                 /* multiply by effective potential */
                 if (fft_ctx_.fft(thread_id)->hybrid())
                 {
@@ -171,27 +167,19 @@ class Hloc_operator
                 }
                 else
                 {
-                    double_complex* v1 = &fft_ctx_.fft(thread_id)->buffer(0);
-                    double* v2 = &veff_vec_(0, ispn__);
                     #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                     for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                        v1[ir] *= v2[ir];
-                        //fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
+                        fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
 
                 }
-                tloc1 += (omp_get_wtime() - t);
                 /* V(r)phi(r) -> [V*phi](G) */
                 fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
 
-                t = omp_get_wtime();
                 /* add kinetic energy */
                 #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
                 for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
                     hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
-                tloc2 += (omp_get_wtime() - t);
             }
-            printf("local time: %f %f, total: %f\n", tloc1, tloc2, tloc1 + tloc2);
-            printf("speed Gb/s: %f\n", double(2*16+8) * fft_ctx_.fft(thread_id)->local_size() * hphi__.spl_num_swapped().local_size() / tloc1 / (1<<30));
         }
 
         void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
