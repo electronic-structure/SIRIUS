@@ -20,7 +20,6 @@ int main(int argn, char** argv)
         exit(0);
     }
 
-    sirius::initialize(1);
     int n = 20000000;
     std::vector<double> v1(n, 1.0);
     std::vector<double> v2(n, 2.0);
@@ -50,6 +49,4 @@ int main(int argn, char** argv)
     t += omp_get_wtime();
     printf("memset(sirius) bandwidth: %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
 
-
-    sirius::finalize();
 }
