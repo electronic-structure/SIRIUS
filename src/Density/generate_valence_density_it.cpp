@@ -16,11 +16,11 @@ void Density::generate_valence_density_it(K_set& ks__)
         
         if (ctx_.full_potential())
         {
-            add_k_point_contribution_it<true>(kp);
+            add_k_point_contribution_rg<true>(kp);
         }
         else
         {
-            add_k_point_contribution_it<false>(kp);
+            add_k_point_contribution_rg<false>(kp);
         }
     }
 

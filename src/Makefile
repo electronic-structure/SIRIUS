@@ -13,7 +13,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \
-       Density/add_k_point_contribution_it.cpp \
+       Density/add_k_point_contribution_rg.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
        Density/generate.cpp \
