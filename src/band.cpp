@@ -958,7 +958,7 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
             int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
                                              kp->gklo_basis_descriptor_col(igk_col).gvec);
             
-            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
         }
     }
 }

@@ -40,6 +40,11 @@ int main(int argn, char** argv)
     printf("memcpy(simple) bandwidth: %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
 
     t = -omp_get_wtime();
+    std::copy(v2.begin(), v2.end(), v1.begin());
+    t += omp_get_wtime();
+    printf("std::copy bandwidth     : %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
+
+    t = -omp_get_wtime();
     std::memset(&v1[0], 0, n * sizeof(double));
     t += omp_get_wtime();
     printf("memset(stdlib) bandwidth: %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
@@ -48,5 +53,10 @@ int main(int argn, char** argv)
     sirius::memset_simple(&v1[0], 0.0, n);
     t += omp_get_wtime();
     printf("memset(sirius) bandwidth: %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
+
+    t = -omp_get_wtime();
+    std::fill(v1.begin(), v1.end(), 0.0);
+    t += omp_get_wtime();
+    printf("std::fill bandwidth     : %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
 
 }

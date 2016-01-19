@@ -33,7 +33,7 @@ Potential::Potential(Simulation_context& ctx__)
     : ctx_(ctx__),
       unit_cell_(ctx__.unit_cell()),
       comm_(ctx__.comm()),
-      fft_(ctx__.fft(0)),
+      fft_(ctx__.fft()),
       pseudo_density_order(9)
 {
     runtime::Timer t("sirius::Potential::Potential");
@@ -346,17 +346,17 @@ Potential::~Potential()
 
 void Potential::generate_pw_coefs()
 {
-    for (int ir = 0; ir < fft_->local_size(); ir++)
-        fft_->buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function()->theta_r(ir);
+    for (int ir = 0; ir < fft_.local_size(); ir++)
+        fft_.buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z2 = mdarray<double_complex, 1>(&fft_->buffer(0), fft_->size()).checksum();
-    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it(0) , fft_->size()).checksum());
+    double_complex z2 = mdarray<double_complex, 1>(&fft_.buffer(0), fft_.size()).checksum();
+    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it(0) , fft_.size()).checksum());
     DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
     
-    fft_->transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().offset_gvec_fft()));
-    fft_->comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().offset_gvec_fft(), ctx_.gvec().num_gvec_fft());
+    fft_.transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().offset_gvec_fft()));
+    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().offset_gvec_fft(), ctx_.gvec().num_gvec_fft());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(veff_it): %18.10f", effective_potential()->f_it().checksum());
@@ -368,12 +368,12 @@ void Potential::generate_pw_coefs()
     {
         for (int i = 0; i < ctx_.num_mag_dims(); i++)
         {
-            for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function()->theta_r(ir);
+            for (int ir = 0; ir < fft_.size(); ir++)
+                fft_.buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function().theta_r(ir);
             
             STOP();
-            //fft_->transform(-1, ctx_.gvec().z_sticks_coord());
-            //fft_->output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
+            //fft_.transform(-1, ctx_.gvec().z_sticks_coord());
+            //fft_.output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
         }
     }
 
@@ -525,7 +525,7 @@ void Potential::set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
     // set temporary array wrapper
     mdarray<double,4> beffmt_tmp(beffmt, ctx_.lmmax_pot(), unit_cell_.max_num_mt_points(), 
                                  unit_cell_.num_atoms(), ctx_.num_mag_dims());
-    mdarray<double,2> beffit_tmp(beffit, fft_->size(), ctx_.num_mag_dims());
+    mdarray<double,2> beffit_tmp(beffit, fft_.size(), ctx_.num_mag_dims());
     
     if (ctx_.num_mag_dims() == 1)
     {

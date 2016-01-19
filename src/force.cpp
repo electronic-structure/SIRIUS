@@ -247,18 +247,18 @@ void Force::total_force(Simulation_context& ctx__,
 
     auto& uc = ctx__.unit_cell();
 
-    auto ffac = ctx__.step_function()->get_step_function_form_factors(ctx__.gvec().num_shells());
+    auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells());
 
     force__.zero();
 
     mdarray<double, 2> forcek(3, uc.num_atoms());
-    for (int ikloc = 0; ikloc < (int)ks__->spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks__->spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks__->spl_num_kpoints(ikloc);
         ibs_force(ctx__, ks__->band(), (*ks__)[ik], ffac, forcek);
         for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
-            for (int x = 0; x < 3; x++) force__(x, ia) += forcek(x, ia);
+            for (int x: {0, 1, 2}) force__(x, ia) += forcek(x, ia);
         }
     }
     ctx__.comm().allreduce(&force__(0, 0), (int)force__.size());

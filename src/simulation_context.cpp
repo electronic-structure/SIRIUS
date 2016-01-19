@@ -19,11 +19,11 @@ void Simulation_context::init_fft()
     /* coarse FFT grid for applying Hloc */
     FFT3D_grid fft_coarse_grid(2 * gk_cutoff(), rlv);
 
-    fft_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_grid, num_fft_streams_, num_threads_fft_, processing_unit());
+    fft_ = new FFT3D(fft_grid, mpi_grid_fft_->communicator(1 << 1), processing_unit(), 0.9);
+
     if (!full_potential())
     {
-        fft_coarse_ctx_ = new FFT3D_context(*mpi_grid_fft_, fft_coarse_grid, num_fft_streams_, num_threads_fft_,
-                                            processing_unit());
+        fft_coarse_ = new FFT3D(fft_coarse_grid, mpi_grid_fft_->communicator(1 << 1), processing_unit(), 0.9);
     }
 
     /* create a list of G-vectors for dense FFT grid */
@@ -92,7 +92,7 @@ void Simulation_context::initialize()
     MEMORY_USAGE_INFO();
     #endif
 
-    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_ctx_->fft(0), gvec_, comm_);
+    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, gvec_, comm_);
 
     if (iterative_solver_input_section().real_space_prj_) 
     {
@@ -171,6 +171,164 @@ void Simulation_context::initialize()
     time_active_ = -Utils::current_time();
 
     initialized_ = true;
+}
+
+void Simulation_context::print_info()
+{
+    printf("\n");
+    printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
+    printf("git hash       : %s\n", git_hash);
+    printf("build date     : %s\n", build_date);
+    printf("\n");
+    printf("number of MPI ranks           : %i\n", comm_.size());
+    printf("MPI grid                      :");
+    for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->dimension_size(i));
+    printf("\n");
+    printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
+    printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(0));
+    printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(1));
+
+    printf("\n");
+    printf("FFT context for density and potential\n");
+    printf("=====================================\n");
+    printf("  plane wave cutoff                     : %f\n", pw_cutoff());
+    auto fft_grid = fft_->grid();
+    printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
+                                                                                fft_grid.size(1),
+                                                                                fft_grid.size(2),
+                                                                                fft_grid.size());
+    printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
+                                                                                fft_grid.limits(0).second,
+                                                                                fft_grid.limits(1).first,
+                                                                                fft_grid.limits(1).second,
+                                                                                fft_grid.limits(2).first,
+                                                                                fft_grid.limits(2).second);
+    printf("  number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
+    printf("  number of G-shells                    : %i\n", gvec_.num_shells());
+    printf("\n");
+    if (!full_potential())
+    {
+        printf("\n");
+        printf("FFT context for applying Hloc\n");
+        printf("=============================\n");
+        auto fft_grid = fft_coarse_->grid();
+        printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
+                                                                                    fft_grid.size(1),
+                                                                                    fft_grid.size(2),
+                                                                                    fft_grid.size());
+        printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
+                                                                                    fft_grid.limits(0).second,
+                                                                                    fft_grid.limits(1).first,
+                                                                                    fft_grid.limits(1).second,
+                                                                                    fft_grid.limits(2).first,
+                                                                                    fft_grid.limits(2).second);
+        printf("  number of G-vectors within the cutoff : %i\n", gvec_coarse_.num_gvec());
+        printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
+        printf("\n");
+    }
+
+    unit_cell_.print_info();
+    for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
+
+    printf("\n");
+    printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
+    printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
+    printf("number of first-variational states : %i\n", num_fv_states());
+    printf("number of bands                    : %i\n", num_bands());
+    printf("number of spins                    : %i\n", num_spins());
+    printf("number of magnetic dimensions      : %i\n", num_mag_dims());
+    printf("lmax_apw                           : %i\n", lmax_apw());
+    printf("lmax_pw                            : %i\n", lmax_pw());
+    printf("lmax_rho                           : %i\n", lmax_rho());
+    printf("lmax_pot                           : %i\n", lmax_pot());
+    printf("lmax_rf                            : %i\n", unit_cell_.lmax());
+    printf("smearing width                     : %f\n", smearing_width());
+    printf("cyclic block size                  : %i\n", cyclic_block_size());
+
+    //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
+    //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
+    //== for (int i = 0; i < 2; i++)
+    //== {
+    //==     printf("\n");
+    //==     printf("%s", evsn[i].c_str());
+    //==     switch (evst[i])
+    //==     {
+    //==         case ev_lapack:
+    //==         {
+    //==             printf("LAPACK\n");
+    //==             break;
+    //==         }
+    //==         #ifdef __SCALAPACK
+    //==         case ev_scalapack:
+    //==         {
+    //==             printf("ScaLAPACK, block size %i\n", linalg<scalapack>::cyclic_block_size());
+    //==             break;
+    //==         }
+    //==         case ev_elpa1:
+    //==         {
+    //==             printf("ELPA1, block size %i\n", linalg<scalapack>::cyclic_block_size());
+    //==             break;
+    //==         }
+    //==         case ev_elpa2:
+    //==         {
+    //==             printf("ELPA2, block size %i\n", linalg<scalapack>::cyclic_block_size());
+    //==             break;
+    //==         }
+    //==         case ev_rs_gpu:
+    //==         {
+    //==             printf("RS_gpu\n");
+    //==             break;
+    //==         }
+    //==         case ev_rs_cpu:
+    //==         {
+    //==             printf("RS_cpu\n");
+    //==             break;
+    //==         }
+    //==         #endif
+    //==         case ev_magma:
+    //==         {
+    //==             printf("MAGMA\n");
+    //==             break;
+    //==         }
+    //==         case ev_plasma:
+    //==         {
+    //==             printf("PLASMA\n");
+    //==             break;
+    //==         }
+    //==         default:
+    //==         {
+    //==             error_local(__FILE__, __LINE__, "wrong eigen-value solver");
+    //==         }
+    //==     }
+    //== }
+
+    printf("\n");
+    printf("processing unit : ");
+    switch (processing_unit())
+    {
+        case CPU:
+        {
+            printf("CPU\n");
+            break;
+        }
+        case GPU:
+        {
+            printf("GPU\n");
+            break;
+        }
+    }
+    
+    printf("\n");
+    printf("XC functionals\n");
+    printf("==============\n");
+    for (auto& xc_label: xc_functionals())
+    {
+        XC_functional xc(xc_label, num_spins());
+        printf("%s\n", xc_label.c_str());
+        printf("%s\n", xc.name().c_str());
+        printf("%s\n", xc.refs().c_str());
+        printf("\n");
+    }
 }
 
 };

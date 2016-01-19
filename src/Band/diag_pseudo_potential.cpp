@@ -8,9 +8,9 @@ void Band::diag_pseudo_potential(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
 
-    ctx_.fft_coarse_ctx().prepare();
+    ctx_.fft_coarse().prepare();
 
-    Hloc_operator hloc(ctx_.fft_coarse_ctx(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
+    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
     auto pu = ctx_.processing_unit();
@@ -80,7 +80,7 @@ void Band::diag_pseudo_potential(K_point* kp__,
         TERMINATE("unknown iterative solver type");
     }
 
-    ctx_.fft_coarse_ctx().dismiss();
+    ctx_.fft_coarse().dismiss();
 }
 
 };

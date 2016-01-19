@@ -30,12 +30,12 @@ Periodic_function<T>::Periodic_function(Simulation_context& ctx__,
       unit_cell_(ctx__.unit_cell()), 
       step_function_(ctx__.step_function()),
       comm_(ctx__.comm()),
-      fft_(ctx__.fft(0)),
+      fft_(ctx__.fft()),
       gvec_(gvec__),
       angular_domain_size_(angular_domain_size__),
       num_gvec_(0)
 {
-    f_rg_ = mdarray<T, 1>(fft_->local_size());
+    f_rg_ = mdarray<T, 1>(fft_.local_size());
 
     if (gvec_ != nullptr)
     {
@@ -132,7 +132,7 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
 {
     runtime::Timer t("sirius::Periodic_function::add");
 
-    for (int irloc = 0; irloc < fft_->local_size(); irloc++)
+    for (int irloc = 0; irloc < fft_.local_size(); irloc++)
         f_rg_(irloc) += g->f_rg(irloc);
     
     if (parameters_.full_potential())
@@ -147,19 +147,19 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
 {
     it_val = 0.0;
     
-    if (step_function_ == nullptr)
+    if (!parameters_.full_potential())
     {
-        for (int irloc = 0; irloc < fft_->local_size(); irloc++) it_val += f_rg_(irloc);
+        for (int irloc = 0; irloc < fft_.local_size(); irloc++) it_val += f_rg_(irloc);
     }
     else
     {
-        for (int irloc = 0; irloc < fft_->local_size(); irloc++)
+        for (int irloc = 0; irloc < fft_.local_size(); irloc++)
         {
-            it_val += f_rg_(irloc) * step_function_->theta_r(irloc);
+            it_val += f_rg_(irloc) * step_function_.theta_r(irloc);
         }
     }
-    it_val *= (unit_cell_.omega() / fft_->size());
-    fft_->comm().allreduce(&it_val, 1);
+    it_val *= (unit_cell_.omega() / fft_.size());
+    fft_.comm().allreduce(&it_val, 1);
     T total = it_val;
     
     if (parameters_.full_potential())
@@ -203,7 +203,7 @@ void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 template <typename T>
 size_t Periodic_function<T>::size()
 {
-    size_t size = fft_->size();
+    size_t size = fft_.size();
     if (parameters_.full_potential())
     {
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
@@ -231,7 +231,7 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) mixer__->input(offset__ + n++, f_rg_(ir));
+    for (int ir = 0; ir < fft_.size(); ir++) mixer__->input(offset__ + n++, f_rg_(ir));
 
     return n;
 }
@@ -252,7 +252,7 @@ size_t Periodic_function<T>::unpack(T const* array__)
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) f_rg_(ir) = array__[n++];
+    for (int ir = 0; ir < fft_.size(); ir++) f_rg_(ir) = array__[n++];
 
     return n;
 }

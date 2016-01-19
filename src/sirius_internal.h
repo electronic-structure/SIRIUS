@@ -95,16 +95,6 @@ namespace sirius {
         #endif
         fftw_cleanup();
     }
-
-    inline void memset_simple(double* ptr__, double val__, size_t n__)
-    {
-        for (size_t i = 0; i < n__; i++) ptr__[i] = val__;
-    }
-
-    inline void memcpy_simple(double* dest__, double const* src__, size_t n__)
-    {
-        for (size_t i = 0; i < n__; i++) dest__[i] = src__[i];
-    }
 };
 
 #define TERMINATE_NO_GPU TERMINATE("not compiled with GPU support");

@@ -35,9 +35,9 @@ void K_point::test_fv_states()
                 }
             }
         }
-        ctx_.fft(0)->transform<1>(gkvec_, &fv_states<true>()[i][unit_cell_.mt_basis_size()]);
-        for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++) ctx_.fft(0)->buffer(ir) *= ctx_.step_function()->theta_r(ir);
-        ctx_.fft(0)->transform<-1>(gkvec_, &o_fv[i][unit_cell_.mt_basis_size()]);
+        ctx_.fft().transform<1>(gkvec_, &fv_states<true>()[i][unit_cell_.mt_basis_size()]);
+        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+        ctx_.fft().transform<-1>(gkvec_, &o_fv[i][unit_cell_.mt_basis_size()]);
     }
     o_fv.swap_backward(0, ctx_.num_fv_states());
 

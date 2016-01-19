@@ -11,28 +11,26 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
     FFT3D_grid fft_grid(2.01 * cutoff__, M);
 
-    FFT3D_context fft_ctx(mpi_grid, fft_grid, num_fft_streams__, num_threads_fft__,
-                          static_cast<processing_unit_t>(use_gpu), gpu_workload__);
+    FFT3D fft(fft_grid, mpi_grid.communicator(1 << 1), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1),
               mpi_grid.dimension_size(0), false, false);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
-    std::vector<double> veff(fft_ctx.fft()->local_size(), 2.0);
+    std::vector<double> veff(fft.local_size(), 2.0);
 
     if (mpi_comm_world().rank() == 0)
     {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
         printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
-        printf("number of FFT streams: %i\n", fft_ctx.num_fft_streams());
-        printf("number of FFT threads: %i\n", num_threads_fft__);
+        printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
     }
 
-    fft_ctx.prepare();
+    fft.prepare();
     
-    Hloc_operator hloc(fft_ctx, gvec, veff);
+    Hloc_operator hloc(fft, gvec, veff);
 
     Wave_functions<false> phi(4 * num_bands__, gvec, mpi_grid, CPU);
     for (int i = 0; i < 4 * num_bands__; i++)
@@ -66,7 +64,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("diff: %18.12f\n", diff);
     }
 
-    fft_ctx.dismiss();
+    fft.dismiss();
 }
 
 int main(int argn, char** argv)

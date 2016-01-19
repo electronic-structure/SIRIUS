@@ -34,7 +34,7 @@ class Hloc_operator
 {
     private:
 
-        FFT3D_context& fft_ctx_;
+        FFT3D& fft_;
 
         Gvec const& gkvec_;
 
@@ -42,7 +42,7 @@ class Hloc_operator
 
         mdarray<double, 2> veff_vec_;
 
-        mdarray<double_complex, 2> vphi_;
+        mdarray<double_complex, 1> vphi_;
         
         /// V(G=0) matrix elements.
         double v0_[2];
@@ -50,17 +50,17 @@ class Hloc_operator
     public:
         
         /** This is used internally to benchmark and profile the Hloc kernel */
-        Hloc_operator(FFT3D_context& fft_ctx__,
+        Hloc_operator(FFT3D& fft__,
                       Gvec const& gkvec__,
                       std::vector<double> veff__)
-            : fft_ctx_(fft_ctx__),
+            : fft_(fft__),
               gkvec_(gkvec__)
         {
             pw_ekin_ = std::vector<double>(gkvec_.num_gvec_fft(), 0);
             
-            veff_vec_ = mdarray<double, 2>(fft_ctx_.fft()->local_size(), 1);
-            std::memcpy(&veff_vec_[0], &veff__[0], fft_ctx_.fft()->local_size() * sizeof(double));
-            vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
+            veff_vec_ = mdarray<double, 2>(fft_.local_size(), 1);
+            std::memcpy(&veff_vec_[0], &veff__[0], fft_.local_size() * sizeof(double));
+            vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
             #ifdef __GPU
             if (fft_ctx_.pu() == GPU)
             {
@@ -74,13 +74,13 @@ class Hloc_operator
          *  \param [in] gvec G-vectors of the coarse FFT grid.
          *  \param [in] gkvec G-vectors of the wave-functions.
          */
-        Hloc_operator(FFT3D_context& fft_ctx__,
+        Hloc_operator(FFT3D& fft__,
                       Gvec const& gvec__,
                       Gvec const& gkvec__,
                       int num_mag_dims__,
                       Periodic_function<double>* effective_potential__,
                       Periodic_function<double>* effective_magnetic_field__[3]) 
-            : fft_ctx_(fft_ctx__),
+            : fft_(fft__),
               gkvec_(gkvec__)
         {
             /* cache kinteic energy of plane-waves */
@@ -99,7 +99,7 @@ class Hloc_operator
             veff_vec[0] = effective_potential__;
             for (int j = 0; j < num_mag_dims__; j++) veff_vec[1 + j] = effective_magnetic_field__[j];
 
-            veff_vec_ = mdarray<double, 2>(fft_ctx_.fft()->local_size(), num_mag_dims__ + 1);
+            veff_vec_ = mdarray<double, 2>(fft_.local_size(), num_mag_dims__ + 1);
 
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++)
@@ -111,13 +111,13 @@ class Hloc_operator
                     auto G = gvec__[ig + gvec__.offset_gvec_fft()];
                     v_pw_coarse[ig] = veff_vec[j]->f_pw(G);
                 }
-                fft_ctx_.fft()->transform<1>(gvec__, &v_pw_coarse[0]);
-                fft_ctx_.fft()->output(&veff_vec_(0, j));
+                fft_.transform<1>(gvec__, &v_pw_coarse[0]);
+                fft_.output(&veff_vec_(0, j));
             }
 
             if (num_mag_dims__)
             {
-                for (int ir = 0; ir < fft_ctx_.fft()->local_size(); ir++)
+                for (int ir = 0; ir < fft_.local_size(); ir++)
                 {
                     double v0 = veff_vec_(ir, 0);
                     double v1 = veff_vec_(ir, 1);
@@ -136,7 +136,7 @@ class Hloc_operator
                 v0_[1] = veff_vec[0]->f_pw(0).real() - veff_vec[1]->f_pw(0).real();
             }
 
-            vphi_ = mdarray<double_complex, 2>(gkvec__.num_gvec_fft(), fft_ctx_.num_fft_streams());
+            vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
 
             #ifdef __GPU
             if (fft_ctx_.pu() == GPU)
@@ -147,92 +147,38 @@ class Hloc_operator
             #endif
         }
         
-        void apply_simple(int ispn__, Wave_functions<false>& hphi__)
-        {
-            int thread_id = 0;
-
-            for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
-            {
-                /* phi(G) -> phi(r) */
-                fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
-                /* multiply by effective potential */
-                if (fft_ctx_.fft(thread_id)->hybrid())
-                {
-                    #ifdef __GPU
-                    scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                                          fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
-                    #else
-                    TERMINATE_NO_GPU
-                    #endif
-                }
-                else
-                {
-                    #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
-                    for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                        fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
-
-                }
-                /* V(r)phi(r) -> [V*phi](G) */
-                fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
-
-                /* add kinetic energy */
-                #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
-                for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
-                    hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
-            }
-        }
-
         void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
             hphi__.swap_forward(idx0__, n__);
 
-            if (fft_ctx_.num_fft_streams() == 1)
+            for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
             {
-                apply_simple(ispn__, hphi__);
-            }
-            else
-            {
-                /* save omp_nested flag */
-                int nested = omp_get_nested();
-                omp_set_nested(1);
-                #pragma omp parallel num_threads(fft_ctx_.num_fft_streams())
+                /* phi(G) -> phi(r) */
+                fft_.transform<1>(gkvec_, hphi__[i]);
+                /* multiply by effective potential */
+                if (fft_.hybrid())
                 {
-                    int thread_id = omp_get_thread_num();
-
-                    #pragma omp for schedule(dynamic, 1)
-                    for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
-                    {
-                        /* phi(G) -> phi(r) */
-                        fft_ctx_.fft(thread_id)->transform<1>(gkvec_, hphi__[i]);
-                        /* multiply by effective potential */
-                        if (fft_ctx_.fft(thread_id)->hybrid())
-                        {
-                            #ifdef __GPU
-                            scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                                                  fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
-                            #else
-                            TERMINATE_NO_GPU
-                            #endif
-                        }
-                        else
-                        {
-                            #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
-                            for (int ir = 0; ir < fft_ctx_.fft(thread_id)->local_size(); ir++)
-                                fft_ctx_.fft(thread_id)->buffer(ir) *= veff_vec_(ir, ispn__);
-                        }
-                        /* V(r)phi(r) -> [V*phi](G) */
-                        fft_ctx_.fft(thread_id)->transform<-1>(gkvec_, &vphi_(0, thread_id));
-
-                        /* add kinetic energy */
-                        #pragma omp parallel for num_threads(fft_ctx_.fft(thread_id)->num_fft_workers())
-                        for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
-                            hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_(ig, thread_id);
-                    }
+                    #ifdef __GPU
+                    scale_matrix_rows_gpu(fft_.local_size(), 1, fft_.buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
                 }
-                /* restore the nested flag */
-                omp_set_nested(nested);
+                else
+                {
+                    #pragma omp parallel for
+                    for (int ir = 0; ir < fft_.local_size(); ir++) fft_.buffer(ir) *= veff_vec_(ir, ispn__);
+
+                }
+                /* V(r)phi(r) -> [V*phi](G) */
+                fft_.transform<-1>(gkvec_, &vphi_[0]);
+
+                /* add kinetic energy */
+                #pragma omp parallel for
+                for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
+                    hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_[ig];
             }
 
             hphi__.swap_backward(idx0__, n__);

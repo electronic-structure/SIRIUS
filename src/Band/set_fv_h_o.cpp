@@ -414,8 +414,8 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
             /* pw kinetic energy */
             double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
                                
-            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function()->theta_pw(ig12));
-            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
+            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function().theta_pw(ig12));
+            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
         }
     }
 }
