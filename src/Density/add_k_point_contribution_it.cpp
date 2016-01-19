@@ -5,32 +5,28 @@
 namespace sirius {
 
 #ifdef __GPU
-extern "C" void update_it_density_matrix_1_gpu(int fft_size, 
-                                               int ispin,
-                                               cuDoubleComplex const* psi_it, 
-                                               double wt, 
-                                               double* it_density_matrix);
+extern "C" void update_density_rg_1_gpu(int size__, 
+                                        cuDoubleComplex const* psi_rg__, 
+                                        double wt__, 
+                                        double* density_rg__);
 #endif
 
 template <bool mt_spheres>
-void Density::add_k_point_contribution_it(K_point* kp__)
+void Density::add_k_point_contribution_rg(K_point* kp__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_it");
+    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_rg");
 
     int nfv = ctx_.num_fv_states();
     double omega = unit_cell_.omega();
 
-    mdarray<double, 2> it_density_matrix(ctx_.fft().local_size(), ctx_.num_mag_dims() + 1);
-    it_density_matrix.zero();
+    mdarray<double, 2> density_rg(ctx_.fft().local_size(), ctx_.num_mag_dims() + 1);
+    density_rg.zero();
 
     #ifdef __GPU
-    mdarray<double, 2> it_density_matrix_gpu;
-    if (ctx_.processing_unit() == GPU)
+    if (ctx_.fft().hybrid())
     {
-        /* density on GPU */
-        it_density_matrix_gpu = mdarray<double, 2>(&it_density_matrix(0, 0), ctx_.fft().local_size(), ctx_.num_mag_dims() + 1);
-        it_density_matrix_gpu.allocate_on_device();
-        it_density_matrix_gpu.zero_on_device();
+        density_rg.allocate_on_device();
+        density_rg.zero_on_device();
     }
     #endif
 
@@ -53,8 +49,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
                 if (ctx_.fft().hybrid())
                 {
                     #ifdef __GPU
-                    update_it_density_matrix_1_gpu(ctx_.fft().local_size(), ispn, ctx_.fft().buffer<GPU>(), w,
-                                                   it_density_matrix_gpu.at<GPU>());
+                    update_density_rg_1_gpu(ctx_.fft().local_size(), ctx_.fft().buffer<GPU>(), w, density_rg.at<GPU>(0, ispn));
                     #else
                     TERMINATE_NO_GPU
                     #endif
@@ -65,7 +60,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
                     for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
                     {
                         auto z = ctx_.fft().buffer(ir);
-                        it_density_matrix(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                     }
                 }
             }
@@ -112,133 +107,17 @@ void Density::add_k_point_contribution_it(K_point* kp__)
 
                     auto z2 = psi_r[ir] * std::conj(ctx_.fft().buffer(ir)) * w;
 
-                    it_density_matrix(ir, 0) += r0;
-                    it_density_matrix(ir, 1) += r1;
-                    it_density_matrix(ir, 2) += 2.0 * std::real(z2);
-                    it_density_matrix(ir, 3) -= 2.0 * std::imag(z2);
+                    density_rg(ir, 0) += r0;
+                    density_rg(ir, 1) += r1;
+                    density_rg(ir, 2) += 2.0 * std::real(z2);
+                    density_rg(ir, 3) -= 2.0 * std::imag(z2);
                 }
             }
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //== double t0 = -Utils::current_time();
-    //== #pragma omp parallel num_threads(ctx_.num_fft_threads())
-    //== {
-    //==     int thread_id = omp_get_thread_num();
-    //==     //if (num_mag_dims == 3) psi_it = mdarray<double_complex, 2>(ctx_.fft(thread_id)->size(), num_spins);
-
-    //==     #pragma omp for schedule(dynamic, 1)
-    //==     for (int i = 0; i < occupied_bands__.num_occupied_bands_local(); i++)
-    //==     {
-    //==         int j    = occupied_bands__.idx_bnd_glob[i];
-    //==         int jloc = occupied_bands__.idx_bnd_loc[i];
-    //==         double w = occupied_bands__.weight[i] / omega;
-    //==         double t1 = omp_get_wtime();
-
-    //==         if (thread_id == ctx_.gpu_thread_id() && ctx_.processing_unit() == GPU)
-    //==         {
-    //==             #ifdef __GPU
-    //==             STOP();
-    //==             //if (num_mag_dims == 3)
-    //==             //{
-    //==             //    TERMINATE("this should be implemented");
-    //==             //}
-    //==             //else
-    //==             //{
-    //==             //    int ispn = (j < num_fv_states) ? 0 : 1;
-    //==             //    
-    //==             //    /* copy pw coefficients to GPU */
-    //==             //    mdarray<double_complex, 1>(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
-    //==             //                               pw_buf.at<GPU>(), kp__->num_gkvec()).copy_to_device();
-    //==             //    
-    //==             //    ctx_.fft(thread_id)->input_on_device(kp__->num_gkvec(), fft_index.at<GPU>(), pw_buf.at<GPU>());
-    //==             //    ctx_.fft(thread_id)->transform(1);
-    //==             //    
-    //==             //    update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
-    //==             //                                   it_density_matrix_gpu.at<GPU>());
-    //==             //}
-    //==             #endif
-    //==         }
-    //==         else
-    //==         {
-    //==             if (num_mag_dims == 3)
-    //==             {
-    //==                 STOP();
-    //==                 ///* transform both components of the spinor state */
-    //==                 //for (int ispn = 0; ispn < num_spins; ispn++)
-    //==                 //{
-    //==                 //    ctx_.fft(thread_id)->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
-    //==                 //                               kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc));
-    //==                 //    ctx_.fft(thread_id)->transform(1, kp__->gkvec().z_sticks_coord());
-    //==                 //    ctx_.fft(thread_id)->output(&psi_it(0, ispn));
-    //==                 //}
-    //==                 //for (int ir = 0; ir < ctx_.fft(thread_id)->size(); ir++)
-    //==                 //{
-    //==                 //    auto z0 = psi_it(ir, 0) * std::conj(psi_it(ir, 0)) * w;
-    //==                 //    auto z1 = psi_it(ir, 1) * std::conj(psi_it(ir, 1)) * w;
-    //==                 //    auto z2 = psi_it(ir, 0) * std::conj(psi_it(ir, 1)) * w;
-    //==                 //    it_density_matrix(ir, 0, thread_id) += std::real(z0);
-    //==                 //    it_density_matrix(ir, 1, thread_id) += std::real(z1);
-    //==                 //    it_density_matrix(ir, 2, thread_id) += 2.0 * std::real(z2);
-    //==                 //    it_density_matrix(ir, 3, thread_id) -= 2.0 * std::imag(z2);
-    //==                 //}
-    //==             }
-    //==             else
-    //==             {
-    //==                 /* transform only single compopnent */
-    //==                 int ispn = (j < num_fv_states) ? 0 : 1;
-    //==                 //if (ctx_.fft(thread_id)->parallel())
-    //==                 //{
-    //==                 //    STOP();
-    //==                 //    //Timer t1("fft|a2a_external");
-    //==                 //    //kp__->comm_row().alltoall(kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc),
-    //==                 //    //                          &a2a.sendcounts[0], &a2a.sdispls[0],
-    //==                 //    //                          &buf[0],
-    //==                 //    //                          &a2a.recvcounts[0], &a2a.rdispls[0]);
-    //==                 //    //ctx_.fft(thread_id)->input(kp__->gkvec().num_gvec_loc(), kp__->gkvec().index_map(), &buf[0]);
-    //==                 //}
-    //==                 //else
-    //==                 //{
-    //==                 //    ctx_.fft(thread_id)->input(kp__->num_gkvec(), kp__->gkvec().index_map(), 
-    //==                 //                               kp__->spinor_wave_functions(ispn).at<CPU>(wf_pw_offset, jloc));
-    //==                 //}
-    //==                 //ctx_.fft(thread_id)->transform(1, kp__->gkvec().z_sticks_coord());
-    //==                 
-    //==                 ctx_.fft(thread_id)->transform<1>(kp__->gkvec(), (*kp__->spinor_wave_functions(ispn))[jloc] + wf_pw_offset);
-    //==                 
-    //==                 #pragma omp parallel for schedule(static) num_threads(ctx_.fft(thread_id)->num_fft_workers())
-    //==                 for (int ir = 0; ir < ctx_.fft(thread_id)->local_size(); ir++)
-    //==                 {
-    //==                     auto z = ctx_.fft(thread_id)->buffer(ir);
-    //==                     it_density_matrix(ir, ispn, thread_id) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-    //==                 }
-    //==             }
-    //==         }
-    //==         timers(thread_id) += (omp_get_wtime() - t1);
-    //==         timer_counts(thread_id)++;
-    //==     }
-    //== }
-    //== t0 += Utils::current_time();
-
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
-        it_density_matrix_gpu.copy_to_host();
-        it_density_matrix_gpu.deallocate_on_device();
-    }
+    if (ctx_.fft().hybrid()) density_rg.copy_to_host();
     #endif
     
     /* switch from real density matrix to density and magnetization */
@@ -246,10 +125,11 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     {
         case 3:
         {
+            #pragma omp parallel for
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
             {
-                magnetization_[1]->f_rg(ir) += it_density_matrix(ir, 2);
-                magnetization_[2]->f_rg(ir) += it_density_matrix(ir, 3);
+                magnetization_[1]->f_rg(ir) += density_rg(ir, 2);
+                magnetization_[2]->f_rg(ir) += density_rg(ir, 3);
             }
         }
         case 1:
@@ -257,15 +137,15 @@ void Density::add_k_point_contribution_it(K_point* kp__)
             #pragma omp parallel for
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
             {
-                rho_->f_rg(ir) = (it_density_matrix(ir, 0) + it_density_matrix(ir, 1));
-                magnetization_[0]->f_rg(ir) = (it_density_matrix(ir, 0) - it_density_matrix(ir, 1));
+                rho_->f_rg(ir) += (density_rg(ir, 0) + density_rg(ir, 1));
+                magnetization_[0]->f_rg(ir) += (density_rg(ir, 0) - density_rg(ir, 1));
             }
             break;
         }
         case 0:
         {
             #pragma omp parallel for
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) rho_->f_rg(ir) = it_density_matrix(ir, 0);
+            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) rho_->f_rg(ir) += density_rg(ir, 0);
         }
     }
 
@@ -284,7 +164,7 @@ void Density::add_k_point_contribution_it(K_point* kp__)
     //== }
 }
 
-template void Density::add_k_point_contribution_it<true>(K_point* kp__);
-template void Density::add_k_point_contribution_it<false>(K_point* kp__);
+template void Density::add_k_point_contribution_rg<true>(K_point* kp__);
+template void Density::add_k_point_contribution_rg<false>(K_point* kp__);
 
 };

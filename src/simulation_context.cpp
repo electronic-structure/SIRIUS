@@ -317,17 +317,17 @@ void Simulation_context::print_info()
             break;
         }
     }
-    
+   
+    int i = 1;
     printf("\n");
     printf("XC functionals\n");
     printf("==============\n");
     for (auto& xc_label: xc_functionals())
     {
         XC_functional xc(xc_label, num_spins());
-        printf("%s\n", xc_label.c_str());
-        printf("%s\n", xc.name().c_str());
+        printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
         printf("%s\n", xc.refs().c_str());
-        printf("\n");
+        i++;
     }
 }
 

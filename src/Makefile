@@ -64,7 +64,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
-	Kernels/it_density.o \
+	Kernels/density_rg.o \
 	Kernels/pack_unpack_z_columns.o \
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \

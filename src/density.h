@@ -182,9 +182,9 @@ class Density
         void add_k_point_contribution(K_point* kp__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
-        /// Add k-point contribution to the interstitial density and magnetization
+        /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
         template <bool mt_spheres>
-        void add_k_point_contribution_it(K_point* kp__);
+        void add_k_point_contribution_rg(K_point* kp__);
 
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt(K_set& ks);
