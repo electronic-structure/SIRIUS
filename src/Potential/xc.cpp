@@ -483,11 +483,11 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    int num_loc_points = fft_->local_size();
+    int num_loc_points = fft_.local_size();
     
     /* check for negative values */
     double rhomin = 0.0;
-    for (int ir = 0; ir < fft_->local_size(); ir++)
+    for (int ir = 0; ir < fft_.local_size(); ir++)
     {
         rhomin = std::min(rhomin, rho->f_rg(ir));
         if (rho->f_rg(ir) < 0.0)  rho->f_rg(ir) = 0.0;
@@ -506,7 +506,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     
     if (is_gga) 
     {
-        Smooth_periodic_function<spatial, double> rho_it(&rho->f_rg(0), ctx_.fft(0), &ctx_.gvec());
+        Smooth_periodic_function<spatial, double> rho_it(&rho->f_rg(0), &ctx_.fft(), &ctx_.gvec());
 
         /* get plane-wave coefficients of the density */
         Smooth_periodic_function<spectral, double_complex> rho_pw = transform(rho_it);
@@ -595,7 +595,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     if (is_gga)
     {
         /* gather vsigma */
-        Smooth_periodic_function<spatial, double> vsigma_it(&vsigma_tmp(0), fft_, &ctx_.gvec());
+        Smooth_periodic_function<spatial, double> vsigma_it(&vsigma_tmp(0), &fft_, &ctx_.gvec());
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral, double_complex> vsigma_pw = transform(vsigma_it);
@@ -643,14 +643,14 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    int num_loc_points = fft_->local_size();
+    int num_loc_points = fft_.local_size();
     
-    Smooth_periodic_function<spatial, double> rho_up_it(fft_, &ctx_.gvec());
-    Smooth_periodic_function<spatial, double> rho_dn_it(fft_, &ctx_.gvec());
+    Smooth_periodic_function<spatial, double> rho_up_it(&fft_, &ctx_.gvec());
+    Smooth_periodic_function<spatial, double> rho_dn_it(&fft_, &ctx_.gvec());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin = 0.0;
-    for (int ir = 0; ir < fft_->local_size(); ir++)
+    for (int ir = 0; ir < fft_.local_size(); ir++)
     {
         double mag = 0.0;
         for (int j = 0; j < ctx_.num_mag_dims(); j++) mag += std::pow(magnetization[j]->f_rg(ir), 2);

@@ -80,12 +80,6 @@ class Simulation_parameters
 
         int cyclic_block_size_;
 
-        /// Initial number of independent FFT streams.
-        int num_fft_streams_;
-        
-        /// Initial number of threads dedicated to each independent FFT stream.
-        int num_threads_fft_;
-        
         std::string std_evp_solver_name_;
 
         std::string gen_evp_solver_name_;
@@ -125,8 +119,6 @@ class Simulation_parameters
             uj_correction_       = false;
             mpi_grid_dims_       = {1};
             cyclic_block_size_   = 32;
-            num_fft_streams_     = 1;
-            num_threads_fft_     = omp_get_max_threads();
             processing_unit_     = CPU;
             smearing_width_      = 0.001;
             esm_type_            = full_potential_lapwlo;
@@ -164,8 +156,6 @@ class Simulation_parameters
 
             mpi_grid_dims_       = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
             cyclic_block_size_   = parser["cyclic_block_size"].get(cyclic_block_size_);
-            num_fft_streams_     = parser["num_fft_streams"].get(num_fft_streams_);
-            num_threads_fft_     = parser["num_threads_fft"].get(num_threads_fft_);
             num_fv_states_       = parser["num_fv_states"].get(num_fv_states_);
             smearing_width_      = parser["smearing_width"].get(smearing_width_);
             std_evp_solver_name_ = parser["std_evp_solver_type"].get(std_evp_solver_name_);

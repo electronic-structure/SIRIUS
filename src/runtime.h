@@ -487,11 +487,13 @@ if (_enable_dump_)                                                              
 #endif
 
 #ifdef __PROFILE
-  #define PROFILE() runtime::Profiler profiler__(__function_name__, __FILE__, __LINE__)
-  #define PROFILE_WITH_TIMER(name) runtime::Profiler profiler__(__function_name__, __FILE__, __LINE__, name)
+  #define PROFILE() runtime::Profiler profiler__(__function_name__, __FILE__, __LINE__);
+  #define PROFILE_WITH_TIMER(name) runtime::Profiler profiler__(__function_name__, __FILE__, __LINE__, name);
 #else
   #define PROFILE(...)
   #define PROFILE_WITH_TIMER(name) 
 #endif
+
+#define TIMER(name) runtime::Timer timer__(name);
 
 #endif // __RUNTIME_H__

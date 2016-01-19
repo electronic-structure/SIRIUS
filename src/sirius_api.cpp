@@ -446,7 +446,7 @@ void sirius_get_mt_points(char* label__, double* mt_points__)
 void sirius_get_num_fft_grid_points(int32_t* num_grid_points__)
 {
     PROFILE();
-    *num_grid_points__ = sim_ctx->fft(0)->local_size();
+    *num_grid_points__ = sim_ctx->fft().local_size();
 }
 
 void sirius_get_num_bands(int32_t* num_bands)
@@ -466,9 +466,9 @@ void sirius_get_num_gvec(int32_t* num_gvec__)
 void sirius_get_fft_grid_size(int32_t* grid_size__)
 {
     PROFILE();
-    grid_size__[0] = sim_ctx->fft(0)->grid().size(0);
-    grid_size__[1] = sim_ctx->fft(0)->grid().size(1);
-    grid_size__[2] = sim_ctx->fft(0)->grid().size(2);
+    grid_size__[0] = sim_ctx->fft().grid().size(0);
+    grid_size__[1] = sim_ctx->fft().grid().size(1);
+    grid_size__[2] = sim_ctx->fft().grid().size(2);
 }
 
 /// Get lower and upper limits of the FFT grid dimension
@@ -487,8 +487,8 @@ void sirius_get_fft_grid_limits(int32_t const* d, int32_t* lower, int32_t* upper
 {
     PROFILE();
     assert((*d >= 1) && (*d <= 3));
-    *lower = sim_ctx->fft(0)->grid().limits(*d - 1).first;
-    *upper = sim_ctx->fft(0)->grid().limits(*d - 1).second;
+    *lower = sim_ctx->fft().grid().limits(*d - 1).first;
+    *upper = sim_ctx->fft().grid().limits(*d - 1).second;
 }
 
 /// Get mapping between G-vector index and FFT index
@@ -496,7 +496,7 @@ void sirius_get_fft_index(int32_t* fft_index__)
 {
     TERMINATE("fix thix");
     //PROFILE();
-    //memcpy(fft_index__, sim_ctx->gvec()->index_map(), sim_ctx->fft()->size() * sizeof(int32_t));
+    //memcpy(fft_index__, sim_ctx->gvec()->index_map(), sim_ctx->fft().size() * sizeof(int32_t));
     //for (int i = 0; i < sim_ctx->gvec()->size(); i++) fft_index__[i]++;
 }
 
@@ -505,7 +505,7 @@ void sirius_get_gvec(int32_t* gvec__)
 {
     TERMINATE("fix thix");
     //PROFILE();
-    //mdarray<int, 2> gvec(gvec__, 3, sim_ctx->fft()->size());
+    //mdarray<int, 2> gvec(gvec__, 3, sim_ctx->fft().size());
     //for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++)
     //{
     //    vector3d<int> gv = sim_ctx->gvec()[ig];
@@ -518,10 +518,10 @@ void sirius_get_gvec_cart(double* gvec_cart__)
 {
     TERMINATE("fix thix");
     //PROFILE();
-    //mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx->fft()->size());
-    //for (int ig = 0; ig < sim_ctx->fft()->size(); ig++)
+    //mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx->fft().size());
+    //for (int ig = 0; ig < sim_ctx->fft().size(); ig++)
     //{
-    //    vector3d<double> gvc = sim_ctx->fft()->gvec_cart(ig);
+    //    vector3d<double> gvc = sim_ctx->fft().gvec_cart(ig);
     //    for (int x = 0; x < 3; x++) gvec_cart(x, ig) = gvc[x];
     //}
 }
@@ -532,7 +532,7 @@ void sirius_get_gvec_len(double* gvec_len__)
     TERMINATE("fix thix");
     
     //PROFILE();
-    //for (int ig = 0; ig < sim_ctx->fft()->size(); ig++) gvec_len__[ig] = sim_ctx->fft()->gvec_len(ig);
+    //for (int ig = 0; ig < sim_ctx->fft().size(); ig++) gvec_len__[ig] = sim_ctx->fft().gvec_len(ig);
 }
 
 void sirius_get_index_by_gvec(int32_t* index_by_gvec__)
@@ -579,10 +579,10 @@ void sirius_get_gvec_phase_factors(double_complex* sfacg__)
 {
     TERMINATE("fix this");
     //PROFILE();
-    //mdarray<double_complex, 2> sfacg(sfacg__, sim_ctx->fft()->num_gvec(), sim_ctx->unit_cell().num_atoms());
+    //mdarray<double_complex, 2> sfacg(sfacg__, sim_ctx->fft().num_gvec(), sim_ctx->unit_cell().num_atoms());
     //for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
     //{
-    //    for (int ig = 0; ig < sim_ctx->fft()->num_gvec(); ig++)
+    //    for (int ig = 0; ig < sim_ctx->fft().num_gvec(); ig++)
     //        sfacg(ig, ia) = sim_ctx->reciprocal_lattice()->gvec_phase_factor(ig, ia);
     //}
 }
@@ -590,10 +590,10 @@ void sirius_get_gvec_phase_factors(double_complex* sfacg__)
 void sirius_get_step_function(double_complex* cfunig__, double* cfunir__)
 {
     PROFILE();
-    for (int i = 0; i < sim_ctx->fft(0)->size(); i++)
+    for (int i = 0; i < sim_ctx->fft().size(); i++)
     {
-        cfunig__[i] = sim_ctx->step_function()->theta_pw(i);
-        cfunir__[i] = sim_ctx->step_function()->theta_r(i);
+        cfunig__[i] = sim_ctx->step_function().theta_pw(i);
+        cfunir__[i] = sim_ctx->step_function().theta_r(i);
     }
 }
 
@@ -988,9 +988,9 @@ void FORTRAN(sirius_plot_potential)(void)
 //
 //    
 //    // generate plane-wave coefficients of the potential in the interstitial region
-//    sim_ctx->fft()->input(potential->effective_potential()->f_it());
-//    sim_ctx->fft()->transform(-1);
-//    sim_ctx->fft()->output(sim_param->num_gvec(), sim_ctx->fft_index(), 
+//    sim_ctx->fft().input(potential->effective_potential()->f_it());
+//    sim_ctx->fft().transform(-1);
+//    sim_ctx->fft().output(sim_param->num_gvec(), sim_ctx->fft_index(), 
 //                                   potential->effective_potential()->f_pw());
 //
 //    int N = 10000;
@@ -1043,7 +1043,7 @@ void sirius_write_json_output(void)
         //== //jw.single("cyclic_block_size", p->cyclic_block_size());
         //== jw.single("mpi_grid", ctx.parameters().mpi_grid_dims());
         //== std::vector<int> fftgrid(3);
-        //== for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft()->size(i);
+        //== for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft().size(i);
         //== jw.single("fft_grid", fftgrid);
         //== jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
         //== jw.single("num_atoms", ctx.unit_cell().num_atoms());
@@ -1603,13 +1603,13 @@ void sirius_get_spinor_wave_functions(int32_t* kset_id, int32_t* ik, double_comp
 //==     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
 //==     int num_gkvec = kp->num_gkvec();
 //== 
-//==     sim_ctx->reciprocal_lattice()->fft()->input(num_gkvec, kp->fft_index(), wf__, thread_id);
-//==     sim_ctx->reciprocal_lattice()->fft()->transform(1, thread_id);
-//==     for (int ir = 0; ir < sim_ctx->reciprocal_lattice()->fft()->size(); ir++)
-//==         sim_ctx->reciprocal_lattice()->fft()->buffer(ir, thread_id) *= sim_param->step_function()->theta_it(ir);
+//==     sim_ctx->reciprocal_lattice()->fft().input(num_gkvec, kp->fft_index(), wf__, thread_id);
+//==     sim_ctx->reciprocal_lattice()->fft().transform(1, thread_id);
+//==     for (int ir = 0; ir < sim_ctx->reciprocal_lattice()->fft().size(); ir++)
+//==         sim_ctx->reciprocal_lattice()->fft().buffer(ir, thread_id) *= sim_param->step_function()->theta_it(ir);
 //== 
-//==     sim_ctx->reciprocal_lattice()->fft()->transform(-1, thread_id);
-//==     sim_ctx->reciprocal_lattice()->fft()->output(num_gkvec, kp->fft_index(), wf__, thread_id);
+//==     sim_ctx->reciprocal_lattice()->fft().transform(-1, thread_id);
+//==     sim_ctx->reciprocal_lattice()->fft().output(num_gkvec, kp->fft_index(), wf__, thread_id);
 //== }
 
 /// Get Cartesian coordinates of G+k vectors
@@ -1689,7 +1689,7 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
     /* set temporary array wrapper */
     mdarray<double, 4> bxcmt(bxcmt__, sim_param->lmmax_pot(), sim_ctx->unit_cell().max_num_mt_points(), 
                              sim_ctx->unit_cell().num_atoms(), sim_param->num_mag_dims());
-    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft(0)->size(), sim_param->num_mag_dims());
+    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft().size(), sim_param->num_mag_dims());
 
     if (sim_param->num_mag_dims() == 1)
     {
@@ -2341,7 +2341,7 @@ void sirius_get_beta_projectors_(int32_t* kset_id__, int32_t* ik__, int32_t* ngk
     //    {
     //        int ig = kp->gvec_index(i);
     //        /* G-vector of sirius ordering */
-    //        auto vg = sim_ctx->fft()->gvec(ig);
+    //        auto vg = sim_ctx->fft().gvec(ig);
     //        if (gvec_of_k(0, igk) == vg[0] &&
     //            gvec_of_k(1, igk) == vg[1] &&
     //            gvec_of_k(2, igk) == vg[2])
@@ -2421,7 +2421,7 @@ void sirius_get_vloc_(int32_t* size__, double* vloc__)
     ///* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
     //for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
     //{
-    //    int ig = sim_ctx->fft()->gvec_index(fft_coarse->gvec(igc));
+    //    int ig = sim_ctx->fft().gvec_index(fft_coarse->gvec(igc));
     //    veff_pw_coarse[igc] = potential->effective_potential()->f_pw(ig);
     //}
     //fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);
@@ -2572,7 +2572,7 @@ void sirius_get_h_o_diag_(int32_t* kset_id__, int32_t* ik__, double* h_diag__, d
     //    {
     //        int ig = kp->gvec_index(i);
     //        /* G-vector of sirius ordering */
-    //        auto vg = sim_ctx->fft()->gvec(ig);
+    //        auto vg = sim_ctx->fft().gvec(ig);
     //        if (gvec_of_k(0, igk) == vg[0] &&
     //            gvec_of_k(1, igk) == vg[1] &&
     //            gvec_of_k(2, igk) == vg[2])
@@ -2607,7 +2607,7 @@ void sirius_generate_augmented_density_(double* rhoit__)
 void sirius_get_q_pw_(int32_t* iat__, int32_t* num_gvec__, double_complex* q_pw__)
 {
     TERMINATE("fix this");
-    //if (*num_gvec__ != sim_ctx->fft()->num_gvec())
+    //if (*num_gvec__ != sim_ctx->fft().num_gvec())
     //{
     //    TERMINATE("wrong number of G-vectors");
     //}
@@ -2701,7 +2701,7 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
     //    {
     //        int ig = kp->gvec_index(i);
     //        /* G-vector of sirius ordering */
-    //        auto vg = sim_ctx->fft()->gvec(ig);
+    //        auto vg = sim_ctx->fft().gvec(ig);
     //        if (gvec_of_k(0, igk) == vg[0] &&
     //            gvec_of_k(1, igk) == vg[1] &&
     //            gvec_of_k(2, igk) == vg[2])

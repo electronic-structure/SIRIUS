@@ -55,9 +55,6 @@ class FFT3D
 {
     protected:
         
-        /// Number of working threads inside each FFT.
-        int num_fft_workers_;
-        
         /// Communicator for the parallel FFT.
         Communicator const& comm_;
 
@@ -120,7 +117,6 @@ class FFT3D
     public:
 
         FFT3D(FFT3D_grid grid__,
-              int num_fft_workers__,
               Communicator const& comm__,
               processing_unit_t pu__,
               double gpu_workload = 0.8);
@@ -234,11 +230,6 @@ class FFT3D
         inline bool hybrid() const
         {
             return (pu_ == GPU);
-        }
-
-        inline int num_fft_workers() const
-        {
-            return num_fft_workers_;
         }
 
         void prepare()

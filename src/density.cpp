@@ -40,7 +40,7 @@ void Density::set_magnetization_ptr(double* magmt, double* magir)
     // set temporary array wrapper
     mdarray<double, 4> magmt_tmp(magmt, ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
                                  unit_cell_.num_atoms(), ctx_.num_mag_dims());
-    mdarray<double, 2> magir_tmp(magir, ctx_.fft(0)->size(), ctx_.num_mag_dims());
+    mdarray<double, 2> magir_tmp(magir, ctx_.fft().size(), ctx_.num_mag_dims());
     
     if (ctx_.num_mag_dims() == 1)
     {

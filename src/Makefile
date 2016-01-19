@@ -13,7 +13,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \
-       Density/add_k_point_contribution_it.cpp \
+       Density/add_k_point_contribution_rg.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
        Density/generate.cpp \
@@ -64,7 +64,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
-	Kernels/it_density.o \
+	Kernels/density_rg.o \
 	Kernels/pack_unpack_z_columns.o \
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \

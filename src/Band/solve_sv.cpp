@@ -6,128 +6,130 @@ void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magne
 {
     PROFILE_WITH_TIMER("sirius::Band::solve_sv_pp");
 
-    auto fft_coarse = ctx_.fft_coarse_ctx().fft();
-    auto& gv = ctx_.gvec();
-    auto& gvc = ctx_.gvec_coarse();
+    STOP();
 
-    /* map effective magnetic field to a corase grid */
-    mdarray<double, 2> beff_r_coarse(fft_coarse->local_size(), ctx_.num_mag_dims());
-    std::vector<double_complex> beff_pw_coarse(gvc.num_gvec_fft());
-
-    for (int j = 0; j < ctx_.num_mag_dims(); j++)
-    {
-        effective_magnetic_field__[j]->fft_transform(-1);
-        for (int ig = 0; ig < gvc.num_gvec_fft(); ig++)
-        {
-            auto G = gvc[ig + gvc.offset_gvec_fft()];
-            beff_pw_coarse[ig] = effective_magnetic_field__[j]->f_pw(gv.index_by_gvec(G));
-        }
-        fft_coarse->transform<1>(gvc, &beff_pw_coarse[0]);
-        fft_coarse->output(&beff_r_coarse(0, j));
-    }
-
-    /* number of h|\psi> components */
-    int nhpsi = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
-
-    std::vector<double> band_energies(ctx_.num_bands());
-
-    /* product of the second-variational Hamiltonian and a first-variational wave-function */
-    std::vector<Wave_functions<false>*> hpsi;
-    for (int i = 0; i < nhpsi; i++)
-    {
-        hpsi.push_back(new Wave_functions<false>(ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gkvec(),
-                                                 ctx_.mpi_grid_fft(), ctx_.processing_unit()));
-    }
-
-    hpsi[0]->copy_from(kp__->fv_states<false>(), 0, ctx_.num_fv_states());
-    hpsi[0]->swap_forward(0, ctx_.num_fv_states());
-    
-    /* save omp_nested flag */
-    int nested = omp_get_nested();
-    omp_set_nested(1);
-    #pragma omp parallel num_threads(ctx_.fft_ctx().num_fft_streams())
-    {
-        int thread_id = omp_get_thread_num();
-
-        #pragma omp for schedule(dynamic, 1)
-        for (int i = 0; i < hpsi[0]->spl_num_swapped().local_size(); i++)
-        {
-            /* phi(G) -> phi(r) */
-            ctx_.fft_coarse_ctx().fft(thread_id)->transform<1>(kp__->gkvec(), (*hpsi[0])[i]);
-            /* multiply by effective magnetic field potential */
-            if (ctx_.fft_coarse_ctx().fft(thread_id)->hybrid())
-            {
-                STOP();
-                //#ifdef __GPU
-                //scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
-                //                      fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
-
-                //#else
-                //TERMINATE_NO_GPU
-                //#endif
-            }
-            else
-            {
-                for (int ir = 0; ir < ctx_.fft_coarse_ctx().fft(thread_id)->local_size(); ir++)
-                    ctx_.fft_coarse_ctx().fft(thread_id)->buffer(ir) *= beff_r_coarse(ir, 0);
-            }
-            /* B(r)phi(r) -> [B*phi](G) */
-            ctx_.fft_coarse_ctx().fft(thread_id)->transform<-1>(kp__->gkvec(), (*hpsi[0])[i]);
-        }
-    }
-    /* restore the nested flag */
-    omp_set_nested(nested);
-
-    hpsi[0]->swap_backward(0, ctx_.num_fv_states());
-    for (int i = 0; i < ctx_.num_fv_states(); i++)
-    {
-        for (int j = 0; j < hpsi[0]->num_gvec_loc(); j++) (*hpsi[1])(j, i) = -(*hpsi[0])(j, i);
-    }
-
-
-
-    int bs = ctx_.cyclic_block_size();
-    int nfv = ctx_.num_fv_states();
-    if (ctx_.num_mag_dims() != 3)
-    {
-        matrix<double_complex> h(nfv, nfv);
-        dmatrix<double_complex> h_dist(nfv, nfv, kp__->blacs_grid(), bs, bs);
-
-        /* perform one or two consecutive diagonalizations */
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-        {
-            kp__->fv_states<false>().inner(0, nfv, (*hpsi[ispn]), 0, nfv, h, 0, 0);
-            for (int i = 0; i < nfv; i++) h(i, i) += kp__->fv_eigen_value(i);
-
-            if (kp__->comm().size() > 1 && std_evp_solver()->parallel())
-            {
-                for (int jloc = 0; jloc < h_dist.num_cols_local(); jloc++)
-                {
-                    int j = h_dist.icol(jloc);
-                    for (int iloc = 0; iloc < h_dist.num_rows_local(); iloc++)
-                    {
-                        int i = h_dist.irow(iloc);
-                        h_dist(iloc, jloc) = (i > j) ? std::conj(h(j, i)) : h(i, j);
-                    }
-                }
-            }
-
-            if (std_evp_solver()->parallel())
-            {
-                std_evp_solver()->solve(nfv, h_dist.at<CPU>(), h_dist.ld(), &band_energies[ispn * nfv],
-                                        kp__->sv_eigen_vectors(ispn).at<CPU>(), kp__->sv_eigen_vectors(ispn).ld());
-
-            }
-            else
-            {
-                std_evp_solver()->solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
-                                        kp__->sv_eigen_vectors(ispn).at<CPU>(), kp__->sv_eigen_vectors(ispn).ld());
-            }
-        }
-    }
-
-    for (auto e: hpsi) delete e;
-    kp__->set_band_energies(&band_energies[0]);
+//    auto fft_coarse = ctx_.fft_coarse();
+//    auto& gv = ctx_.gvec();
+//    auto& gvc = ctx_.gvec_coarse();
+//
+//    /* map effective magnetic field to a corase grid */
+//    mdarray<double, 2> beff_r_coarse(fft_coarse->local_size(), ctx_.num_mag_dims());
+//    std::vector<double_complex> beff_pw_coarse(gvc.num_gvec_fft());
+//
+//    for (int j = 0; j < ctx_.num_mag_dims(); j++)
+//    {
+//        effective_magnetic_field__[j]->fft_transform(-1);
+//        for (int ig = 0; ig < gvc.num_gvec_fft(); ig++)
+//        {
+//            auto G = gvc[ig + gvc.offset_gvec_fft()];
+//            beff_pw_coarse[ig] = effective_magnetic_field__[j]->f_pw(gv.index_by_gvec(G));
+//        }
+//        fft_coarse->transform<1>(gvc, &beff_pw_coarse[0]);
+//        fft_coarse->output(&beff_r_coarse(0, j));
+//    }
+//
+//    /* number of h|\psi> components */
+//    int nhpsi = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
+//
+//    std::vector<double> band_energies(ctx_.num_bands());
+//
+//    /* product of the second-variational Hamiltonian and a first-variational wave-function */
+//    std::vector<Wave_functions<false>*> hpsi;
+//    for (int i = 0; i < nhpsi; i++)
+//    {
+//        hpsi.push_back(new Wave_functions<false>(ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gkvec(),
+//                                                 ctx_.mpi_grid_fft(), ctx_.processing_unit()));
+//    }
+//
+//    hpsi[0]->copy_from(kp__->fv_states<false>(), 0, ctx_.num_fv_states());
+//    hpsi[0]->swap_forward(0, ctx_.num_fv_states());
+//    
+//    /* save omp_nested flag */
+//    int nested = omp_get_nested();
+//    omp_set_nested(1);
+//    #pragma omp parallel num_threads(ctx_.fft_ctx().num_fft_streams())
+//    {
+//        int thread_id = omp_get_thread_num();
+//
+//        #pragma omp for schedule(dynamic, 1)
+//        for (int i = 0; i < hpsi[0]->spl_num_swapped().local_size(); i++)
+//        {
+//            /* phi(G) -> phi(r) */
+//            ctx_.fft_coarse_ctx().fft(thread_id)->transform<1>(kp__->gkvec(), (*hpsi[0])[i]);
+//            /* multiply by effective magnetic field potential */
+//            if (ctx_.fft_coarse_ctx().fft(thread_id)->hybrid())
+//            {
+//                STOP();
+//                //#ifdef __GPU
+//                //scale_matrix_rows_gpu(fft_ctx_.fft(thread_id)->local_size(), 1,
+//                //                      fft_ctx_.fft(thread_id)->buffer<GPU>(), veff_.at<GPU>());
+//
+//                //#else
+//                //TERMINATE_NO_GPU
+//                //#endif
+//            }
+//            else
+//            {
+//                for (int ir = 0; ir < ctx_.fft_coarse_ctx().fft(thread_id)->local_size(); ir++)
+//                    ctx_.fft_coarse_ctx().fft(thread_id)->buffer(ir) *= beff_r_coarse(ir, 0);
+//            }
+//            /* B(r)phi(r) -> [B*phi](G) */
+//            ctx_.fft_coarse_ctx().fft(thread_id)->transform<-1>(kp__->gkvec(), (*hpsi[0])[i]);
+//        }
+//    }
+//    /* restore the nested flag */
+//    omp_set_nested(nested);
+//
+//    hpsi[0]->swap_backward(0, ctx_.num_fv_states());
+//    for (int i = 0; i < ctx_.num_fv_states(); i++)
+//    {
+//        for (int j = 0; j < hpsi[0]->num_gvec_loc(); j++) (*hpsi[1])(j, i) = -(*hpsi[0])(j, i);
+//    }
+//
+//
+//
+//    int bs = ctx_.cyclic_block_size();
+//    int nfv = ctx_.num_fv_states();
+//    if (ctx_.num_mag_dims() != 3)
+//    {
+//        matrix<double_complex> h(nfv, nfv);
+//        dmatrix<double_complex> h_dist(nfv, nfv, kp__->blacs_grid(), bs, bs);
+//
+//        /* perform one or two consecutive diagonalizations */
+//        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+//        {
+//            kp__->fv_states<false>().inner(0, nfv, (*hpsi[ispn]), 0, nfv, h, 0, 0);
+//            for (int i = 0; i < nfv; i++) h(i, i) += kp__->fv_eigen_value(i);
+//
+//            if (kp__->comm().size() > 1 && std_evp_solver()->parallel())
+//            {
+//                for (int jloc = 0; jloc < h_dist.num_cols_local(); jloc++)
+//                {
+//                    int j = h_dist.icol(jloc);
+//                    for (int iloc = 0; iloc < h_dist.num_rows_local(); iloc++)
+//                    {
+//                        int i = h_dist.irow(iloc);
+//                        h_dist(iloc, jloc) = (i > j) ? std::conj(h(j, i)) : h(i, j);
+//                    }
+//                }
+//            }
+//
+//            if (std_evp_solver()->parallel())
+//            {
+//                std_evp_solver()->solve(nfv, h_dist.at<CPU>(), h_dist.ld(), &band_energies[ispn * nfv],
+//                                        kp__->sv_eigen_vectors(ispn).at<CPU>(), kp__->sv_eigen_vectors(ispn).ld());
+//
+//            }
+//            else
+//            {
+//                std_evp_solver()->solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
+//                                        kp__->sv_eigen_vectors(ispn).at<CPU>(), kp__->sv_eigen_vectors(ispn).ld());
+//            }
+//        }
+//    }
+//
+//    for (auto e: hpsi) delete e;
+//    kp__->set_band_energies(&band_energies[0]);
 }
 
 void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])

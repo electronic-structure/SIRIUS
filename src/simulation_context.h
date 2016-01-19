@@ -30,7 +30,6 @@
 #include "step_function.h"
 #include "real_space_prj.h"
 #include "version.h"
-#include "fft3d_context.h"
 #include "augmentation_operator.h"
 
 namespace sirius {
@@ -47,10 +46,10 @@ class Simulation_context: public Simulation_parameters
 
         MPI_grid* mpi_grid_fft_;
 
-        FFT3D_context* fft_ctx_;
+        FFT3D* fft_;
 
-        FFT3D_context* fft_coarse_ctx_;
-        
+        FFT3D* fft_coarse_;
+
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
@@ -90,8 +89,8 @@ class Simulation_context: public Simulation_parameters
               comm_(comm__),
               mpi_grid_(nullptr),
               mpi_grid_fft_(nullptr),
-              fft_ctx_(nullptr),
-              fft_coarse_ctx_(nullptr),
+              fft_(nullptr),
+              fft_coarse_(nullptr),
               unit_cell_(parameters__, comm_),
               step_function_(nullptr),
               real_space_prj_(nullptr),
@@ -126,8 +125,8 @@ class Simulation_context: public Simulation_parameters
             for (auto e: augmentation_op_) delete e;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
-            if (fft_ctx_ != nullptr) delete fft_ctx_;
-            if (fft_coarse_ctx_ != nullptr) delete fft_coarse_ctx_;
+            if (fft_ != nullptr) delete fft_;
+            if (fft_coarse_ != nullptr) delete fft_coarse_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }
@@ -135,24 +134,26 @@ class Simulation_context: public Simulation_parameters
         /// Initialize the similation (can only be called once).
         void initialize();
 
+        void print_info();
+
         Unit_cell& unit_cell()
         {
             return unit_cell_;
         }
 
-        Step_function const* step_function() const
+        Step_function const& step_function() const
         {
-            return step_function_;
+            return *step_function_;
         }
 
-        inline FFT3D* fft(int thread_id__) const
+        inline FFT3D& fft() const
         {
-            return fft_ctx_->fft(thread_id__);
+            return *fft_;
         }
 
-        inline FFT3D* fft_coarse(int thread_id__) const
+        inline FFT3D& fft_coarse() const
         {
-            return fft_coarse_ctx_->fft(thread_id__);
+            return *fft_coarse_;
         }
 
         Gvec const& gvec() const
@@ -178,16 +179,6 @@ class Simulation_context: public Simulation_parameters
         MPI_grid const& mpi_grid_fft() const
         {
             return *mpi_grid_fft_;
-        }
-
-        FFT3D_context& fft_ctx()
-        {
-            return *fft_ctx_;
-        }
-
-        FFT3D_context& fft_coarse_ctx()
-        {
-            return *fft_coarse_ctx_;
         }
 
         inline int num_fv_states() const
@@ -222,170 +213,6 @@ class Simulation_context: public Simulation_parameters
         Real_space_prj const* real_space_prj() const
         {
             return real_space_prj_;
-        }
-
-        void print_info()
-        {
-            printf("\n");
-            printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
-            printf("git hash       : %s\n", git_hash);
-            printf("build date     : %s\n", build_date);
-            printf("\n");
-            printf("number of MPI ranks           : %i\n", comm_.size());
-            printf("MPI grid                      :");
-            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->dimension_size(i));
-            printf("\n");
-            printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-            printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(0));
-            printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(1));
-
-            printf("\n");
-            printf("FFT context for density and potential\n");
-            printf("=====================================\n");
-            printf("  plane wave cutoff                     : %f\n", pw_cutoff());
-            auto fft_grid = fft_ctx_->fft_grid();
-            printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
-                                                                                        fft_grid.size(1),
-                                                                                        fft_grid.size(2),
-                                                                                        fft_grid.size());
-            printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
-                                                                                        fft_grid.limits(0).second,
-                                                                                        fft_grid.limits(1).first,
-                                                                                        fft_grid.limits(1).second,
-                                                                                        fft_grid.limits(2).first,
-                                                                                        fft_grid.limits(2).second);
-            printf("  number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
-            printf("  number of G-shells                    : %i\n", gvec_.num_shells());
-            printf("  number of FFT streams                 : %i\n", fft_ctx_->num_fft_streams()); 
-            printf("  number of threads for each FFT stream :");
-            for (int i = 0; i < fft_ctx_->num_fft_streams(); i++) printf(" %i", fft_ctx_->fft(i)->num_fft_workers());
-            printf("\n");
-            if (!full_potential())
-            {
-                printf("\n");
-                printf("FFT context for applying Hloc\n");
-                printf("=============================\n");
-                auto fft_grid = fft_coarse_ctx_->fft_grid();
-                printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
-                                                                                            fft_grid.size(1),
-                                                                                            fft_grid.size(2),
-                                                                                            fft_grid.size());
-                printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
-                                                                                            fft_grid.limits(0).second,
-                                                                                            fft_grid.limits(1).first,
-                                                                                            fft_grid.limits(1).second,
-                                                                                            fft_grid.limits(2).first,
-                                                                                            fft_grid.limits(2).second);
-                printf("  number of G-vectors within the cutoff : %i\n", gvec_coarse_.num_gvec());
-                printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
-                printf("  number of FFT streams                 : %i\n", fft_coarse_ctx_->num_fft_streams()); 
-                printf("  number of threads for each FFT stream :");
-                for (int i = 0; i < fft_coarse_ctx_->num_fft_streams(); i++) printf(" %i", fft_coarse_ctx_->fft(i)->num_fft_workers());
-                printf("\n");
-            }
-
-            unit_cell_.print_info();
-            for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
-        
-            printf("\n");
-            printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
-            printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
-            printf("number of first-variational states : %i\n", num_fv_states());
-            printf("number of bands                    : %i\n", num_bands());
-            printf("number of spins                    : %i\n", num_spins());
-            printf("number of magnetic dimensions      : %i\n", num_mag_dims());
-            printf("lmax_apw                           : %i\n", lmax_apw());
-            printf("lmax_pw                            : %i\n", lmax_pw());
-            printf("lmax_rho                           : %i\n", lmax_rho());
-            printf("lmax_pot                           : %i\n", lmax_pot());
-            printf("lmax_rf                            : %i\n", unit_cell_.lmax());
-            printf("smearing width                     : %f\n", smearing_width());
-            printf("cyclic block size                  : %i\n", cyclic_block_size());
-        
-            //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
-            //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
-            //== for (int i = 0; i < 2; i++)
-            //== {
-            //==     printf("\n");
-            //==     printf("%s", evsn[i].c_str());
-            //==     switch (evst[i])
-            //==     {
-            //==         case ev_lapack:
-            //==         {
-            //==             printf("LAPACK\n");
-            //==             break;
-            //==         }
-            //==         #ifdef __SCALAPACK
-            //==         case ev_scalapack:
-            //==         {
-            //==             printf("ScaLAPACK, block size %i\n", linalg<scalapack>::cyclic_block_size());
-            //==             break;
-            //==         }
-            //==         case ev_elpa1:
-            //==         {
-            //==             printf("ELPA1, block size %i\n", linalg<scalapack>::cyclic_block_size());
-            //==             break;
-            //==         }
-            //==         case ev_elpa2:
-            //==         {
-            //==             printf("ELPA2, block size %i\n", linalg<scalapack>::cyclic_block_size());
-            //==             break;
-            //==         }
-            //==         case ev_rs_gpu:
-            //==         {
-            //==             printf("RS_gpu\n");
-            //==             break;
-            //==         }
-            //==         case ev_rs_cpu:
-            //==         {
-            //==             printf("RS_cpu\n");
-            //==             break;
-            //==         }
-            //==         #endif
-            //==         case ev_magma:
-            //==         {
-            //==             printf("MAGMA\n");
-            //==             break;
-            //==         }
-            //==         case ev_plasma:
-            //==         {
-            //==             printf("PLASMA\n");
-            //==             break;
-            //==         }
-            //==         default:
-            //==         {
-            //==             error_local(__FILE__, __LINE__, "wrong eigen-value solver");
-            //==         }
-            //==     }
-            //== }
-        
-            printf("\n");
-            printf("processing unit : ");
-            switch (processing_unit())
-            {
-                case CPU:
-                {
-                    printf("CPU\n");
-                    break;
-                }
-                case GPU:
-                {
-                    printf("GPU\n");
-                    break;
-                }
-            }
-            
-            printf("\n");
-            printf("XC functionals\n");
-            printf("==============\n");
-            for (auto& xc_label: xc_functionals())
-            {
-                XC_functional xc(xc_label, num_spins());
-                printf("\n");
-                printf("%s\n", xc_label.c_str());
-                printf("%s\n", xc.name().c_str());
-                printf("%s\n", xc.refs().c_str());
-            }
         }
 
         inline std::string const& start_time_tag() const
