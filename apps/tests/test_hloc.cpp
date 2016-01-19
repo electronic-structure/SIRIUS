@@ -3,7 +3,7 @@
 using namespace sirius;
 
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
-               int num_fft_streams__, int num_threads_fft__, int use_gpu, double gpu_workload__)
+               int use_gpu, double gpu_workload__)
 {
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
@@ -72,8 +72,6 @@ int main(int argn, char** argv)
     cmd_args args;
     args.register_key("--help", "print this help and exit");
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--num_fft_streams=", "{int} number of independent FFT streams");
-    args.register_key("--num_threads_fft=", "{int} number of threads for each FFT");
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--num_bands=", "{int} number of bands");
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
@@ -87,15 +85,13 @@ int main(int argn, char** argv)
         exit(0);
     }
     auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
-    auto num_fft_streams = args.value<int>("num_fft_streams", 1);
-    auto num_threads_fft = args.value<int>("num_threads_fft", omp_get_max_threads());
     auto cutoff = args.value<double>("cutoff", 2.0);
     auto num_bands = args.value<int>("num_bands", 10);
     auto use_gpu = args.value<int>("use_gpu", 0);
     auto gpu_workload = args.value<double>("gpu_workload", 0.8);
 
     sirius::initialize(1);
-    test_hloc(mpi_grid_dims, cutoff, num_bands, num_fft_streams, num_threads_fft, use_gpu, gpu_workload);
+    test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
     mpi_comm_world().barrier();
     runtime::Timer::print();
     sirius::finalize();
