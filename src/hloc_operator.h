@@ -62,7 +62,7 @@ class Hloc_operator
             std::memcpy(&veff_vec_[0], &veff__[0], fft_.local_size() * sizeof(double));
             vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
             #ifdef __GPU
-            if (fft_ctx_.pu() == GPU)
+            if (fft_.hybrid())
             {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
@@ -139,7 +139,7 @@ class Hloc_operator
             vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
 
             #ifdef __GPU
-            if (fft_ctx_.pu() == GPU)
+            if (fft_.hybrid())
             {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
