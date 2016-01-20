@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -47,8 +47,6 @@ sirius::Mixer<double>* mixer_rho = nullptr;
 
 /// Potential and magnetic field mixer
 sirius::Mixer<double>* mixer_pot = nullptr;
-
-BLACS_grid* blacs_grid = nullptr;
 
 std::map<std::string, runtime::Timer*> ftimers;
 
@@ -377,13 +375,7 @@ void sirius_set_esm_type(char const* name__)
 void sirius_global_initialize()
 {
     PROFILE();
-
     sim_ctx->initialize();
-
-    blacs_grid = new BLACS_grid(sim_ctx->mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
-                                sim_ctx->mpi_grid().dimension_size(_dim_row_),
-                                sim_ctx->mpi_grid().dimension_size(_dim_col_));
-
 }
 
 /// Initialize the Density object.
@@ -639,11 +631,6 @@ void sirius_clear(void)
     {
         delete dft_ground_state;
         dft_ground_state = nullptr;
-    }
-    if (blacs_grid != nullptr)
-    {
-        delete blacs_grid;
-        blacs_grid = nullptr;
     }
     for (int i = 0; i < (int)kset_list.size(); i++)
     {
@@ -1253,7 +1240,7 @@ void sirius_create_kset(int32_t* num_kpoints__,
     PROFILE();
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__); 
     
-    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _dim_k_), *blacs_grid);
+    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _dim_k_));
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) new_kset->initialize();
    
@@ -1277,7 +1264,6 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
 
     sirius::K_set* new_kset = new sirius::K_set(*sim_ctx,
                                                 sim_ctx->mpi_grid().communicator(1 << _dim_k_),
-                                                *blacs_grid,
                                                 vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
                                                 vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
                                                 *use_sym__);
@@ -1536,8 +1522,8 @@ void sirius_get_fv_h_o(int32_t const* kset_id__,
             TERMINATE("wrong matrix size");
         }
 
-        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
-        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
+        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
+        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
         kset_list[*kset_id__]->band()->set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
     }
 }

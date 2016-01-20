@@ -11,8 +11,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
 
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
-    dmatrix<double_complex> h(nullptr, ngklo, ngklo, kp->blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(nullptr, ngklo, ngklo, kp->blacs_grid(), bs, bs);
+    dmatrix<double_complex> h(nullptr, ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> o(nullptr, ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
     
     h.allocate(alloc_mode);
     o.allocate(alloc_mode);

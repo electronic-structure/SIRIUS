@@ -58,6 +58,12 @@ void Simulation_context::initialize()
     /* setup MPI grid */
     mpi_grid_ = new MPI_grid(mpi_grid_dims_, comm_);
 
+
+    blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _dim_row_ | 1 << _dim_col_), 
+                                 mpi_grid_->dimension_size(_dim_row_), mpi_grid_->dimension_size(_dim_col_));
+    
+    blacs_grid_slice_ = new BLACS_grid(blacs_grid_->comm(), 1, blacs_grid_->comm().size());
+
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
 

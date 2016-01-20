@@ -6,7 +6,7 @@ void K_point::test_fv_states()
 {
     PROFILE();
 
-    Wave_functions<true> o_fv(wf_size(), ctx_.num_fv_states(), ctx_.cyclic_block_size(), blacs_grid_, blacs_grid_slice_);
+    Wave_functions<true> o_fv(wf_size(), ctx_.num_fv_states(), ctx_.cyclic_block_size(), ctx_.blacs_grid(), ctx_.blacs_grid_slice());
     o_fv.set_num_swapped(ctx_.num_fv_states());
 
     for (int i = 0; i < o_fv.spl_num_swapped().local_size(); i++)
@@ -41,7 +41,7 @@ void K_point::test_fv_states()
     }
     o_fv.swap_backward(0, ctx_.num_fv_states());
 
-    dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), blacs_grid_,
+    dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
                                  ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
     
     linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), wf_size(), double_complex(1, 0),

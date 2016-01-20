@@ -46,6 +46,12 @@ class Simulation_context: public Simulation_parameters
 
         MPI_grid* mpi_grid_fft_;
 
+        BLACS_grid* blacs_grid_;
+
+        /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
+        /** This grid is used to distribute band index and keep a whole wave-function */
+        BLACS_grid* blacs_grid_slice_;
+
         FFT3D* fft_;
 
         FFT3D* fft_coarse_;
@@ -81,6 +87,8 @@ class Simulation_context: public Simulation_parameters
 
         void init_fft();
 
+        Simulation_context(Simulation_context const&) = delete;
+
     public:
         
         Simulation_context(Simulation_parameters const& parameters__,
@@ -89,6 +97,8 @@ class Simulation_context: public Simulation_parameters
               comm_(comm__),
               mpi_grid_(nullptr),
               mpi_grid_fft_(nullptr),
+              blacs_grid_(nullptr),
+              blacs_grid_slice_(nullptr),
               fft_(nullptr),
               fft_coarse_(nullptr),
               unit_cell_(parameters__, comm_),
@@ -127,6 +137,8 @@ class Simulation_context: public Simulation_parameters
             if (real_space_prj_ != nullptr) delete real_space_prj_;
             if (fft_ != nullptr) delete fft_;
             if (fft_coarse_ != nullptr) delete fft_coarse_;
+            if (blacs_grid_slice_ != nullptr) delete blacs_grid_slice_;
+            if (blacs_grid_ != nullptr) delete blacs_grid_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }
@@ -179,6 +191,16 @@ class Simulation_context: public Simulation_parameters
         MPI_grid const& mpi_grid_fft() const
         {
             return *mpi_grid_fft_;
+        }
+
+        BLACS_grid const& blacs_grid() const
+        {
+            return *blacs_grid_;
+        }
+
+        BLACS_grid const& blacs_grid_slice() const
+        {
+            return *blacs_grid_slice_;
         }
 
         inline int num_fv_states() const

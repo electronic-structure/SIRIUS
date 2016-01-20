@@ -46,13 +46,6 @@ class K_point
         /// Unit cell object.
         Unit_cell const& unit_cell_;
 
-        /// 2D BLACS grid for diagonalization and 2D data distribution.
-        BLACS_grid const& blacs_grid_;
-        
-        /// 1D BLACS grid for a "slice" data distribution.
-        /** This grid is used to distribute band index and keep a whole wave-function on a rank */
-        BLACS_grid const& blacs_grid_slice_;
-
         /// Weight of k-point.
         double weight_;
 
@@ -165,9 +158,7 @@ class K_point
         /// Constructor
         K_point(Simulation_context& ctx__,
                 double* vk__,
-                double weight__,
-                BLACS_grid const& blacs_grid__,
-                BLACS_grid const& blacs_grid_slice__);
+                double weight__);
 
         ~K_point()
         {
@@ -561,16 +552,6 @@ class K_point
         inline Communicator const& comm_col() const
         {
             return comm_col_;
-        }
-
-        inline BLACS_grid const& blacs_grid() const
-        {
-            return blacs_grid_;
-        }
-
-        inline BLACS_grid const& blacs_grid_slice() const
-        {
-            return blacs_grid_slice_;
         }
 
         inline double_complex p_mtrx(int xi1, int xi2, int iat) const

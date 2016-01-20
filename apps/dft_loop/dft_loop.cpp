@@ -110,10 +110,6 @@ void dft_loop(cmd_args args)
 
     ctx.initialize();
     
-    BLACS_grid blacs_grid(ctx.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
-                          ctx.mpi_grid().dimension_size(_dim_row_),
-                          ctx.mpi_grid().dimension_size(_dim_col_));
-
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
@@ -127,10 +123,10 @@ void dft_loop(cmd_args args)
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
 
-    int use_symmetry = parser["use_symmetry"].get(0);
+    int use_symmetry = parser["use_symmetry"].get(1);
 
-    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _dim_k_), blacs_grid,
-             vector3d<int>(ngridk[0], ngridk[1], ngridk[1]), vector3d<int>(0, 0, 0), use_symmetry);
+    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[1]),
+             vector3d<int>(0, 0, 0), use_symmetry);
 
     ks.initialize();
     

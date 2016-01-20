@@ -39,9 +39,9 @@ void K_point::initialize()
     if (use_second_variation && ctx_.need_sv())
     {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
-        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
+        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
         if (ctx_.num_mag_dims() == 1)
-            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
+            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
     }
 
     if (use_second_variation) fv_eigen_values_.resize(ctx_.num_fv_states());
@@ -161,13 +161,13 @@ void K_point::initialize()
     {
         if (use_second_variation)
         {
-            fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), ctx_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
+            fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
 
-            fv_states_ = new Wave_functions<true>(wf_size(), ctx_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
+            fv_states_ = new Wave_functions<true>(wf_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
-                spinor_wave_functions_[ispn] = new Wave_functions<true>(wf_size(), nst, bs, blacs_grid_, blacs_grid_slice_);
+                spinor_wave_functions_[ispn] = new Wave_functions<true>(wf_size(), nst, bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
             }
         }
         else

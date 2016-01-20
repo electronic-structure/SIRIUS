@@ -28,13 +28,9 @@ namespace sirius {
 
 K_point::K_point(Simulation_context& ctx__,
                  double* vk__,
-                 double weight__,
-                 BLACS_grid const& blacs_grid__,
-                 BLACS_grid const& blacs_grid_slice__)
+                 double weight__)
     : ctx_(ctx__),
       unit_cell_(ctx_.unit_cell()),
-      blacs_grid_(blacs_grid__),
-      blacs_grid_slice_(blacs_grid_slice__),
       weight_(weight__),
       fv_eigen_vectors_(nullptr),
       fv_states_(nullptr),
@@ -43,9 +39,9 @@ K_point::K_point(Simulation_context& ctx__,
       alm_coeffs_col_(nullptr),
       alm_coeffs_(nullptr),
       beta_projectors_(nullptr),
-      comm_(blacs_grid_.comm()),
-      comm_row_(blacs_grid_.comm_row()),
-      comm_col_(blacs_grid_.comm_col())
+      comm_(ctx_.blacs_grid().comm()),
+      comm_row_(ctx_.blacs_grid().comm_row()),
+      comm_col_(ctx_.blacs_grid().comm_col())
 {
     PROFILE();
 
@@ -60,7 +56,7 @@ K_point::K_point(Simulation_context& ctx__,
     rank_row_ = comm_row_.rank();
     rank_col_ = comm_col_.rank();
 
-    if (comm_.rank() != blacs_grid_slice_.comm().rank()) TERMINATE("ranks don't match");
+    if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) TERMINATE("ranks don't match");
     
     iterative_solver_input_section_ = ctx_.iterative_solver_input_section();
 

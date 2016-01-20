@@ -163,7 +163,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     for (int i = 0; i < nhpsi; i++)
     {
         hpsi.push_back(new Wave_functions<true>(kp->wf_size(), ctx_.num_fv_states(), ctx_.cyclic_block_size(),
-                                                blacs_grid_, kp->blacs_grid_slice()));
+                                                ctx_.blacs_grid(), ctx_.blacs_grid_slice()));
     }
 
     /* compute product of magnetic field and wave-function */
@@ -212,7 +212,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     if (ctx_.num_mag_dims() != 3)
     {
-        dmatrix<double_complex> h(nfv, nfv, kp->blacs_grid(), bs, bs);
+        dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
 
         //if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1)
         //{
@@ -260,7 +260,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     else
     {
         int nb = ctx_.num_bands();
-        dmatrix<double_complex> h(nb, nb, kp->blacs_grid(), bs, bs);
+        dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
 
         /* compute <wf_i | h * wf_j> for up-up block */
         linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[0]->coeffs(), 0, 0,

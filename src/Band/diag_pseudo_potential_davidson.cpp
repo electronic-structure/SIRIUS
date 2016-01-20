@@ -90,15 +90,15 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     dmatrix<double_complex> evec_dist;
     if (kp__->comm().size() == 1)
     {
-        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_bands, kp__->blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
     }
     else
     {
-        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(num_phi, num_bands, kp__->blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<double_complex>(num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);
