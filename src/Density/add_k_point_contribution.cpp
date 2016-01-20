@@ -121,7 +121,9 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
                 mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
 
-                int nbnd_loc = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size();
+                splindex<block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
+
+                int nbnd_loc = spl_nbnd.local_size();
                 if (nbnd_loc) // TODO: this part can also be moved to GPU
                 {
                     #pragma omp parallel
@@ -138,7 +140,7 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
                             for (int i = 0; i < nbnd_loc; i++)
                             {
-                                int j = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped()[i];
+                                int j = spl_nbnd[i];
 
                                 for (int xi = 0; xi < nbf; xi++)
                                 {

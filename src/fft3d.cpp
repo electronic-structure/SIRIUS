@@ -242,7 +242,7 @@ void FFT3D::transform_xy(Gvec const& gvec__)
                     /* load z-columns into proper location */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
                     {
-                        fftw_buffer_xy_[tid][z_col_pos[i]] = fft_buffer_aux_[iz * gvec__.z_columns().size() + i];
+                        fftw_buffer_xy_[tid][z_col_pos[i]] = fft_buffer_aux_[iz + i * local_size_z_];
 
                         if (use_reduction && i)
                             fftw_buffer_xy_[tid][z_col_ipos[i]] = std::conj(fftw_buffer_xy_[tid][z_col_pos[i]]);
@@ -266,7 +266,7 @@ void FFT3D::transform_xy(Gvec const& gvec__)
 
                     /* get z-columns */
                     for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-                        fft_buffer_aux_(iz * gvec__.z_columns().size() + i) = fftw_buffer_xy_[tid][z_col_pos[i]];
+                        fft_buffer_aux_[iz  + i * local_size_z_] = fftw_buffer_xy_[tid][z_col_pos[i]];
 
                     break;
                 }
@@ -339,17 +339,15 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
                     /* execute 1D transform of a z-column */
                     fftw_execute(plan_backward_z_[tid]);
 
-                    /* load full column into auxiliary buffer and transpose column and z indices */
-                    for (int iz = 0; iz < grid_.size(2); iz++)
-                        fft_buffer_aux_[iz * gvec__.z_columns().size() + i] = fftw_buffer_z_[tid][iz];
+                    /* load full column into auxiliary buffer */
+                    std::copy(fftw_buffer_z_[tid], fftw_buffer_z_[tid] + grid_.size(2), &fft_buffer_aux_[i * grid_.size(2)]);
 
                     break;
                 }
                 case -1:
                 {
                     /* load full column from auxiliary buffer */
-                    for (int iz = 0; iz < grid_.size(2); iz++)
-                        fftw_buffer_z_[tid][iz] = fft_buffer_aux_[iz * gvec__.z_columns().size() + i];
+                    std::copy(&fft_buffer_aux_[i * grid_.size(2)], &fft_buffer_aux_[i * grid_.size(2)] + grid_.size(2), fftw_buffer_z_[tid]);
 
                     /* execute 1D transform of a z-column */
                     fftw_execute(plan_forward_z_[tid]);
@@ -398,14 +396,10 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
         send.calc_offsets();
         recv.calc_offsets();
 
-        #pragma omp parallel for
-        for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-        {
-            for (int iz = 0; iz < local_size_z_; iz++)
-                fft_buffer_[i * local_size_z_ + iz] = fft_buffer_aux_[iz * gvec__.z_columns().size() + i];
-        }
+        std::copy(&fft_buffer_aux_[0], &fft_buffer_aux_[0] + gvec__.z_columns().size() * local_size_z_,
+                  &fft_buffer_[0]);
 
-        comm_.alltoall(&fft_buffer_[0], &send.counts[0], &send.offsets[0], &fft_buffer_aux_(0), &recv.counts[0], &recv.offsets[0]);
+        comm_.alltoall(&fft_buffer_[0], &send.counts[0], &send.offsets[0], &fft_buffer_aux_[0], &recv.counts[0], &recv.offsets[0]);
 
         tcall_[4] += (omp_get_wtime() - t1);
     }
@@ -508,13 +502,10 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 
         /* scatter z-columns */
         comm_.alltoall(&fft_buffer_aux_[0], &send.counts[0], &send.offsets[0], &fft_buffer_[0], &recv.counts[0], &recv.offsets[0]);
-        /* copy local fractions of z-columns to auxiliary buffer and transpose indices */
-        #pragma omp parallel for
-        for (size_t i = 0; i < gvec__.z_columns().size(); i++)
-        {
-            for (int iz = 0; iz < local_size_z_; iz++)
-                fft_buffer_aux_[iz * gvec__.z_columns().size() + i] = fft_buffer_[i * local_size_z_ + iz];
-        }
+
+        /* copy local fractions of z-columns into auxiliary buffer */
+        std::copy(&fft_buffer_[0], &fft_buffer_[0] + gvec__.z_columns().size() * local_size_z_,
+                  &fft_buffer_aux_[0]);
 
         tcall_[4] += (omp_get_wtime() - t1);
     }
