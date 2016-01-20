@@ -57,6 +57,7 @@ class FFT3D_grid
         FFT3D_grid(double cutoff__, matrix3d<double> M__)
         {
             auto initial_dims = Utils::find_translations(cutoff__, M__);
+            printf("initial dims: %i %i %i\n", initial_dims[0], initial_dims[1], initial_dims[2]);
             find_grid_size(initial_dims);
         }
 

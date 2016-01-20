@@ -350,18 +350,17 @@ void Potential::generate_pw_coefs()
         fft_.buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z2 = mdarray<double_complex, 1>(&fft_.buffer(0), fft_.size()).checksum();
-    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_it(0) , fft_.size()).checksum());
-    DUMP("checksum(fft_buffer): %18.10f %18.10f", std::real(z2), std::imag(z2));
+    double_complex z2 = mdarray<double_complex, 1>(&fft_.buffer(0), fft_.local_size()).checksum();
+    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_rg(0) , fft_.local_size()).checksum());
+    DUMP("checksum(fft_buffer): %18.10f %18.10f", z2.real(), z2.imag());
     #endif
     
     fft_.transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().offset_gvec_fft()));
     fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().offset_gvec_fft(), ctx_.gvec().num_gvec_fft());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(veff_it): %18.10f", effective_potential()->f_it().checksum());
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-    DUMP("checksum(veff_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    DUMP("checksum(veff_pw): %18.10f %18.10f", z1.real(), z1.imag());
     #endif
 
     if (!use_second_variation) // for full diagonalization we also need Beff(G)

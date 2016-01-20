@@ -3,8 +3,8 @@ use, intrinsic :: ISO_C_BINDING
 
 interface
 
-    subroutine sirius_platform_initialize(call_mpi_init)&
-       &bind(C, name="sirius_platform_initialize")
+    subroutine sirius_initialize(call_mpi_init)&
+       &bind(C, name="sirius_initialize")
         integer,                 intent(in) :: call_mpi_init
     end subroutine
 

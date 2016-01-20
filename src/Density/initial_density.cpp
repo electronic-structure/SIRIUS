@@ -23,7 +23,7 @@ void Density::initial_density()
         
         #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-        DUMP("checksum(rho_pw): %18.10f %18.10f", std::real(z), std::imag(z));
+        DUMP("checksum(rho_pw): %18.10f %18.10f", z.real(), z.imag());
         #endif
 
         /* set plane-wave coefficients of the charge density */
@@ -32,8 +32,7 @@ void Density::initial_density()
         rho_->fft_transform(1);
 
         #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z2 = rho_->f_it().checksum(); 
-        DUMP("checksum(rho_it): %18.10f %18.10f", std::real(z2), std::imag(z2));
+        DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
         #endif
 
         #ifdef __PRINT_OBJECT_HASH
@@ -215,7 +214,7 @@ void Density::initial_density()
                 if (q < len)
                 {
                     /* renormalize starting magnetization */
-                    for (int x = 0; x < 3; x++) v[x] *= (q / len);
+                    for (int x: {0, 1, 2}) v[x] *= (q / len);
 
                     len = q;
                 }
@@ -251,7 +250,7 @@ void Density::initial_density()
         #endif
         #ifdef __PRINT_OBJECT_CHECKSUM
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-        DUMP("checksum(rho(G)) : %18.10f %18.10f", std::real(z1), std::imag(z1));
+        DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
         #endif
         
         std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
@@ -271,7 +270,7 @@ void Density::initial_density()
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
         #endif
         #ifdef __PRINT_OBJECT_CHECKSUM
-        DUMP("checksum(rho(r)) : %18.10f", rho_->f_it().checksum());
+        DUMP("checksum(rho_rg) : %18.10f", rho_->checksum_rg());
         #endif
         
         /* remove possible negative noise */

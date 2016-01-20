@@ -23,9 +23,7 @@ Density::Density(Simulation_context& ctx__)
     }
 
     for (int i = 0; i < ctx_.num_mag_dims(); i++)
-    {
         magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), &ctx_.gvec());
-    }
     
     switch (ctx_.esm_type())
     {

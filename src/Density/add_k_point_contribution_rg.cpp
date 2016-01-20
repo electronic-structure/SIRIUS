@@ -148,20 +148,6 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) rho_->f_rg(ir) += density_rg(ir, 0);
         }
     }
-
-    //== if (kp__->comm().rank() == 0)
-    //== {
-    //==     std::cout << "---------------------------------" << std::endl;
-    //==     std::cout << "thread_id  | fft       | perf    " << std::endl;
-    //==     std::cout << "---------------------------------" << std::endl;
-    //==     for (int i = 0; i < ctx_.num_fft_threads(); i++)
-    //==     {
-    //==         printf("   %2i      | %8.4f  | %8.2f\n", i, timers(i), (timer_counts(i) == 0) ? 0 : timer_counts(i) / timers(i));
-    //==     }
-    //==     std::cout << "---------------------------------" << std::endl;
-    //==     std::cout << "final reduction: " << t1 << " sec" << std::endl;
-    //==     std::cout << "main summation of " << occupied_bands__.num_occupied_bands_local() << " bands is done in " << t0 << "sec." << std::endl;
-    //== }
 }
 
 template void Density::add_k_point_contribution_rg<true>(K_point* kp__);

@@ -207,7 +207,8 @@ class Augmentation_operator
 
             #ifdef __PRINT_OBJECT_CHECKSUM
             auto z = q_pw_.checksum();
-            DUMP("checksum(Q(G)) : %18.10f %18.10f", std::real(z), std::imag(z));
+            comm_.allreduce(&z, 1);
+            DUMP("checksum(q_pw) : %18.10f %18.10f", z.real(), z.imag());
             #endif
         }
 

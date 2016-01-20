@@ -263,6 +263,12 @@ vector3d<int> Utils::find_translations(double radius__, matrix3d<double> const& 
 
     test_point(0, 0);
     test_point(theta, phi);
+
+    test_point(0.5 * pi, 0);
+    test_point(0.5 * pi, 0.5 * pi);
+    test_point(0.5 * pi, pi);
+    test_point(0.5 * pi, 1.5 * pi);
+
     for (int k = 1; k < num_points - 1; k++)
     {
         double hk = -1.0 + 2.0 * k / (num_points - 1);

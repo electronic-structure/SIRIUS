@@ -75,16 +75,17 @@ void Density::generate_valence(K_set& ks__)
         if (rho_->f_it(ir) < 0) TERMINATE("density is wrong");
     }
     #endif
+
     //== double nel = 0;
-    //== for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+    //== for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
     //== {
-    //==     nel += rho_->f_it(ir);
+    //==     nel += rho_->f_rg(ir);
     //== }
     //== ctx_.mpi_grid().communicator(1 << _dim_row_).allreduce(&nel, 1);
-    //== nel = nel * unit_cell_.omega() / ctx_.fft(0)->size();
+    //== nel = nel * unit_cell_.omega() / ctx_.fft().size();
     //== printf("number of electrons: %f\n", nel);
     
-    /* get rho(G) */
+    /* get rho(G) and mag(G) */
     rho_->fft_transform(-1);
     for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 

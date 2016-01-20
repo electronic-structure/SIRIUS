@@ -218,6 +218,18 @@ class Periodic_function
             }
         }
 
+        inline T checksum_rg() const
+        {
+            T cs = f_rg_.checksum();
+            fft_.comm().allreduce(&cs, 1);
+            return cs;
+        }
+
+        inline complex_t checksum_pw() const
+        {
+            return f_pw_.checksum();
+        }
+
         int64_t hash()
         {
             STOP();
@@ -302,10 +314,9 @@ class Periodic_function
             {
                 for (int ialoc = 0; ialoc < f__->unit_cell_.spl_num_atoms().local_size(); ialoc++)
                     result += sirius::inner(f__->f_mt(ialoc), g__->f_mt(ialoc));
+                f__->comm_.allreduce(&result, 1);
             }
-        
-            f__->comm_.allreduce(&result, 1);
-        
+       
             return result + ri;
         }
 };

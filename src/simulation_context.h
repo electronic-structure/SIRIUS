@@ -249,7 +249,7 @@ class Simulation_context: public Simulation_parameters
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
             auto G = gvec_[ig__];
-            return std::exp(twopi * double_complex(0.0, G * unit_cell_.atom(ia__).position()));
+            return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
         }
 
         //== void write_json_output()

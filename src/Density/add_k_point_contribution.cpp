@@ -112,13 +112,16 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
             kp__->beta_projectors().generate(chunk);
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
+                /* total number of occupied bands for this spin */
                 int nbnd = kp__->num_occupied_bands(ispn);
-                int nbnd_loc = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size();
+                /* compute <beta|psi> */
                 kp__->beta_projectors().inner(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
+                /* number of beta projectors */
                 int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 
                 mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
 
+                int nbnd_loc = kp__->spinor_wave_functions<false>(ispn).spl_num_swapped().local_size();
                 if (nbnd_loc) // TODO: this part can also be moved to GPU
                 {
                     #pragma omp parallel

@@ -50,6 +50,8 @@ sirius::Mixer<double>* mixer_pot = nullptr;
 
 BLACS_grid* blacs_grid = nullptr;
 
+std::map<std::string, runtime::Timer*> ftimers;
+
 extern "C" 
 {
 
@@ -61,12 +63,12 @@ extern "C"
     integer ierr
     call mpi_init(ierr)
     ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
-    call sirius_platform_initialize(0)
+    call sirius_initialize(0)
     \endcode
  */
-void sirius_platform_initialize(int32_t* call_mpi_init_)
+void sirius_initialize(int32_t* call_mpi_init__)
 {
-    bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
+    bool call_mpi_init = (*call_mpi_init__ != 0) ? true : false; 
     sirius::initialize(call_mpi_init);
 }
 
@@ -786,7 +788,6 @@ void sirius_print_timers(void)
 void sirius_start_timer(char const* name__)
 {
     PROFILE();
-    extern std::map<std::string, runtime::Timer*> ftimers;
     std::string name(name__);
     ftimers[name] = new runtime::Timer(name);
 }
@@ -794,7 +795,6 @@ void sirius_start_timer(char const* name__)
 void sirius_stop_timer(char const* name__)
 {
     PROFILE();
-    extern std::map<std::string, runtime::Timer*> ftimers;
     std::string name(name__);
     if (ftimers.count(name)) delete ftimers[name];
 }

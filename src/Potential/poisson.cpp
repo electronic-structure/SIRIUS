@@ -321,7 +321,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 
     /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for
     for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++)
         vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
 
@@ -345,7 +345,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1);
         int type_id_prev = -1;
 
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             int nmtp = unit_cell_.atom(ia).num_mt_points();
@@ -377,8 +377,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             /* save electronic part of potential at point of origin */
             vh_el_(ia) = vh->f_mt<local>(0, 0, ialoc);
         }
-        ctx_.comm().allgather(vh_el_.at<CPU>(), (int)unit_cell_.spl_num_atoms().global_offset(),
-                              (int)unit_cell_.spl_num_atoms().local_size());
+        ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
+                              unit_cell_.spl_num_atoms().local_size());
 
     }
     
@@ -386,7 +386,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     vh->fft_transform(1);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(vha_it): %20.14f", vh->f_it().checksum());
+    DUMP("checksum(vha_rg): %20.14f", vh->checksum_rg());
     #endif
     #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(vha_it): %16llX", vh->f_it().hash());

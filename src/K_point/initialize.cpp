@@ -157,10 +157,9 @@ void K_point::initialize()
         }
     }
 
-    if (use_second_variation)
+    if (ctx_.full_potential())
     {
-        /* allocate memory for first-variational eigen vectors and states and for spinor wave-fucntions */
-        if (ctx_.full_potential())
+        if (use_second_variation)
         {
             fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), ctx_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
 
@@ -173,33 +172,26 @@ void K_point::initialize()
         }
         else
         {
-            assert(ctx_.num_fv_states() < num_gkvec());
-
-            //fv_states_ = new Wave_functions<false>(ctx_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), ctx_.processing_unit());
-
-            //fv_states<false>().coeffs().zero();
-
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-            {
-                spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
-                                                                         ctx_.processing_unit());
-
-                for (int i = 0; i < nst; i++) // TODO: init from atomic WFs
-                {
-                    double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
-                    for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
-                }
-            }
-        }
-    }
-    else  /* use full diagonalziation */
-    {
-        STOP();
-        //if (ctx_.full_potential())
-        //{
+            TERMINATE_NOT_IMPLEMENTED
         //    fd_eigen_vectors_ = mdarray<double_complex, 2>(gklo_basis_size_row(), spl_spinor_wf_.local_size());
         //    spinor_wave_functions_.allocate();
-        //}
+        }
+    }
+    else
+    {
+        assert(ctx_.num_fv_states() < num_gkvec());
+
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+        {
+            spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
+                                                                     ctx_.processing_unit());
+
+            for (int i = 0; i < nst; i++) // TODO: init from atomic WFs
+            {
+                double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
+            }
+        }
     }
 }
 
