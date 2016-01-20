@@ -175,21 +175,24 @@ void test_fft(double cutoff__)
 int main(int argn, char **argv)
 {
     cmd_args args;
+    args.register_key("--help", "print this help and exit");
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
 
     args.parse_args(argn, argv);
-    if (argn == 1)
+    if (args.exist("help"))
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
 
-    double cutoff = args.value<double>("cutoff", 1);
+    double cutoff = args.value<double>("cutoff", 5);
 
     sirius::initialize(1);
 
     test_fft(cutoff);
+
+    runtime::Timer::print();
     
     sirius::finalize();
     return 0;

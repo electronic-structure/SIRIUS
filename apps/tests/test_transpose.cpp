@@ -2,30 +2,55 @@
 
 using namespace sirius;
 
-void test_transpose(int num_gkvec, int num_bands)
+void test_transpose(int M__, int N__)
 {
-    matrix<double_complex> a(num_gkvec, num_bands);
+    matrix<double_complex> a(M__, N__);
 
-    for (int i = 0; i < num_bands; i++)
+    for (int i = 0; i < N__; i++)
     {
-        for (int j = 0; j < num_gkvec; j++) a(j, i) = type_wrapper<double_complex>::random();
+        for (int j = 0; j < M__; j++) a(j, i) = type_wrapper<double_complex>::random();
     }
     
-    Timer t("transpose");
-    matrix<double_complex> b(num_bands, num_gkvec);
-    for (int j = 0; j < num_gkvec; j++)
-        for (int i = 0; i < num_bands; i++) 
-            b(i, j) = a(j, i);
-    double tval = t.stop();
+    matrix<double_complex> b(N__, M__);
+    b.zero();
 
-    printf("time %12.8f (sec) \n", tval);
+    double t = -omp_get_wtime();
+    #pragma omp parallel for
+    for (int j = 0; j < M__; j++)
+        for (int i = 0; i < N__; i++) 
+            b(i, j) = a(j, i);
+    t += omp_get_wtime();
+
+    printf("bandwidth: %f GB/s\n", 2.0 * M__ * N__ * sizeof(double_complex) / (1 << 30) / t);
+}
+
+void test_transpose_v2(int M__, int N__)
+{
+    matrix<double_complex> a(M__, N__);
+
+    for (int i = 0; i < N__; i++)
+    {
+        for (int j = 0; j < M__; j++) a(j, i) = type_wrapper<double_complex>::random();
+    }
+    
+    matrix<double_complex> b(N__, M__);
+    b.zero();
+
+    double t = -omp_get_wtime();
+    #pragma omp parallel for
+    for (int i = 0; i < N__; i++) 
+        for (int j = 0; j < M__; j++)
+            b(i, j) = a(j, i);
+    t += omp_get_wtime();
+
+    printf("bandwidth: %f GB/s\n", 2.0 * M__ * N__ * sizeof(double_complex) / (1 << 30) / t);
 }
 
 int main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--num_gkvec=", "{int} number of Gk-vectors");
-    args.register_key("--num_bands=", "{int} number of bands");
+    args.register_key("--M=", "{int} leading dimension of original matrix");
+    args.register_key("--N=", "{int} leading dimension of transposed matrix");
 
     args.parse_args(argn, argv);
     if (argn == 1)
@@ -35,10 +60,12 @@ int main(int argn, char** argv)
         exit(0);
     }
 
-    int num_gkvec = args.value<int>("num_gkvec");
-    int num_bands = args.value<int>("num_bands");
+    int M = args.value<int>("M");
+    int N = args.value<int>("N");
 
-    Platform::initialize(1);
-    for (int i = 0; i < 10; i++) test_transpose(num_gkvec, num_bands);
-    Platform::finalize();
+    sirius::initialize(1);
+    for (int i = 0; i < 10; i++) test_transpose(M, N);
+    printf("\n");
+    for (int i = 0; i < 10; i++) test_transpose_v2(M, N);
+    sirius::finalize();
 }
