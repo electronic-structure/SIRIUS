@@ -75,8 +75,6 @@ class Simulation_context: public Simulation_parameters
 
         std::string start_time_tag_;
 
-        double iterative_solver_tolerance_;
-
         ev_solver_t std_evp_solver_type_;
 
         ev_solver_t gen_evp_solver_type_;
@@ -104,7 +102,6 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(parameters__, comm_),
               step_function_(nullptr),
               real_space_prj_(nullptr),
-              iterative_solver_tolerance_(iterative_solver_input_section().tolerance_),
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
               initialized_(false)
@@ -244,12 +241,12 @@ class Simulation_context: public Simulation_parameters
 
         inline void set_iterative_solver_tolerance(double tolerance__)
         {
-            iterative_solver_tolerance_ = tolerance__;
+            iterative_solver_input_section_.tolerance_ = tolerance__;
         }
 
         inline double iterative_solver_tolerance() const
         {
-            return iterative_solver_tolerance_;
+            return iterative_solver_input_section_.tolerance_;
         }
 
         inline ev_solver_t std_evp_solver_type() const
