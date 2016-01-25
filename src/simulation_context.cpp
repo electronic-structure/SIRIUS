@@ -9,8 +9,8 @@ void Simulation_context::init_fft()
     auto& comm = mpi_grid_->communicator(1 << _dim_col_ | 1 << _dim_row_);
 
     /* for now, use parallel fft only in pseudopotential part of the code */
-    mpi_grid_fft_ = (!full_potential()) ? new MPI_grid({mpi_grid_->dimension_size(_dim_col_),
-                                                        mpi_grid_->dimension_size(_dim_row_)},
+    mpi_grid_fft_ = (!full_potential()) ? new MPI_grid({mpi_grid_->dimension_size(_dim_row_),
+                                                        mpi_grid_->dimension_size(_dim_col_)},
                                                        comm)
                                         : new MPI_grid({comm.size(), 1}, comm);
 
@@ -18,23 +18,24 @@ void Simulation_context::init_fft()
     FFT3D_grid fft_grid(pw_cutoff(), rlv);
     /* coarse FFT grid for applying Hloc */
     FFT3D_grid fft_coarse_grid(2 * gk_cutoff(), rlv);
-
-    fft_ = new FFT3D(fft_grid, mpi_grid_fft_->communicator(1 << 1), processing_unit(), 0.9);
+    /* create FFT driver for dense mesh (density and potential) */
+    fft_ = new FFT3D(fft_grid, mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
 
     if (!full_potential())
     {
-        fft_coarse_ = new FFT3D(fft_coarse_grid, mpi_grid_fft_->communicator(1 << 1), processing_unit(), 0.9);
+        /* create FFT driver for coarse mesh */
+        fft_coarse_ = new FFT3D(fft_coarse_grid, mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
     }
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_grid,
-                 mpi_grid_fft_->communicator(1 << 1), mpi_grid_fft_->dimension_size(0), true, false);
+                 mpi_grid_fft_->communicator(1 << 0), mpi_grid_fft_->dimension_size(1), true, false);
 
     if (!full_potential())
     {
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_grid,
-                            mpi_grid_fft_->communicator(1 << 1), mpi_grid_fft_->dimension_size(0), false, false);
+                            mpi_grid_fft_->communicator(1 << 0), mpi_grid_fft_->dimension_size(1), false, false);
     }
 }
 
@@ -67,7 +68,7 @@ void Simulation_context::initialize()
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
 
-    /* initialize FFT subsystem */
+    /* initialize FFT interface */
     init_fft();
 
     #ifdef __PRINT_MEMORY_USAGE
@@ -80,8 +81,6 @@ void Simulation_context::initialize()
         unit_cell_.write_json();
     }
 
-    //parameters_.set_lmax_beta(unit_cell_.lmax_beta());
-
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
@@ -90,6 +89,7 @@ void Simulation_context::initialize()
     
     if (!full_potential())
     {
+        /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
     }

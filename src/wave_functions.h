@@ -44,16 +44,18 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
         /// Number of wave-functions.
         int num_wfs_;
 
+        /// Wave function G-vectors.
         Gvec const& gvec_;
         
         /// MPI grid for wave-function storage.
-        /** Assume that the 1st dimension is used to distribute wave-functions and 2nd to distribute G-vectors */
+        /** Assume that the 1st dimension is used to distribute G-vectors and 2nd dimenstion is used to distribute 
+         *  wave-functions */
         MPI_grid const& mpi_grid_;
 
         processing_unit_t pu_;
 
-        /// Entire communicator.
-        Communicator const& comm_;
+        /// Communicator between columns of MPI grid.
+        Communicator const& comm_col_;
 
         mdarray<double_complex, 2> wf_coeffs_;
 
@@ -64,12 +66,9 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
         splindex<block> spl_n_;
 
         int num_gvec_loc_;
-
-        int rank_;
-        int rank_row_;
-        int num_ranks_col_;
-
-        block_data_descriptor gvec_slab_distr_;
+        
+        /// Slabs of G-vectors received from column ranks.
+        block_data_descriptor gvec_slab_pile_;
 
         mdarray<double_complex, 1> inner_prod_buf_;
 
@@ -80,10 +79,7 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
               pu_(pu__),
-              comm_(mpi_grid_.communicator()),
-              rank_(-1),
-              rank_row_(-1),
-              num_ranks_col_(-1)
+              comm_col_(mpi_grid_.communicator(1 << 1))
         {
             PROFILE();
 
@@ -99,42 +95,40 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
               gvec_(gvec__),
               mpi_grid_(mpi_grid__),
               pu_(pu__),
-              comm_(mpi_grid_.communicator())
+              comm_col_(mpi_grid_.communicator(1 << 1))
         {
             PROFILE();
 
-            /* flat rank id */
-            rank_ = comm_.rank();
-
             /* number of column ranks */
-            num_ranks_col_ = mpi_grid_.communicator(1 << 0).size();
+            int num_ranks_col = comm_col_.size();
 
             /* row rank */
-            rank_row_ = mpi_grid_.communicator(1 << 1).rank();
+            int rank_row = mpi_grid_.communicator(1 << 0).rank();
+
+            assert(rank_row * num_ranks_col + comm_col_.rank() == mpi_grid_.communicator().rank());
             
             /* local number of G-vectors */
-            num_gvec_loc_ = gvec_.num_gvec(rank_);
+            num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
 
             /* primary storage of PW wave functions: slabs */ 
             wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
 
-            splindex<block> spl_wf(max_num_wfs_swapped__, num_ranks_col_, mpi_grid_.communicator(1 << 0).rank());
+            splindex<block> spl_wf(max_num_wfs_swapped__, comm_col_.size(), comm_col_.rank());
 
-            if (comm_.size() > 1)
+            if (comm_col_.size() > 1)
             {
                 wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(0), "wf_coeffs_swapped_");
                 send_recv_buf_ = mdarray<double_complex, 1>(wf_coeffs_swapped_.size(), "send_recv_buf_");
             }
 
             /* store the number of G-vectors to be received by this rank */
-            gvec_slab_distr_ = block_data_descriptor(num_ranks_col_);
-            for (int i = 0; i < num_ranks_col_; i++)
-            {
-                gvec_slab_distr_.counts[i] = gvec_.num_gvec(rank_row_ * num_ranks_col_ + i);
-            }
-            gvec_slab_distr_.calc_offsets();
+            gvec_slab_pile_ = block_data_descriptor(num_ranks_col);
+            for (int i = 0; i < num_ranks_col; i++)
+                gvec_slab_pile_.counts[i] = gvec_.num_gvec(rank_row * num_ranks_col + i);
 
-            assert(gvec_slab_distr_.offsets[num_ranks_col_ - 1] + gvec_slab_distr_.counts[num_ranks_col_ - 1] == gvec__.num_gvec_fft());
+            gvec_slab_pile_.calc_offsets();
+
+            assert(gvec_slab_pile_.offsets[num_ranks_col - 1] + gvec_slab_pile_.counts[num_ranks_col - 1] == gvec__.num_gvec_fft());
         }
 
         ~Wave_functions()
@@ -209,11 +203,6 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
 
         void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
                    mdarray<double_complex, 2>& result__, int irow__, int icol__);
-
-        inline Communicator const& comm() const
-        {
-            return comm_;
-        }
 
         mdarray<double_complex, 2>& coeffs()
         {

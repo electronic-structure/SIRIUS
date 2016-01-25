@@ -71,55 +71,113 @@ using namespace sirius;
 
 void test2(std::vector<int> mpi_grid_dims__)
 {
-    BLACS_grid blacs_grid(mpi_comm_world, mpi_grid_dims__[0], mpi_grid_dims__[1]);
-    BLACS_grid blacs_grid_slice(mpi_comm_world, 1, mpi_grid_dims__[0] * mpi_grid_dims__[1]);
+//    BLACS_grid blacs_grid(mpi_comm_world, mpi_grid_dims__[0], mpi_grid_dims__[1]);
+//    BLACS_grid blacs_grid_slice(mpi_comm_world, 1, mpi_grid_dims__[0] * mpi_grid_dims__[1]);
+//
+//    int N = 10019;
+//    int n = 123;
+//    Wave_functions<true> wf1(N, n, 8, blacs_grid, blacs_grid_slice);
+//    for (int i = 0; i < wf1.coeffs().num_cols_local(); i++)
+//    {
+//        for (int j = 0; j < wf1.coeffs().num_rows_local(); j++)
+//        {
+//            wf1.coeffs()(j, i) = type_wrapper<double_complex>::random();
+//        }
+//    }
+//    auto h = wf1.coeffs().panel().hash();
+//
+//    wf1.swap_forward(0, n);
+//    wf1.coeffs().zero();
+//    wf1.swap_backward(0, n);
+//
+    //if (wf1.coeffs().panel().hash() != h) TERMINATE("wrong hash");
+}
 
-    int N = 10019;
-    int n = 123;
-    Wave_functions<true> wf1(N, n, 8, blacs_grid, blacs_grid_slice);
-    for (int i = 0; i < wf1.coeffs().num_cols_local(); i++)
+void test3(std::vector<int> mpi_grid_dims__, double cutoff__)
+{
+    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
+
+    vector3d<int> fft_grid_dims(3, 3, 3);
+    FFT3D_grid fft_grid(fft_grid_dims);
+
+    matrix3d<double> M;
+    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
+              mpi_grid.dimension_size(1), false, false);
+    
+    int nwf = 8;
+    Wave_functions<false> wf(nwf, nwf, gvec, mpi_grid, CPU);
+    for (int i = 0; i < nwf; i++)
     {
-        for (int j = 0; j < wf1.coeffs().num_rows_local(); j++)
+        for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++) wf(ig, i) = gvec.offset_gvec(mpi_comm_world().rank()) + ig;
+    }
+
+    for (int r = 0; r < mpi_comm_world().size(); r++)
+    {
+        if (r == mpi_comm_world().rank())
         {
-            wf1.coeffs()(j, i) = type_wrapper<double_complex>::random();
+            printf("rank: %i\n", r);
+            for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++) 
+            {
+                for (int i = 0; i < nwf; i++) printf("%4.f ", wf(ig, i).real());
+                printf("\n");
+            }
+        }
+        mpi_comm_world().barrier();
+    }
+
+    wf.swap_forward(0, nwf);
+
+    for (int r = 0; r < mpi_grid.dimension_size(0); r++)
+    {
+        for (int c = 0; c < mpi_grid.dimension_size(1); c++)
+        {
+            if (r == mpi_grid.communicator(1 << 0).rank() && c == mpi_grid.communicator(1 << 1).rank())
+            {
+                printf("rank: %i %i, row: %i col: %i\n", mpi_comm_world().rank(), mpi_grid.communicator().rank(), r, c);
+                for (int ig = 0; ig < gvec.num_gvec_fft(); ig++) 
+                {
+                    for (int i = 0; i < wf.spl_num_swapped().local_size(); i++) printf("%4.f ", wf[i][ig].real());
+                    printf("\n");
+                }
+            }
+            mpi_comm_world().barrier();
         }
     }
-    auto h = wf1.coeffs().panel().hash();
-
-    wf1.swap_forward(0, n);
-    wf1.coeffs().zero();
-    wf1.swap_backward(0, n);
-
-    if (wf1.coeffs().panel().hash() != h) TERMINATE("wrong hash");
 }
 
 int main(int argn, char **argv)
 {
     cmd_args args;
+    args.register_key("--help", "print this help and exit");
     args.register_key("--dims=", "{vector3d<int>} FFT dimensions");
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
     args.register_key("--num_bands=", "{int} number of bands");
     args.register_key("--mpi_grid=", "{vector2d<int>} MPI grid");
 
     args.parse_args(argn, argv);
-    if (argn == 1)
+    if (args.exist("help"))
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         exit(0);
     }
 
-    vector3d<int> dims = args.value< vector3d<int> >("dims");
+    //vector3d<int> dims = args.value< vector3d<int> >("dims");
     double cutoff = args.value<double>("cutoff", 1);
-    int num_bands = args.value<int>("num_bands", 50);
+    //int num_bands = args.value<int>("num_bands", 50);
     std::vector<int> mpi_grid = args.value< std::vector<int> >("mpi_grid", {1, 1});
 
-    Platform::initialize(1);
+    //Platform::initialize(1);
 
-    //test1(dims, cutoff, num_bands, mpi_grid);
-    test2(mpi_grid);
+    ////test1(dims, cutoff, num_bands, mpi_grid);
+    //test2(mpi_grid);
     
-    Timer::print();
+    //Timer::print();
+    sirius::initialize(true);
 
-    Platform::finalize();
+    test3(mpi_grid, cutoff);
+
+    sirius::finalize();
 }

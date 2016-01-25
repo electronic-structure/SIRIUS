@@ -11,10 +11,10 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
     FFT3D_grid fft_grid(2.01 * cutoff__, M);
 
-    FFT3D fft(fft_grid, mpi_grid.communicator(1 << 1), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
+    FFT3D fft(fft_grid, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 1),
-              mpi_grid.dimension_size(0), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
+              mpi_grid.dimension_size(1), false, false);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft.local_size(), 2.0);
@@ -25,7 +25,8 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
         printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
         printf("number of FFT threads: %i\n", omp_get_max_threads());
-        printf("number of FFT groups: %i\n", mpi_grid.dimension_size(0));
+        printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
+        printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
     }
 
     fft.prepare();
