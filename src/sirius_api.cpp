@@ -72,8 +72,17 @@ void sirius_initialize(int32_t* call_mpi_init__)
 
 void sirius_create_global_parameters()
 {
-    sim_param = (Utils::file_exists("sirius.json")) ? new sirius::Simulation_parameters("sirius.json")
-                                                    : new sirius::Simulation_parameters();
+    if (Utils::file_exists("sirius.json"))
+    {
+        sim_param = new sirius::Simulation_parameters("sirius.json");
+    }
+    else
+    {
+        sim_param = new sirius::Simulation_parameters();
+        #ifdef __GPU
+        sim_param->set_processing_unit(GPU);
+        #endif
+    }
 }
 
 void sirius_create_simulation_context()

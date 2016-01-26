@@ -299,6 +299,11 @@ class Simulation_parameters
                 TERMINATE("wrong type of electronic structure method");
             }
         }
+
+        inline void set_processing_unit(processing_unit_t pu__)
+        {
+            processing_unit_ = pu__;
+        }
     
         inline int lmax_apw() const
         {

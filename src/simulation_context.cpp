@@ -14,28 +14,21 @@ void Simulation_context::init_fft()
                                                        comm)
                                         : new MPI_grid({comm.size(), 1}, comm);
 
-    /* fine FFT grid for density and potential */
-    FFT3D_grid fft_grid(pw_cutoff(), rlv);
-    /* coarse FFT grid for applying Hloc */
-    FFT3D_grid fft_coarse_grid(2 * gk_cutoff(), rlv);
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = new FFT3D(fft_grid, mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
+    fft_ = new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
+
+    /* create a list of G-vectors for dense FFT grid */
+    gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
+                 fft_->comm(), mpi_grid_fft_->dimension_size(1), true, false);
 
     if (!full_potential())
     {
         /* create FFT driver for coarse mesh */
-        fft_coarse_ = new FFT3D(fft_coarse_grid, mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
-    }
+        fft_coarse_ = new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
 
-    /* create a list of G-vectors for dense FFT grid */
-    gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_grid,
-                 mpi_grid_fft_->communicator(1 << 0), mpi_grid_fft_->dimension_size(1), true, false);
-
-    if (!full_potential())
-    {
         /* create a list of G-vectors for corase FFT grid */
-        gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_grid,
-                            mpi_grid_fft_->communicator(1 << 0), mpi_grid_fft_->dimension_size(1), false, false);
+        gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
+                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), false, false);
     }
 }
 
