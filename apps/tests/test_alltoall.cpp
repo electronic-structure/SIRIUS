@@ -43,7 +43,13 @@ double test_alltoall(int num_gkvec__, int num_bands__, int num_groups__)
     }
     sd.calc_offsets();
     rd.calc_offsets();
-    
+
+    if (comm.rank() == 0)
+    {
+        printf("number of ranks: %i\n", comm.size());
+        printf("local buffer size: %f Mb\n", spl_gkvec.local_size() * num_bands * sizeof(double_complex) / double(1 << 20));
+    }
+
     comm.barrier();
     runtime::Timer t("alltoall");
     comm.alltoall(&a(0, 0), &sd.counts[0], &sd.offsets[0], &b(0, 0), &rd.counts[0], &rd.offsets[0]);
