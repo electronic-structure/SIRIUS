@@ -27,6 +27,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
+        printf("number of z-columns: %li\n", gvec.z_columns().size());
     }
 
     fft.prepare();
