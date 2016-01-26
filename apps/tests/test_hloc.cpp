@@ -43,12 +43,14 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
     Wave_functions<false> hphi(4 * num_bands__, num_bands__, gvec, mpi_grid, CPU);
     
+    mpi_comm_world().barrier();
     runtime::Timer t1("h_loc");
     for (int i = 0; i < 4; i++)
     {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
         hloc.apply(0, hphi, i * num_bands__, num_bands__);
     }
+    mpi_comm_world().barrier();
     t1.stop();
 
     double diff = 0;
