@@ -71,7 +71,6 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 int main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--num_bands=", "{int} number of bands");

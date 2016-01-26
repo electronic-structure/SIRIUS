@@ -155,6 +155,7 @@ FFT3D::~FFT3D()
 template <int direction, bool use_reduction>
 void FFT3D::transform_xy(Gvec const& gvec__)
 {
+    comm_.barrier();
     TIMER("sirius::FFT3D::transform_xy");
 
     double t = omp_get_wtime();
@@ -374,6 +375,7 @@ void FFT3D::transform_z_serial(Gvec const& gvec__, double_complex* data__)
 template <int direction, bool use_reduction>
 void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 {
+    comm_.barrier();
     TIMER("sirius::FFT3D::transform_z_parallel");
 
     double t = omp_get_wtime();
@@ -509,6 +511,7 @@ void FFT3D::transform_z_parallel(Gvec const& gvec__, double_complex* data__)
 
         tcall_[4] += (omp_get_wtime() - t1);
     }
+    comm_.barrier();
 
     tcall_[3] += (omp_get_wtime() - t);
 }
