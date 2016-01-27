@@ -262,7 +262,7 @@ void Density::initial_density()
             s << "wrong initial charge density" << std::endl
               << "  integral of the density : " << real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
               << "  target number of electrons : " << unit_cell_.num_valence_electrons();
-            WARNING(s);
+            if (ctx_.comm().rank() == 0) WARNING(s);
         }
         rho_->fft_transform(1);
 
