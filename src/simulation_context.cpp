@@ -230,62 +230,62 @@ void Simulation_context::print_info()
     printf("smearing width                     : %f\n", smearing_width());
     printf("cyclic block size                  : %i\n", cyclic_block_size());
 
-    //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
-    //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
-    //== for (int i = 0; i < 2; i++)
-    //== {
-    //==     printf("\n");
-    //==     printf("%s", evsn[i].c_str());
-    //==     switch (evst[i])
-    //==     {
-    //==         case ev_lapack:
-    //==         {
-    //==             printf("LAPACK\n");
-    //==             break;
-    //==         }
-    //==         #ifdef __SCALAPACK
-    //==         case ev_scalapack:
-    //==         {
-    //==             printf("ScaLAPACK, block size %i\n", linalg<scalapack>::cyclic_block_size());
-    //==             break;
-    //==         }
-    //==         case ev_elpa1:
-    //==         {
-    //==             printf("ELPA1, block size %i\n", linalg<scalapack>::cyclic_block_size());
-    //==             break;
-    //==         }
-    //==         case ev_elpa2:
-    //==         {
-    //==             printf("ELPA2, block size %i\n", linalg<scalapack>::cyclic_block_size());
-    //==             break;
-    //==         }
-    //==         case ev_rs_gpu:
-    //==         {
-    //==             printf("RS_gpu\n");
-    //==             break;
-    //==         }
-    //==         case ev_rs_cpu:
-    //==         {
-    //==             printf("RS_cpu\n");
-    //==             break;
-    //==         }
-    //==         #endif
-    //==         case ev_magma:
-    //==         {
-    //==             printf("MAGMA\n");
-    //==             break;
-    //==         }
-    //==         case ev_plasma:
-    //==         {
-    //==             printf("PLASMA\n");
-    //==             break;
-    //==         }
-    //==         default:
-    //==         {
-    //==             error_local(__FILE__, __LINE__, "wrong eigen-value solver");
-    //==         }
-    //==     }
-    //== }
+    std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
+    ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
+    for (int i = 0; i < 2; i++)
+    {
+        printf("\n");
+        printf("%s", evsn[i].c_str());
+        switch (evst[i])
+        {
+            case ev_lapack:
+            {
+                printf("LAPACK\n");
+                break;
+            }
+            #ifdef __SCALAPACK
+            case ev_scalapack:
+            {
+                printf("ScaLAPACK\n");
+                break;
+            }
+            case ev_elpa1:
+            {
+                printf("ELPA1");
+                break;
+            }
+            case ev_elpa2:
+            {
+                printf("ELPA2\n");
+                break;
+            }
+            case ev_rs_gpu:
+            {
+                printf("RS_gpu\n");
+                break;
+            }
+            case ev_rs_cpu:
+            {
+                printf("RS_cpu\n");
+                break;
+            }
+            #endif
+            case ev_magma:
+            {
+                printf("MAGMA\n");
+                break;
+            }
+            case ev_plasma:
+            {
+                printf("PLASMA\n");
+                break;
+            }
+            default:
+            {
+                TERMINATE("wrong eigen-value solver");
+            }
+        }
+    }
 
     printf("\n");
     printf("processing unit : ");
