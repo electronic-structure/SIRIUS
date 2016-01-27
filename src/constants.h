@@ -30,7 +30,7 @@
 #include "atomic_symb.h"
 
 const int major_version = 3;
-const int minor_version = 1;
+const int minor_version = 2;
 
 /// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999074; 
@@ -57,11 +57,11 @@ const int lmax_pot_default = 7;
 
 const char* const storage_file_name = "sirius.h5";
 
-const int _dim_k_ = 0;
+const int _mpi_dim_k_ = 0;
 
-const int _dim_col_ = 1;
+const int _mpi_dim_k_row_ = 1;
 
-const int _dim_row_ = 2;
+const int _mpi_dim_k_col_ = 2;
 
 const std::complex<double> complex_one(1, 0);
 

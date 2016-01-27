@@ -64,12 +64,6 @@ class K_set
 
         Communicator const& comm_k_;
 
-        //BLACS_grid const& blacs_grid_;
-
-        ///// 1D BLACS grid for a "slice" data distribution.
-        ///** This grid is used to distribute band index and keep a whole wave-function */
-        //BLACS_grid blacs_grid_slice_;
-
         void init()
         {
             PROFILE();

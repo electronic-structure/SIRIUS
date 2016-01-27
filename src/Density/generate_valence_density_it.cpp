@@ -25,7 +25,7 @@ void Density::generate_valence_density_it(K_set& ks__)
     }
 
     /* reduce arrays; assume that each rank did it's own fraction of the density */
-    auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _dim_k_ | 1 << _dim_col_)
+    auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _mpi_dim_k_ | 1 << _mpi_dim_k_col_)
                                          : ctx_.comm();
 
     comm.allreduce(&rho_->f_rg(0), ctx_.fft().local_size()); 

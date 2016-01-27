@@ -6,11 +6,11 @@ void Simulation_context::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    auto& comm = mpi_grid_->communicator(1 << _dim_col_ | 1 << _dim_row_);
+    auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
 
     /* for now, use parallel fft only in pseudopotential part of the code */
-    mpi_grid_fft_ = (!full_potential()) ? new MPI_grid({mpi_grid_->dimension_size(_dim_row_),
-                                                        mpi_grid_->dimension_size(_dim_col_)},
+    mpi_grid_fft_ = (!full_potential()) ? new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                                        mpi_grid_->dimension_size(_mpi_dim_k_col_)},
                                                        comm)
                                         : new MPI_grid({comm.size(), 1}, comm);
 
@@ -52,9 +52,8 @@ void Simulation_context::initialize()
     /* setup MPI grid */
     mpi_grid_ = new MPI_grid(mpi_grid_dims_, comm_);
 
-
-    blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _dim_row_ | 1 << _dim_col_), 
-                                 mpi_grid_->dimension_size(_dim_row_), mpi_grid_->dimension_size(_dim_col_));
+    blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
+                                 mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_));
     
     blacs_grid_slice_ = new BLACS_grid(blacs_grid_->comm(), 1, blacs_grid_->comm().size());
 
@@ -124,28 +123,15 @@ void Simulation_context::initialize()
 
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
-    if (evsn[0] == "")
+    if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1)
     {
-        if (mpi_grid_->size(1 << _dim_row_ | 1 << _dim_col_) == 1)
-        {
-            evsn[0] = "lapack";
-        }
-        else
-        {
-            evsn[0] = "scalapack";
-        }
+        if (evsn[0] == "") evsn[0] = "lapack";
+        if (evsn[1] == "") evsn[1] = "lapack";
     }
-
-    if (evsn[1] == "")
+    else
     {
-        if (mpi_grid_->size(1 << _dim_row_ | 1 << _dim_col_) == 1)
-        {
-            evsn[1] = "lapack";
-        }
-        else
-        {
-            evsn[1] = "elpa1";
-        }
+        if (evsn[0] == "") evsn[0] = "scalapack";
+        if (evsn[1] == "") evsn[1] = "elpa1";
     }
 
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};

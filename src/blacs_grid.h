@@ -42,29 +42,19 @@ class BLACS_grid
         {
             PROFILE();
 
-            std::vector<int> xy(2);
-            xy[0] = num_ranks_col__;
-            xy[1] = num_ranks_row__;
+            mpi_grid_ = new MPI_grid({num_ranks_row__, num_ranks_col__}, comm_);
 
-            mpi_grid_ = new MPI_grid(xy, comm_);
-
-            rank_col_ = mpi_grid_->coordinate(0);
-            rank_row_ = mpi_grid_->coordinate(1);
+            rank_row_ = mpi_grid_->coordinate(0);
+            rank_col_ = mpi_grid_->coordinate(1);
             
             #ifdef __SCALAPACK
             /* create handler first */
             blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
 
             map_ranks_ = mdarray<int, 2>(num_ranks_row__, num_ranks_col__);
-            for (int i = 0; i < num_ranks_row__; i++)
-            {
-                for (int j = 0; j < num_ranks_col__; j++)
-                {
-                    xy[0] = j;
-                    xy[1] = i;
-                    map_ranks_(i, j) = mpi_grid_->communicator().cart_rank(xy);
-                }
-            }
+            for (int j = 0; j < num_ranks_col__; j++) 
+                for (int i = 0; i < num_ranks_row__; i++)
+                    map_ranks_(i, j) = mpi_grid_->communicator().cart_rank({i, j});
 
             /* create context */
             blacs_context_ = blacs_handler_;
@@ -109,12 +99,12 @@ class BLACS_grid
 
         inline Communicator const& comm_row() const
         {
-            return mpi_grid_->communicator(1 << 1);
+            return mpi_grid_->communicator(1 << 0);
         }
 
         inline Communicator const& comm_col() const
         {
-            return mpi_grid_->communicator(1 << 0);
+            return mpi_grid_->communicator(1 << 1);
         }
 
         inline int num_ranks_row() const

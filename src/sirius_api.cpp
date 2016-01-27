@@ -1249,7 +1249,7 @@ void sirius_create_kset(int32_t* num_kpoints__,
     PROFILE();
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__); 
     
-    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _dim_k_));
+    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) new_kset->initialize();
    
@@ -1272,7 +1272,7 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
     }
 
     sirius::K_set* new_kset = new sirius::K_set(*sim_ctx,
-                                                sim_ctx->mpi_grid().communicator(1 << _dim_k_),
+                                                sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_),
                                                 vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
                                                 vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
                                                 *use_sym__);
@@ -1417,8 +1417,8 @@ void sirius_get_gkvec_arrays(int32_t* kset_id,
     /* position of processors which store a given k-point */
     int rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
     
-    auto& comm_r = sim_ctx->mpi_grid().communicator(1 << _dim_row_);
-    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _dim_k_);
+    auto& comm_r = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_row_);
+    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
 
     if (rank == comm_k.rank())
     {
