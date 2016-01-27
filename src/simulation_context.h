@@ -118,13 +118,38 @@ class Simulation_context: public Simulation_parameters
             unit_cell_.import(unit_cell_input_section_);
         }
 
+        Simulation_context(Communicator const& comm__)
+            : comm_(comm__),
+              mpi_grid_(nullptr),
+              mpi_grid_fft_(nullptr),
+              blacs_grid_(nullptr),
+              blacs_grid_slice_(nullptr),
+              fft_(nullptr),
+              fft_coarse_(nullptr),
+              unit_cell_(*this, comm_),
+              step_function_(nullptr),
+              real_space_prj_(nullptr),
+              std_evp_solver_type_(ev_lapack),
+              gen_evp_solver_type_(ev_lapack),
+              initialized_(false)
+        {
+            PROFILE();
+
+            gettimeofday(&start_time_, NULL);
+            
+            tm const* ptm = localtime(&start_time_.tv_sec); 
+            char buf[100];
+            strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
+            start_time_tag_ = std::string(buf);
+        }
+
         ~Simulation_context()
         {
             PROFILE();
 
             time_active_ += Utils::current_time();
 
-            if (mpi_comm_world().rank() == 0)
+            if (mpi_comm_world().rank() == 0 && initialized_)
             {
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }

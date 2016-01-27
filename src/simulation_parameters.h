@@ -161,8 +161,8 @@ class Simulation_parameters
             std_evp_solver_name_ = parser["std_evp_solver_type"].get(std_evp_solver_name_);
             gen_evp_solver_name_ = parser["gen_evp_solver_type"].get(gen_evp_solver_name_);
 
-            std::string pu;
-            parser["processing_unit"] >> pu;
+            std::string pu = "cpu";
+            pu = parser["processing_unit"].get(pu);
             std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
             if (pu == "cpu")
             {
@@ -177,8 +177,8 @@ class Simulation_parameters
                 TERMINATE("wrong processing unit");
             }
 
-            std::string esm;
-            parser["electronic_structure_method"] >> esm;
+            std::string esm = "full_potential_lapwlo";
+            esm = parser["electronic_structure_method"].get(esm);
             std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
             set_esm_type(esm);
         }

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,7 +25,7 @@
 #ifndef __MATRIX3D_H__
 #define __MATRIX3D_H__
 
-#include <string.h>
+#include <cstring>
 #include "vector3d.h"
 
 /// Handling of a 3x3 matrix of numerical data types.
@@ -41,21 +41,19 @@ class matrix3d
         template <typename U> 
         friend class matrix3d;
         
+        /// Construct a zero matrix.
         matrix3d()
         {
-            memset(&mtrx_[0][0], 0, 9 * sizeof(T));
+            std::memset(&mtrx_[0][0], 0, 9 * sizeof(T));
         }
         
+        /// Construct matrix form plain 3x3 array.
         matrix3d(T mtrx__[3][3])
         {
-            memcpy(&mtrx_[0][0], &mtrx__[0][0], 9 * sizeof(T));
-        }
-
-        matrix3d(const matrix3d<T>& src)
-        {
-            memcpy(&mtrx_[0][0], &src.mtrx_[0][0], 9 * sizeof(T));
+            std::memcpy(&mtrx_[0][0], &mtrx__[0][0], 9 * sizeof(T));
         }
         
+        /// Copy constructor.
         template <typename U>
         matrix3d(const matrix3d<U>& src)
         {
@@ -64,10 +62,11 @@ class matrix3d
                 for (int j = 0; j < 3; j++) mtrx_[i][j] = src.mtrx_[i][j];
             }
         }
-
+        
+        /// Assigment operator.
         matrix3d<T>& operator=(const matrix3d<T>& rhs)
         {
-            if (this != &rhs) memcpy(&this->mtrx_[0][0], &rhs.mtrx_[0][0], 9 * sizeof(T));
+            if (this != &rhs) std::memcpy(&this->mtrx_[0][0], &rhs.mtrx_[0][0], 9 * sizeof(T));
             return *this;
         }
 
@@ -82,7 +81,7 @@ class matrix3d
         }
         
         /// Multiply two matrices.
-        inline matrix3d<T> operator*(matrix3d<T> b)
+        inline matrix3d<T> operator*(matrix3d<T> b) const
         {
             matrix3d<T> c;
             for (int i = 0; i < 3; i++)
@@ -126,7 +125,6 @@ class matrix3d
                     mtrx_[0][1] * (mtrx_[1][2] * mtrx_[2][0] - mtrx_[1][0] * mtrx_[2][2]) + 
                     mtrx_[0][0] * (mtrx_[1][1] * mtrx_[2][2] - mtrx_[1][2] * mtrx_[2][1]));
         }
-
 };
 
 /// Return transpose of the matrix.
