@@ -122,8 +122,8 @@ class Simulation_parameters
             processing_unit_     = CPU;
             smearing_width_      = 0.001;
             esm_type_            = full_potential_lapwlo;
-            std_evp_solver_name_ = "lapack";
-            gen_evp_solver_name_ = "lapack";
+            std_evp_solver_name_ = "";
+            gen_evp_solver_name_ = "";
         }
         
         /// Import data from initial input parameters.

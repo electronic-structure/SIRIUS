@@ -110,18 +110,7 @@ void Simulation_context::initialize()
     if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
         TERMINATE("not enough first-variational states");
     
-    std::map<std::string, ev_solver_t> str_to_ev_solver_t;
-
-    str_to_ev_solver_t["lapack"]    = ev_lapack;
-    str_to_ev_solver_t["scalapack"] = ev_scalapack;
-    str_to_ev_solver_t["elpa1"]     = ev_elpa1;
-    str_to_ev_solver_t["elpa2"]     = ev_elpa2;
-    str_to_ev_solver_t["magma"]     = ev_magma;
-    str_to_ev_solver_t["plasma"]    = ev_plasma;
-    str_to_ev_solver_t["rs_cpu"]    = ev_rs_cpu;
-    str_to_ev_solver_t["rs_gpu"]    = ev_rs_gpu;
-
-    std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
+    std::string evsn[] = {std_evp_solver_name_, gen_evp_solver_name_};
 
     if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1)
     {
@@ -135,6 +124,17 @@ void Simulation_context::initialize()
     }
 
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
+
+    std::map<std::string, ev_solver_t> str_to_ev_solver_t;
+
+    str_to_ev_solver_t["lapack"]    = ev_lapack;
+    str_to_ev_solver_t["scalapack"] = ev_scalapack;
+    str_to_ev_solver_t["elpa1"]     = ev_elpa1;
+    str_to_ev_solver_t["elpa2"]     = ev_elpa2;
+    str_to_ev_solver_t["magma"]     = ev_magma;
+    str_to_ev_solver_t["plasma"]    = ev_plasma;
+    str_to_ev_solver_t["rs_cpu"]    = ev_rs_cpu;
+    str_to_ev_solver_t["rs_gpu"]    = ev_rs_gpu;
 
     for (int i: {0, 1})
     {
@@ -230,11 +230,12 @@ void Simulation_context::print_info()
     printf("smearing width                     : %f\n", smearing_width());
     printf("cyclic block size                  : %i\n", cyclic_block_size());
 
-    std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
+    std::string evsn[] = {"standard eigen-value solver        : ",
+                          "generalized eigen-value solver     : "};
+
     ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
     for (int i = 0; i < 2; i++)
     {
-        printf("\n");
         printf("%s", evsn[i].c_str());
         switch (evst[i])
         {
@@ -251,7 +252,7 @@ void Simulation_context::print_info()
             }
             case ev_elpa1:
             {
-                printf("ELPA1");
+                printf("ELPA1\n");
                 break;
             }
             case ev_elpa2:
