@@ -24,8 +24,6 @@ class BLACS_grid
 
         int blacs_context_;
 
-        mdarray<int, 2> map_ranks_;
-
         /* forbid copy constructor */
         BLACS_grid(BLACS_grid const& src) = delete;
         /* forbid assigment operator */
@@ -50,15 +48,15 @@ class BLACS_grid
             #ifdef __SCALAPACK
             /* create handler first */
             blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
-
-            map_ranks_ = mdarray<int, 2>(num_ranks_row__, num_ranks_col__);
+            
+            std::vector<int> map_ranks(num_ranks_row__ * num_ranks_col__);
             for (int j = 0; j < num_ranks_col__; j++) 
                 for (int i = 0; i < num_ranks_row__; i++)
-                    map_ranks_(i, j) = mpi_grid_->communicator().cart_rank({i, j});
+                    map_ranks[i + j * num_ranks_row__] = mpi_grid_->communicator().cart_rank({i, j});
 
             /* create context */
             blacs_context_ = blacs_handler_;
-            linalg_base::gridmap(&blacs_context_, &map_ranks_(0, 0), map_ranks_.ld(), num_ranks_row__, num_ranks_col__);
+            linalg_base::gridmap(&blacs_context_, &map_ranks[0], num_ranks_row__, num_ranks_row__, num_ranks_col__);
 
             /* check the grid */
             int nrow1, ncol1, irow1, icol1;
@@ -129,7 +127,7 @@ class BLACS_grid
 
         inline int cart_rank(int irow__, int icol__) const
         {
-            return map_ranks_(irow__, icol__);
+            return mpi_grid_->communicator().cart_rank({irow__, icol__});
         }
 
         MPI_grid const* mpi_grid() const
