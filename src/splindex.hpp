@@ -40,7 +40,7 @@ class splindex<block, T>: public splindex_base<T>
             {
                 std::stringstream s;
                 s << "wrong number of ranks: " << num_ranks__;
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
             this->num_ranks_ = num_ranks__;
 
@@ -48,7 +48,7 @@ class splindex<block, T>: public splindex_base<T>
             {
                 std::stringstream s;
                 s << "wrong rank: " << rank__;
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
             this->rank_ = rank__;
 
@@ -174,7 +174,7 @@ class splindex<block_cyclic, T>: public splindex_base<T>
             {
                 std::stringstream s;
                 s << "wrong number of ranks: " << num_ranks__;
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
             this->num_ranks_ = num_ranks__;
 
@@ -182,7 +182,7 @@ class splindex<block_cyclic, T>: public splindex_base<T>
             {
                 std::stringstream s;
                 s << "wrong rank: " << rank__;
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
             this->rank_ = rank__;
 
@@ -190,7 +190,7 @@ class splindex<block_cyclic, T>: public splindex_base<T>
             {
                 std::stringstream s;
                 s << "wrong block size: " << block_size__;
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
             block_size_ = block_size__;
         }

@@ -25,8 +25,7 @@
 #ifndef __SPLINDEX_H__
 #define __SPLINDEX_H__
 
-#include "sirius_internal.h"
-#include "typedefs.h"
+enum splindex_t {block, block_cyclic};
 
 /// Base class for split index.
 template <typename T>
