@@ -89,9 +89,6 @@ class Simulation_parameters
 
         electronic_structure_method_t esm_type_;
 
-        /// Starting time of the program.
-        timeval start_time_;
-
         Iterative_solver_input_section iterative_solver_input_section_;
         
         Mixer_input_section mixer_input_section_;
@@ -99,6 +96,8 @@ class Simulation_parameters
         Unit_cell_input_section unit_cell_input_section_;
         
         std::vector<std::string> xc_functionals_;
+
+        std::string fft_mode_;
 
         void set_defaults()
         {
@@ -121,6 +120,7 @@ class Simulation_parameters
             esm_type_            = full_potential_lapwlo;
             std_evp_solver_name_ = "";
             gen_evp_solver_name_ = "";
+            fft_mode_            = "serial";
         }
         
         /// Import data from initial input parameters.
@@ -178,6 +178,8 @@ class Simulation_parameters
             esm = parser["electronic_structure_method"].get(esm);
             std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
             set_esm_type(esm);
+
+            fft_mode_ = parser["fft_mode"].get(fft_mode_);
         }
 
     public:

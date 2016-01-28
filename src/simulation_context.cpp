@@ -8,11 +8,19 @@ void Simulation_context::init_fft()
 
     auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
 
+    if (!(fft_mode_ == "serial" || fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
+
     /* for now, use parallel fft only in pseudopotential part of the code */
-    mpi_grid_fft_ = (!full_potential()) ? new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                        mpi_grid_->dimension_size(_mpi_dim_k_col_)},
-                                                       comm)
-                                        : new MPI_grid({comm.size(), 1}, comm);
+    if (full_potential() || fft_mode_ == "serial")
+    {
+        /* split bands between all ranks, use serial FFT */
+        mpi_grid_fft_ = new MPI_grid({1, comm.size()}, comm);
+    }
+    else
+    {
+        mpi_grid_fft_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                      mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
+    }
 
     /* create FFT driver for dense mesh (density and potential) */
     fft_ = new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
@@ -170,8 +178,8 @@ void Simulation_context::print_info()
     for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->dimension_size(i));
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-    printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(0));
-    printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(1));
+    printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(1));
+    printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(0));
 
     printf("\n");
     printf("FFT context for density and potential\n");
