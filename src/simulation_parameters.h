@@ -30,11 +30,8 @@
 
 namespace sirius {
 
-/// Parameters of the simulation. 
-/** Parameters are first initialized from the initial input parameters and then by set_..() methods.
- *  Any parameter used in the simulation must be first initialized here. Then the instance of the 
- *  Simulation_context class can be created where proper values of some parameters are set.
- */
+/// Basic parameters of the simulation. 
+/** This is the parent class for sirius::Simulation_context. */
 class Simulation_parameters
 {
     protected:
@@ -182,31 +179,9 @@ class Simulation_parameters
             std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
             set_esm_type(esm);
         }
-    
+
     public:
 
-        /// Create and initialize simulation parameters.
-        /** The order of initialization is the following: first, the default parameter values are set 
-         *  with set_defaults(), then (optionally) import() method is called and the parameters are overwritten 
-         *  with the parameters from the input file, and finally, the user sets the values with set_...() metods.
-         */
-        Simulation_parameters(std::string const& fname__)
-        {
-            PROFILE();
-            set_defaults();
-            import(fname__);
-        }
-
-        Simulation_parameters()
-        {
-            PROFILE();
-            set_defaults();
-        }
-            
-        ~Simulation_parameters()
-        {
-        }
-    
         inline void set_lmax_apw(int lmax_apw__)
         {
             lmax_apw_ = lmax_apw__;
@@ -453,24 +428,5 @@ class Simulation_parameters
 };
 
 };
-
-/** \page stdvarname Standard variable names
- *   
- *  Below is the list of standard names for some of the loop variables:
- *  
- *  l - index of orbital quantum number \n
- *  m - index of azimutal quantum nuber \n
- *  lm - combined index of (l,m) quantum numbers \n
- *  ia - index of atom \n
- *  ic - index of atom class \n
- *  iat - index of atom type \n
- *  ir - index of r-point \n
- *  ig - index of G-vector \n
- *  idxlo - index of local orbital \n
- *  idxrf - index of radial function \n
- *
- *  The loc suffix is added to the variable to indicate that it runs over local fraction of elements for the given
- *  MPI rank. 
- */
 
 #endif

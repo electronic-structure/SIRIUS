@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -34,6 +34,12 @@
 
 namespace sirius {
 
+/// Simulation context is a set of parameters and objects describing a single simulation. 
+/** The order of initialization of the simulation context is the following: first, the default parameter 
+ *  values are set in set_defaults() method, then (optionally) import() method is called and the parameters are 
+ *  overwritten with the those from the input file, and finally, the user sets the values with set_...() metods.
+ *  Then the atom types and atoms can be added to the simulation and the context can be initialized with the 
+ *  corresponding method. */
 class Simulation_context: public Simulation_parameters
 {
     private:
@@ -43,21 +49,23 @@ class Simulation_context: public Simulation_parameters
 
         /// MPI grid for this simulation.
         MPI_grid* mpi_grid_;
-
+        
+        /// 2D MPI grid for the FFT driver.
         MPI_grid* mpi_grid_fft_;
 
+        /// 2D BLACS grid for distributed linear algebra operations.
         BLACS_grid* blacs_grid_;
 
         /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
         /** This grid is used to distribute band index and keep a whole wave-function */
         BLACS_grid* blacs_grid_slice_;
 
+        /// Unit cell of the simulation.
+        Unit_cell unit_cell_;
+
         FFT3D* fft_;
 
         FFT3D* fft_coarse_;
-
-        /// Unit cell of the simulation.
-        Unit_cell unit_cell_;
 
         /// Step function is used in full-potential methods.
         Step_function* step_function_;
@@ -87,60 +95,49 @@ class Simulation_context: public Simulation_parameters
 
         Simulation_context(Simulation_context const&) = delete;
 
-    public:
-        
-        Simulation_context(Simulation_parameters const& parameters__,
-                           Communicator const& comm__)
-            : Simulation_parameters(parameters__),
-              comm_(comm__),
-              mpi_grid_(nullptr),
-              mpi_grid_fft_(nullptr),
-              blacs_grid_(nullptr),
-              blacs_grid_slice_(nullptr),
-              fft_(nullptr),
-              fft_coarse_(nullptr),
-              unit_cell_(parameters__, comm_),
-              step_function_(nullptr),
-              real_space_prj_(nullptr),
-              std_evp_solver_type_(ev_lapack),
-              gen_evp_solver_type_(ev_lapack),
-              initialized_(false)
+        void set_defaults()
         {
-            PROFILE();
+            Simulation_parameters::set_defaults();
 
+            mpi_grid_ = nullptr;
+            mpi_grid_fft_ = nullptr;
+            blacs_grid_ = nullptr;
+            blacs_grid_slice_ = nullptr;
+            fft_ = nullptr;
+            fft_coarse_ = nullptr;
+            step_function_ = nullptr;
+            real_space_prj_ = nullptr;
+            std_evp_solver_type_ = ev_lapack;
+            gen_evp_solver_type_ = ev_lapack;
+            initialized_ = false;
+            
             gettimeofday(&start_time_, NULL);
             
             tm const* ptm = localtime(&start_time_.tv_sec); 
             char buf[100];
             strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
+        }
 
+    public:
+        
+        Simulation_context(std::string const& fname__,
+                           Communicator const& comm__)
+            : comm_(comm__),
+              unit_cell_(*this, comm_)
+        {
+            PROFILE();
+            set_defaults();
+            import(fname__);
             unit_cell_.import(unit_cell_input_section_);
         }
 
         Simulation_context(Communicator const& comm__)
             : comm_(comm__),
-              mpi_grid_(nullptr),
-              mpi_grid_fft_(nullptr),
-              blacs_grid_(nullptr),
-              blacs_grid_slice_(nullptr),
-              fft_(nullptr),
-              fft_coarse_(nullptr),
-              unit_cell_(*this, comm_),
-              step_function_(nullptr),
-              real_space_prj_(nullptr),
-              std_evp_solver_type_(ev_lapack),
-              gen_evp_solver_type_(ev_lapack),
-              initialized_(false)
+              unit_cell_(*this, comm_)
         {
             PROFILE();
-
-            gettimeofday(&start_time_, NULL);
-            
-            tm const* ptm = localtime(&start_time_.tv_sec); 
-            char buf[100];
-            strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
-            start_time_tag_ = std::string(buf);
+            set_defaults();
         }
 
         ~Simulation_context()

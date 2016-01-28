@@ -105,3 +105,22 @@ namespace sirius {
 
 #endif // __SIRIUS_INTERNAL_H__
 
+/** \page stdvarname Standard variable names
+ *   
+ *  Below is the list of standard names for some of the loop variables:
+ *  
+ *  l - index of orbital quantum number \n
+ *  m - index of azimutal quantum nuber \n
+ *  lm - combined index of (l,m) quantum numbers \n
+ *  ia - index of atom \n
+ *  ic - index of atom class \n
+ *  iat - index of atom type \n
+ *  ir - index of r-point \n
+ *  ig - index of G-vector \n
+ *  idxlo - index of local orbital \n
+ *  idxrf - index of radial function \n
+ *  xi - compbined index of lm and idxrf (product of angular and radial functions) \n
+ *
+ *  The _loc suffix is added to the variables to indicate that they represent local fraction of the elements assigned
+ *  to the given MPI rank. 
+ */

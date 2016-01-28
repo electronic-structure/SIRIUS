@@ -374,15 +374,17 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
             double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
             
             #pragma omp atomic update
-            ptr[2 * ig_rot] += std::real(z);
+            ptr[2 * ig_rot] += z.real();
 
             #pragma omp atomic update
-            ptr[2 * ig_rot + 1] += std::imag(z);
+            ptr[2 * ig_rot + 1] += z.imag();
         }
     }
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
-
-    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+    
+    double nrm = 1 / double(num_mag_sym());
+    #pragma omp parallel for
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) * nrm;
 }
 
 void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,

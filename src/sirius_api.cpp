@@ -24,9 +24,6 @@
 
 #include "sirius.h"
 
-/// Parameters of the simulation.
-sirius::Simulation_parameters* sim_param = nullptr;
-
 /// Simulation context.
 sirius::Simulation_context* sim_ctx = nullptr;
 
@@ -70,44 +67,40 @@ void sirius_initialize(int32_t* call_mpi_init__)
     sirius::initialize(call_mpi_init);
 }
 
-void sirius_create_global_parameters()
+void sirius_create_simulation_context(const char* config_file_name__)
 {
-    if (Utils::file_exists("sirius.json"))
+    std::string config_file_name(config_file_name__);
+    if (config_file_name.length() == 0)
     {
-        sim_param = new sirius::Simulation_parameters("sirius.json");
-    }
-    else
-    {
-        sim_param = new sirius::Simulation_parameters();
+        sim_ctx = new sirius::Simulation_context(mpi_comm_world());
         #ifdef __GPU
         sim_param->set_processing_unit(GPU);
         #endif
     }
-}
-
-void sirius_create_simulation_context()
-{
-    sim_ctx = new sirius::Simulation_context(*sim_param, mpi_comm_world());
+    else
+    {
+        sim_ctx = new sirius::Simulation_context(config_file_name, mpi_comm_world());
+    }
 }
 
 void sirius_set_lmax_apw(int32_t* lmax_apw__)
 {
-    sim_param->set_lmax_apw(*lmax_apw__);
+    sim_ctx->set_lmax_apw(*lmax_apw__);
 }
 
 void sirius_set_lmax_pot(int32_t* lmax_pot__)
 {
-    sim_param->set_lmax_pot(*lmax_pot__);
+    sim_ctx->set_lmax_pot(*lmax_pot__);
 }
 
 void sirius_set_lmax_rho(int32_t* lmax_rho__)
 {
-    sim_param->set_lmax_rho(*lmax_rho__);
+    sim_ctx->set_lmax_rho(*lmax_rho__);
 }
 
 void sirius_set_num_mag_dims(int32_t* num_mag_dims__)
 {
-    sim_param->set_num_mag_dims(*num_mag_dims__);
+    sim_ctx->set_num_mag_dims(*num_mag_dims__);
 }
 
 /// Set lattice vectors.
@@ -145,13 +138,13 @@ void sirius_set_lattice_vectors(double* a1__,
 void sirius_set_pw_cutoff(double* pw_cutoff__)
 {
     PROFILE();
-    sim_param->set_pw_cutoff(*pw_cutoff__);
+    sim_ctx->set_pw_cutoff(*pw_cutoff__);
 }
 
 void sirius_set_gk_cutoff(double* gk_cutoff__)
 {
     PROFILE();
-    sim_param->set_gk_cutoff(*gk_cutoff__);
+    sim_ctx->set_gk_cutoff(*gk_cutoff__);
 }
 
 /// Turn on or off the automatic scaling of muffin-tin spheres.
@@ -362,19 +355,19 @@ void sirius_set_equivalent_atoms(int32_t* equivalent_atoms__)
 void sirius_set_aw_cutoff(double* aw_cutoff__)
 {
     PROFILE();
-    sim_param->set_aw_cutoff(*aw_cutoff__);
+    sim_ctx->set_aw_cutoff(*aw_cutoff__);
 }
 
 void sirius_add_xc_functional(char const* name__)
 {
     assert(name__ != NULL);
-    sim_param->add_xc_functional(name__);
+    sim_ctx->add_xc_functional(name__);
 }
 
 void sirius_set_esm_type(char const* name__)
 {
     assert(name__ != NULL);
-    sim_param->set_esm_type(name__);
+    sim_ctx->set_esm_type(name__);
 }
 
 /// Initialize the global variables.
@@ -655,10 +648,10 @@ void sirius_clear(void)
         sim_ctx = nullptr;
     }
 
-    if (sim_param != nullptr)
+    if (sim_ctx != nullptr)
     {
-        delete sim_param;
-        sim_param = nullptr;
+        delete sim_ctx;
+        sim_ctx = nullptr;
     }
     kset_list.clear();
 }
@@ -770,7 +763,7 @@ void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_oc
 //== void FORTRAN(sirius_print_info)(void)
 //== {
 //==     PROFILE();
-//==     sim_param->print_info();
+//==     sim_ctx->print_info();
 //== }
 
 void sirius_print_timers(void)
@@ -877,7 +870,7 @@ void sirius_load_kset(int32_t* kset_id)
 //==         double vf[3];
 //==         for (int x = 0; x < 3; x++) vf[x] = bz_path[ip + 1].second[x] - bz_path[ip].second[x];
 //==         double vc[3];
-//==         sim_param->get_coordinates<cartesian, reciprocal>(vf, vc);
+//==         sim_ctx->get_coordinates<cartesian, reciprocal>(vf, vc);
 //==         double length = Utils::vector_length(vc);
 //==         total_path_length += length;
 //==         segment_length.push_back(length);
@@ -924,11 +917,11 @@ void sirius_load_kset(int32_t* kset_id)
 //== 
 //==     kset_.initialize();
 //== 
-//==     sim_param->solve_free_atoms();
+//==     sim_ctx->solve_free_atoms();
 //== 
 //==     potential->update_atomic_potential();
-//==     sim_param->generate_radial_functions();
-//==     sim_param->generate_radial_integrals();
+//==     sim_ctx->generate_radial_functions();
+//==     sim_ctx->generate_radial_integrals();
 //== 
 //==     // generate plane-wave coefficients of the potential in the interstitial region
 //==     potential->generate_pw_coefs();
@@ -941,18 +934,18 @@ void sirius_load_kset(int32_t* kset_id)
 //==     // synchronize eigen-values
 //==     kset_.sync_band_energies();
 //== 
-//==     if (sim_param->mpi_grid().root())
+//==     if (sim_ctx->mpi_grid().root())
 //==     {
 //==         JSON_write jw("bands.json");
 //==         jw.single("xaxis", xaxis);
-//==         //** jw.single("Ef", sim_param->rti().energy_fermi);
+//==         //** jw.single("Ef", sim_ctx->rti().energy_fermi);
 //==         
 //==         jw.single("xaxis_ticks", xaxis_ticks);
 //==         jw.single("xaxis_tick_labels", xaxis_tick_labels);
 //==         
 //==         jw.begin_array("plot");
 //==         std::vector<double> yvalues(kset_.num_kpoints());
-//==         for (int i = 0; i < sim_param->num_bands(); i++)
+//==         for (int i = 0; i < sim_ctx->num_bands(); i++)
 //==         {
 //==             jw.begin_set();
 //==             for (int ik = 0; ik < kset_.num_kpoints(); ik++) yvalues[ik] = kset_[ik]->band_energy(i);
@@ -962,7 +955,7 @@ void sirius_load_kset(int32_t* kset_id)
 //==         jw.end_array();
 //== 
 //==         //FILE* fout = fopen("bands.dat", "w");
-//==         //for (int i = 0; i < sim_param->num_bands(); i++)
+//==         //for (int i = 0; i < sim_ctx->num_bands(); i++)
 //==         //{
 //==         //    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
 //==         //    {
@@ -986,7 +979,7 @@ void FORTRAN(sirius_plot_potential)(void)
 //    // generate plane-wave coefficients of the potential in the interstitial region
 //    sim_ctx->fft().input(potential->effective_potential()->f_it());
 //    sim_ctx->fft().transform(-1);
-//    sim_ctx->fft().output(sim_param->num_gvec(), sim_ctx->fft_index(), 
+//    sim_ctx->fft().output(sim_ctx->num_gvec(), sim_ctx->fft_index(), 
 //                                   potential->effective_potential()->f_pw());
 //
 //    int N = 10000;
@@ -1004,7 +997,7 @@ void FORTRAN(sirius_plot_potential)(void)
 //        double t = double(i) / (N - 1);
 //        for (int j = 0; j < 3; j++) vf[j] = vf1[j] + t * (vf2[j] - vf1[j]);
 //
-//        sim_param->get_coordinates<cartesian, direct>(vf, vc);
+//        sim_ctx->get_coordinates<cartesian, direct>(vf, vc);
 //        p[i] = potential->value(vc);
 //        x[i] = Utils::vector_length(vc);
 //    }
@@ -1018,7 +1011,7 @@ void FORTRAN(sirius_plot_potential)(void)
 
 //** void FORTRAN(sirius_print_rti)(void)
 //** {
-//**     sim_param->print_rti();
+//**     sim_ctx->print_rti();
 //** }
 
 void sirius_write_json_output(void)
@@ -1107,11 +1100,11 @@ void FORTRAN(sirius_set_so_correction)(int32_t* so_correction)
     PROFILE();
     if (*so_correction != 0) 
     {
-        sim_param->set_so_correction(true);
+        sim_ctx->set_so_correction(true);
     }
     else
     {
-        sim_param->set_so_correction(false);
+        sim_ctx->set_so_correction(false);
     }
 }
 
@@ -1120,48 +1113,48 @@ void FORTRAN(sirius_set_uj_correction)(int32_t* uj_correction)
     PROFILE();
     if (*uj_correction != 0)
     {
-        sim_param->set_uj_correction(true);
+        sim_ctx->set_uj_correction(true);
     }
     else
     {
-        sim_param->set_uj_correction(false);
+        sim_ctx->set_uj_correction(false);
     }
 }
 
 //void FORTRAN(sirius_platform_mpi_rank)(int32_t* rank)
 //{
 //    PROFILE();
-//    *rank = sim_param->comm().rank();
+//    *rank = sim_ctx->comm().rank();
 //}
 //
 //void FORTRAN(sirius_platform_mpi_grid_rank)(int32_t* dimension, int32_t* rank)
 //{
 //    PROFILE();
-//    *rank = sim_param->mpi_grid().coordinate(*dimension);
+//    *rank = sim_ctx->mpi_grid().coordinate(*dimension);
 //}
 
 //== void FORTRAN(sirius_platform_mpi_grid_barrier)(int32_t* dimension)
 //== {
 //==     PROFILE();
-//==     sim_param->mpi_grid().barrier(1 << (*dimension));
+//==     sim_ctx->mpi_grid().barrier(1 << (*dimension));
 //== }
 
 //void FORTRAN(sirius_global_set_sync_flag)(int32_t* flag)
 //{
 //    PROFILE();
-//    sim_param->set_sync_flag(*flag);
+//    sim_ctx->set_sync_flag(*flag);
 //}
 //
 //void FORTRAN(sirius_global_get_sync_flag)(int32_t* flag)
 //{
 //    PROFILE();
-//    *flag = sim_param->sync_flag();
+//    *flag = sim_ctx->sync_flag();
 //}
 
 //void FORTRAN(sirius_platform_barrier)(void)
 //{
 //    PROFILE();
-//    sim_param->comm().barrier();
+//    sim_ctx->comm().barrier();
 //}
 
 void sirius_get_energy_tot(double* total_energy__)
@@ -1481,11 +1474,11 @@ void sirius_get_matching_coefficients(int32_t const* kset_id__,
     //{
     //    auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
     //    
-    //    mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax__, *apwordmax__, sim_param->lmmax_apw(), 
+    //    mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax__, *apwordmax__, sim_ctx->lmmax_apw(), 
     //                                      sim_ctx->unit_cell().num_atoms());
 
 
-    //    dmatrix<double_complex> alm(kp->num_gkvec_row(), sim_ctx->unit_cell().mt_aw_basis_size(), *blacs_grid, sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
+    //    dmatrix<double_complex> alm(kp->num_gkvec_row(), sim_ctx->unit_cell().mt_aw_basis_size(), *blacs_grid, sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
     //    kp->alm_coeffs_row()->generate<true>(alm);
 
     //    for (int i = 0; i < sim_ctx->unit_cell().mt_aw_basis_size(); i++)
@@ -1505,7 +1498,7 @@ void sirius_get_matching_coefficients(int32_t const* kset_id__,
     //    //== for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
     //    //== {
     //    //==     Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
-    //    //==                         sim_param->mpi_grid().communicator(1 << _dim_row_));
+    //    //==                         sim_ctx->mpi_grid().communicator(1 << _dim_row_));
     //    //== }
     //}
 }
@@ -1531,8 +1524,8 @@ void sirius_get_fv_h_o(int32_t const* kset_id__,
             TERMINATE("wrong matrix size");
         }
 
-        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
-        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_param->cyclic_block_size(), sim_param->cyclic_block_size());
+        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
+        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
         kset_list[*kset_id__]->band()->set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
     }
 }
@@ -1576,17 +1569,17 @@ void sirius_get_spinor_wave_functions(int32_t* kset_id, int32_t* ik, double_comp
 {
     PROFILE();
     TERMINATE("fix this for distributed WF storage");
-    //== assert(sim_param->num_bands() == (int)sim_param->spl_spinor_wf().local_size());
+    //== assert(sim_ctx->num_bands() == (int)sim_ctx->spl_spinor_wf().local_size());
 
     //== sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     //== 
-    //== mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), sim_param->num_spins(), 
-    //==                                             sim_param->spl_spinor_wf().local_size());
+    //== mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), sim_ctx->num_spins(), 
+    //==                                             sim_ctx->spl_spinor_wf().local_size());
 
-    //== for (int j = 0; j < (int)sim_param->spl_spinor_wf().local_size(); j++)
+    //== for (int j = 0; j < (int)sim_ctx->spl_spinor_wf().local_size(); j++)
     //== {
     //==     memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
-    //==            kp->wf_size() * sim_param->num_spins() * sizeof(double_complex));
+    //==            kp->wf_size() * sim_ctx->num_spins() * sizeof(double_complex));
     //== }
 }
 
@@ -1601,7 +1594,7 @@ void sirius_get_spinor_wave_functions(int32_t* kset_id, int32_t* ik, double_comp
 //==     sim_ctx->reciprocal_lattice()->fft().input(num_gkvec, kp->fft_index(), wf__, thread_id);
 //==     sim_ctx->reciprocal_lattice()->fft().transform(1, thread_id);
 //==     for (int ir = 0; ir < sim_ctx->reciprocal_lattice()->fft().size(); ir++)
-//==         sim_ctx->reciprocal_lattice()->fft().buffer(ir, thread_id) *= sim_param->step_function()->theta_it(ir);
+//==         sim_ctx->reciprocal_lattice()->fft().buffer(ir, thread_id) *= sim_ctx->step_function()->theta_it(ir);
 //== 
 //==     sim_ctx->reciprocal_lattice()->fft().transform(-1, thread_id);
 //==     sim_ctx->reciprocal_lattice()->fft().output(num_gkvec, kp->fft_index(), wf__, thread_id);
@@ -1678,15 +1671,15 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
 
     potential->xc_potential()->copy_to_global_ptr(vxcmt__, vxcit__);
  
-    if (sim_param->num_mag_dims() == 0) return;
-    assert(sim_param->num_spins() == 2);
+    if (sim_ctx->num_mag_dims() == 0) return;
+    assert(sim_ctx->num_spins() == 2);
 
     /* set temporary array wrapper */
-    mdarray<double, 4> bxcmt(bxcmt__, sim_param->lmmax_pot(), sim_ctx->unit_cell().max_num_mt_points(), 
-                             sim_ctx->unit_cell().num_atoms(), sim_param->num_mag_dims());
-    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft().size(), sim_param->num_mag_dims());
+    mdarray<double, 4> bxcmt(bxcmt__, sim_ctx->lmmax_pot(), sim_ctx->unit_cell().max_num_mt_points(), 
+                             sim_ctx->unit_cell().num_atoms(), sim_ctx->num_mag_dims());
+    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft().size(), sim_ctx->num_mag_dims());
 
-    if (sim_param->num_mag_dims() == 1)
+    if (sim_ctx->num_mag_dims() == 1)
     {
         /* z component */
         potential->effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
@@ -1904,7 +1897,7 @@ void sirius_get_num_fv_states(int32_t* num_fv_states__)
 void sirius_set_num_fv_states(int32_t* num_fv_states__)
 {
     PROFILE();
-    sim_param->set_num_fv_states(*num_fv_states__);
+    sim_ctx->set_num_fv_states(*num_fv_states__);
 }
 
 void sirius_ground_state_initialize(int32_t* kset_id__)
@@ -1973,14 +1966,14 @@ void sirius_generate_gq_matrix_elements(int32_t* kset_id, double* vq)
 
 void sirius_density_mixer_initialize(void)
 {
-    //if (sim_param->mixer_input_section_.type_ == "broyden")
+    //if (sim_ctx->mixer_input_section_.type_ == "broyden")
     //{
-    //    mixer_rho = new sirius::Broyden_mixer(density->size(), sim_param->mixer_input_section_.max_history_, 
-    //                                          sim_param->mixer_input_section_.beta_, sim_param->comm());
+    //    mixer_rho = new sirius::Broyden_mixer(density->size(), sim_ctx->mixer_input_section_.max_history_, 
+    //                                          sim_ctx->mixer_input_section_.beta_, sim_ctx->comm());
     //}
-    //else if (sim_param->mixer_input_section_.type_ == "linear")
+    //else if (sim_ctx->mixer_input_section_.type_ == "linear")
     //{
-    //    mixer_rho = new sirius::Linear_mixer(density->size(), sim_param->mixer_input_section_.beta_, sim_param->comm());
+    //    mixer_rho = new sirius::Linear_mixer(density->size(), sim_ctx->mixer_input_section_.beta_, sim_ctx->comm());
     //}
     //else
     //{
@@ -1995,9 +1988,9 @@ void sirius_density_mixer_initialize(void)
 
 void sirius_potential_mixer_initialize(void)
 {
-    if (sim_param->mixer_input_section().type_ == "linear")
+    if (sim_ctx->mixer_input_section().type_ == "linear")
     {
-        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_param->mixer_input_section().gamma_, sim_ctx->comm());
+        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().gamma_, sim_ctx->comm());
 
         /* initialize potential mixer */
         potential->pack(mixer_pot);
@@ -2181,7 +2174,7 @@ void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 
 void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
 {
-    *use_internal_mixer__ = (sim_param->mixer_input_section().exist_) ? 1 : 0;
+    *use_internal_mixer__ = (sim_ctx->mixer_input_section().exist_) ? 1 : 0;
 }
 
 void sirius_set_iterative_solver_tolerance(double* tol__)
@@ -2682,7 +2675,7 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
     //      << "kp->num_gkvec() = " << kp->num_gkvec();
     //    TERMINATE(s);
     //}
-    //if (*nfv__ != sim_param->num_fv_states())
+    //if (*nfv__ != sim_ctx->num_fv_states())
     //{
     //    TERMINATE("wrong number of first-variational states");
     //}
@@ -2713,7 +2706,7 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
 
     //mdarray<double_complex, 2> fv_states(fv_states__, *ld__, *nfv__);
 
-    //for (int i = 0; i < sim_param->num_fv_states(); i++)
+    //for (int i = 0; i < sim_ctx->num_fv_states(); i++)
     //{
     //    for (int igk = 0; igk < kp->num_gkvec(); igk++)
     //    {
@@ -2737,7 +2730,7 @@ void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
     assert(*ndims__ > 0);
     std::vector<int> dims(*ndims__);
     for (int i = 0; i < *ndims__; i++) dims[i] = dims__[i];
-    sim_param->set_mpi_grid_dims(dims);
+    sim_ctx->set_mpi_grid_dims(dims);
 }
 
 
