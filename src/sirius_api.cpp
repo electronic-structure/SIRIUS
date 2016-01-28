@@ -74,7 +74,7 @@ void sirius_create_simulation_context(const char* config_file_name__)
     {
         sim_ctx = new sirius::Simulation_context(mpi_comm_world());
         #ifdef __GPU
-        sim_param->set_processing_unit(GPU);
+        sim_ctx->set_processing_unit(GPU);
         #endif
     }
     else
