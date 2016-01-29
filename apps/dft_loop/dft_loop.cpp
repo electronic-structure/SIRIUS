@@ -85,27 +85,25 @@ void dft_loop(cmd_args args)
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         TERMINATE("wrong task name");
     
-    Simulation_parameters parameters("sirius.json");
+    Simulation_context ctx("sirius.json", mpi_comm_world());
 
-    std::vector<int> mpi_grid_dims = parameters.mpi_grid_dims();
+    std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
     mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
-    parameters.set_mpi_grid_dims(mpi_grid_dims);
+    ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     JSON_tree parser("sirius.json");
 
-    parameters.set_lmax_apw(parser["lmax_apw"].get(10));
-    parameters.set_lmax_pot(parser["lmax_pot"].get(10));
-    parameters.set_lmax_rho(parser["lmax_rho"].get(10));
-    parameters.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
-    parameters.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
-    parameters.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
+    ctx.set_lmax_apw(parser["lmax_apw"].get(10));
+    ctx.set_lmax_pot(parser["lmax_pot"].get(10));
+    ctx.set_lmax_rho(parser["lmax_rho"].get(10));
+    ctx.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
+    ctx.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
+    ctx.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
     
     int num_mag_dims = parser["num_mag_dims"].get(0);
 
-    parameters.set_num_mag_dims(num_mag_dims);
+    ctx.set_num_mag_dims(num_mag_dims);
 
-    Communicator comm(MPI_COMM_WORLD);
-    Simulation_context ctx(parameters, comm);
     ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
 
     ctx.initialize();
