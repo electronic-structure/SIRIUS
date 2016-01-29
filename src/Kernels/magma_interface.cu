@@ -5,7 +5,6 @@
 #include <cuda.h>
 #include <magma.h>
 #include <magma_z.h>
-#include <magma_zbulge.h>
 #include <magma_threadsetting.h>
 
 extern "C" void magma_init_wrapper()
@@ -24,7 +23,7 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int m;
     int info;
 
-    int lwork = magma_zbulge_get_lq2(matrix_size, magma_get_parallel_numthreads()) + 2 * matrix_size + matrix_size * matrix_size;
+    int lwork = magma_get_zbulge_lq2(matrix_size, magma_get_parallel_numthreads(), 1) + 2 * matrix_size + matrix_size * matrix_size;
     int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
     int liwork = 3 + 5 * matrix_size;
             
