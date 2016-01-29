@@ -66,8 +66,48 @@ void Band::set_fv_h_o(K_point* kp__,
         o__(i, i) = o__(i, i).real();
     }
 
-    /* save Hamiltonian and overlap */
+    #if (__VERIFICATION > 0)
+    /* check n__ * n__ block */
     for (int i = N__; i < N__ + n__; i++)
+    {
+        for (int j = N__; j < N__ + n__; j++)
+        {
+            if (std::abs(h__(i, j) - std::conj(h__(j, i))) > 1e-10 ||
+                std::abs(o__(i, j) - std::conj(o__(j, i))) > 1e-10)
+            {
+                double_complex z1, z2;
+                z1 = h__(i, j);
+                z2 = h__(j, i);
+
+                std::cout << "h(" << i << "," << j << ")=" << z1 << " "
+                          << "h(" << j << "," << i << ")=" << z2 << ", diff=" << std::abs(z1 - std::conj(z2)) << std::endl;
+                
+                z1 = o__(i, j);
+                z2 = o__(j, i);
+
+                std::cout << "o(" << i << "," << j << ")=" << z1 << " "
+                          << "o(" << j << "," << i << ")=" << z2 << ", diff=" << std::abs(z1 - std::conj(z2)) << std::endl;
+                
+            }
+        }
+    }
+    #endif
+
+    /* restore the lower part */
+    #pragma omp parallel for
+    for (int i = 0; i < N__; i++)
+    {
+        for (int j = N__; j < N__ + n__; j++)
+        {
+            h__(j, i) = std::conj(h__(i, j));
+            o__(j, i) = std::conj(o__(i, j));
+        }
+    }
+
+    /* save Hamiltonian and overlap */
+    //for (int i = N__; i < N__ + n__; i++)
+    #pragma omp parallel for
+    for (int i = 0; i < N__ + n__; i++)
     {
         std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double_complex));
         std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));

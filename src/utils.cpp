@@ -151,7 +151,7 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
     {
         for (int j = 0; j < n; j++)
         {
-            double diff = abs(mtrx(i, j) - conj(mtrx(j, i)));
+            double diff = std::abs(mtrx(i, j) - std::conj(mtrx(j, i)));
             if (diff > maxdiff)
             {
                 maxdiff = diff;
@@ -170,7 +170,6 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
         WARNING(s);
     }
 }
-
 
 double Utils::confined_polynomial(double r, double R, int p1, int p2, int dm)
 {

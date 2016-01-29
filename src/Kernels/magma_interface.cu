@@ -20,12 +20,18 @@ extern "C" void magma_finalize_wrapper()
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
                                              int32_t ldb, double* eval)
 {
+    printf("MAGMA interface, matrix size: %i\n", matrix_size);
     int m;
     int info;
+    
+    int lwork;
+    int lrwork;
+    int liwork;
+    magma_zheevdx_getworksize(matrix_size, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-    int lwork = magma_get_zbulge_lq2(matrix_size, magma_get_parallel_numthreads(), 1) + 2 * matrix_size + matrix_size * matrix_size;
-    int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
-    int liwork = 3 + 5 * matrix_size;
+    //int lwork = magma_get_zbulge_lq2(matrix_size, magma_get_parallel_numthreads(), 1) + 2 * matrix_size + matrix_size * matrix_size;
+    //int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
+    //int liwork = 3 + 5 * matrix_size;
             
     magmaDoubleComplex* h_work;
     if (cudaMallocHost((void**)&h_work, lwork * sizeof(magmaDoubleComplex)) != cudaSuccess)
@@ -57,6 +63,20 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size, (magmaDoubleComplex*)a, lda, (magmaDoubleComplex*)b, ldb, 0.0, 0.0, 
                          1, nv, &m, w, h_work, lwork, rwork, lrwork, iwork, liwork, &info);
 
+    if (info)
+    {
+        printf("magma_zhegvdx_2stage returned : %i\n", info);
+        exit(-1);
+    }    
+
+    if (m < nv)
+    {
+        printf("Not all eigen-vectors are found.\n");
+        printf("requested number of eigen-vectors: %i\n", nv);
+        printf("found number of eigen-vectors: %i\n", m);
+        exit(-1);
+    }
+
     memcpy(eval, &w[0], nv * sizeof(double));
     
     cudaFreeHost(h_work);
@@ -64,17 +84,6 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     free(iwork);
     free(w);
 
-    if (info)
-    {
-        printf("magma_zhegvdx_2stage returned : %i\n", info);
-        exit(-1);
-    }    
-
-    if (m != nv)
-    {
-        printf("Not all eigen-values are found.\n");
-        exit(-1);
-    }
 }
 
 
