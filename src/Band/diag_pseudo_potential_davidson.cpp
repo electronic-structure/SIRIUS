@@ -73,6 +73,14 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     matrix<double_complex> hmlt_old(num_phi, num_phi);
     matrix<double_complex> ovlp_old(num_phi, num_phi);
 
+    #ifdef __GPU
+    if (gen_evp_solver_->type() == ev_magma)
+    {
+        hmlt.pin_memory();
+        ovlp.pin_memory();
+    }
+    #endif
+
     matrix<double_complex> evec;
     if (converge_by_energy)
     {
