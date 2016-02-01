@@ -20,7 +20,6 @@ extern "C" void magma_finalize_wrapper()
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
                                              int32_t ldb, double* eval)
 {
-    printf("MAGMA interface, matrix size: %i\n", matrix_size);
     int m;
     int info;
     
@@ -66,6 +65,8 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     if (info)
     {
         printf("magma_zhegvdx_2stage returned : %i\n", info);
+        if (info == MAGMA_ERR_DEVICE_ALLOC)
+            printf("this is MAGMA_ERR_DEVICE_ALLOC\n");
         exit(-1);
     }    
 

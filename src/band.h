@@ -170,16 +170,16 @@ class Band
                        D_operator& d_op,
                        Q_operator& q_op);
 
-        void set_fv_h_o(K_point* kp__,
-                        int N__,
-                        int n__,
-                        Wave_functions<false>& phi__,
-                        Wave_functions<false>& hphi__,
-                        Wave_functions<false>& ophi__,
-                        matrix<double_complex>& h__,
-                        matrix<double_complex>& o__,
-                        matrix<double_complex>& h_old__,
-                        matrix<double_complex>& o_old__);
+        void set_h_o(K_point* kp__,
+                     int N__,
+                     int n__,
+                     Wave_functions<false>& phi__,
+                     Wave_functions<false>& hphi__,
+                     Wave_functions<false>& ophi__,
+                     matrix<double_complex>& h__,
+                     matrix<double_complex>& o__,
+                     matrix<double_complex>& h_old__,
+                     matrix<double_complex>& o_old__);
 
         int residuals(K_point* kp__,
                       int ispn__,

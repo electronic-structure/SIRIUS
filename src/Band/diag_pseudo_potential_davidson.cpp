@@ -153,7 +153,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_fv_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
  
         /* increase size of the variation space */
         N += n;

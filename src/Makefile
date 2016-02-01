@@ -23,6 +23,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Density/generate_pseudo_core_charge_density.cpp \
        Density/augment.cpp \
        Band/set_fv_h_o.cpp \
+       Band/set_h_o.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
        Band/apply_h_o.cpp \
