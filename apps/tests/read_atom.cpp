@@ -2,7 +2,7 @@
 
 int main(int argn, char **argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     sirius::Simulation_parameters parameters;
 
@@ -10,5 +10,5 @@ int main(int argn, char **argv)
     atom_type.init(0);
 
     atom_type.print_info();
-    Platform::finalize();
+    sirius::finalize();
 }

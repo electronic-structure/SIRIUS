@@ -8,7 +8,7 @@ void Density::generate_valence_density_mt(K_set& ks)
 
     /* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
        because density matrix is symmetric */
-    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+    int num_zdmat = (ctx_.num_mag_dims() == 3) ? 3 : (ctx_.num_mag_dims() + 1);
 
     /* complex density matrix */
     mdarray<double_complex, 4> mt_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
@@ -40,7 +40,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     }
    
     /* compute occupation matrix */
-    if (parameters_.uj_correction())
+    if (ctx_.uj_correction())
     {
         STOP();
 
@@ -102,11 +102,11 @@ void Density::generate_valence_density_mt(K_set& ks)
                            (unit_cell_.max_mt_radial_basis_size() + 1) / 2;
     
     // real density matrix
-    mdarray<double, 3> mt_density_matrix(parameters_.lmmax_rho(), max_num_rf_pairs, parameters_.num_mag_dims() + 1);
+    mdarray<double, 3> mt_density_matrix(ctx_.lmmax_rho(), max_num_rf_pairs, ctx_.num_mag_dims() + 1);
     
     mdarray<double, 2> rf_pairs(unit_cell_.max_num_mt_points(), max_num_rf_pairs);
-    mdarray<double, 3> dlm(parameters_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
-                           parameters_.num_mag_dims() + 1);
+    mdarray<double, 3> dlm(ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
+                           ctx_.num_mag_dims() + 1);
     for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = (int)unit_cell_.spl_num_atoms(ialoc);
@@ -115,8 +115,8 @@ void Density::generate_valence_density_mt(K_set& ks)
         int nmtp = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
         
-        Timer t1("sirius::Density::generate|sum_zdens");
-        switch (parameters_.num_mag_dims())
+        runtime::Timer t1("sirius::Density::generate|sum_zdens");
+        switch (ctx_.num_mag_dims())
         {
             case 3:
             {
@@ -136,7 +136,7 @@ void Density::generate_valence_density_mt(K_set& ks)
         }
         t1.stop();
         
-        Timer t2("sirius::Density::generate|expand_lm");
+        runtime::Timer t2("sirius::Density::generate|expand_lm");
         /* collect radial functions */
         for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++)
         {
@@ -152,15 +152,15 @@ void Density::generate_valence_density_mt(K_set& ks)
                 }
             }
         }
-        for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++)
         {
-            linalg<CPU>::gemm(0, 1, parameters_.lmmax_rho(), nmtp, num_rf_pairs, 
+            linalg<CPU>::gemm(0, 1, ctx_.lmmax_rho(), nmtp, num_rf_pairs, 
                               &mt_density_matrix(0, 0, j), mt_density_matrix.ld(), 
                               &rf_pairs(0, 0), rf_pairs.ld(), &dlm(0, 0, j), dlm.ld());
         }
 
-        int sz = static_cast<int>(parameters_.lmmax_rho() * nmtp * sizeof(double));
-        switch (parameters_.num_mag_dims())
+        int sz = static_cast<int>(ctx_.lmmax_rho() * nmtp * sizeof(double));
+        switch (ctx_.num_mag_dims())
         {
             case 3:
             {
@@ -171,7 +171,7 @@ void Density::generate_valence_density_mt(K_set& ks)
             {
                 for (int ir = 0; ir < nmtp; ir++)
                 {
-                    for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                    for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
                     {
                         rho_->f_mt<local>(lm, ir, ialoc) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
                         magnetization_[0]->f_mt<local>(lm, ir, ialoc) = dlm(lm, ir, 0) - dlm(lm, ir, 1);

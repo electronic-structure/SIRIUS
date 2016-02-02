@@ -231,7 +231,7 @@ vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
                   << rm1(0, 0) << " " << rm1(0, 1) << " " << rm1(0, 2) << std::endl
                   << rm1(1, 0) << " " << rm1(1, 1) << " " << rm1(1, 2) << std::endl
                   << rm1(2, 0) << " " << rm1(2, 1) << " " << rm1(2, 2) << std::endl;
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
         }
     }
@@ -339,7 +339,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    Gvec const& gvec__,
                                    Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_function", comm__);
+    runtime::Timer t("sirius::Symmetry::symmetrize_function", comm__);
 
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
@@ -354,9 +354,9 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
         auto R = magnetic_group_symmetry(i).spg_op.R;
         auto t = magnetic_group_symmetry(i).spg_op.t;
 
-        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
         {
-            int ig = (int)spl_gvec[igloc];
+            int ig = spl_gvec[igloc];
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
              * GR is a vector-matrix multiplication [G][.....]
@@ -374,22 +374,24 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
             double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
             
             #pragma omp atomic update
-            ptr[2 * ig_rot] += std::real(z);
+            ptr[2 * ig_rot] += z.real();
 
             #pragma omp atomic update
-            ptr[2 * ig_rot + 1] += std::imag(z);
+            ptr[2 * ig_rot + 1] += z.imag();
         }
     }
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
-
-    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+    
+    double nrm = 1 / double(num_mag_sym());
+    #pragma omp parallel for
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) * nrm;
 }
 
 void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
                                              Gvec const& gvec__,
                                              Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_vector_z_component");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector_z_component");
     
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
@@ -405,9 +407,9 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
         auto t = magnetic_group_symmetry(i).spg_op.t;
         auto S = magnetic_group_symmetry(i).spin_rotation;
 
-        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
         {
-            int ig = (int)spl_gvec[igloc];
+            int ig = spl_gvec[igloc];
 
             auto gv_rot = transpose(R) * gvec__[ig];
 
@@ -437,7 +439,7 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
                                  Gvec const& gvec__,
                                  Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_vector");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector");
     
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_fx_pw(gvec__.num_gvec());
@@ -461,9 +463,9 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
         auto t = magnetic_group_symmetry(i).spg_op.t;
         auto S = magnetic_group_symmetry(i).spin_rotation;
 
-        for (int igloc = 0; igloc < (int)spl_gvec.local_size(); igloc++)
+        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
         {
-            int ig = (int)spl_gvec[igloc];
+            int ig = spl_gvec[igloc];
 
             auto gv_rot = transpose(R) * gvec__[ig];
 
@@ -512,7 +514,7 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
 void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                                    Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_function_mt");
+    runtime::Timer t("sirius::Symmetry::symmetrize_function_mt");
 
     int lmmax = (int)frlm__.size(0);
     int nrmax = (int)frlm__.size(1);
@@ -557,7 +559,7 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
 void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& vz_rlm__,
                                              Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
 
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);
@@ -607,7 +609,7 @@ void Symmetry::symmetrize_vector(mdarray<double, 3>& vx_rlm__,
                                  mdarray<double, 3>& vz_rlm__,
                                  Communicator const& comm__) const
 {
-    Timer t("sirius::Symmetry::symmetrize_vector_mt");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector_mt");
 
     int lmmax = (int)vx_rlm__.size(0);
     int nrmax = (int)vx_rlm__.size(1);

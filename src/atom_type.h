@@ -26,8 +26,6 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
-#include <string.h>
-#include <vector>
 #include "mdarray.h"
 #include "descriptors.h"
 #include "vector3d.h"
@@ -675,7 +673,7 @@ class Atom_type
 
         inline int num_atoms() const
         {
-            return (int)atom_id_.size();
+            return static_cast<int>(atom_id_.size());
         }
 
         inline int atom_id(int idx) const

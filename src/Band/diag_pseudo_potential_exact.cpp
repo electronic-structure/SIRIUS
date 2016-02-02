@@ -16,11 +16,11 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     auto& psi = kp__->spinor_wave_functions<false>(ispn__);
 
     /* short notation for number of target wave-functions */
-    int num_bands = parameters_.num_fv_states();     
+    int num_bands = ctx_.num_fv_states();     
 
     int ngk = kp__->num_gkvec();
 
-    auto pu = parameters_.processing_unit();
+    auto pu = ctx_.processing_unit();
 
     Wave_functions<false> phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
     Wave_functions<false> hphi(ngk, ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
@@ -55,8 +55,8 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
         TERMINATE("error in evp solve");
     }
 
-    for (int j = 0; j < parameters_.num_fv_states(); j++)
-        kp__->band_energy(j + ispn__ * parameters_.num_fv_states()) = eval[j];
+    for (int j = 0; j < ctx_.num_fv_states(); j++)
+        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
 }
 
 };

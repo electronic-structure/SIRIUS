@@ -41,6 +41,11 @@ class cmd_args
 
     public:
 
+        cmd_args()
+        {
+            register_key("--help", "print this help and exit");
+        }
+
         void register_key(const std::string key__, const std::string description__)
         {
             key_desc_.push_back(std::pair<std::string, std::string>(key__, description__));

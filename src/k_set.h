@@ -50,8 +50,6 @@ class K_set
     
         Simulation_context& ctx_;
 
-        Simulation_parameters const& parameters_;
-
         Band* band_;
 
         std::vector<K_point*> kpoints_;
@@ -66,29 +64,19 @@ class K_set
 
         Communicator const& comm_k_;
 
-        BLACS_grid const& blacs_grid_;
-
-        /// 1D BLACS grid for a "slice" data distribution.
-        /** This grid is used to distribute band index and keep a whole wave-function */
-        BLACS_grid blacs_grid_slice_;
-
         void init()
         {
             PROFILE();
-            band_ = new Band(ctx_, blacs_grid_);
+            band_ = new Band(ctx_, ctx_.blacs_grid());
         }
 
     public:
 
         K_set(Simulation_context& ctx__,
-              Communicator const& comm_k__,
-              BLACS_grid const& blacs_grid__)
+              Communicator const& comm_k__)
             : ctx_(ctx__),
-              parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__),
-              blacs_grid_(blacs_grid__),
-              blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size())
+              comm_k_(comm_k__)
         {
             PROFILE();
             init();
@@ -96,16 +84,12 @@ class K_set
 
         K_set(Simulation_context& ctx__,
               Communicator const& comm_k__,
-              BLACS_grid const& blacs_grid__,
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
             : ctx_(ctx__),
-              parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__),
-              blacs_grid_(blacs_grid__),
-              blacs_grid_slice_(blacs_grid_.comm(), 1, blacs_grid_.comm().size())
+              comm_k_(comm_k__)
         {
             PROFILE();
             init();
@@ -234,7 +218,7 @@ class K_set
         void add_kpoint(double* vk__, double weight__)
         {
             PROFILE();
-            kpoints_.push_back(new K_point(ctx_, vk__, weight__, blacs_grid_, blacs_grid_slice_));
+            kpoints_.push_back(new K_point(ctx_, vk__, weight__));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
@@ -321,7 +305,7 @@ class K_set
                 std::pair< vector3d<double>, vector3d<int> > vkqr = Utils::reduce_coordinates(kpoints_[ik]->vk() + vq);
                 
                 if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
-                    error_local(__FILE__, __LINE__, "index of reduced k+q point is not found");
+                    TERMINATE("index of reduced k+q point is not found");
 
                 kpq[ik].K = vkqr.second;
             }

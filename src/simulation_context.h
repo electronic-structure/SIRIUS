@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -30,33 +30,42 @@
 #include "step_function.h"
 #include "real_space_prj.h"
 #include "version.h"
-#include "debug.hpp"
-#include "fft3d_context.h"
 #include "augmentation_operator.h"
 
 namespace sirius {
 
-class Simulation_context
+/// Simulation context is a set of parameters and objects describing a single simulation. 
+/** The order of initialization of the simulation context is the following: first, the default parameter 
+ *  values are set in set_defaults() method, then (optionally) import() method is called and the parameters are 
+ *  overwritten with the those from the input file, and finally, the user sets the values with set_...() metods.
+ *  Then the atom types and atoms can be added to the simulation and the context can be initialized with the 
+ *  corresponding method. */
+class Simulation_context: public Simulation_parameters
 {
     private:
 
-        /// Copy of simulation parameters.
-        Simulation_parameters parameters_; 
-    
         /// Communicator for this simulation.
         Communicator const& comm_;
 
         /// MPI grid for this simulation.
         MPI_grid* mpi_grid_;
-
+        
+        /// 2D MPI grid for the FFT driver.
         MPI_grid* mpi_grid_fft_;
 
-        FFT3D_context* fft_ctx_;
+        /// 2D BLACS grid for distributed linear algebra operations.
+        BLACS_grid* blacs_grid_;
 
-        FFT3D_context* fft_coarse_ctx_;
-        
+        /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
+        /** This grid is used to distribute band index and keep a whole wave-function */
+        BLACS_grid* blacs_grid_slice_;
+
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
+
+        FFT3D* fft_;
+
+        FFT3D* fft_coarse_;
 
         /// Step function is used in full-potential methods.
         Step_function* step_function_;
@@ -74,8 +83,6 @@ class Simulation_context
 
         std::string start_time_tag_;
 
-        double iterative_solver_tolerance_;
-
         ev_solver_t std_evp_solver_type_;
 
         ev_solver_t gen_evp_solver_type_;
@@ -86,34 +93,51 @@ class Simulation_context
 
         void init_fft();
 
-    public:
-        
-        Simulation_context(Simulation_parameters const& parameters__,
-                           Communicator const& comm__)
-            : parameters_(parameters__),
-              comm_(comm__),
-              mpi_grid_(nullptr),
-              mpi_grid_fft_(nullptr),
-              fft_ctx_(nullptr),
-              fft_coarse_ctx_(nullptr),
-              unit_cell_(parameters_, comm_),
-              step_function_(nullptr),
-              real_space_prj_(nullptr),
-              iterative_solver_tolerance_(parameters_.iterative_solver_input_section().tolerance_),
-              std_evp_solver_type_(ev_lapack),
-              gen_evp_solver_type_(ev_lapack),
-              initialized_(false)
-        {
-            PROFILE();
+        Simulation_context(Simulation_context const&) = delete;
 
+        void set_defaults()
+        {
+            Simulation_parameters::set_defaults();
+
+            mpi_grid_ = nullptr;
+            mpi_grid_fft_ = nullptr;
+            blacs_grid_ = nullptr;
+            blacs_grid_slice_ = nullptr;
+            fft_ = nullptr;
+            fft_coarse_ = nullptr;
+            step_function_ = nullptr;
+            real_space_prj_ = nullptr;
+            std_evp_solver_type_ = ev_lapack;
+            gen_evp_solver_type_ = ev_lapack;
+            initialized_ = false;
+            
             gettimeofday(&start_time_, NULL);
             
             tm const* ptm = localtime(&start_time_.tv_sec); 
             char buf[100];
             strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
+        }
 
-            unit_cell_.import(parameters_.unit_cell_input_section());
+    public:
+        
+        Simulation_context(std::string const& fname__,
+                           Communicator const& comm__)
+            : comm_(comm__),
+              unit_cell_(*this, comm_)
+        {
+            PROFILE();
+            set_defaults();
+            import(fname__);
+            unit_cell_.import(unit_cell_input_section_);
+        }
+
+        Simulation_context(Communicator const& comm__)
+            : comm_(comm__),
+              unit_cell_(*this, comm_)
+        {
+            PROFILE();
+            set_defaults();
         }
 
         ~Simulation_context()
@@ -122,7 +146,7 @@ class Simulation_context
 
             time_active_ += Utils::current_time();
 
-            if (Platform::rank() == 0)
+            if (mpi_comm_world().rank() == 0 && initialized_)
             {
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }
@@ -130,8 +154,10 @@ class Simulation_context
             for (auto e: augmentation_op_) delete e;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
-            if (fft_ctx_ != nullptr) delete fft_ctx_;
-            if (fft_coarse_ctx_ != nullptr) delete fft_coarse_ctx_;
+            if (fft_ != nullptr) delete fft_;
+            if (fft_coarse_ != nullptr) delete fft_coarse_;
+            if (blacs_grid_slice_ != nullptr) delete blacs_grid_slice_;
+            if (blacs_grid_ != nullptr) delete blacs_grid_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
         }
@@ -139,29 +165,26 @@ class Simulation_context
         /// Initialize the similation (can only be called once).
         void initialize();
 
-        Simulation_parameters const& parameters() const
-        {
-            return parameters_;
-        }
+        void print_info();
 
         Unit_cell& unit_cell()
         {
             return unit_cell_;
         }
 
-        Step_function const* step_function() const
+        Step_function const& step_function() const
         {
-            return step_function_;
+            return *step_function_;
         }
 
-        inline FFT3D* fft(int thread_id__) const
+        inline FFT3D& fft() const
         {
-            return fft_ctx_->fft(thread_id__);
+            return *fft_;
         }
 
-        inline FFT3D* fft_coarse(int thread_id__) const
+        inline FFT3D& fft_coarse() const
         {
-            return fft_coarse_ctx_->fft(thread_id__);
+            return *fft_coarse_;
         }
 
         Gvec const& gvec() const
@@ -189,14 +212,24 @@ class Simulation_context
             return *mpi_grid_fft_;
         }
 
-        FFT3D_context& fft_ctx()
+        BLACS_grid const& blacs_grid() const
         {
-            return *fft_ctx_;
+            return *blacs_grid_;
         }
 
-        FFT3D_context& fft_coarse_ctx()
+        BLACS_grid const& blacs_grid_slice() const
         {
-            return *fft_coarse_ctx_;
+            return *blacs_grid_slice_;
+        }
+
+        inline int num_fv_states() const
+        {
+            return num_fv_states_;
+        }
+
+        inline int num_bands() const
+        {
+            return num_spins() * num_fv_states_;
         }
         
         void create_storage_file() const
@@ -211,9 +244,9 @@ class Simulation_context
                 fout.create_node("density");
                 fout.create_node("magnetization");
                 
-                fout["parameters"].write("num_spins", parameters_.num_spins());
-                fout["parameters"].write("num_mag_dims", parameters_.num_mag_dims());
-                fout["parameters"].write("num_bands", parameters_.num_bands());
+                fout["parameters"].write("num_spins", num_spins());
+                fout["parameters"].write("num_mag_dims", num_mag_dims());
+                fout["parameters"].write("num_bands", num_bands());
             }
             comm_.barrier();
         }
@@ -223,148 +256,6 @@ class Simulation_context
             return real_space_prj_;
         }
 
-        void print_info()
-        {
-            printf("\n");
-            printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
-            printf("git hash       : %s\n", git_hash);
-            printf("build date     : %s\n", build_date);
-            //= printf("start time     : %s\n", start_time("%c").c_str());
-            printf("\n");
-            printf("number of MPI ranks           : %i\n", comm_.size());
-            printf("MPI grid                      :");
-            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->size(1 << i));
-            printf("\n");
-            printf("maximum number of OMP threads   : %i\n", Platform::max_num_threads()); 
-            printf("number of OMP threads for FFT   : %i\n", parameters_.num_fft_threads()); 
-            printf("number of pthreads for each FFT : %i\n", parameters_.num_fft_workers()); 
-            printf("cyclic block size               : %i\n", parameters_.cyclic_block_size());
-        
-            unit_cell_.print_info();
-        
-            printf("\n");
-            printf("plane wave cutoff                     : %f\n", parameters_.pw_cutoff());
-            printf("number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
-            printf("number of G-shells                    : %i\n", gvec_.num_shells());
-            printf("number of independent FFTs : %i\n", mpi_grid_fft_->dimension_size(0));
-            printf("FFT comm size              : %i\n", mpi_grid_fft_->dimension_size(1));
-            auto fft_grid = fft_ctx_->fft_grid();
-            printf("FFT grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
-            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
-                                                                fft_grid.limits(1).first, fft_grid.limits(1).second,
-                                                                fft_grid.limits(2).first, fft_grid.limits(2).second);
-            
-            if (!parameters_.full_potential())
-            {
-                fft_grid = fft_coarse_ctx_->fft_grid();
-                printf("number of G-vectors on the coarse grid within the cutoff : %i\n", gvec_coarse_.num_gvec());
-                printf("FFT coarse grid size   : %i %i %i   total : %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2), fft_grid.size());
-                printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first, fft_grid.limits(0).second,
-                                                                           fft_grid.limits(1).first, fft_grid.limits(1).second,
-                                                                           fft_grid.limits(2).first, fft_grid.limits(2).second);
-            }
-        
-            for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
-        
-            printf("\n");
-            printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
-            printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
-            printf("number of first-variational states : %i\n", parameters_.num_fv_states());
-            printf("number of bands                    : %i\n", parameters_.num_bands());
-            printf("number of spins                    : %i\n", parameters_.num_spins());
-            printf("number of magnetic dimensions      : %i\n", parameters_.num_mag_dims());
-            printf("lmax_apw                           : %i\n", parameters_.lmax_apw());
-            printf("lmax_pw                            : %i\n", parameters_.lmax_pw());
-            printf("lmax_rho                           : %i\n", parameters_.lmax_rho());
-            printf("lmax_pot                           : %i\n", parameters_.lmax_pot());
-            printf("lmax_beta                          : %i\n", parameters_.lmax_beta());
-            printf("smearing width:                    : %f\n", parameters_.smearing_width());
-        
-            //== std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
-            //== ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
-            //== for (int i = 0; i < 2; i++)
-            //== {
-            //==     printf("\n");
-            //==     printf("%s", evsn[i].c_str());
-            //==     switch (evst[i])
-            //==     {
-            //==         case ev_lapack:
-            //==         {
-            //==             printf("LAPACK\n");
-            //==             break;
-            //==         }
-            //==         #ifdef __SCALAPACK
-            //==         case ev_scalapack:
-            //==         {
-            //==             printf("ScaLAPACK, block size %i\n", linalg<scalapack>::cyclic_block_size());
-            //==             break;
-            //==         }
-            //==         case ev_elpa1:
-            //==         {
-            //==             printf("ELPA1, block size %i\n", linalg<scalapack>::cyclic_block_size());
-            //==             break;
-            //==         }
-            //==         case ev_elpa2:
-            //==         {
-            //==             printf("ELPA2, block size %i\n", linalg<scalapack>::cyclic_block_size());
-            //==             break;
-            //==         }
-            //==         case ev_rs_gpu:
-            //==         {
-            //==             printf("RS_gpu\n");
-            //==             break;
-            //==         }
-            //==         case ev_rs_cpu:
-            //==         {
-            //==             printf("RS_cpu\n");
-            //==             break;
-            //==         }
-            //==         #endif
-            //==         case ev_magma:
-            //==         {
-            //==             printf("MAGMA\n");
-            //==             break;
-            //==         }
-            //==         case ev_plasma:
-            //==         {
-            //==             printf("PLASMA\n");
-            //==             break;
-            //==         }
-            //==         default:
-            //==         {
-            //==             error_local(__FILE__, __LINE__, "wrong eigen-value solver");
-            //==         }
-            //==     }
-            //== }
-        
-            printf("\n");
-            printf("processing unit : ");
-            switch (parameters_.processing_unit())
-            {
-                case CPU:
-                {
-                    printf("CPU\n");
-                    break;
-                }
-                case GPU:
-                {
-                    printf("GPU\n");
-                    break;
-                }
-            }
-            
-            printf("\n");
-            printf("XC functionals : \n");
-            for (auto& xc_label: parameters_.xc_functionals())
-            {
-                XC_functional xc(xc_label, parameters_.num_spins());
-                printf("\n");
-                printf("%s\n", xc_label.c_str());
-                printf("%s\n", xc.name().c_str());
-                printf("%s\n", xc.refs().c_str());
-            }
-        }
-
         inline std::string const& start_time_tag() const
         {
             return start_time_tag_;
@@ -372,12 +263,12 @@ class Simulation_context
 
         inline void set_iterative_solver_tolerance(double tolerance__)
         {
-            iterative_solver_tolerance_ = tolerance__;
+            iterative_solver_input_section_.tolerance_ = tolerance__;
         }
 
         inline double iterative_solver_tolerance() const
         {
-            return iterative_solver_tolerance_;
+            return iterative_solver_input_section_.tolerance_;
         }
 
         inline ev_solver_t std_evp_solver_type() const
@@ -399,7 +290,7 @@ class Simulation_context
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
             auto G = gvec_[ig__];
-            return std::exp(twopi * double_complex(0.0, G * unit_cell_.atom(ia__).position()));
+            return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
         }
 
         //== void write_json_output()

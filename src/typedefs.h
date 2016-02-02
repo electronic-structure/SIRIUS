@@ -39,8 +39,6 @@ enum spin_block_t {nm, uu, ud, dd, du};
 
 //enum coordinates_t {cartesian, fractional};
 
-enum mpi_op_t {op_sum, op_max};
-
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 
 {
@@ -67,8 +65,6 @@ enum ev_solver_t
 
     ev_rs_cpu
 };
-
-enum splindex_t {block, block_cyclic};
 
 /// Type of electronic structure methods.
 enum electronic_structure_method_t 
@@ -133,11 +129,6 @@ class type_wrapper<double>
         {
             return std::real(v);
         }
-        
-        static MPI_Datatype mpi_type_id()
-        {
-            return MPI_DOUBLE;
-        }
 
         static bool is_complex()
         {
@@ -161,11 +152,6 @@ class type_wrapper<long double>
     public:
         typedef std::complex<long double> complex_t;
         typedef long double real_t;
-        
-        static MPI_Datatype mpi_type_id()
-        {
-            return MPI_LONG_DOUBLE;
-        }
 
         static bool is_complex()
         {
@@ -208,11 +194,6 @@ class type_wrapper< std::complex<double> >
             return H5T_NATIVE_LDOUBLE;
         }
         
-        static MPI_Datatype mpi_type_id()
-        {
-            return MPI_COMPLEX16;
-        }
-
         static bool is_complex()
         {
             return true;
@@ -237,33 +218,12 @@ class type_wrapper<int>
         {
             return H5T_NATIVE_INT;
         }
-
-        static MPI_Datatype mpi_type_id()
-        {
-            return MPI_INT;
-        }
-};
-
-template<> 
-class type_wrapper<int16_t>
-{
-    public:
-
-        static MPI_Datatype mpi_type_id()
-        {
-            return MPI_SHORT;
-        }
 };
 
 template<> 
 class type_wrapper<char>
 {
     public:
-
-        static MPI_Datatype mpi_type_id()
-        {
-            return MPI_CHAR;
-        }
 
         static inline char random()
         {

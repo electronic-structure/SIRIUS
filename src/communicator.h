@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -26,9 +26,9 @@
 #define __COMMUNICATOR_H__
 
 #include <mpi.h>
-#include <memory>
+#include <cassert>
 #include <vector>
-#include "typedefs.h"
+#include <complex>
 
 #define CALL_MPI(func__, args__)                                                    \
 {                                                                                   \
@@ -38,6 +38,53 @@
         MPI_Abort(MPI_COMM_WORLD, -1);                                              \
     }                                                                               \
 }
+
+enum mpi_op_t {op_sum, op_max};
+
+template <typename T> 
+class mpi_type_wrapper;
+
+template<> 
+class mpi_type_wrapper<double>
+{
+    public:
+        static MPI_Datatype kind() { return MPI_DOUBLE; }
+};
+
+template<> 
+class mpi_type_wrapper<long double>
+{
+    public:
+        static MPI_Datatype kind() { return MPI_LONG_DOUBLE; }
+};
+
+template<> 
+class mpi_type_wrapper< std::complex<double> >
+{
+    public:
+        static MPI_Datatype kind() { return MPI_COMPLEX16; }
+};
+
+template<> 
+class mpi_type_wrapper<int>
+{
+    public:
+        static MPI_Datatype kind() { return MPI_INT; }
+};
+
+template<> 
+class mpi_type_wrapper<int16_t>
+{
+    public:
+        static MPI_Datatype kind() { return MPI_SHORT; }
+};
+
+template<> 
+class mpi_type_wrapper<char>
+{
+    public:
+        static MPI_Datatype kind() { return MPI_CHAR; }
+};
 
 struct alltoall_descriptor
 {
@@ -73,6 +120,24 @@ class Communicator
                 CALL_MPI(MPI_Comm_free, (&mpi_comm_));
                 mpi_comm_ = MPI_COMM_NULL;
             }
+        }
+
+        static void initialize()
+        {
+            int provided;
+
+            MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+
+            MPI_Query_thread(&provided);
+            if (provided < MPI_THREAD_FUNNELED)
+            {
+                printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
+            }
+        }
+
+        static void finalize()
+        {
+            MPI_Finalize();
         }
 
         inline MPI_Comm& mpi_comm()
@@ -132,20 +197,19 @@ class Communicator
         {
             if (root__ == rank())
             {
-                CALL_MPI(MPI_Reduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::mpi_type_id(), MPI_SUM, root__, mpi_comm_));
+                CALL_MPI(MPI_Reduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_));
             }
             else
             {
-                CALL_MPI(MPI_Reduce, (buffer__, NULL, count__, type_wrapper<T>::mpi_type_id(), MPI_SUM, root__, mpi_comm_));
+                CALL_MPI(MPI_Reduce, (buffer__, NULL, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_));
             }
         }
 
         template <typename T>
         void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__) const
         {
-            CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, type_wrapper<T>::mpi_type_id(), MPI_SUM, root__, mpi_comm_));
+            CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_));
         }
-
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
         template<typename T, mpi_op_t mpi_op__ = op_sum>
@@ -171,7 +235,7 @@ class Communicator
                 }
             }
 
-            CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::mpi_type_id(), op, mpi_comm_));
+            CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(), op, mpi_comm_));
         }
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
@@ -185,14 +249,14 @@ class Communicator
         template <typename T>
         inline void bcast(T* buffer__, int count__, int root__) const
         {
-            CALL_MPI(MPI_Bcast, (buffer__, count__, type_wrapper<T>::mpi_type_id(), root__, mpi_comm_));
+            CALL_MPI(MPI_Bcast, (buffer__, count__, mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
         }
 
         template<typename T>
         void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
         {
             CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, recvcounts__, displs__,
-                     type_wrapper<T>::mpi_type_id(), mpi_comm_));
+                     mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template<typename T>
@@ -202,7 +266,7 @@ class Communicator
             v[2 * rank()] = count__;
             v[2 * rank() + 1] = offset__;
         
-            CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, type_wrapper<int>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, mpi_type_wrapper<int>::kind(), mpi_comm_));
         
             std::vector<int> counts(size());
             std::vector<int> offsets(size());
@@ -221,21 +285,21 @@ class Communicator
             // TODO: pack in one call
             std::vector<int> counts(size());
             counts[rank()] = count__;
-            CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, type_wrapper<int>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
             
             std::vector<int> offsets(size());
             offsets[rank()] = offset__;
-            CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, type_wrapper<int>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
         
-            CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, type_wrapper<T>::mpi_type_id(), recvbuf__, &counts[0], &offsets[0],
-                           type_wrapper<T>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, &counts[0], &offsets[0],
+                           mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template <typename T>
         void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
         {
-            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, type_wrapper<T>::mpi_type_id(), 
-                                      recvbuf__, recvcounts__, displs__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), 
+                                      recvbuf__, recvcounts__, displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template <typename T>
@@ -243,19 +307,19 @@ class Communicator
         {
             MPI_Request request;
         
-            CALL_MPI(MPI_Isend, (buffer__, count__, type_wrapper<T>::mpi_type_id(), dest__, tag__, mpi_comm_, &request));
+            CALL_MPI(MPI_Isend, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm_, &request));
         }
         
         template <typename T>
         void recv(T* buffer__, int count__, int source__, int tag__) const
         {
-            CALL_MPI(MPI_Recv, (buffer__, count__, type_wrapper<T>::mpi_type_id(), source__, tag__, mpi_comm_, MPI_STATUS_IGNORE));
+            CALL_MPI(MPI_Recv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm_, MPI_STATUS_IGNORE));
         }
 
         template <typename T>
         void irecv(T* buffer__, int count__, int source__, int tag__, MPI_Request* request__) const
         {
-            CALL_MPI(MPI_Irecv, (buffer__, count__, type_wrapper<T>::mpi_type_id(), source__, tag__, mpi_comm_, request__));
+            CALL_MPI(MPI_Irecv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm_, request__));
         }
 
         template <typename T>
@@ -263,31 +327,31 @@ class Communicator
         {
             int sendcount = recvcounts__[rank()];
          
-            CALL_MPI(MPI_Gatherv, (sendbuf__, sendcount, type_wrapper<T>::mpi_type_id(), recvbuf__, recvcounts__, displs__, 
-                                   type_wrapper<T>::mpi_type_id(), root__, mpi_comm_));
+            CALL_MPI(MPI_Gatherv, (sendbuf__, sendcount, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__, displs__, 
+                                   mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
         }
         
         template <typename T>
         void scatter(T const* sendbuf__, T* recvbuf__, int const* sendcounts__, int const* displs__, int root__) const
         {
             int recvcount = sendcounts__[rank()];
-            CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, type_wrapper<T>::mpi_type_id(), recvbuf__, recvcount,
-                                    type_wrapper<T>::mpi_type_id(), root__, mpi_comm_));
+            CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcount,
+                                    mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
         }
 
         template <typename T>
         void alltoall(T const* sendbuf__, int sendcounts__, T* recvbuf__, int recvcounts__) const
         {
-            CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, type_wrapper<T>::mpi_type_id(),
-                                    recvbuf__, recvcounts__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, mpi_type_wrapper<T>::kind(),
+                                    recvbuf__, recvcounts__, mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template <typename T>
         void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, 
                       T* recvbuf__, int const* recvcounts__, int const* rdispls__) const
         {
-            CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, type_wrapper<T>::mpi_type_id(),
-                                     recvbuf__, recvcounts__, rdispls__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+            CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, mpi_type_wrapper<T>::kind(),
+                                     recvbuf__, recvcounts__, rdispls__, mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         //==alltoall_descriptor map_alltoall(std::vector<int> local_sizes_in, std::vector<int> local_sizes_out) const
@@ -362,7 +426,16 @@ class Communicator
         //==}
 };
 
-extern Communicator mpi_comm_self;
-extern Communicator mpi_comm_world;
+inline Communicator const& mpi_comm_self()
+{
+    static Communicator comm(MPI_COMM_SELF);
+    return comm;
+}
+
+inline Communicator const& mpi_comm_world()
+{
+    static Communicator comm(MPI_COMM_WORLD);
+    return comm;
+}
 
 #endif // __COMMUNICATOR_H__

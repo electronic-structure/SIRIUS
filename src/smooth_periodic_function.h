@@ -237,7 +237,7 @@ Smooth_periodic_function<spatial, T> operator*(Smooth_periodic_function_gradient
 
     for (int x: {0, 1, 2})
     {
-        if (f[x].size() != size || g[x].size() != size) error_local(__FILE__, __LINE__, "wrong size");
+        if (f[x].size() != size || g[x].size() != size) TERMINATE("wrong size");
     }
 
     assert(f.fft() != nullptr);

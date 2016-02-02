@@ -11,10 +11,10 @@ void Density::generate_valence(K_set& ks__)
     for (int ik = 0; ik < ks__.num_kpoints(); ik++)
     {
         wt += ks__[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+        for (int j = 0; j < ctx_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
     }
 
-    if (std::abs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
+    if (std::abs(wt - 1.0) > 1e-12) TERMINATE("K_point weights don't sum to one");
 
     if (std::abs(ot - unit_cell_.num_valence_electrons()) > 1e-8)
     {
@@ -23,7 +23,7 @@ void Density::generate_valence(K_set& ks__)
           << "  computed : " << ot << std::endl
           << "  required : " << unit_cell_.num_valence_electrons() << std::endl
           << "  difference : " << std::abs(ot - unit_cell_.num_valence_electrons());
-        warning_local(__FILE__, __LINE__, s);
+        WARNING(s);
     }
 
     /* swap wave functions */
@@ -32,9 +32,9 @@ void Density::generate_valence(K_set& ks__)
         int ik = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__[ik];
 
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
                 kp->spinor_wave_functions<true>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
             }
@@ -52,7 +52,7 @@ void Density::generate_valence(K_set& ks__)
     generate_valence_density_it(ks__);
 
     /* for muffin-tin part */
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case full_potential_lapwlo:
         {
@@ -75,23 +75,24 @@ void Density::generate_valence(K_set& ks__)
         if (rho_->f_it(ir) < 0) TERMINATE("density is wrong");
     }
     #endif
+
     //== double nel = 0;
-    //== for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+    //== for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
     //== {
-    //==     nel += rho_->f_it(ir);
+    //==     nel += rho_->f_rg(ir);
     //== }
     //== ctx_.mpi_grid().communicator(1 << _dim_row_).allreduce(&nel, 1);
-    //== nel = nel * unit_cell_.omega() / ctx_.fft(0)->size();
+    //== nel = nel * unit_cell_.omega() / ctx_.fft().size();
     //== printf("number of electrons: %f\n", nel);
     
-    /* get rho(G) */
+    /* get rho(G) and mag(G) */
     rho_->fft_transform(-1);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 
     //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
     //== STOP();
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential) augment(ks__);
+    if (ctx_.esm_type() == ultrasoft_pseudopotential) augment(ks__);
 }
 
 };

@@ -19,13 +19,13 @@
 
 /** \file config.h
  *
- *  \brief Main configuration header
+ *  \brief Main configuration header.
  */
 
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#include "typedefs.h"
+//#include "typedefs.h"
 
 #define __TIMER
 //== #define __TIMER_TIMEOFDAY
@@ -109,8 +109,6 @@ const bool check_pseudo_charge = false;
 #endif
 
 const bool fix_apwlo_linear_dependence = false;
-
-const radial_grid_t default_radial_grid_t = exponential_grid;
 
 const bool use_second_variation = true;
 

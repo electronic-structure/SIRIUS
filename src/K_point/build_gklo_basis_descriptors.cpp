@@ -25,7 +25,7 @@ void K_point::build_gklo_basis_descriptors()
         gklo_basis_descriptors_.push_back(gklo);
     }
 
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         /* local orbital basis functions */
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -62,7 +62,7 @@ void K_point::build_gklo_basis_descriptors()
               << "size of apwlo_basis_descriptors_ : " << gklo_basis_descriptors_.size() << std::endl
               << "num_gkvec : " << num_gkvec() << std::endl 
               << "mt_lo_basis_size : " << unit_cell_.mt_lo_basis_size();
-            error_local(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
     }
 }

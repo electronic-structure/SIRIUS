@@ -22,36 +22,34 @@
  *  \brief Contains remaining implementation of sirius::Density class.
  */
 
-#include <thread>
-#include <mutex>
 #include "density.h"
 
 namespace sirius {
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 {
-    if (parameters_.full_potential()) rho_->set_mt_ptr(rhomt);
+    if (ctx_.full_potential()) rho_->set_mt_ptr(rhomt);
     rho_->set_rg_ptr(rhoir);
 }
 
 void Density::set_magnetization_ptr(double* magmt, double* magir)
 {
-    if (parameters_.num_mag_dims() == 0) return;
-    assert(parameters_.num_spins() == 2);
+    if (ctx_.num_mag_dims() == 0) return;
+    assert(ctx_.num_spins() == 2);
 
     // set temporary array wrapper
-    mdarray<double, 4> magmt_tmp(magmt, parameters_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
-                                 unit_cell_.num_atoms(), parameters_.num_mag_dims());
-    mdarray<double, 2> magir_tmp(magir, ctx_.fft(0)->size(), parameters_.num_mag_dims());
+    mdarray<double, 4> magmt_tmp(magmt, ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
+                                 unit_cell_.num_atoms(), ctx_.num_mag_dims());
+    mdarray<double, 2> magir_tmp(magir, ctx_.fft().size(), ctx_.num_mag_dims());
     
-    if (parameters_.num_mag_dims() == 1)
+    if (ctx_.num_mag_dims() == 1)
     {
         // z component is the first and only one
         magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
         magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
     }
 
-    if (parameters_.num_mag_dims() == 3)
+    if (ctx_.num_mag_dims() == 3)
     {
         // z component is the first
         magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
@@ -68,7 +66,7 @@ void Density::set_magnetization_ptr(double* magmt, double* magir)
 void Density::zero()
 {
     rho_->zero();
-    for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->zero();
+    for (int i = 0; i < ctx_.num_mag_dims(); i++) magnetization_[i]->zero();
 }
 
 double Density::core_leakage()
@@ -103,75 +101,39 @@ void Density::generate_core_charge_density()
     }
 }
 
-void Density::augment(K_set& ks__)
-{
-    PROFILE_WITH_TIMER("sirius::Density::augment");
-
-    switch (parameters_.esm_type())
-    {
-        case ultrasoft_pseudopotential:
-        {
-            switch (parameters_.processing_unit())
-            {
-                case CPU:
-                {
-                    add_q_contribution_to_valence_density(ks__);
-                    break;
-                }
-                #ifdef __GPU
-                case GPU:
-                {
-                    add_q_contribution_to_valence_density_gpu(ks__);
-                    break;
-                }
-                #endif
-                default:
-                {
-                    TERMINATE("wrong processing unit");
-                }
-            }
-            break;
-        }
-        default:
-        {
-            break;
-        }
-    }
-}
-
 //void Density::check_density_continuity_at_mt()
 //{
 //    // generate plane-wave coefficients of the potential in the interstitial region
 //    ctx_.fft().input(&rho_->f_it<global>(0));
 //    ctx_.fft().transform(-1);
-//    ctx_.fft().output(parameters_.num_gvec(), ctx_.fft_index(), &rho_->f_pw(0));
+//    ctx_.fft().output(ctx_.num_gvec(), ctx_.fft_index(), &rho_->f_pw(0));
 //    
-//    SHT sht(parameters_.lmax_rho());
+//    SHT sht(ctx_.lmax_rho());
 //
 //    double diff = 0.0;
-//    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
 //    {
 //        for (int itp = 0; itp < sht.num_points(); itp++)
 //        {
 //            double vc[3];
-//            for (int x = 0; x < 3; x++) vc[x] = sht.coord(x, itp) * parameters_.atom(ia)->mt_radius();
+//            for (int x = 0; x < 3; x++) vc[x] = sht.coord(x, itp) * ctx_.atom(ia)->mt_radius();
 //
 //            double val_it = 0.0;
-//            for (int ig = 0; ig < parameters_.num_gvec(); ig++) 
+//            for (int ig = 0; ig < ctx_.num_gvec(); ig++) 
 //            {
 //                double vgc[3];
-//                parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), vgc);
+//                ctx_.get_coordinates<cartesian, reciprocal>(ctx_.gvec(ig), vgc);
 //                val_it += real(rho_->f_pw(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
 //            }
 //
 //            double val_mt = 0.0;
-//            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-//                val_mt += rho_->f_rlm(lm, parameters_.atom(ia)->num_mt_points() - 1, ia) * sht.rlm_backward(lm, itp);
+//            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
+//                val_mt += rho_->f_rlm(lm, ctx_.atom(ia)->num_mt_points() - 1, ia) * sht.rlm_backward(lm, itp);
 //
 //            diff += fabs(val_it - val_mt);
 //        }
 //    }
-//    printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / parameters_.num_atoms() / sht.num_points());
+//    printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / ctx_.num_atoms() / sht.num_points());
 //}
 
 void Density::save()
@@ -180,7 +142,7 @@ void Density::save()
     {
         HDF5_tree fout(storage_file_name, false);
         rho_->hdf5_write(fout["density"]);
-        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+        for (int j = 0; j < ctx_.num_mag_dims(); j++)
             magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
     }
     ctx_.comm().barrier();
@@ -190,7 +152,7 @@ void Density::load()
 {
     HDF5_tree fout(storage_file_name, false);
     rho_->hdf5_read(fout["density"]);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+    for (int j = 0; j < ctx_.num_mag_dims(); j++)
         magnetization_[j]->hdf5_read(fout["magnetization"][j]);
 }
 

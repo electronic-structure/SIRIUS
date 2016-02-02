@@ -11,7 +11,7 @@ int const nop_gemm = 8;
 
 void test_gemm(int M, int N, int K, int transa)
 {
-    sirius::Timer t("test_gemm"); 
+    runtime::Timer t("test_gemm"); 
     
     mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
@@ -48,7 +48,7 @@ void test_gemm(int M, int N, int K, int transa)
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    sirius::Timer t1("gemm_only"); 
+    runtime::Timer t1("gemm_only"); 
     linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
     double tval = t1.stop();
     printf("execution time (sec) : %12.6f\n", tval);
@@ -193,11 +193,7 @@ int main(int argn, char **argv)
 
     int transa = args.value<int>("opA", 0);
 
-    int n = args.value<int>("n", 0);
-
-    int repeat = args.value<int>("repeat", 1);
-
-    Platform::initialize(true);
+    sirius::initialize(true);
 
     if (nrow * ncol == 1)
     {
@@ -206,6 +202,8 @@ int main(int argn, char **argv)
     else
     {
         #ifdef _SCALAPACK_
+        int repeat = args.value<int>("repeat", 1);
+        int n = args.value<int>("n", 0);
         int bs = args.value<int>("bs");
         double perf = 0;
         for (int i = 0; i < repeat; i++) 
@@ -225,9 +223,9 @@ int main(int argn, char **argv)
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }
         #else
-        terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
+        TERMINATE_NO_SCALAPACK;
         #endif
     }
 
-    Platform::finalize();
+    sirius::finalize();
 }

@@ -43,7 +43,7 @@ class Free_atom : public sirius::Atom_type
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
         {
-            sirius::Timer t("sirius::Free_atom::ground_state");
+            runtime::Timer t("sirius::Free_atom::ground_state");
         
             int np = radial_grid().num_points();
             assert(np > 0);
@@ -192,7 +192,7 @@ class Free_atom : public sirius::Atom_type
                 s << "atom " << symbol() << " is not converged" << std::endl
                   << "  energy difference : " << energy_diff << std::endl
                   << "  charge difference : " << charge_rms;
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
             
             free_atom_density_ = sirius::Spline<double>(radial_grid_, rho.values());
@@ -514,7 +514,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
 
 int main(int argn, char **argv)
 {
-    Platform::initialize(true);
+    sirius::initialize(true);
 
     /* handle command line arguments */
     cmd_args args;
@@ -571,4 +571,6 @@ int main(int argn, char **argv)
     generate_atom_file(a, core_cutoff_energy, lo_type, apw_order);
 
     delete a;
+
+    sirius::finalize();
 }

@@ -39,10 +39,10 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 
     int nfv = fv_states__.spl_num_swapped().local_size();
 
-    for (auto& e: hpsi__) e->set_num_swapped(parameters_.num_fv_states());
+    for (auto& e: hpsi__) e->set_num_swapped(ctx_.num_fv_states());
 
     mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
-                                  parameters_.num_mag_dims());
+                                  ctx_.num_mag_dims());
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
@@ -59,7 +59,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
             int lm2 = atom.type().indexb(j2).lm;
             int idxrf2 = atom.type().indexb(j2).idxrf;
             
-            for (int i = 0; i < parameters_.num_mag_dims(); i++)
+            for (int i = 0; i < ctx_.num_mag_dims(); i++)
             {
                 for (int j1 = 0; j1 <= j2; j1++)
                 {
@@ -106,33 +106,33 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
         //== }
     }
     std::vector<double_complex> psi_r;
-    if (hpsi__.size() == 3) psi_r.resize(ctx_.fft(0)->local_size());
+    if (hpsi__.size() == 3) psi_r.resize(ctx_.fft().local_size());
 
     int wf_pw_offset = unit_cell_.mt_basis_size();
     for (int i = 0; i < fv_states__.spl_num_swapped().local_size(); i++)
     {
         /* transform first-variational state to real space */
-        ctx_.fft(0)->transform<1>(gkvec__, &fv_states__[i][wf_pw_offset]);
+        ctx_.fft().transform<1>(gkvec__, &fv_states__[i][wf_pw_offset]);
         /* save for a reuse */
-        if (hpsi__.size() == 3) ctx_.fft(0)->output(&psi_r[0]);
+        if (hpsi__.size() == 3) ctx_.fft().output(&psi_r[0]);
 
-        for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+        for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
         {
             /* hpsi(r) = psi(r) * B_z(r) * Theta(r) */
-            ctx_.fft(0)->buffer(ir) *= (effective_magnetic_field__[0]->f_rg(ir) * ctx_.step_function()->theta_r(ir));
+            ctx_.fft().buffer(ir) *= (effective_magnetic_field__[0]->f_rg(ir) * ctx_.step_function().theta_r(ir));
         }
-        ctx_.fft(0)->transform<-1>(gkvec__, &(*hpsi__[0])[i][wf_pw_offset]);
+        ctx_.fft().transform<-1>(gkvec__, &(*hpsi__[0])[i][wf_pw_offset]);
 
         if (hpsi__.size() >= 3)
         {
-            for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
+            for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
             {
                 /* hpsi(r) = psi(r) * (B_x(r) - iB_y(r)) * Theta(r) */
-                ctx_.fft(0)->buffer(ir) = psi_r[ir] * ctx_.step_function()->theta_r(ir) * 
-                                          (effective_magnetic_field__[1]->f_rg(ir) - 
-                                           complex_i * effective_magnetic_field__[2]->f_rg(ir));
+                ctx_.fft().buffer(ir) = psi_r[ir] * ctx_.step_function().theta_r(ir) * 
+                                         (effective_magnetic_field__[1]->f_rg(ir) - 
+                                          complex_i * effective_magnetic_field__[2]->f_rg(ir));
             }
-            ctx_.fft(0)->transform<-1>(gkvec__, &(*hpsi__[2])[i][wf_pw_offset]);
+            ctx_.fft().transform<-1>(gkvec__, &(*hpsi__[2])[i][wf_pw_offset]);
         }
     }
 
@@ -141,16 +141,16 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 
 //==     
 //==     //int num_fft_threads = -1;
-//==     //switch (parameters_.processing_unit())
+//==     //switch (ctx_.processing_unit())
 //==     //{
 //==     //    case CPU:
 //==     //    {
-//==     //        num_fft_threads = parameters_.num_fft_threads();
+//==     //        num_fft_threads = ctx_.num_fft_threads();
 //==     //        break;
 //==     //    }
 //==     //    case GPU:
 //==     //    {
-//==     //        num_fft_threads = std::min(parameters_.num_fft_threads() + 1, Platform::max_num_threads());
+//==     //        num_fft_threads = std::min(ctx_.num_fft_threads() + 1, Platform::max_num_threads());
 //==     //        break;
 //==     //    }
 //==     //}
@@ -169,7 +169,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 //== 
 //==     STOP();
 //==     
-//== //    if (parameters_.processing_unit() == GPU)
+//== //    if (ctx_.processing_unit() == GPU)
 //== //    {
 //== //        #ifdef __GPU
 //== //        fv_states__.allocate_on_device();
@@ -181,7 +181,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 //== //
 //== //    for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
 //== //    {
-//== //        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == GPU)
+//== //        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && ctx_.processing_unit() == GPU)
 //== //        {
 //== //            #ifdef __GPU
 //== //            thread_workers.push_back(std::thread([thread_id, &idx_psi, &idx_psi_mutex, nfv, num_gkvec__, wf_pw_offset,
@@ -354,7 +354,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
     }
 
 //== //
-//== //    if (parameters_.processing_unit() == GPU)
+//== //    if (ctx_.processing_unit() == GPU)
 //== //    {
 //== //        #ifdef __GPU
 //== //        fv_states__.deallocate_on_device();

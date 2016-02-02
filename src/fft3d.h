@@ -26,13 +26,10 @@
 #define __FFT3D_H__
 
 #include <fftw3.h>
-#include <vector>
-#include <algorithm> 
 #include "typedefs.h"
 #include "mdarray.h"
 #include "splindex.h"
 #include "vector3d.h"
-#include "timer.h"
 #include "descriptors.h"
 #include "fft3d_grid.h"
 #include "gvec.h"
@@ -57,9 +54,6 @@ namespace sirius {
 class FFT3D
 {
     protected:
-        
-        /// Number of working threads inside each FFT.
-        int num_fft_workers_;
         
         /// Communicator for the parallel FFT.
         Communicator const& comm_;
@@ -101,10 +95,15 @@ class FFT3D
         #ifdef __GPU
         bool cufft3d_;
         cufftHandle cufft_plan_;
-        //cufftHandle cufft_plan_xy_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
         #endif
+        
+        /// Number of transfom calls.
+        size_t ncall_;
+
+        /// Timers for various parts of FFT.
+        double tcall_[5];
 
         template <int direction, bool use_reduction>
         void transform_z_serial(Gvec const& gvec__, double_complex* data__);
@@ -118,7 +117,6 @@ class FFT3D
     public:
 
         FFT3D(FFT3D_grid grid__,
-              int num_fft_workers__,
               Communicator const& comm__,
               processing_unit_t pu__,
               double gpu_workload = 0.8);
@@ -234,11 +232,6 @@ class FFT3D
             return (pu_ == GPU);
         }
 
-        inline int num_fft_workers() const
-        {
-            return num_fft_workers_;
-        }
-
         void prepare()
         {
             #ifdef __GPU
@@ -301,6 +294,16 @@ class FFT3D
             cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
         }
         #endif
+
+        inline size_t ncall() const
+        {
+            return ncall_;
+        }
+
+        inline double tcall(int i__) const
+        {
+            return tcall_[i__];
+        }
 };
 
 };

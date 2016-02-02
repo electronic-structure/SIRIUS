@@ -146,11 +146,11 @@ void test4()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     test1();
     test1a();
     //test2();
     test3();
     test4();
-    Platform::finalize();
+    sirius::finalize();
 }

@@ -41,8 +41,6 @@ class Potential
         
         Simulation_context& ctx_;
 
-        Simulation_parameters const& parameters_;
-
         Unit_cell& unit_cell_;
 
         Step_function const* step_function_;
@@ -50,7 +48,7 @@ class Potential
         Communicator const& comm_;
 
         /// Alias for FFT driver.
-        FFT3D* fft_;
+        FFT3D& fft_;
 
         Periodic_function<double>* effective_potential_;
 
@@ -406,20 +404,20 @@ class Potential
         inline size_t size()
         {
             size_t s = effective_potential_->size();
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) s += effective_magnetic_field_[i]->size();
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) s += effective_magnetic_field_[i]->size();
             return s;
         }
 
         inline void pack(Mixer<double>* mixer)
         {
             size_t n = effective_potential_->pack(0, mixer);
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);
         }
 
         inline void unpack(double const* buffer)
         {
             size_t n = effective_potential_->unpack(buffer);
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->unpack(&buffer[n]);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->unpack(&buffer[n]);
         }
 
         //void copy_xc_potential(double* vxcmt, double* vxcir);
@@ -469,7 +467,7 @@ class Potential
         void allocate()
         {
             effective_potential_->allocate_mt(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate_mt(true);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate_mt(true);
         }
 
         inline double vh_el(int ia)

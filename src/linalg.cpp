@@ -573,4 +573,12 @@ void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 {
     gemm(transa, transb, m, n, k, A, lda, B, ldb, C, ldc, -1);
 }
+
+template<> 
+void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           matrix<ftn_double_complex> const& A, matrix<ftn_double_complex> const& B,
+                                           matrix<ftn_double_complex>& C)
+{
+    gemm(transa, transb, m, n, k, A.at<GPU>(), A.ld(), B.at<GPU>(), B.ld(), C.at<GPU>(), C.ld());
+}
 #endif

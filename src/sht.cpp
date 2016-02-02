@@ -465,7 +465,7 @@ void SHT::convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__)
 void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g)
 {
     if (f.radial_grid().hash() != g.radial_grid().hash())
-        error_local(__FILE__, __LINE__, "radial grids don't match");
+        TERMINATE("radial grids don't match");
 
     int lmmax = std::min(f.angular_domain_size(), g.angular_domain_size());
     int lmax = Utils::lmax_by_lmmax(lmmax);
@@ -492,12 +492,12 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
             {
                 if (m == 0)
                 {
-                    g(lm, ir) = real(f(lm, ir));
+                    g(lm, ir) = std::real(f(lm, ir));
                 }
                 else 
                 {
                     int lm1 = Utils::lm_by_l_m(l, -m);
-                    g(lm, ir) = real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
+                    g(lm, ir) = std::real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
                 }
                 lm++;
             }

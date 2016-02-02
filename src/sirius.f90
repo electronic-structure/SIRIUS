@@ -3,8 +3,8 @@ use, intrinsic :: ISO_C_BINDING
 
 interface
 
-    subroutine sirius_platform_initialize(call_mpi_init)&
-       &bind(C, name="sirius_platform_initialize")
+    subroutine sirius_initialize(call_mpi_init)&
+       &bind(C, name="sirius_initialize")
         integer,                 intent(in) :: call_mpi_init
     end subroutine
 
@@ -12,12 +12,13 @@ interface
        &bind(C, name="sirius_clear")
     end subroutine
 
-    subroutine sirius_create_global_parameters()&
-       &bind(C, name="sirius_create_global_parameters")
-    end subroutine
+    !subroutine sirius_create_global_parameters()&
+    !   &bind(C, name="sirius_create_global_parameters")
+    !end subroutine
 
-    subroutine sirius_create_simulation_context()&
+    subroutine sirius_create_simulation_context(config_file_name)&
        &bind(C, name="sirius_create_simulation_context")
+        character, dimension(*), intent(in) :: config_file_name
     end subroutine
 
     subroutine sirius_global_initialize()&

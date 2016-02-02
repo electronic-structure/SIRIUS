@@ -10,7 +10,7 @@ INCLUDE = -I./../../src
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom \
-     test_mdarray test_xc test_gemm
+     test_mdarray test_xc test_gemm test_hloc
 
 %: %.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
@@ -27,4 +27,4 @@ clean:
 	rm -rf *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
 	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
 	test_pstdout test_zgemm test_init test_blacs test_enu test_allreduce test_alltoall test_bcast \
-	test_copy_gpu test_diag *dSYM test_xc test_dgemm test_zgemm
+	test_copy_gpu test_diag *dSYM test_xc test_dgemm test_zgemm test_hloc

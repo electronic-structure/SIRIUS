@@ -948,7 +948,7 @@ namespace sirius {
 
 void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_o_it");
+    runtime::Timer t("sirius::Band::set_o_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
@@ -958,14 +958,14 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
             int ig12 = ctx_.gvec().index_g12(kp->gklo_basis_descriptor_row(igk_row).gvec,
                                              kp->gklo_basis_descriptor_col(igk_col).gvec);
             
-            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
         }
     }
 }
 
 void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_o_lo_lo");
+    runtime::Timer t("sirius::Band::set_o_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)
@@ -1030,9 +1030,9 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 
 void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__)
 {
-    if (kp__->gklo_basis_size() < parameters_.num_fv_states()) TERMINATE("basis size is too small");
+    if (kp__->gklo_basis_size() < ctx_.num_fv_states()) TERMINATE("basis size is too small");
 
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case full_potential_pwlo:
         case full_potential_lapwlo:
@@ -1051,7 +1051,7 @@ void Band::solve_fd(K_point* kp__,
                     Periodic_function<double>* effective_potential__, 
                     Periodic_function<double>* effective_magnetic_field__[3])
 {
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:

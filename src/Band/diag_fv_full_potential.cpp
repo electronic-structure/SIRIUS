@@ -7,18 +7,18 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential");
 
     if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel())
-        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
+        TERMINATE("eigen-value solver is not parallel");
 
     int ngklo = kp->gklo_basis_size();
-    int bs = parameters_.cyclic_block_size();
-    dmatrix<double_complex> h(nullptr, ngklo, ngklo, kp->blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(nullptr, ngklo, ngklo, kp->blacs_grid(), bs, bs);
+    int bs = ctx_.cyclic_block_size();
+    dmatrix<double_complex> h(nullptr, ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> o(nullptr, ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
     
     h.allocate(alloc_mode);
     o.allocate(alloc_mode);
     
     /* setup Hamiltonian and overlap */
-    switch (parameters_.processing_unit())
+    switch (ctx_.processing_unit())
     {
         case CPU:
         {
@@ -59,7 +59,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     DUMP("hash(o): %16llX", o.panel().hash());
     #endif
 
-    assert(kp->gklo_basis_size() > parameters_.num_fv_states());
+    assert(kp->gklo_basis_size() > ctx_.num_fv_states());
     
     if (fix_apwlo_linear_dependence)
     {
@@ -67,12 +67,12 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     }
     else
     {
-        std::vector<double> eval(parameters_.num_fv_states());
+        std::vector<double> eval(ctx_.num_fv_states());
     
-        Timer t("sirius::Band::diag_fv_full_potential|genevp");
+        runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
         if (gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
-                                    parameters_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
+                                    ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
                                     &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld()))
         {
             TERMINATE("error in generalized eigen-value problem");

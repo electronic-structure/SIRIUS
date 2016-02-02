@@ -38,10 +38,10 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
 
-    auto pu = parameters_.processing_unit();
+    auto pu = ctx_.processing_unit();
 
     /* short notation for number of target wave-functions */
-    int num_bands = parameters_.num_fv_states();
+    int num_bands = ctx_.num_fv_states();
 
     /* short notation for number of G+k vectors */
     int ngk = kp__->num_gkvec();
@@ -73,6 +73,14 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     matrix<double_complex> hmlt_old(num_phi, num_phi);
     matrix<double_complex> ovlp_old(num_phi, num_phi);
 
+    #ifdef __GPU
+    if (gen_evp_solver_->type() == ev_magma)
+    {
+        hmlt.pin_memory();
+        ovlp.pin_memory();
+    }
+    #endif
+
     matrix<double_complex> evec;
     if (converge_by_energy)
     {
@@ -83,22 +91,22 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         evec = matrix<double_complex>(num_phi, num_bands);
     }
 
-    int bs = parameters_.cyclic_block_size();
+    int bs = ctx_.cyclic_block_size();
 
     dmatrix<double_complex> hmlt_dist;
     dmatrix<double_complex> ovlp_dist;
     dmatrix<double_complex> evec_dist;
     if (kp__->comm().size() == 1)
     {
-        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_bands, kp__->blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
     }
     else
     {
-        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi,   kp__->blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(num_phi, num_bands, kp__->blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<double_complex>(num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);
@@ -106,10 +114,10 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     std::vector<double> eval_old(num_bands);
     std::vector<double> eval_tmp(num_bands);
     
-    kp__->beta_projectors().allocate_workspace();
+    kp__->beta_projectors().prepare();
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         psi.allocate_on_device();
         psi.copy_to_device(0, num_bands);
@@ -145,7 +153,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_fv_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
  
         /* increase size of the variation space */
         N += n;
@@ -159,7 +167,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++)
         {
-            if (kp__->band_occupancy(i + ispn__ * parameters_.num_fv_states()) > 1e-2 &&
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-2 &&
                 std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
             {
                 occ_band_converged = false;
@@ -176,7 +184,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
         {   
-            Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
+            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             psi.transform_from(phi, N, evec, num_bands);
@@ -225,13 +233,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         phi.copy_from(res, 0, n, N);
     }
 
-    kp__->beta_projectors().deallocate_workspace();
+    kp__->beta_projectors().dismiss();
 
-    for (int j = 0; j < parameters_.num_fv_states(); j++)
-        kp__->band_energy(j + ispn__ * parameters_.num_fv_states()) = eval[j];
+    for (int j = 0; j < ctx_.num_fv_states(); j++)
+        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
 
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         psi.copy_to_host(0, num_bands);
         psi.deallocate_on_device();

@@ -42,7 +42,7 @@ class standard_evp
 
         virtual void solve(int32_t matrix_size, double_complex* a, int32_t lda, double* eval, double_complex* z, int32_t ldz)
         {
-            error_local(__FILE__, __LINE__, "standard eigen-value solver is not configured");
+            TERMINATE("standard eigen-value solver is not configured");
         }
 
         virtual bool parallel() = 0;
@@ -90,7 +90,7 @@ class standard_evp_lapack: public standard_evp
             {
                 std::stringstream s;
                 s << "zheevd returned " << info; 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
         }
 
@@ -213,7 +213,7 @@ class standard_evp_scalapack: public standard_evp
             {
                 std::stringstream s;
                 s << "pzheevd returned " << info; 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
         }
         #endif
@@ -242,7 +242,7 @@ class generalized_evp
                           double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
                           double_complex* z, int32_t ldz)
         {
-            error_local(__FILE__, __LINE__, "generalized eigen-value solver is not configured");
+            TERMINATE("generalized eigen-value solver is not configured");
             return 0;
         }
 
@@ -304,7 +304,7 @@ class generalized_evp_lapack: public generalized_evp
             {
                 std::stringstream s;
                 s << "zhegvx returned " << info; 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
 
             memcpy(eval, &w[0], nevec * sizeof(double));
@@ -445,16 +445,16 @@ class generalized_evp_scalapack: public generalized_evp
                    
                     s << "number of eigenvalue clusters : " << k << std::endl;
                     for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
 
                 std::stringstream s;
                 s << "pzhegvx returned " << info; 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
 
             if ((m != nevec) || (nz != nevec))
-                error_local(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.");
+                TERMINATE("Not all eigen-vectors or eigen-values are found.");
 
             memcpy(eval, &w[0], nevec * sizeof(double));
 
@@ -538,7 +538,7 @@ class generalized_evp_rs_gpu: public generalized_evp
             {
                 std::stringstream s;
                 s << "my_gen_eig " << info; 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
 
             for (int i = 0; i < lin_alg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
@@ -615,7 +615,7 @@ class generalized_evp_rs_cpu: public generalized_evp
             {
                 std::stringstream s;
                 s << "my_gen_eig " << info; 
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
 
             for (int i = 0; i < lin_alg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
@@ -677,9 +677,9 @@ class generalized_evp_elpa1: public generalized_evp
             int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_.mpi_comm());
             int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_.mpi_comm());
 
-            sirius::Timer *t;
+            runtime::Timer *t;
 
-            t = new sirius::Timer("elpa::ort");
+            t = new runtime::Timer("elpa::ort");
             FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
             FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
        
@@ -716,13 +716,13 @@ class generalized_evp_elpa1: public generalized_evp
             }
             delete t;
             
-            t = new sirius::Timer("elpa::diag");
+            t = new runtime::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols);
             delete t;
 
-            t = new sirius::Timer("elpa::bt");
+            t = new runtime::Timer("elpa::bt");
             linalg_base::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
                                  tmp2.at<CPU>(), 1, 1, descc);
 
@@ -790,9 +790,9 @@ class generalized_evp_elpa2: public generalized_evp
             int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_.mpi_comm());
             int32_t mpi_comm_all = MPI_Comm_c2f(comm_all_.mpi_comm());
 
-            sirius::Timer *t;
+            runtime::Timer *t;
 
-            t = new sirius::Timer("elpa::ort");
+            t = new runtime::Timer("elpa::ort");
             FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
             FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
        
@@ -828,13 +828,13 @@ class generalized_evp_elpa2: public generalized_evp
             }
             delete t;
             
-            t = new sirius::Timer("elpa::diag");
+            t = new runtime::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                    &block_size_, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
             delete t;
 
-            t = new sirius::Timer("elpa::bt");
+            t = new runtime::Timer("elpa::bt");
             linalg_base::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
                                  tmp2.at<CPU>(), 1, 1, descc);
 

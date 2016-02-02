@@ -70,7 +70,7 @@ Atom_type::~Atom_type()
 void Atom_type::init(int offset_lo__)
 {
     /* check if the class instance was already initialized */
-    if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
+    if (initialized_) TERMINATE("can't initialize twice");
 
     offset_lo_ = offset_lo__;
    
@@ -81,7 +81,7 @@ void Atom_type::init(int offset_lo__)
         {
             std::stringstream s;
             s << "file " + file_name_ + " doesn't exist";
-            error_global(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
         else
         {
@@ -158,7 +158,7 @@ void Atom_type::init(int offset_lo__)
     ///= /* allocate Q matrix */
     ///= if (parameters_.esm_type() == ultrasoft_pseudopotential)
     ///= {
-    ///=     if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
+    ///=     if (mt_basis_size() != mt_lo_basis_size()) TERMINATE("wrong basis size");
 
     ///=     //uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
     ///= }
@@ -233,10 +233,11 @@ void Atom_type::init(int offset_lo__)
 
 void Atom_type::set_radial_grid(int num_points, double const* points)
 {
-    if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
+    if (num_mt_points_ == 0) TERMINATE("number of muffin-tin points is zero");
     if (num_points < 0 && points == nullptr)
     {
-        radial_grid_ = Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_); 
+        /* create default exponential grid */
+        radial_grid_ = Radial_grid(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_); 
     }
     else
     {
@@ -253,7 +254,7 @@ void Atom_type::set_radial_grid(int num_points, double const* points)
 
 void Atom_type::set_free_atom_radial_grid(int num_points__, double const* points__)
 {
-    if (num_mt_points_ <= 0) error_local(__FILE__, __LINE__, "wrong number of radial points");
+    if (num_mt_points_ <= 0) TERMINATE("wrong number of radial points");
     free_atom_radial_grid_ = Radial_grid(num_points__, points__);
 }
 
@@ -268,7 +269,7 @@ void Atom_type::init_aw_descriptors(int lmax)
 {
     assert(lmax >= -1);
 
-    if (lmax >= 0 && aw_default_l_.size() == 0) error_local(__FILE__, __LINE__, "default AW descriptor is empty"); 
+    if (lmax >= 0 && aw_default_l_.size() == 0) TERMINATE("default AW descriptor is empty"); 
 
     aw_descriptors_.clear();
     for (int l = 0; l <= lmax; l++)
@@ -520,7 +521,7 @@ void Atom_type::read_input_core(JSON_tree& parser)
         if (size % 2)
         {
             std::string s = std::string("wrong core configuration string : ") + core_str;
-            error_local(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
         int j = 0;
         while (j < size)
@@ -537,7 +538,7 @@ void Atom_type::read_input_core(JSON_tree& parser)
             if (n <= 0 || iss.fail())
             {
                 std::string s = std::string("wrong principal quantum number : " ) + std::string(1, c1);
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
             
             switch (c2)
@@ -565,7 +566,7 @@ void Atom_type::read_input_core(JSON_tree& parser)
                 default:
                 {
                     std::string s = std::string("wrong angular momentum label : " ) + std::string(1, c2);
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
             }
 
@@ -673,14 +674,14 @@ void Atom_type::read_input(const std::string& fname)
 
         if ((int)uspp_.r.size() != nmesh)
         {
-            error_local(__FILE__, __LINE__, "wrong mesh size");
+            TERMINATE("wrong mesh size");
         }
         if ((int)uspp_.vloc.size() != nmesh || 
             (int)uspp_.core_charge_density.size() != nmesh || 
             (int)uspp_.total_charge_density.size() != nmesh)
         {
             std::cout << uspp_.vloc.size()  << " " << uspp_.core_charge_density.size() << " " << uspp_.total_charge_density.size() << std::endl;
-            error_local(__FILE__, __LINE__, "wrong array size");
+            TERMINATE("wrong array size");
         }
 
         num_mt_points_ = nmesh;
@@ -716,7 +717,7 @@ void Atom_type::read_input(const std::string& fname)
                         s << "wrong ij indices" << std::endl
                           << "i = " << i << " j = " << j << " idx = " << idx << std::endl
                           << "ij = " << ij[0] << " " << ij[1];
-                        error_local(__FILE__, __LINE__, s);
+                        TERMINATE(s);
                     }
 
                     std::vector<double> qfcoef;
@@ -727,14 +728,14 @@ void Atom_type::read_input(const std::string& fname)
                     {
                         for (int n = 0; n < uspp_.num_q_coefs; n++) 
                         {
-                            if (k >= (int)qfcoef.size()) error_local(__FILE__, __LINE__, "wrong size of qfcoef");
+                            if (k >= (int)qfcoef.size()) TERMINATE("wrong size of qfcoef");
                             uspp_.q_coefs(n, l, i, j) = uspp_.q_coefs(n, l, j, i) = qfcoef[k++];
                         }
                     }
 
                     std::vector<double> qfunc;
                     parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_radial_function"] >> qfunc;
-                    if ((int)qfunc.size() != num_mt_points_) error_local(__FILE__, __LINE__, "wrong size of qfunc");
+                    if ((int)qfunc.size() != num_mt_points_) TERMINATE("wrong size of qfunc");
                     
                     for (int l = 0; l <= 2 * uspp_.lmax; l++)
                         memcpy(&uspp_.q_radial_functions_l(0, idx, l), &qfunc[0], num_mt_points_ * sizeof(double)); 
@@ -754,7 +755,7 @@ void Atom_type::read_input(const std::string& fname)
             parser["uspp"]["non_local"]["beta"][i]["kbeta"] >> uspp_.num_beta_radial_points[i];
             std::vector<double> beta;
             parser["uspp"]["non_local"]["beta"][i]["beta"] >> beta;
-            if ((int)beta.size() != uspp_.num_beta_radial_points[i]) error_local(__FILE__, __LINE__, "wrong size of beta function");
+            if ((int)beta.size() != uspp_.num_beta_radial_points[i]) TERMINATE("wrong size of beta function");
             memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
  
             parser["uspp"]["non_local"]["beta"][i]["lll"] >> uspp_.beta_l[i];

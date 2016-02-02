@@ -23,7 +23,6 @@
  */
 
 #include "atom.h"
-#include "error_handling.h"
 
 namespace sirius {
 
@@ -144,7 +143,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         auto& rf_coef = type().rf_coef();
         auto& vrf_coef = type().vrf_coef();
 
-        Timer t1("sirius::Atom::generate_radial_integrals|interp");
+        runtime::Timer t1("sirius::Atom::generate_radial_integrals|interp");
         #pragma omp parallel
         {
             //int tid = Platform::thread_id();
@@ -178,7 +177,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         t1.stop();
 
         result.allocate_on_device();
-        Timer t2("sirius::Atom::generate_radial_integrals|inner");
+        runtime::Timer t2("sirius::Atom::generate_radial_integrals|inner");
         spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(), rgrid.dx().at<GPU>(),
                                     rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
         cuda_device_synchronize();
@@ -192,7 +191,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
     }
     if (pu__ == CPU)
     {
-        Timer t1("sirius::Atom::generate_radial_integrals|interp");
+        runtime::Timer t1("sirius::Atom::generate_radial_integrals|interp");
         #pragma omp parallel
         {
             #pragma omp for
@@ -214,7 +213,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         }
         t1.stop();
 
-        Timer t2("sirius::Atom::generate_radial_integrals|inner");
+        runtime::Timer t2("sirius::Atom::generate_radial_integrals|inner");
         #pragma omp parallel for
         for (int j = 0; j < (int)idx_ri.size(1); j++)
         {

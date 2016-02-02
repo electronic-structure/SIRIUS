@@ -92,7 +92,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 
 void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
 {
-    Timer t("sirius::DFT_ground_state::scf_loop");
+    runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
     if (!parameters_.full_potential()) density_->mixer_init();
 
@@ -104,7 +104,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
-        Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+        runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
@@ -123,18 +123,18 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             {
                 vector3d<double> mag(0, 0, 0);
 
-                for (int j0 = 0; j0 < ctx_.fft(0)->grid().size(0); j0++)
+                for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++)
                 {
-                    for (int j1 = 0; j1 < ctx_.fft(0)->grid().size(1); j1++)
+                    for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++)
                     {
-                        for (int j2 = 0; j2 < ctx_.fft(0)->local_size_z(); j2++)
+                        for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++)
                         {
                             /* get real space fractional coordinate */
-                            auto v0 = vector3d<double>(double(j0) / ctx_.fft(0)->grid().size(0), 
-                                                       double(j1) / ctx_.fft(0)->grid().size(1), 
-                                                       double(ctx_.fft(0)->offset_z() + j2) / ctx_.fft(0)->grid().size(2));
+                            auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0), 
+                                                       double(j1) / ctx_.fft().grid().size(1), 
+                                                       double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
                             /* index of real space point */
-                            int ir = ctx_.fft(0)->grid().index_by_coord(j0, j1, j2);
+                            int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
 
                             for (int t0 = -1; t0 <= 1; t0++)
                             {
@@ -156,7 +156,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
                         }
                     }
                 }
-                for (int x: {0, 1, 2}) mag[x] *= (unit_cell_.omega() / ctx_.fft(0)->size());
+                for (int x: {0, 1, 2}) mag[x] *= (unit_cell_.omega() / ctx_.fft().size());
                 printf("atom: %i, mag: %f %f %f\n", ia, mag[0], mag[1], mag[2]);
             }
         }

@@ -6,12 +6,12 @@ void K_point::initialize()
 {
     PROFILE_WITH_TIMER("sirius::K_point::initialize");
     
-    zil_.resize(parameters_.lmax_apw() + 1);
-    for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = std::pow(double_complex(0, 1), l);
+    zil_.resize(ctx_.lmax_apw() + 1);
+    for (int l = 0; l <= ctx_.lmax_apw(); l++) zil_[l] = std::pow(double_complex(0, 1), l);
    
-    l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
+    l_by_lm_ = Utils::l_by_lm(ctx_.lmax_apw());
 
-    int bs = parameters_.cyclic_block_size();
+    int bs = ctx_.cyclic_block_size();
 
     /* In case of collinear magnetism we store only non-zero spinor components.
      *
@@ -34,33 +34,33 @@ void K_point::initialize()
      * |       |
      * +-------+
      */
-    int nst = (parameters_.num_mag_dims() == 3) ? parameters_.num_bands() : parameters_.num_fv_states();
+    int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
-    if (use_second_variation && parameters_.need_sv())
+    if (use_second_variation && ctx_.need_sv())
     {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
-        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
-        if (parameters_.num_mag_dims() == 1)
-            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, blacs_grid_, bs, bs);
+        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
+        if (ctx_.num_mag_dims() == 1)
+            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
     }
 
-    if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
+    if (use_second_variation) fv_eigen_values_.resize(ctx_.num_fv_states());
 
     /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
      * form the input whereas for full-potential calculations this is derived 
      * from rgkmax (aw_cutoff here) and minimal MT radius. */
     double gk_cutoff = 0;
-    switch (parameters_.esm_type())
+    switch (ctx_.esm_type())
     {
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
-            gk_cutoff = parameters_.gk_cutoff();
+            gk_cutoff = ctx_.gk_cutoff();
             break;
         }
         case full_potential_lapwlo:
         {
-            gk_cutoff = parameters_.aw_cutoff() / unit_cell_.min_mt_radius();
+            gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
             break;
         }
         default:
@@ -76,7 +76,7 @@ void K_point::initialize()
     /* distribute basis functions */
     distribute_basis_index();
     
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         atom_lo_cols_.clear();
         atom_lo_cols_.resize(unit_cell_.num_atoms());
@@ -96,32 +96,32 @@ void K_point::initialize()
             atom_lo_rows_[ia].push_back(irow);
         }
     }
-    if (parameters_.esm_type() == full_potential_pwlo)
+    if (ctx_.esm_type() == full_potential_pwlo)
     {
         /** \todo Correct the memory leak */
         STOP();
         //== sbessel_.resize(num_gkvec_loc()); 
         //== for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
         //== {
-        //==     sbessel_[igkloc] = new sbessel_pw<double>(parameters_.unit_cell(), parameters_.lmax_pw());
+        //==     sbessel_[igkloc] = new sbessel_pw<double>(ctx_.unit_cell(), ctx_.lmax_pw());
         //==     sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
         //== }
     }
 
-    if (parameters_.esm_type() == full_potential_lapwlo)
+    if (ctx_.esm_type() == full_potential_lapwlo)
     {
-        alm_coeffs_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec(),
+        alm_coeffs_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec(),
                                                 gklo_basis_descriptors_);
-        alm_coeffs_row_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec_row(),
+        alm_coeffs_row_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(),
                                                     gklo_basis_descriptors_row_);
-        alm_coeffs_col_ = new Matching_coefficients(unit_cell_, parameters_.lmax_apw(), num_gkvec_col(),
+        alm_coeffs_col_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(),
                                                     gklo_basis_descriptors_col_);
     }
 
     /* compute |beta> projectors for atom types */
-    if (!parameters_.full_potential())
+    if (!ctx_.full_potential())
     {
-        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, parameters_.lmax_beta(), parameters_.processing_unit());
+        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit());
         
         if (false)
         {
@@ -157,49 +157,41 @@ void K_point::initialize()
         }
     }
 
-    if (use_second_variation)
+    if (ctx_.full_potential())
     {
-        /* allocate memory for first-variational eigen vectors and states and for spinor wave-fucntions */
-        if (parameters_.full_potential())
+        if (use_second_variation)
         {
-            fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), parameters_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
+            fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
 
-            fv_states_ = new Wave_functions<true>(wf_size(), parameters_.num_fv_states(), bs, blacs_grid_, blacs_grid_slice_);
+            fv_states_ = new Wave_functions<true>(wf_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
 
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
-                spinor_wave_functions_[ispn] = new Wave_functions<true>(wf_size(), nst, bs, blacs_grid_, blacs_grid_slice_);
+                spinor_wave_functions_[ispn] = new Wave_functions<true>(wf_size(), nst, bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
             }
         }
         else
         {
-            assert(parameters_.num_fv_states() < num_gkvec());
-
-            //fv_states_ = new Wave_functions<false>(parameters_.num_fv_states(), gkvec_, ctx_.mpi_grid_fft(), parameters_.processing_unit());
-
-            //fv_states<false>().coeffs().zero();
-
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
-                                                                         parameters_.processing_unit());
-
-                for (int i = 0; i < nst; i++) // TODO: init from atomic WFs
-                {
-                    double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
-                    for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
-                }
-            }
-        }
-    }
-    else  /* use full diagonalziation */
-    {
-        STOP();
-        //if (parameters_.full_potential())
-        //{
+            TERMINATE_NOT_IMPLEMENTED
         //    fd_eigen_vectors_ = mdarray<double_complex, 2>(gklo_basis_size_row(), spl_spinor_wf_.local_size());
         //    spinor_wave_functions_.allocate();
-        //}
+        }
+    }
+    else
+    {
+        assert(ctx_.num_fv_states() < num_gkvec());
+
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+        {
+            spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
+                                                                     ctx_.processing_unit());
+
+            for (int i = 0; i < nst; i++) // TODO: init from atomic WFs
+            {
+                double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
+                for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
+            }
+        }
     }
 }
 

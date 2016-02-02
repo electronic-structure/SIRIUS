@@ -45,9 +45,6 @@ class Band
         /// Simulation context.
         Simulation_context& ctx_;
 
-        /// Alias for parameters.
-        Simulation_parameters const& parameters_;
-        
         /// Alias for the unit cell.
         Unit_cell& unit_cell_;
 
@@ -173,16 +170,16 @@ class Band
                        D_operator& d_op,
                        Q_operator& q_op);
 
-        void set_fv_h_o(K_point* kp__,
-                        int N__,
-                        int n__,
-                        Wave_functions<false>& phi__,
-                        Wave_functions<false>& hphi__,
-                        Wave_functions<false>& ophi__,
-                        matrix<double_complex>& h__,
-                        matrix<double_complex>& o__,
-                        matrix<double_complex>& h_old__,
-                        matrix<double_complex>& o_old__);
+        void set_h_o(K_point* kp__,
+                     int N__,
+                     int n__,
+                     Wave_functions<false>& phi__,
+                     Wave_functions<false>& hphi__,
+                     Wave_functions<false>& ophi__,
+                     matrix<double_complex>& h__,
+                     matrix<double_complex>& o__,
+                     matrix<double_complex>& h_old__,
+                     matrix<double_complex>& o_old__);
 
         int residuals(K_point* kp__,
                       int ispn__,
@@ -235,15 +232,14 @@ class Band
         Band(Simulation_context& ctx__,
              BLACS_grid const& blacs_grid__) 
             : ctx_(ctx__),
-              parameters_(ctx__.parameters()),
               unit_cell_(ctx__.unit_cell()),
               blacs_grid_(blacs_grid__)
         {
             PROFILE();
 
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), 
-                                                                  parameters_.lmax_pot(), 
-                                                                  parameters_.lmax_apw(),
+            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 
+                                                                  ctx_.lmax_pot(), 
+                                                                  ctx_.lmax_apw(),
                                                                   SHT::gaunt_hybrid);
 
             /* create standard eigen-value solver */
@@ -256,7 +252,7 @@ class Band
                 }
                 case ev_scalapack:
                 {
-                    std_evp_solver_ = new standard_evp_scalapack(blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+                    std_evp_solver_ = new standard_evp_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_plasma:
@@ -280,17 +276,17 @@ class Band
                 }
                 case ev_scalapack:
                 {
-                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 0.0, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 0.0, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_elpa1:
                 {
-                    gen_evp_solver_ = new generalized_evp_elpa1(blacs_grid_, parameters_.cyclic_block_size());
+                    gen_evp_solver_ = new generalized_evp_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_elpa2:
                 {
-                    gen_evp_solver_ = new generalized_evp_elpa2(blacs_grid_, parameters_.cyclic_block_size());
+                    gen_evp_solver_ = new generalized_evp_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_magma:
@@ -300,12 +296,12 @@ class Band
                 }
                 case ev_rs_gpu:
                 {
-                    gen_evp_solver_ = new generalized_evp_rs_gpu(blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+                    gen_evp_solver_ = new generalized_evp_rs_gpu(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_rs_cpu:
                 {
-                    gen_evp_solver_ = new generalized_evp_rs_cpu(blacs_grid_, parameters_.cyclic_block_size(), parameters_.cyclic_block_size());
+                    gen_evp_solver_ = new generalized_evp_rs_cpu(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 default:
@@ -315,7 +311,7 @@ class Band
             }
 
             if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
-                error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
+                TERMINATE("both eigen-value solvers must be serial or parallel");
         }
 
         ~Band()

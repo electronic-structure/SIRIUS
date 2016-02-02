@@ -78,7 +78,7 @@ class JSON_value_parser
                 data.clear();
                 for (int i = 0; i < (int)value.size(); i++)
                 {
-                    double t;
+                    double t(0);
                     JSON_value_parser v(value[i], t);
                     is_valid_ = is_valid_ && v.is_valid();
                     if (is_valid_) data.push_back(t);
@@ -94,7 +94,7 @@ class JSON_value_parser
                 data.clear();
                 for (int i = 0; i < (int)value.size(); i++)
                 {
-                    int t;
+                    int t(0);
                     JSON_value_parser v(value[i], t);
                     is_valid_ = is_valid_ && v.is_valid();
                     if (is_valid_) data.push_back(t);
@@ -147,7 +147,7 @@ class JSON_tree
                 s << "null or invalid value of type " << jvp.type_name() << std::endl 
                   << "file : " << fname_ << std::endl
                   << "path : " << path_;
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
             return val;
         }
@@ -175,7 +175,7 @@ class JSON_tree
             {
                 std::stringstream s;
                 s << "failed to open " << fname;
-                error_local(__FILE__, __LINE__, s);
+                TERMINATE(s);
             }
 
             struct stat st;
@@ -188,7 +188,7 @@ class JSON_tree
             }
             else
             {
-                error_local(__FILE__, __LINE__, "bad file handle");
+                TERMINATE("bad file handle");
             }
         }
 
@@ -429,7 +429,7 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        inline void single(const char* name, std::map<std::string, sirius::timer_stats> timers)
+        inline void single(const char* name, std::map<std::string, runtime::Timer::timer_stats> timers)
         {
             new_line();
             fprintf(fout_, "\"%s\" : {", name);

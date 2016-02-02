@@ -2,10 +2,10 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
+SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        radial_solver.cpp sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp density.cpp symmetry.cpp \
        xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp fft3d.cpp \
-       communicator.cpp simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
+       simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
        Unit_cell/atom.cpp \
        Unit_cell/atom_type.cpp \
        Unit_cell/atom_symmetry_class.cpp \
@@ -13,16 +13,17 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \
-       Density/add_k_point_contribution_it.cpp \
+       Density/add_k_point_contribution_rg.cpp \
        Density/generate_rho_radial_integrals.cpp \
        Density/reduce_density_matrix.cpp \
-       Density/add_q_contribution_to_valence_density.cpp \
        Density/generate.cpp \
        Density/generate_valence.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \
        Density/generate_pseudo_core_charge_density.cpp \
+       Density/augment.cpp \
        Band/set_fv_h_o.cpp \
+       Band/set_h_o.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
        Band/apply_h_o.cpp \
@@ -44,8 +45,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platf
        Potential/generate_d_operator_matrix.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
-       K_point/add_non_local_contribution.cpp \
-       K_point/generate_beta_phi.cpp \
        K_point/distribute_basis_index.cpp \
        K_point/build_gklo_basis_descriptors.cpp \
        K_point/generate_fv_states.cpp \
@@ -66,9 +65,11 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
-	Kernels/it_density.o \
+	Kernels/density_rg.o \
 	Kernels/pack_unpack_z_columns.o \
-	Kernels/residuals_aux.o
+	Kernels/residuals_aux.o \
+	Kernels/generate_dm_pw.o \
+	Kernels/sum_q_pw_dm_pw.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

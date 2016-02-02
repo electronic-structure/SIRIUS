@@ -480,7 +480,7 @@ void test10()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(true);
+    sirius::initialize(true);
 
     //std::cout << "Rlm -> Ylm -> Rlm transformation, radial index first: ";
     //test1_radial_angular<double, double_complex>();
@@ -513,5 +513,7 @@ int main(int argn, char** argv)
     //== //test6();
 
     test10();
+
+    sirius::finalize();
     
 }

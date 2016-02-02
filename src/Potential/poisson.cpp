@@ -31,7 +31,7 @@ void Potential::poisson_sum_G(int lmmax__,
     matrix<double_complex> zm(lmmax__, ngv_loc);
     matrix<double_complex> tmp(lmmax__, na_max);
 
-    if (parameters_.processing_unit() == CPU)
+    if (ctx_.processing_unit() == CPU)
     {
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         {
@@ -62,7 +62,7 @@ void Potential::poisson_sum_G(int lmmax__,
         }
     }
 
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
     {
         #ifdef __GPU
         auto gvec = mdarray<int, 2>(3, ngv_loc);
@@ -138,8 +138,8 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
      */
     #pragma omp parallel default(shared)
     {
-        int tid = Platform::thread_id();
-        splindex<block> spl_gv_t(spl_num_gvec_.local_size(), Platform::num_threads(), tid);
+        int tid = omp_get_thread_num();
+        splindex<block> spl_gv_t(spl_num_gvec_.local_size(), omp_get_num_threads(), tid);
         std::vector<double_complex> pseudo_pw_t(spl_gv_t.local_size(), complex_zero); 
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -149,8 +149,8 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
             double R = unit_cell_.atom(ia).mt_radius();
 
             /* compute G-vector independent prefactor */
-            std::vector<double_complex> zp(parameters_.lmmax_rho());
-            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+            std::vector<double_complex> zp(ctx_.lmmax_rho());
+            for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++)
             {
                 for (int m = -l; m <= l; m++, lm++)
                     zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * std::conj(zil_[l]) * gamma_factors_R_(l, iat);
@@ -168,7 +168,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                 if (ig)
                 {
                     double_complex zt2(0, 0);
-                    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                    for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++)
                     {
                         double_complex zt1(0, 0);
                         for (int m = -l; m <= l; m++, lm++) zt1 += gvec_ylm_(lm, igloc) * zp[lm];
@@ -213,7 +213,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
         double R = unit_cell_.atom(ia).mt_radius();
         int nmtp = unit_cell_.atom(ia).num_mt_points();
 
-        std::vector<double> qmt(parameters_.lmmax_rho(), 0);
+        std::vector<double> qmt(ctx_.lmmax_rho(), 0);
        
         #pragma omp parallel default(shared)
         {
@@ -221,7 +221,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
             std::vector<double> g2;
 
             #pragma omp for
-            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
             {
                 int l = l_by_lm_[lm];
 
@@ -230,7 +230,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                 /* save multipole moment */
                 qmt[lm] = rholm.integrate(g1, l + 2);
                 
-                if (lm < parameters_.lmmax_pot())
+                if (lm < ctx_.lmmax_pot())
                 {
                     rholm.integrate(g2, 1 - l);
                     
@@ -249,7 +249,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
             }
         }
 
-        SHT::convert(parameters_.lmax_rho(), &qmt[0], &qmt__(0, ia));
+        SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
 
         /* constant part of nuclear potential -z*(1/r - 1/R) */
         for (int ir = 0; ir < nmtp; ir++)
@@ -268,10 +268,10 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     PROFILE_WITH_TIMER("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         /* true multipole moments */
-        mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), unit_cell_.num_atoms());
+        mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         poisson_vmt(rho, vh, qmt);
 
         #ifdef __PRINT_OBJECT_CHECKSUM
@@ -283,8 +283,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         #endif
 
         /* compute multipoles of interstitial density in MT region */
-        mdarray<double_complex, 2> qit(parameters_.lmmax_rho(), unit_cell_.num_atoms());
-        poisson_sum_G(parameters_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+        mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
+        poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
 
         #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z2 = qit.checksum();
@@ -308,12 +308,12 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 
         if (check_pseudo_charge)
         {
-            poisson_sum_G(parameters_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+            poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
 
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
             {
-                for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) d += abs(qmt(lm, ia) - qit(lm, ia));
+                for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) d += abs(qmt(lm, ia) - qit(lm, ia));
             }
             printf("pseudocharge error: %18.10f\n", d);
         }
@@ -321,7 +321,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 
     /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for
     for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++)
         vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
 
@@ -334,18 +334,18 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     #endif
     
     /* boundary condition for muffin-tins */
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         /* compute V_lm at the MT boundary */
-        mdarray<double_complex, 2> vmtlm(parameters_.lmmax_pot(), unit_cell_.num_atoms());
-        poisson_sum_G(parameters_.lmmax_pot(), &vh->f_pw(0), sbessel_mt_, vmtlm);
+        mdarray<double_complex, 2> vmtlm(ctx_.lmmax_pot(), unit_cell_.num_atoms());
+        poisson_sum_G(ctx_.lmmax_pot(), &vh->f_pw(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
-        Timer t1("sirius::Potential::poisson|bc");
-        mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), parameters_.lmax_pot() + 1);
+        runtime::Timer t1("sirius::Potential::poisson|bc");
+        mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1);
         int type_id_prev = -1;
 
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             int nmtp = unit_cell_.atom(ia).num_mt_points();
@@ -357,18 +357,18 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
                 double R = unit_cell_.atom(ia).mt_radius();
 
                 #pragma omp parallel for default(shared)
-                for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                for (int l = 0; l <= ctx_.lmax_pot(); l++)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
                         rRl(ir, l) = std::pow(unit_cell_.atom(ia).type().radial_grid(ir) / R, l);
                 }
             }
 
-            std::vector<double> vlm(parameters_.lmmax_pot());
-            SHT::convert(parameters_.lmax_pot(), &vmtlm(0, ia), &vlm[0]);
+            std::vector<double> vlm(ctx_.lmmax_pot());
+            SHT::convert(ctx_.lmax_pot(), &vmtlm(0, ia), &vlm[0]);
             
             #pragma omp parallel for default(shared)
-            for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+            for (int lm = 0; lm < ctx_.lmmax_pot(); lm++)
             {
                 int l = l_by_lm_[lm];
 
@@ -377,8 +377,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             /* save electronic part of potential at point of origin */
             vh_el_(ia) = vh->f_mt<local>(0, 0, ialoc);
         }
-        ctx_.comm().allgather(vh_el_.at<CPU>(), (int)unit_cell_.spl_num_atoms().global_offset(),
-                              (int)unit_cell_.spl_num_atoms().local_size());
+        ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
+                              unit_cell_.spl_num_atoms().local_size());
 
     }
     
@@ -386,7 +386,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     vh->fft_transform(1);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(vha_it): %20.14f", vh->f_it().checksum());
+    DUMP("checksum(vha_rg): %20.14f", vh->checksum_rg());
     #endif
     #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(vha_it): %16llX", vh->f_it().hash());
@@ -396,7 +396,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     energy_vha_ = Periodic_function<double>::inner(rho, vh);
         
     /* add nucleus potential and contribution to Hartree energy */
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         double evha_nuc_ = 0;
         for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)

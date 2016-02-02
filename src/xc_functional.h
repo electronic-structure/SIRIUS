@@ -27,7 +27,6 @@
 
 #include <xc.h>
 #include <string.h>
-#include "error_handling.h"
 #include "utils.h"
 
 namespace sirius
@@ -60,12 +59,12 @@ class XC_functional
             /* check if functional name is in list */
             if (libxc_functionals.count(libxc_name_) == 0)
             {
-                error_local(__FILE__, __LINE__, "XC functional is unknown");
+                TERMINATE("XC functional is unknown");
             }
 
             /* init xc functional handler */
             if (xc_func_init(&handler_, libxc_functionals[libxc_name_], num_spins_) != 0) 
-                error_local(__FILE__, __LINE__, "xc_func_init() failed");
+                TERMINATE("xc_func_init() failed");
         }
 
         ~XC_functional()
@@ -104,7 +103,7 @@ class XC_functional
                      double* v, 
                      double* e)
         {
-            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+            if (family() != XC_FAMILY_LDA) TERMINATE("wrong XC");
 
             /* check density */
             for (int i = 0; i < size; i++)
@@ -113,7 +112,7 @@ class XC_functional
                 {
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho[i]);
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
             }
 
@@ -128,7 +127,7 @@ class XC_functional
                      double* v_dn,
                      double* e)
         {
-            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+            if (family() != XC_FAMILY_LDA) TERMINATE("wrong XC");
 
             std::vector<double> rho_ud(size * 2);
             /* check and rearrange density */
@@ -139,7 +138,7 @@ class XC_functional
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
                       << " " << Utils::double_to_string(rho_dn[i]);
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
                 
                 rho_ud[2 * i] = rho_up[i];
@@ -165,7 +164,7 @@ class XC_functional
                      double* v_dn,
                      double* e)
         {
-            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+            if (family() != XC_FAMILY_LDA) TERMINATE("wrong XC");
 
             std::vector<double> rho_ud(size * 2);
             /* check and rearrange density */
@@ -176,7 +175,7 @@ class XC_functional
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
                       << " " << Utils::double_to_string(rho_dn[i]);
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
                 
                 rho_ud[2 * i] = rho_up[i];
@@ -205,7 +204,7 @@ class XC_functional
                      double* vsigma,
                      double* e)
         {
-            if (family() != XC_FAMILY_GGA) error_local(__FILE__, __LINE__, "wrong XC");
+            if (family() != XC_FAMILY_GGA) TERMINATE("wrong XC");
 
             /* check density */
             for (int i = 0; i < size; i++)
@@ -214,7 +213,7 @@ class XC_functional
                 {
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho[i]);
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
             }
 
@@ -235,7 +234,7 @@ class XC_functional
                      double* vsigma_dd,
                      double* e)
         {
-            if (family() != XC_FAMILY_GGA) error_local(__FILE__, __LINE__, "wrong XC");
+            if (family() != XC_FAMILY_GGA) TERMINATE("wrong XC");
 
             std::vector<double> rho(2 * size);
             std::vector<double> sigma(3 * size);
@@ -248,7 +247,7 @@ class XC_functional
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
                       << " " << Utils::double_to_string(rho_dn[i]);
-                    error_local(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
                 
                 rho[2 * i] = rho_up[i];

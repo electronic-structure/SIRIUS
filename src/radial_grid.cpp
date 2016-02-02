@@ -86,7 +86,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         }
         default:
         {
-            error_local(__FILE__, __LINE__, "not yet fixed");
+            TERMINATE_NOT_IMPLEMENTED
         }
 
         //== case hyperbolic_grid:
@@ -129,7 +129,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
           << "  num_points      : " << num_points << std::endl
           << "  rmax            : " << Utils::double_to_string(rmax, 12) << std::endl
           << "  last grid point : " << Utils::double_to_string(grid_points[num_points - 1], 12); 
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     return grid_points;

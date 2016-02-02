@@ -9,25 +9,21 @@ void test_fft(double cutoff__)
 
     FFT3D_grid fft_grid(cutoff__, M);
 
-    Communicator comm(MPI_COMM_WORLD);
-
-    FFT3D fft(fft_grid, 1, comm, CPU);
+    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
     
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, comm, 1, false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world(), 1, false, false);
 
-    if (comm.rank() == 0)
+    if (mpi_comm_world().rank() == 0)
     {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
     printf("num_gvec_fft: %i\n", gvec.num_gvec_fft());
-    printf("num_gvec_loc: %i\n", gvec.num_gvec(comm.rank()));
-    
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     for (int ig = 0; ig < gvec.num_gvec(); ig++)
     {
         auto v = gvec[ig];
-        if (comm.rank() == 0) printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+        if (mpi_comm_world().rank() == 0) printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
         f.zero();
         f[ig] = 1.0;
         fft.transform<1>(gvec, &f[gvec.offset_gvec_fft()]);
@@ -52,7 +48,7 @@ void test_fft(double cutoff__)
         }
         comm.allreduce(&diff, 1);
         diff = std::sqrt(diff / fft.size());
-        if (comm.rank() == 0)
+        if (mpi_comm_world().rank() == 0)
         {
             printf("error : %18.10e", diff);
             if (diff < 1e-10)
@@ -177,22 +173,25 @@ void test_fft(double cutoff__)
 int main(int argn, char **argv)
 {
     cmd_args args;
+    args.register_key("--help", "print this help and exit");
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
 
     args.parse_args(argn, argv);
-    if (argn == 1)
+    if (args.exist("help"))
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
 
-    double cutoff = args.value<double>("cutoff", 1);
+    double cutoff = args.value<double>("cutoff", 5);
 
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     test_fft(cutoff);
+
+    runtime::Timer::print();
     
-    Platform::finalize();
+    sirius::finalize();
     return 0;
 }

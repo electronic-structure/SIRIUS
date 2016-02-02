@@ -30,7 +30,7 @@ void Utils::write_matrix(const std::string& fname, mdarray<double_complex, 2>& m
     static int icount = 0;
 
     if (nrow < 0 || nrow > (int)matrix.size(0) || ncol < 0 || ncol > (int)matrix.size(1))
-        error_local(__FILE__, __LINE__, "wrong number of rows or columns");
+        TERMINATE("wrong number of rows or columns");
 
     icount++;
     std::stringstream s;
@@ -151,7 +151,7 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
     {
         for (int j = 0; j < n; j++)
         {
-            double diff = abs(mtrx(i, j) - conj(mtrx(j, i)));
+            double diff = std::abs(mtrx(i, j) - std::conj(mtrx(j, i)));
             if (diff > maxdiff)
             {
                 maxdiff = diff;
@@ -167,30 +167,29 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
         s << name << " is not a hermitian matrix" << std::endl
           << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
 
-        warning_local(__FILE__, __LINE__, s);
+        WARNING(s);
     }
 }
 
-
 double Utils::confined_polynomial(double r, double R, int p1, int p2, int dm)
 {
-    double t = 1.0 - pow(r / R, 2);
+    double t = 1.0 - std::pow(r / R, 2);
     switch (dm)
     {
         case 0:
         {
-            return (pow(r, p1) * pow(t, p2));
+            return (std::pow(r, p1) * std::pow(t, p2));
         }
         case 2:
         {
-            return (-4 * p1 * p2 * pow(r, p1) * pow(t, p2 - 1) / pow(R, 2) +
-                    p1 * (p1 - 1) * pow(r, p1 - 2) * pow(t, p2) + 
-                    pow(r, p1) * (4 * (p2 - 1) * p2 * pow(r, 2) * pow(t, p2 - 2) / pow(R, 4) - 
-                                  2 * p2 * pow(t, p2 - 1) / pow(R, 2)));
+            return (-4 * p1 * p2 * std::pow(r, p1) * std::pow(t, p2 - 1) / std::pow(R, 2) +
+                    p1 * (p1 - 1) * std::pow(r, p1 - 2) * std::pow(t, p2) + 
+                    std::pow(r, p1) * (4 * (p2 - 1) * p2 * std::pow(r, 2) * std::pow(t, p2 - 2) / std::pow(R, 4) - 
+                                  2 * p2 * std::pow(t, p2 - 1) / std::pow(R, 2)));
         }
         default:
         {
-            error_local(__FILE__, __LINE__, "wrong derivative order");
+            TERMINATE("wrong derivative order");
             return 0.0;
         }
     }
@@ -222,7 +221,7 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
             std::stringstream s;
             s << "wrong fractional coordinates" << std::endl
               << v.first[0] << " " << v.first[1] << " " << v.first[2];
-            error_local(__FILE__, __LINE__, s);
+            TERMINATE(s);
         }
         if (v.first[i] < 0) v.first[i] = 0;
         if (v.first[i] >= (1 - eps))
@@ -236,7 +235,7 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
 
 vector3d<int> Utils::find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
 {
-    sirius::Timer t("sirius::Utils::find_translations");
+    runtime::Timer t("sirius::Utils::find_translations");
 
     double theta = pi;
     double phi = 0;
@@ -263,6 +262,12 @@ vector3d<int> Utils::find_translations(double radius__, matrix3d<double> const& 
 
     test_point(0, 0);
     test_point(theta, phi);
+
+    test_point(0.5 * pi, 0);
+    test_point(0.5 * pi, 0.5 * pi);
+    test_point(0.5 * pi, pi);
+    test_point(0.5 * pi, 1.5 * pi);
+
     for (int k = 1; k < num_points - 1; k++)
     {
         double hk = -1.0 + 2.0 * k / (num_points - 1);

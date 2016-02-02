@@ -96,7 +96,7 @@ void Step_function::init()
         std::stringstream s;
         s << "step function gives a wrong volume for IT region" << std::endl
           << "  difference with exact value : " << std::abs(vit - unit_cell_.volume_it());
-        warning_global(__FILE__, __LINE__, s);
+        WARNING(s);
     }
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], fft_->size()).checksum();

@@ -41,7 +41,7 @@ void K_set::initialize()
 
 void K_set::sync_band_energies()
 {
-    mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
+    mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
@@ -49,17 +49,17 @@ void K_set::sync_band_energies()
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
     comm_k_.allgather(band_energies.at<CPU>(), 
-                      parameters_.num_bands() * spl_num_kpoints_.global_offset(),
-                      parameters_.num_bands() * spl_num_kpoints_.local_size());
+                      ctx_.num_bands() * spl_num_kpoints_.global_offset(),
+                      ctx_.num_bands() * spl_num_kpoints_.local_size());
 
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
+    runtime::Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
     
-    if (precompute && parameters_.full_potential())
+    if (precompute && ctx_.full_potential())
     {
         potential->generate_pw_coefs();
         potential->update_atomic_potential();
@@ -73,7 +73,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
-        if (use_second_variation && parameters_.full_potential())
+        if (use_second_variation && ctx_.full_potential())
         {
             band_->solve_fv(kpoints_[ik], potential->effective_potential());
             kpoints_[ik]->generate_fv_states();
@@ -96,18 +96,18 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
             printf("ik : %2i, ", ik); 
-            if (parameters_.num_mag_dims() != 1)
+            if (ctx_.num_mag_dims() != 1)
             {
-                for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
+                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) 
                     printf("%12.6f", kpoints_[ik]->band_energy(j));
             }
             else
             {
-                for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
                     printf("%12.6f", kpoints_[ik]->band_energy(j));
                 printf("\n         ");
-                for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
-                    printf("%12.6f", kpoints_[ik]->band_energy(parameters_.num_fv_states() + j));
+                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
+                    printf("%12.6f", kpoints_[ik]->band_energy(ctx_.num_fv_states() + j));
             }
             printf("\n");
         }
@@ -116,7 +116,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         //== for (int ik = 0; ik < num_kpoints(); ik++)
         //== {
         //==     fprintf(fout, "ik : %2i\n", ik); 
-        //==     for (int j = 0; j < parameters_.num_bands(); j++) 
+        //==     for (int j = 0; j < ctx_.num_bands(); j++) 
         //==         fprintf(fout, "%4i: %18.10f\n", j, kpoints_[ik]->band_energy(j));
         //== }
         //== fclose(fout);
@@ -131,7 +131,7 @@ double K_set::valence_eval_sum()
     for (int ik = 0; ik < num_kpoints(); ik++)
     {
         double wk = kpoints_[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++)
+        for (int j = 0; j < ctx_.num_bands(); j++)
             eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
     }
 
@@ -140,7 +140,7 @@ double K_set::valence_eval_sum()
 
 void K_set::find_band_occupancies()
 {
-    Timer t("sirius::K_set::find_band_occupancies");
+    runtime::Timer t("sirius::K_set::find_band_occupancies");
 
     double ef = 0.15;
 
@@ -151,7 +151,7 @@ void K_set::find_band_occupancies()
 
     double ne = 0.0;
 
-    mdarray<double, 2> bnd_occ(parameters_.num_bands(), num_kpoints());
+    mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
     
     // TODO: safe way not to get stuck here
     while (true)
@@ -159,10 +159,10 @@ void K_set::find_band_occupancies()
         ne = 0.0;
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
-            for (int j = 0; j < parameters_.num_bands(); j++)
+            for (int j = 0; j < ctx_.num_bands(); j++)
             {
-                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef, parameters_.smearing_width()) * 
-                                 parameters_.max_occupancy();
+                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef, ctx_.smearing_width()) * 
+                                 ctx_.max_occupancy();
                 ne += bnd_occ(j, ik) * kpoints_[ik]->weight();
             }
         }
@@ -184,14 +184,14 @@ void K_set::find_band_occupancies()
     band_gap_ = 0.0;
     
     int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
-    if (parameters_.num_spins() == 2 || 
+    if (ctx_.num_spins() == 2 || 
         (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0))
     {
         /* find band gap */
         std::vector< std::pair<double, double> > eband;
         std::pair<double, double> eminmax;
 
-        for (int j = 0; j < parameters_.num_bands(); j++)
+        for (int j = 0; j < ctx_.num_bands(); j++)
         {
             eminmax.first = 1e10;
             eminmax.second = -1e10;
@@ -208,7 +208,7 @@ void K_set::find_band_occupancies()
         std::sort(eband.begin(), eband.end());
 
         int ist = nve;
-        if (parameters_.num_spins() == 1) ist /= 2; 
+        if (ctx_.num_spins() == 1) ist /= 2; 
 
         if (eband[ist].first > eband[ist - 1].second) band_gap_ = eband[ist].first - eband[ist - 1].second;
     }
@@ -216,20 +216,20 @@ void K_set::find_band_occupancies()
 
 void K_set::print_info()
 {
-    if (comm_k_.rank() == 0 && blacs_grid_.comm().rank() == 0)
+    if (comm_k_.rank() == 0 && ctx_.blacs_grid().comm().rank() == 0)
     {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
         printf("  ik                vk                    weight  num_gkvec");
-        if (parameters_.full_potential()) printf("   gklo_basis_size");
+        if (ctx_.full_potential()) printf("   gklo_basis_size");
         printf("\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
     }
 
-    if (blacs_grid_.comm().rank() == 0)
+    if (ctx_.blacs_grid().comm().rank() == 0)
     {
         pstdout pout(comm_k_);
         for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
@@ -239,7 +239,7 @@ void K_set::print_info()
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
-            if (parameters_.full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+            if (ctx_.full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
             
             pout.printf("\n");
         }
@@ -248,7 +248,7 @@ void K_set::print_info()
 
 void K_set::save()
 {
-    warning_local(__FILE__, __LINE__, "fix me");
+    TERMINATE("fix me");
     STOP();
 
     //==if (comm_.rank() == 0)
@@ -259,15 +259,15 @@ void K_set::save()
     //==}
     //==comm_.barrier();
     //==
-    //==if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
+    //==if (ctx_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
     //=={
     //==    for (int ik = 0; ik < num_kpoints(); ik++)
     //==    {
     //==        int rank = spl_num_kpoints_.local_rank(ik);
     //==        
-    //==        if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
+    //==        if (ctx_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
     //==        
-    //==        parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
+    //==        ctx_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
     //==    }
     //==}
 }
@@ -314,19 +314,19 @@ void K_set::load()
 //==     {
 //==         HDF5_tree fout(storage_file_name, false);
 //==         fout["parameters"].write("num_kpoints", num_kpoints());
-//==         fout["parameters"].write("num_bands", parameters_.num_bands());
-//==         fout["parameters"].write("num_spins", parameters_.num_spins());
+//==         fout["parameters"].write("num_bands", ctx_.num_bands());
+//==         fout["parameters"].write("num_spins", ctx_.num_spins());
 //==     }
 //== 
-//==     if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
+//==     if (ctx_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
 //==     {
 //==         for (int ik = 0; ik < num_kpoints(); ik++)
 //==         {
 //==             int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
 //==             
-//==             if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
+//==             if (ctx_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
 //==             
-//==             parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
+//==             ctx_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
 //==         }
 //==     }
 //== }
@@ -336,11 +336,11 @@ void K_set::load()
 //==     HDF5_tree fin(storage_file_name, false);
 //==     int num_spins;
 //==     fin["parameters"].read("num_spins", &num_spins);
-//==     if (num_spins != parameters_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
+//==     if (num_spins != ctx_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
 //== 
 //==     int num_bands;
 //==     fin["parameters"].read("num_bands", &num_bands);
-//==     if (num_bands != parameters_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
+//==     if (num_bands != ctx_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
 //==     
 //==     int num_kpoints_in;
 //==     fin["parameters"].read("num_kpoints", &num_kpoints_in);
@@ -371,7 +371,7 @@ void K_set::load()
 //==     {
 //==         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
 //==         
-//==         if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
+//==         if (ctx_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
 //==     }
 //== }
 
@@ -391,43 +391,43 @@ int K_set::max_num_gkvec()
 //== {
 //==     Timer t("sirius::K_set::fixed_band_occupancies");
 //== 
-//==     if (parameters_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
+//==     if (ctx_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
 //== 
-//==     double n_up = (parameters_.num_valence_electrons() + parameters_.fixed_moment()) / 2.0;
-//==     double n_dn = (parameters_.num_valence_electrons() - parameters_.fixed_moment()) / 2.0;
+//==     double n_up = (ctx_.num_valence_electrons() + ctx_.fixed_moment()) / 2.0;
+//==     double n_dn = (ctx_.num_valence_electrons() - ctx_.fixed_moment()) / 2.0;
 //==     
-//==     mdarray<double, 2> bnd_occ(parameters_.num_bands(), num_kpoints());
+//==     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
 //==     bnd_occ.zero();
 //== 
 //==     int j = 0;
 //==     while (n_up > 0)
 //==     {
-//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(parameters_.max_occupancy()), n_up);
+//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(ctx_.max_occupancy()), n_up);
 //==         j++;
-//==         n_up -= parameters_.max_occupancy();
+//==         n_up -= ctx_.max_occupancy();
 //==     }
 //==             
-//==     j = parameters_.num_fv_states();
+//==     j = ctx_.num_fv_states();
 //==     while (n_dn > 0)
 //==     {
-//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(parameters_.max_occupancy()), n_dn);
+//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(ctx_.max_occupancy()), n_dn);
 //==         j++;
-//==         n_dn -= parameters_.max_occupancy();
+//==         n_dn -= ctx_.max_occupancy();
 //==     }
 //==             
 //==     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
 //== 
 //==     double gap = 0.0;
 //==     
-//==     int nve = int(parameters_.num_valence_electrons() + 1e-12);
-//==     if ((parameters_.num_spins() == 2) || 
-//==         ((fabs(nve - parameters_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
+//==     int nve = int(ctx_.num_valence_electrons() + 1e-12);
+//==     if ((ctx_.num_spins() == 2) || 
+//==         ((fabs(nve - ctx_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
 //==     {
 //==         // find band gap
 //==         std::vector< std::pair<double, double> > eband;
 //==         std::pair<double, double> eminmax;
 //== 
-//==         for (int j = 0; j < parameters_.num_bands(); j++)
+//==         for (int j = 0; j < ctx_.num_bands(); j++)
 //==         {
 //==             eminmax.first = 1e10;
 //==             eminmax.second = -1e10;
@@ -444,7 +444,7 @@ int K_set::max_num_gkvec()
 //==         std::sort(eband.begin(), eband.end());
 //== 
 //==         int ist = nve;
-//==         if (parameters_.num_spins() == 1) ist /= 2; 
+//==         if (ctx_.num_spins() == 1) ist /= 2; 
 //== 
 //==         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
 //== 
@@ -457,18 +457,18 @@ int K_set::max_num_gkvec()
 //==         for (int ik = 0; ik < num_kpoints(); ik++)
 //==         {
 //==             printf("ik : %2i, ", ik); 
-//==             if (parameters_.num_mag_dims() != 1)
+//==             if (ctx_.num_mag_dims() != 1)
 //==             {
-//==                 for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
+//==                 for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) 
 //==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
 //==             }
 //==             else
 //==             {
-//==                 for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+//==                 for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
 //==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
 //==                 printf("\n         ");
-//==                 for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(parameters_.num_fv_states() + j));
+//==                 for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
+//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(ctx_.num_fv_states() + j));
 //==             }
 //==             printf("\n");
 //==         }

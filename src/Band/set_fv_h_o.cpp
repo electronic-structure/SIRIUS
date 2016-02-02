@@ -2,78 +2,6 @@
 
 namespace sirius {
 
-/** \param [in] phi Input wave-functions [storage: CPU && GPU].
- *  \param [in] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
- *  \param [in] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
- */
-void Band::set_fv_h_o(K_point* kp__,
-                      int N__,
-                      int n__,
-                      Wave_functions<false>& phi__,
-                      Wave_functions<false>& hphi__,
-                      Wave_functions<false>& ophi__,
-                      matrix<double_complex>& h__,
-                      matrix<double_complex>& o__,
-                      matrix<double_complex>& h_old__,
-                      matrix<double_complex>& o_old__)
-{
-    PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
-    
-    assert(n__ != 0);
-
-    /* copy old Hamiltonian and overlap */
-    for (int i = 0; i < N__; i++)
-    {
-        std::memcpy(&h__(0, i), &h_old__(0, i), N__ * sizeof(double_complex));
-        std::memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double_complex));
-    }
-
-    /* <{phi,res}|H|res> */
-    phi__.inner(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
-    /* <{phi,res}|O|res> */
-    phi__.inner(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex cs1(0, 0);
-    double_complex cs2(0, 0);
-    for (int i = 0; i < N__ + n__; i++)
-    {
-        for (int j = 0; j <= i; j++) 
-        {
-            cs1 += h__(j, i);
-            cs2 += o__(j, i);
-        }
-    }
-    DUMP("checksum(h): %18.10f %18.10f", cs1.real(), cs1.imag());
-    DUMP("checksum(o): %18.10f %18.10f", cs2.real(), cs2.imag());
-    #endif
-
-    for (int i = 0; i < N__ + n__; i++)
-    {
-        if (h__(i, i).imag() > 1e-12)
-        {
-            std::stringstream s;
-            s << "wrong diagonal of H: " << h__(i, i);
-            TERMINATE(s);
-        }
-        if (o__(i, i).imag() > 1e-12)
-        {
-            std::stringstream s;
-            s << "wrong diagonal of O: " << o__(i, i);
-            TERMINATE(s);
-        }
-        h__(i, i) = h__(i, i).real();
-        o__(i, i) = o__(i, i).real();
-    }
-
-    /* save Hamiltonian and overlap */
-    for (int i = N__; i < N__ + n__; i++)
-    {
-        std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double_complex));
-        std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));
-    }
-}
-
 template<> 
 void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
@@ -87,7 +15,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
     
-    int num_atoms_in_block = 2 * Platform::max_num_threads();
+    int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
                std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
@@ -99,7 +27,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), max_mt_aw);
     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), max_mt_aw);
 
-    Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
         int num_mt_aw = 0;
@@ -120,10 +48,10 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
         #pragma omp parallel
         {
-            int tid = Platform::thread_id();
+            int tid = omp_get_thread_num();
             for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
-                if (ia % Platform::num_threads() == tid)
+                if (ia % omp_get_num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
                     auto& atom = unit_cell_.atom(ia);
@@ -186,7 +114,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o");
+    runtime::Timer t("sirius::Band::set_fv_h_o");
     
     h__.zero();
     h__.allocate_on_device();
@@ -198,7 +126,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
 
     double_complex zone(1, 0);
 
-    int num_atoms_in_block = 2 * Platform::max_num_threads();
+    int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
                std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
     DUMP("nblk: %i", nblk);
@@ -218,7 +146,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     halm_col.allocate(1);
     halm_col.allocate_on_device();
 
-    Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
         int num_mt_aw = 0;
@@ -235,10 +163,10 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
             
         #pragma omp parallel
         {
-            int tid = Platform::thread_id();
+            int tid = omp_get_thread_num();
             for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
             {
-                if (ia % Platform::num_threads() == tid)
+                if (ia % omp_get_num_threads() == tid)
                 {
                     int ialoc = ia - iblk * num_atoms_in_block;
                     auto& atom = unit_cell_.atom(ia);
@@ -275,14 +203,14 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
             }
             cuda_stream_synchronize(tid);
         }
-        cuda_stream_synchronize(Platform::max_num_threads());
+        cuda_stream_synchronize(omp_get_max_threads());
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
                           alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone, 
-                          o__.at<GPU>(), o__.ld(), Platform::max_num_threads());
+                          o__.at<GPU>(), o__.ld(), omp_get_max_threads());
 
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
                           alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &zone,
-                          h__.at<GPU>(), h__.ld(), Platform::max_num_threads());
+                          h__.at<GPU>(), h__.ld(), omp_get_max_threads());
     }
 
     cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 
@@ -394,7 +322,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
 void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
                          mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_fv_h_o_it");
+    runtime::Timer t("sirius::Band::set_fv_h_o_it");
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -414,15 +342,15 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
             /* pw kinetic energy */
             double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
                                
-            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function()->theta_pw(ig12));
-            o(igk_row, igk_col) += ctx_.step_function()->theta_pw(ig12);
+            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function().theta_pw(ig12));
+            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
         }
     }
 }
 
 void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
-    Timer t("sirius::Band::set_fv_h_o_lo_lo");
+    runtime::Timer t("sirius::Band::set_fv_h_o_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)

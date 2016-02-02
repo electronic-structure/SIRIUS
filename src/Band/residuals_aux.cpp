@@ -28,7 +28,7 @@ void Band::residuals_aux(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::residuals_aux");
 
-    auto pu = parameters_.processing_unit();
+    auto pu = ctx_.processing_unit();
 
     mdarray<double, 1> res_norm(&res_norm__[0], num_bands__);
     mdarray<double, 1> p_norm(num_bands__);

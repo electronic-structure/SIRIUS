@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -26,9 +26,6 @@
 #define __MDARRAY_H__
 
 #include <signal.h>
-#ifdef __GLIBC__
-#include <execinfo.h>
-#endif
 #include <cassert>
 #include <memory>
 #include <atomic>
@@ -38,8 +35,6 @@
 #ifdef __GPU
 #include "gpu.h"
 #endif
-#include "typedefs.h"
-#include "debug.hpp"
 
 #ifdef __LIBSCI_ACC
 extern "C" int libsci_acc_HostAlloc(void**, size_t);
@@ -49,43 +44,19 @@ extern "C" int libsci_acc_HostFree(void*);
 #ifdef NDEBUG
   #define mdarray_assert(condition__)
 #else
-  #ifdef __GLIBC__
-    #define mdarray_assert(condition__)                                         \
-    {                                                                           \
-        if (!(condition__))                                                     \
-        {                                                                       \
-            printf("Assertion (%s) failed ", #condition__);                     \
-            printf("at line %i of file %s\n", __LINE__, __FILE__);              \
-            printf("array label: %s\n", label_.c_str());                        \
-            for (int i = 0; i < N; i++)                                         \
-                printf("dim[%i].size = %li\n", i, dims_[i].size());             \
-            void *array[10];                                                    \
-            char **strings;                                                     \
-            auto size = backtrace(array, 10);                                   \
-            strings = backtrace_symbols(array, size);                           \
-            printf ("Stack backtrace:\n");                                      \
-            for (size_t i = 0; i < size; i++)                                   \
-                printf ("%s\n", strings[i]);                                    \
-            raise(SIGTERM);                                                     \
-            exit(-13);                                                          \
-        }                                                                       \
-    }
-  #else
-    #define mdarray_assert(condition__)                                         \
-    {                                                                           \
-        if (!(condition__))                                                     \
-        {                                                                       \
-            printf("Assertion (%s) failed ", #condition__);                     \
-            printf("at line %i of file %s\n", __LINE__, __FILE__);              \
-            printf("array label: %s\n", label_.c_str());                        \
-            for (int i = 0; i < N; i++)                                         \
-                printf("dim[%i].size = %li\n", i, dims_[i].size());             \
-            debug::Profiler::stack_trace();                                     \
-            raise(SIGTERM);                                                     \
-            exit(-13);                                                          \
-        }                                                                       \
-    }
-  #endif
+  #define mdarray_assert(condition__)                                         \
+  {                                                                           \
+      if (!(condition__))                                                     \
+      {                                                                       \
+          printf("Assertion (%s) failed ", #condition__);                     \
+          printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+          printf("array label: %s\n", label_.c_str());                        \
+          for (int i = 0; i < N; i++)                                         \
+              printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+          raise(SIGTERM);                                                     \
+          exit(-13);                                                          \
+      }                                                                       \
+  }
 #endif
 
 /// Type of the main processing unit

@@ -247,7 +247,7 @@ double Radial_solver::find_enu(int n, int l, std::vector<double>& v, double enu0
     }
     if (!found)
     {   
-        error_local(__FILE__, __LINE__, "top of the band is not found");
+        TERMINATE("top of the band is not found");
     }
     double etop = enu;
     de = -0.001;
@@ -278,7 +278,7 @@ double Radial_solver::find_enu(int n, int l, std::vector<double>& v, double enu0
     }
     if (!found)
     {   
-        error_local(__FILE__, __LINE__, "bottom of the band is not found");
+        TERMINATE("bottom of the band is not found");
     }
     return (enu + etop) / 2.0;
 }
@@ -323,7 +323,7 @@ double Radial_solver::bound_state(int n__,
     {
         std::stringstream s;
         s << "enu is not converged for n = " << n__ << " and l = " << l__; 
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     /* search for the turning point */
@@ -371,7 +371,7 @@ double Radial_solver::bound_state(int n__,
           << "l = " << l__ << std::endl
           << "enu = " << enu__ << std::endl
           << "wrong number of nodes : " << nn << " instead of " << (n__ - l__ - 1);
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     return enu__;
@@ -417,7 +417,7 @@ double Radial_solver::bound_state(int n__,
     {
         std::stringstream s;
         s << "enu is not converged for n = " << n__ << " and l = " << l__; 
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     /* compute r * u'(r) */
@@ -474,7 +474,7 @@ double Radial_solver::bound_state(int n__,
           << "l = " << l__ << std::endl
           << "enu = " << enu__ << std::endl
           << "wrong number of nodes : " << nn << " instead of " << (n__ - l__ - 1);
-        error_local(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     return enu__;

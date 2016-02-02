@@ -15,6 +15,7 @@ void Band::diag_h_o(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_h_o");
 
+    runtime::Timer t1("sirius::Band::diag_h_o|load");
     if (kp__->comm().size() > 1 && gen_evp_solver()->parallel())
     {
         for (int jloc = 0; jloc < hmlt_dist__.num_cols_local(); jloc++)
@@ -28,7 +29,9 @@ void Band::diag_h_o(K_point* kp__,
             }
         }
     }
+    t1.stop();
     
+    runtime::Timer t2("sirius::Band::diag_h_o|diag");
     int result;
     if (gen_evp_solver()->parallel())
     {
@@ -42,7 +45,9 @@ void Band::diag_h_o(K_point* kp__,
                                          ovlp__.at<CPU>(), ovlp__.ld(), &eval__[0], evec__.at<CPU>(), evec__.ld());
     }
     if (result) TERMINATE("error in diagonalziation");
+    t2.stop();
 
+    runtime::Timer t3("sirius::Band::diag_h_o|gather");
     if (kp__->comm().size() > 1 && gen_evp_solver()->parallel())
     {
         evec__.zero();
@@ -55,9 +60,11 @@ void Band::diag_h_o(K_point* kp__,
         }
         kp__->comm().allreduce(evec__.at<CPU>(), evec__.ld() * num_bands__);
     }
+    t3.stop();
+
     /* copy eigen-vectors to GPU */
     #ifdef __GPU
-    if (parameters_.processing_unit() == GPU)
+    if (ctx_.processing_unit() == GPU)
         acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
     #endif
 }

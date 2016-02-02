@@ -8,7 +8,7 @@ void Density::generate(K_set& ks__)
 
     generate_valence(ks__);
 
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         generate_core_charge_density();
 
@@ -22,11 +22,11 @@ void Density::generate(K_set& ks__)
 
         /* synchronize muffin-tin part */
         rho_->sync_mt();
-        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync_mt();
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->sync_mt();
     }
     
     double nel = 0;
-    if (parameters_.full_potential())
+    if (ctx_.full_potential())
     {
         std::vector<double> nel_mt;
         double nel_it;
@@ -44,13 +44,13 @@ void Density::generate(K_set& ks__)
           << "obtained value : " << nel << std::endl 
           << "target value : " << unit_cell_.num_electrons() << std::endl
           << "difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
-        if (parameters_.full_potential())
+        if (ctx_.full_potential())
         {
             s << "total core leakage : " << core_leakage();
             for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) 
                 s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
         }
-        warning_global(__FILE__, __LINE__, s);
+        WARNING(s);
     }
 
     #ifdef __PRINT_OBJECT_HASH

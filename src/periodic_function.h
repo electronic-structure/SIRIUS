@@ -67,12 +67,12 @@ class Periodic_function
         
         Unit_cell const& unit_cell_;
 
-        Step_function const* step_function_;
+        Step_function const& step_function_;
 
         Communicator const& comm_;
 
         /// Alias for FFT driver.
-        FFT3D* fft_;
+        FFT3D& fft_;
 
         Gvec const* gvec_;
 
@@ -153,7 +153,7 @@ class Periodic_function
         /// Set the global pointer to the interstitial part
         void set_rg_ptr(T* rg_ptr__)
         {
-            f_rg_ = mdarray<T, 1>(rg_ptr__, fft_->local_size());
+            f_rg_ = mdarray<T, 1>(rg_ptr__, fft_.local_size());
         }
 
         inline Spheric_function<spectral, T>& f_mt(int ialoc__)
@@ -218,34 +218,46 @@ class Periodic_function
             }
         }
 
+        inline T checksum_rg() const
+        {
+            T cs = f_rg_.checksum();
+            fft_.comm().allreduce(&cs, 1);
+            return cs;
+        }
+
+        inline complex_t checksum_pw() const
+        {
+            return f_pw_.checksum();
+        }
+
         int64_t hash()
         {
             STOP();
 
-            int64_t h = Utils::hash(&f_rg_(0), fft_->local_size() * sizeof(T));
+            int64_t h = Utils::hash(&f_rg_(0), fft_.local_size() * sizeof(T));
             h += Utils::hash(&f_pw_(0), num_gvec_ * sizeof(double_complex), h);
             return h;
         }
 
         void fft_transform(int direction__)
         {
-            Timer t("sirius::Periodic_function::fft_transform");
+            runtime::Timer t("sirius::Periodic_function::fft_transform");
             assert(gvec_ != nullptr);
 
-            fft_->prepare();
+            fft_.prepare();
             switch (direction__)
             {
                 case 1:
                 {
-                    fft_->transform<1>(*gvec_, &f_pw_(gvec_->offset_gvec_fft()));
-                    fft_->output(&f_rg_(0));
+                    fft_.transform<1>(*gvec_, &f_pw_(gvec_->offset_gvec_fft()));
+                    fft_.output(&f_rg_(0));
                     break;
                 }
                 case -1:
                 {
-                    fft_->input(&f_rg_(0));
-                    fft_->transform<-1>(*gvec_, &f_pw_(gvec_->offset_gvec_fft()));
-                    fft_->comm().allgather(&f_pw_(0), gvec_->offset_gvec_fft(), gvec_->num_gvec_fft());
+                    fft_.input(&f_rg_(0));
+                    fft_.transform<-1>(*gvec_, &f_pw_(gvec_->offset_gvec_fft()));
+                    fft_.comm().allgather(&f_pw_(0), gvec_->offset_gvec_fft(), gvec_->num_gvec_fft());
                     break;
                 }
                 default:
@@ -253,7 +265,7 @@ class Periodic_function
                     TERMINATE("wrong fft direction");
                 }
             }
-            fft_->dismiss();
+            fft_.dismiss();
         }
         
         mdarray<T, 3>& f_mt()
@@ -273,39 +285,38 @@ class Periodic_function
 
         static T inner(Periodic_function<T> const* f__, Periodic_function<T> const* g__)
         {
-            assert(f__->fft_ == g__->fft_);
-            assert(f__->step_function_ == g__->step_function_);
+            assert(&f__->fft_ == &g__->fft_);
+            assert(&f__->step_function_ == &g__->step_function_);
             assert(&f__->unit_cell_ == &g__->unit_cell_);
             assert(&f__->comm_ == &g__->comm_);
             
             T result = 0.0;
             T ri = 0.0;
         
-            if (f__->step_function_ == nullptr)
+            if (!f__->parameters_.full_potential())
             {
-                for (int irloc = 0; irloc < f__->fft_->local_size(); irloc++)
+                for (int irloc = 0; irloc < f__->fft_.local_size(); irloc++)
                     ri += type_wrapper<T>::conjugate(f__->f_rg(irloc)) * g__->f_rg(irloc);
             }
             else
             {
-                for (int irloc = 0; irloc < f__->fft_->local_size(); irloc++)
+                for (int irloc = 0; irloc < f__->fft_.local_size(); irloc++)
                 {
                     ri += type_wrapper<T>::conjugate(f__->f_rg(irloc)) * g__->f_rg(irloc) * 
-                          f__->step_function_->theta_r(irloc);
+                          f__->step_function_.theta_r(irloc);
                 }
             }
                     
-            ri *= (f__->unit_cell_.omega() / f__->fft_->size());
-            f__->fft_->comm().allreduce(&ri, 1);
+            ri *= (f__->unit_cell_.omega() / f__->fft_.size());
+            f__->fft_.comm().allreduce(&ri, 1);
             
             if (f__->parameters_.full_potential())
             {
                 for (int ialoc = 0; ialoc < f__->unit_cell_.spl_num_atoms().local_size(); ialoc++)
                     result += sirius::inner(f__->f_mt(ialoc), g__->f_mt(ialoc));
+                f__->comm_.allreduce(&result, 1);
             }
-        
-            f__->comm_.allreduce(&result, 1);
-        
+       
             return result + ri;
         }
 };
