@@ -46,7 +46,7 @@ void test_fft(double cutoff__)
                 }
             }
         }
-        comm.allreduce(&diff, 1);
+        mpi_comm_world().allreduce(&diff, 1);
         diff = std::sqrt(diff / fft.size());
         if (mpi_comm_world().rank() == 0)
         {
