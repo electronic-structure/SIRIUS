@@ -510,6 +510,8 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
         enu(i, 0) = enu(i, 1) = -double(zn * zn) / 2 / n / n;
     }
 
+    double Etot_old = 0.0;
+
     for (int iter = 0; iter < niter; iter++)
     {
         printf("\n");
@@ -586,9 +588,10 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
         printf("Ecoul: %12.6f\n", Ecoul);
         printf("Eenuc: %12.6f\n", Eenuc);
         printf("Exc  : %12.6f\n", Exc);
+
+        printf("Etot_diff : %12.10f\n", std::abs(Etot - Etot_old));
+        Etot_old = Etot;
     }
-
-
 }
 
 int main(int argn, char **argv)
