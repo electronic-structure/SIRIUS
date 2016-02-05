@@ -13,7 +13,7 @@ void test_complex_exp()
         phase(i) = type_wrapper<double_complex>::random();
     }
 
-    Timer t("random_plus_exp");
+    runtime::Timer t("random_plus_exp");
     #pragma omp parallel for
     for (int i = 0; i < N; i++)
     {
@@ -29,7 +29,7 @@ void test_complex_exp()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     test_complex_exp();
-    Platform::finalize();
+    sirius::finalize();
 }
