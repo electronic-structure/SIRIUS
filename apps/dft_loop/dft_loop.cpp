@@ -120,11 +120,12 @@ void dft_loop(cmd_args args)
     #endif
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
+    auto shiftk = parser["shiftk"].get(std::vector<int>(3, 0));
 
     int use_symmetry = parser["use_symmetry"].get(1);
 
-    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[1]),
-             vector3d<int>(0, 0, 0), use_symmetry);
+    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[2]),
+             vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), use_symmetry);
 
     ks.initialize();
     

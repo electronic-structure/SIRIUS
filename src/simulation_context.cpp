@@ -87,13 +87,6 @@ void Simulation_context::initialize()
 
     if (unit_cell_.num_atoms() != 0) unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
     
-    if (!full_potential())
-    {
-        /* create augmentation operator Q_{xi,xi'}(G) here */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
-    }
-    
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
@@ -161,6 +154,13 @@ void Simulation_context::initialize()
     if (comm_.rank() == 0) print_info();
     #endif
 
+    if (!full_potential())
+    {
+        /* create augmentation operator Q_{xi,xi'}(G) here */
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+            augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
+    }
+    
     time_active_ = -Utils::current_time();
 
     initialized_ = true;
