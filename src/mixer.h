@@ -143,10 +143,12 @@ class Mixer
         {
             return output_buffer_(idx);
         }
-
+        
+        /// Initialize the mixer.
+        /** Copy content of the input buffer into first vector of the mixing history. */
         inline void initialize()
         {
-            memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(T));
+            std::memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(T));
         }
 
         inline double beta() const
@@ -270,6 +272,9 @@ class Broyden1: public Mixer<T>
             /* number of previous vectors */
             int N = std::min(this->count_, this->max_history_ - 1);
             
+            /* new vector will be stored in the input buffer */
+            this->input_buffer_.zero();
+
             if (N > 0)
             {
                 mdarray<double, 2> S(N, N);
@@ -329,9 +334,6 @@ class Broyden1: public Mixer<T>
                     }
                 }
                 this->comm_.allreduce(c.at<CPU>(), (int)c.size());
-
-                /* store new vector in the input buffer */
-                this->input_buffer_.zero();
 
                 for (int j = 0; j < N; j++)
                 {

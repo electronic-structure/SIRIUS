@@ -151,12 +151,10 @@ void test_rho_sum(double alat, double pw_cutoff, double wf_cutoff, int num_bands
 int main(int argn, char **argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--alat=", "{double} lattice constant");
     args.register_key("--pw_cutoff=", "{double} plane-wave cutoff [a.u.^-1]");
     args.register_key("--wf_cutoff=", "{double} wave-function cutoff [a.u.^-1]");
     args.register_key("--num_bands=", "{int} number of bands");
-    args.register_key("--mpi_grid=", "{vector<int>} MPI grid");
 
     args.parse_args(argn, argv);
     if (args.exist("help"))

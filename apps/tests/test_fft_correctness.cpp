@@ -173,7 +173,6 @@ void test_fft(double cutoff__)
 int main(int argn, char **argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
 
     args.parse_args(argn, argv);

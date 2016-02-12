@@ -125,7 +125,7 @@ void test_spline_5()
         s2[i].interpolate();
     }
     mdarray<double, 2> prod(n, n);
-    Timer t("spline|inner");
+    runtime::Timer t("spline|inner");
     #pragma omp parallel for
     for (int i = 0; i < n; i++)
     {
@@ -154,7 +154,7 @@ void test_spline_6()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     test_spline_1();
     test_spline_2();
@@ -162,5 +162,5 @@ int main(int argn, char** argv)
     test_spline_5();
     test_spline_6();
 
-    Platform::finalize();
+    sirius::finalize();
 }

@@ -5,7 +5,6 @@ using namespace sirius;
 int main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--mpi_grid=", "{vector2d<int>} MPI grid");
 
     args.parse_args(argn, argv);

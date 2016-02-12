@@ -203,7 +203,7 @@ void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 template <typename T>
 size_t Periodic_function<T>::size()
 {
-    size_t size = fft_.size();
+    size_t size = fft_.local_size();
     if (parameters_.full_potential())
     {
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
@@ -231,7 +231,7 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
         }
     }
 
-    for (int ir = 0; ir < fft_.size(); ir++) mixer__->input(offset__ + n++, f_rg_(ir));
+    for (int ir = 0; ir < fft_.local_size(); ir++) mixer__->input(offset__ + n++, f_rg_(ir));
 
     return n;
 }
@@ -252,7 +252,7 @@ size_t Periodic_function<T>::unpack(T const* array__)
         }
     }
 
-    for (int ir = 0; ir < fft_.size(); ir++) f_rg_(ir) = array__[n++];
+    for (int ir = 0; ir < fft_.local_size(); ir++) f_rg_(ir) = array__[n++];
 
     return n;
 }

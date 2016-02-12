@@ -128,15 +128,15 @@ FFT3D::FFT3D(FFT3D_grid grid__,
 
 FFT3D::~FFT3D()
 {
-    if (comm_.rank() == 0)
-    {
-        printf("number of calls : %li\n", ncall());
-        printf("total transform time          : %f\n", tcall(0));
-        printf("transform xy time             : %f\n", tcall(1));
-        printf("transform z serial time       : %f\n", tcall(2));
-        printf("transform z parallel time     : %f\n", tcall(3));
-        printf("transform z parallel a2a time : %f\n", tcall(4));
-    }
+    //== if (comm_.rank() == 0)
+    //== {
+    //==     printf("number of calls : %li\n", ncall());
+    //==     printf("total transform time          : %f\n", tcall(0));
+    //==     printf("transform xy time             : %f\n", tcall(1));
+    //==     printf("transform z serial time       : %f\n", tcall(2));
+    //==     printf("transform z parallel time     : %f\n", tcall(3));
+    //==     printf("transform z parallel a2a time : %f\n", tcall(4));
+    //== }
     for (int i = 0; i < omp_get_max_threads(); i++)
     {
         fftw_free(fftw_buffer_z_[i]);

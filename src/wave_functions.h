@@ -265,7 +265,8 @@ class Wave_functions<true>
             wf_coeffs_ = dmatrix<double_complex>(wf_size_, num_wfs_, blacs_grid_, bs_, bs_);
 
             int bs1 = splindex_base<int>::block_size(num_wfs_, blacs_grid_slice_.num_ranks_col());
-            swp_buf_ = mdarray<double_complex, 1>(wf_size__ * bs1);
+            if (blacs_grid_.comm().size() > 1)
+                swp_buf_ = mdarray<double_complex, 1>(wf_size__ * bs1);
         }
 
         void set_num_swapped(int n__)
@@ -274,20 +275,41 @@ class Wave_functions<true>
             spl_n_ = splindex<block>(n__, blacs_grid_slice_.num_ranks_col(), blacs_grid_slice_.rank_col());
 
             int bs = splindex_base<int>::block_size(n__, blacs_grid_slice_.num_ranks_col());
-            wf_coeffs_swapped_ = dmatrix<double_complex>(&swp_buf_[0], wf_size_, n__, blacs_grid_slice_, 1, bs);
+            if (blacs_grid_.comm().size() > 1)
+            {
+                wf_coeffs_swapped_ = dmatrix<double_complex>(&swp_buf_[0], wf_size_, n__, blacs_grid_slice_, 1, bs);
+            }
+            else
+            {
+                wf_coeffs_swapped_ = dmatrix<double_complex>(&wf_coeffs_(0, 0), wf_size_, n__, blacs_grid_slice_, 1, bs);
+            }
         }
 
         void swap_forward(int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
             set_num_swapped(n__);
-            linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_, 0, idx0__, wf_coeffs_swapped_, 0, 0, blacs_grid_.context());
+            if (blacs_grid_.comm().size() > 1)
+            {
+                #ifdef __SCALAPACK
+                linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_, 0, idx0__, wf_coeffs_swapped_, 0, 0, blacs_grid_.context());
+                #else
+                TERMINATE_NO_SCALAPACK
+                #endif
+            }
         }
 
         void swap_backward(int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
-            linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_swapped_, 0, 0, wf_coeffs_, 0, idx0__, blacs_grid_.context());
+            if (blacs_grid_.comm().size() > 1)
+            {
+                #ifdef __SCALAPACK
+                linalg<CPU>::gemr2d(wf_size_, n__, wf_coeffs_swapped_, 0, 0, wf_coeffs_, 0, idx0__, blacs_grid_.context());
+                #else
+                TERMINATE_NO_SCALAPACK
+                #endif
+            }
         }
 
         inline splindex<block> const& spl_num_swapped() const

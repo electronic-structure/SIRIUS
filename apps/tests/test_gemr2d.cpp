@@ -105,7 +105,6 @@ void test_gemr2d(int M, int N, int repeat)
 int main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--M=", "{int} number of rows");
     args.register_key("--N=", "{int} number of columns");
     args.register_key("--repeat=", "{int} number of repeats");

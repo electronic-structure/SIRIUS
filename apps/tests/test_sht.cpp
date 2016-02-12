@@ -321,8 +321,8 @@ void test2()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     //test1();
     test2();
-    Platform::finalize();
+    sirius::finalize();
 }

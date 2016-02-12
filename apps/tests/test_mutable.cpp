@@ -11,7 +11,6 @@ void f(mdarray<int, 1> const& a)
 int main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
 
     args.parse_args(argn, argv);
     if (args.exist("help"))
@@ -21,10 +20,10 @@ int main(int argn, char** argv)
         exit(0);
     }
 
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     mdarray<int, 1> a(100);
     f(a);
 
-    Platform::finalize();
+    sirius::finalize();
 }

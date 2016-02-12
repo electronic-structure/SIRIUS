@@ -10,7 +10,6 @@ inline void memcpy_simple_1(char* dest__, char* src__, size_t n__)
 int main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
 
     args.parse_args(argn, argv);
     if (args.exist("help"))
@@ -30,11 +29,6 @@ int main(int argn, char** argv)
     printf("memcpy(stdlib) bandwidth: %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
 
     t = -omp_get_wtime();
-    sirius::memcpy_simple(&v1[0], &v2[0], n);
-    t += omp_get_wtime();
-    printf("memcpy(sirius) bandwidth: %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
-
-    t = -omp_get_wtime();
     memcpy_simple_1((char*)&v1[0], (char*)&v2[0], n * sizeof(double));
     t += omp_get_wtime();
     printf("memcpy(simple) bandwidth: %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
@@ -48,11 +42,6 @@ int main(int argn, char** argv)
     std::memset(&v1[0], 0, n * sizeof(double));
     t += omp_get_wtime();
     printf("memset(stdlib) bandwidth: %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
-
-    t = -omp_get_wtime();
-    sirius::memset_simple(&v1[0], 0.0, n);
-    t += omp_get_wtime();
-    printf("memset(sirius) bandwidth: %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
 
     t = -omp_get_wtime();
     std::fill(v1.begin(), v1.end(), 0.0);

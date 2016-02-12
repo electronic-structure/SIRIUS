@@ -150,7 +150,6 @@ void test3(std::vector<int> mpi_grid_dims__, double cutoff__)
 int main(int argn, char **argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--dims=", "{vector3d<int>} FFT dimensions");
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
     args.register_key("--num_bands=", "{int} number of bands");

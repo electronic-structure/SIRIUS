@@ -34,7 +34,8 @@ Potential::Potential(Simulation_context& ctx__)
       unit_cell_(ctx__.unit_cell()),
       comm_(ctx__.comm()),
       fft_(ctx__.fft()),
-      pseudo_density_order(9)
+      pseudo_density_order(9),
+      mixer_(nullptr)
 {
     runtime::Timer t("sirius::Potential::Potential");
 
@@ -82,21 +83,14 @@ Potential::Potential(Simulation_context& ctx__)
 
     init();
 
-    std::vector<double> weights;
-    mixer_ = new Broyden1<double>(size(),
-                                  ctx_.mixer_input_section().max_history_,
-                                  ctx_.mixer_input_section().beta_,
-                                  weights,
-                                  comm_);
-
     spl_num_gvec_ = splindex<block>(ctx_.gvec().num_gvec(), comm_.size(), comm_.rank());
     
     if (ctx_.full_potential())
     {
         gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), spl_num_gvec_.local_size());
-        for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+        for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
         {
-            int ig = (int)spl_num_gvec_[igloc];
+            int ig = spl_num_gvec_[igloc];
             auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
             SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
@@ -112,7 +106,7 @@ Potential::~Potential()
     delete xc_potential_;
     delete xc_energy_density_;
     if (!ctx_.full_potential()) delete local_potential_;
-    delete mixer_;
+    if (mixer_ != nullptr) delete mixer_;
 }
 
 //template<> void Potential::add_mt_contribution_to_pw<CPU>()

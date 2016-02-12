@@ -400,7 +400,8 @@ class Potential
         void check_potential_continuity_at_mt();
 
         //void copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src);
-        
+       
+        /// Total size (number of elements) of the potential and effective magnetic field. 
         inline size_t size()
         {
             size_t s = effective_potential_->size();
@@ -482,6 +483,33 @@ class Potential
 
         void mixer_init()
         {
+            /* create mixer */
+            if (ctx_.mixer_input_section().type_ == "linear")
+            {
+                mixer_ = new Linear_mixer<double>(size(), ctx_.mixer_input_section().beta_, comm_);
+            }
+            else if (ctx_.mixer_input_section().type_ == "broyden1")
+            {
+                std::vector<double> weights;
+                mixer_ = new Broyden1<double>(size(),
+                                              ctx_.mixer_input_section().max_history_,
+                                              ctx_.mixer_input_section().beta_,
+                                              weights,
+                                              comm_);
+            }
+            else if (ctx_.mixer_input_section().type_ == "broyden2")
+            {
+                std::vector<double> weights;
+                mixer_ = new Broyden2<double>(size(),
+                                              ctx_.mixer_input_section().max_history_,
+                                              ctx_.mixer_input_section().beta_,
+                                              weights,
+                                              comm_);
+            }
+            else
+            {
+                TERMINATE("wrong mixer type");
+            }
             pack(mixer_);
             mixer_->initialize();
         }

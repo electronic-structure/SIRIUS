@@ -79,7 +79,6 @@ void test_wf_redistr(double alat, double pw_cutoff, double wf_cutoff, int num_ba
 int main(int argn, char **argv)
 {
     cmd_args args;
-    args.register_key("--help", "print this help and exit");
     args.register_key("--alat=", "{double} lattice constant");
     args.register_key("--pw_cutoff=", "{double} plane-wave cutoff [a.u.^-1]");
     args.register_key("--wf_cutoff=", "{double} wave-function cutoff [a.u.^-1]");
