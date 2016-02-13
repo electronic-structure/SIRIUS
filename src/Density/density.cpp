@@ -67,8 +67,7 @@ Density::Density(Simulation_context& ctx__)
         /* find high-frequency G-vectors */
         for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
         {
-            if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff())
-                hf_gvec_.push_back(ig);
+            if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff()) hf_gvec_.push_back(ig);
         }
 
         if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec())
@@ -76,7 +75,7 @@ Density::Density(Simulation_context& ctx__)
             std::stringstream s;
             s << "Wrong count of high-frequency G-vectors" << std::endl
               << "number of found high-frequency G-vectors: " << hf_gvec_.size() << std::endl
-              << "expectd number of high-frequency G-vectors: " << ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec() << std::endl
+              << "expected number of high-frequency G-vectors: " << ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec() << std::endl
               << "G-vector cutoff: " <<  ctx_.gk_cutoff();
             TERMINATE(s);
         }

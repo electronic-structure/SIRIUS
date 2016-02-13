@@ -15,4 +15,4 @@ fpatom: fpatom.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 clean:
-	rm -f *.o atom [A-Z]*.json run.x
+	rm -rf *.o atom [A-Z]*.json run.x fpatom *dSYM

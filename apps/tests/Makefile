@@ -24,7 +24,7 @@ test_mpi_omp: test_mpi_omp.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) kiss_fft.o -o test_mpi_omp
 
 clean:
-	rm -rf *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex test_hdf5 hydrogen read_atom \
+	rm -rf *.o *.h5 *.txt *.dat *.pdf *dSYM timers.json out.json splindex test_hdf5 hydrogen read_atom \
 	fft fft1k spline test_allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
 	test_pstdout test_zgemm test_init test_blacs test_enu test_allreduce test_alltoall test_bcast \
 	test_copy_gpu test_diag *dSYM test_xc test_dgemm test_zgemm test_hloc test_complex_exp \
