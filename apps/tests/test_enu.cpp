@@ -17,7 +17,7 @@ void test_enu()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     test_enu();
-    Platform::finalize();
+    sirius::finalize();
 }

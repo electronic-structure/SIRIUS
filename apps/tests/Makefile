@@ -9,8 +9,8 @@ INCLUDE = -I./../../src
 .cpp.o:
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom \
-     test_mdarray test_xc test_gemm test_hloc
+all: test_hdf5 test_allgather mt_function mt_kinetic spline splindex hydrogen read_atom \
+     test_mdarray test_xc test_gemm test_hloc test_mpi_grid test_mixer test_sht test_enu
 
 %: %.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
@@ -24,7 +24,9 @@ test_mpi_omp: test_mpi_omp.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) kiss_fft.o -o test_mpi_omp
 
 clean:
-	rm -rf *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
-	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
+	rm -rf *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex test_hdf5 hydrogen read_atom \
+	fft fft1k spline test_allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
 	test_pstdout test_zgemm test_init test_blacs test_enu test_allreduce test_alltoall test_bcast \
-	test_copy_gpu test_diag *dSYM test_xc test_dgemm test_zgemm test_hloc
+	test_copy_gpu test_diag *dSYM test_xc test_dgemm test_zgemm test_hloc test_complex_exp \
+	test_fft_correctness test_memop test_mixer test_mpi_grid test_mutable test_sht test_splne \
+	test_transpose test_spline test_transpose test_unit_cell
