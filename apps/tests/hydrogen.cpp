@@ -20,11 +20,11 @@ int main(int argn, char** argv)
     args.register_key("--num_points=","{int} number of grid points");
     args.register_key("--rmin=","{double} first grid point");
     args.parse_args(argn, argv);
-    if (argn == 1)
+    if (args.exist("help"))
     {
         printf("Usage: %s [options]", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
 
     printf("\n");
@@ -177,4 +177,6 @@ int main(int argn, char** argv)
 
     printf("\n");
     printf("Run 'python hydrogen_plot.py out.json' to produce a PDF plot with relative errors.\n");
+
+    return 0;
 }

@@ -63,6 +63,19 @@ class Spline
             coeffs_.zero();
         }
 
+        /// Constructor of a spline from a function.
+        Spline(Radial_grid const& radial_grid__, std::function<T(double)> f__) : radial_grid_(&radial_grid__)
+        {
+            int np = num_points();
+            coeffs_ = mdarray<T, 2>(np, 4);
+            for (int i = 0; i < np; i++)
+            {
+                double x = (*radial_grid_)[i];
+                coeffs_(i, 0) = f__(x);
+            }
+            interpolate();
+        }
+
         /// Constructor of a spline from a list of values.
         Spline(Radial_grid const& radial_grid__, std::vector<T> y__) : radial_grid_(&radial_grid__)
         {
@@ -89,6 +102,16 @@ class Spline
                 coeffs_ = std::move(src__.coeffs_);
             }
             return *this;
+        }
+
+        Spline<T>& operator=(std::function<T(double)> f__)
+        {
+            for (int ir = 0; ir < radial_grid_->num_points(); ir++)
+            {
+                double x = (*radial_grid_)[ir];
+                coeffs_(ir, 0) = f__(x);
+            }
+            return this->interpolate();
         }
         
         /// Integrate with r^m weight.

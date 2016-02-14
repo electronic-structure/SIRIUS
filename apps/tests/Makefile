@@ -9,7 +9,7 @@ INCLUDE = -I./../../src
 .cpp.o:
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-all: test_hdf5 test_allgather mt_function mt_kinetic spline splindex hydrogen read_atom \
+all: test_hdf5 test_allgather mt_function mt_kinetic splindex hydrogen read_atom \
      test_mdarray test_xc test_gemm test_hloc test_mpi_grid test_mixer test_enu
 
 %: %.cpp $(LIB_SIRIUS)
