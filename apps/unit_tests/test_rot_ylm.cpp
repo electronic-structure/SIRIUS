@@ -7,9 +7,7 @@ void test_symmetry()
     matrix3d<double> lattice;
     lattice(0, 0) = 7;
     lattice(1, 1) = 7;
-    lattice(0, 2) = lattice(1, 2) = 3.5;
-    lattice(2, 2) = 12;
-
+    lattice(2, 2) = 7;
 
     int num_atoms = 1;
     mdarray<double, 2> positions(3, num_atoms);
@@ -67,10 +65,10 @@ void test_symmetry()
 
             mdarray<double_complex, 2> ylm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
             mdarray<double, 2> rlm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
-            Timer t0("rotation_matrix_Ylm");
+            runtime::Timer t0("rotation_matrix_Ylm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
             t0.stop();
-            Timer t1("rotation_matrix_Rlm");
+            runtime::Timer t1("rotation_matrix_Rlm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, rlm_rot_mtrx);
             t1.stop();
 
@@ -95,15 +93,21 @@ void test_symmetry()
                 d2 += std::abs(rlm1(i) - rlm2(i));
             }
             printf("diff: %18.12f %18.12f\n", d1, d2);
-            if (d1 > 1e-10 || d2 > 1e-10) TERMINATE("Fail!");
+            if (d1 > 1e-10 || d2 > 1e-10)
+            {
+                printf("Fail!\n");
+                exit(1);
+            }
         }
     }
 }
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     test_symmetry();
-    Timer::print();
-    Platform::finalize();
+    runtime::Timer::print();
+    sirius::finalize();
+
+    return 0;
 }

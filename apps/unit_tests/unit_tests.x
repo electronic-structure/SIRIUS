@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tests='test_init test_sht test_fft_correctness test_spline'
+tests='test_init test_sht test_fft_correctness test_spline test_rot_ylm'
 
 for test in $tests; do
   echo "running '${test}'"
