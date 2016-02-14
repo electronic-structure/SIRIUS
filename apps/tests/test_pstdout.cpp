@@ -4,11 +4,14 @@ using namespace sirius;
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
+    
+    {
+        pstdout pout(mpi_comm_world());
+        pout.printf("Hello from rank : %i\n", mpi_comm_world().rank());
+    }
 
-    std::stringstream s;
-    for (int i = 0; i <= Platform::mpi_rank(); i++) s << "Hello from rank : " << Platform::mpi_rank() << std::endl;
-    pstdout(s.str());
+    sirius::finalize();
 
-    Platform::finalize();
+    return 0;
 }

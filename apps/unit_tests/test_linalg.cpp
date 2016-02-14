@@ -10,13 +10,12 @@ void test1()
     matrix<double_complex> C(N, N);
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++) A(j, i) = type_wrapper<double_complex>::random(); 
+        for (int j = 0; j < N; j++) B(j, i) = type_wrapper<double_complex>::random(); 
     }
-    A >> B;
 
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++) A(i, j) = 0.5 * (A(i, j) + conj(B(j, i)));
+        for (int j = 0; j < N; j++) A(i, j) = B(i, j) + std::conj(B(j, i));
     }
     A >> B;
 
@@ -48,6 +47,7 @@ void test1()
     if (err)
     {
         printf("test1 failed!\n");
+        exit(1);
     }
     else
     {
@@ -96,20 +96,20 @@ void test2()
     if (err)
     {
         printf("test2 failed!\n");
+        exit(1);
     }
     else
     {
         printf("test2 passed!\n");
     }
 }
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 template <typename T>
 void test3()
 {
     int bs = 32;
-    lin_alg<scalapack>::set_cyclic_block_size(bs);
 
-    int num_ranks = Platform::comm_world().size();
+    int num_ranks = mpi_comm_world().size();
     int nrc = (int)std::sqrt(0.1 + num_ranks);
     if (nrc * nrc != num_ranks)
     {
@@ -118,11 +118,11 @@ void test3()
     }
 
     int N = 400;
-    BLACS_grid blacs_grid(Platform::comm_world(), nrc, nrc);
+    BLACS_grid blacs_grid(mpi_comm_world(), nrc, nrc);
 
-    dmatrix<T> A(N, N, blacs_grid);
-    dmatrix<T> B(N, N, blacs_grid);
-    dmatrix<T> C(N, N, blacs_grid);
+    dmatrix<T> A(N, N, blacs_grid, bs, bs);
+    dmatrix<T> B(N, N, blacs_grid, bs, bs);
+    dmatrix<T> C(N, N, blacs_grid, bs, bs);
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++) A.set(j, i, type_wrapper<T>::random());
@@ -162,6 +162,7 @@ void test3()
     if (err)
     {
         printf("test3 failed!\n");
+        exit(1);
     }
     else
     {
@@ -172,12 +173,13 @@ void test3()
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     test1();
     test2<double>();
     test2<double_complex>();
-    #ifdef _SCALAPACK_
+    #ifdef __SCALAPACK
     test3<double_complex>();
     #endif
-    Platform::finalize();
+    sirius::finalize();
+    return 0;
 }
