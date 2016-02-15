@@ -130,7 +130,7 @@ class Beta_projectors
             }
             #endif
 
-            //beta_gk_ = matrix<double_complex>(num_gkvec_loc_, max_num_beta_);
+            beta_gk_ = matrix<double_complex>(nullptr, num_gkvec_loc_, max_num_beta_);
 
             beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
             
