@@ -10,6 +10,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Unit_cell/atom_type.cpp \
        Unit_cell/atom_symmetry_class.cpp \
        Unit_cell/unit_cell.cpp \
+       Unit_cell/make_periodic_function.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \
