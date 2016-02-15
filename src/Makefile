@@ -6,10 +6,18 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        radial_solver.cpp sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp density.cpp symmetry.cpp \
        xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp fft3d.cpp \
        simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
+       Atom_type/add_aw_descriptor.cpp \
+       Atom_type/add_lo_descriptor.cpp \
+       Atom_type/atom_type.cpp \
+       Atom_type/init.cpp \
+       Atom_type/init_aw_descriptors.cpp \
+       Atom_type/init_free_atom.cpp \
+       Atom_type/print_info.cpp \
+       Atom_type/read_input.cpp \
+       Atom_type/set_radial_grid.cpp \
        Atom/atom.cpp \
        Atom/init.cpp \
        Atom/generate_radial_integrals.cpp \
-       Unit_cell/atom_type.cpp \
        Unit_cell/atom_symmetry_class.cpp \
        Unit_cell/unit_cell.cpp \
        Unit_cell/make_periodic_function.cpp \

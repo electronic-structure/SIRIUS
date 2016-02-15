@@ -402,10 +402,6 @@ class Atom_type
 
         void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
 
-        void set_free_atom_radial_grid(int num_points__, double const* points__);
-
-        void set_free_atom_potential(int num_points__, double const* vs__);
-
         /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
         
@@ -415,8 +411,6 @@ class Atom_type
         void init_free_atom(bool smooth);
 
         void print_info() const;
-        
-        void fix_q_radial_function(int l, int i, int j, double* qrf) const;
         
         inline int id() const
         {
@@ -731,6 +725,34 @@ class Atom_type
         inline Simulation_parameters const& parameters() const
         {
             return parameters_;
+        }
+
+        void fix_q_radial_function(int l, int i, int j, double* qrf) const
+        {
+            for (int ir = 0; ir < num_mt_points(); ir++)
+            {
+                double x = radial_grid(ir);
+                double x2 = x * x;
+                if (x < uspp_.q_functions_inner_radii[l])
+                {
+                    qrf[ir] = uspp_.q_coefs(0, l, i, j);
+                    for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * std::pow(x2, n);
+                    qrf[ir] *= std::pow(x, l + 2);
+                }
+            }
+        }
+
+        void set_free_atom_radial_grid(int num_points__, double const* points__)
+        {
+            if (num_mt_points_ <= 0) TERMINATE("wrong number of radial points");
+            free_atom_radial_grid_ = Radial_grid(num_points__, points__);
+        }
+
+        void set_free_atom_potential(int num_points__, double const* vs__)
+        {
+            free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
+            for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
+            free_atom_potential_.interpolate();
         }
 };
 
