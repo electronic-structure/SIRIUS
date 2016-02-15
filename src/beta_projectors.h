@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file beta_projectors.h
- *   
+ *
  *  \brief Contains declaration and implementation of sirius::Beta_projectors class.
  */
 
@@ -67,9 +67,12 @@ class Beta_projectors
         /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
         matrix<double_complex> beta_gk_t_;
 
-        /// Plane-wave coefficients of |beta> functions for atoms.
-        matrix<double_complex> beta_gk_;
+        /// Plane-wave coefficients of |beta> functions for all atoms.
+        matrix<double_complex> beta_gk_a_;
 
+        /// Plane-wave coefficients of |beta> functions for a chunk of atoms.
+        matrix<double_complex> beta_gk_;
+        
         mdarray<double_complex, 1> beta_phi_;
 
         struct beta_chunk
@@ -127,7 +130,25 @@ class Beta_projectors
             }
             #endif
 
-            beta_gk_ = matrix<double_complex>(num_gkvec_loc_, max_num_beta_);
+            //beta_gk_ = matrix<double_complex>(num_gkvec_loc_, max_num_beta_);
+
+            beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
+            
+            #pragma omp for
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            {
+                for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++)
+                {
+                    for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
+                    {
+                        int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+                        double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
+
+                        beta_gk_a_(igk_loc, unit_cell_.atom(ia).offset_lo() + xi) =
+                            beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * std::exp(double_complex(0.0, -phase));
+                    }
+                }
+            }
         }
 
         matrix<double_complex>& beta_gk_t()

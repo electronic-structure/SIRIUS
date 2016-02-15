@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file beta_projectors.cpp
+ *
+ *  \brief Contains implementation of sirius::Beta_projectors class.
+ */
+
 #include "beta_projectors.h"
 
 namespace sirius {
@@ -173,29 +197,31 @@ void Beta_projectors::generate(int chunk__)
 
     if (pu_ == CPU)
     {
-        #pragma omp parallel
-        for (int i = 0; i < beta_chunk(chunk__).num_atoms_; i++)
-        {
-            int ia = desc(3, i);
-            #pragma omp for
-            for (int xi = 0; xi < desc(0, i); xi++)
-            {
-                for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
-                {
-                    int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-                    double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
+        beta_gk_ = mdarray<double_complex, 2>(&beta_gk_a_(0, beta_chunk(chunk__).offset_),
+                                              num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
+        //== #pragma omp parallel
+        //== for (int i = 0; i < beta_chunk(chunk__).num_atoms_; i++)
+        //== {
+        //==     int ia = desc(3, i);
+        //==     #pragma omp for
+        //==     for (int xi = 0; xi < desc(0, i); xi++)
+        //==     {
+        //==         for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
+        //==         {
+        //==             int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+        //==             double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
 
-                    beta_gk_(igk_loc, desc(1, i) + xi) = 
-                        beta_gk_t_(igk_loc, desc(2, i) + xi) * std::exp(double_complex(0.0, -phase));
-                }
-            }
-        }
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        int nbeta = beta_chunk(chunk__).num_beta_;
-        auto cs = mdarray<double_complex, 1>(beta_gk_.at<CPU>(), num_gkvec_loc_ * nbeta).checksum();
-        comm_.allreduce(&cs, 1);
-        DUMP("checksum(beta_gk) : %18.10f %18.10f", cs.real(), cs.imag());
-        #endif
+        //==             beta_gk_(igk_loc, desc(1, i) + xi) = 
+        //==                 beta_gk_t_(igk_loc, desc(2, i) + xi) * std::exp(double_complex(0.0, -phase));
+        //==         }
+        //==     }
+        //== }
+        //== #ifdef __PRINT_OBJECT_CHECKSUM
+        //== int nbeta = beta_chunk(chunk__).num_beta_;
+        //== auto cs = mdarray<double_complex, 1>(beta_gk_.at<CPU>(), num_gkvec_loc_ * nbeta).checksum();
+        //== comm_.allreduce(&cs, 1);
+        //== DUMP("checksum(beta_gk) : %18.10f %18.10f", cs.real(), cs.imag());
+        //== #endif
     }
     #ifdef __GPU
     if (pu_ == GPU)
