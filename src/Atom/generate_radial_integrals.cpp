@@ -1,83 +1,6 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
-// the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-/** \file atom.cpp
- *   
- *  \brief Contains remaining implementation of sirius::Atom class.
- */
-
 #include "atom.h"
 
 namespace sirius {
-
-Atom::Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__) 
-    : type_(type__),
-      symmetry_class_(nullptr),
-      position_(position__),
-      vector_field_(vector_field__),
-      offset_aw_(-1),
-      offset_lo_(-1),
-      offset_wf_(-1),
-      apply_uj_correction_(false),
-      uj_correction_l_(-1)
-{
-    for (int x: {0, 1, 2})
-    {
-        if (position_[x] < 0 || position_[x] >= 1)
-        {
-            std::stringstream s;
-            s << "Wrong atomic position for atom " << type__.label() << ": " << position_[0] << " " << position_[1] << " " << position_[2];
-            TERMINATE(s);
-        }
-    }
-}
-
-void Atom::init(int offset_aw__, int offset_lo__, int offset_wf__)
-{
-    assert(offset_aw__ >= 0);
-    
-    offset_aw_ = offset_aw__;
-    offset_lo_ = offset_lo__;
-    offset_wf_ = offset_wf__;
-
-    lmax_pot_ = type().parameters().lmax_pot();
-    num_mag_dims_ = type().parameters().num_mag_dims();
-
-    if (type().parameters().full_potential())
-    {
-        int lmmax = Utils::lmmax(lmax_pot_);
-
-        h_radial_integrals_ = mdarray<double, 3>(lmmax, type().indexr().size(), type().indexr().size());
-        
-        b_radial_integrals_ = mdarray<double, 4>(lmmax, type().indexr().size(), type().indexr().size(), num_mag_dims_);
-        
-        occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
-        
-        uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
-    }
-
-    if (!type().parameters().full_potential())
-    {
-        int nbf = type().mt_lo_basis_size();
-        d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, num_mag_dims_ + 1);
-    }
-}
 
 extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
                                             int num_ri__,
@@ -336,4 +259,3 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
 }
 
 }
-
