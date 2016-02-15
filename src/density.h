@@ -210,22 +210,41 @@ class Density
         ~Density();
        
         /// Set pointers to muffin-tin and interstitial charge density arrays
-        void set_charge_density_ptr(double* rhomt, double* rhoir);
+        void set_charge_density_ptr(double* rhomt, double* rhoir)
+        {
+            if (ctx_.full_potential()) rho_->set_mt_ptr(rhomt);
+            rho_->set_rg_ptr(rhoir);
+        }
         
         /// Set pointers to muffin-tin and interstitial magnetization arrays
         void set_magnetization_ptr(double* magmt, double* magir);
         
         /// Zero density and magnetization
-        void zero();
+        void zero()
+        {
+            rho_->zero();
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) magnetization_[i]->zero();
+        }
         
+        /// Find the total leakage of the core states out of the muffin-tins
+        double core_leakage()
+        {
+            double sum = 0.0;
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
+            {
+                sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+            }
+            return sum;
+        }
+
+        /// Return core leakage for a specific atom symmetry class
+        double core_leakage(int ic)
+        {
+            return unit_cell_.atom_symmetry_class(ic).core_leakage();
+        }
+
         /// Generate initial charge density and magnetization
         void initial_density();
-
-        /// Find the total leakage of the core states out of the muffin-tins
-        double core_leakage();
-        
-        /// Return core leakage for a specific atom symmetry class
-        double core_leakage(int ic);
 
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
         void generate(K_set& ks__);
@@ -264,13 +283,32 @@ class Density
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
 
-        void generate_pw_coefs();
-         
-        void save();
-        
-        void load();
-
         mdarray<double, 2> generate_rho_radial_integrals(int type__);
+
+        void generate_pw_coefs()
+        {
+            rho_->fft_transform(-1);
+        }
+         
+        void save()
+        {
+            if (ctx_.comm().rank() == 0)
+            {
+                HDF5_tree fout(storage_file_name, false);
+                rho_->hdf5_write(fout["density"]);
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
+                    magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
+            }
+            ctx_.comm().barrier();
+        }
+        
+        void load()
+        {
+            HDF5_tree fout(storage_file_name, false);
+            rho_->hdf5_read(fout["density"]);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++)
+                magnetization_[j]->hdf5_read(fout["magnetization"][j]);
+        }
 
         inline size_t size()
         {
