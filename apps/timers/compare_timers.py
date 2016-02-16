@@ -13,7 +13,7 @@ def main():
     for key in jf1["timers"]:
         t1 = float(jf1["timers"][key][0])
         t2 = float(jf2["timers"][key][0])
-        if (t2 > 0.01):
+        if (t2 > 1):
             print("%f  %s  %f %f"%(t1 / t2, key, t1, t2))
 
 if __name__ == "__main__":

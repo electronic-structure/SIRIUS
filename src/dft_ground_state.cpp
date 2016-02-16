@@ -94,14 +94,19 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 {
     runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
-    if (!ctx_.full_potential()) density_->mixer_init();
-
     double eold = 0.0;
     double rms = 0;
 
     generate_effective_potential();
  
-    if (ctx_.full_potential()) potential_->mixer_init();
+    if (ctx_.full_potential())
+    {
+        potential_->mixer_init();
+    }
+    else
+    {
+        density_->mixer_init();
+    }
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
@@ -109,8 +114,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
+        /* find band occupancies */
         kset_->find_band_occupancies();
-
         /* generate new density from the occupied wave-functions */
         density_->generate(*kset_);
 
@@ -119,7 +124,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         if (!ctx_.full_potential())
         {
             rms = density_->mix();
-            ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), rms));
+            double tol = std::max(1e-10, 0.1 * density_->dr2() / ctx_.unit_cell().num_valence_electrons());
+            ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
         //== if (ctx_.num_mag_dims())
