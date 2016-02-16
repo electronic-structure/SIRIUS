@@ -39,8 +39,6 @@ class DFT_ground_state
 
         Simulation_context& ctx_;
 
-        Simulation_parameters const& parameters_;
-
         Unit_cell& unit_cell_;
 
         Potential* potential_;
@@ -132,14 +130,13 @@ class DFT_ground_state
                          K_set* kset__,
                          int use_symmetry__)
             : ctx_(ctx__),
-              parameters_(ctx__),
               unit_cell_(ctx__.unit_cell()),
               potential_(potential__), 
               density_(density__), 
               kset_(kset__),
               use_symmetry_(use_symmetry__)
         {
-            if (parameters_.esm_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
+            if (ctx_.esm_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
         }
 
         void move_atoms(int istep);
@@ -174,7 +171,7 @@ class DFT_ground_state
         double energy_exc()
         {
             double exc = Periodic_function<double>::inner(density_->rho(), potential_->xc_energy_density());
-            if (parameters_.esm_type() == ultrasoft_pseudopotential) 
+            if (ctx_.esm_type() == ultrasoft_pseudopotential) 
                 exc += Periodic_function<double>::inner(density_->rho_pseudo_core(), potential_->xc_energy_density());
             return exc;
         }
@@ -182,14 +179,14 @@ class DFT_ground_state
         double energy_bxc()
         {
             double ebxc = 0.0;
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) 
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) 
                 ebxc += Periodic_function<double>::inner(density_->magnetization(j), potential_->effective_magnetic_field(j));
             return ebxc;
         }
 
         double energy_veff()
         {
-            //return inner(parameters_, density_->rho(), potential_->effective_potential());
+            //return inner(ctx_, density_->rho(), potential_->effective_potential());
             return energy_vha() + energy_vxc();
         }
 
@@ -238,7 +235,7 @@ class DFT_ground_state
          */
         double total_energy()
         {
-            switch (parameters_.esm_type())
+            switch (ctx_.esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
@@ -261,7 +258,7 @@ class DFT_ground_state
 
         void generate_effective_potential()
         {
-            switch(parameters_.esm_type())
+            switch(ctx_.esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
@@ -284,15 +281,15 @@ class DFT_ground_state
 
             auto& comm = ctx_.comm();
 
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
                     density_->magnetization(j)->fft_transform(-1);
             }
 
             /* symmetrize PW components */
             unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), ctx_.gvec(), comm);
-            switch (parameters_.num_mag_dims())
+            switch (ctx_.num_mag_dims())
             {
                 case 1:
                 {
@@ -309,11 +306,11 @@ class DFT_ground_state
                 }
             }
 
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
                 /* symmetrize MT components */
                 unit_cell_.symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
-                switch (parameters_.num_mag_dims())
+                switch (ctx_.num_mag_dims())
                 {
                     case 1:
                     {
@@ -331,10 +328,10 @@ class DFT_ground_state
                 }
             }
 
-            if (parameters_.full_potential())
+            if (ctx_.full_potential())
             {
                 density_->rho()->fft_transform(1);
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++)
                     density_->magnetization(j)->fft_transform(1);
             }
 
