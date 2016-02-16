@@ -91,12 +91,11 @@ int Band::residuals(K_point* kp__,
                         }
                         case GPU:
                         {
-                            STOP();
-                            //#ifdef __GPU
-                            //cuda_copy_device_to_device(res_tmp.at<GPU>(0, n), res_tmp.at<GPU>(0, i), ngk * sizeof(double_complex));
-                            //#else
-                            //TERMINATE_NO_GPU
-                            //#endif
+                            #ifdef __GPU
+                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.coeffs().at<GPU>(0, i), res__.num_gvec_loc());
+                            #else
+                            TERMINATE_NO_GPU
+                            #endif
                             break;
                         }
                     }
@@ -104,14 +103,6 @@ int Band::residuals(K_point* kp__,
                 n++;
             }
         }
-        //#ifdef __GPU
-        //if (ctx_.processing_unit() == GPU && economize_gpu_memory)
-        //{
-        //    /* copy residuals to CPU because the content of kappa array will be destroyed */
-        //    cublas_get_matrix(ngk, n, sizeof(double_complex), res_tmp.at<GPU>(), res_tmp.ld(),
-        //                      res.at<CPU>(), res.ld());
-        //}
-        //#endif
     }
 
     return n;
