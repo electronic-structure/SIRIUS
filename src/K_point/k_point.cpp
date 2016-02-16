@@ -58,8 +58,6 @@ K_point::K_point(Simulation_context& ctx__,
 
     if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) TERMINATE("ranks don't match");
     
-    iterative_solver_input_section_ = ctx_.iterative_solver_input_section();
-
     #ifndef __GPU
     if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
     #endif

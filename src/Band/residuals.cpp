@@ -19,7 +19,7 @@ int Band::residuals(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::residuals");
 
-    auto& itso = kp__->iterative_solver_input_section_;
+    auto& itso = ctx_.iterative_solver_input_section();
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
     /* norm of residuals */
@@ -77,7 +77,8 @@ int Band::residuals(K_point* kp__,
         for (int i = 0; i < num_bands__; i++)
         {
             /* take the residual if it's norm is above the threshold */
-            if (res_norm[i] > ctx_.iterative_solver_tolerance() && kp__->band_occupancy(i) > 1e-10)
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-10 &&
+                res_norm[i] > ctx_.iterative_solver_tolerance())
             {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i)

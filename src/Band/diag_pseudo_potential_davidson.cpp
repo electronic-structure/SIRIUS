@@ -46,7 +46,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* short notation for number of G+k vectors */
     int ngk = kp__->num_gkvec();
 
-    auto& itso = kp__->iterative_solver_input_section_;
+    auto& itso = ctx_.iterative_solver_input_section();
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions<false>(ispn__);

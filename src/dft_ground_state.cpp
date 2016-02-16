@@ -124,8 +124,11 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         if (!ctx_.full_potential())
         {
             rms = density_->mix();
-            double tol = std::max(1e-10, 0.1 * density_->dr2() / ctx_.unit_cell().num_valence_electrons());
-            ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
+            if (ctx_.iterative_solver_input_section().converge_by_energy_)
+            {
+                double tol = std::max(1e-10, 0.1 * density_->dr2() / ctx_.unit_cell().num_valence_electrons());
+                ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
+            }
         }
 
         //== if (ctx_.num_mag_dims())

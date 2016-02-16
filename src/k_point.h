@@ -153,8 +153,6 @@ class K_point
 
     public:
 
-        Iterative_solver_input_section iterative_solver_input_section_;
-
         /// Constructor
         K_point(Simulation_context& ctx__,
                 double* vk__,
