@@ -130,6 +130,12 @@ class Band
                                             D_operator& d_op__,
                                             Q_operator& q_op__);
 
+        void diag_pseudo_potential_davidson_fast(K_point* kp__,
+                                                 int ispn__,
+                                                 Hloc_operator& h_op__,
+                                                 D_operator& d_op__,
+                                                 Q_operator& q_op__);
+
         //void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         //                                              double v0__,
         //                                              std::vector<double>& veff_it_coarse__);

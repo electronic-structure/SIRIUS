@@ -34,8 +34,10 @@ int Band::residuals(K_point* kp__,
         double tol = ctx_.iterative_solver_tolerance();
         for (int i = 0; i < num_bands__; i++)
         {
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-10 &&
-                std::abs(eval__[i] - eval_old__[i]) > tol)
+            bool take_res = true;
+            if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) take_res = false;
+
+            if (take_res && std::abs(eval__[i] - eval_old__[i]) > tol)
             {
                 std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(double_complex));
                 eval_tmp[n++] = eval__[i];
@@ -76,9 +78,11 @@ int Band::residuals(K_point* kp__,
 
         for (int i = 0; i < num_bands__; i++)
         {
+            bool take_res = true;
+            if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) take_res = false;
+
             /* take the residual if it's norm is above the threshold */
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-10 &&
-                res_norm[i] > ctx_.iterative_solver_tolerance())
+            if (take_res && res_norm[i] > ctx_.iterative_solver_tolerance())
             {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i)
