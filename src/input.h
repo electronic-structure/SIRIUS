@@ -198,9 +198,9 @@ struct Iterative_solver_input_section
     double mask_alpha_;
 
     Iterative_solver_input_section() 
-        : num_steps_(10),
+        : num_steps_(20),
           subspace_size_(4),
-          tolerance_(1e-5),
+          tolerance_(1e-6),
           type_("davidson"),
           converge_by_energy_(1),
           converge_occupied_(1),
