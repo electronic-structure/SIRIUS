@@ -178,7 +178,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
+        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged)
         {   
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
@@ -186,17 +186,8 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
             psi.transform_from(phi, N, evec, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n == 0 || k == (itso.num_steps_ - 1) || occ_band_converged)
+            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged)
             {
-                //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-                //{
-                //    double demax = 0;
-                //    for (int i = 0; i < num_bands; i++)
-                //    {
-                //         if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
-                //    }
-                //    DUMP("exiting after %i iterations with maximum eigen-value error %18.12f", k + 1, demax);
-                //}
                 break;
             }
             else /* otherwise, set Psi as a new trial basis */
