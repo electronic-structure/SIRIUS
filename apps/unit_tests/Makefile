@@ -9,7 +9,7 @@ INCLUDE = -I./../../src
 .cpp.o:
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-all: test_init test_sht test_fft_correctness test_spline test_rot_ylm test_linalg
+all: test_init test_sht test_fft_correctness test_fft_real test_spline test_rot_ylm test_linalg
 
 %: %.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
@@ -24,4 +24,4 @@ test_mpi_omp: test_mpi_omp.cpp $(LIB_SIRIUS)
 
 clean:
 	rm -rf *.o *.h5 *.txt *.dat *.pdf timers.json out.json test_init test_sht \
-    test_fft_correctness test_spline test_rot_ylm test_linalg
+	test_fft_correctness test_fft_real test_spline test_rot_ylm test_linalg

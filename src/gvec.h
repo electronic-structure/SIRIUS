@@ -112,25 +112,27 @@ class Gvec
             {
                 for (int j = fft_grid_.limits(1).first; j <= fft_grid_.limits(1).second; j++)
                 {
-                    std::vector<int> z;
-
-                    int zmin = fft_grid_.size(2);
-                    if (reduce_gvec_ && !i && !j) zmin = fft_grid_.limits(2).second;
+                    std::vector<int> zcol;
                     
-                    for (int iz = 0; iz < zmin; iz++)
+                    /* in general case take z in [0, Nz) */ 
+                    int zmax = fft_grid_.size(2);
+                    /* in case of G-vector reduction take z in [0, Nz/2) for {x=0,y=0} stick */
+                    if (reduce_gvec_ && !i && !j) zmax = fft_grid_.limits(2).second;
+                    /* loop over z-coordinates of FFT grid */ 
+                    for (int iz = 0; iz < zmax; iz++)
                     {
                         /* get z-coordinate of G-vector */
                         int k = (iz > fft_grid_.limits(2).second) ? iz - fft_grid_.size(2) : iz;
                         /* take G+q */
                         auto gq = lattice_vectors_ * (vector3d<double>(i, j, k) + q__);
-
-                        if (gq.length() <= Gmax__) z.push_back(k);
+                        /* add z-coordinate of G-vector to the list */
+                        if (gq.length() <= Gmax__) zcol.push_back(k);
                     }
                     
-                    if (z.size() && !non_zero_columns(i, j))
+                    if (zcol.size() && !non_zero_columns(i, j))
                     {
-                        z_columns_.push_back(z_column_descriptor(i, j, z));
-                        num_gvec_ += static_cast<int>(z.size());
+                        z_columns_.push_back(z_column_descriptor(i, j, zcol));
+                        num_gvec_ += static_cast<int>(zcol.size());
 
                         non_zero_columns(i, j) = 1;
                         if (reduce_gvec__) non_zero_columns(-i, -j) = 1;
