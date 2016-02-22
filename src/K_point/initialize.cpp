@@ -190,6 +190,7 @@ void K_point::initialize()
             {
                 double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
                 for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
+                spinor_wave_functions<false>(ispn)(0, i) = 1.0;
             }
         }
     }

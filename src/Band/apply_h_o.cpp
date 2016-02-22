@@ -58,8 +58,16 @@ void Band::apply_h_o(K_point* kp__,
 
         if (!ctx_.iterative_solver_input_section().real_space_prj_)
         {
-            d_op.apply<double_complex>(i, ispn__, hphi__, N__, n__);
-            q_op.apply<double_complex>(i, 0, ophi__, N__, n__);
+            if (ctx_.gamma_point())
+            {
+                d_op.apply<double>(i, ispn__, hphi__, N__, n__);
+                q_op.apply<double>(i, 0, ophi__, N__, n__);
+            }
+            else
+            {
+                d_op.apply<double_complex>(i, ispn__, hphi__, N__, n__);
+                q_op.apply<double_complex>(i, 0, ophi__, N__, n__);
+            }
         }
         else
         {
