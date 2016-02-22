@@ -4,7 +4,7 @@
 
 using namespace sirius;
 
-void test_fft_real(vector3d<int> const& dims__, double cutoff__)
+void test1(vector3d<int> const& dims__, double cutoff__)
 {
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
@@ -24,6 +24,7 @@ void test_fft_real(vector3d<int> const& dims__, double cutoff__)
 
     printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
     printf("num_gvec_loc: %i %i\n", gvec.num_gvec(mpi_comm_world().rank()), gvec_r.num_gvec(mpi_comm_world().rank()));
+    printf("num_z_col: %li, num_z_col_reduced: %li\n", gvec.z_columns().size(), gvec_r.z_columns().size());
 
     mdarray<double_complex, 1> phi(gvec_r.num_gvec_fft());
     for (int i = 0; i < gvec_r.num_gvec_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
@@ -52,6 +53,63 @@ void test_fft_real(vector3d<int> const& dims__, double cutoff__)
     }
 }
 
+void test2(vector3d<int> const& dims__, double cutoff__)
+{
+    matrix3d<double> M;
+    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+
+    FFT3D_grid fft_grid(cutoff__, M);
+
+    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+
+    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world(), 1, false, true);
+
+    mdarray<double_complex, 1> phi1(gvec_r.num_gvec_fft());
+    mdarray<double_complex, 1> phi2(gvec_r.num_gvec_fft());
+    mdarray<double, 1> phi1_rg(fft.local_size());
+    mdarray<double, 1> phi2_rg(fft.local_size());
+
+    for (int i = 0; i < gvec_r.num_gvec_fft(); i++)
+    {
+        phi1(i) = type_wrapper<double_complex>::random();
+        phi2(i) = type_wrapper<double_complex>::random();
+    }
+    phi1(0) = 1.0;
+    phi2(0) = 1.0;
+
+    fft.transform<1>(gvec_r, &phi1(0));
+    fft.output(&phi1_rg(0));
+
+    fft.transform<1>(gvec_r, &phi2(0));
+    fft.output(&phi2_rg(0));
+
+    fft.transform<1>(gvec_r, &phi1(0), &phi2(0));
+
+    for (int i = 0; i < fft.local_size(); i++)
+    {
+        if (std::abs(double_complex(phi1_rg(i), phi2_rg(i)) - fft.buffer(i)) > 1e-10)
+        {
+            printf("functions don't match\n");
+            printf("phi1: %18.10f\n", phi1_rg(i));
+            printf("phi2: %18.10f\n", phi2_rg(i));
+            printf("complex phi: %18.10f %18.10f\n", fft.buffer(i).real(), fft.buffer(i).imag());
+            exit(1);
+        }
+    }
+
+    mdarray<double_complex, 1> phi1_bt(gvec_r.num_gvec_fft());
+    mdarray<double_complex, 1> phi2_bt(gvec_r.num_gvec_fft());
+    fft.transform<-1>(gvec_r, &phi1_bt(0), &phi2_bt(0));
+
+    double diff = 0;
+    for (int i = 0; i < gvec_r.num_gvec_fft(); i++)
+    {
+        diff += std::abs(phi1(i) - phi1_bt(i));
+        diff += std::abs(phi2(i) - phi2_bt(i));
+    }
+    printf("diff: %18.10f\n", diff);
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -72,7 +130,8 @@ int main(int argn, char **argv)
 
     sirius::initialize(1);
 
-    test_fft_real(dims, cutoff);
+    test1(dims, cutoff);
+    test2(dims, cutoff);
     
     sirius::finalize();
 

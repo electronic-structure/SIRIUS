@@ -76,7 +76,10 @@ class FFT3D
         mdarray<double_complex, 1> fft_buffer_;
         
         /// Auxiliary array to store z-sticks for all-to-all or GPU.
-        mdarray<double_complex, 1> fft_buffer_aux_;
+        mdarray<double_complex, 1> fft_buffer_aux1_;
+        
+        /// Auxiliary array in case of simultaneous transformation of two wave-functions.
+        mdarray<double_complex, 1> fft_buffer_aux2_;
         
         /// Interbal buffer for independent z-transforms.
         std::vector<double_complex*> fftw_buffer_z_;
@@ -106,13 +109,16 @@ class FFT3D
         double tcall_[5];
 
         template <int direction, bool use_reduction>
-        void transform_z_serial(Gvec const& gvec__, double_complex* data__);
+        void transform_z_serial(Gvec const& gvec__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction, bool use_reduction>
-        void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
+        void transform_z_parallel(Gvec const& gvec__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction, bool use_reduction>
-        void transform_xy(Gvec const& gvec__);
+        void transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buffer_aux__);
+
+        template <int direction>
+        void transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buffer_aux1__, mdarray<double_complex, 1>& fft_buffer_aux2__);
 
     public:
 
@@ -125,6 +131,9 @@ class FFT3D
 
         template <int direction>
         void transform(Gvec const& gvec__, double_complex* data__);
+
+        template <int direction>
+        void transform(Gvec const& gvec__, double_complex* data1__, double_complex* data2__);
 
         //template<typename T>
         //inline void input(int n__, int const* map__, T const* data__)
@@ -237,7 +246,8 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                fft_buffer_aux_.allocate_on_device();
+                fft_buffer_aux1_.allocate_on_device();
+                fft_buffer_aux2_.allocate_on_device();
                 allocate_on_device();
             }
             #endif
@@ -248,7 +258,8 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                fft_buffer_aux_.deallocate_on_device();
+                fft_buffer_aux1_.deallocate_on_device();
+                fft_buffer_aux2_.deallocate_on_device();
                 deallocate_on_device();
             }
             #endif
