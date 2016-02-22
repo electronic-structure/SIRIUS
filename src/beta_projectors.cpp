@@ -26,6 +26,62 @@
 
 namespace sirius {
 
+Beta_projectors::Beta_projectors(Communicator const& comm__,
+                                 Unit_cell const& unit_cell__,
+                                 Gvec const& gkvec__,
+                                 processing_unit_t pu__)
+    : comm_(comm__),
+      unit_cell_(unit_cell__),
+      gkvec_(gkvec__),
+      lmax_beta_(unit_cell_.lmax()),
+      pu_(pu__)
+{
+    num_gkvec_loc_ = gkvec_.num_gvec(comm_.rank());
+
+    split_in_chunks();
+
+    generate_beta_gk_t();
+
+    #ifdef __GPU
+    if (pu_ == GPU)
+    {
+        gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_);
+        /* copy G+k vectors */
+        for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
+        {
+            int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+            auto gc = gkvec_.gvec_shifted(igk);
+            for (auto x: {0, 1, 2}) gkvec_coord_(x, igk_loc) = gc[x];
+        }
+        gkvec_coord_.allocate_on_device();
+        gkvec_coord_.copy_to_device();
+
+        beta_gk_t_.allocate_on_device();
+        beta_gk_t_.copy_to_device();
+    }
+    #endif
+
+    beta_gk_ = matrix<double_complex>(nullptr, num_gkvec_loc_, max_num_beta_);
+
+    beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
+    
+    #pragma omp for
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++)
+        {
+            for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
+            {
+                int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+                double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
+
+                beta_gk_a_(igk_loc, unit_cell_.atom(ia).offset_lo() + xi) =
+                    beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * std::exp(double_complex(0.0, -phase));
+            }
+        }
+    }
+}
+
 void Beta_projectors::generate_beta_gk_t()
 {
     /* find shells of G+k vectors */
@@ -237,7 +293,8 @@ void Beta_projectors::generate(int chunk__)
     #endif
 }
 
-void Beta_projectors::inner(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
+template<> 
+void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 
@@ -247,7 +304,7 @@ void Beta_projectors::inner(int chunk__, Wave_functions<false>& phi__, int idx0_
 
     if (static_cast<size_t>(nbeta * n__) > beta_phi_.size())
     {
-        beta_phi_ = mdarray<double_complex, 1>(nbeta * n__);
+        beta_phi_ = mdarray<double, 1>(2 * nbeta * n__);
         #ifdef __GPU
         if (pu_ == GPU) beta_phi_.allocate_on_device();
         #endif
@@ -259,15 +316,15 @@ void Beta_projectors::inner(int chunk__, Wave_functions<false>& phi__, int idx0_
         {
             /* compute <beta|phi> */
             linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<CPU>(), num_gkvec_loc_, 
-                              &phi__(0, idx0__), num_gkvec_loc_, beta_phi_.at<CPU>(), nbeta);
+                              &phi__(0, idx0__), num_gkvec_loc_, (double_complex*)beta_phi_.at<CPU>(), nbeta);
             break;
         }
         case GPU:
         {
             #ifdef __GPU
             linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_, 
-                              phi__.coeffs().at<GPU>(0, idx0__), num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta);
-            beta_phi_.copy_to_host(nbeta * n__);
+                              phi__.coeffs().at<GPU>(0, idx0__), num_gkvec_loc_, (double_complex*)beta_phi_.at<GPU>(), nbeta);
+            beta_phi_.copy_to_host(2 * nbeta * n__);
             #else
             TERMINATE_NO_GPU
             #endif
@@ -275,16 +332,17 @@ void Beta_projectors::inner(int chunk__, Wave_functions<false>& phi__, int idx0_
         }
     }
 
-    comm_.allreduce(beta_phi_.at<CPU>(), nbeta * n__);
+    comm_.allreduce(beta_phi_.at<CPU>(), 2 * nbeta * n__);
 
     #ifdef __GPU
-    if (pu_ == GPU) beta_phi_.copy_to_device(nbeta * n__);
+    if (pu_ == GPU) beta_phi_.copy_to_device(2 * nbeta * n__);
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    auto c1 = mdarray<double_complex, 1>(beta_phi_.at<CPU>(), nbeta * n__).checksum();
-    DUMP("checksum(beta_phi) : %18.10f %18.10f", c1.real(), c1.imag());
+    auto c1 = mdarray<double, 1>(beta_phi_.at<CPU>(), 2 * nbeta * n__).checksum();
+    DUMP("checksum(beta_phi) : %18.10f", c1);
     #endif
 }
 
 };
+

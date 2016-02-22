@@ -47,7 +47,7 @@ void Band::apply_h_o(K_point* kp__,
     {
         kp__->beta_projectors().generate(i);
 
-        kp__->beta_projectors().inner(i, phi__, N__, n__);
+        kp__->beta_projectors().inner<double_complex>(i, phi__, N__, n__);
 
         if (!ctx_.iterative_solver_input_section().real_space_prj_)
         {

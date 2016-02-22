@@ -115,11 +115,11 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
                 /* total number of occupied bands for this spin */
                 int nbnd = kp__->num_occupied_bands(ispn);
                 /* compute <beta|psi> */
-                kp__->beta_projectors().inner(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
+                kp__->beta_projectors().inner<double_complex>(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
                 /* number of beta projectors */
                 int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 
-                mdarray<double_complex, 2> beta_psi(const_cast<double_complex*>(kp__->beta_projectors().beta_phi().at<CPU>()), nbeta, nbnd);
+                auto beta_psi = kp__->beta_projectors().beta_phi<double_complex>(chunk, nbnd);
 
                 splindex<block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
 

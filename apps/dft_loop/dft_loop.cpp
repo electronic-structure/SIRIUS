@@ -100,11 +100,25 @@ void dft_loop(cmd_args args)
     ctx.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
     ctx.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
     
-    int num_mag_dims = parser["num_mag_dims"].get(0);
-
-    ctx.set_num_mag_dims(num_mag_dims);
+    ctx.set_num_mag_dims(parser["num_mag_dims"].get(0));
 
     ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
+
+
+
+    auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
+    auto shiftk = parser["shiftk"].get(std::vector<int>(3, 0));
+
+    int use_symmetry = parser["use_symmetry"].get(1);
+
+    auto gamma_point = parser["gamma_point"].get(0);
+
+    if (gamma_point && !(ngridk[0] * ngridk[1] * ngridk[2] == 1))
+    {
+        TERMINATE("this is not a Gamma-point calculation")
+    }
+    ctx.set_gamma_point(gamma_point);
+
 
     ctx.initialize();
     
@@ -119,10 +133,6 @@ void dft_loop(cmd_args args)
     MEMORY_USAGE_INFO();
     #endif
 
-    auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
-    auto shiftk = parser["shiftk"].get(std::vector<int>(3, 0));
-
-    int use_symmetry = parser["use_symmetry"].get(1);
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[2]),
              vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), use_symmetry);

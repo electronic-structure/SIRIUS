@@ -71,6 +71,8 @@ class Simulation_parameters
        
         /// true if UJ correction is applied
         bool uj_correction_;
+
+        bool gamma_point_;
     
         /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
@@ -113,6 +115,7 @@ class Simulation_parameters
             num_mag_dims_        = 0;
             so_correction_       = false;
             uj_correction_       = false;
+            gamma_point_         = false;
             mpi_grid_dims_       = {1};
             cyclic_block_size_   = 32;
             processing_unit_     = CPU;
@@ -243,6 +246,11 @@ class Simulation_parameters
             uj_correction_ = uj_correction__; 
         }
 
+        inline void set_gamma_point(bool gamma_point__)
+        {
+            gamma_point_ = gamma_point__;
+        }
+
         inline void set_mpi_grid_dims(std::vector<int> mpi_grid_dims__)
         {
             mpi_grid_dims_ = mpi_grid_dims__;
@@ -365,6 +373,11 @@ class Simulation_parameters
         inline bool uj_correction() const
         {
             return uj_correction_;
+        }
+
+        inline bool gamma_point() const
+        {
+            return gamma_point_;
         }
     
         inline processing_unit_t processing_unit() const

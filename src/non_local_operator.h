@@ -80,7 +80,7 @@ class Non_local_operator
 
             assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
 
-            auto& beta_phi = beta_.beta_phi();
+            auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
             auto& beta_gk = beta_.beta_gk();
             int num_gkvec_loc = beta_.num_gkvec_loc();
             int nbeta = beta_.beta_chunk(chunk__).num_beta_;
@@ -106,7 +106,7 @@ class Non_local_operator
                     /* compute O * <beta|phi> */
                     linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
                                       op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
-                                      beta_phi.at<CPU>(offs), nbeta,
+                                      beta_phi.at<CPU>(offs, 0), nbeta,
                                       work_.at<CPU>(offs), nbeta);
                 }
                 
@@ -129,7 +129,7 @@ class Non_local_operator
                     /* compute O * <beta|phi> */
                     linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                                       op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
-                                      beta_phi.at<GPU>(offs), nbeta,
+                                      beta_phi.at<GPU>(offs, 0), nbeta,
                                       work_.at<GPU>(offs), nbeta,
                                       omp_get_thread_num());
 
