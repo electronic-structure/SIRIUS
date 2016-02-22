@@ -344,5 +344,69 @@ void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& 
     #endif
 }
 
+template<> 
+void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
+{
+    PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
+
+    assert(num_gkvec_loc_ == phi__.num_gvec_loc());
+
+    int nbeta = beta_chunk(chunk__).num_beta_;
+
+    if (static_cast<size_t>(nbeta * n__) > beta_phi_.size())
+    {
+        beta_phi_ = mdarray<double, 1>(nbeta * n__);
+        #ifdef __GPU
+        if (pu_ == GPU) beta_phi_.allocate_on_device();
+        #endif
+    }
+
+    double a = 2.0;
+    double b = 0.0;
+    switch (pu_)
+    {
+        case CPU:
+        {
+            /* compute <beta|phi> */
+            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * (num_gkvec_loc_ - 1), a, (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_, 
+                              (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_, b, beta_phi_.at<CPU>(), nbeta);
+            break;
+        }
+        case GPU:
+        {
+            #ifdef __GPU
+            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * (num_gkvec_loc_ - 1), &a, (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_, 
+                              (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, &b, beta_phi_.at<GPU>(), nbeta);
+            beta_phi_.copy_to_host(nbeta * n__);
+            #else
+            TERMINATE_NO_GPU
+            #endif
+            break;
+        }
+    }
+
+    if (comm_.rank() == 0)
+    {
+        for (int i = 0; i < n__; i++)
+        {
+            for (int j = 0; j < nbeta; j++)
+            {
+                beta_phi_(j + nbeta * i) += beta_gk_(0, j).real() * phi__(0, idx0__ + i).real();
+            }
+        }
+    }
+
+    comm_.allreduce(beta_phi_.at<CPU>(), nbeta * n__);
+
+    #ifdef __GPU
+    if (pu_ == GPU) beta_phi_.copy_to_device(nbeta * n__);
+    #endif
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    auto c1 = mdarray<double, 1>(beta_phi_.at<CPU>(), nbeta * n__).checksum();
+    DUMP("checksum(beta_phi) : %18.10f", c1);
+    #endif
+}
+
 };
 

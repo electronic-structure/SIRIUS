@@ -538,6 +538,7 @@ void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int n, ftn_
     cublas_zgemv(trans, m, n, alpha, A, lda, x, incx, beta, y, incy, stream_id);
 }
 
+// Generic interface to zgemm
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
                                            ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int lda,
@@ -547,11 +548,32 @@ void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
     cublas_zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
 }
 
+// Generic interface to dgemm
+template<> 
+void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                   ftn_double* alpha, ftn_double const* A, ftn_int lda,
+                                   ftn_double const* B, ftn_int ldb, ftn_double* beta, 
+                                   ftn_double* C, ftn_int ldc, int stream_id)
+{
+    cublas_dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+}
+
+// zgemm on default stream
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
                                            ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int lda,
                                            ftn_double_complex const* B, ftn_int ldb, ftn_double_complex* beta, 
                                            ftn_double_complex* C, ftn_int ldc)
+{
+    gemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, -1);
+}
+
+// dgemm on default stream
+template<> 
+void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                   ftn_double* alpha, ftn_double const* A, ftn_int lda,
+                                   ftn_double const* B, ftn_int ldb, ftn_double* beta, 
+                                   ftn_double* C, ftn_int ldc)
 {
     gemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, -1);
 }

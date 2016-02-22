@@ -373,6 +373,16 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
     CALL_CUBLAS(cublasZgemm, (handle, trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
+extern "C" void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                             double* alpha, double* a, int32_t lda, double* b, 
+                             int32_t ldb, double* beta, double* c, int32_t ldc, int stream_id)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
+    
+    CALL_CUBLAS(cublasDgemm, (handle, trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
 // A(GPU) => B(CPU)
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb)
 {

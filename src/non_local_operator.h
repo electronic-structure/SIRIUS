@@ -39,7 +39,8 @@ class Non_local_operator
 
         mdarray<int, 1> packed_mtrx_offset_;
         
-        mdarray<double_complex, 2> op_;
+        mdarray<double, 2> op_;
+
         mdarray<double_complex, 1> work_;
 
         Non_local_operator& operator=(Non_local_operator const& src) = delete;
@@ -105,7 +106,7 @@ class Non_local_operator
 
                     /* compute O * <beta|phi> */
                     linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
-                                      op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                                      (double_complex*)op_.at<CPU>(2 * packed_mtrx_offset_(ia), ispn__), nbf,
                                       beta_phi.at<CPU>(offs, 0), nbeta,
                                       work_.at<CPU>(offs), nbeta);
                 }
@@ -128,7 +129,7 @@ class Non_local_operator
 
                     /* compute O * <beta|phi> */
                     linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
-                                      op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
+                                      (double_complex*)op_.at<GPU>(2 * packed_mtrx_offset_(ia), ispn__), nbf, 
                                       beta_phi.at<GPU>(offs, 0), nbeta,
                                       work_.at<GPU>(offs), nbeta,
                                       omp_get_thread_num());
@@ -164,12 +165,15 @@ class D_operator: public Non_local_operator
 {
     public:
 
-        D_operator(Beta_projectors& beta__, int num_mag_dims__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
+        D_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator(beta__, ctx__.processing_unit())
         {
-            op_ = mdarray<double_complex, 2>(packed_mtrx_size_, num_mag_dims__ + 1);
+            int s = (ctx__.gamma_point()) ? 1 : 2;
+            op_ = mdarray<double, 2>(s * packed_mtrx_size_, ctx__.num_mag_dims() + 1);
+            op_.zero();
+
             auto& uc = beta_.unit_cell();
 
-            for (int j = 0; j < num_mag_dims__ + 1; j++)
+            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++)
             {
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
@@ -178,12 +182,13 @@ class D_operator: public Non_local_operator
                     {
                         for (int xi1 = 0; xi1 < nbf; xi1++)
                         {
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
+                            assert(uc.atom(ia).d_mtrx(xi1, xi2, j).imag() < 1e-10);
+                            op_(s * (packed_mtrx_offset_(ia) + xi2 * nbf + xi1), j) = uc.atom(ia).d_mtrx(xi1, xi2, j).real();
                         }
                     }
                 }
             }
-            if (num_mag_dims__)
+            if (ctx__.num_mag_dims())
             {
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
@@ -194,8 +199,8 @@ class D_operator: public Non_local_operator
                         {
                             auto v0 = op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0); 
                             auto v1 = op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1); 
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = v0 + v1;
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1) = v0 - v1;
+                            op_(s * (packed_mtrx_offset_(ia) + xi2 * nbf + xi1), 0) = std::real(v0 + v1);
+                            op_(s * (packed_mtrx_offset_(ia) + xi2 * nbf + xi1), 1) = std::real(v0 - v1);
                         }
                     }
                 }
@@ -214,10 +219,13 @@ class Q_operator: public Non_local_operator
 {
     public:
         
-        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
+        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator(beta__, ctx__.processing_unit())
         {
             /* Q-operator is independent of spin */
-            op_ = mdarray<double_complex, 2>(packed_mtrx_size_, 1);
+            int s = (ctx__.gamma_point()) ? 1 : 2;
+            op_ = mdarray<double, 2>(s * packed_mtrx_size_, 1);
+            op_.zero();
+
             auto& uc = beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++)
             {
@@ -227,7 +235,8 @@ class Q_operator: public Non_local_operator
                 {
                     for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
+                        assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
+                        op_(s * (packed_mtrx_offset_(ia) + xi2 * nbf + xi1), 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
                     }
                 }
             }

@@ -13,9 +13,8 @@ void Band::diag_pseudo_potential(K_point* kp__,
     Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
-    auto pu = ctx_.processing_unit();
-    D_operator d_op(kp__->beta_projectors(), ctx_.num_mag_dims(), pu);
-    Q_operator q_op(ctx_, kp__->beta_projectors(), pu);
+    D_operator d_op(ctx_, kp__->beta_projectors());
+    Q_operator q_op(ctx_, kp__->beta_projectors());
 
     //if (itso.type_ == "exact")
     //{
