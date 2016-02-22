@@ -14,9 +14,9 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn__, Wave_fun
     int num_gkvec_loc = beta_.num_gkvec_loc();
     int nbeta = beta_.beta_chunk(chunk__).num_beta_;
 
-    if (static_cast<size_t>(nbeta * n__) > work_.size())
+    if (static_cast<size_t>(2 * nbeta * n__) > work_.size())
     {
-        work_ = mdarray<double_complex, 1>(nbeta * n__);
+        work_ = mdarray<double, 1>(2 * nbeta * n__);
         #ifdef __GPU
         if (pu_ == GPU) work_.allocate_on_device();
         #endif
@@ -36,12 +36,12 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn__, Wave_fun
             linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
                               (double_complex*)op_.at<CPU>(2 * packed_mtrx_offset_(ia), ispn__), nbf,
                               beta_phi.at<CPU>(offs, 0), nbeta,
-                              work_.at<CPU>(offs), nbeta);
+                              (double_complex*)work_.at<CPU>(2 * offs), nbeta);
         }
         
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, double_complex(1, 0),
-                          beta_gk.at<CPU>(), num_gkvec_loc, work_.at<CPU>(), nbeta, double_complex(1, 0),
+                          beta_gk.at<CPU>(), num_gkvec_loc, (double_complex*)work_.at<CPU>(), nbeta, double_complex(1, 0),
                           &op_phi__(0, idx0__), num_gkvec_loc);
     }
     #ifdef __GPU
@@ -59,7 +59,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn__, Wave_fun
             linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                               (double_complex*)op_.at<GPU>(2 * packed_mtrx_offset_(ia), ispn__), nbf, 
                               beta_phi.at<GPU>(offs, 0), nbeta,
-                              work_.at<GPU>(offs), nbeta,
+                              (double_complex*)work_.at<GPU>(2 * offs), nbeta,
                               omp_get_thread_num());
 
         }
@@ -68,7 +68,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn__, Wave_fun
         
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
-                          beta_gk.at<GPU>(), beta_gk.ld(), work_.at<GPU>(), nbeta, &alpha, 
+                          beta_gk.at<GPU>(), beta_gk.ld(), (double_complex*)work_.at<GPU>(), nbeta, &alpha, 
                           op_phi__.coeffs().at<GPU>(0, idx0__), op_phi__.coeffs().ld());
         
         cuda_device_synchronize();
