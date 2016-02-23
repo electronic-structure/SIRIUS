@@ -25,7 +25,7 @@
 #ifndef __SBESSEL_PW_H__
 #define __SBESSEL_PW_H__
 
-#include "evp_solver.h"
+#include "eigenproblem.h"
 #include "unit_cell.h"
 
 namespace sirius
@@ -257,7 +257,7 @@ class sbessel_approx
                 std::vector<double> eval(n);
                 mdarray<double_complex, 2> z(n, n);
 
-                standard_evp_lapack solver;
+                Eigenproblem_lapack solver;
                 solver.solve(n, ovlp.at<CPU>(), n, &eval[0], z.at<CPU>(), n);
                 min_val = eval[0];
 

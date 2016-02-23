@@ -43,7 +43,7 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
     #endif
 
-    if (gen_evp_solver()->solve(ngk, ngk, ngk, num_bands,
+    if (gen_evp_solver()->solve(ngk, num_bands,
                                 hphi.coeffs().at<CPU>(),
                                 hphi.coeffs().ld(),
                                 ophi.coeffs().at<CPU>(),

@@ -23,7 +23,7 @@
  */
 
 #include "atom_symmetry_class.h"
-#include "evp_solver.h"
+#include "eigenproblem.h"
 
 namespace sirius {
 
@@ -258,7 +258,7 @@ void Atom_symmetry_class::check_lo_linear_independence()
         }
     }
         
-    standard_evp_lapack stdevp;
+    Eigenproblem_lapack stdevp;
 
     std::vector<double> loprod_eval(num_lo_descriptors());
     mdarray<double_complex, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());

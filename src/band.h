@@ -55,10 +55,10 @@ class Band
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
         
         /// Interface to a standard eigen-value solver.
-        standard_evp* std_evp_solver_; 
+        Eigenproblem* std_evp_solver_; 
 
         /// Interface to a generalized eigen-value solver.
-        generalized_evp* gen_evp_solver_;
+        Eigenproblem* gen_evp_solver_;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
@@ -258,17 +258,17 @@ class Band
             {
                 case ev_lapack:
                 {
-                    std_evp_solver_ = new standard_evp_lapack();
+                    std_evp_solver_ = new Eigenproblem_lapack();
                     break;
                 }
                 case ev_scalapack:
                 {
-                    std_evp_solver_ = new standard_evp_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                    std_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_plasma:
                 {
-                    std_evp_solver_ = new standard_evp_plasma();
+                    std_evp_solver_ = new Eigenproblem_plasma();
                     break;
                 }
                 default:
@@ -282,37 +282,37 @@ class Band
             {
                 case ev_lapack:
                 {
-                    gen_evp_solver_ = new generalized_evp_lapack(0.0);
+                    gen_evp_solver_ = new Eigenproblem_lapack(0.0);
                     break;
                 }
                 case ev_scalapack:
                 {
-                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 0.0, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                    gen_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 0.0);
                     break;
                 }
                 case ev_elpa1:
                 {
-                    gen_evp_solver_ = new generalized_evp_elpa1(blacs_grid_, ctx_.cyclic_block_size());
+                    gen_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_elpa2:
                 {
-                    gen_evp_solver_ = new generalized_evp_elpa2(blacs_grid_, ctx_.cyclic_block_size());
+                    gen_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_magma:
                 {
-                    gen_evp_solver_ = new generalized_evp_magma();
+                    gen_evp_solver_ = new Eigenproblem_magma();
                     break;
                 }
                 case ev_rs_gpu:
                 {
-                    gen_evp_solver_ = new generalized_evp_rs_gpu(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                    gen_evp_solver_ = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 case ev_rs_cpu:
                 {
-                    gen_evp_solver_ = new generalized_evp_rs_cpu(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                    gen_evp_solver_ = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
                 default:
@@ -430,12 +430,12 @@ class Band
         void solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3]);
 
-        inline standard_evp* std_evp_solver()
+        inline Eigenproblem* std_evp_solver()
         {
             return std_evp_solver_;
         }
 
-        inline generalized_evp* gen_evp_solver()
+        inline Eigenproblem* gen_evp_solver()
         {
             return gen_evp_solver_;
         }

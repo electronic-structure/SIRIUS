@@ -71,9 +71,10 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     
         runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
-        if (gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
-                                    ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                    &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld()))
+        if (gen_evp_solver()->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
+                                    &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld(),
+                                    kp->gklo_basis_size_row(), kp->gklo_basis_size_col()))
+
         {
             TERMINATE("error in generalized eigen-value problem");
         }
