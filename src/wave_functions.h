@@ -70,7 +70,7 @@ class Wave_functions<false>
         /// Slabs of G-vectors received from column ranks.
         block_data_descriptor gvec_slab_pile_;
 
-        mdarray<double_complex, 1> inner_prod_buf_;
+        mdarray<double, 1> inner_prod_buf_;
 
     public:
 

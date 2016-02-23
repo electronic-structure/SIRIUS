@@ -361,22 +361,20 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
         #endif
     }
 
-    double a = 2.0;
-    double b = 0.0;
     switch (pu_)
     {
         case CPU:
         {
             /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * (num_gkvec_loc_ - 1), a, (double*)beta_gk_.at<CPU>(1, 0), 2 * num_gkvec_loc_, 
-                              (double*)&phi__(1, idx0__), 2 * num_gkvec_loc_, b, beta_phi_.at<CPU>(), nbeta);
+            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_, 
+                              (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<CPU>(), nbeta);
             break;
         }
         case GPU:
         {
             #ifdef __GPU
-            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * (num_gkvec_loc_ - 1), &a, (double*)beta_gk_.at<GPU>(1, 0), 2 * num_gkvec_loc_, 
-                              (double*)phi__.coeffs().at<GPU>(1, idx0__), 2 * num_gkvec_loc_, &b, beta_phi_.at<GPU>(), nbeta);
+            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_, 
+                              (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta);
             beta_phi_.copy_to_host(nbeta * n__);
             #else
             TERMINATE_NO_GPU
@@ -391,8 +389,16 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
         {
             for (int j = 0; j < nbeta; j++)
             {
-                beta_phi_(j + nbeta * i) += beta_gk_(0, j).real() * phi__(0, idx0__ + i).real();
+                beta_phi_(j + nbeta * i) = 2 * beta_phi_(j + nbeta * i) -
+                                           beta_gk_(0, j).real() * phi__(0, idx0__ + i).real();
             }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < n__; i++)
+        {
+            for (int j = 0; j < nbeta; j++) beta_phi_(j + nbeta * i) *= 2;
         }
     }
 

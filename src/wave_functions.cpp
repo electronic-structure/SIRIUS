@@ -103,9 +103,9 @@ void Wave_functions<false>::inner<double_complex>(int i0__, int m__, Wave_functi
     else
     {
         /* reallocate buffer if necessary */
-        if (static_cast<size_t>(m__ * n__) > inner_prod_buf_.size())
+        if (static_cast<size_t>(2 * m__ * n__) > inner_prod_buf_.size())
         {
-            inner_prod_buf_ = mdarray<double_complex, 1>(m__ * n__);
+            inner_prod_buf_ = mdarray<double, 1>(2 * m__ * n__);
             #ifdef __GPU
             if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
             #endif
@@ -115,15 +115,15 @@ void Wave_functions<false>::inner<double_complex>(int i0__, int m__, Wave_functi
             case CPU:
             {
                 linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
-                                  &ket__(0, j0__), num_gvec_loc(), &inner_prod_buf_[0], m__);
+                                  &ket__(0, j0__), num_gvec_loc(), (double_complex*)&inner_prod_buf_[0], m__);
                 break;
             }
             case GPU:
             {
                 #ifdef __GPU
                 linalg<GPU>::gemm(2, 0, m__, n__, num_gvec_loc(), wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc(),
-                                  ket__.wf_coeffs_.at<GPU>(0, j0__), num_gvec_loc(), inner_prod_buf_.at<GPU>(), m__);
-                inner_prod_buf_.copy_to_host(m__ * n__);
+                                  ket__.wf_coeffs_.at<GPU>(0, j0__), num_gvec_loc(), (double_complex*)inner_prod_buf_.at<GPU>(), m__);
+                inner_prod_buf_.copy_to_host(2 * m__ * n__);
                 #else
                 TERMINATE_NO_GPU
                 #endif
@@ -131,10 +131,10 @@ void Wave_functions<false>::inner<double_complex>(int i0__, int m__, Wave_functi
             }
         }
 
-        if (mpi_grid_.size() > 1) mpi_grid_.communicator().allreduce(&inner_prod_buf_[0], m__ * n__);
+        if (mpi_grid_.size() > 1) mpi_grid_.communicator().allreduce(&inner_prod_buf_[0], 2 * m__ * n__);
 
         for (int i = 0; i < n__; i++)
-            std::memcpy(&result__(irow__, icol__ + i), &inner_prod_buf_[i * m__], m__ * sizeof(double_complex));
+            std::memcpy(&result__(irow__, icol__ + i), &inner_prod_buf_[2 * i * m__], m__ * sizeof(double_complex));
     }
 }
 
@@ -149,53 +149,71 @@ void Wave_functions<false>::inner<double>(int i0__, int m__, Wave_functions& ket
     /* single rank, CPU: store result directly in the output matrix */
     if (mpi_grid_.size() == 1 && pu_ == CPU)
     {
-        linalg<CPU>::gemm(2, 0, m__, n__, 2 * (num_gvec_loc() - 1), 2.0, (double*)&wf_coeffs_(1, i0__), 2 * num_gvec_loc(),
-                          (double*)&ket__(1, j0__), 2 * num_gvec_loc(), 0.0, &result__(irow__, icol__), result__.ld());
+        linalg<CPU>::gemm(2, 0, m__, n__, 2 * num_gvec_loc(), (double*)&wf_coeffs_(0, i0__), 2 * num_gvec_loc(),
+                          (double*)&ket__(0, j0__), 2 * num_gvec_loc(), &result__(irow__, icol__), result__.ld());
         
         for (int j = 0; j < n__; j++)
         {
             for (int i = 0; i < m__; i++)
             {
-                result__(irow__ + i, icol__ + j) += wf_coeffs_(0, i0__ + i).real() * ket__(0, j0__ + j).real();
+                result__(irow__ + i, icol__ + j) = 2 * result__(irow__ + i, icol__ + j) -
+                                                   wf_coeffs_(0, i0__ + i).real() * ket__(0, j0__ + j).real();
             }
         }
     }
     else
     {
-        STOP();
-        ///* reallocate buffer if necessary */
-        //if (static_cast<size_t>(m__ * n__) > inner_prod_buf_.size())
-        //{
-        //    inner_prod_buf_ = mdarray<double_complex, 1>(m__ * n__);
-        //    #ifdef __GPU
-        //    if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
-        //    #endif
-        //}
-        //switch (pu_)
-        //{
-        //    case CPU:
-        //    {
-        //        linalg<CPU>::gemm(2, 0, m__, n__, num_gvec_loc(), &wf_coeffs_(0, i0__), num_gvec_loc(),
-        //                          &ket__(0, j0__), num_gvec_loc(), &inner_prod_buf_[0], m__);
-        //        break;
-        //    }
-        //    case GPU:
-        //    {
-        //        #ifdef __GPU
-        //        linalg<GPU>::gemm(2, 0, m__, n__, num_gvec_loc(), wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc(),
-        //                          ket__.wf_coeffs_.at<GPU>(0, j0__), num_gvec_loc(), inner_prod_buf_.at<GPU>(), m__);
-        //        inner_prod_buf_.copy_to_host(m__ * n__);
-        //        #else
-        //        TERMINATE_NO_GPU
-        //        #endif
-        //        break;
-        //    }
-        //}
+        /* reallocate buffer if necessary */
+        if (static_cast<size_t>(m__ * n__) > inner_prod_buf_.size())
+        {
+            inner_prod_buf_ = mdarray<double, 1>(m__ * n__);
+            #ifdef __GPU
+            if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
+            #endif
+        }
+        switch (pu_)
+        {
+            case CPU:
+            {
+                linalg<CPU>::gemm(2, 0, m__, n__, 2 * num_gvec_loc(), (double*)&wf_coeffs_(0, i0__), 2 * num_gvec_loc(),
+                                  (double*)&ket__(0, j0__), 2 * num_gvec_loc(), &inner_prod_buf_[0], m__);
+                break;
+            }
+            case GPU:
+            {
+                #ifdef __GPU
+                linalg<GPU>::gemm(2, 0, m__, n__, 2 * num_gvec_loc(), (double*)wf_coeffs_.at<GPU>(0, i0__), 2 * num_gvec_loc(),
+                                  (double*)ket__.wf_coeffs_.at<GPU>(0, j0__), 2 * num_gvec_loc(), inner_prod_buf_.at<GPU>(), m__);
+                inner_prod_buf_.copy_to_host(m__ * n__);
+                #else
+                TERMINATE_NO_GPU
+                #endif
+                break;
+            }
+        }
+        if (mpi_grid_.communicator().rank() == 0)
+        {
+            for (int j = 0; j < n__; j++)
+            {
+                for (int i = 0; i < m__; i++)
+                {
+                    inner_prod_buf_[i + j * m__] = 2 * inner_prod_buf_[i + j * m__]  -
+                                                   wf_coeffs_(0, i0__ + i).real() * ket__(0, j0__ + j).real();
+                }
+            }
+        }
+        else
+        {
+            for (int j = 0; j < n__; j++)
+            {
+                for (int i = 0; i < m__; i++) inner_prod_buf_[i + j * m__] *= 2;
+            }
+        }
 
-        //if (mpi_grid_.size() > 1) mpi_grid_.communicator().allreduce(&inner_prod_buf_[0], m__ * n__);
+        if (mpi_grid_.size() > 1) mpi_grid_.communicator().allreduce(&inner_prod_buf_[0], m__ * n__);
 
-        //for (int i = 0; i < n__; i++)
-        //    std::memcpy(&result__(irow__, icol__ + i), &inner_prod_buf_[i * m__], m__ * sizeof(double_complex));
+        for (int i = 0; i < n__; i++)
+            std::memcpy(&result__(irow__, icol__ + i), &inner_prod_buf_[i * m__], m__ * sizeof(double));
     }
 }
 
