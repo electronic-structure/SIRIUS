@@ -31,7 +31,7 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     phi.coeffs().zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
-    apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
+    apply_h_o<double_complex>(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
     Utils::check_hermitian("h", hphi.coeffs(), ngk);
     Utils::check_hermitian("o", ophi.coeffs(), ngk);

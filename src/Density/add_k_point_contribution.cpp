@@ -2,9 +2,8 @@
 
 namespace sirius {
 
-template <>
-void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
-                                                              mdarray<double_complex, 4>& density_matrix__)
+void Density::add_k_point_contribution_mt(K_point* kp__,
+                                          mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
@@ -85,9 +84,9 @@ void Density::add_k_point_contribution<full_potential_lapwlo>(K_point* kp__,
     }
 }
 
-template <>
-void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
-                                                                  mdarray<double_complex, 4>& density_matrix__)
+template<typename T>
+void Density::add_k_point_contribution(K_point* kp__,
+                                       mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
@@ -115,11 +114,11 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
                 /* total number of occupied bands for this spin */
                 int nbnd = kp__->num_occupied_bands(ispn);
                 /* compute <beta|psi> */
-                kp__->beta_projectors().inner<double_complex>(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
+                kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
                 /* number of beta projectors */
                 int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 
-                auto beta_psi = kp__->beta_projectors().beta_phi<double_complex>(chunk, nbnd);
+                auto beta_psi = kp__->beta_projectors().beta_phi<T>(chunk, nbnd);
 
                 splindex<block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
 
@@ -145,9 +144,8 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
                                 for (int xi = 0; xi < nbf; xi++)
                                 {
                                     bp1(xi, i) = beta_psi(offs + xi, j);
-                                    bp2(xi, i) = std::conj(bp1(xi, i)) *
-                                                 kp__->band_occupancy(j + ispn * ctx_.num_fv_states()) *
-                                                 kp__->weight();
+                                    bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->weight() *
+                                                 kp__->band_occupancy(j + ispn * ctx_.num_fv_states());
                                 }
                             }
 
@@ -175,6 +173,12 @@ void Density::add_k_point_contribution<ultrasoft_pseudopotential>(K_point* kp__,
 
     kp__->beta_projectors().dismiss();
 }
+
+template void Density::add_k_point_contribution<double_complex>(K_point* kp__,
+                                                                mdarray<double_complex, 4>& density_matrix__);
+
+template void Density::add_k_point_contribution<double>(K_point* kp__,
+                                                        mdarray<double_complex, 4>& density_matrix__);
 
 //#ifdef __GPU
 

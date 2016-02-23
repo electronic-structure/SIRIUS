@@ -59,7 +59,14 @@ void Density::augment(K_set& ks__)
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks__.spl_num_kpoints(ikloc);
-        add_k_point_contribution<ultrasoft_pseudopotential>(ks__[ik], density_matrix);
+        if (ctx_.gamma_point())
+        {
+            add_k_point_contribution<double>(ks__[ik], density_matrix);
+        }
+        else
+        {
+            add_k_point_contribution<double_complex>(ks__[ik], density_matrix);
+        }
     }
     ctx_.comm().allreduce(density_matrix.at<CPU>(), static_cast<int>(density_matrix.size()));
     #ifdef __PRINT_OBJECT_CHECKSUM

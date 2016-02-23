@@ -296,7 +296,7 @@ class generalized_evp_lapack: public generalized_evp
                 s << "not all eigen-values are found" << std::endl
                   << "target number of eign-values: " << nevec << std::endl
                   << "number of eign-values found: " << m;
-                //TERMINATE(s);
+                WARNING(s);
                 return 1;
             }
 
@@ -900,6 +900,162 @@ class generalized_evp_magma: public generalized_evp
         ev_solver_t type()
         {
             return ev_magma;
+        }
+};
+
+/// Base class for generalized eigen-value problem
+class Eigenproblem
+{
+    public:
+
+        virtual int solve(int32_t matrix_size, int32_t nevec,
+                          double_complex* A, int32_t lda,
+                          double_complex* B, int32_t ldb,
+                          double* eval,
+                          double_complex* Z, int32_t ldz,
+                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            TERMINATE("solver is not implemented");
+            return -1;
+        }
+
+        virtual int solve(int32_t matrix_size, int32_t nevec,
+                          double* A, int32_t lda,
+                          double* B, int32_t ldb,
+                          double* eval,
+                          double* Z, int32_t ldz,
+                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            TERMINATE("solver is not implemented");
+            return -1;
+        }
+
+        virtual bool parallel() = 0;
+
+        virtual ev_solver_t type() = 0;
+};
+
+/// Interface for LAPACK generalized eigen-value solver
+class Eigenproblem_lapack: public Eigenproblem
+{
+    private:
+
+        double abstol_;
+    
+    public:
+
+        Eigenproblem_lapack(double abstol__) : abstol_(abstol__)
+        {
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double_complex* A, int32_t lda,
+                  double_complex* B, int32_t ldb,
+                  double* eval, 
+                  double_complex* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            assert(nevec <= matrix_size);
+
+            int nb = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
+            int lwork = (nb + 1) * matrix_size;
+            int lrwork = 7 * matrix_size;
+            int liwork = 5 * matrix_size;
+            
+            std::vector<double_complex> work(lwork);
+            std::vector<double> rwork(lrwork);
+            std::vector<int32_t> iwork(liwork);
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<double> w(matrix_size);
+            double vl = 0.0;
+            double vu = 0.0;
+            int32_t m;
+            int32_t info;
+       
+            int32_t ione = 1;
+            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
+                            (int32_t)1, (int32_t)1);
+
+            if (m != nevec)
+            {
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                //TERMINATE(s);
+                return 1;
+            }
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "zhegvx returned " << info; 
+                TERMINATE(s);
+            }
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* B, int32_t ldb,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            assert(nevec <= matrix_size);
+
+            int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size, 0, 0, 0);
+            int lwork = (nb + 3) * matrix_size;
+            int liwork = 5 * matrix_size;
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<double> w(matrix_size);
+            double vl = 0.0;
+            double vu = 0.0;
+            int32_t m;
+            int32_t info;
+       
+            int32_t ione = 1;
+            FORTRAN(dsygvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, 
+                            (int32_t)1, (int32_t)1);
+
+            if (m != nevec)
+            {
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                //TERMINATE(s);
+                return 1;
+            }
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "dsygvx returned " << info; 
+                TERMINATE(s);
+            }
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
+        }
+
+        bool parallel()
+        {
+            return false;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_lapack;
         }
 };
 

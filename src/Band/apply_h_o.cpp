@@ -6,6 +6,7 @@ namespace sirius {
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
+template <typename T>
 void Band::apply_h_o(K_point* kp__, 
                      int ispn__,
                      int N__,
@@ -47,27 +48,12 @@ void Band::apply_h_o(K_point* kp__,
     {
         kp__->beta_projectors().generate(i);
 
-        if (ctx_.gamma_point())
-        {
-            kp__->beta_projectors().inner<double>(i, phi__, N__, n__);
-        }
-        else
-        {
-            kp__->beta_projectors().inner<double_complex>(i, phi__, N__, n__);
-        }
+        kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
 
         if (!ctx_.iterative_solver_input_section().real_space_prj_)
         {
-            if (ctx_.gamma_point())
-            {
-                d_op.apply<double>(i, ispn__, hphi__, N__, n__);
-                q_op.apply<double>(i, 0, ophi__, N__, n__);
-            }
-            else
-            {
-                d_op.apply<double_complex>(i, ispn__, hphi__, N__, n__);
-                q_op.apply<double_complex>(i, 0, ophi__, N__, n__);
-            }
+            d_op.apply<T>(i, ispn__, hphi__, N__, n__);
+            q_op.apply<T>(i, 0, ophi__, N__, n__);
         }
         else
         {
@@ -77,4 +63,25 @@ void Band::apply_h_o(K_point* kp__,
     }
 }
 
+template void Band::apply_h_o<double_complex>(K_point* kp__, 
+                                              int ispn__,
+                                              int N__,
+                                              int n__,
+                                              Wave_functions<false>& phi__,
+                                              Wave_functions<false>& hphi__,
+                                              Wave_functions<false>& ophi__,
+                                              Hloc_operator& h_op,
+                                              D_operator& d_op,
+                                              Q_operator& q_op);
+
+template void Band::apply_h_o<double>(K_point* kp__, 
+                                      int ispn__,
+                                      int N__,
+                                      int n__,
+                                      Wave_functions<false>& phi__,
+                                      Wave_functions<false>& hphi__,
+                                      Wave_functions<false>& ophi__,
+                                      Hloc_operator& h_op,
+                                      D_operator& d_op,
+                                      Q_operator& q_op);
 };

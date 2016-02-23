@@ -56,7 +56,17 @@ void Band::diag_pseudo_potential(K_point* kp__,
         if (ctx_.num_mag_dims() != 3)
         {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-                diag_pseudo_potential_davidson(kp__, ispn, hloc, d_op, q_op);
+            {
+                if (ctx_.gamma_point())
+                {
+                    diag_pseudo_potential_davidson<double>(kp__, ispn, hloc, d_op, q_op);
+                }
+                else
+                {
+                    diag_pseudo_potential_davidson<double_complex>(kp__, ispn, hloc, d_op, q_op);
+                }
+            }
+                    
         }
         else
         {

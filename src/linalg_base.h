@@ -236,7 +236,11 @@ void FORTRAN(zheevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double_comple
                      ftn_int* lda, ftn_double* w, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork,
                      ftn_int* lrwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info, ftn_len jobzlen, ftn_len uplolen);
 
-//void FORTRAN(dptsv)(int32_t *n, int32_t *nrhs, ftn_double* d, ftn_double* *e, ftn_double* b, int32_t *ldb, int32_t *info);
+void FORTRAN(dsygvx)(ftn_int* itype, ftn_char jobz, ftn_char range, ftn_char uplo, 
+                     ftn_int* n, ftn_double* A, ftn_int* lda, ftn_double* B, ftn_int* ldb, ftn_double* vl, 
+                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double* abstol, ftn_int* m, ftn_double* w,
+                     ftn_double* Z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork, ftn_int* ifail,
+                     ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
 
 }
 

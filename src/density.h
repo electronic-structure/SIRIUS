@@ -178,7 +178,10 @@ class Density
          *  \f]
          *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
          *  the occupancy operator written in spectral representation. */
-        template <electronic_structure_method_t basis>
+        void add_k_point_contribution_mt(K_point* kp__,
+                                         mdarray<double_complex, 4>& density_matrix__);
+
+        template <typename T>
         void add_k_point_contribution(K_point* kp__,
                                       mdarray<double_complex, 4>& density_matrix__);
 

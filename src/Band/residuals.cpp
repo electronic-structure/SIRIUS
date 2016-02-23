@@ -2,13 +2,14 @@
 
 namespace sirius {
 
+template <typename T>
 int Band::residuals(K_point* kp__,
                     int ispn__,
                     int N__,
                     int num_bands__,
                     std::vector<double>& eval__,
                     std::vector<double>& eval_old__,
-                    matrix<double_complex>& evec__,
+                    matrix<T>& evec__,
                     Wave_functions<false>& hphi__,
                     Wave_functions<false>& ophi__,
                     Wave_functions<false>& hpsi__,
@@ -39,40 +40,40 @@ int Band::residuals(K_point* kp__,
 
             if (take_res && std::abs(eval__[i] - eval_old__[i]) > tol)
             {
-                std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(double_complex));
+                std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(T));
                 eval_tmp[n++] = eval__[i];
             }
         }
         // TODO: do this on GPU
 
         /* create alias for eigen-vectors corresponding to unconverged residuals */
-        matrix<double_complex> evec_tmp;
+        matrix<T> evec_tmp;
         if (ctx_.processing_unit() == CPU)
         {
-            evec_tmp = matrix<double_complex>(&evec__(0, num_bands__), evec__.ld(), n);
+            evec_tmp = matrix<T>(&evec__(0, num_bands__), evec__.ld(), n);
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU)
         {
-            evec_tmp = matrix<double_complex>(evec__.at<CPU>(0, num_bands__), evec__.at<GPU>(0, num_bands__), evec__.ld(), n);
+            evec_tmp = matrix<T>(evec__.template at<CPU>(0, num_bands__), evec__.template at<GPU>(0, num_bands__), evec__.ld(), n);
             /* move matrix of eigen-vectors to GPU */
-            acc::copyin(evec_tmp.at<GPU>(), evec_tmp.ld(), evec_tmp.at<CPU>(), evec_tmp.ld(), N__, n);
+            acc::copyin(evec_tmp.template at<GPU>(), evec_tmp.ld(), evec_tmp.template at<CPU>(), evec_tmp.ld(), N__, n);
         }
         #endif
 
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        hpsi__.transform_from(hphi__, N__, evec_tmp, n);
+        hpsi__.transform_from<T>(hphi__, N__, evec_tmp, n);
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        opsi__.transform_from(ophi__, N__, evec_tmp, n);
+        opsi__.transform_from<T>(ophi__, N__, evec_tmp, n);
 
         residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
     }
     else
     {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        hpsi__.transform_from(hphi__, N__, evec__, num_bands__);
+        hpsi__.transform_from<T>(hphi__, N__, evec__, num_bands__);
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        opsi__.transform_from(ophi__, N__, evec__, num_bands__);
+        opsi__.transform_from<T>(ophi__, N__, evec__, num_bands__);
 
         residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
 
@@ -112,5 +113,35 @@ int Band::residuals(K_point* kp__,
 
     return n;
 }
+
+template int Band::residuals<double_complex>(K_point* kp__,
+                                             int ispn__,
+                                             int N__,
+                                             int num_bands__,
+                                             std::vector<double>& eval__,
+                                             std::vector<double>& eval_old__,
+                                             matrix<double_complex>& evec__,
+                                             Wave_functions<false>& hphi__,
+                                             Wave_functions<false>& ophi__,
+                                             Wave_functions<false>& hpsi__,
+                                             Wave_functions<false>& opsi__,
+                                             Wave_functions<false>& res__,
+                                             std::vector<double>& h_diag__,
+                                             std::vector<double>& o_diag__);
+
+template int Band::residuals<double>(K_point* kp__,
+                                     int ispn__,
+                                     int N__,
+                                     int num_bands__,
+                                     std::vector<double>& eval__,
+                                     std::vector<double>& eval_old__,
+                                     matrix<double>& evec__,
+                                     Wave_functions<false>& hphi__,
+                                     Wave_functions<false>& ophi__,
+                                     Wave_functions<false>& hpsi__,
+                                     Wave_functions<false>& opsi__,
+                                     Wave_functions<false>& res__,
+                                     std::vector<double>& h_diag__,
+                                     std::vector<double>& o_diag__);
 
 };

@@ -37,7 +37,7 @@ class Wave_functions
 };
 
 template<>
-class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 rank
+class Wave_functions<false>
 {
     private:
         
@@ -182,27 +182,13 @@ class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 ran
         {
             copy_from(src__, i0__, n__, i0__);
         }
+        
+        template <typename T>
+        void transform_from(Wave_functions& wf__, int nwf__, matrix<T>& mtrx__, int n__);
 
-        inline void transform_from(Wave_functions& wf__, int nwf__, matrix<double_complex>& mtrx__, int n__)
-        {
-            assert(num_gvec_loc() == wf__.num_gvec_loc());
-
-            if (pu_ == CPU)
-            {
-                linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
-                                  &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
-            }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                linalg<GPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, wf__.coeffs().at<GPU>(), num_gvec_loc(),
-                                  mtrx__.at<GPU>(), mtrx__.ld(), wf_coeffs_.at<GPU>(), num_gvec_loc());
-            }
-            #endif
-        }
-
+        template <typename T>
         void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                   mdarray<double_complex, 2>& result__, int irow__, int icol__);
+                   mdarray<T, 2>& result__, int irow__, int icol__);
 
         mdarray<double_complex, 2>& coeffs()
         {

@@ -124,6 +124,7 @@ class Band
                                          Q_operator& q_op__);
 
         /// Iterative Davidson diagonalization.
+        template <typename T>
         void diag_pseudo_potential_davidson(K_point* kp__,
                                             int ispn__,
                                             Hloc_operator& h_op__,
@@ -154,17 +155,19 @@ class Band
                             mdarray<int, 1>& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__);
 
+        template <typename T>
         void diag_h_o(K_point* kp__,
                       int N__,
                       int num_bands__,
-                      matrix<double_complex>& hmlt__,
-                      matrix<double_complex>& ovlp__,
-                      matrix<double_complex>& evec__,
-                      dmatrix<double_complex>& hmlt_dist__,
-                      dmatrix<double_complex>& ovlp_dist__,
-                      dmatrix<double_complex>& evec_dist__,
+                      matrix<T>& hmlt__,
+                      matrix<T>& ovlp__,
+                      matrix<T>& evec__,
+                      dmatrix<T>& hmlt_dist__,
+                      dmatrix<T>& ovlp_dist__,
+                      dmatrix<T>& evec_dist__,
                       std::vector<double>& eval__);
 
+        template <typename T>
         void apply_h_o(K_point* kp__,
                        int ispn__, 
                        int N__,
@@ -175,25 +178,27 @@ class Band
                        Hloc_operator &h_op,
                        D_operator& d_op,
                        Q_operator& q_op);
-
+        
+        template <typename T>
         void set_h_o(K_point* kp__,
                      int N__,
                      int n__,
                      Wave_functions<false>& phi__,
                      Wave_functions<false>& hphi__,
                      Wave_functions<false>& ophi__,
-                     matrix<double_complex>& h__,
-                     matrix<double_complex>& o__,
-                     matrix<double_complex>& h_old__,
-                     matrix<double_complex>& o_old__);
-
+                     matrix<T>& h__,
+                     matrix<T>& o__,
+                     matrix<T>& h_old__,
+                     matrix<T>& o_old__);
+        
+        template <typename T>
         int residuals(K_point* kp__,
                       int ispn__,
                       int N__,
                       int num_bands__,
                       std::vector<double>& eval__,
                       std::vector<double>& eval_old__,
-                      matrix<double_complex>& evec__,
+                      matrix<T>& evec__,
                       Wave_functions<false>& hphi__,
                       Wave_functions<false>& ophi__,
                       Wave_functions<false>& hpsi__,

@@ -26,6 +26,7 @@
 
 namespace sirius {
 
+template <typename T>
 void Band::diag_pseudo_potential_davidson(K_point* kp__,
                                           int ispn__,
                                           Hloc_operator& h_op__,
@@ -65,10 +66,10 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     Wave_functions<false> res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
 
     /* allocate Hamiltonian and overlap */
-    matrix<double_complex> hmlt(num_phi, num_phi);
-    matrix<double_complex> ovlp(num_phi, num_phi);
-    matrix<double_complex> hmlt_old(num_phi, num_phi);
-    matrix<double_complex> ovlp_old(num_phi, num_phi);
+    matrix<T> hmlt(num_phi, num_phi);
+    matrix<T> ovlp(num_phi, num_phi);
+    matrix<T> hmlt_old(num_phi, num_phi);
+    matrix<T> ovlp_old(num_phi, num_phi);
 
     #ifdef __GPU
     if (gen_evp_solver_->type() == ev_magma)
@@ -78,32 +79,32 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     }
     #endif
 
-    matrix<double_complex> evec;
+    matrix<T> evec;
     if (converge_by_energy)
     {
-        evec = matrix<double_complex>(num_phi, num_bands * 2);
+        evec = matrix<T>(num_phi, num_bands * 2);
     }
     else
     {
-        evec = matrix<double_complex>(num_phi, num_bands);
+        evec = matrix<T>(num_phi, num_bands);
     }
 
     int bs = ctx_.cyclic_block_size();
 
-    dmatrix<double_complex> hmlt_dist;
-    dmatrix<double_complex> ovlp_dist;
-    dmatrix<double_complex> evec_dist;
+    dmatrix<T> hmlt_dist;
+    dmatrix<T> ovlp_dist;
+    dmatrix<T> evec_dist;
     if (kp__->comm().size() == 1)
     {
-        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
     }
     else
     {
-        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<T>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<T>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<T>(num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);
@@ -144,20 +145,20 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
+        apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
- 
+        set_h_o<T>(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+
         /* increase size of the variation space */
         N += n;
 
         eval_old = eval;
 
         /* solve generalized eigen-value problem with the size N */
-        diag_h_o(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
+        diag_h_o<T>(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
 
         /* check if occupied bands have converged */
         bool occ_band_converged = true;
@@ -174,7 +175,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         if (k != itso.num_steps_ - 1 && !occ_band_converged)
         {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -183,7 +184,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            psi.transform_from(phi, N, evec, num_bands);
+            psi.transform_from<T>(phi, N, evec, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged)
@@ -197,14 +198,14 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 for (int i = 0; i < num_bands; i++)
                 {
                     hmlt_old(i, i) = eval[i];
-                    ovlp_old(i, i) = complex_one;
+                    ovlp_old(i, i) = 1.0;
                 }
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
                 if (converge_by_energy)
                 {
-                    hpsi.transform_from(hphi, N, evec, num_bands);
-                    opsi.transform_from(ophi, N, evec, num_bands);
+                    hpsi.transform_from<T>(hphi, N, evec, num_bands);
+                    opsi.transform_from<T>(ophi, N, evec, num_bands);
                 }
  
                 /* update basis functions */
@@ -234,6 +235,19 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     #endif
     kp__->comm().barrier();
 }
+
+/* explicit instantiation for general k-point solver */
+template void Band::diag_pseudo_potential_davidson<double_complex>(K_point* kp__,
+                                                                   int ispn__,
+                                                                   Hloc_operator& h_op__,
+                                                                   D_operator& d_op__,
+                                                                   Q_operator& q_op__);
+/* explicit instantiation for gamma-point solver */
+template void Band::diag_pseudo_potential_davidson<double>(K_point* kp__,
+                                                           int ispn__,
+                                                           Hloc_operator& h_op__,
+                                                           D_operator& d_op__,
+                                                           Q_operator& q_op__);
 
 void Band::diag_pseudo_potential_davidson_fast(K_point* kp__,
                                                int ispn__,
@@ -343,7 +357,7 @@ void Band::diag_pseudo_potential_davidson_fast(K_point* kp__,
     for (int k = 0; k < 3; k++)
     {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
+        apply_h_o<double_complex>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
         /* setup eigen-value problem
          * N is the number of previous basis functions
