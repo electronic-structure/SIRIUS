@@ -539,6 +539,84 @@ class Eigenproblem_scalapack: public Eigenproblem
 
             return 0;
         }
+
+        int solve(int32_t matrix_size,  int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* B, int32_t ldb,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
+
+            int32_t descb[9];
+            linalg_base::descinit(descb, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldb); 
+
+            int32_t descz[9];
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz); 
+
+            std::vector<int32_t> work_sizes = get_work_sizes_gevp(matrix_size, std::max(bs_row_, bs_col_), 
+                                                                  num_ranks_row_, num_ranks_col_, blacs_context_);
+            
+            std::vector<double> work(work_sizes[0]);
+            std::vector<int32_t> iwork(work_sizes[2]);
+            
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
+            std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
+            std::vector<double> w(matrix_size);
+            
+            double orfac = 1e-6;
+            int32_t ione = 1;
+            
+            int32_t m;
+            int32_t nz;
+            double d1;
+            int32_t info;
+
+            FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &work_sizes[0], 
+                             &iwork[0], &work_sizes[2], &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+
+            if (info)
+            {
+                if ((info / 2) % 2)
+                {
+                    std::stringstream s;
+                    s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                      << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                    int k = num_ranks_row_ * num_ranks_col_;
+                    for (int i = 0; i < num_ranks_row_ * num_ranks_col_ - 1; i++)
+                    {
+                        if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
+                        {
+                            k = i + 1;
+                            break;
+                        }
+                    }
+                   
+                    s << "number of eigenvalue clusters : " << k << std::endl;
+                    for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
+                    TERMINATE(s);
+                }
+
+                std::stringstream s;
+                s << "pzhegvx returned " << info; 
+                TERMINATE(s);
+            }
+
+            if ((m != nevec) || (nz != nevec))
+                TERMINATE("Not all eigen-vectors or eigen-values are found.");
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
+        }
         #endif
 
         bool parallel()
@@ -596,10 +674,9 @@ void FORTRAN(elpa_solve_evp_real_2stage)(ftn_int* na, ftn_int* nev, ftn_double* 
 }
 #endif
 
-
-class Eigenproblem_elpa1: public Eigenproblem
+class Eigenproblem_elpa: public Eigenproblem
 {
-    private:
+    protected:
         
         int32_t block_size_;
         int32_t num_ranks_row_;
@@ -609,10 +686,12 @@ class Eigenproblem_elpa1: public Eigenproblem
         int blacs_context_;
         Communicator const& comm_row_;
         Communicator const& comm_col_;
+        int32_t mpi_comm_rows_;
+        int32_t mpi_comm_cols_;
 
     public:
-        
-        Eigenproblem_elpa1(BLACS_grid const& blacs_grid__, int32_t block_size__)
+
+        Eigenproblem_elpa(BLACS_grid const& blacs_grid__, int32_t block_size__)
             : block_size_(block_size__),
               num_ranks_row_(blacs_grid__.num_ranks_row()), 
               rank_row_(blacs_grid__.rank_row()),
@@ -621,6 +700,142 @@ class Eigenproblem_elpa1: public Eigenproblem
               blacs_context_(blacs_grid__.context()), 
               comm_row_(blacs_grid__.comm_row()), 
               comm_col_(blacs_grid__.comm_col())
+        {
+            mpi_comm_rows_ = MPI_Comm_c2f(comm_row_.mpi_comm());
+            mpi_comm_cols_ = MPI_Comm_c2f(comm_col_.mpi_comm());
+        }
+
+        void transform_to_standard(int32_t matrix_size__,
+                                   double_complex* A__, int32_t lda__,
+                                   double_complex* B__, int32_t ldb__,
+                                   int32_t num_rows_loc__, int32_t num_cols_loc__,
+                                   matrix<double_complex>& tmp1__,
+                                   matrix<double_complex>& tmp2__)
+        {
+            TIMER("Eigenproblem_elpa:transform_to_standard");
+            
+            /* compute Cholesky decomposition of B: B=L*L^H; overwrite B with L */
+            FORTRAN(elpa_cholesky_complex)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
+            /* invert L */
+            FORTRAN(elpa_invert_trm_complex)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
+       
+            FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, A__, &lda__, &block_size_, 
+                                            &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, (int32_t)1, 
+                                            (int32_t)1);
+
+            int32_t descc[9];
+            linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
+            
+            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, tmp1__.at<CPU>(), 1, 1, descc, 
+                                 complex_zero, tmp2__.at<CPU>(), 1, 1, descc);
+
+            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
+                                            &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
+                                            (int32_t)1);
+
+            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, A__, 1, 1, descc, complex_zero, 
+                                 tmp1__.at<CPU>(), 1, 1, descc);
+
+            for (int i = 0; i < num_cols_loc__; i++)
+            {
+                int32_t n_col = linalg_base::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
+                int32_t n_row = linalg_base::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
+                for (int j = n_row; j < num_rows_loc__; j++) 
+                {
+                    A__[j + i * lda__] = tmp1__(j, i);
+                }
+            }
+        }
+
+        void transform_to_standard(int32_t matrix_size__,
+                                   double* A__, int32_t lda__,
+                                   double* B__, int32_t ldb__,
+                                   int32_t num_rows_loc__, int32_t num_cols_loc__,
+                                   matrix<double>& tmp1__,
+                                   matrix<double>& tmp2__)
+        {
+            TIMER("Eigenproblem_elpa:transform_to_standard");
+            
+            /* compute Cholesky decomposition of B: B=L*L^H; overwrite B with L */
+            FORTRAN(elpa_cholesky_real)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
+            /* invert L */
+            FORTRAN(elpa_invert_trm_real)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
+       
+            FORTRAN(elpa_mult_at_b_real)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, A__, &lda__, &block_size_, 
+                                         &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, (int32_t)1, 
+                                         (int32_t)1);
+
+            int32_t descc[9];
+            linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
+            
+            linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, tmp1__.at<CPU>(), 1, 1, descc, 0.0,
+                                tmp2__.at<CPU>(), 1, 1, descc);
+
+            FORTRAN(elpa_mult_at_b_real)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
+                                         &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
+                                         (int32_t)1);
+
+            linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, A__, 1, 1, descc, 0.0, tmp1__.at<CPU>(), 1, 1, descc);
+
+            for (int i = 0; i < num_cols_loc__; i++)
+            {
+                int32_t n_col = linalg_base::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
+                int32_t n_row = linalg_base::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
+                for (int j = n_row; j < num_rows_loc__; j++) 
+                {
+                    A__[j + i * lda__] = tmp1__(j, i);
+                }
+            }
+        }
+
+        void transform_back(int32_t matrix_size__, int32_t nevec__,
+                            double_complex* B__, int32_t ldb__,
+                            double_complex* Z__, int32_t ldz__,
+                            int32_t num_rows_loc__, int32_t num_cols_loc__,
+                            matrix<double_complex>& tmp1__,
+                            matrix<double_complex>& tmp2__)
+        {
+            TIMER("Eigenproblem_elpa:transform_back");
+
+            int32_t descb[9];
+            linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
+
+            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, B__, 1, 1, descb, complex_zero, 
+                                 tmp2__.at<CPU>(), 1, 1, descb);
+
+            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
+                                            &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
+                                            (int32_t)1, (int32_t)1);
+        }
+
+        void transform_back(int32_t matrix_size__, int32_t nevec__,
+                            double* B__, int32_t ldb__,
+                            double* Z__, int32_t ldz__,
+                            int32_t num_rows_loc__, int32_t num_cols_loc__,
+                            matrix<double>& tmp1__,
+                            matrix<double>& tmp2__)
+        {
+            TIMER("Eigenproblem_elpa:transform_back");
+
+            int32_t descb[9];
+            linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
+
+            linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, B__, 1, 1, descb, 0.0, tmp2__.at<CPU>(), 1, 1, descb);
+
+            FORTRAN(elpa_mult_at_b_real)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
+                                         &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
+                                         (int32_t)1, (int32_t)1);
+        }
+
+};
+
+
+class Eigenproblem_elpa1: public Eigenproblem_elpa
+{
+    public:
+        
+        Eigenproblem_elpa1(BLACS_grid const& blacs_grid__, int32_t block_size__)
+            : Eigenproblem_elpa(blacs_grid__, block_size__)
         {
         }
         
@@ -634,64 +849,45 @@ class Eigenproblem_elpa1: public Eigenproblem
         {
             assert(nevec <= matrix_size);
 
-            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_.mpi_comm());
-            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_.mpi_comm());
+            matrix<double_complex> tmp1(num_rows_loc, num_cols_loc);
+            matrix<double_complex> tmp2(num_rows_loc, num_cols_loc);
 
-            runtime::Timer *t;
+            transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
-            t = new runtime::Timer("elpa::ort");
-            FORTRAN(elpa_cholesky_complex)(&matrix_size, B, &ldb, &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
-            FORTRAN(elpa_invert_trm_complex)(&matrix_size, B, &ldb, &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
-       
-            mdarray<double_complex, 2> tmp1(num_rows_loc, num_cols_loc);
-            mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
-
-            FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, B, &ldb, A, &lda, &block_size_, 
-                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.at<CPU>(), &num_rows_loc, (int32_t)1, 
-                                            (int32_t)1);
-
-            int32_t descc[9];
-            linalg_base::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, blacs_context_, lda);
-            
-            linalg_base::pztranc(matrix_size, matrix_size, complex_one, tmp1.at<CPU>(), 1, 1, descc, 
-                                 complex_zero, tmp2.at<CPU>(), 1, 1, descc);
-
-            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, B, &ldb, tmp2.at<CPU>(), &num_rows_loc, 
-                                            &block_size_, &mpi_comm_rows, &mpi_comm_cols, A, &lda, (int32_t)1, 
-                                            (int32_t)1);
-
-            linalg_base::pztranc(matrix_size, matrix_size, complex_one, A, 1, 1, descc, complex_zero, 
-                                 tmp1.at<CPU>(), 1, 1, descc);
-
-            for (int i = 0; i < num_cols_loc; i++)
-            {
-                int32_t n_col = linalg_base::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
-                int32_t n_row = linalg_base::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
-                for (int j = n_row; j < num_rows_loc; j++) 
-                {
-                    assert(j < num_rows_loc);
-                    assert(i < num_cols_loc);
-                    A[j + i * lda] = tmp1(j, i);
-                }
-            }
-            delete t;
-            
-            t = new runtime::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
+            runtime::Timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                            &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
-            delete t;
-
-            t = new runtime::Timer("elpa::bt");
-            linalg_base::pztranc(matrix_size, matrix_size, complex_one, B, 1, 1, descc, complex_zero, 
-                                 tmp2.at<CPU>(), 1, 1, descc);
-
-            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.at<CPU>(), &num_rows_loc, tmp1.at<CPU>(), 
-                                            &num_rows_loc, &block_size_, &mpi_comm_rows, &mpi_comm_cols, Z, &ldz, 
-                                            (int32_t)1, (int32_t)1);
-            delete t;
-
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+            t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
+            transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
+
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* B, int32_t ldb,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            assert(nevec <= matrix_size);
+
+            matrix<double> tmp1(num_rows_loc, num_cols_loc);
+            matrix<double> tmp2(num_rows_loc, num_cols_loc);
+
+            transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
+
+            std::vector<double> w(matrix_size);
+            runtime::Timer t("Eigenproblem_elpa1|diag");
+            FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
+                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+            t.stop();
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
+            transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             return 0;
         }
