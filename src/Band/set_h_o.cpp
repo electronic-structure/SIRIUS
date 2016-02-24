@@ -95,7 +95,7 @@ void Band::set_h_o<double_complex>(K_point* kp__,
     #endif
     
     int i0 = N__;
-    if (gen_evp_solver_->type() == ev_magma)
+    if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2)
     {
         /* restore the lower part */
         #pragma omp parallel for
@@ -190,7 +190,7 @@ void Band::set_h_o<double>(K_point* kp__,
     #endif
     
     int i0 = N__;
-    if (gen_evp_solver_->type() == ev_magma)
+    if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2)
     {
         /* restore the lower part */
         #pragma omp parallel for

@@ -197,27 +197,6 @@ void FORTRAN(pzgemr2d)(ftn_int* m,
                        ftn_int* gcontext);
 #endif
 
-#ifdef __ELPA
-void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk,
-                                    ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
-
-void FORTRAN(elpa_invert_trm_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk,
-                                      ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
-
-void FORTRAN(elpa_mult_ah_b_complex)(ftn_char uplo_a, ftn_char uplo_c, ftn_int* na, ftn_int* ncb, 
-                                     ftn_double_complex* a, ftn_int* lda, ftn_double_complex* b, ftn_int* ldb,
-                                     ftn_int* nblk, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
-                                     ftn_double_complex* c, ftn_int* ldc, ftn_len uplo_a_len, ftn_len uplo_c_len);
-
-void FORTRAN(elpa_solve_evp_complex)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda, ftn_double* ev, 
-                                     ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk, ftn_int* mpi_comm_rows, 
-                                     ftn_int* mpi_comm_cols);
-
-void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda,
-                                            ftn_double* ev, ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk,
-                                            ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols, ftn_int* mpi_comm_all);
-#endif
-
 /*
  *  eigen-value problem
  */

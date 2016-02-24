@@ -33,18 +33,9 @@ void Band::diag_h_o<double_complex>(K_point* kp__,
     t1.stop();
     
     runtime::Timer t2("sirius::Band::diag_h_o|diag");
-    int result;
-    if (gen_evp_solver()->parallel())
-    {
-        result = gen_evp_solver()->solve(N__,  num_bands__, hmlt_dist__.at<CPU>(), hmlt_dist__.ld(),
+    int result = gen_evp_solver()->solve(N__,  num_bands__, hmlt_dist__.at<CPU>(), hmlt_dist__.ld(),
                                          ovlp_dist__.at<CPU>(), ovlp_dist__.ld(), &eval__[0], evec_dist__.at<CPU>(),
                                          evec_dist__.ld(), hmlt_dist__.num_rows_local(), hmlt_dist__.num_cols_local());
-    }
-    else
-    {
-        result = gen_evp_solver()->solve(N__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(), ovlp__.at<CPU>(), ovlp__.ld(),
-                                         &eval__[0], evec__.at<CPU>(), evec__.ld());
-    }
     if (result) TERMINATE("error in diagonalziation");
     t2.stop();
 

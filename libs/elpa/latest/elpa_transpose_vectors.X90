@@ -1,0 +1,138 @@
+#if REALCASE==1
+subroutine elpa_transpose_vectors_real(vmat_s,ld_s,comm_s,vmat_t,ld_t,comm_t,nvs,nvr,nvc,nblk)
+#endif
+#if COMPLEXCASE==1
+subroutine elpa_transpose_vectors_complex(vmat_s,ld_s,comm_s,vmat_t,ld_t,comm_t,nvs,nvr,nvc,nblk)
+#endif
+
+!-------------------------------------------------------------------------------
+! This routine transposes an array of vectors which are distributed in
+! communicator comm_s into its transposed form distributed in communicator comm_t.
+! There must be an identical copy of vmat_s in every communicator comm_s.
+! After this routine, there is an identical copy of vmat_t in every communicator comm_t.
+!
+! vmat_s    original array of vectors
+! ld_s      leading dimension of vmat_s
+! comm_s    communicator over which vmat_s is distributed
+! vmat_t    array of vectors in transposed form
+! ld_t      leading dimension of vmat_t
+! comm_t    communicator over which vmat_t is distributed
+! nvs       global index where to start in vmat_s/vmat_t
+!           Please note: this is kind of a hint, some values before nvs will be
+!           accessed in vmat_s/put into vmat_t
+! nvr       global length of vmat_s/vmat_t
+! nvc       number of columns in vmat_s/vmat_t
+! nblk      block size of block cyclic distribution
+!
+!-------------------------------------------------------------------------------
+
+!   use ELPA1 ! for least_common_multiple
+#ifdef WITH_OPENMP
+   use omp_lib
+#endif
+
+   implicit none
+
+   include 'mpif.h'
+
+   integer, intent(in)              :: ld_s, comm_s, ld_t, comm_t, nvs, nvr, nvc, nblk
+   DATATYPE*BYTESIZE, intent(in)    :: vmat_s(ld_s,nvc)
+   DATATYPE*BYTESIZE, intent(inout) :: vmat_t(ld_t,nvc)
+
+   DATATYPE*BYTESIZE, allocatable   :: aux(:)
+   integer                          :: myps, mypt, nps, npt
+   integer                          :: n, lc, k, i, ips, ipt, ns, nl, mpierr
+   integer                          :: lcm_s_t, nblks_tot, nblks_comm, nblks_skip
+   integer                          :: auxstride
+
+   call mpi_comm_rank(comm_s,myps,mpierr)
+   call mpi_comm_size(comm_s,nps ,mpierr)
+   call mpi_comm_rank(comm_t,mypt,mpierr)
+   call mpi_comm_size(comm_t,npt ,mpierr)
+
+   ! The basic idea of this routine is that for every block (in the block cyclic
+   ! distribution), the processor within comm_t which owns the diagonal
+   ! broadcasts its values of vmat_s to all processors within comm_t.
+   ! Of course this has not to be done for every block separately, since
+   ! the communictation pattern repeats in the global matrix after
+   ! the least common multiple of (nps,npt) blocks
+
+   lcm_s_t   = least_common_multiple(nps,npt) ! least common multiple of nps, npt
+
+   nblks_tot = (nvr+nblk-1)/nblk ! number of blocks corresponding to nvr
+
+   ! Get the number of blocks to be skipped at the begin.
+   ! This must be a multiple of lcm_s_t (else it is getting complicated),
+   ! thus some elements before nvs will be accessed/set.
+
+   nblks_skip = ((nvs-1)/(nblk*lcm_s_t))*lcm_s_t
+
+   allocate(aux( ((nblks_tot-nblks_skip+lcm_s_t-1)/lcm_s_t) * nblk * nvc ))
+#ifdef WITH_OPENMP
+   !$omp parallel private(lc, i, k, ns, nl, nblks_comm, auxstride, ips, ipt, n)
+#endif
+   do n = 0, lcm_s_t-1
+
+      ips = mod(n,nps)
+      ipt = mod(n,npt)
+
+      if(mypt == ipt) then
+
+         nblks_comm = (nblks_tot-nblks_skip-n+lcm_s_t-1)/lcm_s_t
+         auxstride = nblk * nblks_comm
+!         if(nblks_comm==0) cycle
+         if (nblks_comm .ne. 0) then
+         if(myps == ips) then
+!            k = 0
+#ifdef WITH_OPENMP
+            !$omp do
+#endif
+            do lc=1,nvc
+               do i = nblks_skip+n, nblks_tot-1, lcm_s_t
+                  k = (i - nblks_skip - n)/lcm_s_t * nblk + (lc - 1) * auxstride
+                  ns = (i/nps)*nblk ! local start of block i
+                  nl = min(nvr-i*nblk,nblk) ! length
+                  aux(k+1:k+nl) = vmat_s(ns+1:ns+nl,lc)
+!                  k = k+nblk
+               enddo
+            enddo
+         endif
+
+#ifdef WITH_OPENMP
+         !$omp barrier
+         !$omp master
+#endif
+#if COMPLEXCASE==1
+         call MPI_Bcast(aux,nblks_comm*nblk*nvc,MPI_DOUBLE_COMPLEX,ips,comm_s,mpierr)
+#endif
+
+#if REALCASE==1
+         call MPI_Bcast(aux,nblks_comm*nblk*nvc,MPI_REAL8,ips,comm_s,mpierr)
+#endif
+#ifdef WITH_OPENMP
+         !$omp end master
+         !$omp barrier
+
+         !$omp do
+#endif
+!         k = 0
+         do lc=1,nvc
+            do i = nblks_skip+n, nblks_tot-1, lcm_s_t
+               k = (i - nblks_skip - n)/lcm_s_t * nblk + (lc - 1) * auxstride
+               ns = (i/npt)*nblk ! local start of block i
+               nl = min(nvr-i*nblk,nblk) ! length
+               vmat_t(ns+1:ns+nl,lc) = aux(k+1:k+nl)
+!               k = k+nblk
+            enddo
+         enddo
+         endif
+      endif
+
+   enddo
+#ifdef WITH_OPENMP
+   !$omp end parallel
+#endif
+   deallocate(aux)
+
+end subroutine
+

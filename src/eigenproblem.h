@@ -552,6 +552,51 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 };
 
+#ifdef __ELPA
+extern "C" {
+void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
+                                    ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_cholesky_real)(ftn_int* na, ftn_double* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
+                                 ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_invert_trm_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
+                                      ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_invert_trm_real)(ftn_int* na, ftn_double* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
+                                   ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_mult_ah_b_complex)(ftn_char uplo_a, ftn_char uplo_c, ftn_int* na, ftn_int* ncb, 
+                                     ftn_double_complex* a, ftn_int* lda, ftn_double_complex* b, ftn_int* ldb,
+                                     ftn_int* nblk, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
+                                     ftn_double_complex* c, ftn_int* ldc, ftn_len uplo_a_len, ftn_len uplo_c_len);
+
+void FORTRAN(elpa_mult_at_b_real)(ftn_char uplo_a, ftn_char uplo_c, ftn_int* na, ftn_int* ncb, 
+                                  ftn_double* a, ftn_int* lda, ftn_double* b, ftn_int* ldb,
+                                  ftn_int* nblk, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
+                                  ftn_double* c, ftn_int* ldc, ftn_len uplo_a_len, ftn_len uplo_c_len);
+
+void FORTRAN(elpa_solve_evp_complex)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda, ftn_double* ev, 
+                                     ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk, ftn_int* matrixCols,
+                                     ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_solve_evp_real)(ftn_int* na, ftn_int* nev, ftn_double* a, ftn_int* lda, ftn_double* ev, 
+                                  ftn_double* q, ftn_int* ldq, ftn_int* nblk, ftn_int* matrixCols,
+                                  ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda,
+                                            ftn_double* ev, ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk,
+                                            ftn_int* matrixCols, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
+                                            ftn_int* mpi_comm_all);
+
+void FORTRAN(elpa_solve_evp_real_2stage)(ftn_int* na, ftn_int* nev, ftn_double* a, ftn_int* lda,
+                                         ftn_double* ev, ftn_double* q, ftn_int* ldq, ftn_int* nblk,
+                                         ftn_int* matrixCols, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
+                                         ftn_int* mpi_comm_all);
+}
+#endif
+
+
 class Eigenproblem_elpa1: public Eigenproblem
 {
     private:
@@ -595,8 +640,8 @@ class Eigenproblem_elpa1: public Eigenproblem
             runtime::Timer *t;
 
             t = new runtime::Timer("elpa::ort");
-            FORTRAN(elpa_cholesky_complex)(&matrix_size, B, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
-            FORTRAN(elpa_invert_trm_complex)(&matrix_size, B, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+            FORTRAN(elpa_cholesky_complex)(&matrix_size, B, &ldb, &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
+            FORTRAN(elpa_invert_trm_complex)(&matrix_size, B, &ldb, &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
        
             mdarray<double_complex, 2> tmp1(num_rows_loc, num_cols_loc);
             mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
@@ -634,7 +679,7 @@ class Eigenproblem_elpa1: public Eigenproblem
             t = new runtime::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                            &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
             delete t;
 
             t = new runtime::Timer("elpa::bt");
@@ -709,8 +754,8 @@ class Eigenproblem_elpa2: public Eigenproblem
             runtime::Timer *t;
 
             t = new runtime::Timer("elpa::ort");
-            FORTRAN(elpa_cholesky_complex)(&matrix_size, B, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
-            FORTRAN(elpa_invert_trm_complex)(&matrix_size, B, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+            FORTRAN(elpa_cholesky_complex)(&matrix_size, B, &ldb, &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
+            FORTRAN(elpa_invert_trm_complex)(&matrix_size, B, &ldb, &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols);
        
             mdarray<double_complex, 2> tmp1(num_rows_loc, num_cols_loc);
             mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
@@ -747,7 +792,7 @@ class Eigenproblem_elpa2: public Eigenproblem
             t = new runtime::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                                   &block_size_, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
+                                                   &block_size_, &num_cols_loc, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
             delete t;
 
             t = new runtime::Timer("elpa::bt");
@@ -759,7 +804,7 @@ class Eigenproblem_elpa2: public Eigenproblem
                                             (int32_t)1, (int32_t)1);
             delete t;
 
-            memcpy(eval, &w[0], nevec * sizeof(double));
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
 
             return 0;
         }
