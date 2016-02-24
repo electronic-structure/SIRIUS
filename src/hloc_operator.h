@@ -43,6 +43,8 @@ class Hloc_operator
         mdarray<double, 2> veff_vec_;
 
         mdarray<double_complex, 1> vphi_;
+
+        mdarray<double_complex, 1> vphi2_;
         
         /// V(G=0) matrix elements.
         double v0_[2];
@@ -61,6 +63,7 @@ class Hloc_operator
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), 1);
             std::memcpy(&veff_vec_[0], &veff__[0], fft_.local_size() * sizeof(double));
             vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
+            if (gkvec_.reduced()) vphi2_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
             #ifdef __GPU
             if (fft_.hybrid())
             {
@@ -137,6 +140,7 @@ class Hloc_operator
             }
 
             vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
+            if (gkvec_.reduced()) vphi2_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
 
             #ifdef __GPU
             if (fft_.hybrid())
@@ -153,7 +157,51 @@ class Hloc_operator
 
             hphi__.swap_forward(idx0__, n__);
 
-            for (int i = 0; i < hphi__.spl_num_swapped().local_size(); i++)
+            int first = 0;
+            /* if G-vectors are reduced, wave-functions are real and 
+             * we can transform two of them at once */
+            if (gkvec_.reduced())
+            {
+                int npairs = hphi__.spl_num_swapped().local_size() / 2;
+
+                for (int i = 0; i < npairs; i++)
+                {
+                    /* phi(G) -> phi(r) */
+                    fft_.transform<1>(gkvec_, hphi__[2 * i], hphi__[2 * i + 1]);
+                    /* multiply by effective potential */
+                    if (fft_.hybrid())
+                    {
+                        #ifdef __GPU
+                        scale_matrix_rows_gpu(fft_.local_size(), 1, fft_.buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
+                        #else
+                        TERMINATE_NO_GPU
+                        #endif
+                    }
+                    else
+                    {
+                        #pragma omp parallel for
+                        for (int ir = 0; ir < fft_.local_size(); ir++) fft_.buffer(ir) *= veff_vec_(ir, ispn__);
+
+                    }
+                    /* V(r)phi(r) -> [V*phi](G) */
+                    fft_.transform<-1>(gkvec_, &vphi_[0], &vphi2_[0]);
+
+                    /* add kinetic energy */
+                    #pragma omp parallel for
+                    for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
+                    {
+                        hphi__[2 * i][ig] = hphi__[2 * i][ig] * pw_ekin_[ig] + vphi_[ig];
+                        hphi__[2 * i + 1][ig] = hphi__[2 * i + 1][ig] * pw_ekin_[ig] + vphi2_[ig];
+                    }
+                }
+                
+                /* check if we have to do last wave-function which had no pair */
+                first = (hphi__.spl_num_swapped().local_size() % 2) ? hphi__.spl_num_swapped().local_size() - 1
+                                                                    : hphi__.spl_num_swapped().local_size();
+            }
+            
+            /* if we don't have G-vector reductions, first = 0 and we start a normal loop */
+            for (int i = first; i < hphi__.spl_num_swapped().local_size(); i++)
             {
                 /* phi(G) -> phi(r) */
                 fft_.transform<1>(gkvec_, hphi__[i]);
