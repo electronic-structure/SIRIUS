@@ -49,7 +49,8 @@ void Density::augment(K_set& ks__)
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric. */
     int ndm = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
-
+    
+    runtime::Timer t1("sirius::Density::augment|dm");
     /* complex density matrix */
     mdarray<double_complex, 4> density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
                                               ndm, unit_cell_.num_atoms());
@@ -73,6 +74,7 @@ void Density::augment(K_set& ks__)
     double_complex cs1 = density_matrix.checksum();
     DUMP("checksum(density_matrix): %20.14f %20.14f", cs1.real(), cs1.imag());
     #endif
+    t1.stop();
 
     /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
@@ -150,6 +152,7 @@ void Density::augment(K_set& ks__)
 
         if (ctx_.processing_unit() == CPU)
         {
+            runtime::Timer t2("sirius::Density::augment|phase_fac");
             mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), spl_gvec.local_size());
 
             #pragma omp parallel for
@@ -162,20 +165,25 @@ void Density::augment(K_set& ks__)
                     phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
                 }
             }
+            t2.stop();
 
             mdarray<double_complex, 2> dm_pw(nbf * nbf, spl_gvec.local_size());
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
             {
+                runtime::Timer t3("sirius::Density::augment|gemm");
                 linalg<CPU>::gemm(0, 0, nbf * nbf, spl_gvec.local_size(), atom_type.num_atoms(),
                                   &dm(0, 0, iv), dm.ld(), &phase_factors(0, 0), phase_factors.ld(),
                                   &dm_pw(0, 0), dm.ld());
+                t3.stop();
 
                 #ifdef __PRINT_OBJECT_CHECKSUM
                 auto cs = dm_pw.checksum();
                 ctx_.comm().allreduce(&cs, 1);
                 DUMP("checksum(dm_pw) : %18.10f %18.10f", cs.real(), cs.imag());
                 #endif
+
+                runtime::Timer t4("sirius::Density::augment|sum");
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
                 {
@@ -202,6 +210,7 @@ void Density::augment(K_set& ks__)
                     }
                     rho_vec[iv]->f_pw(ig) += z;
                 }
+                t4.stop();
             }
         }
 
@@ -273,6 +282,7 @@ void Density::augment(K_set& ks__)
     //    std::cout << "-------------------------------------------" << std::endl;
     //}
     
+    runtime::Timer t5("sirius::Density::augment|mpi");
     for (auto e: rho_vec)
     {
         ctx_.comm().allgather(&e->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
@@ -282,6 +292,7 @@ void Density::augment(K_set& ks__)
         DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
         #endif
     }
+    t5.stop();
 
     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++)
         ctx_.augmentation_op(iat).dismiss();
