@@ -140,6 +140,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     /* number of newly added basis functions */
     int n = num_bands;
+
+    #if (__VERBOSITY > 2)
+    if (kp__->comm().rank() == 0)
+    {
+        DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
+    }
+    #endif
     
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
@@ -163,7 +170,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0)
         {
-            DUMP("iterative step: %i, tolerance: %18.12f", k, ctx_.iterative_solver_tolerance());
+            DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%18.12f, diff=%18.10f", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
         #endif
@@ -201,6 +208,12 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
             }
             else /* otherwise, set Psi as a new trial basis */
             {
+                #if (__VERBOSITY > 2)
+                if (kp__->comm().rank() == 0)
+                {
+                    DUMP("subspace size limit reached");
+                }
+                #endif
                 hmlt_old.zero();
                 ovlp_old.zero();
                 for (int i = 0; i < num_bands; i++)
