@@ -67,6 +67,38 @@ int Band::residuals(K_point* kp__,
         opsi__.transform_from<T>(ophi__, N__, evec_tmp, n);
 
         residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__, res_norm);
+
+        int nmax = n;
+        n = 0;
+        for (int i = 0; i < nmax; i++)
+        {
+            /* take the residual if it's norm is above the threshold */
+            if (res_norm[i] > 1e-8)
+            {
+                /* shift unconverged residuals to the beginning of array */
+                if (n != i)
+                {
+                    switch (ctx_.processing_unit())
+                    {
+                        case CPU:
+                        {
+                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_gvec_loc() * sizeof(double_complex));
+                            break;
+                        }
+                        case GPU:
+                        {
+                            #ifdef __GPU
+                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.coeffs().at<GPU>(0, i), res__.num_gvec_loc());
+                            #else
+                            TERMINATE_NO_GPU
+                            #endif
+                            break;
+                        }
+                    }
+                }
+                n++;
+            }
+        }
     }
     else
     {

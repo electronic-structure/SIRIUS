@@ -126,7 +126,7 @@ class Eigenproblem_lapack: public Eigenproblem
 
     public:
 
-        Eigenproblem_lapack(double abstol__ = -1) : abstol_(abstol__)
+        Eigenproblem_lapack(double abstol__ = 1e-12) : abstol_(abstol__)
         {
         }
 
@@ -324,14 +324,14 @@ class Eigenproblem_magma: public Eigenproblem
 
             int nt = omp_get_max_threads();
             
-            magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
+            magma_zhegvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
             if (nt != omp_get_max_threads())
             {
                 TERMINATE("magma has changed the number of threads");
             }
             
-            for (int i = 0; i < nevec; i++) std::memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(double_complex));
+            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
 
             return 0;
         }

@@ -282,7 +282,7 @@ class Band
             {
                 case ev_lapack:
                 {
-                    gen_evp_solver_ = new Eigenproblem_lapack(0.0);
+                    gen_evp_solver_ = new Eigenproblem_lapack(1e-12);
                     break;
                 }
                 case ev_scalapack:
