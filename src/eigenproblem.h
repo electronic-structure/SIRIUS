@@ -553,22 +553,17 @@ class Eigenproblem_scalapack: public Eigenproblem
             linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
 
             int32_t descb[9];
-            linalg_base::descinit(descb, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldb); 
+            linalg_base::descinit(descb, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldb);
 
             int32_t descz[9];
-            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz); 
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
+            
+            int32_t lwork = -1;
+            int32_t liwork = -1;
 
-            std::vector<int32_t> work_sizes = get_work_sizes_gevp(matrix_size, std::max(bs_row_, bs_col_), 
-                                                                  num_ranks_row_, num_ranks_col_, blacs_context_);
-            
-            std::vector<double> work(work_sizes[0]);
-            std::vector<int32_t> iwork(work_sizes[2]);
-            
-            std::vector<int32_t> ifail(matrix_size);
-            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
-            std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
-            std::vector<double> w(matrix_size);
-            
+            double work1;
+            int32_t iwork1;
+
             double orfac = 1e-6;
             int32_t ione = 1;
             
@@ -577,9 +572,25 @@ class Eigenproblem_scalapack: public Eigenproblem
             double d1;
             int32_t info;
 
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
+            std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
+            std::vector<double> w(matrix_size);
+            
+            /* work size query */
             FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &work_sizes[0], 
-                             &iwork[0], &work_sizes[2], &ifail[0], &iclustr[0], &gap[0], &info, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
+                             &iwork1, &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
+            
+            lwork = static_cast<int32_t>(work1 + 1024); 
+            liwork = iwork1 + 1024;
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+            
+            FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
             if (info)
