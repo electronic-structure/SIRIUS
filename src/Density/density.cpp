@@ -152,18 +152,15 @@ Density::Density(Simulation_context& ctx__)
         limits.second = std::max(limits.second, fft_grid.limits(x).second); 
     }
 
-    splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
     phase_factors_ = mdarray<double_complex, 3>(3, limits, ctx_.unit_cell().num_atoms());
 
     #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
+    for (int i = limits.first; i <= limits.second; i++)
     {
-        int ig = spl_gvec[igloc];
-        auto G = ctx_.gvec()[ig];
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++)
         {
             auto pos = unit_cell_.atom(ia).position();
-            for (int x: {0, 1, 2}) phase_factors_(x, G[x], ia) = std::exp(double_complex(0.0, twopi * (G[x] * pos[x])));
+            for (int x: {0, 1, 2}) phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
         }
     }
 }
