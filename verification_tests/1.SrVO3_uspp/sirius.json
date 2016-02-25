@@ -9,8 +9,9 @@
     "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
     "iterative_solver" : {
-        "tolerance" : 1e-2,
-        "num_steps" : 20,
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 12,
         "subspace_size" : 4,
         "type" : "davidson",
         "converge_by_energy" : 1

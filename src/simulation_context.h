@@ -263,12 +263,12 @@ class Simulation_context: public Simulation_parameters
 
         inline void set_iterative_solver_tolerance(double tolerance__)
         {
-            iterative_solver_input_section_.tolerance_ = tolerance__;
+            iterative_solver_input_section_.energy_tolerance_ = tolerance__;
         }
 
         inline double iterative_solver_tolerance() const
         {
-            return iterative_solver_input_section_.tolerance_;
+            return iterative_solver_input_section_.energy_tolerance_;
         }
 
         inline ev_solver_t std_evp_solver_type() const

@@ -186,27 +186,27 @@ struct Mixer_input_section
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
+    std::string type_;
     int num_steps_;
     int subspace_size_;
-    double tolerance_;
-    std::string type_;
-    int converge_by_energy_;
+    double energy_tolerance_;
+    double residual_tolerance_;
+    int converge_by_energy_; // TODO: rename, this is meaningless
     int converge_occupied_;
     int min_num_res_;
-    double min_res_norm_;
     int real_space_prj_;
     double R_mask_scale_;
     double mask_alpha_;
 
     Iterative_solver_input_section() 
-        : num_steps_(20),
+        : type_("davidson"),
+          num_steps_(20),
           subspace_size_(4),
-          tolerance_(1e-6),
-          type_("davidson"),
+          energy_tolerance_(1e-6),
+          residual_tolerance_(1e-6),
           converge_by_energy_(1),
           converge_occupied_(1),
           min_num_res_(0),
-          min_res_norm_(1e-8),
           real_space_prj_(0),
           R_mask_scale_(1.5),
           mask_alpha_(3)
@@ -215,14 +215,14 @@ struct Iterative_solver_input_section
 
     void read(JSON_tree const& parser)
     {
+        type_               = parser["iterative_solver"]["type"].get(type_);
         num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
         subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
-        tolerance_          = parser["iterative_solver"]["tolerance"].get(tolerance_);
-        type_               = parser["iterative_solver"]["type"].get(type_);
+        energy_tolerance_   = parser["iterative_solver"]["energy_tolerance"].get(energy_tolerance_);
+        residual_tolerance_ = parser["iterative_solver"]["residual_tolerance"].get(residual_tolerance_);
         converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
         converge_occupied_  = parser["iterative_solver"]["converge_occupied"].get(converge_occupied_);
         min_num_res_        = parser["iterative_solver"]["min_num_res"].get(min_num_res_);
-        min_res_norm_       = parser["iterative_solver"]["min_res_norm"].get(min_res_norm_);
         real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
         R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
         mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);

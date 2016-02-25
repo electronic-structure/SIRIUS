@@ -32,13 +32,12 @@ int Band::residuals(K_point* kp__,
         std::vector<double> eval_tmp(num_bands__);
 
         /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-        double tol = ctx_.iterative_solver_tolerance();
         for (int i = 0; i < num_bands__; i++)
         {
             bool take_res = true;
             if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) take_res = false;
 
-            if (take_res && std::abs(eval__[i] - eval_old__[i]) > tol)
+            if (take_res && std::abs(eval__[i] - eval_old__[i]) > itso.energy_tolerance_)
             {
                 std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(T));
                 eval_tmp[n++] = eval__[i];
@@ -73,7 +72,7 @@ int Band::residuals(K_point* kp__,
         for (int i = 0; i < nmax; i++)
         {
             /* take the residual if it's norm is above the threshold */
-            if (res_norm[i] > itso.min_res_norm_)
+            if (res_norm[i] > itso.residual_tolerance_)
             {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i)
@@ -121,7 +120,7 @@ int Band::residuals(K_point* kp__,
             if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) take_res = false;
 
             /* take the residual if it's norm is above the threshold */
-            if (take_res && res_norm[i] > ctx_.iterative_solver_tolerance())
+            if (take_res && res_norm[i] > itso.residual_tolerance_)
             {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i)
