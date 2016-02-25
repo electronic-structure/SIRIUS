@@ -155,14 +155,27 @@ void Density::augment(K_set& ks__)
             runtime::Timer t2("sirius::Density::augment|phase_fac");
             mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), spl_gvec.local_size());
 
+            //#pragma omp parallel for
+            //for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
+            //{
+            //    int ig = spl_gvec[igloc];
+            //    for (int i = 0; i < atom_type.num_atoms(); i++)
+            //    {
+            //        int ia = atom_type.atom_id(i);
+            //        phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
+            //    }
+            //}
             #pragma omp parallel for
             for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
             {
                 int ig = spl_gvec[igloc];
+                auto G = ctx_.gvec()[ig];
                 for (int i = 0; i < atom_type.num_atoms(); i++)
                 {
                     int ia = atom_type.atom_id(i);
-                    phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
+                    phase_factors(i, igloc) = std::conj(phase_factors_(0, G[0], ia) *
+                                                        phase_factors_(1, G[1], ia) *
+                                                        phase_factors_(2, G[2], ia));
                 }
             }
             t2.stop();
