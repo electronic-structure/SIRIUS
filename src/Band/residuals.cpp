@@ -73,7 +73,7 @@ int Band::residuals(K_point* kp__,
         for (int i = 0; i < nmax; i++)
         {
             /* take the residual if it's norm is above the threshold */
-            if (res_norm[i] > 1e-8)
+            if (res_norm[i] > itso.min_res_norm_)
             {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i)
@@ -99,6 +99,12 @@ int Band::residuals(K_point* kp__,
                 n++;
             }
         }
+        #if (__VERBOSITY > 2)
+        if (kp__->comm().rank() == 0)
+        {
+            DUMP("initial and final number of residuals : %i %i", nmax, n);
+        }
+        #endif
     }
     else
     {

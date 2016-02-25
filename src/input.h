@@ -193,6 +193,7 @@ struct Iterative_solver_input_section
     int converge_by_energy_;
     int converge_occupied_;
     int min_num_res_;
+    double min_res_norm_;
     int real_space_prj_;
     double R_mask_scale_;
     double mask_alpha_;
@@ -205,6 +206,7 @@ struct Iterative_solver_input_section
           converge_by_energy_(1),
           converge_occupied_(1),
           min_num_res_(0),
+          min_res_norm_(1e-8),
           real_space_prj_(0),
           R_mask_scale_(1.5),
           mask_alpha_(3)
@@ -220,6 +222,7 @@ struct Iterative_solver_input_section
         converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
         converge_occupied_  = parser["iterative_solver"]["converge_occupied"].get(converge_occupied_);
         min_num_res_        = parser["iterative_solver"]["min_num_res"].get(min_num_res_);
+        min_res_norm_       = parser["iterative_solver"]["min_res_norm"].get(min_res_norm_);
         real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
         R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
         mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);

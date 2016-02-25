@@ -159,6 +159,14 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
         /* solve generalized eigen-value problem with the size N */
         diag_h_o<T>(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
+        
+        #if (__VERBOSITY > 2)
+        if (kp__->comm().rank() == 0)
+        {
+            DUMP("iterative step: %i, tolerance: %18.12f", k, ctx_.iterative_solver_tolerance());
+            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%18.12f, diff=%18.10f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+        }
+        #endif
 
         /* check if occupied bands have converged */
         bool occ_band_converged = true;
