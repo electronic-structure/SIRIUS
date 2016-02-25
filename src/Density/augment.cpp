@@ -187,7 +187,8 @@ void Density::augment(K_set& ks__)
 
             int bs = 16;
             int nb = spl_gvec.local_size() / bs;
-            int nr = spl_gvec.local_size() - bs * nb;
+            //int nr = spl_gvec.local_size() - bs * nb;
+            int nr = spl_gvec.local_size();
 
             mdarray<double_complex, 3> blk_dm_pw(bs, nbf * (nbf + 1) / 2, omp_get_max_threads());
             mdarray<double, 3> blk_q_pw(nbf * (nbf + 1) / 2, bs, omp_get_max_threads());
@@ -238,58 +239,58 @@ void Density::augment(K_set& ks__)
                     rho_vec[iv]->f_pw(ig) += z;
                 }
 
-                #pragma omp parallel
-                {
-                    int tid = omp_get_thread_num();
-                    #pragma omp for
-                    for (int ib = 0; ib < nb; ib++)
-                    {
-                        for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++)
-                        {
-                            for (int i = 0; i < bs; i++)
-                            {
-                                blk_dm_pw(i, idx12, tid) = dm_pw(ib * bs + i, idx12);
-                            }
-                        }
-                                
-                        for (int i = 0; i < bs; i++)
-                        {
-                            for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++)
-                            {
-                                blk_q_pw(idx12, i, tid) = ctx_.augmentation_op(iat).q_pw(idx12, ib * bs + i).real();
-                            }
-                        }
+                //#pragma omp parallel
+                //{
+                //    int tid = omp_get_thread_num();
+                //    #pragma omp for
+                //    for (int ib = 0; ib < nb; ib++)
+                //    {
+                //        for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++)
+                //        {
+                //            for (int i = 0; i < bs; i++)
+                //            {
+                //                blk_dm_pw(i, idx12, tid) = dm_pw(ib * bs + i, idx12);
+                //            }
+                //        }
+                //                
+                //        for (int i = 0; i < bs; i++)
+                //        {
+                //            for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++)
+                //            {
+                //                blk_q_pw(idx12, i, tid) = ctx_.augmentation_op(iat).q_pw(idx12, ib * bs + i).real();
+                //            }
+                //        }
 
-                        for (int i = 0; i < bs; i++)
-                        {
-                            int ig = gvec_global_offset + ib * bs + i;
+                //        for (int i = 0; i < bs; i++)
+                //        {
+                //            int ig = gvec_global_offset + ib * bs + i;
 
-                            double_complex z(0, 0);
+                //            double_complex z(0, 0);
 
-                            /* remember that dm_pw is not a Hermitian matrix in xi1,xi2 indices */
-                            for (int xi2 = 0; xi2 < nbf; xi2++)
-                            {
-                                int idx12 = xi2 * (xi2 + 1) / 2;
+                //            /* remember that dm_pw is not a Hermitian matrix in xi1,xi2 indices */
+                //            for (int xi2 = 0; xi2 < nbf; xi2++)
+                //            {
+                //                int idx12 = xi2 * (xi2 + 1) / 2;
 
-                                /* add diagonal term */
-                                /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                                z += blk_dm_pw(i, idx12 + xi2, tid) * blk_q_pw(idx12 + xi2, i, tid);
+                //                /* add diagonal term */
+                //                /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
+                //                z += blk_dm_pw(i, idx12 + xi2, tid) * blk_q_pw(idx12 + xi2, i, tid);
 
-                                /* add non-diagonal terms */
-                                for (int xi1 = 0; xi1 < xi2; xi1++)
-                                {
-                                    //double_complex q = ctx_.augmentation_op(iat).q_pw(idx12, igloc);
+                //                /* add non-diagonal terms */
+                //                for (int xi1 = 0; xi1 < xi2; xi1++)
+                //                {
+                //                    //double_complex q = ctx_.augmentation_op(iat).q_pw(idx12, igloc);
 
-                                    /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                                    //z += (dm_pw(igloc, xi2 * nbf + xi1) * q + dm_pw(igloc, xi1 * nbf + xi2) * std::conj(q));
-                                    z += blk_dm_pw(i, idx12 + xi1, tid) * 2.0 * blk_q_pw(idx12 + xi1, i, tid);
-                                }
-                            }
-                            rho_vec[iv]->f_pw(ig) += z;
-                        }
+                //                    /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+                //                    //z += (dm_pw(igloc, xi2 * nbf + xi1) * q + dm_pw(igloc, xi1 * nbf + xi2) * std::conj(q));
+                //                    z += blk_dm_pw(i, idx12 + xi1, tid) * 2.0 * blk_q_pw(idx12 + xi1, i, tid);
+                //                }
+                //            }
+                //            rho_vec[iv]->f_pw(ig) += z;
+                //        }
 
-                    }
-                }
+                //    }
+                //}
                     
                 
 

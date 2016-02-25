@@ -119,6 +119,9 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* generate new density from the occupied wave-functions */
         density_->generate(*kset_);
 
+        /* compute new total energy for a new density */
+        double etot = total_energy();
+
         if (use_symmetry_) symmetrize_density();
 
         if (!ctx_.full_potential())
@@ -181,8 +184,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         if (ctx_.full_potential()) rms = potential_->mix();
 
-        /* compute new total energy for a new density */
-        double etot = total_energy();
         
         /* write some information */
         print_info();
