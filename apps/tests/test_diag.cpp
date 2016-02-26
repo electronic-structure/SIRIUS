@@ -41,19 +41,19 @@ void test_diag(int N, int nrow, int ncol, int bs, std::string name)
     }
 
     //linalg<CPU>::gemm(2, 0, N, N, N, double_complex(1, 0), Z, Z, double_complex(0, 0), B);
-    ////A.zero();
+    //A.zero();
     //B.zero();
 
     for (int i = 0; i < N; i++)
     {
         A.set(i, i, double_complex(10.0 * i / N + 1, 0));
-        B.set(i, i, double_complex(1.0 * i / N + 1, 0));
+        B.set(i, i, double_complex(1, 0));
     }
 
     for (int i = 1; i < N; i++)
     {
-        B.set(i, i - 1, 1);
-        B.set(i - 1, i, 1);
+        B.set(i, i - 1, 0.5);
+        B.set(i - 1, i, 0.5);
     }
 
     std::vector<double> eval(N);
@@ -70,7 +70,15 @@ void test_diag(int N, int nrow, int ncol, int bs, std::string name)
     }
     else if (name == "scalapack")
     {
-        solver = new Eigenproblem_scalapack(blacs_grid, nrow, ncol); 
+        solver = new Eigenproblem_scalapack(blacs_grid, bs, bs);
+    }
+    else if (name == "elpa1")
+    {
+        solver = new Eigenproblem_elpa1(blacs_grid, bs);
+    }
+    else if (name == "elpa2")
+    {
+        solver = new Eigenproblem_elpa2(blacs_grid, bs);
     }
     else
     {
