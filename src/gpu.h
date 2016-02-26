@@ -152,9 +152,6 @@ void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
 void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
-void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
-                                  void* b, int32_t ldb, double* eval);
-
 void magma_init_wrapper();
 
 void magma_finalize_wrapper();

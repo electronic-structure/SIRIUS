@@ -132,6 +132,7 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
 {
     runtime::Timer t("sirius::Periodic_function::add");
 
+    #pragma omp parallel for
     for (int irloc = 0; irloc < fft_.local_size(); irloc++)
         f_rg_(irloc) += g->f_rg(irloc);
     
@@ -145,11 +146,22 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
 template <typename T>
 inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
 {
+    runtime::Timer t("sirius::Periodic_function::integrate");
+
     it_val = 0.0;
     
     if (!parameters_.full_potential())
     {
-        for (int irloc = 0; irloc < fft_.local_size(); irloc++) it_val += f_rg_(irloc);
+        #pragma omp parallel
+        {
+            T it_val_t = 0;
+            
+            #pragma omp for
+            for (int irloc = 0; irloc < fft_.local_size(); irloc++) it_val_t += f_rg_(irloc);
+
+            #pragma omp critical
+            it_val += it_val_t;
+        }
     }
     else
     {
@@ -218,6 +230,8 @@ size_t Periodic_function<T>::size()
 template <typename T>
 size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
 {
+    runtime::Timer t("sirius::Periodic_function::pack");
+
     size_t n = 0;
     
     if (parameters_.full_potential()) 
@@ -239,6 +253,8 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
 template <typename T>
 size_t Periodic_function<T>::unpack(T const* array__)
 {
+    runtime::Timer t("sirius::Periodic_function::unpack");
+
     size_t n = 0;
 
     if (parameters_.full_potential()) 
