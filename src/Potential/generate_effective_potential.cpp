@@ -59,14 +59,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     /* add local ionic potential to the effective potential */
     effective_potential_->add(local_potential_);
 
-    if (ctx_.gvec().reduced())
-    {
-        generate_D_operator_matrix_real();
-    }
-    else
-    {
-        generate_D_operator_matrix();
-    }
+    generate_D_operator_matrix();
 }
 
 };

@@ -396,7 +396,6 @@ class Potential
          *  \f]
          */
         void generate_D_operator_matrix();
-        void generate_D_operator_matrix_real();
 
         void check_potential_continuity_at_mt();
 

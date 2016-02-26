@@ -73,6 +73,8 @@ class Simulation_parameters
         bool uj_correction_;
 
         bool gamma_point_;
+
+        bool reduce_gvec_;
     
         /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
@@ -116,6 +118,7 @@ class Simulation_parameters
             so_correction_       = false;
             uj_correction_       = false;
             gamma_point_         = false;
+            reduce_gvec_         = false;
             mpi_grid_dims_       = {1};
             cyclic_block_size_   = 32;
             processing_unit_     = CPU;
@@ -183,6 +186,7 @@ class Simulation_parameters
             set_esm_type(esm);
 
             fft_mode_ = parser["fft_mode"].get(fft_mode_);
+            reduce_gvec_ = parser["reduce_gvec"].get<int>(reduce_gvec_);
         }
 
     public:

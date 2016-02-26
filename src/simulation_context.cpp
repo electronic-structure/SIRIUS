@@ -27,7 +27,7 @@ void Simulation_context::init_fft()
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
-                 fft_->comm(), mpi_grid_fft_->dimension_size(1), true, false);
+                 fft_->comm(), mpi_grid_fft_->dimension_size(1), true, reduce_gvec_);
 
     if (!full_potential())
     {
@@ -36,7 +36,7 @@ void Simulation_context::init_fft()
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), true, false);
+                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), true, reduce_gvec_);
     }
 }
 

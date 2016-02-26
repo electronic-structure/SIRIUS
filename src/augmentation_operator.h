@@ -16,6 +16,8 @@ class Augmentation_operator
         mdarray<double_complex, 2> q_mtrx_;
 
         mdarray<double_complex, 2> q_pw_;
+
+        mdarray<double, 2> q_pw_real_t_;
         
         /// Get Q-operator radial functions.
         mdarray<double, 3> get_radial_functions()
@@ -158,6 +160,7 @@ class Augmentation_operator
 
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double_complex, 2>(nbf * (nbf + 1) / 2, spl_num_gvec.local_size());
+            q_pw_real_t_ = mdarray<double, 2>(2 * spl_num_gvec.local_size(), nbf * (nbf + 1) / 2);
             #pragma omp parallel for
             for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
             {
@@ -185,6 +188,8 @@ class Augmentation_operator
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
         
                         q_pw_(idx12, igloc) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                        q_pw_real_t_(2 * igloc, idx12)     = q_pw_(idx12, igloc).real();
+                        q_pw_real_t_(2 * igloc + 1, idx12) = q_pw_(idx12, igloc).imag();
                     }
                 }
             }
@@ -248,6 +253,11 @@ class Augmentation_operator
         mdarray<double_complex, 2> const& q_pw() const
         {
             return q_pw_;
+        }
+
+        mdarray<double, 2> const& q_pw_real_t() const
+        {
+            return q_pw_real_t_;
         }
 
         double_complex const& q_pw(int idx__, int ig__) const
