@@ -115,11 +115,11 @@ class Gvec
                     std::vector<int> zcol;
                     
                     /* in general case take z in [0, Nz) */ 
-                    int zmax = fft_grid_.size(2);
-                    /* in case of G-vector reduction take z in [0, Nz/2) for {x=0,y=0} stick */
+                    int zmax = fft_grid_.size(2) - 1;
+                    /* in case of G-vector reduction take z in [0, Nz/2] for {x=0,y=0} stick */
                     if (reduce_gvec_ && !i && !j) zmax = fft_grid_.limits(2).second;
                     /* loop over z-coordinates of FFT grid */ 
-                    for (int iz = 0; iz < zmax; iz++)
+                    for (int iz = 0; iz <= zmax; iz++)
                     {
                         /* get z-coordinate of G-vector */
                         int k = (iz > fft_grid_.limits(2).second) ? iz - fft_grid_.size(2) : iz;
@@ -453,6 +453,11 @@ class Gvec
         inline mdarray<int, 2> const& z_columns_pos() const
         {
             return z_columns_pos_;
+        }
+
+        inline FFT3D_grid const& fft_grid() const
+        {
+            return fft_grid_;
         }
 };
 

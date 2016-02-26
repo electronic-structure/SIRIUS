@@ -143,8 +143,6 @@ class Density
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
 
-        mdarray<double_complex, 3> phase_factors_;
-
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
          *  \f[

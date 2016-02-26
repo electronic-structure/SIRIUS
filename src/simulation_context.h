@@ -87,6 +87,8 @@ class Simulation_context: public Simulation_parameters
 
         ev_solver_t gen_evp_solver_type_;
 
+        mdarray<double_complex, 3> phase_factors_;
+
         double time_active_;
         
         bool initialized_;
@@ -290,7 +292,10 @@ class Simulation_context: public Simulation_parameters
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
             auto G = gvec_[ig__];
-            return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
+            //return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
+            return phase_factors_(0, G[0], ia__) *
+                   phase_factors_(1, G[1], ia__) *
+                   phase_factors_(2, G[2], ia__);
         }
 
         //== void write_json_output()

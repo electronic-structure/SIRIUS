@@ -143,26 +143,6 @@ Density::Density(Simulation_context& ctx__)
             TERMINATE("wrong mixer type");
         }
     }
-
-    auto& fft_grid = ctx_.fft().grid();
-    std::pair<int, int> limits(0, 0);
-    for (int x: {0, 1, 2})
-    {
-        limits.first = std::min(limits.first, fft_grid.limits(x).first); 
-        limits.second = std::max(limits.second, fft_grid.limits(x).second); 
-    }
-
-    phase_factors_ = mdarray<double_complex, 3>(3, limits, ctx_.unit_cell().num_atoms());
-
-    #pragma omp parallel for
-    for (int i = limits.first; i <= limits.second; i++)
-    {
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++)
-        {
-            auto pos = unit_cell_.atom(ia).position();
-            for (int x: {0, 1, 2}) phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
-        }
-    }
 }
 
 Density::~Density()

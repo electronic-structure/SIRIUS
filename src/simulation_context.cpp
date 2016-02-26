@@ -36,7 +36,7 @@ void Simulation_context::init_fft()
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), false, false);
+                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), true, false);
     }
 }
 
@@ -75,22 +75,38 @@ void Simulation_context::initialize()
     MEMORY_USAGE_INFO();
     #endif
 
-    if (comm_.rank() == 0)
+    //if (comm_.rank() == 0)
+    //{
+    //    unit_cell_.write_cif();
+    //    unit_cell_.write_json();
+    //}
+
+    if (unit_cell_.num_atoms() != 0)
     {
-        unit_cell_.write_cif();
-        unit_cell_.write_json();
+        unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
+        if (!full_potential()) unit_cell_.symmetry()->check_gvec_symmetry(gvec_coarse_);
     }
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    auto& fft_grid = fft().grid();
+    std::pair<int, int> limits(0, 0);
+    for (int x: {0, 1, 2})
+    {
+        limits.first = std::min(limits.first, fft_grid.limits(x).first); 
+        limits.second = std::max(limits.second, fft_grid.limits(x).second); 
+    }
 
-    if (unit_cell_.num_atoms() != 0) unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
+    phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms());
+
+    #pragma omp parallel for
+    for (int i = limits.first; i <= limits.second; i++)
+    {
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            auto pos = unit_cell_.atom(ia).position();
+            for (int x: {0, 1, 2}) phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+        }
+    }
     
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
-
     if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, gvec_, comm_);
 
     if (iterative_solver_input_section().real_space_prj_) 

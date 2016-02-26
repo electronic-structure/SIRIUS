@@ -299,24 +299,31 @@ void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
             auto gv = gvec__[ig];
             /* apply symmetry operation to the G-vector */
             auto gv_rot = transpose(sm) * gv;
-            //for (int x = 0; x < 3; x++)
-            //{
-            //    auto limits = gvec__.grid_limits(x);
-            //    /* check boundaries */
-            //    if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
-            //    {
-            //        std::stringstream s;
-            //        s << "rotated G-vector is outside of grid limits" << std::endl
-            //          << "original G-vector: " << gv << std::endl
-            //          << "rotation matrix: " << std::endl
-            //          << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
-            //          << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
-            //          << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
-            //          << "rotated G-vector: " << gv_rot;
-            //          TERMINATE(s);
-            //    }
-            //}
+            /* check limits */
+            for (int x = 0; x < 3; x++)
+            {
+                auto limits = gvec__.fft_grid().limits(x);
+                /* check boundaries */
+                if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
+                {
+                    std::stringstream s;
+                    s << "rotated G-vector is outside of grid limits" << std::endl
+                      << "original G-vector: " << gv << std::endl
+                      << "rotation matrix: " << std::endl
+                      << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
+                      << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
+                      << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
+                      << "rotated G-vector: " << gv_rot;
+                      TERMINATE(s);
+                }
+            }
             int ig_rot = gvec__.index_by_gvec(gv_rot);
+            /* special case where -G is equal to G */
+            if (ig_rot == -1 && gvec__.reduced())
+            {
+                gv_rot = gv_rot * (-1);
+                ig_rot = gvec__.index_by_gvec(gv_rot);
+            }
             if (ig_rot < 0 || ig_rot >= gvec__.num_gvec())
             {
                 std::stringstream s;
