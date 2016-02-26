@@ -590,10 +590,9 @@ class Eigenproblem_scalapack: public Eigenproblem
             linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
             
             int32_t lwork = -1;
-            int32_t liwork = -1;
+            int32_t liwork;
 
             double work1;
-            int32_t iwork1;
 
             double orfac = 1e-6;
             int32_t ione = 1;
@@ -611,10 +610,9 @@ class Eigenproblem_scalapack: public Eigenproblem
             /* work size query */
             FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
                              &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
-                             &iwork1, &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
+                             &liwork, &lwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
             
-            lwork = static_cast<int32_t>(work1 + 1024); 
-            liwork = iwork1 + 1024;
+            lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
             
             std::vector<double> work(lwork);
             std::vector<int32_t> iwork(liwork);
