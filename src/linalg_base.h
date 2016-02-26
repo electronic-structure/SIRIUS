@@ -341,8 +341,8 @@ class linalg_base
         }
 
         static void pdtran(ftn_int m, ftn_int n, ftn_double alpha, ftn_double* A, ftn_int ia, ftn_int ja,
-                            ftn_int const* desca, ftn_double beta, ftn_double* C, ftn_int ic, ftn_int jc,
-                            ftn_int const* descc)
+                           ftn_int const* desca, ftn_double beta, ftn_double* C, ftn_int ic, ftn_int jc,
+                           ftn_int const* descc)
         {
             FORTRAN(pdtran)(&m, &n, &alpha, A, &ia, &ja, desca, &beta, C, &ic, &jc, descc);
         }

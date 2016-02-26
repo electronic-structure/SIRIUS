@@ -1,4 +1,5 @@
 subroutine elpa_cholesky_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_compute
 use elpa1
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
@@ -10,6 +11,7 @@ logical success
 end subroutine
 
 subroutine elpa_cholesky_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_compute
 use elpa1
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
@@ -22,6 +24,7 @@ end subroutine
 
 
 subroutine elpa_invert_trm_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_compute
 use elpa1
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
@@ -33,6 +36,7 @@ logical success
 end subroutine
 
 subroutine elpa_invert_trm_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_compute
 use elpa1
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
@@ -43,8 +47,8 @@ logical success
 
 end subroutine
 
-
 subroutine elpa_mult_ah_b_complex(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
+use elpa1_compute
 use elpa1
 implicit none
 character*1 uplo_a, uplo_c
@@ -56,6 +60,7 @@ complex*16 a(lda,*), b(ldb,*), c(ldc,*)
 end subroutine
 
 subroutine elpa_mult_at_b_real(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
+use elpa1_compute
 use elpa1
 implicit none
 character*1 uplo_a, uplo_c

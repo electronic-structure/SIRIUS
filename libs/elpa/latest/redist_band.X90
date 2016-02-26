@@ -1,4 +1,53 @@
-
+#if 0
+!    This file is part of ELPA.
+!
+!    The ELPA library was originally created by the ELPA consortium,
+!    consisting of the following organizations:
+!
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
+!    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
+!      Informatik,
+!    - Technische Universität München, Lehrstuhl für Informatik mit
+!      Schwerpunkt Wissenschaftliches Rechnen ,
+!    - Fritz-Haber-Institut, Berlin, Abt. Theorie,
+!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn,
+!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition,
+!      and
+!    - IBM Deutschland GmbH
+!
+!
+!    More information can be found here:
+!    http://elpa.mpcdf.mpg.de/
+!
+!    ELPA is free software: you can redistribute it and/or modify
+!    it under the terms of the version 3 of the license of the
+!    GNU Lesser General Public License as published by the Free
+!    Software Foundation.
+!
+!    ELPA is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!    GNU Lesser General Public License for more details.
+!
+!    You should have received a copy of the GNU Lesser General Public License
+!    along with ELPA.  If not, see <http://www.gnu.org/licenses/>
+!
+!    ELPA reflects a substantial effort on the part of the original
+!    ELPA consortium, and we ask you to respect the spirit of the
+!    license that we chose: i.e., please contribute any changes you
+!    may have back to the original ELPA library distribution, and keep
+!    any derivatives of ELPA under the same license that we chose for
+!    the original distribution, the GNU Lesser General Public License.
+!
+!
+! ELPA1 -- Faster replacements for ScaLAPACK symmetric eigenvalue routines
+!
+! Copyright of the original code rests with the authors inside the ELPA
+! consortium. The copyright of any additional modifications shall rest
+! with their original authors, but shall adhere to the licensing terms
+! distributed along with the original code in the file "COPYING".
+#endif
 ! --------------------------------------------------------------------------------------------------
 ! redist_band: redistributes band from 2D block cyclic form to 1D band
 #if REALCASE==1
@@ -14,37 +63,38 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
 #ifdef HAVE_DETAILED_TIMINGS
    use timings
 #endif
+   use precision
    implicit none
 
-   integer, intent(in)     :: lda, na, nblk, nbw, matrixCols, mpi_comm_rows, mpi_comm_cols, mpi_comm
+   integer(kind=ik), intent(in)     :: lda, na, nblk, nbw, matrixCols, mpi_comm_rows, mpi_comm_cols, mpi_comm
 #if REALCASE==1
-   real*8, intent(in)      :: r_a(lda, matrixCols)
+   real(kind=rk), intent(in)        :: r_a(lda, matrixCols)
 #endif
 #if COMPLEXCASE==1
-   complex*16, intent(in)  :: c_a(lda, matrixCols)
+   complex(kind=ck), intent(in)     :: c_a(lda, matrixCols)
 #endif
 
 
 #if REALCASE==1
-   real*8, intent(out)     :: r_ab(:,:)
-#endif
-
-#if COMPLEXCASE==1
-   complex*16, intent(out) :: c_ab(:,:)
-#endif
-
-   integer, allocatable    :: ncnt_s(:), nstart_s(:), ncnt_r(:), nstart_r(:), &
-                              global_id(:,:), global_id_tmp(:,:), block_limits(:)
-#if REALCASE==1
-   real*8, allocatable     :: r_sbuf(:,:,:), r_rbuf(:,:,:), r_buf(:,:)
+   real(kind=rk), intent(out)       :: r_ab(:,:)
 #endif
 
 #if COMPLEXCASE==1
-   complex*16, allocatable :: c_sbuf(:,:,:), c_rbuf(:,:,:), c_buf(:,:)
+   complex(kind=ck), intent(out)    :: c_ab(:,:)
 #endif
-   integer                 :: i, j, my_pe, n_pes, my_prow, np_rows, my_pcol, np_cols, &
-                              nfact, np, npr, npc, mpierr, is, js
-   integer                 :: nblocks_total, il, jl, l_rows, l_cols, n_off
+
+   integer(kind=ik), allocatable    :: ncnt_s(:), nstart_s(:), ncnt_r(:), nstart_r(:), &
+                                       global_id(:,:), global_id_tmp(:,:), block_limits(:)
+#if REALCASE==1
+   real(kind=rk), allocatable       :: r_sbuf(:,:,:), r_rbuf(:,:,:), r_buf(:,:)
+#endif
+
+#if COMPLEXCASE==1
+   complex(kind=ck), allocatable    :: c_sbuf(:,:,:), c_rbuf(:,:,:), c_buf(:,:)
+#endif
+   integer(kind=ik)                 :: i, j, my_pe, n_pes, my_prow, np_rows, my_pcol, np_cols, &
+                                       nfact, np, npr, npc, mpierr, is, js
+   integer(kind=ik)                 :: nblocks_total, il, jl, l_rows, l_cols, n_off
 
 #ifdef HAVE_DETAILED_TIMINGS
 #if REALCASE==1
@@ -55,7 +105,6 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
 #endif
 
 #endif
-
    call mpi_comm_rank(mpi_comm,my_pe,mpierr)
    call mpi_comm_size(mpi_comm,n_pes,mpierr)
 
@@ -63,7 +112,6 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
    call mpi_comm_size(mpi_comm_rows,np_rows,mpierr)
    call mpi_comm_rank(mpi_comm_cols,my_pcol,mpierr)
    call mpi_comm_size(mpi_comm_cols,np_cols,mpierr)
-
    ! Get global_id mapping 2D procssor coordinates to global id
 
    allocate(global_id(0:np_rows-1,0:np_cols-1))
@@ -72,6 +120,7 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
 #endif
    global_id(:,:) = 0
    global_id(my_prow, my_pcol) = my_pe
+#ifdef WITH_MPI
 #ifdef WITH_OPENMP
    global_id_tmp(:,:) = global_id(:,:)
    call mpi_allreduce(global_id_tmp, global_id, np_rows*np_cols, mpi_integer, mpi_sum, mpi_comm, mpierr)
@@ -79,7 +128,7 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
 #else
    call mpi_allreduce(mpi_in_place, global_id, np_rows*np_cols, mpi_integer, mpi_sum, mpi_comm, mpierr)
 #endif
-
+#endif
    ! Set work distribution
 
    nblocks_total = (na-1)/nbw + 1
@@ -196,6 +245,7 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
    enddo
 
    ! Exchange all data with MPI_Alltoallv
+#ifdef WITH_MPI
 
 #if REALCASE==1
     call MPI_Alltoallv(r_sbuf,ncnt_s,nstart_s,MPI_REAL8,r_rbuf,ncnt_r,nstart_r,MPI_REAL8,mpi_comm,mpierr)
@@ -204,6 +254,16 @@ subroutine redist_band_complex(c_a, lda, na, nblk, nbw, matrixCols, mpi_comm_row
     call MPI_Alltoallv(c_sbuf,ncnt_s,nstart_s,MPI_COMPLEX16,c_rbuf,ncnt_r,nstart_r,MPI_COMPLEX16,mpi_comm,mpierr)
 #endif
 
+#else /* WITH_MPI */
+
+#if REALCASE==1
+    r_rbuf = r_sbuf
+#endif
+
+#if COMPLEXCASE==1
+    c_rbuf = c_sbuf
+#endif
+#endif /* WITH_MPI */
    ! set band from receive buffer
 
    ncnt_r(:) = ncnt_r(:)/(nblk*nblk)

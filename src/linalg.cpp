@@ -448,6 +448,16 @@ void linalg<CPU>::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
 }
 
 template <>
+void linalg<CPU>::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
+                                    dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
+{
+    ia++; ja++;
+    ic++; jc++;
+
+    pdtran(m, n, 1.0, A.at<CPU>(), ia, ja, A.descriptor(), 0.0, C.at<CPU>(), ic, jc, C.descriptor());
+}
+
+template <>
 void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
                          dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
 {

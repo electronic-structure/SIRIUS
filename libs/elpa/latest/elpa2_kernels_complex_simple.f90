@@ -1,26 +1,27 @@
 !    This file is part of ELPA.
 !
-!    The ELPA library was originally created by the ELPA consortium, 
+!    The ELPA library was originally created by the ELPA consortium,
 !    consisting of the following organizations:
 !
-!    - Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG), 
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
 !    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
 !      Informatik,
 !    - Technische Universität München, Lehrstuhl für Informatik mit
-!      Schwerpunkt Wissenschaftliches Rechnen , 
-!    - Fritz-Haber-Institut, Berlin, Abt. Theorie, 
-!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn, 
-!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition, 
-!      and  
+!      Schwerpunkt Wissenschaftliches Rechnen ,
+!    - Fritz-Haber-Institut, Berlin, Abt. Theorie,
+!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn,
+!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition,
+!      and
 !    - IBM Deutschland GmbH
 !
 !
 !    More information can be found here:
-!    http://elpa.rzg.mpg.de/
+!    http://elpa.mpcdf.mpg.de/
 !
 !    ELPA is free software: you can redistribute it and/or modify
-!    it under the terms of the version 3 of the license of the 
-!    GNU Lesser General Public License as published by the Free 
+!    it under the terms of the version 3 of the license of the
+!    GNU Lesser General Public License as published by the Free
 !    Software Foundation.
 !
 !    ELPA is distributed in the hope that it will be useful,
@@ -47,29 +48,42 @@
 ! compilers this performs better than a sophisticated version with transformed and unrolled loops.
 !
 ! It should be compiled with the highest possible optimization level.
-! 
+!
 ! Copyright of the original code rests with the authors inside the ELPA
 ! consortium. The copyright of any additional modifications shall rest
 ! with their original authors, but shall adhere to the licensing terms
 ! distributed along with the original code in the file "COPYING".
 !
 ! --------------------------------------------------------------------------------------------------
+
+#include "config-f90.h"
+
 module complex_generic_simple_kernel
 
   private
   public single_hh_trafo_complex_generic_simple
 contains
   subroutine single_hh_trafo_complex_generic_simple(q, hh, nb, nq, ldq)
-
+    use precision
+#ifdef HAVE_DETAILED_TIMINGS
+    use timings
+#endif
     implicit none
 
-    integer, intent(in) :: nb, nq, ldq
-    complex*16, intent(inout) :: q(ldq,*)
-    complex*16, intent(in) :: hh(*)
+    integer(kind=ik), intent(in)    :: nb, nq, ldq
+#ifdef DESPERATELY_WANT_ASSUMED_SIZE
+    complex(kind=ck), intent(inout) :: q(ldq,*)
+    complex(kind=ck), intent(in)    :: hh(*)
+#else
+    complex(kind=ck), intent(inout) :: q(1:ldq,1:nb)
+    complex(kind=ck), intent(in)    :: hh(1:nb)
+#endif
+    integer(kind=ik)                :: i
+    complex(kind=ck)                :: h1, tau1, x(nq)
 
-    integer i
-    complex*16 h1, tau1, x(nq)
-
+#ifdef HAVE_DETAILED_TIMINGS
+    call timer%start("kernel complex generic simple: single_hh_trafo_complex_generic_simple")
+#endif
     ! Just one Householder transformation
 
     x(1:nq) = q(1:nq,1)
@@ -86,21 +100,33 @@ contains
     do i=2,nb
        q(1:nq,i) = q(1:nq,i) + x(1:nq)*hh(i)
     enddo
-
+#ifdef HAVE_DETAILED_TIMINGS
+    call timer%stop("kernel complex generic simple: single_hh_trafo_complex_generic_simple")
+#endif
   end subroutine single_hh_trafo_complex_generic_simple
 
   ! --------------------------------------------------------------------------------------------------
   subroutine double_hh_trafo_complex_generic_simple(q, hh, nb, nq, ldq, ldh)
-
+    use precision
+#ifdef HAVE_DETAILED_TIMINGS
+    use timings
+#endif
     implicit none
 
-    integer, intent(in) :: nb, nq, ldq, ldh
-    complex*16, intent(inout) :: q(ldq,*)
-    complex*16, intent(in) :: hh(ldh,*)
+    integer(kind=ik), intent(in)    :: nb, nq, ldq, ldh
+#ifdef DESPERATELY_WANT_ASSUMED_SIZE
+    complex(kind=ck), intent(inout) :: q(ldq,*)
+    complex(kind=ck), intent(in)    :: hh(ldh,*)
+#else
+    complex(kind=ck), intent(inout) :: q(1:ldq,1:nb+1)
+    complex(kind=ck), intent(in)    :: hh(1:ldh,1:2)
+#endif
+    complex(kind=ck)                :: s, h1, h2, tau1, tau2, x(nq), y(nq)
+    integer(kind=ik)                :: i
 
-    complex*16 s, h1, h2, tau1, tau2, x(nq), y(nq)
-    integer i
-
+#ifdef HAVE_DETAILED_TIMINGS
+    call timer%start("kernel complex generic simple: double_hh_trafo_complex_generic_simple")
+#endif
     ! Calculate dot product of the two Householder vectors
 
     s = conjg(hh(2,2))*1
@@ -143,6 +169,9 @@ contains
 
     q(1:nq,nb+1) = q(1:nq,nb+1) + x(1:nq)*hh(nb,1)
 
+#ifdef HAVE_DETAILED_TIMINGS
+    call timer%stop("kernel complex generic simple: double_hh_trafo_complex_generic_simple")
+#endif
   end subroutine double_hh_trafo_complex_generic_simple
 end module complex_generic_simple_kernel
 ! --------------------------------------------------------------------------------------------------

@@ -1,26 +1,27 @@
 !    This file is part of ELPA.
 !
-!    The ELPA library was originally created by the ELPA consortium, 
+!    The ELPA library was originally created by the ELPA consortium,
 !    consisting of the following organizations:
 !
-!    - Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG), 
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
 !    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
 !      Informatik,
 !    - Technische Universität München, Lehrstuhl für Informatik mit
-!      Schwerpunkt Wissenschaftliches Rechnen , 
-!    - Fritz-Haber-Institut, Berlin, Abt. Theorie, 
-!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn, 
-!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition, 
-!      and  
+!      Schwerpunkt Wissenschaftliches Rechnen ,
+!    - Fritz-Haber-Institut, Berlin, Abt. Theorie,
+!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn,
+!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition,
+!      and
 !    - IBM Deutschland GmbH
 !
 !
 !    More information can be found here:
-!    http://elpa.rzg.mpg.de/
+!    http://elpa.mpcdf.mpg.de/
 !
 !    ELPA is free software: you can redistribute it and/or modify
-!    it under the terms of the version 3 of the license of the 
-!    GNU Lesser General Public License as published by the Free 
+!    it under the terms of the version 3 of the license of the
+!    GNU Lesser General Public License as published by the Free
 !    Software Foundation.
 !
 !    ELPA is distributed in the hope that it will be useful,
@@ -44,24 +45,25 @@
 ! T upper triangle matrix
 ! assuming zero entries in matrix in upper kxk block
 subroutine qr_pdlarfb_kernel_local(m,n,k,a,lda,v,ldv,t,ldt,z,ldz)
+    use precision
     implicit none
- 
+
     ! input variables (local)
-    integer lda,ldv,ldt,ldz
-    double precision a(lda,*),v(ldv,*),t(ldt,*),z(ldz,*)
+    integer(kind=ik) :: lda,ldv,ldt,ldz
+    real(kind=rk)    :: a(lda,*),v(ldv,*),t(ldt,*),z(ldz,*)
 
     ! input variables (global)
-    integer m,n,k
+    integer(kind=ik) :: m,n,k
 
     ! local variables
-    double precision t11
-    double precision t12,t22,sum1,sum2
-    double precision t13,t23,t33,sum3
-    double precision sum4,t44
-    double precision y1,y2,y3,y4
-    double precision a1
-    integer icol,irow,v1col,v2col,v3col
-  
+    real(kind=rk)    :: t11
+    real(kind=rk)    :: t12,t22,sum1,sum2
+    real(kind=rk)    :: t13,t23,t33,sum3
+    real(kind=rk)    :: sum4,t44
+    real(kind=rk)    :: y1,y2,y3,y4
+    real(kind=rk)    :: a1
+    integer(kind=ik) :: icol,irow,v1col,v2col,v3col
+
     ! reference implementation
     if (k .eq. 1) then
         t11 = t(1,1)
@@ -98,7 +100,7 @@ subroutine qr_pdlarfb_kernel_local(m,n,k,a,lda,v,ldv,t,ldt,z,ldz)
             t13 = t(1,3)
             t12 = t(2,3)
             t11 = t(3,3)
- 
+
         do icol=1,n
             ! misusing variables for fetch of z parts
             y1 = z(v1col,icol)
@@ -127,30 +129,30 @@ subroutine qr_pdlarfb_kernel_local(m,n,k,a,lda,v,ldv,t,ldt,z,ldz)
                 t22 = t(2,2)
                 t33 = t(3,3)
                 t44 = t(4,4)
-                
+
                 sum1 = t11 * y1
                 sum2 = t22 * y2
                 sum3 = t33 * y3
                 sum4 = t44 * y4
- 
+
                 t11 = t(1,2)
                 t22 = t(2,3)
                 t33 = t(3,4)
- 
+
                 sum1 = sum1 + t11 * y2
                 sum2 = sum2 + t22 * y3
                 sum3 = sum3 + t33 * y4
-  
+
                 t11 = t(1,3)
                 t22 = t(2,4)
- 
+
                 sum1 = sum1 + t11 * y3
                 sum2 = sum2 + t22 * y4
-  
+
                 t11 = t(1,4)
                 sum1 = sum1 + t11 * y4
- 
-                ! one column of V is calculated 
+
+                ! one column of V is calculated
                 ! time to calculate A - Y * V
                 do irow=1,m ! TODO: loop unrolling
                     y1 = v(irow,1)
@@ -161,7 +163,7 @@ subroutine qr_pdlarfb_kernel_local(m,n,k,a,lda,v,ldv,t,ldt,z,ldz)
                     a1 = a(irow,icol)
 
                     a1 = a1 - y1*sum1
-                    a1 = a1 - y2*sum2 
+                    a1 = a1 - y2*sum2
                     a1 = a1 - y3*sum3
                     a1 = a1 - y4*sum4
 
@@ -178,32 +180,33 @@ subroutine qr_pdlarfb_kernel_local(m,n,k,a,lda,v,ldv,t,ldt,z,ldz)
 
 end subroutine
 subroutine qr_pdlarft_merge_kernel_local(oldk,k,t,ldt,yty,ldy)
+    use precision
     implicit none
 
     ! input variables (local)
-    integer ldt,ldy
-    double precision t(ldt,*),yty(ldy,*)
+    integer(kind=ik) :: ldt,ldy
+    real(kind=rk)    :: t(ldt,*),yty(ldy,*)
 
     ! input variables (global)
-    integer k,oldk
- 
+    integer(kind=ik) :: k,oldk
+
     ! output variables (global)
 
     ! local scalars
-    integer icol,leftk,rightk
+    integer(kind=ik) :: icol,leftk,rightk
 
     ! local scalars for optimized versions
-    integer irow
-    double precision t11
-    double precision yty1,yty2,yty3,yty4,yty5,yty6,yty7,yty8
-    double precision reg01,reg02,reg03,reg04,reg05,reg06,reg07,reg08
-    double precision final01,final02,final03,final04,final05,final06,final07,final08
+    integer(kind=ik) :: irow
+    real(kind=rk)    :: t11
+    real(kind=rk)    :: yty1,yty2,yty3,yty4,yty5,yty6,yty7,yty8
+    real(kind=rk)    :: reg01,reg02,reg03,reg04,reg05,reg06,reg07,reg08
+    real(kind=rk)    :: final01,final02,final03,final04,final05,final06,final07,final08
 
     if (oldk .eq. 0) return ! nothing to be done
 
         leftk = k
         rightk = oldk
-     
+
     ! optimized implementations:
     if (leftk .eq. 1) then
         do icol=1,rightk
@@ -264,7 +267,7 @@ subroutine qr_pdlarft_merge_kernel_local(oldk,k,t,ldt,yty,ldy)
             t(1,leftk+icol) = final01
             t(2,leftk+icol) = final02
         end do
- 
+
         !print *,'efficient tmerge - leftk=2'
     else if (leftk .eq. 4) then
         do icol=1,rightk
@@ -336,7 +339,7 @@ subroutine qr_pdlarft_merge_kernel_local(oldk,k,t,ldt,yty,ldy)
             t(3,leftk+icol) = final03
             t(4,leftk+icol) = final04
         end do
- 
+
         !print *,'efficient tmerge - leftk=4'
     else if (leftk .eq. 8) then
         do icol=1,rightk
@@ -452,7 +455,7 @@ subroutine qr_pdlarft_merge_kernel_local(oldk,k,t,ldt,yty,ldy)
             final05 = final05 + reg08 * yty5
 
             ! i think you got the idea by now
- 
+
             yty1 = -t(1,5)
             yty2 = -t(2,6)
             yty3 = -t(3,7)
@@ -480,7 +483,7 @@ subroutine qr_pdlarft_merge_kernel_local(oldk,k,t,ldt,yty,ldy)
 
             final01 = final01 + reg07 * yty1
             final02 = final02 + reg08 * yty2
- 
+
             ! .....
 
             yty1 = -t(1,8)
@@ -504,7 +507,7 @@ subroutine qr_pdlarft_merge_kernel_local(oldk,k,t,ldt,yty,ldy)
         do icol=1,rightk
             t(1:leftk,leftk+icol) = yty(1:leftk,icol)
         end do
-            
+
         ! -T1 * Y1'*Y2
         call dtrmm("Left","Upper","Notrans","Nonunit",leftk,rightk,-1.0d0,t(1,1),ldt,t(1,leftk+1),ldt)
         ! (-T1 * Y1'*Y2) * T2
@@ -518,22 +521,23 @@ end subroutine
 !    0        0    Y3'*Y4 ...
 !    0        0       0   ...
 subroutine qr_tmerge_set_kernel(k,blocksize,t,ldt,yty,ldy)
+    use precision
     implicit none
- 
+
     ! input variables (local)
-    integer ldt,ldy
-    double precision t(ldt,*),yty(ldy,*)
+    integer(kind=ik) :: ldt,ldy
+    real(kind=rk)    :: t(ldt,*),yty(ldy,*)
 
     ! input variables (global)
-    integer k,blocksize
- 
+    integer(kind=ik) :: k,blocksize
+
     ! output variables (global)
 
     ! local scalars
-    integer nr_blocks,current_block
-    integer remainder,oldk
-    integer yty_column,toffset
-  
+    integer(kind=ik) :: nr_blocks,current_block
+    integer(kind=ik) :: remainder,oldk
+    integer(kind=ik) :: yty_column,toffset
+
     if (k .le. blocksize) return ! nothing to merge
 
     nr_blocks = k / blocksize
@@ -543,7 +547,7 @@ subroutine qr_tmerge_set_kernel(k,blocksize,t,ldt,yty,ldy)
         ! start with latest T matrix part and add older ones
         toffset = 1
         yty_column = 1
- 
+
         if (remainder .gt. 0) then
             call qr_pdlarft_merge_kernel_local(blocksize,remainder,t(toffset,toffset),ldt,yty(1,yty_column),ldy)
             current_block = 1
@@ -555,7 +559,7 @@ subroutine qr_tmerge_set_kernel(k,blocksize,t,ldt,yty,ldy)
             oldk = 2*blocksize
             yty_column = yty_column + blocksize
         end if
- 
+
         do while (current_block .lt. nr_blocks)
             call qr_pdlarft_merge_kernel_local(blocksize,oldk,t(toffset,toffset),ldt,yty(toffset,yty_column),ldy)
 
@@ -572,15 +576,16 @@ end subroutine
 !    0        0       0   ...
 
 subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
+    use precision
     implicit none
- 
+
     ! input variables (local)
-    integer ldt,ldy
-    double precision t(ldt,*),yty(ldy,*)
+    integer(kind=ik) :: ldt,ldy
+    real(kind=rk)    :: t(ldt,*),yty(ldy,*)
 
     ! input variables (global)
-    integer k,blocksize,treeorder
- 
+    integer(kind=ik) :: k,blocksize,treeorder
+
     ! output variables (global)
 
     ! local scalars
@@ -596,7 +601,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
         call qr_tmerge_set_kernel(k,blocksize,t,ldt,yty,ldy)
         return
     end if
-  
+
     nr_blocks = k / blocksize
     max_treeorder = min(nr_blocks,treeorder)
 
@@ -604,7 +609,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
         call qr_tmerge_set_kernel(k,blocksize,t,ldt,yty,ldy)
         return
     end if
- 
+
         ! work in "negative" direction: from latest set to oldest set
         ! implementation differs from rev=0 version due to issues with
         ! calculating the remainder parts
@@ -642,7 +647,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
             remaining_size = k - remainder
             yty_remainder = 1
         end if
- 
+
         ! from now on it is a clean set of blocks with sizes of multiple of
         ! blocksize
 
@@ -665,21 +670,21 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
                 else
                     !print *,'no remainder - no merging needed',temp_blocksize,k,remaining_size
                 endif
-  
+
                 remaining_size = 0
-             
+
                 return ! done
             else
                 nr_sets = nr_blocks / max_treeorder
                 setsize = max_treeorder*temp_blocksize
                 remainder = remaining_size - nr_sets*setsize
             end if
-  
+
             if (remainder .gt. 0) then
                 if (remainder .gt. temp_blocksize) then
                     toffset = toffset_start
                     yty_column = yty_column_start
- 
+
                     !print *,'set merging', toffset, yty_column,remainder
                     call qr_tmerge_set_kernel(remainder,temp_blocksize,t(toffset,toffset),ldt,yty(toffset,yty_column),ldy)
 
@@ -688,7 +693,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
                         !print *,'single+set merging',yty_remainder,total_remainder,remainder
 
                         call qr_pdlarft_merge_kernel_local(remainder,total_remainder,t(1,1),ldt,yty(1,yty_remainder),ldy)
-      
+
                         yty_remainder = yty_remainder + remainder
                         toffset_start = toffset_start + remainder
 
@@ -698,7 +703,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
                     else
                         ! create new remainder part
                         !print *,'new remainder+set',yty_remainder
-                        yty_remainder = yty_column_start + remainder - temp_blocksize 
+                        yty_remainder = yty_column_start + remainder - temp_blocksize
                         yty_column_start = yty_column_start + remainder
                         toffset_start = toffset_start + remainder
                         !print *,'new remainder+set (new offsets)',yty_remainder,yty_column_start,toffset_start
@@ -710,7 +715,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
                         !print *,'single merging',yty_remainder,total_remainder,remainder
 
                         call qr_pdlarft_merge_kernel_local(remainder,total_remainder,t(1,1),ldt,yty(1,yty_remainder),ldy)
-      
+
                         yty_remainder = yty_remainder + remainder
                         toffset_start = toffset_start + remainder
 
@@ -726,7 +731,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
                         !print *,'new remainder (new offsets)',yty_remainder,yty_column_start,toffset_start
                     end if
                 end if
- 
+
                 total_remainder = total_remainder + remainder
                 remaining_size = remaining_size - remainder
             end if
@@ -739,7 +744,7 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
                 !print *,'recursive merging', toffset, yty_column,setsize
 
                 call qr_tmerge_set_kernel(setsize,temp_blocksize,t(toffset,toffset),ldt,yty(toffset,yty_column),ldy)
-                
+
                 current_set = current_set +  1
             end do
 
@@ -750,18 +755,19 @@ subroutine qr_tmerge_tree_kernel(k,blocksize,treeorder,t,ldt,yty,ldy)
 end subroutine
 ! yty should not contain the inner products vi'*vi
 subroutine qr_dlarft_kernel(n,tau,yty,ldy,t,ldt)
+    use precision
     implicit none
 
     ! input variables
-    integer n,ldy,ldt
-    double precision tau(*),yty(ldy,*)
-    
+    integer(kind=ik) :: n,ldy,ldt
+    real(kind=rk)    :: tau(*),yty(ldy,*)
+
     ! output variables
-    double precision t(ldt,*)
+    real(kind=rk)    :: t(ldt,*)
 
     ! local variables
-    integer icol
- 
+    integer(kind=ik) :: icol
+
     ! DEBUG: clear buffer first
     !t(1:n,1:n) = 0.0d0
 

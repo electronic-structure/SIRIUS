@@ -1,26 +1,27 @@
 !    This file is part of ELPA.
 !
-!    The ELPA library was originally created by the ELPA consortium, 
+!    The ELPA library was originally created by the ELPA consortium,
 !    consisting of the following organizations:
 !
-!    - Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG), 
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
 !    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
 !      Informatik,
 !    - Technische Universität München, Lehrstuhl für Informatik mit
-!      Schwerpunkt Wissenschaftliches Rechnen , 
-!    - Fritz-Haber-Institut, Berlin, Abt. Theorie, 
-!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn, 
-!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition, 
-!      and  
+!      Schwerpunkt Wissenschaftliches Rechnen ,
+!    - Fritz-Haber-Institut, Berlin, Abt. Theorie,
+!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn,
+!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition,
+!      and
 !    - IBM Deutschland GmbH
 !
 !
 !    More information can be found here:
-!    http://elpa.rzg.mpg.de/
+!    http://elpa.mpcdf.mpg.de/
 !
 !    ELPA is free software: you can redistribute it and/or modify
-!    it under the terms of the version 3 of the license of the 
-!    GNU Lesser General Public License as published by the Free 
+!    it under the terms of the version 3 of the license of the
+!    GNU Lesser General Public License as published by the Free
 !    Software Foundation.
 !
 !    ELPA is distributed in the hope that it will be useful,
@@ -47,29 +48,43 @@
 ! compilers this performs better than a sophisticated version with transformed and unrolled loops.
 !
 ! It should be compiled with the highest possible optimization level.
-! 
+!
 ! Copyright of the original code rests with the authors inside the ELPA
 ! consortium. The copyright of any additional modifications shall rest
 ! with their original authors, but shall adhere to the licensing terms
 ! distributed along with the original code in the file "COPYING".
 !
 ! --------------------------------------------------------------------------------------------------
+
+#include "config-f90.h"
+
 module real_generic_simple_kernel
 
   private
   public double_hh_trafo_generic_simple
 contains
   subroutine double_hh_trafo_generic_simple(q, hh, nb, nq, ldq, ldh)
-
+    use precision
+#ifdef HAVE_DETAILED_TIMINGS
+    use timings
+#endif
     implicit none
 
-    integer, intent(in) :: nb, nq, ldq, ldh
-    real*8, intent(inout) :: q(ldq,*)
-    real*8, intent(in) :: hh(ldh,*)
+    integer(kind=ik), intent(in) :: nb, nq, ldq, ldh
+#ifdef DESPERATELY_WANT_ASSUMED_SIZE
+    real(kind=rk), intent(inout) :: q(ldq,*)
+    real(kind=rk), intent(in)    :: hh(ldh,*)
+#else
+    real(kind=rk), intent(inout) :: q(ldq,1:nb+1)
+    real(kind=rk), intent(in)    :: hh(ldh,2)
+#endif
 
-    real*8 s, h1, h2, tau1, tau2, x(nq), y(nq)
-    integer i
+    real(kind=rk)                :: s, h1, h2, tau1, tau2, x(nq), y(nq)
+    integer(kind=ik)             :: i
 
+#ifdef HAVE_DETAILED_TIMINGS
+    call timer%start("kernel generic simple: double_hh_trafo_generic_simple")
+#endif
     ! Calculate dot product of the two Householder vectors
 
     s = hh(2,2)*1
@@ -111,6 +126,10 @@ contains
     enddo
 
     q(1:nq,nb+1) = q(1:nq,nb+1) + x(1:nq)*hh(nb,1)
+
+#ifdef HAVE_DETAILED_TIMINGS
+    call timer%stop("kernel generic simple: double_hh_trafo_generic_simple")
+#endif
 
   end subroutine double_hh_trafo_generic_simple
 end module real_generic_simple_kernel

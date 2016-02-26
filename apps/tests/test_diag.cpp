@@ -2,13 +2,14 @@
 
 using namespace sirius;
 
+template <typename T>
 void test_diag(int N, int nrow, int ncol, int bs, std::string name)
 {
     BLACS_grid blacs_grid(mpi_comm_world(), nrow, ncol);
 
-    dmatrix<double_complex> A(N, N, blacs_grid, bs, bs);
-    dmatrix<double_complex> B(N, N, blacs_grid, bs, bs);
-    dmatrix<double_complex> Z(N, N, blacs_grid, bs, bs);
+    dmatrix<T> A(N, N, blacs_grid, bs, bs);
+    dmatrix<T> B(N, N, blacs_grid, bs, bs);
+    dmatrix<T> Z(N, N, blacs_grid, bs, bs);
 
     A.zero();
     B.zero();
@@ -29,7 +30,7 @@ void test_diag(int N, int nrow, int ncol, int bs, std::string name)
     for (int jloc = 0; jloc < A.num_cols_local(); jloc++)
     {
         for (int iloc = 0; iloc < A.num_rows_local(); iloc++)
-            A(iloc, jloc) = type_wrapper<double_complex>::random();
+            A(iloc, jloc) = type_wrapper<T>::random();
     }
     
     linalg<CPU>::tranc(N, N, A, 0, 0, Z, 0, 0);
@@ -46,8 +47,8 @@ void test_diag(int N, int nrow, int ncol, int bs, std::string name)
 
     for (int i = 0; i < N; i++)
     {
-        A.set(i, i, double_complex(10.0 * i / N + 1, 0));
-        B.set(i, i, double_complex(1, 0));
+        A.set(i, i, 10.0 * i / N + 1);
+        B.set(i, i, 1);
     }
 
     for (int i = 1; i < N; i++)
@@ -97,7 +98,7 @@ void test_diag(int N, int nrow, int ncol, int bs, std::string name)
     }
     
     runtime::Timer t("evp");
-    int result = solver->solve(N, nev, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), &eval[0], Z.at<CPU>(), Z.ld(),
+    int result = solver->solve(N, nev, A.template at<CPU>(), A.ld(), B.template at<CPU>(), B.ld(), &eval[0], Z.template at<CPU>(), Z.ld(),
                                A.num_rows_local(), A.num_cols_local());
     double tval = t.stop();
 
@@ -299,7 +300,8 @@ int main(int argn, char **argv)
  
     sirius::initialize(true);
 
-    test_diag(N, nrow, ncol, bs, name);
+    test_diag<double>(N, nrow, ncol, bs, name);
+    test_diag<double_complex>(N, nrow, ncol, bs, name);
 
     ///sirius::Timer::print();
 

@@ -3,7 +3,8 @@
 !    The ELPA library was originally created by the ELPA consortium,
 !    consisting of the following organizations:
 !
-!    - Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
 !    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
 !      Informatik,
 !    - Technische Universität München, Lehrstuhl für Informatik mit
@@ -16,7 +17,7 @@
 !
 !
 !    More information can be found here:
-!    http://elpa.rzg.mpg.de/
+!    http://elpa.mpcdf.mpg.de/
 !
 !    ELPA is free software: you can redistribute it and/or modify
 !    it under the terms of the version 3 of the license of the
@@ -39,8 +40,10 @@
 !    the original distribution, the GNU Lesser General Public License.
 !
 !
-module qr_utils_mod
+#include "config-f90.h"
 
+module qr_utils_mod
+    use elpa_mpi
     implicit none
 
     PRIVATE
@@ -58,18 +61,20 @@ contains
 ! involved in the qr decomposition
 subroutine local_size_offset_1d(n,nb,baseidx,idx,rev,rank,nprocs, &
                                 lsize,baseoffset,offset)
-    use ELPA1
+
+    use precision
+    use ELPA1_compute
 
     implicit none
 
     ! input
-    integer n,nb,baseidx,idx,rev,rank,nprocs
+    integer(kind=ik) :: n,nb,baseidx,idx,rev,rank,nprocs
 
     ! output
-    integer lsize,baseoffset,offset
+    integer(kind=ik) :: lsize,baseoffset,offset
 
     ! local scalars
-    integer rank_idx
+    integer(kind=ik) :: rank_idx
 
     rank_idx = MOD((idx-1)/nb,nprocs)
 
@@ -99,15 +104,16 @@ end subroutine local_size_offset_1d
 
 
 subroutine reverse_vector_local(n,x,incx,work,lwork)
+    use precision
     implicit none
 
     ! input
-    integer incx,n,lwork
-    double precision x(*),work(*)
+    integer(kind=ik) :: incx,n,lwork
+    real(kind=rk)    :: x(*),work(*)
 
     ! local scalars
-    double precision temp
-    integer srcoffset,destoffset,ientry
+    real(kind=rk)    :: temp
+    integer(kind=ik) :: srcoffset,destoffset,ientry
 
     if (lwork .eq. -1) then
         work(1) = 0.0d0
@@ -126,17 +132,18 @@ subroutine reverse_vector_local(n,x,incx,work,lwork)
 end subroutine reverse_vector_local
 
 subroutine reverse_matrix_local(trans,m,n,a,lda,work,lwork)
+    use precision
     implicit none
 
     ! input
-    integer lda,m,n,lwork,trans
-    double precision a(lda,*),work(*)
+    integer(kind=ik) :: lda,m,n,lwork,trans
+    real(kind=rk)    :: a(lda,*),work(*)
 
     ! local scalars
-    double precision temp, dworksize(1)
-    integer incx
-    integer dimsize
-    integer i
+    real(kind=rk)    :: temp, dworksize(1)
+    integer(kind=ik) :: incx
+    integer(kind=ik) :: dimsize
+    integer(kind=ik) :: i
 
     if (trans .eq. 1) then
         incx = lda
@@ -165,26 +172,25 @@ subroutine reverse_matrix_local(trans,m,n,a,lda,work,lwork)
 end subroutine reverse_matrix_local
 
 subroutine reverse_matrix_2dcomm_ref(m,n,mb,nb,a,lda,work,lwork,mpicomm_cols,mpicomm_rows)
+    use precision
     implicit none
 
     ! input
-    integer m,n,lda,lwork,mpicomm_cols,mpicomm_rows,mb,nb
-    double precision a(lda,*),work(*)
+    integer(kind=ik) :: m,n,lda,lwork,mpicomm_cols,mpicomm_rows,mb,nb
+    real(kind=rk)    :: a(lda,*),work(*)
 
     ! local scalars
-    double precision reverse_column_size(1)
-    double precision reverse_row_size(1)
+    real(kind=rk)    :: reverse_column_size(1)
+    real(kind=rk)    :: reverse_row_size(1)
 
-    integer mpirank_cols,mpirank_rows
-    integer mpiprocs_cols,mpiprocs_rows
-    integer mpierr
-    integer lrows,lcols,offset,baseoffset
-
+    integer(kind=ik) :: mpirank_cols,mpirank_rows
+    integer(kind=ik) :: mpiprocs_cols,mpiprocs_rows
+    integer(kind=ik) :: mpierr
+    integer(kind=ik) :: lrows,lcols,offset,baseoffset
     call MPI_Comm_rank(mpicomm_cols,mpirank_cols,mpierr)
     call MPI_Comm_rank(mpicomm_rows,mpirank_rows,mpierr)
     call MPI_Comm_size(mpicomm_cols,mpiprocs_cols,mpierr)
     call MPI_Comm_size(mpicomm_rows,mpiprocs_rows,mpierr)
-
     call local_size_offset_1d(m,mb,1,1,0,mpirank_cols,mpiprocs_cols, &
                                   lrows,baseoffset,offset)
 
@@ -205,29 +211,31 @@ end subroutine reverse_matrix_2dcomm_ref
 ! b: if trans = 'N': b is size of block distribution between rows
 ! b: if trans = 'T': b is size of block distribution between columns
 subroutine reverse_matrix_1dcomm(trans,m,n,b,a,lda,work,lwork,mpicomm)
-    use mpi
+    use precision
+    use elpa_mpi
 
     implicit none
 
     ! input
-    integer trans
-    integer m,n,b,lda,lwork,mpicomm
-    double precision a(lda,*),work(*)
+    integer(kind=ik) :: trans
+    integer(kind=ik) :: m,n,b,lda,lwork,mpicomm
+    real(kind=rk)    :: a(lda,*),work(*)
 
     ! local scalars
-    integer mpirank,mpiprocs,mpierr,mpistatus(MPI_STATUS_SIZE)
-    integer nr_blocks,dest_process,src_process,step
-    integer lsize,baseoffset,offset
-    integer current_index,destblk,srcblk,icol,next_index
-    integer sendcount,recvcount
-    integer sendoffset,recvoffset
-    integer newmatrix_offset,work_offset
-    integer lcols,lrows,lroffset,lcoffset,dimsize,fixedsize
-    double precision dworksize(1)
-
+    integer(kind=ik) :: mpirank,mpiprocs,mpierr
+#ifdef WITH_MPI
+    integer(kind=ik) :: mpistatus(MPI_STATUS_SIZE)
+#endif
+    integer(kind=ik) :: nr_blocks,dest_process,src_process,step
+    integer(kind=ik) :: lsize,baseoffset,offset
+    integer(kind=ik) :: current_index,destblk,srcblk,icol,next_index
+    integer(kind=ik) :: sendcount,recvcount
+    integer(kind=ik) :: sendoffset,recvoffset
+    integer(kind=ik) :: newmatrix_offset,work_offset
+    integer(kind=ik) :: lcols,lrows,lroffset,lcoffset,dimsize,fixedsize
+    real(kind=rk)    :: dworksize(1)
     call MPI_Comm_rank(mpicomm, mpirank, mpierr)
     call MPI_Comm_size(mpicomm, mpiprocs, mpierr)
-
     if (trans .eq. 1) then
         call local_size_offset_1d(n,b,1,1,0,mpirank,mpiprocs, &
                                   lcols,baseoffset,lcoffset)
@@ -328,9 +336,12 @@ subroutine reverse_matrix_1dcomm(trans,m,n,b,a,lda,work,lwork,mpicomm)
 
             if (dest_process .eq. mpirank) then
                 ! 6b. call MPI_Recv
+#ifdef WITH_MPI
                 call MPI_Recv(work(recvoffset), recvcount, mpi_real8, &
                               src_process, current_index, mpicomm, mpistatus, mpierr)
-
+#else
+                work(recvoffset:recvoffset+recvcount-1) = work(sendoffset:sendoffset+sendcount-1)
+#endif
                 ! 7. reverse data
                 if (trans .eq. 1) then
                     call reverse_matrix_local(1,lrows,lsize,work(recvoffset),lrows,work(work_offset),lwork)
@@ -371,8 +382,10 @@ subroutine reverse_matrix_1dcomm(trans,m,n,b,a,lda,work,lwork,mpicomm)
                 end if
 
                 ! 6a. call MPI_Send
+#ifdef WITH_MPI
                 call MPI_Send(work(sendoffset), sendcount, mpi_real8, &
                                   dest_process, current_index, mpicomm, mpierr)
+#endif
             end if
         end if
 
