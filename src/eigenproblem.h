@@ -303,6 +303,14 @@ class Eigenproblem_plasma: public Eigenproblem
         }
 };
 
+#ifdef __MAGMA
+extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
+                                             void* b, int32_t ldb, double* eval);
+
+extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
+                                             int32_t ldb, double* eval);
+#endif
+
 /// Interface for MAGMA eigen-value solvers.
 class Eigenproblem_magma: public Eigenproblem
 {
@@ -332,6 +340,29 @@ class Eigenproblem_magma: public Eigenproblem
             }
             
             for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* B, int32_t ldb,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            assert(nevec <= matrix_size);
+
+            int nt = omp_get_max_threads();
+            
+            magma_dsygvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
+
+            if (nt != omp_get_max_threads())
+            {
+                TERMINATE("magma has changed the number of threads");
+            }
+            
+            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
 
             return 0;
         }

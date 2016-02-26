@@ -285,6 +285,8 @@ class Periodic_function
 
         static T inner(Periodic_function<T> const* f__, Periodic_function<T> const* g__)
         {
+            runtime::Timer t("sirius::Periodic_function::inner");
+
             assert(&f__->fft_ == &g__->fft_);
             assert(&f__->step_function_ == &g__->step_function_);
             assert(&f__->unit_cell_ == &g__->unit_cell_);
@@ -292,11 +294,20 @@ class Periodic_function
             
             T result = 0.0;
             T ri = 0.0;
-        
+            
             if (!f__->parameters_.full_potential())
             {
-                for (int irloc = 0; irloc < f__->fft_.local_size(); irloc++)
-                    ri += type_wrapper<T>::conjugate(f__->f_rg(irloc)) * g__->f_rg(irloc);
+                #pragma omp parallel
+                {
+                    T ri_t = 0;
+                    
+                    #pragma omp for
+                    for (int irloc = 0; irloc < f__->fft_.local_size(); irloc++)
+                        ri_t += type_wrapper<T>::conjugate(f__->f_rg(irloc)) * g__->f_rg(irloc);
+
+                    #pragma omp critical
+                    ri += ri_t;
+                }
             }
             else
             {
