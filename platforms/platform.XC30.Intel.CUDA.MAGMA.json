@@ -1,0 +1,33 @@
+{
+    "MPI_CXX"     : "CC",
+    "comment"     : "your MPI C++ compiler",
+    
+    "MPI_CXX_OPT" : "-O3 -openmp -std=c++11 -DNDEBUG -D__SCALAPACK -D__ELPA -D__GPU -D__MAGMA -I$(MKLROOT)/include/fftw/ -D__VERBOSITY=2",
+    "comment"     : "compiler options for the SIRIUS library",
+    
+    "MPI_FC"      : "ftn",
+    "MPI_FC_OPT"  : "-O3 -openmp -cpp",
+
+    "CC"          : "cc",
+    "comment"     : "plain C compiler for the supplementary libraries",
+    
+    "CXX"         : "CC",
+    "comment"     : "plain C++ compiler for the supplementary libraries",
+    
+    "FC"          : "ftn",
+    "comment"     : "plain Fortran compiler for the supplementary libraries",
+    
+    "FCCPP"       : "cpp",
+    "comment"     : "Fortran preprocessor",
+
+    "NVCC"        : "nvcc",
+    "NVCC_OPT"    : "-arch=sm_35 -m64 -DNDEBUG -I$(HOME)/src/daint/magma-2.0.0-beta3/include/ -I$(HOME)/src/daint/magma-2.0.0-beta3/control/",
+    
+    "SYSTEM_LIBS" : "-lcublas -lcusparse -lcudart -lcufft $(HOME)/src/daint/magma-2.0.0-beta3/lib/libmagma.a  $(HOME)/src/daint/magma-2.0.0-beta3/lib/libmagma_sparse.a $(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_gnu_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread",
+    "comment"     : "CUDA, cuFFT & MAGMA libraries",
+    
+    "install"     : ["xc", "spg", "gsl"],
+    "comment"     : "additional libraries to download and configure"
+}
+
+
