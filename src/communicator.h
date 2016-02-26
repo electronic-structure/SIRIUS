@@ -259,6 +259,13 @@ class Communicator
                      mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
+        template <typename T>
+        void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
+        {
+            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), 
+                                      recvbuf__, recvcounts__, displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+        }
+
         template<typename T>
         void allgather(T* buffer__, int offset__, int count__) const
         {
@@ -290,16 +297,12 @@ class Communicator
             std::vector<int> offsets(size());
             offsets[rank()] = offset__;
             CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
+
+            // Why in hell this doesn't work???
+            //allgather((T const*)sendbuf__, count__, (T*)recvbuf__, (int*)&counts[0], (int*)&offsets[0]);
         
             CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, &counts[0], &offsets[0],
-                           mpi_type_wrapper<T>::kind(), mpi_comm_));
-        }
-
-        template <typename T>
-        void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
-        {
-            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), 
-                                      recvbuf__, recvcounts__, displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+                                      mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template <typename T>

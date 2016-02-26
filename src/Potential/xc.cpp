@@ -480,15 +480,22 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
 {
     PROFILE_WITH_TIMER("sirius::Potential::xc_it_nonmagnetic");
 
+    /* we can use this comm for parallelization */
+    auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _mpi_dim_k_ | 1 << _mpi_dim_k_col_)
+                                         : ctx_.comm();
+
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    int num_loc_points = fft_.local_size();
+    int num_points = fft_.local_size();
+
+    splindex<block> spl_np(num_points, comm.size(), comm.rank());
     
     /* check for negative values */
     double rhomin = 0.0;
-    for (int ir = 0; ir < fft_.local_size(); ir++)
+    for (int irloc = 0; irloc < spl_np.local_size(); irloc++)
     {
+        int ir = spl_np[irloc];
         rhomin = std::min(rhomin, rho->f_rg(ir));
         if (rho->f_rg(ir) < 0.0)  rho->f_rg(ir) = 0.0;
     }
@@ -525,16 +532,16 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         lapl_rho_it = transform<double>(lapl_rho_pw);
     }
 
-    mdarray<double, 1> exc_tmp(num_loc_points);
+    mdarray<double, 1> exc_tmp(spl_np.local_size());
     exc_tmp.zero();
 
-    mdarray<double, 1> vxc_tmp(num_loc_points);
+    mdarray<double, 1> vxc_tmp(spl_np.local_size());
     vxc_tmp.zero();
 
     mdarray<double, 1> vsigma_tmp;
     if (is_gga)
     {
-        vsigma_tmp = mdarray<double, 1>(num_loc_points);
+        vsigma_tmp = mdarray<double, 1>(spl_np.local_size());
         vsigma_tmp.zero();
     }
 
@@ -544,83 +551,87 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), omp_get_thread_num());
+            splindex<block> spl_np_t(spl_np.local_size(), omp_get_num_threads(), omp_get_thread_num());
 
-            std::vector<double> exc_t(spl_t.local_size());
+            std::vector<double> exc_t(spl_np_t.local_size());
 
             /* if this is an LDA functional */
             if (ixc->lda())
             {
-                std::vector<double> vxc_t(spl_t.local_size());
+                std::vector<double> vxc_t(spl_np_t.local_size());
 
-                ixc->get_lda(spl_t.local_size(), &rho->f_rg(spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
+                ixc->get_lda(spl_np_t.local_size(), &rho->f_rg(spl_np.global_offset() + spl_np_t.global_offset()), &vxc_t[0], &exc_t[0]);
 
-                for (int i = 0; i < spl_t.local_size(); i++)
+                for (int i = 0; i < spl_np_t.local_size(); i++)
                 {
                     /* add Exc contribution */
-                    exc_tmp(spl_t[i]) += exc_t[i];
+                    exc_tmp(spl_np_t[i]) += exc_t[i];
 
                     /* directly add to Vxc */
-                    vxc_tmp(spl_t[i]) += vxc_t[i];
+                    vxc_tmp(spl_np_t[i]) += vxc_t[i];
                 }
             }
             if (ixc->gga())
             {
-                std::vector<double> vrho_t(spl_t.local_size());
-                std::vector<double> vsigma_t(spl_t.local_size());
-                
-                ixc->get_gga((int)spl_t.local_size(), 
-                             &rho->f_rg((int)spl_t.global_offset()), 
-                             &grad_rho_grad_rho_it((int)spl_t.global_offset()), 
-                             &vrho_t[0], 
-                             &vsigma_t[0], 
-                             &exc_t[0]);
+                STOP();
+                //std::vector<double> vrho_t(spl_t.local_size());
+                //std::vector<double> vsigma_t(spl_t.local_size());
+                //
+                //ixc->get_gga((int)spl_t.local_size(), 
+                //             &rho->f_rg((int)spl_t.global_offset()), 
+                //             &grad_rho_grad_rho_it((int)spl_t.global_offset()), 
+                //             &vrho_t[0], 
+                //             &vsigma_t[0], 
+                //             &exc_t[0]);
 
 
-                for (int i = 0; i < (int)spl_t.local_size(); i++)
-                {
-                    /* add Exc contribution */
-                    exc_tmp(spl_t[i]) += exc_t[i];
+                //for (int i = 0; i < (int)spl_t.local_size(); i++)
+                //{
+                //    /* add Exc contribution */
+                //    exc_tmp(spl_t[i]) += exc_t[i];
 
-                    /* directly add to Vxc available contributions */
-                    vxc_tmp(spl_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho_it((int)spl_t[i]));
+                //    /* directly add to Vxc available contributions */
+                //    vxc_tmp(spl_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho_it((int)spl_t[i]));
 
-                    /* save the sigma derivative */
-                    vsigma_tmp(spl_t[i]) += vsigma_t[i]; 
-                }
+                //    /* save the sigma derivative */
+                //    vsigma_tmp(spl_t[i]) += vsigma_t[i]; 
+                //}
             }
         }
     }
 
     if (is_gga)
     {
-        /* gather vsigma */
-        Smooth_periodic_function<spatial, double> vsigma_it(&vsigma_tmp(0), &fft_, &ctx_.gvec());
+        STOP();
+        ///* gather vsigma */
+        //Smooth_periodic_function<spatial, double> vsigma_it(&vsigma_tmp(0), &fft_, &ctx_.gvec());
 
-        /* forward transform vsigma to plane-wave domain */
-        Smooth_periodic_function<spectral, double_complex> vsigma_pw = transform(vsigma_it);
-        
-        /* gradient of vsigma in plane-wave domain */
-        auto grad_vsigma_pw = gradient(vsigma_pw);
+        ///* forward transform vsigma to plane-wave domain */
+        //Smooth_periodic_function<spectral, double_complex> vsigma_pw = transform(vsigma_it);
+        //
+        ///* gradient of vsigma in plane-wave domain */
+        //auto grad_vsigma_pw = gradient(vsigma_pw);
 
-        /* backward transform gradient from pw to real space */
-        auto grad_vsigma_it = transform<double>(grad_vsigma_pw);
+        ///* backward transform gradient from pw to real space */
+        //auto grad_vsigma_it = transform<double>(grad_vsigma_pw);
 
-        /* compute scalar product of two gradients */
-        auto grad_vsigma_grad_rho_it = grad_vsigma_it * grad_rho_it;
+        ///* compute scalar product of two gradients */
+        //auto grad_vsigma_grad_rho_it = grad_vsigma_it * grad_rho_it;
 
-        /* add remaining term to Vxc */
-        for (int ir = 0; ir < num_loc_points; ir++)
-        {
-            vxc_tmp(ir) -= 2 * grad_vsigma_grad_rho_it(ir);
-        }
+        ///* add remaining term to Vxc */
+        //for (int ir = 0; ir < num_loc_points; ir++)
+        //{
+        //    vxc_tmp(ir) -= 2 * grad_vsigma_grad_rho_it(ir);
+        //}
     }
+    comm.allgather(&vxc_tmp[0], &vxc->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
+    comm.allgather(&exc_tmp[0], &exc->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
 
-    for (int irloc = 0; irloc < num_loc_points; irloc++)
-    {
-        vxc->f_rg(irloc) = vxc_tmp(irloc);
-        exc->f_rg(irloc) = exc_tmp(irloc);
-    }
+    //for (int irloc = 0; irloc < num_loc_points; irloc++)
+    //{
+    //    vxc->f_rg(irloc) = vxc_tmp(irloc);
+    //    exc->f_rg(irloc) = exc_tmp(irloc);
+    //}
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(vxc_tmp): %18.10f", vxc_tmp.checksum());
     DUMP("checksum(exc_tmp): %18.10f", exc_tmp.checksum());
