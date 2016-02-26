@@ -287,7 +287,7 @@ class Band
                 }
                 case ev_scalapack:
                 {
-                    gen_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 0.0);
+                    gen_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
                 case ev_elpa1:

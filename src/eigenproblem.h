@@ -165,7 +165,7 @@ class Eigenproblem_lapack: public Eigenproblem
                 s << "not all eigen-values are found" << std::endl
                   << "target number of eign-values: " << nevec << std::endl
                   << "number of eign-values found: " << m;
-                //TERMINATE(s);
+                WARNING(s);
                 return 1;
             }
 
@@ -449,7 +449,7 @@ class Eigenproblem_scalapack: public Eigenproblem
 
     public:
 
-        Eigenproblem_scalapack(BLACS_grid const& blacs_grid__, int32_t bs_row__, int32_t bs_col__, double abstol__ = -1)
+        Eigenproblem_scalapack(BLACS_grid const& blacs_grid__, int32_t bs_row__, int32_t bs_col__, double abstol__ = 1e-12)
             : bs_row_(bs_row__),
               bs_col_(bs_col__),
               num_ranks_row_(blacs_grid__.num_ranks_row()), 

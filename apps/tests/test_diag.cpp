@@ -2,13 +2,107 @@
 
 using namespace sirius;
 
-void test_diag(int N, int nrow, int ncol, int bs)
+void test_diag(int N, int nrow, int ncol, int bs, std::string name)
 {
     BLACS_grid blacs_grid(mpi_comm_world(), nrow, ncol);
 
     dmatrix<double_complex> A(N, N, blacs_grid, bs, bs);
     dmatrix<double_complex> B(N, N, blacs_grid, bs, bs);
     dmatrix<double_complex> Z(N, N, blacs_grid, bs, bs);
+
+    A.zero();
+    B.zero();
+    Z.zero();
+
+    //for (int i = 0; i < N; i++)
+    //{
+    //    for (int j = 0; j <= i; j++)
+    //    {
+    //        double_complex z = std::exp(double_complex(-double(i) / N, twopi * j / N));
+    //        A.set(i, j, z);
+    //        A.set(j, i, std::conj(z));
+    //    }
+    //}
+    //        
+    
+
+    for (int jloc = 0; jloc < A.num_cols_local(); jloc++)
+    {
+        for (int iloc = 0; iloc < A.num_rows_local(); iloc++)
+            A(iloc, jloc) = type_wrapper<double_complex>::random();
+    }
+    
+    linalg<CPU>::tranc(N, N, A, 0, 0, Z, 0, 0);
+
+    for (int jloc = 0; jloc < A.num_cols_local(); jloc++)
+    {
+        for (int iloc = 0; iloc < A.num_rows_local(); iloc++)
+            A(iloc, jloc) += Z(iloc, jloc);
+    }
+
+    //linalg<CPU>::gemm(2, 0, N, N, N, double_complex(1, 0), Z, Z, double_complex(0, 0), B);
+    ////A.zero();
+    //B.zero();
+
+    for (int i = 0; i < N; i++)
+    {
+        A.set(i, i, double_complex(10.0 * i / N + 1, 0));
+        B.set(i, i, double_complex(1.0 * i / N + 1, 0));
+    }
+
+    for (int i = 1; i < N; i++)
+    {
+        B.set(i, i - 1, 1);
+        B.set(i - 1, i, 1);
+    }
+
+    std::vector<double> eval(N);
+
+    Eigenproblem* solver;
+
+    if (name == "lapack")
+    {
+        solver = new Eigenproblem_lapack();
+    }
+    else if (name == "magma")
+    {
+        solver = new Eigenproblem_magma();
+    }
+    else if (name == "scalapack")
+    {
+        solver = new Eigenproblem_scalapack(blacs_grid, nrow, ncol); 
+    }
+    else
+    {
+        printf("wrong eigenvalue solver\n");
+        return;
+    }
+
+    int nev = static_cast<int>(0.2 * N);
+    
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("generalized eigen value probelm size: %i\n", N);
+        printf("number of eigen-vectors: %i\n", nev);
+        printf("MPI grid size: %i %i\n", nrow, ncol);
+        printf("block size: %i\n", bs);
+    }
+    
+    runtime::Timer t("evp");
+    int result = solver->solve(N, nev, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), &eval[0], Z.at<CPU>(), Z.ld(),
+                               A.num_rows_local(), A.num_cols_local());
+    double tval = t.stop();
+
+    if (result)
+    {
+        printf("error in diagonalziation\n");
+    }
+
+    printf("time: %f\n", tval);
+
+
+
+
 
     //dmatrix<double_complex> a_n, a_t, ha_n, h, o;
     //a_n.set_dimensions(num_gkvec, num_aw, context);
@@ -178,6 +272,7 @@ int main(int argn, char **argv)
     args.register_key("--nrow=", "{int} number of row MPI ranks");
     args.register_key("--ncol=", "{int} number of column MPI ranks");
     args.register_key("--bs=", "{int} cyclic block size");
+    args.register_key("--solver=", "{string} solver name (lapack, scalapack, elpa1)");
 
     args.parse_args(argn, argv);
     if (args.exist("help"))
@@ -191,10 +286,12 @@ int main(int argn, char **argv)
     int ncol = args.value<int>("ncol", 1);
     int bs = args.value<int>("bs", 16);
     int N = args.value<int>("N", 100);
+    std::string name("lapack");
+    name = args.value<std::string>("solver");
  
     sirius::initialize(true);
 
-    test_diag(N, nrow, ncol, bs);
+    test_diag(N, nrow, ncol, bs, name);
 
     ///sirius::Timer::print();
 
