@@ -254,6 +254,32 @@ class Eigenproblem_lapack: public Eigenproblem
             return 0;
         }
 
+        int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
+        {
+            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
+
+            int32_t lwork = 1 + 6 * matrix_size + 2 * matrix_size * matrix_size;
+            int32_t liwork = 3 + 5 * matrix_size; 
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+            int32_t info;
+
+            FORTRAN(dsyevd)("V", "U", &matrix_size, A, &lda, eval, &work[0], &lwork, 
+                            &iwork[0], &liwork, &info, (int32_t)1, (int32_t)1);
+            
+            for (int i = 0; i < matrix_size; i++)
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            
+            if (info)
+            {
+                std::stringstream s;
+                s << "dsyevd returned " << info; 
+                TERMINATE(s);
+            }
+            return 0;
+        }
+
         bool parallel()
         {
             return false;

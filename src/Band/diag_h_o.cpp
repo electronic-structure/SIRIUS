@@ -31,7 +31,7 @@ void Band::diag_h_o<double_complex>(K_point* kp__,
         }
     }
     t1.stop();
-    
+
     runtime::Timer t2("sirius::Band::diag_h_o|diag");
     int result;
     if (gen_evp_solver()->parallel())
@@ -99,6 +99,21 @@ void Band::diag_h_o<double>(K_point* kp__,
         }
     }
     t1.stop();
+
+    mdarray<double, 2> ovlp_tmp(N__, N__);
+    for (int i = 0; i < N__; i++)
+    {
+        for (int j = 0; j < N__; j++) ovlp_tmp(j, i) = ovlp__(j, i);
+    }
+    Eigenproblem_lapack evp;
+    mdarray<double, 2> evec_tmp(N__, N__);
+    std::vector<double> eval_tmp(N__);
+    evp.solve(N__, &ovlp_tmp(0, 0), N__, &eval_tmp[0], &evec_tmp(0, 0), N__);
+    if (kp__->comm().rank() == 0)
+    {
+        for (int i = 0; i < N__; i++)
+            printf("eval_ovlp[%i] = %18.10f\n", i, eval_tmp[i]);
+    }
     
     runtime::Timer t2("sirius::Band::diag_h_o|diag");
     int result;
