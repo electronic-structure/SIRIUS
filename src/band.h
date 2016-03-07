@@ -207,6 +207,13 @@ class Band
                       std::vector<double>& h_diag__,
                       std::vector<double>& o_diag__);
 
+        template <typename T>
+        int orthogonalize(K_point* kp__,
+                          int N__,
+                          int n__,
+                          Wave_functions<false>& phi__,
+                          Wave_functions<false>& res__);
+
         void residuals_aux(K_point* kp__,
                            int num_bands__,
                            std::vector<double>& eval__,
