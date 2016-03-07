@@ -249,7 +249,7 @@ void Beta_projectors::generate(int chunk__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::generate");
 
-    auto& desc = beta_chunk(chunk__).desc_;
+    //auto& desc = beta_chunk(chunk__).desc_;
 
     if (pu_ == CPU)
     {
