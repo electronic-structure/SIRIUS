@@ -93,7 +93,7 @@ class uspp_descriptor
         std::vector<double> vloc;
 
         /// Maximum angular momentum for |beta> projectors.
-        int lmax;
+        int lmax_beta_;
 
         /// Number of radial functions for |beta> projectors.
         int num_beta_radial_functions;
@@ -106,15 +106,6 @@ class uspp_descriptor
 
         /// Radial functions of beta-projectors.
         mdarray<double, 2> beta_radial_functions;
-        
-        /// Number of Q coefficients
-        int num_q_coefs; 
-        
-        /// Q coefficients
-        mdarray<double, 4> q_coefs;
-        
-        /// Inner radius where Q-radial functions are interpolated by polynomials.
-        std::vector<double> q_functions_inner_radii;
         
         /// Radial functions of Q-operator.
         mdarray<double, 3> q_radial_functions_l;
