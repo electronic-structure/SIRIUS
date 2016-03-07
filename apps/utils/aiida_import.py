@@ -42,6 +42,9 @@ def main():
 
     print "created structure with uuid='{}' and PK={}".format(s.uuid,s.pk)
 
+    grp, created = Group.get_or_create(name='imported_structures')
+    grp.add_nodes([s])
+
     return
 
 if __name__ == "__main__":
