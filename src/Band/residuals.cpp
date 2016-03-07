@@ -151,6 +151,82 @@ int Band::residuals(K_point* kp__,
     return n;
 }
 
+template <>
+int Band::orthogonalize<double_complex>(K_point* kp__,
+                                        int N__,
+                                        int n__,
+                                        Wave_functions<false>& phi__,
+                                        Wave_functions<false>& res__)
+{
+    return n__;
+}
+
+template <>
+int Band::orthogonalize<double>(K_point* kp__,
+                                int N__,
+                                int n__,
+                                Wave_functions<false>& phi__,
+                                Wave_functions<false>& res__)
+{
+    //return n__;
+
+    /* { phi_i, i in [0, N) }
+       { res_i, i in [0, n) }
+
+       take res_0, orthogonalize to all phi, check norm, accept or rejec
+       take res_1, orthogonalize to all phi and res_0, check norm, accept or rejec
+
+
+    */
+
+    auto inner = [kp__](double_complex* f, double_complex* g)
+    {
+        double prod = 0;
+        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+                prod += 2.0 * (f[igk].real() * g[igk].real() + f[igk].imag() * g[igk].imag());
+        prod -= f[0].real() * g[0].real();
+        return prod;
+    };
+
+
+    int n = 0;
+    /* loop over all available residuals */
+    for (int i = 0; i < n__; i++)
+    {
+        if (i != n) std::memcpy(&res__(0, n), &res__(0, i), kp__->num_gkvec_loc() * sizeof(double_complex));
+
+        /*loop over current basis */
+        for (int j = 0; j < N__; j++)
+        {
+            double prod = inner(&phi__(0, j), &res__(0, n));
+
+            for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+                res__(igk, n) -= prod * phi__(igk, j);
+        }
+
+        for (int j = 0; j < n; j++)
+        {
+            double prod = inner(&res__(0, j), &res__(0, n));
+
+            for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+                res__(igk, n) -= prod * res__(igk, j);
+        }
+        double norm = inner(&res__(0, n), &res__(0, n));
+
+        if (std::abs(norm) > 0.01)
+        {
+            norm = 1.0 / std::sqrt(norm);
+            for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+                res__(igk, n) *= norm;
+            n++;
+        }
+    }
+    
+    printf("initial and final number of residuals: %i %i\n", n__, n);
+
+    return n;
+}
+
 template int Band::residuals<double_complex>(K_point* kp__,
                                              int ispn__,
                                              int N__,
@@ -181,4 +257,15 @@ template int Band::residuals<double>(K_point* kp__,
                                      std::vector<double>& h_diag__,
                                      std::vector<double>& o_diag__);
 
+//template int Band::orthogonalize<double_complex>(K_point* kp__,
+//                                                 int N__,
+//                                                 int n__,
+//                                                 Wave_functions<false>& phi__,
+//                                                 Wave_functions<false>& res__);
+//
+//template int Band::orthogonalize<double>(K_point* kp__,
+//                                         int N__,
+//                                         int n__,
+//                                         Wave_functions<false>& phi__,
+//                                         Wave_functions<false>& res__);
 };
