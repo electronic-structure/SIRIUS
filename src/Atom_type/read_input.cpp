@@ -181,9 +181,40 @@ void Atom_type::read_input(const std::string& fname)
 
         parser["pseudo_potential"]["header"]["number_of_proj"] >> uspp_.num_beta_radial_functions;
 
+        uspp_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions);
+        uspp_.beta_radial_functions.zero();
+
+        uspp_.num_beta_radial_points.resize(uspp_.num_beta_radial_functions);
+        uspp_.beta_l.resize(uspp_.num_beta_radial_functions);
+
+        int lmax_beta = 0;
+        local_orbital_descriptor lod;
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
+        {
+            parser["pseudo_potential"]["beta_projectors"][i]["cutoff_radius_index"] >> uspp_.num_beta_radial_points[i];
+            std::vector<double> beta;
+            parser["pseudo_potential"]["beta_projectors"][i]["radial_function"] >> beta;
+            if ((int)beta.size() != uspp_.num_beta_radial_points[i]) TERMINATE("wrong size of beta function");
+            std::memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
+ 
+            parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"] >> uspp_.beta_l[i];
+            lmax_beta = std::max(lmax_beta, uspp_.beta_l[i]);
+        }
+
+        uspp_.d_mtrx_ion = mdarray<double, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
+        uspp_.d_mtrx_ion.zero();
+        std::vector<double> dion;
+        parser["pseudo_potential"]["D_ion"] >> dion;
+
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
+        {
+            for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
+                uspp_.d_mtrx_ion(i, j) = dion[j * uspp_.num_beta_radial_functions + i];
+        }
+
         if (parser["pseudo_potential"].exist("augmentation"))
         {
-            uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * uspp_.lmax_beta_ + 1);
+            uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * lmax_beta + 1);
             uspp_.q_radial_functions_l.zero();
 
             for (int k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++)
@@ -201,34 +232,6 @@ void Atom_type::read_input(const std::string& fname)
             }
         }
 
-        uspp_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions);
-        uspp_.beta_radial_functions.zero();
-
-        uspp_.num_beta_radial_points.resize(uspp_.num_beta_radial_functions);
-        uspp_.beta_l.resize(uspp_.num_beta_radial_functions);
-
-        local_orbital_descriptor lod;
-        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
-        {
-            parser["pseudo_potential"]["beta_projectors"][i]["cutoff_radius_index"] >> uspp_.num_beta_radial_points[i];
-            std::vector<double> beta;
-            parser["pseudo_potential"]["beta_projectors"][i]["radial_function"] >> beta;
-            if ((int)beta.size() != uspp_.num_beta_radial_points[i]) TERMINATE("wrong size of beta function");
-            std::memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
- 
-            parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"] >> uspp_.beta_l[i];
-        }
-
-        uspp_.d_mtrx_ion = mdarray<double, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
-        uspp_.d_mtrx_ion.zero();
-        std::vector<double> dion;
-        parser["pseudo_potential"]["D_ion"] >> dion;
-
-        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
-        {
-            for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
-                uspp_.d_mtrx_ion(i, j) = dion[j * uspp_.num_beta_radial_functions + i];
-        }
     }
 
     if (parameters_.full_potential())
