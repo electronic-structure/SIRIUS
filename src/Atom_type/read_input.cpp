@@ -145,22 +145,22 @@ void Atom_type::read_input(const std::string& fname)
 
     if (!parameters_.full_potential())
     {
-        parser["uspp"]["header"]["element"] >> symbol_;
+        parser["pseudo_potential"]["header"]["element"] >> symbol_;
 
         double zp;
-        parser["uspp"]["header"]["zp"] >> zp;
+        parser["pseudo_potential"]["header"]["z_valence"] >> zp;
         zn_ = int(zp + 1e-10);
 
         int nmesh;
-        parser["uspp"]["header"]["nmesh"] >> nmesh;
+        parser["pseudo_potential"]["header"]["mesh_size"] >> nmesh;
 
-        parser["uspp"]["radial_grid"] >> uspp_.r;
+        parser["pseudo_potential"]["radial_grid"] >> uspp_.r;
 
-        parser["uspp"]["vloc"] >> uspp_.vloc;
+        parser["pseudo_potential"]["local_potential"] >> uspp_.vloc;
 
-        uspp_.core_charge_density = parser["uspp"]["core_charge_density"].get(std::vector<double>(nmesh, 0));
+        uspp_.core_charge_density = parser["pseudo_potential"]["core_charge_density"].get(std::vector<double>(nmesh, 0));
 
-        parser["uspp"]["total_charge_density"] >> uspp_.total_charge_density;
+        parser["pseudo_potential"]["total_charge_density"] >> uspp_.total_charge_density;
 
         if ((int)uspp_.r.size() != nmesh)
         {
@@ -179,57 +179,25 @@ void Atom_type::read_input(const std::string& fname)
         
         set_radial_grid(nmesh, &uspp_.r[0]);
 
-        parser["uspp"]["header"]["lmax"] >> uspp_.lmax;
-        parser["uspp"]["header"]["nbeta"] >> uspp_.num_beta_radial_functions;
+        parser["pseudo_potential"]["header"]["number_of_proj"] >> uspp_.num_beta_radial_functions;
 
-        if (parser["uspp"]["non_local"].exist("Q"))
+        if (parser["pseudo_potential"].exist("augmentation"))
         {
-            parser["uspp"]["non_local"]["Q"]["num_q_coefs"] >> uspp_.num_q_coefs;
+            uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * uspp_.lmax_beta_ + 1);
+            uspp_.q_radial_functions_l.zero();
 
-            parser["uspp"]["non_local"]["Q"]["q_functions_inner_radii"] >> uspp_.q_functions_inner_radii;
-
-            uspp_.q_coefs = mdarray<double, 4>(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
-                                               uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
-
-            uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * uspp_.lmax + 1);
-
-            for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
+            for (int k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++)
             {
-                for (int i = 0; i <= j; i++)
-                {
-                    int idx = j * (j + 1) / 2 + i;
-
-                    std::vector<int> ij;
-                    parser["uspp"]["non_local"]["Q"]["qij"][idx]["ij"] >> ij;
-                    if (ij[0] != i || ij[1] != j) 
-                    {
-                        std::stringstream s;
-                        s << "wrong ij indices" << std::endl
-                          << "i = " << i << " j = " << j << " idx = " << idx << std::endl
-                          << "ij = " << ij[0] << " " << ij[1];
-                        TERMINATE(s);
-                    }
-
-                    std::vector<double> qfcoef;
-                    parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_coefs"] >> qfcoef;
-
-                    int k = 0;
-                    for (int l = 0; l <= 2 * uspp_.lmax; l++)
-                    {
-                        for (int n = 0; n < uspp_.num_q_coefs; n++) 
-                        {
-                            if (k >= (int)qfcoef.size()) TERMINATE("wrong size of qfcoef");
-                            uspp_.q_coefs(n, l, i, j) = uspp_.q_coefs(n, l, j, i) = qfcoef[k++];
-                        }
-                    }
-
-                    std::vector<double> qfunc;
-                    parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_radial_function"] >> qfunc;
-                    if ((int)qfunc.size() != num_mt_points_) TERMINATE("wrong size of qfunc");
+                int i, j, l;
+                parser["pseudo_potential"]["augmentation"][k]["i"] >> i;
+                parser["pseudo_potential"]["augmentation"][k]["j"] >> j;
+                int idx = j * (j + 1) / 2 + i;
+                parser["pseudo_potential"]["augmentation"][k]["angular_momentum"] >> l;
+                std::vector<double> qij;
+                parser["pseudo_potential"]["augmentation"][k]["radial_function"] >> qij;
+                if ((int)qij.size() != num_mt_points_) TERMINATE("wrong size of qij");
                     
-                    for (int l = 0; l <= 2 * uspp_.lmax; l++)
-                        memcpy(&uspp_.q_radial_functions_l(0, idx, l), &qfunc[0], num_mt_points_ * sizeof(double)); 
-                }
+                std::memcpy(&uspp_.q_radial_functions_l(0, idx, l), &qij[0], num_mt_points_ * sizeof(double)); 
             }
         }
 
@@ -242,28 +210,25 @@ void Atom_type::read_input(const std::string& fname)
         local_orbital_descriptor lod;
         for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
         {
-            parser["uspp"]["non_local"]["beta"][i]["kbeta"] >> uspp_.num_beta_radial_points[i];
+            parser["pseudo_potential"]["beta_projectors"][i]["cutoff_radius_index"] >> uspp_.num_beta_radial_points[i];
             std::vector<double> beta;
-            parser["uspp"]["non_local"]["beta"][i]["beta"] >> beta;
+            parser["pseudo_potential"]["beta_projectors"][i]["radial_function"] >> beta;
             if ((int)beta.size() != uspp_.num_beta_radial_points[i]) TERMINATE("wrong size of beta function");
-            memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
+            std::memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
  
-            parser["uspp"]["non_local"]["beta"][i]["lll"] >> uspp_.beta_l[i];
+            parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"] >> uspp_.beta_l[i];
         }
 
         uspp_.d_mtrx_ion = mdarray<double, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
         uspp_.d_mtrx_ion.zero();
+        std::vector<double> dion;
+        parser["pseudo_potential"]["D_ion"] >> dion;
 
-        for (int k = 0; k < parser["uspp"]["non_local"]["D"].size(); k++)
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
         {
-            double d;
-            std::vector<int> ij;
-            parser["uspp"]["non_local"]["D"][k]["ij"] >> ij;
-            parser["uspp"]["non_local"]["D"][k]["d_ion"] >> d;
-            uspp_.d_mtrx_ion(ij[0], ij[1]) = d;
-            uspp_.d_mtrx_ion(ij[1], ij[0]) = d;
+            for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
+                uspp_.d_mtrx_ion(i, j) = dion[j * uspp_.num_beta_radial_functions + i];
         }
-        
     }
 
     if (parameters_.full_potential())
