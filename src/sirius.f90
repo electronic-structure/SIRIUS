@@ -149,13 +149,9 @@ interface
         real(8),                 intent(in) :: dion
     end subroutine
 
-    subroutine sirius_set_atom_type_q_rf(label, num_q_coefs, lmax_q, q_coefs, rinner, q_rf, lmax)&
+    subroutine sirius_set_atom_type_q_rf(label, q_rf, lmax)&
        &bind(C, name="sirius_set_atom_type_q_rf")
         character, dimension(*), intent(in) :: label
-        integer,                 intent(in) :: num_q_coefs
-        integer,                 intent(in) :: lmax_q
-        real(8),                 intent(in) :: q_coefs
-        real(8),                 intent(in) :: rinner
         real(8),                 intent(in) :: q_rf
         integer,                 intent(in) :: lmax
     end subroutine
