@@ -212,6 +212,28 @@ void Band::set_h_o<double>(K_point* kp__,
         std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double));
         std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double));
     }
+
+
+    //printf("checking <phi|phi> matrix\n");
+    //mdarray<double, 2> ovlp_tmp(N__ + n__, N__ + n__);
+
+    //phi__.inner<double>(0, N__ + n__, phi__, 0, N__ + n__, ovlp_tmp, 0, 0);
+
+    //Eigenproblem_lapack evp;
+    //mdarray<double, 2> evec_tmp(N__ + n__, N__ + n__);
+    //std::vector<double> eval_tmp(N__ + n__);
+    //std::vector<double> ovlp_diag(N__ + n__);
+    //for (int i = 0; i < N__ + n__; i++) ovlp_diag[i] = ovlp_tmp(i, i);
+
+    //evp.solve(N__ + n__, &ovlp_tmp(0, 0), N__ + n__, &eval_tmp[0], &evec_tmp(0, 0), N__ + n__);
+    //if (kp__->comm().rank() == 0)
+    //{
+    //    for (int i = 0; i < std::min(N__ + n__, 10000000); i++)
+    //        printf("eval_<phi|phi>[%i] = %18.10f, diag = %18.10f\n", i, eval_tmp[i], ovlp_diag[i]);
+    //}
+    
+
+
 }
 
 
