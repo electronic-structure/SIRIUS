@@ -191,7 +191,9 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
             n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            //n = orthogonalize<T>(kp__, N, n, phi, res);
         }
+
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged)
