@@ -139,13 +139,71 @@ void Band::set_h_o<double>(K_point* kp__,
     for (int i = 0; i < N__; i++)
     {
         std::memcpy(&h__(0, i), &h_old__(0, i), N__ * sizeof(double));
-        std::memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double));
+        //std::memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double));
     }
+
+
+    auto inner = [kp__](double_complex* f, double_complex* g)
+    {
+        double prod = 0;
+        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+                prod += 2.0 * (f[igk].real() * g[igk].real() + f[igk].imag() * g[igk].imag());
+        prod -= f[0].real() * g[0].real();
+        return prod;
+    };
+
+    //auto scale = [kp__](double_complex* f, double a)
+    //{
+    //    for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) f[igk] *= a;
+    //};
+    
+    runtime::Timer t1("sirius::Band::set_h_o|ortho");
+    double prod;
+    for (int i = N__; i < N__ + n__; i++)
+    {
+        for (int j = 0; j < i; j++)
+        {
+            prod = inner(&phi__(0, j), &ophi__(0, i));
+            
+            #pragma omp parallel for
+            for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+            {
+                phi__(igk, i) -= phi__(igk, j) * prod;
+                ophi__(igk, i) -= ophi__(igk, j) * prod;
+                hphi__(igk, i) -= hphi__(igk, j) * prod;
+            }
+        }
+        prod = inner(&phi__(0, i), &ophi__(0, i));
+        prod = 1.0 / std::sqrt(prod);
+        #pragma omp parallel for
+        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+        {
+            phi__(igk, i) *= prod;
+            hphi__(igk, i) *= prod;
+            ophi__(igk, i) *= prod;
+        }
+    }
+    t1.stop();
 
     /* <{phi,res}|H|res> */
     phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
-    /* <{phi,res}|O|res> */
-    phi__.inner<double>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
+    ///* <{phi,res}|O|res> */
+    //phi__.inner<double>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
+
+    //for (int i = 0; i < N__ + n__; i++)
+    //{
+    //    for (int j = i; j < N__ + n__; j++)
+    //    {
+    //        double a = o__(j, i);
+    //        if (i == j) a -= 1;
+
+    //        if (std::abs(a) > 1e-10)
+    //        {
+    //            printf("wrong overlap");
+    //            TERMINATE("wrong overlap");
+    //        }
+    //    }
+    //}
 
     //#ifdef __PRINT_OBJECT_CHECKSUM
     //double_complex cs1(0, 0);
@@ -199,7 +257,7 @@ void Band::set_h_o<double>(K_point* kp__,
             for (int j = N__; j < N__ + n__; j++)
             {
                 h__(j, i) = h__(i, j);
-                o__(j, i) = o__(i, j);
+                //o__(j, i) = o__(i, j);
             }
         }
         i0 = 0;
@@ -210,7 +268,7 @@ void Band::set_h_o<double>(K_point* kp__,
     for (int i = i0; i < N__ + n__; i++)
     {
         std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double));
-        std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double));
+        //std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double));
     }
 
 

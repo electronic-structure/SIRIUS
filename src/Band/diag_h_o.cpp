@@ -126,8 +126,9 @@ void Band::diag_h_o<double>(K_point* kp__,
     }
     else
     {
-        result = gen_evp_solver()->solve(N__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(), ovlp__.at<CPU>(), ovlp__.ld(),
-                                         &eval__[0], evec__.at<CPU>(), evec__.ld());
+        result = std_evp_solver()->solve(N__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(), &eval__[0], evec__.at<CPU>(), evec__.ld());
+        //result = gen_evp_solver()->solve(N__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(), ovlp__.at<CPU>(), ovlp__.ld(),
+        //                                 &eval__[0], evec__.at<CPU>(), evec__.ld());
     }
     if (result) TERMINATE("error in diagonalziation");
     t2.stop();

@@ -242,6 +242,11 @@ void FORTRAN(dsyevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double* a, ft
                      ftn_double* work, ftn_int* lwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info,
                      ftn_len jobzlen, ftn_len uplolen);
 
+void FORTRAN(dsyevx)(ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n, ftn_double* a, ftn_int* lda,
+                     ftn_double* vl, ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double* abstol, ftn_int* m, 
+                     ftn_double* w, ftn_double* z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork,
+                     ftn_int* ifail, ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
+
 }
 
 /// Base class for linear algebra interface.

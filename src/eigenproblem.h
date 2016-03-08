@@ -102,6 +102,13 @@ class Eigenproblem
             return -1;
         }
 
+        /// Real standard symmetric-definite eigenproblem.
+        virtual int solve(int32_t matrix_size, int32_t nevec, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
+        {
+            TERMINATE("standard eigen-value solver is not configured");
+            return -1;
+        }
+
         virtual bool parallel() = 0;
 
         virtual ev_solver_t type() = 0;
@@ -277,6 +284,49 @@ class Eigenproblem_lapack: public Eigenproblem
                 s << "dsyevd returned " << info; 
                 TERMINATE(s);
             }
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int nevec, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
+        {
+            int32_t lwork = -1;
+            double lwork1, vl, vu;
+            int32_t il, iu, m, info;
+            std::vector<double> w(matrix_size);
+            std::vector<int32_t> iwork(5 * matrix_size);
+            std::vector<int32_t> ifail(matrix_size);
+
+            il = 1;
+            iu = nevec;
+
+            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+                            &w[0], Z, &ldz, &lwork1, &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, (int32_t)1, (int32_t)1);
+
+            lwork = static_cast<int32_t>(lwork1 + 1);
+            std::vector<double> work(lwork);
+
+            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, (int32_t)1, (int32_t)1);
+            
+            if (m != nevec)
+            {
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                WARNING(s);
+                return 1;
+            }
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "dsyevx returned " << info; 
+                TERMINATE(s);
+            }
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
             return 0;
         }
 
