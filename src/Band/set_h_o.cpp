@@ -143,56 +143,43 @@ void Band::set_h_o<double>(K_point* kp__,
     }
 
 
-    auto inner = [kp__](double_complex* f, double_complex* g)
-    {
-        double prod = 0;
-        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
-                prod += 2.0 * (f[igk].real() * g[igk].real() + f[igk].imag() * g[igk].imag());
-        prod -= f[0].real() * g[0].real();
-        return prod;
-    };
-
-    //auto scale = [kp__](double_complex* f, double a)
+    //phi__.inner<double>(0, N__ + n__, ophi__, 0, N__ + n__, o__, 0, 0);
+    //
+    //int info;
+    //if ((info = linalg<CPU>::potrf(N__ + n__, &o__(0, 0), o__.ld())))
     //{
-    //    for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) f[igk] *= a;
-    //};
-    
-    runtime::Timer t1("sirius::Band::set_h_o|ortho");
-    double prod;
-    for (int i = N__; i < N__ + n__; i++)
-    {
-        for (int j = 0; j < i; j++)
-        {
-            prod = inner(&phi__(0, j), &ophi__(0, i));
-            
-            #pragma omp parallel for
-            for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
-            {
-                phi__(igk, i) -= phi__(igk, j) * prod;
-                ophi__(igk, i) -= ophi__(igk, j) * prod;
-                hphi__(igk, i) -= hphi__(igk, j) * prod;
-            }
-        }
-        prod = inner(&phi__(0, i), &ophi__(0, i));
-        prod = 1.0 / std::sqrt(prod);
-        #pragma omp parallel for
-        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
-        {
-            phi__(igk, i) *= prod;
-            hphi__(igk, i) *= prod;
-            ophi__(igk, i) *= prod;
-        }
-    }
-    t1.stop();
+    //    std::stringstream s;
+    //    s << "error in factorization, info = " << info;
+    //    TERMINATE(s);
+    //}
 
-    /* <{phi,res}|H|res> */
-    phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
-    ///* <{phi,res}|O|res> */
-    //phi__.inner<double>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
+    //if (linalg<CPU>::trtri(N__ + n__, &o__(0, 0), o__.ld()))
+    //{
+    //    TERMINATE("error in inversion");
+    //}
 
     //for (int i = 0; i < N__ + n__; i++)
     //{
-    //    for (int j = i; j < N__ + n__; j++)
+    //    for (int j = i + 1; j < N__ + n__; j++)
+    //    {
+    //        o__(j, i) = 0;
+    //    }
+    //}
+    //    
+    //Wave_functions<false> tmp(N__ + n__, kp__->gkvec(), ctx_.mpi_grid_fft(), CPU);
+    //tmp.transform_from(phi__, N__ + n__, o__, N__ + n__);
+    //phi__.copy_from(tmp, 0, N__ + n__, 0);
+
+    //tmp.transform_from(hphi__, N__ + n__, o__, N__ + n__);
+    //hphi__.copy_from(tmp, 0, N__ + n__, 0);
+
+    //tmp.transform_from(ophi__, N__ + n__, o__, N__ + n__);
+    //ophi__.copy_from(tmp, 0, N__ + n__, 0);
+
+    //phi__.inner<double>(0, N__ + n__, ophi__, 0, N__ + n__, o__, 0, 0);
+    //for (int i = 0; i < N__ + n__; i++)
+    //{
+    //    for (int j = 0; j < N__ + n__; j++)
     //    {
     //        double a = o__(j, i);
     //        if (i == j) a -= 1;
@@ -204,6 +191,54 @@ void Band::set_h_o<double>(K_point* kp__,
     //        }
     //    }
     //}
+
+
+    //auto inner = [kp__](double_complex* f, double_complex* g)
+    //{
+    //    double prod = 0;
+    //    for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+    //            prod += 2.0 * (f[igk].real() * g[igk].real() + f[igk].imag() * g[igk].imag());
+    //    prod -= f[0].real() * g[0].real();
+    //    return prod;
+    //};
+
+    ////auto scale = [kp__](double_complex* f, double a)
+    ////{
+    ////    for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) f[igk] *= a;
+    ////};
+    //
+    //runtime::Timer t1("sirius::Band::set_h_o|ortho");
+    //double prod;
+    //for (int i = N__; i < N__ + n__; i++)
+    //{
+    //    for (int j = 0; j < i; j++)
+    //    {
+    //        prod = inner(&phi__(0, j), &ophi__(0, i));
+    //        
+    //        #pragma omp parallel for
+    //        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+    //        {
+    //            phi__(igk, i) -= phi__(igk, j) * prod;
+    //            ophi__(igk, i) -= ophi__(igk, j) * prod;
+    //            hphi__(igk, i) -= hphi__(igk, j) * prod;
+    //        }
+    //    }
+    //    prod = inner(&phi__(0, i), &ophi__(0, i));
+    //    prod = 1.0 / std::sqrt(prod);
+    //    #pragma omp parallel for
+    //    for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++)
+    //    {
+    //        phi__(igk, i) *= prod;
+    //        hphi__(igk, i) *= prod;
+    //        ophi__(igk, i) *= prod;
+    //    }
+    //}
+    //t1.stop();
+
+    /* <{phi,res}|H|res> */
+    phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
+    ///* <{phi,res}|O|res> */
+    //phi__.inner<double>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
 
     //#ifdef __PRINT_OBJECT_CHECKSUM
     //double_complex cs1(0, 0);

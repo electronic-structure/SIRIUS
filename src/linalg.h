@@ -139,12 +139,23 @@ class linalg<CPU>: public linalg_base
         template <typename T>
         static void heinv(ftn_int n, matrix<T>& A);
 
+        /// Cholesky factorization
+        template <typename T>
+        static ftn_int potrf(ftn_int n, T* A, ftn_int lda);
+        
+        /// Inversion of triangular matrix.
+        template <typename T>
+        static ftn_int trtri(ftn_int n, T* A, ftn_int lda);
+
+        template <typename T>
+        static void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T aplha, T* A, ftn_int lda, T* B, ftn_int ldb);
+
         template <typename T>
         static ftn_int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
 
         template <typename T>
         static ftn_int getri(ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
-
+        
         /// Conjugate transponse of the sub-matrix.
         /** \param [in] m Number of rows of the target sub-matrix.
          *  \param [in] n Number of columns of the target sub-matrix.

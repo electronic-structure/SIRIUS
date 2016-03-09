@@ -107,6 +107,38 @@ void FORTRAN(dgesv)(ftn_int* n, ftn_int* nrhs, ftn_double* A, ftn_int* lda, ftn_
 void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* B,
                     ftn_int* ldb, ftn_int* info);
 
+void FORTRAN(dpotrf)(ftn_char uplo,
+                     ftn_int* n,
+                     ftn_double* A,
+                     ftn_int* lda,
+                     ftn_int* info,
+                     ftn_len uplolen);
+
+void FORTRAN(dtrtri)(ftn_char uplo,
+                     ftn_char diag,
+                     ftn_int* n,
+                     ftn_double* A,
+                     ftn_int* lda,
+                     ftn_int* info,
+                     ftn_len uplolen,
+                     ftn_len diaglen);
+
+void FORTRAN(dtrmm)(ftn_char    side,
+                    ftn_char    uplo,
+                    ftn_char    transa,
+                    ftn_char    diag,
+                    ftn_int*    m,
+                    ftn_int*    n,
+                    ftn_double* aplha,
+                    ftn_double* A,
+                    ftn_int*    lda,
+                    ftn_double* B,
+                    ftn_int*    ldb,
+                    ftn_len     sidelen,
+                    ftn_len     uplolen,
+                    ftn_len     transalen,
+                    ftn_len     diaglen);
+
 #ifdef __SCALAPACK
 int Csys2blacs_handle(MPI_Comm SysCtxt);
 

@@ -372,6 +372,29 @@ ftn_int linalg<CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_doubl
     return info;
 }
 
+template<>
+ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
+{
+    ftn_int info;
+    FORTRAN(dpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
+    return info;
+}
+
+template <>
+ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
+{
+    ftn_int info;
+    FORTRAN(dtrtri)("U", "N", &n, A, &lda, &info, (ftn_len)1, (ftn_len)1);
+    return info;
+}
+
+template <>
+void linalg<CPU>::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double alpha,
+                                   ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+{
+    FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, &alpha, A, &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+}
+
 #ifdef __SCALAPACK
 template<>
 ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,

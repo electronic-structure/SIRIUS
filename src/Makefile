@@ -53,6 +53,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Band/solve_sv.cpp \
        Band/residuals.cpp \
        Band/diag_fv_full_potential.cpp \
+       Band/orthogonalize.cpp \
        Potential/init.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
