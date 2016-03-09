@@ -217,6 +217,39 @@ void FORTRAN(pdsygvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char u
                       ftn_int* ifail, ftn_int* iclustr, ftn_double* gap, ftn_int* info, 
                       ftn_len jobz_len, ftn_len range_len, ftn_len uplo_len);
 
+void FORTRAN(pdsyevx)(ftn_char       jobz,
+                      ftn_char       range,
+                      ftn_char       uplo,
+                      ftn_int*       n, 
+                      ftn_double*    A,
+                      ftn_int*       ia,
+                      ftn_int*       ja,
+                      ftn_int const* desca, 
+                      ftn_double*    vl,
+                      ftn_double*    vu, 
+                      ftn_int*       il,
+                      ftn_int*       iu, 
+                      ftn_double*    abstol,
+                      ftn_int*       m,
+                      ftn_int*       nz,
+                      ftn_double*    w,
+                      ftn_double*    orfac, 
+                      ftn_double*    Z,
+                      ftn_int*       iz,
+                      ftn_int*       jz,
+                      ftn_int const* descz, 
+                      ftn_double*    work,
+                      ftn_int*       lwork, 
+                      ftn_int*       iwork,
+                      ftn_int*       liwork, 
+                      ftn_int*       ifail,
+                      ftn_int*       iclustr,
+                      ftn_double*    gap,
+                      ftn_int*       info, 
+                      ftn_len        jobz_len,
+                      ftn_len        range_len,
+                      ftn_len        uplo_len);
+
 void FORTRAN(pzheevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, 
                       ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca, 
                       ftn_double* w, 
@@ -233,17 +266,17 @@ ftn_int FORTRAN(pjlaenv)(ftn_int* ictxt, ftn_int* ispec, ftn_char name, ftn_char
 
 ftn_len FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
 
-void FORTRAN(pzgemr2d)(ftn_int* m,
-                       ftn_int* n,
+void FORTRAN(pzgemr2d)(ftn_int*            m,
+                       ftn_int*            n,
                        ftn_double_complex* a,
-                       ftn_int* ia,
-                       ftn_int* ja,
-                       ftn_int const* desca,  
+                       ftn_int*            ia,
+                       ftn_int*            ja,
+                       ftn_int const*      desca,  
                        ftn_double_complex* b,
-                       ftn_int* ib,
-                       ftn_int* jb,
-                       ftn_int const* descb,
-                       ftn_int* gcontext);
+                       ftn_int*            ib,
+                       ftn_int*            jb,
+                       ftn_int const*      descb,
+                       ftn_int*            gcontext);
 #endif
 
 /*

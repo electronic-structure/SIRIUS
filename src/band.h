@@ -207,13 +207,6 @@ class Band
                       std::vector<double>& h_diag__,
                       std::vector<double>& o_diag__);
 
-        //== template <typename T>
-        //== int orthogonalize(K_point* kp__,
-        //==                   int N__,
-        //==                   int n__,
-        //==                   Wave_functions<false>& phi__,
-        //==                   Wave_functions<false>& res__);
-
         template <typename T>
         void orthogonalize(K_point* kp__,
                            int N__,
@@ -221,7 +214,6 @@ class Band
                            Wave_functions<false>& phi__,
                            Wave_functions<false>& hphi__,
                            Wave_functions<false>& ophi__,
-                           Wave_functions<false>& tmp__,
                            matrix<T>& o__);
 
         void residuals_aux(K_point* kp__,
@@ -286,6 +278,11 @@ class Band
                 case ev_plasma:
                 {
                     std_evp_solver_ = new Eigenproblem_plasma();
+                    break;
+                }
+                case ev_elpa1:
+                {
+                    std_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
                 default:

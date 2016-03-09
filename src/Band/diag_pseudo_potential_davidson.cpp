@@ -154,7 +154,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
-        orthogonalize<T>(kp__, N, n, phi, hphi, ophi, res, ovlp);
+        orthogonalize<T>(kp__, N, n, phi, hphi, ophi, ovlp);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions

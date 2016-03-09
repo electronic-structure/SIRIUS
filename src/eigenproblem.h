@@ -55,7 +55,7 @@ enum ev_solver_t
     ev_rs_cpu
 };
 
-/// Base class for generalized eigen-value problem
+/// Base class for eigen-value problems.
 class Eigenproblem
 {
     public:
@@ -87,6 +87,17 @@ class Eigenproblem
             TERMINATE("solver is not implemented");
             return -1;
         }
+
+        /// Real standard symmetric-definite eigenproblem.
+        virtual int solve(int32_t matrix_size, int32_t nevec,
+                          double* A, int32_t lda,
+                          double* eval,
+                          double* Z, int32_t ldz,
+                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            TERMINATE("solver is not implemented");
+            return -1;
+        }
         
         /// Complex standard Hermitian-definite eigenproblem.
         virtual int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz)
@@ -97,13 +108,6 @@ class Eigenproblem
 
         /// Real standard symmetric-definite eigenproblem.
         virtual int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
-        {
-            TERMINATE("standard eigen-value solver is not configured");
-            return -1;
-        }
-
-        /// Real standard symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
@@ -733,6 +737,89 @@ class Eigenproblem_scalapack: public Eigenproblem
 
             return 0;
         }
+
+        int solve(int32_t matrix_size,  int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+        {
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
+
+            int32_t descz[9];
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
+            
+            int32_t lwork = -1;
+            int32_t liwork;
+
+            double work1;
+
+            double orfac = 1e-6;
+            int32_t ione = 1;
+            
+            int32_t m;
+            int32_t nz;
+            double d1;
+            int32_t info;
+
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
+            std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
+            std::vector<double> w(matrix_size);
+            
+            /* work size query */
+            FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
+                             &liwork, &lwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
+            
+            lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+            
+            FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+
+            if (info)
+            {
+                if ((info / 2) % 2)
+                {
+                    std::stringstream s;
+                    s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                      << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                    int k = num_ranks_row_ * num_ranks_col_;
+                    for (int i = 0; i < num_ranks_row_ * num_ranks_col_ - 1; i++)
+                    {
+                        if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
+                        {
+                            k = i + 1;
+                            break;
+                        }
+                    }
+                   
+                    s << "number of eigenvalue clusters : " << k << std::endl;
+                    for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
+                    TERMINATE(s);
+                }
+
+                std::stringstream s;
+                s << "pdsyevx returned " << info; 
+                TERMINATE(s);
+            }
+
+            if ((m != nevec) || (nz != nevec))
+                TERMINATE("Not all eigen-vectors or eigen-values are found.");
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
+        }
         #endif
 
         bool parallel()
@@ -1009,6 +1096,24 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             
             transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc, int32_t num_cols_loc)
+        {
+            assert(nevec <= matrix_size);
+
+            std::vector<double> w(matrix_size);
+            runtime::Timer t("Eigenproblem_elpa1|diag");
+            FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
+                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+            t.stop();
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
             return 0;
         }
         #endif

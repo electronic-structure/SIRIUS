@@ -9,7 +9,6 @@ void Band::orthogonalize<double_complex>(K_point* kp__,
                                          Wave_functions<false>& phi__,
                                          Wave_functions<false>& hphi__,
                                          Wave_functions<false>& ophi__,
-                                         Wave_functions<false>& tmp__,
                                          matrix<double_complex>& o__)
 {
     return;
@@ -22,7 +21,6 @@ void Band::orthogonalize<double>(K_point* kp__,
                                  Wave_functions<false>& phi__,
                                  Wave_functions<false>& hphi__,
                                  Wave_functions<false>& ophi__,
-                                 Wave_functions<false>& tmp__,
                                  matrix<double>& o__)
 {
     PROFILE_WITH_TIMER("sirius::Band::orthogonalize");
