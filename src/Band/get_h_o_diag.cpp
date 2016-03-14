@@ -26,10 +26,11 @@
 
 namespace sirius {
 
+template <typename T>
 std::vector<double> Band::get_h_diag(K_point* kp__,
                                      int ispn__,
                                      double v0__,
-                                     D_operator& d_op__)
+                                     D_operator<T>& d_op__)
 {
     PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
 
@@ -85,8 +86,9 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
     return h_diag;
 }
 
+template <typename T>
 std::vector<double> Band::get_o_diag(K_point* kp__,
-                                     Q_operator& q_op__)
+                                     Q_operator<T>& q_op__)
 {
     PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
 
@@ -119,7 +121,7 @@ std::vector<double> Band::get_o_diag(K_point* kp__,
             for (int xi = 0; xi < nbf; xi++)
                 beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);
 
-        #pragma omp parallel for schedule(static)
+        #pragma omp parallel for
         for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
         {
             for (int xi2 = 0; xi2 < nbf; xi2++)
@@ -137,4 +139,19 @@ std::vector<double> Band::get_o_diag(K_point* kp__,
     return o_diag;
 }
 
+template std::vector<double> Band::get_h_diag<double>(K_point* kp__,
+                                                      int ispn__,
+                                                      double v0__,
+                                                      D_operator<double>& d_op__);
+
+template std::vector<double> Band::get_h_diag<double_complex>(K_point* kp__,
+                                                              int ispn__,
+                                                              double v0__,
+                                                              D_operator<double_complex>& d_op__);
+
+template std::vector<double> Band::get_o_diag<double>(K_point* kp__,
+                                                      Q_operator<double>& q_op__);
+
+template std::vector<double> Band::get_o_diag<double_complex>(K_point* kp__,
+                                                              Q_operator<double_complex>& q_op__);
 };
