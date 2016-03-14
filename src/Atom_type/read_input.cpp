@@ -232,6 +232,20 @@ void Atom_type::read_input(const std::string& fname)
             }
         }
 
+        if (parser["pseudo_potential"].exist("wave_functions"))
+        {
+            int nwf = parser["pseudo_potential"]["wave_functions"].size();
+            uspp_.wf_pseudo_ = mdarray<double, 2>(num_mt_points_, nwf);
+            uspp_.l_wf_pseudo_ = std::vector<int>(nwf);
+            for (int k = 0; k < nwf; k++)
+            {
+                std::vector<double> f;
+                parser["pseudo_potential"]["wave_functions"][k]["radial_function"] >> f;
+                std::memcpy(&uspp_.wf_pseudo_(0, k), &f[0], num_mt_points_ * sizeof(double));
+
+                parser["pseudo_potential"]["wave_functions"][k]["angular_momentum"] >> uspp_.l_wf_pseudo_[k];
+            }
+        }
     }
 
     if (parameters_.full_potential())
