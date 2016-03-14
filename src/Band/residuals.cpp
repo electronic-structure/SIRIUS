@@ -148,6 +148,21 @@ int Band::residuals(K_point* kp__,
         }
     }
 
+    //== // --== DEBUG ==--
+    //== if (kp__->gkvec().reduced())
+    //== {
+    //==     matrix<double> ovlp(n, n);
+    //==     res__.inner<double>(0, n, res__, 0, n, ovlp, 0, 0);
+
+    //==     Utils::write_matrix("ovlp_res_real.txt", true, ovlp);
+    //== }
+    //== else
+    //== {
+    //==     matrix<double_complex> ovlp(n, n);
+    //==     res__.inner<double_complex>(0, n, res__, 0, n, ovlp, 0, 0);
+    //==     Utils::write_matrix("ovlp_res_cmplx.txt", true, ovlp);
+    //== }
+
     return n;
 }
 
