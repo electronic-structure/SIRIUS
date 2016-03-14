@@ -79,7 +79,7 @@ def parse_header(upf_dict):
     upf_dict['header']['mesh_size'] = int(s[0])
     
     s = upf.readline().split()
-    #upf_dict["header"]["nwfc"] = int(s[0])
+    upf_dict["header"]["number_of_wfc"] = int(s[0])
     upf_dict['header']['number_of_proj'] = int(s[1])
 
     upf.readline()
@@ -366,7 +366,7 @@ def parse_pswfc(upf_dict):
     
     print "parsing wfc"
 
-    upf_dict["pswfc"] = []
+    upf_dict['wave_functions'] = []
 
     upf = open(sys.argv[1], "r")
 
@@ -380,9 +380,13 @@ def parse_pswfc(upf_dict):
     #    read (iunps, *, err=100, end=100) ( upf%chi(ir,nb), ir=1,upf%mesh )
     # enddo
     # =======================================================================
-    for i in range(upf_dict["header"]["nwfc"]):
-        upf.readline()
-        upf_dict["pswfc"].append(read_mesh_data(upf, upf_dict["header"]["nmesh"]))
+    for i in range(upf_dict['header']['number_of_wfc']):
+        wf = {}
+        s = upf.readline().split()
+        wf['label'] = s[0]
+        wf['angular_momentum'] = int(s[1])
+        wf['radial_function'] = read_mesh_data(upf, upf_dict['header']['mesh_size'])
+        upf_dict['wave_functions'].append(wf)
     upf.close()
 
 #
@@ -414,7 +418,7 @@ def main():
     if upf_dict['header']['core_correction'] == 1: parse_nlcc(upf_dict)
     parse_local(upf_dict)
     parse_non_local(upf_dict)
-    #parse_pswfc(upf_dict)
+    parse_pswfc(upf_dict)
     parse_rhoatom(upf_dict)
 
     pp_dict = {}
