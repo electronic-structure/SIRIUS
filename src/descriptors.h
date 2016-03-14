@@ -115,6 +115,10 @@ class uspp_descriptor
         std::vector<double> total_charge_density;
 
         mdarray<double, 2> d_mtrx_ion;
+
+        mdarray<double, 2> wf_pseudo_;
+
+        std::vector<int> l_wf_pseudo_;
 };
 
 struct nearest_neighbour_descriptor
