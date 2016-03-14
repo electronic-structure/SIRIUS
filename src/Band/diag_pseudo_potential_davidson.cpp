@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -30,8 +30,8 @@ template <typename T>
 void Band::diag_pseudo_potential_davidson(K_point* kp__,
                                           int ispn__,
                                           Hloc_operator& h_op__,
-                                          D_operator& d_op__,
-                                          Q_operator& q_op__)
+                                          D_operator<T>& d_op__,
+                                          Q_operator<T>& q_op__)
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -263,184 +263,12 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 template void Band::diag_pseudo_potential_davidson<double_complex>(K_point* kp__,
                                                                    int ispn__,
                                                                    Hloc_operator& h_op__,
-                                                                   D_operator& d_op__,
-                                                                   Q_operator& q_op__);
+                                                                   D_operator<double_complex>& d_op__,
+                                                                   Q_operator<double_complex>& q_op__);
 /* explicit instantiation for gamma-point solver */
 template void Band::diag_pseudo_potential_davidson<double>(K_point* kp__,
                                                            int ispn__,
                                                            Hloc_operator& h_op__,
-                                                           D_operator& d_op__,
-                                                           Q_operator& q_op__);
-
-void Band::diag_pseudo_potential_davidson_fast(K_point* kp__,
-                                               int ispn__,
-                                               Hloc_operator& h_op__,
-                                               D_operator& d_op__,
-                                               Q_operator& q_op__)
-{
-    PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_davidson_fast");
-
-    /* get diagonal elements for preconditioning */
-    auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
-    auto o_diag = get_o_diag(kp__, q_op__);
-
-    auto pu = ctx_.processing_unit();
-
-    /* short notation for number of target wave-functions */
-    int num_bands = ctx_.num_fv_states();
-
-    /* short notation for target wave-functions */
-    auto& psi = kp__->spinor_wave_functions<false>(ispn__);
-
-    int subspace_size = 4;
-    
-    assert(num_bands * subspace_size < kp__->num_gkvec()); // iterative subspace size can't be smaller than this
-
-    /* number of auxiliary basis functions */
-    int num_phi = subspace_size * num_bands;
-
-    /* allocate wave-functions */
-    Wave_functions<false> phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hphi(num_phi, 2 * num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hpsi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> opsi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    /* residuals */
-    Wave_functions<false> res(2 * num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-
-    /* allocate Hamiltonian and overlap */
-    matrix<double_complex> hmlt(num_phi, num_phi);
-    matrix<double_complex> ovlp(num_phi, num_phi);
-    matrix<double_complex> hmlt_old(num_phi, num_phi);
-    matrix<double_complex> ovlp_old(num_phi, num_phi);
-
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma)
-    {
-        hmlt.pin_memory();
-        ovlp.pin_memory();
-    }
-    #endif
-
-    matrix<double_complex> evec(num_phi, num_phi);
-
-    int bs = ctx_.cyclic_block_size();
-
-    dmatrix<double_complex> hmlt_dist;
-    dmatrix<double_complex> ovlp_dist;
-    dmatrix<double_complex> evec_dist;
-    if (kp__->comm().size() == 1)
-    {
-        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
-    else
-    {
-        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
-
-    std::vector<double> eval(num_phi);
-    for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
-    std::vector<double> eval_old(num_phi);
-    
-    kp__->beta_projectors().prepare();
-
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
-        psi.allocate_on_device();
-        psi.copy_to_device(0, num_bands);
-
-        phi.allocate_on_device();
-        res.allocate_on_device();
-
-        hphi.allocate_on_device();
-        ophi.allocate_on_device();
-
-        hpsi.allocate_on_device();
-        opsi.allocate_on_device();
-
-        evec.allocate_on_device();
-    }
-    #endif
-
-    /* trial basis functions */
-    phi.copy_from(psi, 0, num_bands);
-
-    /* current subspace size */
-    int N = 0;
-
-    /* number of newly added basis functions */
-    int n = num_bands;
-    
-    /* start iterative diagonalization */
-    for (int k = 0; k < 3; k++)
-    {
-        /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<double_complex>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
-        
-        /* setup eigen-value problem
-         * N is the number of previous basis functions
-         * n is the number of new basis functions */
-        set_h_o(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
- 
-        /* increase size of the variation space */
-        N += n;
-
-        eval_old = eval;
-
-        /* solve generalized eigen-value problem with the size N */
-        diag_h_o(kp__, N, N, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
-
-        /* check if occupied bands have converged */
-        bool occ_band_converged = true;
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-2 &&
-                std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
-            {
-                occ_band_converged = false;
-            }
-        }
-
-        /* don't compute residuals on last iteration */
-        if (k != 2 && !occ_band_converged)
-        {
-            /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(kp__, ispn__, N, N, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
-        }
-
-        /* check if eigen-vectors are converged or it's a last iteration */
-        if (n == 0 || k == 2 || occ_band_converged)
-        {   
-            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
-            /* recompute wave-functions */
-            /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            psi.transform_from(phi, N, evec, num_bands);
-            /* exit the loop */
-            break;
-        }
-
-        /* expand variational subspace with new basis vectors obtatined from residuals */
-        phi.copy_from(res, 0, n, N);
-    }
-
-    kp__->beta_projectors().dismiss();
-
-    for (int j = 0; j < ctx_.num_fv_states(); j++)
-        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
-
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
-        psi.copy_to_host(0, num_bands);
-        psi.deallocate_on_device();
-    }
-    #endif
-    kp__->comm().barrier();
-}
-
+                                                           D_operator<double>& d_op__,
+                                                           Q_operator<double>& q_op__);
 };
