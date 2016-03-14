@@ -32,7 +32,10 @@ void K_set::initialize()
     spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    {
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
+        band_->initialize_subspace(kpoints_[spl_num_kpoints_[ikloc]]);
+    }
 
     #if (__VERBOSITY > 0)
     print_info();
