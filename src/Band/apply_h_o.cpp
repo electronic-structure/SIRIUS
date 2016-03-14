@@ -15,8 +15,8 @@ void Band::apply_h_o(K_point* kp__,
                      Wave_functions<false>& hphi__,
                      Wave_functions<false>& ophi__,
                      Hloc_operator& h_op,
-                     D_operator& d_op,
-                     Q_operator& q_op)
+                     D_operator<T>& d_op,
+                     Q_operator<T>& q_op)
 {
     PROFILE_WITH_TIMER("sirius::Band::apply_h_o");
 
@@ -71,8 +71,8 @@ template void Band::apply_h_o<double_complex>(K_point* kp__,
                                               Wave_functions<false>& hphi__,
                                               Wave_functions<false>& ophi__,
                                               Hloc_operator& h_op,
-                                              D_operator& d_op,
-                                              Q_operator& q_op);
+                                              D_operator<double_complex>& d_op,
+                                              Q_operator<double_complex>& q_op);
 
 template void Band::apply_h_o<double>(K_point* kp__, 
                                       int ispn__,
@@ -82,6 +82,6 @@ template void Band::apply_h_o<double>(K_point* kp__,
                                       Wave_functions<false>& hphi__,
                                       Wave_functions<false>& ophi__,
                                       Hloc_operator& h_op,
-                                      D_operator& d_op,
-                                      Q_operator& q_op);
+                                      D_operator<double>& d_op,
+                                      Q_operator<double>& q_op);
 };
