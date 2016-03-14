@@ -157,7 +157,7 @@ class Utils
         static void write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,
                                  bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f");
         
-        static void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& matrix);
+        static void write_matrix(std::string const& fname, bool write_all, mdarray<double, 2>& matrix);
 
         static void write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx);
 
