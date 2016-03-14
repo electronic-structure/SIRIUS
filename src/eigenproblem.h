@@ -291,7 +291,15 @@ class Eigenproblem_lapack: public Eigenproblem
             return 0;
         }
 
-        int solve(int32_t matrix_size, int nevec, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
+        int solve(int32_t matrix_size,
+                  int nevec,
+                  double* A,
+                  int32_t lda,
+                  double* eval,
+                  double* Z,
+                  int32_t ldz,
+                  int32_t num_rows_loc = 0,
+                  int32_t num_cols_loc = 0)
         {
             int32_t lwork = -1;
             double lwork1, vl, vu;
