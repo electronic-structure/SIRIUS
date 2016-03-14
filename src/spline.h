@@ -59,16 +59,15 @@ class Spline
         /// Constructor of a new empty spline.
         Spline(Radial_grid const& radial_grid__) : radial_grid_(&radial_grid__)
         {
-            coeffs_ = mdarray<T, 2>(radial_grid_->num_points(), 4);
+            coeffs_ = mdarray<T, 2>(num_points(), 4);
             coeffs_.zero();
         }
 
         /// Constructor of a spline from a function.
         Spline(Radial_grid const& radial_grid__, std::function<T(double)> f__) : radial_grid_(&radial_grid__)
         {
-            int np = num_points();
-            coeffs_ = mdarray<T, 2>(np, 4);
-            for (int i = 0; i < np; i++)
+            coeffs_ = mdarray<T, 2>(num_points(), 4);
+            for (int i = 0; i < num_points(); i++)
             {
                 double x = (*radial_grid_)[i];
                 coeffs_(i, 0) = f__(x);
@@ -80,9 +79,8 @@ class Spline
         Spline(Radial_grid const& radial_grid__, std::vector<T> y__) : radial_grid_(&radial_grid__)
         {
             assert(radial_grid_->num_points() == (int)y__.size());
-            int np = num_points();
-            coeffs_ = mdarray<T, 2>(np, 4);
-            for (int i = 0; i < np; i++) coeffs_(i, 0) = y__[i];
+            coeffs_ = mdarray<T, 2>(num_points(), 4);
+            for (int i = 0; i < num_points(); i++) coeffs_(i, 0) = y__[i];
             interpolate();
         }
 
