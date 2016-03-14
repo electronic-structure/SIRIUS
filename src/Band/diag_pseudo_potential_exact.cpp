@@ -4,11 +4,12 @@
 
 namespace sirius {
 
+template <typename T>
 void Band::diag_pseudo_potential_exact(K_point* kp__,
                                        int ispn__,
                                        Hloc_operator& h_op__,
-                                       D_operator& d_op__,
-                                       Q_operator& q_op__)
+                                       D_operator<T>& d_op__,
+                                       Q_operator<T>& q_op__)
 {
     PROFILE();
 
@@ -31,7 +32,7 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     phi.coeffs().zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
-    apply_h_o<double_complex>(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
+    apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
     Utils::check_hermitian("h", hphi.coeffs(), ngk);
     Utils::check_hermitian("o", ophi.coeffs(), ngk);
@@ -58,5 +59,17 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     for (int j = 0; j < ctx_.num_fv_states(); j++)
         kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
 }
+
+template void Band::diag_pseudo_potential_exact<double>(K_point* kp__,
+                                                        int ispn__,
+                                                        Hloc_operator& h_op__,
+                                                        D_operator<double>& d_op__,
+                                                        Q_operator<double>& q_op__);
+
+template void Band::diag_pseudo_potential_exact<double_complex>(K_point* kp__,
+                                                                int ispn__,
+                                                                Hloc_operator& h_op__,
+                                                                D_operator<double_complex>& d_op__,
+                                                                Q_operator<double_complex>& q_op__);
 
 };
