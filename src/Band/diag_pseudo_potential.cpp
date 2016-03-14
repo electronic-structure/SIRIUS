@@ -2,6 +2,7 @@
 
 namespace sirius {
 
+template <typename T>
 void Band::diag_pseudo_potential(K_point* kp__, 
                                  Periodic_function<double>* effective_potential__,
                                  Periodic_function<double>* effective_magnetic_field__[3])
@@ -13,8 +14,8 @@ void Band::diag_pseudo_potential(K_point* kp__,
     Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
-    D_operator d_op(ctx_, kp__->beta_projectors());
-    Q_operator q_op(ctx_, kp__->beta_projectors());
+    D_operator<T> d_op(ctx_, kp__->beta_projectors());
+    Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
     //if (itso.type_ == "exact")
     //{
@@ -56,29 +57,7 @@ void Band::diag_pseudo_potential(K_point* kp__,
         if (ctx_.num_mag_dims() != 3)
         {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-            {
-                if (ctx_.gamma_point())
-                {
-                    diag_pseudo_potential_davidson<double>(kp__, ispn, hloc, d_op, q_op);
-                }
-                else
-                {
-                    diag_pseudo_potential_davidson<double_complex>(kp__, ispn, hloc, d_op, q_op);
-                }
-            }
-                    
-        }
-        else
-        {
-            STOP();
-        }
-    }
-    else if (itso.type_ == "davidson_fast")
-    {
-        if (ctx_.num_mag_dims() != 3)
-        {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-                diag_pseudo_potential_davidson_fast(kp__, ispn, hloc, d_op, q_op);
+                diag_pseudo_potential_davidson(kp__, ispn, hloc, d_op, q_op);
         }
         else
         {
@@ -93,4 +72,11 @@ void Band::diag_pseudo_potential(K_point* kp__,
     ctx_.fft_coarse().dismiss();
 }
 
+template void Band::diag_pseudo_potential<double>(K_point* kp__, 
+                                                  Periodic_function<double>* effective_potential__,
+                                                  Periodic_function<double>* effective_magnetic_field__[3]);
+
+template void Band::diag_pseudo_potential<double_complex>(K_point* kp__, 
+                                                          Periodic_function<double>* effective_potential__,
+                                                          Periodic_function<double>* effective_magnetic_field__[3]);
 };
