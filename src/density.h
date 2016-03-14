@@ -195,10 +195,6 @@ class Density
         /// Generate valence density in the interstitial
         void generate_valence_density_it(K_set& ks);
        
-        /// Add band contribution to the muffin-tin density
-        void add_band_contribution_mt(Band* band, double weight, mdarray<double_complex, 3>& fylm, 
-                                      std::vector<Periodic_function<double>*>& dens);
-        
         /// Generate charge density of core states
         void generate_core_charge_density();
 
