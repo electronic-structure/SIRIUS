@@ -65,6 +65,12 @@ class radial_functions_index
     
     public:
 
+        void init(const std::vector<local_orbital_descriptor>& lo_descriptors__)
+        {
+            std::vector<radial_solution_descriptor_set> aw_descriptors;
+            init(aw_descriptors, lo_descriptors__);
+        }
+
         void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<local_orbital_descriptor>& lo_descriptors)
         {
@@ -89,7 +95,7 @@ class radial_functions_index
             {
                 assert(aw_descriptors[l].size() <= 3);
 
-                for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
+                for (size_t order = 0; order < aw_descriptors[l].size(); order++)
                 {
                     radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
                     num_rf_[l]++;
