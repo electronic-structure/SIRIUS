@@ -190,7 +190,7 @@ class Hloc_operator
                     #pragma omp parallel for
                     for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
                     {
-                        hphi__[2 * i][ig] = hphi__[2 * i][ig] * pw_ekin_[ig] + vphi_[ig];
+                        hphi__[2 * i    ][ig] = hphi__[2 * i    ][ig] * pw_ekin_[ig] + vphi_[ig];
                         hphi__[2 * i + 1][ig] = hphi__[2 * i + 1][ig] * pw_ekin_[ig] + vphi2_[ig];
                     }
                 }
