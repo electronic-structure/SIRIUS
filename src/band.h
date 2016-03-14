@@ -112,30 +112,26 @@ class Band
                                     Periodic_function<double>* effective_potential__);
 
         /// Diagonalize a pseudo-potential Hamiltonian.
+        template <typename T>
         void diag_pseudo_potential(K_point* kp__, 
                                    Periodic_function<double>* effective_potential__,
                                    Periodic_function<double>* effective_magnetic_field__[3]);
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
+        template <typename T>
         void diag_pseudo_potential_exact(K_point* kp__,
                                          int ispn__,
                                          Hloc_operator& h_op__,
-                                         D_operator& d_op__,
-                                         Q_operator& q_op__);
+                                         D_operator<T>& d_op__,
+                                         Q_operator<T>& q_op__);
 
         /// Iterative Davidson diagonalization.
         template <typename T>
         void diag_pseudo_potential_davidson(K_point* kp__,
                                             int ispn__,
                                             Hloc_operator& h_op__,
-                                            D_operator& d_op__,
-                                            Q_operator& q_op__);
-
-        void diag_pseudo_potential_davidson_fast(K_point* kp__,
-                                                 int ispn__,
-                                                 Hloc_operator& h_op__,
-                                                 D_operator& d_op__,
-                                                 Q_operator& q_op__);
+                                            D_operator<T>& d_op__,
+                                            Q_operator<T>& q_op__);
 
         //void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         //                                              double v0__,
@@ -176,8 +172,8 @@ class Band
                        Wave_functions<false>& hphi__,
                        Wave_functions<false>& ophi__,
                        Hloc_operator &h_op,
-                       D_operator& d_op,
-                       Q_operator& q_op);
+                       D_operator<T>& d_op,
+                       Q_operator<T>& q_op);
         
         template <typename T>
         void set_h_o(K_point* kp__,
@@ -455,15 +451,18 @@ class Band
         }
 
         /// Get diagonal elements of Hamiltonian.
+        template <typename T>
         std::vector<double> get_h_diag(K_point* kp__,
                                        int ispn__,
                                        double v0__,
-                                       D_operator& d_op__);
+                                       D_operator<T>& d_op__);
 
         /// Get diagonal elements of overlap matrix.
+        template <typename T>
         std::vector<double> get_o_diag(K_point* kp__,
-                                       Q_operator& q_op__);
+                                       Q_operator<T>& q_op__);
 
+        void initialize_subspace(K_point* kp__);
 };
 
 #include "band.hpp"

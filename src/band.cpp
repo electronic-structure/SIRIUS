@@ -1056,7 +1056,14 @@ void Band::solve_fd(K_point* kp__,
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
-            diag_pseudo_potential(kp__, effective_potential__, effective_magnetic_field__);
+            if (ctx_.gamma_point())
+            {
+                diag_pseudo_potential<double>(kp__, effective_potential__, effective_magnetic_field__);
+            }
+            else
+            {
+                diag_pseudo_potential<double_complex>(kp__, effective_potential__, effective_magnetic_field__);
+            }
             break;
         }
         default:
