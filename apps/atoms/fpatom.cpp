@@ -316,7 +316,7 @@ std::pair< std::vector<double>, matrix<double_complex> > solve_gen_evp(int ispn_
 {
     runtime::Timer t("solve_gen_evp");
 
-    generalized_evp_lapack evp_solver(-1.0);
+    Eigenproblem_lapack evp_solver(-1.0);
     std::pair< std::vector<double>, matrix<double_complex> > result;
     
     int N = (int)basis_functions_desc__.size();
@@ -339,7 +339,7 @@ std::pair< std::vector<double>, matrix<double_complex> > solve_gen_evp(int ispn_
             if (lm1 == lm2) o(i2, i1) = o_radial_integrals__(idxrf2, idxrf1, ispn__);
         }
     }
-    if (evp_solver.solve(N, N, N, N, h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), &result.first[0], result.second.at<CPU>(), result.second.ld()))
+    if (evp_solver.solve(N, N, h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), &result.first[0], result.second.at<CPU>(), result.second.ld()))
     {
         printf("error in evp solver\n");
         exit(0);
@@ -448,7 +448,7 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
     //}
 
     //sirius::Radial_grid rgrid(pow2_grid, 25000, 1e-7, 100.0);
-    sirius::Radial_grid rgrid(exponential_grid, 20000, 1e-7, 150.0);
+    sirius::Radial_grid rgrid(sirius::exponential_grid, 20000, 1e-7, 150.0);
     #ifdef __GPU
     rgrid.copy_to_device();
     #endif

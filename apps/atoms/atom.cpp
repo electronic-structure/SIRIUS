@@ -35,10 +35,10 @@ class Free_atom : public sirius::Atom_type
                   int zn, 
                   double mass, 
                   std::vector<atomic_level_descriptor>& levels_nl) 
-            : Atom_type(parameters_, symbol, name, zn, mass, levels_nl, scaled_pow_grid), 
+            : Atom_type(parameters_, symbol, name, zn, mass, levels_nl, sirius::scaled_pow_grid), 
               NIST_LDA_Etot(0.0)
         {
-            radial_grid_ = sirius::Radial_grid(exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
+            radial_grid_ = sirius::Radial_grid(sirius::exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
