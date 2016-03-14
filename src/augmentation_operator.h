@@ -129,7 +129,7 @@ class Augmentation_operator
                             
                             if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
                             {
-                                qri(idx, l3, igs) = inner(jl(l3), qrf_spline(l3, idx), 0, atom_type_.num_mt_points());
+                                qri(idx, l3, igs) = inner(jl[l3], qrf_spline(l3, idx), 0, atom_type_.num_mt_points());
                             }
                         }
                     }
