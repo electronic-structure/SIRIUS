@@ -90,14 +90,6 @@ void Atom_type::init(int offset_lo__)
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
     
-    ///= /* allocate Q matrix */
-    ///= if (parameters_.esm_type() == ultrasoft_pseudopotential)
-    ///= {
-    ///=     if (mt_basis_size() != mt_lo_basis_size()) TERMINATE("wrong basis size");
-
-    ///=     //uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
-    ///= }
-   
     /* get the number of core electrons */
     num_core_electrons_ = 0;
     if (parameters_.full_potential())
