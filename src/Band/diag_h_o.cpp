@@ -62,6 +62,20 @@ void Band::diag_h_o<double_complex>(K_point* kp__,
         kp__->comm().allreduce(evec__.at<CPU>(), evec__.ld() * num_bands__);
     }
     t3.stop();
+    
+    //// --== DEBUG ==--
+    //printf("checking evec\n");
+    //for (int i = 0; i < num_bands__; i++)
+    //{
+    //    for (int j = 0; j < N__; j++)
+    //    {
+    //        if (std::abs(evec__(j, i).imag()) > 1e-12)
+    //        {
+    //            printf("evec(%i, %i) = %20.16f %20.16f\n", i, j, evec__(j, i).real(), evec__(j, i).real());
+    //        }
+    //    }
+    //}
+    //printf("done.\n");
 
     /* copy eigen-vectors to GPU */
     #ifdef __GPU
