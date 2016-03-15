@@ -263,7 +263,7 @@ class Band
             {
                 case ev_lapack:
                 {
-                    std_evp_solver_ = new Eigenproblem_lapack();
+                    std_evp_solver_ = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
                 case ev_scalapack:
@@ -292,7 +292,7 @@ class Band
             {
                 case ev_lapack:
                 {
-                    gen_evp_solver_ = new Eigenproblem_lapack(1e-12);
+                    gen_evp_solver_ = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
                 case ev_scalapack:
