@@ -61,6 +61,45 @@ void Band::apply_h_o(K_point* kp__,
             //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
         }
     }
+    
+    //== if (!kp__->gkvec().reduced())
+    //== {
+    //==     // --== DEBUG ==--
+    //==     printf("check in apply_h_o\n");
+    //==     for (int i = N__; i < N__ + n__; i++)
+    //==     {
+    //==         bool f1 = false;
+    //==         bool f2 = false;
+    //==         bool f3 = false;
+    //==         double e1 = 0;
+    //==         double e2 = 0;
+    //==         double e3 = 0;
+    //==         for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+    //==         {
+    //==             auto G = kp__->gkvec()[igk] * (-1);
+    //==             int igk1 = kp__->gkvec().index_by_gvec(G);
+    //==             if (std::abs(phi__(igk, i) - std::conj(phi__(igk1, i))) > 1e-12)
+    //==             {
+    //==                 f1 = true;
+    //==                 e1 = std::max(e1, std::abs(phi__(igk, i) - std::conj(phi__(igk1, i))));
+    //==             }
+    //==             if (std::abs(hphi__(igk, i) - std::conj(hphi__(igk1, i))) > 1e-12)
+    //==             {
+    //==                 f2 = true;
+    //==                 e2 = std::max(e2, std::abs(hphi__(igk, i) - std::conj(hphi__(igk1, i))));
+    //==             }
+    //==             if (std::abs(ophi__(igk, i) - std::conj(ophi__(igk1, i))) > 1e-12)
+    //==             {
+    //==                 f3 = true;
+    //==                 e3 = std::max(e3, std::abs(ophi__(igk, i) - std::conj(ophi__(igk1, i))));
+    //==             }
+    //==         }
+    //==         if (f1) printf("phi[%i] is not real, %20.16f\n", i, e1);
+    //==         if (f2) printf("hphi[%i] is not real, %20.16f\n", i, e2);
+    //==         if (f3) printf("ophi[%i] is not real, %20.16f\n", i, e3);
+    //==     }
+    //==     printf("done.\n");
+    //== }
 }
 
 template void Band::apply_h_o<double_complex>(K_point* kp__, 
