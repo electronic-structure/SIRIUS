@@ -44,6 +44,8 @@ extern "C" {
 ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2, ftn_int* n3, 
                         ftn_int* n4, ftn_len name_len, ftn_len opts_len);
 
+ftn_double FORTRAN(dlamch)(ftn_char cmach, ftn_len cmach_len);
+
 /*
  *  matrix-vector operations
  */
@@ -330,6 +332,11 @@ class linalg_base
         {
             return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (ftn_len)name.length(), 
                                    (ftn_len)opts.length());
+        }
+
+        static ftn_double dlamch(char cmach)
+        {
+            return FORTRAN(dlamch)(&cmach, (ftn_len)1);
         }
         
         #ifdef __SCALAPACK
