@@ -147,21 +147,38 @@ int Band::residuals(K_point* kp__,
             }
         }
     }
-
-    //== // --== DEBUG ==--
-    //== if (kp__->gkvec().reduced())
+    
+    //== if (!kp__->gkvec().reduced())
     //== {
-    //==     matrix<double> ovlp(n, n);
-    //==     res__.inner<double>(0, n, res__, 0, n, ovlp, 0, 0);
+    //==     // --== DEBUG ==--
+    //==     for (int i = 0; i < n; i++)
+    //==     {
+    //==         for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+    //==         {
+    //==             auto G = kp__->gkvec()[igk] * (-1);
+    //==             int igk1 = kp__->gkvec().index_by_gvec(G);
+    //==             auto z1 = res__(igk, i);
+    //==             auto z2 = res__(igk1, i);
+    //==             res__(igk, i) = 0.5 * (z1 + std::conj(z2));
+    //==             res__(igk1, i) = std::conj(res__(igk, i));
+    //==         }
+    //==     }
+    //== }
 
-    //==     Utils::write_matrix("ovlp_res_real.txt", true, ovlp);
-    //== }
-    //== else
-    //== {
-    //==     matrix<double_complex> ovlp(n, n);
-    //==     res__.inner<double_complex>(0, n, res__, 0, n, ovlp, 0, 0);
-    //==     Utils::write_matrix("ovlp_res_cmplx.txt", true, ovlp);
-    //== }
+    //// --== DEBUG ==--
+    //if (kp__->gkvec().reduced())
+    //{
+    //    matrix<double> ovlp(n, n);
+    //    res__.inner<double>(0, n, res__, 0, n, ovlp, 0, 0);
+
+    //    Utils::write_matrix("ovlp_res_real.txt", true, ovlp);
+    //}
+    //else
+    //{
+    //    matrix<double_complex> ovlp(n, n);
+    //    res__.inner<double_complex>(0, n, res__, 0, n, ovlp, 0, 0);
+    //    Utils::write_matrix("ovlp_res_cmplx.txt", true, ovlp);
+    //}
 
     return n;
 }
