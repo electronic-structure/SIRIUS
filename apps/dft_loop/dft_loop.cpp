@@ -80,18 +80,20 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
 
 void dft_loop(cmd_args args)
 {
-    std::string task_name = args.value<std::string>("task");
+    std::string task_name = args.value<std::string>("task", "gs_new");
 
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         TERMINATE("wrong task name");
+
+    std::string fname = args.value<std::string>("input", "sirius.json");
     
-    Simulation_context ctx("sirius.json", mpi_comm_world());
+    Simulation_context ctx(fname, mpi_comm_world());
 
     std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
     mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
-    JSON_tree parser("sirius.json");
+    JSON_tree parser(fname);
 
     ctx.set_lmax_apw(parser["lmax_apw"].get(10));
     ctx.set_lmax_pot(parser["lmax_pot"].get(10));
@@ -103,8 +105,6 @@ void dft_loop(cmd_args args)
     ctx.set_num_mag_dims(parser["num_mag_dims"].get(0));
 
     ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
-
-
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
     auto shiftk = parser["shiftk"].get(std::vector<int>(3, 0));
@@ -196,15 +196,16 @@ int main(int argn, char** argv)
     sirius::initialize(1);
 
     cmd_args args;
+    args.register_key("--input=", "{string} input file name");
     args.register_key("--task=", "{string} name of the task");
     args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.parse_args(argn, argv);
 
-    if (argn == 1)
+    if (args.exist("help"))
     {
         printf("Usage: ./dft_loop [options] \n");
         args.print_help();
-        exit(0);
+        return 0;
     }
 
     dft_loop(args);
