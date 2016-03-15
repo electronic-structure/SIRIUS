@@ -110,6 +110,19 @@ void Band::set_h_o<double_complex>(K_point* kp__,
         i0 = 0;
     }
 
+    //// --== DEBUG ==--
+    //for (int i = 0; i < N__ + n__; i++)
+    //{
+    //    for (int j = 0; j < N__ + n__; j++)
+    //    {
+    //        if (std::abs(h__(i, j).imag()) > 1e-12) printf("h(%i,%i) = %20.16f %20.16f\n", i, j, h__(i, j).real(), h__(i, j).imag());
+    //        if (std::abs(o__(i, j).imag()) > 1e-12) printf("o(%i,%i) = %20.16f %20.16f\n", i, j, o__(i, j).real(), o__(i, j).imag());
+
+    //        h__(i, j) = h__(i, j).real();
+    //        o__(i, j) = o__(i, j).real();
+    //    }
+    //}
+
     /* save Hamiltonian and overlap */
     #pragma omp parallel for
     for (int i = i0; i < N__ + n__; i++)
