@@ -173,7 +173,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         if (kp__->comm().rank() == 0)
         {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%18.12f, diff=%18.10f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
         #endif
 
