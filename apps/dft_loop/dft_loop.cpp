@@ -133,7 +133,6 @@ void dft_loop(cmd_args args)
     MEMORY_USAGE_INFO();
     #endif
 
-
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[2]),
              vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), use_symmetry);
 
@@ -161,6 +160,8 @@ void dft_loop(cmd_args args)
     else
     {
         density->initial_density();
+        dft.generate_effective_potential();
+        //if (!ctx.full_potential()) dft.initialize_subspace();
     }
     
     double potential_tol = parser["potential_tol"].get(1e-4);
