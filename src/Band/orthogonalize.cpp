@@ -19,7 +19,7 @@
 
 /** \file orthogonalize.cpp
  *   
- *  \brief Contains implementation of sirius::Band::orthogonalize() function.
+ *  \brief Contains implementation of sirius::Band::orthogonalize() method.
  */
 
 #include "band.h"

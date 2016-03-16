@@ -4,7 +4,7 @@ __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
                                                        cuDoubleComplex const* veff__, 
                                                        int const* gvec__, 
                                                        double const* atom_pos__, 
-                                                       cuDoubleComplex* veff_a__)
+                                                       double* veff_a__)
 {
     int igloc = blockDim.x * blockIdx.x + threadIdx.x;
     int ia = blockIdx.y;
@@ -19,8 +19,10 @@ __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
         double az = atom_pos__[array2D_offset(2, ia, 3)];
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
-            
-        veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] = cuConj(cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), sin(p))));
+
+        cuDoubleComplex z = cuConj(cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), sin(p))));
+        veff_a__[array2D_offset(2 * igloc,     ia, 2 * num_gvec_loc__)] = z.x;
+        veff_a__[array2D_offset(2 * igloc + 1, ia, 2 * num_gvec_loc__)] = z.y;
     }
 }
  
@@ -29,7 +31,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 cuDoubleComplex const* veff__, 
                                                 int const* gvec__, 
                                                 double const* atom_pos__,
-                                                cuDoubleComplex* veff_a__)
+                                                double* veff_a__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);

@@ -112,7 +112,7 @@ template<>
 void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
                                                   dmatrix<double_complex>& h__,
-                                                  dmatrix<double_complex>& o__)
+                                                  dmatrix<double_complex>& o__) const
 {
     runtime::Timer t("sirius::Band::set_fv_h_o");
     

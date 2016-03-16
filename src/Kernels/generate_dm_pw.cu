@@ -6,13 +6,17 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
                              cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                              int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
 
+extern "C" void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                             double* alpha, double const* a, int32_t lda, double const* b, 
+                             int32_t ldb, double* beta, double* c, int32_t ldc, int stream_id);
+
 __global__ void generate_phase_factors_conj_gpu_kernel
 (
     int num_gvec_loc__, 
     int num_atoms__, 
     double const* atom_pos__, 
     int const* gvec__, 
-    cuDoubleComplex* phase_factors__
+    double* phase_factors__
 )
 {
     int ia = blockIdx.y;
@@ -30,10 +34,8 @@ __global__ void generate_phase_factors_conj_gpu_kernel
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
 
-        double sinp = sin(p);
-        double cosp = cos(p);
-
-        phase_factors__[array2D_offset(ia, igloc, num_atoms__)] = make_cuDoubleComplex(cosp, -sinp);
+        phase_factors__[array2D_offset(ia, 2 * igloc,     num_atoms__)] = cos(p);
+        phase_factors__[array2D_offset(ia, 2 * igloc + 1, num_atoms__)] = -sin(p);
     }
 }
 
@@ -42,13 +44,13 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
                                    int nbf__,
                                    double const* atom_pos__,
                                    int const* gvec__,
-                                   cuDoubleComplex const* dm__,
-                                   cuDoubleComplex* dm_pw__)
+                                   double const* dm__,
+                                   double* dm_pw__)
 {
     CUDA_timer t("generate_dm_pw_gpu");
 
-    cuDoubleComplex* phase_factors;
-    phase_factors = (cuDoubleComplex*)cuda_malloc(num_atoms__ * num_gvec_loc__ * sizeof (cuDoubleComplex));
+    double* phase_factors;
+    phase_factors = (double*)cuda_malloc(num_atoms__ * num_gvec_loc__ * sizeof(double) * 2);
 
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
@@ -62,12 +64,12 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
         phase_factors
     );
     
-    cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
-    cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
+    double alpha = 1;
+    double beta = 0;
 
-    cublas_zgemm(0, 0, nbf__ * nbf__, num_gvec_loc__, num_atoms__, &zone, 
-                 dm__, nbf__ * nbf__, phase_factors, num_atoms__, &zzero,
-                 dm_pw__, nbf__ * nbf__, -1);
+    cublas_dgemm(0, 0, nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__, &alpha, 
+                 dm__, nbf__ * (nbf__ + 1) / 2, phase_factors, num_atoms__, &beta,
+                 dm_pw__, nbf__ * (nbf__ + 1) / 2, -1);
 
     cuda_free(phase_factors);
 }

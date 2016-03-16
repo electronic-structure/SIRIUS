@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file beta_projectors.cpp
@@ -64,7 +64,7 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     beta_gk_ = matrix<double_complex>(nullptr, num_gkvec_loc_, max_num_beta_);
 
     beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
-    
+
     #pragma omp for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
@@ -100,10 +100,10 @@ void Beta_projectors::generate_beta_gk_t()
     {
         gkvec_shells.push_back(std::pair<double, std::vector<int> >(static_cast<double>(it->first) * 1e-10, it->second));
     }
-    
+
     /* allocate array */
-    beta_gk_t_ = matrix<double_complex>(gkvec_.num_gvec(comm_.rank()), num_beta_t_); 
-    
+    beta_gk_t_ = matrix<double_complex>(gkvec_.num_gvec(comm_.rank()), num_beta_t_);
+
     /* interpolate beta radial functions */
     mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
@@ -113,14 +113,14 @@ void Beta_projectors::generate_beta_gk_t()
         {
             int nr = atom_type.uspp().num_beta_radial_points[idxrf];
             beta_rf(idxrf, iat) = Spline<double>(atom_type.radial_grid());
-            for (int ir = 0; ir < nr; ir++) 
+            for (int ir = 0; ir < nr; ir++)
                 beta_rf(idxrf, iat)[ir] = atom_type.uspp().beta_radial_functions(ir, idxrf);
             beta_rf(idxrf, iat).interpolate();
         }
     }
 
     // TODO: use bessel function interpolation?
-    
+
     /* compute <G+k|beta> */
     #pragma omp parallel
     {
@@ -188,7 +188,7 @@ void Beta_projectors::split_in_chunks()
     beta_chunks_.resize(num_beta_chunks);
 
     int offset_in_beta_gk = 0;
-    
+
     for (int ib = 0; ib < num_beta_chunks; ib++)
     {
         /* number of atoms in chunk */
@@ -208,13 +208,13 @@ void Beta_projectors::split_in_chunks()
             /* atom fractional coordinates */
             for (int x: {0, 1, 2}) beta_chunks_[ib].atom_pos_(x, i) = pos[x];
             /* number of beta functions for atom */
-            beta_chunks_[ib].desc_(0, i) = type.mt_basis_size();
+            beta_chunks_[ib].desc_(_beta_desc_nbf_, i) = type.mt_basis_size();
             /* offset in beta_gk*/
-            beta_chunks_[ib].desc_(1, i) = num_beta;
+            beta_chunks_[ib].desc_(_beta_desc_offset_, i) = num_beta;
             /* offset in beta_gk_t */
-            beta_chunks_[ib].desc_(2, i) = type.offset_lo();
+            beta_chunks_[ib].desc_(_beta_desc_offset_t_, i) = type.offset_lo();
             /* global index of atom */
-            beta_chunks_[ib].desc_(3, i) = ia;
+            beta_chunks_[ib].desc_(_beta_desc_ia_, i) = ia;
 
             num_beta += type.mt_basis_size();
         }
@@ -249,8 +249,6 @@ void Beta_projectors::generate(int chunk__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::generate");
 
-    //auto& desc = beta_chunk(chunk__).desc_;
-
     if (pu_ == CPU)
     {
         beta_gk_ = mdarray<double_complex, 2>(&beta_gk_a_(0, beta_chunk(chunk__).offset_),
@@ -267,7 +265,7 @@ void Beta_projectors::generate(int chunk__)
         //==             int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
         //==             double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
 
-        //==             beta_gk_(igk_loc, desc(1, i) + xi) = 
+        //==             beta_gk_(igk_loc, desc(1, i) + xi) =
         //==                 beta_gk_t_(igk_loc, desc(2, i) + xi) * std::exp(double_complex(0.0, -phase));
         //==         }
         //==     }
@@ -282,6 +280,7 @@ void Beta_projectors::generate(int chunk__)
     #ifdef __GPU
     if (pu_ == GPU)
     {
+        auto& desc = beta_chunk(chunk__).desc_;
         create_beta_gk_gpu(beta_chunk(chunk__).num_atoms_,
                            num_gkvec_loc_,
                            desc.at<GPU>(),
@@ -293,7 +292,7 @@ void Beta_projectors::generate(int chunk__)
     #endif
 }
 
-template<> 
+template<>
 void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
@@ -315,14 +314,14 @@ void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& 
         case CPU:
         {
             /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<CPU>(), num_gkvec_loc_, 
+            linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<CPU>(), num_gkvec_loc_,
                               &phi__(0, idx0__), num_gkvec_loc_, (double_complex*)beta_phi_.at<CPU>(), nbeta);
             break;
         }
         case GPU:
         {
             #ifdef __GPU
-            linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_, 
+            linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_,
                               phi__.coeffs().at<GPU>(0, idx0__), num_gkvec_loc_, (double_complex*)beta_phi_.at<GPU>(), nbeta);
             beta_phi_.copy_to_host(2 * nbeta * n__);
             #else
@@ -344,7 +343,7 @@ void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& 
     #endif
 }
 
-template<> 
+template<>
 void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
@@ -366,14 +365,14 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
         case CPU:
         {
             /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_, 
+            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_,
                               (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<CPU>(), nbeta);
             break;
         }
         case GPU:
         {
             #ifdef __GPU
-            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_, 
+            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_,
                               (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta);
             beta_phi_.copy_to_host(nbeta * n__);
             #else
@@ -415,4 +414,3 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
 }
 
 };
-

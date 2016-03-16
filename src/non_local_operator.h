@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -139,10 +139,10 @@ class D_operator: public Non_local_operator<T>
                 }
             }
             #ifdef __GPU
-            if (pu_ == GPU)
+            if (this->pu_ == GPU)
             {
-                op_.allocate_on_device();
-                op_.copy_to_device();
+                this->op_.allocate_on_device();
+                this->op_.copy_to_device();
             }
             #endif
         }
@@ -174,10 +174,10 @@ class Q_operator: public Non_local_operator<T>
                 }
             }
             #ifdef __GPU
-            if (pu_ == GPU)
+            if (this->pu_ == GPU)
             {
-                op_.allocate_on_device();
-                op_.copy_to_device();
+                this->op_.allocate_on_device();
+                this->op_.copy_to_device();
             }
             #endif
         }

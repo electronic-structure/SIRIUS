@@ -213,7 +213,7 @@ class Augmentation_operator
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
         
                         q_pw_(idx12, igloc) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
-                        q_pw_real_t_(2 * igloc, idx12)     = q_pw_(idx12, igloc).real();
+                        q_pw_real_t_(2 * igloc,     idx12) = q_pw_(idx12, igloc).real();
                         q_pw_real_t_(2 * igloc + 1, idx12) = q_pw_(idx12, igloc).imag();
                     }
                 }
@@ -254,23 +254,48 @@ class Augmentation_operator
             generate_pw_coeffs(omega__, gvec__);
         }
 
-        void prepare() const
+        void prepare(int what__) const
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU)
             {
-                q_pw_.allocate_on_device();
-                q_pw_.copy_to_device();
+                switch (what__)
+                {
+                    case 0:
+                    {
+                        q_pw_.allocate_on_device();
+                        q_pw_.copy_to_device();
+                        break;
+                    }
+                    case 1:
+                    {
+                        q_pw_real_t_.allocate_on_device();
+                        q_pw_real_t_.copy_to_device();
+                        break;
+                    }
+                }
             }
             #endif
         }
 
-        void dismiss() const
+        void dismiss(int what__) const
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU)
             {
-                q_pw_.deallocate_on_device();
+                switch (what__)
+                {
+                    case 0:
+                    {
+                        q_pw_.deallocate_on_device();
+                        break;
+                    }
+                    case 1:
+                    {
+                        q_pw_real_t_.deallocate_on_device();
+                        break;
+                    }
+                }
             }
             #endif
         }

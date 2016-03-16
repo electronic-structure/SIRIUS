@@ -5,46 +5,46 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
     int num_gvec_loc__,
     int nbf__,
     cuDoubleComplex const* q_pw_t__,
-    cuDoubleComplex const* dm_pw__,
+    double const* dm_pw__,
     cuDoubleComplex* rho_pw__
 )
 {
-    int ld1 = nbf__ * (nbf__ + 1) / 2;
-    int ld2 = nbf__ * nbf__;
+    int ld = nbf__ * (nbf__ + 1) / 2;
 
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
     if (igloc < num_gvec_loc__)
     {
-        cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+        double ar = 0;
+        double ai = 0;
 
-        // \sum_{xi1, xi2} D_{xi2,xi1} * Q(G)_{xi1, xi2}
-        for (int xi2 = 0; xi2 < nbf__; xi2++)
+        for (int i = 0; i < ld; i++)
         {
-            int idx12 = xi2 * (xi2 + 1) / 2;
+            double q = 2.0 * q_pw_t__[array2D_offset(i, igloc, ld)].x;
 
-            // add diagonal term
-            zval = cuCadd(zval, cuCmul(dm_pw__[array2D_offset(xi2 * nbf__ + xi2, igloc, ld2)], 
-                                       q_pw_t__[array2D_offset(idx12 + xi2, igloc, ld1)]));
-
-            // add non-diagonal terms
-            for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-            {
-                cuDoubleComplex q = q_pw_t__[array2D_offset(idx12, igloc, ld1)];
-                cuDoubleComplex d1 = dm_pw__[array2D_offset(xi2 * nbf__ + xi1, igloc, ld2)];
-                cuDoubleComplex d2 = dm_pw__[array2D_offset(xi1 * nbf__ + xi2, igloc, ld2)];
-
-                zval = cuCadd(zval, cuCmul(q, d1));
-                zval = cuCadd(zval, cuCmul(cuConj(q), d2));
-            }
+            /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+            ar += dm_pw__[array2D_offset(i, 2 * igloc,     ld)] * q;
+            ai += dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)] * q;
         }
-        rho_pw__[igloc] = cuCadd(rho_pw__[igloc], zval);
+
+        /* remove one diagonal contribution which was double-counted */
+        for (int xi = 0; xi < nbf__; xi++)
+        {
+            int i = xi * (xi + 1) / 2 + xi;
+            double q = q_pw_t__[array2D_offset(i, igloc, ld)].x;
+
+            /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
+            ar -= dm_pw__[array2D_offset(i, 2 * igloc,     ld)] * q;
+            ai -= dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)] * q;
+        }
+
+        rho_pw__[igloc] = cuCadd(rho_pw__[igloc], make_cuDoubleComplex(ar, ai));
     }
 }
 
 extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    int nbf__,
                                    cuDoubleComplex const* q_pw_t__,
-                                   cuDoubleComplex const* dm_pw__,
+                                   double const* dm_pw__,
                                    cuDoubleComplex* rho_pw__)
 {
     CUDA_timer t("sum_q_pw_dm_pw_gpu");

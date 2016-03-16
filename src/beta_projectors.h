@@ -43,6 +43,12 @@ extern "C" void create_beta_gk_gpu(int num_atoms,
 
 namespace sirius {
 
+const int _beta_desc_nbf_ = 0;
+const int _beta_desc_offset_ = 1;
+const int _beta_desc_offset_t_ = 2;
+const int _beta_desc_ia_ = 3;
+
+
 class Beta_projectors
 {
     private:
