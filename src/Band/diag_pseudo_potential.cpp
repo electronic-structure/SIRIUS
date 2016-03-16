@@ -5,7 +5,7 @@ namespace sirius {
 template <typename T>
 void Band::diag_pseudo_potential(K_point* kp__, 
                                  Periodic_function<double>* effective_potential__,
-                                 Periodic_function<double>* effective_magnetic_field__[3])
+                                 Periodic_function<double>* effective_magnetic_field__[3]) const
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
 
@@ -74,9 +74,9 @@ void Band::diag_pseudo_potential(K_point* kp__,
 
 template void Band::diag_pseudo_potential<double>(K_point* kp__, 
                                                   Periodic_function<double>* effective_potential__,
-                                                  Periodic_function<double>* effective_magnetic_field__[3]);
+                                                  Periodic_function<double>* effective_magnetic_field__[3]) const;
 
 template void Band::diag_pseudo_potential<double_complex>(K_point* kp__, 
                                                           Periodic_function<double>* effective_potential__,
-                                                          Periodic_function<double>* effective_magnetic_field__[3]);
+                                                          Periodic_function<double>* effective_magnetic_field__[3]) const;
 };

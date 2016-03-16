@@ -30,7 +30,7 @@ template <typename T>
 std::vector<double> Band::get_h_diag(K_point* kp__,
                                      int ispn__,
                                      double v0__,
-                                     D_operator<T>& d_op__)
+                                     D_operator<T>& d_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
 
@@ -88,7 +88,7 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
 
 template <typename T>
 std::vector<double> Band::get_o_diag(K_point* kp__,
-                                     Q_operator<T>& q_op__)
+                                     Q_operator<T>& q_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
 
@@ -142,16 +142,16 @@ std::vector<double> Band::get_o_diag(K_point* kp__,
 template std::vector<double> Band::get_h_diag<double>(K_point* kp__,
                                                       int ispn__,
                                                       double v0__,
-                                                      D_operator<double>& d_op__);
+                                                      D_operator<double>& d_op__) const;
 
 template std::vector<double> Band::get_h_diag<double_complex>(K_point* kp__,
                                                               int ispn__,
                                                               double v0__,
-                                                              D_operator<double_complex>& d_op__);
+                                                              D_operator<double_complex>& d_op__) const;
 
 template std::vector<double> Band::get_o_diag<double>(K_point* kp__,
-                                                      Q_operator<double>& q_op__);
+                                                      Q_operator<double>& q_op__) const;
 
 template std::vector<double> Band::get_o_diag<double_complex>(K_point* kp__,
-                                                              Q_operator<double_complex>& q_op__);
+                                                              Q_operator<double_complex>& q_op__) const;
 };

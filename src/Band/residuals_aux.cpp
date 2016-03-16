@@ -24,7 +24,7 @@ void Band::residuals_aux(K_point* kp__,
                          Wave_functions<false>& res__,
                          std::vector<double>& h_diag__,
                          std::vector<double>& o_diag__,
-                         std::vector<double>& res_norm__)
+                         std::vector<double>& res_norm__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::residuals_aux");
 

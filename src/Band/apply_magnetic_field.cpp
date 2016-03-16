@@ -31,7 +31,7 @@ namespace sirius {
 void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
                                 Gvec const& gkvec__,
                                 Periodic_function<double>* effective_magnetic_field__[3],
-                                std::vector<Wave_functions<true>*>& hpsi__)
+                                std::vector<Wave_functions<true>*>& hpsi__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::apply_magnetic_field");
 

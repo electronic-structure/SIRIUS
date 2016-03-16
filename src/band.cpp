@@ -946,7 +946,7 @@ namespace sirius {
 //    }
 //}
 
-void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
+void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const
 {
     runtime::Timer t("sirius::Band::set_o_it");
 
@@ -963,7 +963,7 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     }
 }
 
-void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
+void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const
 {
     runtime::Timer t("sirius::Band::set_o_lo_lo");
 
@@ -1028,7 +1028,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 //==     alm.deallocate();
 //== }
 
-void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__)
+void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const
 {
     if (kp__->gklo_basis_size() < ctx_.num_fv_states()) TERMINATE("basis size is too small");
 
@@ -1049,7 +1049,7 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
 
 void Band::solve_fd(K_point* kp__,
                     Periodic_function<double>* effective_potential__, 
-                    Periodic_function<double>* effective_magnetic_field__[3])
+                    Periodic_function<double>* effective_magnetic_field__[3]) const
 {
     switch (ctx_.esm_type())
     {

@@ -31,7 +31,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
                                           int ispn__,
                                           Hloc_operator& h_op__,
                                           D_operator<T>& d_op__,
-                                          Q_operator<T>& q_op__)
+                                          Q_operator<T>& q_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -264,11 +264,11 @@ template void Band::diag_pseudo_potential_davidson<double_complex>(K_point* kp__
                                                                    int ispn__,
                                                                    Hloc_operator& h_op__,
                                                                    D_operator<double_complex>& d_op__,
-                                                                   Q_operator<double_complex>& q_op__);
+                                                                   Q_operator<double_complex>& q_op__) const;
 /* explicit instantiation for gamma-point solver */
 template void Band::diag_pseudo_potential_davidson<double>(K_point* kp__,
                                                            int ispn__,
                                                            Hloc_operator& h_op__,
                                                            D_operator<double>& d_op__,
-                                                           Q_operator<double>& q_op__);
+                                                           Q_operator<double>& q_op__) const;
 };

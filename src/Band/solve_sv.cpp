@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magnetic_field__[3])
+void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magnetic_field__[3]) const
 {
     PROFILE_WITH_TIMER("sirius::Band::solve_sv_pp");
 
@@ -132,7 +132,7 @@ void Band::solve_sv_pp(K_point* kp__, Periodic_function<double>* effective_magne
 //    kp__->set_band_energies(&band_energies[0]);
 }
 
-void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])
+void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]) const
 {
     PROFILE_WITH_TIMER("sirius::Band::solve_sv");
 

@@ -16,7 +16,7 @@ int Band::residuals(K_point* kp__,
                     Wave_functions<false>& opsi__,
                     Wave_functions<false>& res__,
                     std::vector<double>& h_diag__,
-                    std::vector<double>& o_diag__)
+                    std::vector<double>& o_diag__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::residuals");
 
@@ -196,7 +196,7 @@ template int Band::residuals<double_complex>(K_point* kp__,
                                              Wave_functions<false>& opsi__,
                                              Wave_functions<false>& res__,
                                              std::vector<double>& h_diag__,
-                                             std::vector<double>& o_diag__);
+                                             std::vector<double>& o_diag__) const;
 
 template int Band::residuals<double>(K_point* kp__,
                                      int ispn__,
@@ -211,6 +211,6 @@ template int Band::residuals<double>(K_point* kp__,
                                      Wave_functions<false>& opsi__,
                                      Wave_functions<false>& res__,
                                      std::vector<double>& h_diag__,
-                                     std::vector<double>& o_diag__);
+                                     std::vector<double>& o_diag__) const;
 
 };

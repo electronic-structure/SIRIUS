@@ -70,7 +70,7 @@ class Eigenproblem
                           double_complex* B, int32_t ldb,
                           double* eval,
                           double_complex* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
@@ -82,7 +82,7 @@ class Eigenproblem
                           double* B, int32_t ldb,
                           double* eval,
                           double* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
@@ -93,29 +93,29 @@ class Eigenproblem
                           double* A, int32_t lda,
                           double* eval,
                           double* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
         
         /// Complex standard Hermitian-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz)
+        virtual int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
         }
 
         /// Real standard symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
+        virtual int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz) const
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
         }
 
-        virtual bool parallel() = 0;
+        virtual bool parallel() const = 0;
 
-        virtual ev_solver_t type() = 0;
+        virtual ev_solver_t type() const = 0;
 };
 
 /// Interface for LAPACK eigen-value solvers.
@@ -125,7 +125,7 @@ class Eigenproblem_lapack: public Eigenproblem
 
         double abstol_;
     
-        std::vector<int32_t> get_work_sizes(int32_t matrix_size)
+        std::vector<int32_t> get_work_sizes(int32_t matrix_size) const
         {
             std::vector<int32_t> work_sizes(3);
             
@@ -146,7 +146,7 @@ class Eigenproblem_lapack: public Eigenproblem
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -197,7 +197,7 @@ class Eigenproblem_lapack: public Eigenproblem
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -241,7 +241,7 @@ class Eigenproblem_lapack: public Eigenproblem
             return 0;
         }
 
-        int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz)
+        int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
         {
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
             
@@ -265,7 +265,7 @@ class Eigenproblem_lapack: public Eigenproblem
             return 0;
         }
 
-        int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz)
+        int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz) const
         {
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
 
@@ -299,7 +299,7 @@ class Eigenproblem_lapack: public Eigenproblem
                   double* Z,
                   int32_t ldz,
                   int32_t num_rows_loc = 0,
-                  int32_t num_cols_loc = 0)
+                  int32_t num_cols_loc = 0) const
         {
             int32_t lwork = -1;
             double lwork1, vl, vu;
@@ -342,12 +342,12 @@ class Eigenproblem_lapack: public Eigenproblem
             return 0;
         }
 
-        bool parallel()
+        bool parallel() const
         {
             return false;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_lapack;
         }
@@ -368,7 +368,7 @@ class Eigenproblem_plasma: public Eigenproblem
         }
 
         #ifdef __PLASMA
-        void solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz)
+        void solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
         {
             //plasma_set_num_threads(1);
             //omp_set_num_threads(1);
@@ -380,12 +380,12 @@ class Eigenproblem_plasma: public Eigenproblem
         }
         #endif
         
-        bool parallel()
+        bool parallel() const
         {
             return false;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_plasma;
         }
@@ -414,7 +414,7 @@ class Eigenproblem_magma: public Eigenproblem
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -437,7 +437,7 @@ class Eigenproblem_magma: public Eigenproblem
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -456,12 +456,12 @@ class Eigenproblem_magma: public Eigenproblem
         }
         #endif
 
-        bool parallel()
+        bool parallel() const
         {
             return false;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_magma;
         }
@@ -481,7 +481,7 @@ class Eigenproblem_scalapack: public Eigenproblem
         
         #ifdef __SCALAPACK
         std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
-                                            int blacs_context)
+                                            int blacs_context) const
         {
             std::vector<int32_t> work_sizes(3);
             
@@ -500,7 +500,7 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 
         std::vector<int32_t> get_work_sizes_gevp(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
-                                                 int blacs_context)
+                                                 int blacs_context) const
         {
             std::vector<int32_t> work_sizes(3);
             
@@ -548,7 +548,7 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 
         #ifdef __SCALAPACK
-        int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz)
+        int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
         {
 
             int desca[9];
@@ -585,7 +585,7 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
             
@@ -664,7 +664,7 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
             
@@ -750,7 +750,7 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double* A, int32_t lda,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
             
@@ -830,12 +830,12 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
         #endif
 
-        bool parallel()
+        bool parallel() const
         {
             return true;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_scalapack;
         }
@@ -843,45 +843,119 @@ class Eigenproblem_scalapack: public Eigenproblem
 
 #ifdef __ELPA
 extern "C" {
-void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
-                                    ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+void FORTRAN(elpa_cholesky_complex)(ftn_int const* na,
+                                    ftn_double_complex* a,
+                                    ftn_int const* lda,
+                                    ftn_int const* nblk,
+                                    ftn_int const* matrixCols,
+                                    ftn_int const* mpi_comm_rows,
+                                    ftn_int const* mpi_comm_cols);
 
-void FORTRAN(elpa_cholesky_real)(ftn_int* na, ftn_double* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
-                                 ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+void FORTRAN(elpa_cholesky_real)(ftn_int const* na,
+                                 ftn_double* a,
+                                 ftn_int const* lda,
+                                 ftn_int const* nblk,
+                                 ftn_int const* matrixCols,
+                                 ftn_int const* mpi_comm_rows,
+                                 ftn_int const* mpi_comm_cols);
 
-void FORTRAN(elpa_invert_trm_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
-                                      ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+void FORTRAN(elpa_invert_trm_complex)(ftn_int const* na,
+                                      ftn_double_complex* a,
+                                      ftn_int const* lda,
+                                      ftn_int const* nblk,
+                                      ftn_int const* matrixCols,
+                                      ftn_int const* mpi_comm_rows,
+                                      ftn_int const* mpi_comm_cols);
 
-void FORTRAN(elpa_invert_trm_real)(ftn_int* na, ftn_double* a, ftn_int* lda, ftn_int* nblk, ftn_int* matrixCols,
-                                   ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+void FORTRAN(elpa_invert_trm_real)(ftn_int const* na,
+                                   ftn_double* a,
+                                   ftn_int const* lda,
+                                   ftn_int const* nblk,
+                                   ftn_int const* matrixCols,
+                                   ftn_int const* mpi_comm_rows,
+                                   ftn_int const* mpi_comm_cols);
 
-void FORTRAN(elpa_mult_ah_b_complex)(ftn_char uplo_a, ftn_char uplo_c, ftn_int* na, ftn_int* ncb, 
-                                     ftn_double_complex* a, ftn_int* lda, ftn_double_complex* b, ftn_int* ldb,
-                                     ftn_int* nblk, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
-                                     ftn_double_complex* c, ftn_int* ldc, ftn_len uplo_a_len, ftn_len uplo_c_len);
+void FORTRAN(elpa_mult_ah_b_complex)(ftn_char uplo_a,
+                                     ftn_char uplo_c,
+                                     ftn_int const* na,
+                                     ftn_int const* ncb, 
+                                     ftn_double_complex* a,
+                                     ftn_int const* lda,
+                                     ftn_double_complex* b,
+                                     ftn_int const* ldb,
+                                     ftn_int const* nblk,
+                                     ftn_int const* mpi_comm_rows,
+                                     ftn_int const* mpi_comm_cols,
+                                     ftn_double_complex* c,
+                                     ftn_int const* ldc,
+                                     ftn_len uplo_a_len,
+                                     ftn_len uplo_c_len);
 
-void FORTRAN(elpa_mult_at_b_real)(ftn_char uplo_a, ftn_char uplo_c, ftn_int* na, ftn_int* ncb, 
-                                  ftn_double* a, ftn_int* lda, ftn_double* b, ftn_int* ldb,
-                                  ftn_int* nblk, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
-                                  ftn_double* c, ftn_int* ldc, ftn_len uplo_a_len, ftn_len uplo_c_len);
+void FORTRAN(elpa_mult_at_b_real)(ftn_char uplo_a,
+                                  ftn_char uplo_c,
+                                  ftn_int const* na,
+                                  ftn_int const* ncb, 
+                                  ftn_double* a,
+                                  ftn_int const* lda,
+                                  ftn_double* b,
+                                  ftn_int const* ldb,
+                                  ftn_int const* nblk,
+                                  ftn_int const* mpi_comm_rows,
+                                  ftn_int const* mpi_comm_cols,
+                                  ftn_double* c,
+                                  ftn_int const* ldc,
+                                  ftn_len uplo_a_len,
+                                  ftn_len uplo_c_len);
 
-void FORTRAN(elpa_solve_evp_complex)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda, ftn_double* ev, 
-                                     ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk, ftn_int* matrixCols,
-                                     ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+void FORTRAN(elpa_solve_evp_complex)(ftn_int const* na,
+                                     ftn_int const* nev,
+                                     ftn_double_complex* a,
+                                     ftn_int const* lda,
+                                     ftn_double* ev, 
+                                     ftn_double_complex* q,
+                                     ftn_int const* ldq,
+                                     ftn_int const* nblk,
+                                     ftn_int const* matrixCols,
+                                     ftn_int const* mpi_comm_rows,
+                                     ftn_int const* mpi_comm_cols);
 
-void FORTRAN(elpa_solve_evp_real)(ftn_int* na, ftn_int* nev, ftn_double* a, ftn_int* lda, ftn_double* ev, 
-                                  ftn_double* q, ftn_int* ldq, ftn_int* nblk, ftn_int* matrixCols,
-                                  ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+void FORTRAN(elpa_solve_evp_real)(ftn_int const* na,
+                                  ftn_int const* nev,
+                                  ftn_double* a,
+                                  ftn_int const* lda,
+                                  ftn_double* ev, 
+                                  ftn_double* q,
+                                  ftn_int const* ldq,
+                                  ftn_int const* nblk,
+                                  ftn_int const* matrixCols,
+                                  ftn_int const* mpi_comm_rows,
+                                  ftn_int const* mpi_comm_cols);
 
-void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda,
-                                            ftn_double* ev, ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk,
-                                            ftn_int* matrixCols, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
-                                            ftn_int* mpi_comm_all);
+void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int const* na,
+                                            ftn_int const* nev,
+                                            ftn_double_complex* a,
+                                            ftn_int const* lda,
+                                            ftn_double* ev,
+                                            ftn_double_complex* q,
+                                            ftn_int const* ldq,
+                                            ftn_int const* nblk,
+                                            ftn_int const* matrixCols,
+                                            ftn_int const* mpi_comm_rows,
+                                            ftn_int const* mpi_comm_cols,
+                                            ftn_int const* mpi_comm_all);
 
-void FORTRAN(elpa_solve_evp_real_2stage)(ftn_int* na, ftn_int* nev, ftn_double* a, ftn_int* lda,
-                                         ftn_double* ev, ftn_double* q, ftn_int* ldq, ftn_int* nblk,
-                                         ftn_int* matrixCols, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
-                                         ftn_int* mpi_comm_all);
+void FORTRAN(elpa_solve_evp_real_2stage)(ftn_int const* na,
+                                         ftn_int const* nev,
+                                         ftn_double* a,
+                                         ftn_int const* lda,
+                                         ftn_double* ev,
+                                         ftn_double* q,
+                                         ftn_int const* ldq,
+                                         ftn_int const* nblk,
+                                         ftn_int const* matrixCols,
+                                         ftn_int const* mpi_comm_rows,
+                                         ftn_int const* mpi_comm_cols,
+                                         ftn_int const* mpi_comm_all);
 }
 #endif
 
@@ -925,7 +999,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                    double_complex* B__, int32_t ldb__,
                                    int32_t num_rows_loc__, int32_t num_cols_loc__,
                                    matrix<double_complex>& tmp1__,
-                                   matrix<double_complex>& tmp2__)
+                                   matrix<double_complex>& tmp2__) const
         {
             TIMER("Eigenproblem_elpa:transform_to_standard");
             
@@ -967,7 +1041,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                    double* B__, int32_t ldb__,
                                    int32_t num_rows_loc__, int32_t num_cols_loc__,
                                    matrix<double>& tmp1__,
-                                   matrix<double>& tmp2__)
+                                   matrix<double>& tmp2__) const
         {
             TIMER("Eigenproblem_elpa:transform_to_standard");
             
@@ -1008,7 +1082,7 @@ class Eigenproblem_elpa: public Eigenproblem
                             double_complex* Z__, int32_t ldz__,
                             int32_t num_rows_loc__, int32_t num_cols_loc__,
                             matrix<double_complex>& tmp1__,
-                            matrix<double_complex>& tmp2__)
+                            matrix<double_complex>& tmp2__) const
         {
             TIMER("Eigenproblem_elpa:transform_back");
 
@@ -1028,7 +1102,7 @@ class Eigenproblem_elpa: public Eigenproblem
                             double* Z__, int32_t ldz__,
                             int32_t num_rows_loc__, int32_t num_cols_loc__,
                             matrix<double>& tmp1__,
-                            matrix<double>& tmp2__)
+                            matrix<double>& tmp2__) const
         {
             TIMER("Eigenproblem_elpa:transform_back");
 
@@ -1060,7 +1134,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -1086,7 +1160,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -1111,7 +1185,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* A, int32_t lda,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc, int32_t num_cols_loc)
+                  int32_t num_rows_loc, int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1126,12 +1200,12 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
         }
         #endif
 
-        bool parallel()
+        bool parallel() const
         {
             return true;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_elpa1;
         }
@@ -1152,7 +1226,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -1178,7 +1252,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0)
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
 
@@ -1200,12 +1274,12 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
         }
         #endif
         
-        bool parallel()
+        bool parallel() const
         {
             return true;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_elpa2;
         }
@@ -1252,7 +1326,7 @@ class Eigenproblem_RS_CPU: public Eigenproblem
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc, int32_t num_cols_loc)
+                  int32_t num_rows_loc, int32_t num_cols_loc) const
         {
         
             assert(nevec <= matrix_size);
@@ -1290,12 +1364,12 @@ class Eigenproblem_RS_CPU: public Eigenproblem
         }
         #endif
 
-        bool parallel()
+        bool parallel() const
         {
             return true;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_rs_cpu;
         }
@@ -1333,7 +1407,7 @@ class Eigenproblem_RS_GPU: public Eigenproblem
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc, int32_t num_cols_loc)
+                  int32_t num_rows_loc, int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
             
@@ -1371,12 +1445,12 @@ class Eigenproblem_RS_GPU: public Eigenproblem
         }
         #endif
 
-        bool parallel()
+        bool parallel() const
         {
             return true;
         }
 
-        ev_solver_t type()
+        ev_solver_t type() const
         {
             return ev_rs_gpu;
         }

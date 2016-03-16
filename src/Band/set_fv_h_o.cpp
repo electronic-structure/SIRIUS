@@ -6,7 +6,7 @@ template<>
 void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
                                                   dmatrix<double_complex>& h__,
-                                                  dmatrix<double_complex>& o__)
+                                                  dmatrix<double_complex>& o__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
     
@@ -244,7 +244,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
                              mdarray<double_complex, 2>& alm_row, // alm_row comes conjugated 
                              mdarray<double_complex, 2>& alm_col, 
                              mdarray<double_complex, 2>& h, 
-                             mdarray<double_complex, 2>& o)
+                             mdarray<double_complex, 2>& o) const
 {
     /* apw-lo block */
     for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
@@ -320,7 +320,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
 }
 
 void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                         mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
+                         mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const
 {
     runtime::Timer t("sirius::Band::set_fv_h_o_it");
 
@@ -348,7 +348,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     }
 }
 
-void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
+void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const
 {
     runtime::Timer t("sirius::Band::set_fv_h_o_lo_lo");
 

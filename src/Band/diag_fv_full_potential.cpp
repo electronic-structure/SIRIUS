@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential)
+void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential) const
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential");
 

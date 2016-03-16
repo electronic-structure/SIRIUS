@@ -178,8 +178,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     double eold = 0.0;
     double rms = 0;
 
-    generate_effective_potential();
- 
     if (ctx_.full_potential())
     {
         potential_->mixer_init();
@@ -194,7 +192,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
-        kset_->find_eigen_states(potential_, true);
+        kset_->find_eigen_states(potential_, band_, true);
         /* find band occupancies */
         kset_->find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -418,6 +416,81 @@ void DFT_ground_state::print_info()
         printf("\n");
         if (ctx_.full_potential()) printf("core leakage : %18.8f\n", core_leak);
     }
+}
+
+void DFT_ground_state::initialize_subspace()
+{
+    PROFILE_WITH_TIMER("sirius::DFT_ground_state::initialize_subspace");
+
+    int nq = 20;
+    int lmax = 4;
+    /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
+    Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
+
+    /* interpolate <jl(q*x) | wf_n(x) > with splines */
+    std::vector< std::vector< Spline<double> > > rad_int(unit_cell_.num_atom_types());
+    
+    /* spherical Bessel functions jl(qx) for atom types */
+    mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    {
+        auto& atom_type = unit_cell_.atom_type(iat);
+        /* create jl(qx) */
+        #pragma omp parallel for
+        for (int iq = 0; iq < nq; iq++)
+            jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
+
+        rad_int[iat].resize(atom_type.uspp().l_wf_pseudo_.size());
+        /* loop over all pseudo wave-functions */
+        for (size_t i = 0; i < atom_type.uspp().l_wf_pseudo_.size(); i++)
+        {
+            rad_int[iat][i] = Spline<double>(qgrid);
+            
+            /* interpolate wf_pseudo(r) */
+            Spline<double> wf(atom_type.radial_grid());
+            for (int ir = 0; ir < atom_type.num_mt_points(); ir++)
+                wf[ir] = atom_type.uspp().wf_pseudo_(ir, i);
+            wf.interpolate();
+            
+            int l = atom_type.uspp().l_wf_pseudo_[i];
+            #pragma omp parallel for
+            for (int iq = 0; iq < nq; iq++)
+                rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
+
+            rad_int[iat][i].interpolate();
+        }
+    }
+
+    /* get the total number of atomic-centered orbitals */
+    int N = 0;
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    {
+        auto& atom_type = unit_cell_.atom_type(iat);
+        int n = 0;
+        for (auto l: atom_type.uspp().l_wf_pseudo_)
+        {
+            n += (2 * l + 1);
+        }
+        N += atom_type.num_atoms() * n;
+    }
+    printf("number of atomic orbitals: %i\n", N);
+
+    for (int ikloc = 0; ikloc < kset_->spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = kset_->spl_num_kpoints(ikloc);
+        auto kp = (*kset_)[ik];
+        
+        if (ctx_.gamma_point())
+        {
+            band_.initialize_subspace<double>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
+        }
+        else
+        {
+            band_.initialize_subspace<double_complex>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
+        }
+    }
+    kset_->find_band_occupancies();
 }
 
 }

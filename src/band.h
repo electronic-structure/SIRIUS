@@ -65,7 +65,7 @@ class Band
         void apply_magnetic_field(Wave_functions<true>& fv_states__,
                                   Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
-                                  std::vector<Wave_functions<true>*>& hpsi__);
+                                  std::vector<Wave_functions<true>*>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -83,23 +83,23 @@ class Band
         void set_fv_h_o_it(K_point* kp,
                            Periodic_function<double>* effective_potential, 
                            matrix<double_complex>& h,
-                           matrix<double_complex>& o);
+                           matrix<double_complex>& o) const;
 
-        void set_o_it(K_point* kp, mdarray<double_complex, 2>& o);
+        void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
 
         template <spin_block_t sblock>
         void set_h_it(K_point* kp,
                       Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3],
-                      matrix<double_complex>& h);
+                      matrix<double_complex>& h) const;
         
         /// Setup lo-lo block of Hamiltonian and overlap matrices
-        void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
+        void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
 
         template <spin_block_t sblock>
-        void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h);
+        void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
         
-        void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o);
+        void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
        
         void set_o(K_point* kp, mdarray<double_complex, 2>& o);
     
@@ -109,13 +109,13 @@ class Band
        
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
-                                    Periodic_function<double>* effective_potential__);
+                                    Periodic_function<double>* effective_potential__) const;
 
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
         void diag_pseudo_potential(K_point* kp__, 
                                    Periodic_function<double>* effective_potential__,
-                                   Periodic_function<double>* effective_magnetic_field__[3]);
+                                   Periodic_function<double>* effective_magnetic_field__[3]) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         template <typename T>
@@ -123,7 +123,7 @@ class Band
                                          int ispn__,
                                          Hloc_operator& h_op__,
                                          D_operator<T>& d_op__,
-                                         Q_operator<T>& q_op__);
+                                         Q_operator<T>& q_op__) const;
 
         /// Iterative Davidson diagonalization.
         template <typename T>
@@ -131,7 +131,7 @@ class Band
                                             int ispn__,
                                             Hloc_operator& h_op__,
                                             D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__);
+                                            Q_operator<T>& q_op__) const;
 
         //void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
         //                                              double v0__,
@@ -149,7 +149,7 @@ class Band
                             matrix<double_complex>& hphi__,
                             mdarray<double_complex, 1>& kappa__,
                             mdarray<int, 1>& packed_mtrx_offset__,
-                            mdarray<double_complex, 1>& d_mtrx_packed__);
+                            mdarray<double_complex, 1>& d_mtrx_packed__) const;
 
         template <typename T>
         void diag_h_o(K_point* kp__,
@@ -161,7 +161,7 @@ class Band
                       dmatrix<T>& hmlt_dist__,
                       dmatrix<T>& ovlp_dist__,
                       dmatrix<T>& evec_dist__,
-                      std::vector<double>& eval__);
+                      std::vector<double>& eval__) const;
 
         template <typename T>
         void apply_h_o(K_point* kp__,
@@ -173,7 +173,7 @@ class Band
                        Wave_functions<false>& ophi__,
                        Hloc_operator &h_op,
                        D_operator<T>& d_op,
-                       Q_operator<T>& q_op);
+                       Q_operator<T>& q_op) const;
         
         template <typename T>
         void set_h_o(K_point* kp__,
@@ -185,7 +185,7 @@ class Band
                      matrix<T>& h__,
                      matrix<T>& o__,
                      matrix<T>& h_old__,
-                     matrix<T>& o_old__);
+                     matrix<T>& o_old__) const;
         
         template <typename T>
         int residuals(K_point* kp__,
@@ -201,7 +201,7 @@ class Band
                       Wave_functions<false>& opsi__,
                       Wave_functions<false>& res__,
                       std::vector<double>& h_diag__,
-                      std::vector<double>& o_diag__);
+                      std::vector<double>& o_diag__) const;
 
         template <typename T>
         void orthogonalize(K_point* kp__,
@@ -210,7 +210,7 @@ class Band
                            Wave_functions<false>& phi__,
                            Wave_functions<false>& hphi__,
                            Wave_functions<false>& ophi__,
-                           matrix<T>& o__);
+                           matrix<T>& o__) const;
 
         void residuals_aux(K_point* kp__,
                            int num_bands__,
@@ -220,7 +220,7 @@ class Band
                            Wave_functions<false>& res__,
                            std::vector<double>& h_diag__,
                            std::vector<double>& o_diag__,
-                           std::vector<double>& res_norm__);
+                           std::vector<double>& res_norm__) const;
 
         void add_nl_h_o_pw(K_point* kp__,
                            int n__,
@@ -245,11 +245,10 @@ class Band
     public:
         
         /// Constructor
-        Band(Simulation_context& ctx__,
-             BLACS_grid const& blacs_grid__) 
+        Band(Simulation_context& ctx__)
             : ctx_(ctx__),
               unit_cell_(ctx__.unit_cell()),
-              blacs_grid_(blacs_grid__)
+              blacs_grid_(ctx__.blacs_grid())
         {
             PROFILE();
 
@@ -268,7 +267,7 @@ class Band
                 }
                 case ev_scalapack:
                 {
-                    std_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                    std_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
                 case ev_plasma:
@@ -357,7 +356,7 @@ class Band
          *  \f] 
          */
         template <spin_block_t sblock>
-        void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
+        void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm) const;
  
         //== template <spin_block_t sblock>
         //== void apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
@@ -370,7 +369,7 @@ class Band
                                mdarray<double_complex, 2>& alm_row,
                                mdarray<double_complex, 2>& alm_col,
                                mdarray<double_complex, 2>& h,
-                               mdarray<double_complex, 2>& o);
+                               mdarray<double_complex, 2>& o) const;
         
         template <spin_block_t sblock>
         void set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
@@ -427,25 +426,27 @@ class Band
          */
         template <processing_unit_t pu, electronic_structure_method_t basis>
         void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, dmatrix<double_complex>& h, 
-                        dmatrix<double_complex>& o);
+                        dmatrix<double_complex>& o) const;
 
         /// Solve first-variational (non-magnetic) problem
-        void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__);
+        void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const;
 
         /// Solve second-variational problem
-        void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);
+        void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_sv_pp(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);
+        void solve_sv_pp(K_point* kp,
+                         Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3]);
+        void solve_fd(K_point* kp,
+                      Periodic_function<double>* effective_potential, 
+                      Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        inline Eigenproblem* std_evp_solver()
+        inline Eigenproblem* std_evp_solver() const
         {
             return std_evp_solver_;
         }
 
-        inline Eigenproblem* gen_evp_solver()
+        inline Eigenproblem const* gen_evp_solver() const
         {
             return gen_evp_solver_;
         }
@@ -455,14 +456,19 @@ class Band
         std::vector<double> get_h_diag(K_point* kp__,
                                        int ispn__,
                                        double v0__,
-                                       D_operator<T>& d_op__);
+                                       D_operator<T>& d_op__) const;
 
         /// Get diagonal elements of overlap matrix.
         template <typename T>
         std::vector<double> get_o_diag(K_point* kp__,
-                                       Q_operator<T>& q_op__);
-
-        void initialize_subspace(K_point* kp__);
+                                       Q_operator<T>& q_op__) const;
+        template <typename T>
+        void initialize_subspace(K_point* kp__,
+                                 Periodic_function<double>* effective_potential__,
+                                 Periodic_function<double>* effective_magnetic_field[3],
+                                 int num_ao__,
+                                 int lmax__,
+                                 std::vector< std::vector< Spline<double> > >& rad_int__) const;
 };
 
 #include "band.hpp"

@@ -16,7 +16,7 @@ void Band::set_h_o<double_complex>(K_point* kp__,
                                    matrix<double_complex>& h__,
                                    matrix<double_complex>& o__,
                                    matrix<double_complex>& h_old__,
-                                   matrix<double_complex>& o_old__)
+                                   matrix<double_complex>& o_old__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::set_h_o");
     
@@ -142,7 +142,7 @@ void Band::set_h_o<double>(K_point* kp__,
                            matrix<double>& h__,
                            matrix<double>& o__,
                            matrix<double>& h_old__,
-                           matrix<double>& o_old__)
+                           matrix<double>& o_old__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::set_h_o");
     

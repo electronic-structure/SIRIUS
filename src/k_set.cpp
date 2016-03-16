@@ -34,7 +34,6 @@ void K_set::initialize()
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
-        band_->initialize_subspace(kpoints_[spl_num_kpoints_[ikloc]]);
     }
 
     #if (__VERBOSITY > 0)
@@ -58,7 +57,7 @@ void K_set::sync_band_energies()
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
 
-void K_set::find_eigen_states(Potential* potential, bool precompute)
+void K_set::find_eigen_states(Potential* potential, Band const& band__, bool precompute)
 {
     runtime::Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
     
@@ -78,14 +77,14 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         int ik = spl_num_kpoints(ikloc);
         if (use_second_variation && ctx_.full_potential())
         {
-            band_->solve_fv(kpoints_[ik], potential->effective_potential());
+            band__.solve_fv(kpoints_[ik], potential->effective_potential());
             kpoints_[ik]->generate_fv_states();
-            band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+            band__.solve_sv(kpoints_[ik], potential->effective_magnetic_field());
             kpoints_[ik]->generate_spinor_wave_functions();
         }
         else
         {
-            band_->solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
+            band__.solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
         }
     }
 

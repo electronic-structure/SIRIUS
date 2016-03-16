@@ -713,7 +713,7 @@ void sirius_find_eigen_states(int32_t* kset_id__,
 {
     PROFILE();
     bool precompute = (*precompute__) ? true : false;
-    kset_list[*kset_id__]->find_eigen_states(potential, precompute);
+    kset_list[*kset_id__]->find_eigen_states(potential, dft_ground_state->band(), precompute);
 }
 
 void sirius_find_band_occupancies(int32_t* kset_id__)
@@ -1526,7 +1526,7 @@ void sirius_get_fv_h_o(int32_t const* kset_id__,
 
         dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
         dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
-        kset_list[*kset_id__]->band()->set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
+        dft_ground_state->band().set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
     }
 }
 
@@ -1544,17 +1544,17 @@ void sirius_solve_fv(int32_t const* kset_id__,
     {
         auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
     
-        kset_list[*kset_id__]->band()->gen_evp_solver()->solve(kp->gklo_basis_size(),
-                                                               sim_ctx->num_fv_states(),
-                                                               h__,
-                                                               kp->gklo_basis_size_row(), 
-                                                               o__,
-                                                               kp->gklo_basis_size_row(),
-                                                               eval__, 
-                                                               evec__,
-                                                               *evec_ld__,
-                                                               kp->gklo_basis_size_row(),
-                                                               kp->gklo_basis_size_col());
+        dft_ground_state->band().gen_evp_solver()->solve(kp->gklo_basis_size(),
+                                                         sim_ctx->num_fv_states(),
+                                                         h__,
+                                                         kp->gklo_basis_size_row(), 
+                                                         o__,
+                                                         kp->gklo_basis_size_row(),
+                                                         eval__, 
+                                                         evec__,
+                                                         *evec_ld__,
+                                                         kp->gklo_basis_size_row(),
+                                                         kp->gklo_basis_size_col());
     }
 }
 

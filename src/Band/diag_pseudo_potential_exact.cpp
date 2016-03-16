@@ -9,7 +9,7 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
                                        int ispn__,
                                        Hloc_operator& h_op__,
                                        D_operator<T>& d_op__,
-                                       Q_operator<T>& q_op__)
+                                       Q_operator<T>& q_op__) const
 {
     PROFILE();
 
@@ -64,12 +64,12 @@ template void Band::diag_pseudo_potential_exact<double>(K_point* kp__,
                                                         int ispn__,
                                                         Hloc_operator& h_op__,
                                                         D_operator<double>& d_op__,
-                                                        Q_operator<double>& q_op__);
+                                                        Q_operator<double>& q_op__) const;
 
 template void Band::diag_pseudo_potential_exact<double_complex>(K_point* kp__,
                                                                 int ispn__,
                                                                 Hloc_operator& h_op__,
                                                                 D_operator<double_complex>& d_op__,
-                                                                Q_operator<double_complex>& q_op__);
+                                                                Q_operator<double_complex>& q_op__) const;
 
 };

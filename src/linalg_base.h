@@ -197,7 +197,7 @@ void FORTRAN(pzhegvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char u
                       ftn_double_complex* b, ftn_int* ib, ftn_int* jb, ftn_int const* descb, 
                       ftn_double* vl, ftn_double* vu, 
                       ftn_int* il, ftn_int* iu, 
-                      ftn_double* abstol, 
+                      ftn_double const* abstol, 
                       ftn_int* m, ftn_int* nz, ftn_double* w, ftn_double* orfac, 
                       ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz, 
                       ftn_double_complex* work, ftn_int* lwork, 
@@ -211,7 +211,7 @@ void FORTRAN(pdsygvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char u
                       ftn_double* b, ftn_int* ib, ftn_int* jb, ftn_int const* descb, 
                       ftn_double* vl, ftn_double* vu, 
                       ftn_int* il, ftn_int* iu, 
-                      ftn_double* abstol, 
+                      ftn_double const* abstol, 
                       ftn_int* m, ftn_int* nz, ftn_double* w, ftn_double* orfac, 
                       ftn_double* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz, 
                       ftn_double* work, ftn_int* lwork, 
@@ -231,7 +231,7 @@ void FORTRAN(pdsyevx)(ftn_char       jobz,
                       ftn_double*    vu, 
                       ftn_int*       il,
                       ftn_int*       iu, 
-                      ftn_double*    abstol,
+                      ftn_double const* abstol,
                       ftn_int*       m,
                       ftn_int*       nz,
                       ftn_double*    w,
@@ -286,7 +286,7 @@ void FORTRAN(pzgemr2d)(ftn_int*            m,
  */
 void FORTRAN(zhegvx)(ftn_int* itype, ftn_char jobz, ftn_char range, ftn_char uplo, 
                      ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B, ftn_int* ldb, ftn_double* vl, 
-                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double* abstol, ftn_int* m, ftn_double* w,
+                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m, ftn_double* w,
                      ftn_double_complex* Z, ftn_int* ldz, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork,
                      ftn_int* iwork, ftn_int* ifail, ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
 
@@ -301,7 +301,7 @@ void FORTRAN(zheevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double_comple
 
 void FORTRAN(dsygvx)(ftn_int* itype, ftn_char jobz, ftn_char range, ftn_char uplo, 
                      ftn_int* n, ftn_double* A, ftn_int* lda, ftn_double* B, ftn_int* ldb, ftn_double* vl, 
-                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double* abstol, ftn_int* m, ftn_double* w,
+                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m, ftn_double* w,
                      ftn_double* Z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork, ftn_int* ifail,
                      ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
 
@@ -310,7 +310,7 @@ void FORTRAN(dsyevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double* a, ft
                      ftn_len jobzlen, ftn_len uplolen);
 
 void FORTRAN(dsyevx)(ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n, ftn_double* a, ftn_int* lda,
-                     ftn_double* vl, ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double* abstol, ftn_int* m, 
+                     ftn_double* vl, ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m, 
                      ftn_double* w, ftn_double* z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork,
                      ftn_int* ifail, ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
 

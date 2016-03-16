@@ -254,8 +254,9 @@ void Force::total_force(Simulation_context& ctx__,
     mdarray<double, 2> forcek(3, uc.num_atoms());
     for (int ikloc = 0; ikloc < ks__->spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = ks__->spl_num_kpoints(ikloc);
-        ibs_force(ctx__, ks__->band(), (*ks__)[ik], ffac, forcek);
+        //int ik = ks__->spl_num_kpoints(ikloc);
+        //ibs_force(ctx__, band_, (*ks__)[ik], ffac, forcek);
+        STOP();
         for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
             for (int x: {0, 1, 2}) force__(x, ia) += forcek(x, ia);

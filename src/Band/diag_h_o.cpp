@@ -12,7 +12,7 @@ void Band::diag_h_o<double_complex>(K_point* kp__,
                                     dmatrix<double_complex>& hmlt_dist__,
                                     dmatrix<double_complex>& ovlp_dist__,
                                     dmatrix<double_complex>& evec_dist__,
-                                    std::vector<double>& eval__)
+                                    std::vector<double>& eval__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_h_o");
 
@@ -94,7 +94,7 @@ void Band::diag_h_o<double>(K_point* kp__,
                             dmatrix<double>& hmlt_dist__,
                             dmatrix<double>& ovlp_dist__,
                             dmatrix<double>& evec_dist__,
-                            std::vector<double>& eval__)
+                            std::vector<double>& eval__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_h_o");
 

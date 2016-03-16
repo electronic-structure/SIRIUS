@@ -28,7 +28,7 @@
 #include "sirius_internal.h"
 #include "descriptors.h"
 #include "fft3d_grid.h"
-#include "splindex.h"
+//#include "splindex.h"
 
 namespace sirius {
 
