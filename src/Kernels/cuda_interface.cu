@@ -53,137 +53,14 @@ inline void stack_backtrace()
 // CUDA functions
 //================
 
-cudaStream_t* streams;
-int num_streams;
+std::vector<cudaStream_t> cuda_streams;
+
+cudaStream_t cuda_stream_by_id(int stream_id__)
+{
+    return (stream_id__ == -1) ? NULL : cuda_streams[stream_id__];
+}
 
 extern "C" {
-
-void print_cuda_timers()
-{
-    CUDA_timer::cuda_timers_wrapper().print();
-}
-
-void cuda_initialize()
-{
-    //CALL_CUDA(cudaSetDeviceFlags, (cudaDeviceMapHost));
-}
-
-void* cuda_malloc(size_t size)
-{
-    void* ptr;
-    CALL_CUDA(cudaMalloc, (&ptr, size));
-    return ptr;
-}
-
-void cuda_free(void* ptr)
-{
-    CALL_CUDA(cudaFree, (ptr));
-}
-
-void* cuda_malloc_host(size_t size)
-{
-    void* ptr;
-    CALL_CUDA(cudaMallocHost, (&ptr, size));
-    return ptr;
-}
-
-void cuda_free_host(void* ptr)
-{
-    CALL_CUDA(cudaFreeHost, (ptr));
-}
-
-void cuda_copy_to_device(void* target, void const* source, size_t size)
-{
-    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyHostToDevice));
-}
-
-void cuda_copy_to_host(void* target, void const* source, size_t size)
-{
-    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToHost));
-}
-
-void cuda_copy_device_to_device(void* target, void const* source, size_t size)
-{
-    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToDevice));
-}
-
-void cuda_device_synchronize()
-{
-    CALL_CUDA(cudaDeviceSynchronize, ());
-}
-
-void cuda_device_reset()
-{
-    CALL_CUDA(cudaDeviceReset, ());
-}
-
-void cuda_create_streams(int num_streams__)
-{
-    num_streams = num_streams__;
-    streams = (cudaStream_t*)malloc(num_streams * sizeof(cudaStream_t));
-    //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
-    for (int i = 0; i < num_streams; i++)
-    {
-        CALL_CUDA(cudaStreamCreate, (&streams[i]));
-    }
-}
-
-int get_num_cuda_streams()
-{
-    return num_streams;
-}
-
-void cuda_destroy_streams()
-{
-    for (int i = 0; i < num_streams; i++) 
-    {
-        CALL_CUDA(cudaStreamDestroy, (streams[i]));
-    }
-    free(streams);
-}
-
-void cuda_stream_synchronize(int stream_id)
-{
-    CALL_CUDA(cudaStreamSynchronize, (streams[stream_id]));
-}
-
-void cuda_async_copy_to_device(void* target, void* source, size_t size, int stream_id)
-{
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyHostToDevice, stream));
-}
-
-void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream_id)
-{
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToHost, stream));
-}
-
-void cuda_async_copy_device_to_device(void* target, void const* source, size_t size, int stream_id)
-{
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToDevice, stream));
-}
-
-void cuda_memset(void* ptr, int value, size_t size)
-{
-    CALL_CUDA(cudaMemset, (ptr, value, size));
-}
-
-void cuda_host_register(void* ptr, size_t size)
-{
-    assert(ptr);
-    
-    CALL_CUDA(cudaHostRegister, (ptr, size, cudaHostRegisterMapped));
-}
-
-void cuda_host_unregister(void* ptr)
-{
-    CALL_CUDA(cudaHostUnregister, (ptr));
-}
 
 size_t cuda_get_free_mem()
 {
@@ -208,28 +85,117 @@ void cuda_device_info()
      
     CALL_CUDA(cudaGetDeviceProperties, (&devprop, 0));
     
-    printf("name                        : %s \n", devprop.name);
-    printf("major                       : %i \n", devprop.major);
-    printf("minor                       : %i \n", devprop.minor);
-    printf("asyncEngineCount            : %i \n", devprop.asyncEngineCount);
-    printf("canMapHostMemory            : %i \n", devprop.canMapHostMemory);
-    printf("clockRate                   : %i kHz \n", devprop.clockRate);
-    printf("concurrentKernels           : %i \n", devprop.concurrentKernels);
-    printf("ECCEnabled                  : %i \n", devprop.ECCEnabled);
-    printf("l2CacheSize                 : %i kB \n", devprop.l2CacheSize/1024);
+    printf("name                        : %s \n",       devprop.name);
+    printf("major                       : %i \n",       devprop.major);
+    printf("minor                       : %i \n",       devprop.minor);
+    printf("asyncEngineCount            : %i \n",       devprop.asyncEngineCount);
+    printf("canMapHostMemory            : %i \n",       devprop.canMapHostMemory);
+    printf("clockRate                   : %i kHz \n",   devprop.clockRate);
+    printf("concurrentKernels           : %i \n",       devprop.concurrentKernels);
+    printf("ECCEnabled                  : %i \n",       devprop.ECCEnabled);
+    printf("l2CacheSize                 : %i kB \n",    devprop.l2CacheSize / 1024);
     printf("maxGridSize                 : %i %i %i \n", devprop.maxGridSize[0], devprop.maxGridSize[1], devprop.maxGridSize[2]);
     printf("maxThreadsDim               : %i %i %i \n", devprop.maxThreadsDim[0], devprop.maxThreadsDim[1], devprop.maxThreadsDim[2]);
-    printf("maxThreadsPerBlock          : %i \n", devprop.maxThreadsPerBlock);
-    printf("maxThreadsPerMultiProcessor : %i \n", devprop.maxThreadsPerMultiProcessor);
-    printf("memoryBusWidth              : %i bits \n", devprop.memoryBusWidth);
-    printf("memoryClockRate             : %i kHz \n", devprop.memoryClockRate);
-    printf("memPitch                    : %zi \n", devprop.memPitch);
-    printf("multiProcessorCount         : %i \n", devprop.multiProcessorCount);
-    printf("regsPerBlock                : %i \n", devprop.regsPerBlock);
-    printf("sharedMemPerBlock           : %li kB \n", devprop.sharedMemPerBlock/1024);
-    printf("totalConstMem               : %li kB \n", devprop.totalConstMem/1024);
-    printf("totalGlobalMem              : %li kB \n", devprop.totalGlobalMem/1024);
-    printf("available memory            : %li kB \n", cuda_get_free_mem() / 1024);
+    printf("maxThreadsPerBlock          : %i \n",       devprop.maxThreadsPerBlock);
+    printf("maxThreadsPerMultiProcessor : %i \n",       devprop.maxThreadsPerMultiProcessor);
+    printf("memoryBusWidth              : %i bits \n",  devprop.memoryBusWidth);
+    printf("memoryClockRate             : %i kHz \n",   devprop.memoryClockRate);
+    printf("memPitch                    : %zi \n",      devprop.memPitch);
+    printf("multiProcessorCount         : %i \n",       devprop.multiProcessorCount);
+    printf("regsPerBlock                : %i \n",       devprop.regsPerBlock);
+    printf("sharedMemPerBlock           : %li kB \n",   devprop.sharedMemPerBlock / 1024);
+    printf("totalConstMem               : %li kB \n",   devprop.totalConstMem / 1024);
+    printf("totalGlobalMem              : %li kB \n",   devprop.totalGlobalMem / 1024);
+    printf("available memory            : %li kB \n",   cuda_get_free_mem() / 1024);
+}
+
+void print_cuda_timers()
+{
+    CUDA_timer::cuda_timers_wrapper().print();
+}
+
+void cuda_initialize()
+{
+    //CALL_CUDA(cudaSetDeviceFlags, (cudaDeviceMapHost));
+}
+
+/* 
+ * memory allocation functions 
+ */
+void* cuda_malloc(size_t size)
+{
+    void* ptr;
+    CALL_CUDA(cudaMalloc, (&ptr, size));
+    return ptr;
+}
+
+void cuda_free(void* ptr)
+{
+    CALL_CUDA(cudaFree, (ptr));
+}
+
+void* cuda_malloc_host(size_t size)
+{
+    void* ptr;
+    CALL_CUDA(cudaMallocHost, (&ptr, size));
+    return ptr;
+}
+
+void cuda_free_host(void* ptr)
+{
+    CALL_CUDA(cudaFreeHost, (ptr));
+}
+
+void cuda_device_synchronize()
+{
+    CALL_CUDA(cudaDeviceSynchronize, ());
+}
+
+void cuda_device_reset()
+{
+    CALL_CUDA(cudaDeviceReset, ());
+}
+
+void cuda_create_streams(int num_streams__)
+{
+    cuda_streams = std::vector<cudaStream_t>(num_streams__);
+
+    //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
+    for (size_t i = 0; i < cuda_streams.size(); i++)
+        CALL_CUDA(cudaStreamCreate, (&cuda_streams[i]));
+}
+
+int get_num_cuda_streams()
+{
+    return static_cast<int>(cuda_streams.size());
+}
+
+void cuda_destroy_streams()
+{
+    for (size_t i = 0; i < cuda_streams.size(); i++) 
+        CALL_CUDA(cudaStreamDestroy, (cuda_streams[i]));
+}
+
+void cuda_stream_synchronize(int stream_id__)
+{
+    CALL_CUDA(cudaStreamSynchronize, (cuda_stream_by_id(stream_id__)));
+}
+
+void cuda_memset(void* ptr, int value, size_t size)
+{
+    CALL_CUDA(cudaMemset, (ptr, value, size));
+}
+
+void cuda_host_register(void* ptr, size_t size)
+{
+    assert(ptr);
+    
+    CALL_CUDA(cudaHostRegister, (ptr, size, cudaHostRegisterMapped));
+}
+
+void cuda_host_unregister(void* ptr)
+{
+    CALL_CUDA(cudaHostUnregister, (ptr));
 }
 
 void cuda_check_last_error()
@@ -242,17 +208,46 @@ void cuda_check_last_error()
     }
 }
 
-void cuda_memcpy2D_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
-                                    size_t nrow__, size_t ncol__, int elem_size__)
+void cuda_copy_to_device(void* target, void const* source, size_t size)
+{
+    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyHostToDevice));
+}
+
+void cuda_copy_to_host(void* target, void const* source, size_t size)
+{
+    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToHost));
+}
+
+void cuda_copy_device_to_device(void* target, void const* source, size_t size)
+{
+    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToDevice));
+}
+
+void cuda_async_copy_to_device(void* target, void* source, size_t size, int stream_id)
+{
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyHostToDevice, cuda_stream_by_id(stream_id)));
+}
+
+void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream_id)
+{
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToHost, cuda_stream_by_id(stream_id)));
+}
+
+void cuda_async_copy_device_to_device(void* target, void const* source, size_t size, int stream_id)
+{
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToDevice, cuda_stream_by_id(stream_id)));
+}
+
+void cuda_copy2d_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__,
+                                  size_t nrow__, size_t ncol__, int elem_size__)
 {
     CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__,
                              nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice));
 }
 
-void cuda_memcpy2D_device_to_device_async(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__, int stream_id__)
+void cuda_async_copy2d_device_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, size_t ncol__, int elem_size__, int stream_id__)
 {
-    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice, stream));
+    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToDevice, cuda_stream_by_id(stream_id__)));
 }
 
 void cuda_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__,
@@ -264,15 +259,19 @@ void cuda_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t 
 void cuda_async_copy2d_to_device(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__,
                                  size_t ncol__, int elem_size__, int stream_id__)
 {
-    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyHostToDevice, stream));
+    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyHostToDevice, cuda_stream_by_id(stream_id__)));
 }
 
 void cuda_async_copy2d_to_host(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, 
                                size_t ncol__, int elem_size__, int stream_id__)
 {
-    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToHost, stream));
+    CALL_CUDA(cudaMemcpy2DAsync, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToHost, cuda_stream_by_id(stream_id__)));
+}
+
+void cuda_copy2d_to_host(void* dst__, size_t ld1__, const void* src__, size_t ld2__, size_t nrow__, 
+                         size_t ncol__, int elem_size__)
+{
+    CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToHost));
 }
 
 } // extern "C"
@@ -284,7 +283,7 @@ void cuda_async_copy2d_to_host(void* dst__, size_t ld1__, const void* src__, siz
 //==================
 
 cublasHandle_t cublas_null_stream_handle;
-cublasHandle_t* cublas_stream_handles;
+std::vector<cublasHandle_t> cublas_handles;
 
 void cublas_error_message(cublasStatus_t status)
 {
@@ -335,12 +334,12 @@ extern "C" void cublas_create_handles(int num_handles)
 {
     CALL_CUBLAS(cublasCreate, (&cublas_null_stream_handle));
     
-    cublas_stream_handles = (cublasHandle_t*)malloc(num_handles * sizeof(cublasHandle_t));
+    cublas_handles = std::vector<cublasHandle_t>(num_handles);
     for (int i = 0; i < num_handles; i++)
     {
-        CALL_CUBLAS(cublasCreate, (&cublas_stream_handles[i]));
+        CALL_CUBLAS(cublasCreate, (&cublas_handles[i]));
 
-        CALL_CUBLAS(cublasSetStream, (cublas_stream_handles[i], streams[i]));
+        CALL_CUBLAS(cublasSetStream, (cublas_handles[i], cuda_stream_by_id(i)));
     }
 }
 
@@ -349,18 +348,24 @@ extern "C" void cublas_destroy_handles(int num_handles)
     CALL_CUBLAS(cublasDestroy, (cublas_null_stream_handle));
     for (int i = 0; i < num_handles; i++)
     {
-        CALL_CUBLAS(cublasDestroy, (cublas_stream_handles[i]));
+        CALL_CUBLAS(cublasDestroy, (cublas_handles[i]));
     }
 }
+
+cublasHandle_t cublas_handle_by_id(int id__)
+{
+    return (id__ == -1) ? cublas_null_stream_handle : cublas_handles[id__];
+}
+
+
 
 extern "C" void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
                              cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 
                              int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
 
-    CALL_CUBLAS(cublasZgemv, (handle, trans[transa], m, n, alpha, a, lda, x, incx, beta, y, incy));
+    CALL_CUBLAS(cublasZgemv, (cublas_handle_by_id(stream_id), trans[transa], m, n, alpha, a, lda, x, incx, beta, y, incy));
 }
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
@@ -368,9 +373,8 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
                              int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
     
-    CALL_CUBLAS(cublasZgemm, (handle, trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+    CALL_CUBLAS(cublasZgemm, (cublas_handle_by_id(stream_id), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
 extern "C" void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
@@ -378,41 +382,49 @@ extern "C" void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32
                              int32_t ldb, double* beta, double* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
     
-    CALL_CUBLAS(cublasDgemm, (handle, trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+    CALL_CUBLAS(cublasDgemm, (cublas_handle_by_id(stream_id), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-// A(GPU) => B(CPU)
-extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb)
+extern "C" void cublas_dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
+                             double* alpha__, double* A__, int lda__, double* B__, int ldb__)
 {
-    CALL_CUBLAS(cublasGetMatrix, (rows, cols, elemSize, A_device, lda, B_host, ldb));
+    if (!(side__ == 'L' || side__ == 'R'))
+    {
+        printf("cublas_dtrmm: wrong side\n");
+        exit(-1);
+    }
+    cublasSideMode_t side = (side__ == 'L') ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
+
+    if (!(uplo__ == 'U' || uplo__ == 'L'))
+    {
+        printf("cublas_dtrmm: wrong uplo\n");
+        exit(-1);
+    }
+    cublasFillMode_t uplo = (uplo__ == 'U') ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+
+    if (!(transa__ == 'N' || transa__ == 'T' || transa__ == 'C'))
+    {
+        printf("cublas_dtrmm: wrong transa\n");
+        exit(-1);
+    }
+    cublasOperation_t transa = CUBLAS_OP_N;
+    if (transa__ == 'T') transa = CUBLAS_OP_T;
+    if (transa__ == 'C') transa = CUBLAS_OP_C;
+
+    if (!(diag__ == 'N' || diag__ == 'U'))
+    {
+        printf("cublas_dtrmm: wrong diag\n");
+        exit(-1);
+    }
+    cublasDiagType_t diag = (diag__ == 'N') ? CUBLAS_DIAG_NON_UNIT : CUBLAS_DIAG_UNIT;
+
+    CALL_CUBLAS(cublasDtrmm, (cublas_null_stream_handle, side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
-extern "C" void cublas_get_matrix_async(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb, int stream_id)
+extern "C" void cublas_dger(int m, int n, double* alpha, double* x, int incx, double* y, int incy, double* A, int lda)
 {
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    CALL_CUBLAS(cublasGetMatrixAsync, (rows, cols, elemSize, A_device, lda, B_host, ldb, stream));
-}
-
-// A(CPU) => B(GPU)
-extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A_host, int lda, void *B_device, int ldb)
-{
-    CALL_CUBLAS(cublasSetMatrix, (rows, cols, elemSize, A_host, lda, B_device, ldb));
-}
-
-extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const void *A_host, int lda, void *B_device, int ldb, int stream_id)
-{
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    CALL_CUBLAS(cublasSetMatrixAsync, (rows, cols, elemSize, A_host, lda, B_device, ldb, stream));
-}
-
-// x(CPU) => y(GPU)
-extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, void *y, int incy)
-{
-    CALL_CUBLAS(cublasSetVector, (n, elemSize, x, incx, y, incy));
+    CALL_CUBLAS(cublasDger, (cublas_null_stream_handle, m, n, alpha, x, incx, y, incy, A, lda));
 }
 
 //=================
@@ -549,9 +561,7 @@ extern "C" void cufft_set_work_area(cufftHandle plan, void* work_area)
 
 extern "C" void cufft_set_stream(cufftHandle plan__, int stream_id__)
 {
-    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-
-    CALL_CUFFT(cufftSetStream, (plan__, stream));
+    CALL_CUFFT(cufftSetStream, (plan__, cuda_stream_by_id(stream_id__)));
 }
 
 __global__ void cufft_batch_load_gpu_kernel

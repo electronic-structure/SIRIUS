@@ -58,6 +58,16 @@ void FORTRAN(dgemv)(ftn_char trans, ftn_int const* m, ftn_int const* n, ftn_doub
                     ftn_double const* A, ftn_int const* lda, ftn_double const* X, ftn_int const* incx,
                     ftn_double const* beta, ftn_double* Y, ftn_int const* incy, ftn_len trans_len);
 
+void FORTRAN(dger)(ftn_int*    m,
+                   ftn_int*    n,
+                   ftn_double* alpha,
+                   ftn_double* x,
+                   ftn_int*    incx,
+                   ftn_double* y,
+                   ftn_int*    incy,
+                   ftn_double* A,
+                   ftn_int*    lda);
+
 /*
  *  matrix-matrix operations
  */

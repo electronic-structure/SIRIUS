@@ -79,6 +79,11 @@ class Beta_projectors
         /// Plane-wave coefficients of |beta> functions for a chunk of atoms.
         matrix<double_complex> beta_gk_;
         
+        #ifdef __GPU
+        /// Explicit GPU buffer for beta-projectors.
+        matrix<double_complex> beta_gk_gpu_;
+        #endif
+        
         /// Innter product between beta-projectors and wave-functions.
         /** Store as double to handle both gamma- and general k-point cases */
         mdarray<double, 1> beta_phi_;
@@ -161,7 +166,7 @@ class Beta_projectors
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                beta_gk_.allocate_on_device();
+                beta_gk_gpu_.allocate_on_device();
                 beta_phi_.allocate_on_device();
             }
             #endif
@@ -172,7 +177,7 @@ class Beta_projectors
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                beta_gk_.deallocate_on_device();
+                beta_gk_gpu_.deallocate_on_device();
                 beta_phi_.deallocate_on_device();
             }
             #endif

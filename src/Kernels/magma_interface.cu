@@ -5,6 +5,7 @@
 #include <cuda.h>
 #include <magma.h>
 #include <magma_z.h>
+#include <magma_d.h>
 #include <magma_threadsetting.h>
 
 extern "C" void magma_init_wrapper()
@@ -151,5 +152,32 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     free(iwork);
     free(w);
 }
+
+extern "C" int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L'))
+    {
+        printf("magma_dpotrf_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_dpotrf_gpu(magma_uplo, n, A, lda, &info);
+    return info;
+}
+
+extern "C" int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L'))
+    {
+        printf("magma_dtrtri_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_dtrtri_gpu(magma_uplo, MagmaNonUnit, n, A, lda, &info);
+    return info;
+}
+
 
 

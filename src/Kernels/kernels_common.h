@@ -4,6 +4,8 @@
 #include <string>
 #include <stdio.h>
 
+cudaStream_t cuda_stream_by_id(int stream_id__);
+
 const double twopi = 6.2831853071795864769;
 
 inline __device__ size_t array2D_offset(int i0, int i1, int ld0)
@@ -118,6 +120,4 @@ class CUDA_timer
             return cuda_timers_wrapper_;
         }
 };
-
-extern cudaStream_t* streams;
 

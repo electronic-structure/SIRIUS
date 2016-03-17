@@ -145,31 +145,30 @@ void Non_local_operator<double>::apply(int chunk__, int ispn__, Wave_functions<f
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        STOP();
-        //#pragma omp parallel for
-        //for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
-        //{
-        //    /* number of beta functions for a given atom */
-        //    int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-        //    int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-        //    int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+        #pragma omp parallel for
+        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        {
+            /* number of beta functions for a given atom */
+            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
 
-        //    /* compute O * <beta|phi> */
-        //    linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
-        //                      (double_complex*)op_.at<GPU>(2 * packed_mtrx_offset_(ia), ispn__), nbf, 
-        //                      beta_phi.at<GPU>(offs, 0), nbeta,
-        //                      (double_complex*)work_.at<GPU>(2 * offs), nbeta,
-        //                      omp_get_thread_num());
+            /* compute O * <beta|phi> */
+            linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
+                              op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
+                              beta_phi.at<GPU>(offs, 0), nbeta,
+                              work_.at<GPU>(offs), nbeta,
+                              omp_get_thread_num());
 
-        //}
+        }
         //cuda_device_synchronize();
-        //double_complex alpha(1, 0);
-        //
-        ///* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-        //linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
-        //                  beta_gk.at<GPU>(), beta_gk.ld(), (double_complex*)work_.at<GPU>(), nbeta, &alpha, 
-        //                  op_phi__.coeffs().at<GPU>(0, idx0__), op_phi__.coeffs().ld());
-        //
+        double alpha = 1.0;
+        
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &alpha,
+                          (double*)beta_gk.at<GPU>(), 2 * num_gkvec_loc, work_.at<GPU>(), nbeta, &alpha, 
+                          (double*)op_phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc);
+        acc::sync_stream(-1); 
         //cuda_device_synchronize();
     }
     #endif

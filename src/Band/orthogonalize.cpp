@@ -49,38 +49,101 @@ void Band::orthogonalize<double>(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::orthogonalize");
 
+    std::array<Wave_functions<false>*, 3> wfs = {&phi__, &hphi__, &ophi__};
+
+    /* project out the old subspace:
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0)
     {
-        /* project out the old subspace */
-        phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0); 
+        phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0);
 
-        linalg<CPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__, -1.0, (double*)&phi__(0, 0), 2 * kp__->num_gkvec_loc(),
-                          &o__(0, 0), o__.ld(), 1.0, (double*)&phi__(0, N__), 2 * kp__->num_gkvec_loc());
+        if (ctx_.processing_unit() == CPU)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                linalg<CPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__,
+                                  -1.0, 
+                                  (double*)wfs[i]->coeffs().at<CPU>(0, 0), 2 * kp__->num_gkvec_loc(),
+                                  o__.at<CPU>(0, 0), o__.ld(),
+                                  1.0,
+                                  (double*)wfs[i]->coeffs().at<CPU>(0, N__), 2 * kp__->num_gkvec_loc());
+            }
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU)
+        {
+            /* copy overlap matrix <phi_old|phi_new> to GPU */
+            acc::copyin(o__.at<GPU>(0, 0), o__.ld(), o__.at<CPU>(0, 0), o__.ld(), N__, n__);
 
-        linalg<CPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__, -1.0, (double*)&hphi__(0, 0), 2 * kp__->num_gkvec_loc(),
-                          &o__(0, 0), o__.ld(), 1.0, (double*)&hphi__(0, N__), 2 * kp__->num_gkvec_loc());
+            double alpha = 1;
+            double m_alpha = -1;
 
-        linalg<CPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__, -1.0, (double*)&ophi__(0, 0), 2 * kp__->num_gkvec_loc(),
-                          &o__(0, 0), o__.ld(), 1.0, (double*)&ophi__(0, N__), 2 * kp__->num_gkvec_loc());
+            for (int i = 0; i < 3; i++)
+            {
+                linalg<GPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__,
+                                  &m_alpha, 
+                                  (double*)wfs[i]->coeffs().at<GPU>(0, 0), 2 * kp__->num_gkvec_loc(),
+                                  o__.at<GPU>(0, 0), o__.ld(),
+                                  &alpha,
+                                  (double*)wfs[i]->coeffs().at<GPU>(0, N__), 2 * kp__->num_gkvec_loc());
+            }
+
+            acc::sync_stream(-1);
+        }
+        #endif
     }
 
     /* orthogonalize new n__ x n__ block */
     phi__.inner<double>(N__, n__, ophi__, N__, n__, o__, 0, 0);
-    
-    int info;
-    if ((info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())))
+
+    if (ctx_.processing_unit() == CPU)
     {
-        std::stringstream s;
-        s << "error in factorization, info = " << info;
-        TERMINATE(s);
+        int info;
+        if ((info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())))
+        {
+            std::stringstream s;
+            s << "error in factorization, info = " << info;
+            TERMINATE(s);
+        }
+
+        if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld()))
+            TERMINATE("error in inversion");
+
+        for (int i = 0; i < 3; i++)
+        {
+            linalg<CPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, 1.0,
+                              o__.at<CPU>(0, 0), o__.ld(),
+                              (double*)wfs[i]->coeffs().at<CPU>(0, N__), 2 * kp__->num_gkvec_loc());
+        }
     }
 
-    if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld()))
-        TERMINATE("error in inversion");
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU)
+    {
+        acc::copyin(o__.at<GPU>(0, 0), o__.ld(), o__.at<CPU>(0, 0), o__.ld(), n__, n__);
 
-    linalg<CPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, 1.0, &o__(0, 0), o__.ld(), (double*)&phi__(0, N__), 2 * kp__->num_gkvec_loc());
-    linalg<CPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, 1.0, &o__(0, 0), o__.ld(), (double*)&hphi__(0, N__), 2 * kp__->num_gkvec_loc());
-    linalg<CPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, 1.0, &o__(0, 0), o__.ld(), (double*)&ophi__(0, N__), 2 * kp__->num_gkvec_loc());
+        int info;
+        if ((info = linalg<GPU>::potrf(n__, o__.at<GPU>(0, 0), o__.ld())))
+        {
+            std::stringstream s;
+            s << "error in factorization, info = " << info;
+            TERMINATE(s);
+        }
+
+        if (linalg<GPU>::trtri(n__, o__.at<GPU>(0, 0), o__.ld()))
+            TERMINATE("error in inversion");
+
+        double alpha = 1;
+
+        for (int i = 0; i < 3; i++)
+        {
+            linalg<GPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, &alpha,
+                              o__.at<GPU>(0, 0), o__.ld(),
+                              (double*)wfs[i]->coeffs().at<GPU>(0, N__), 2 * kp__->num_gkvec_loc());
+        }
+        acc::sync_stream(-1);
+    }
+    #endif
 
     //// --== DEBUG ==--
     //phi__.inner<double>(0, N__ + n__, ophi__, 0, N__ + n__, o__, 0, 0);
@@ -94,7 +157,9 @@ void Band::orthogonalize<double>(K_point* kp__,
     //        if (std::abs(a) > 1e-10)
     //        {
     //            printf("wrong overlap");
-    //            TERMINATE("wrong overlap");
+    //            std::stringstream s;
+    //            s << "wrong overlap, diff=" << a;
+    //            TERMINATE(s);
     //        }
     //    }
     //}

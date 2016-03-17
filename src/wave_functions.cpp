@@ -171,42 +171,47 @@ void Wave_functions<false>::inner<double>(int i0__, int m__, Wave_functions& ket
             if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
             #endif
         }
+        double alpha = 2;
+        double beta = 0;
         switch (pu_)
         {
             case CPU:
             {
-                linalg<CPU>::gemm(2, 0, m__, n__, 2 * num_gvec_loc(), (double*)&wf_coeffs_(0, i0__), 2 * num_gvec_loc(),
-                                  (double*)&ket__(0, j0__), 2 * num_gvec_loc(), &inner_prod_buf_[0], m__);
+                linalg<CPU>::gemm(1, 0, m__, n__, 2 * num_gvec_loc(),
+                                  alpha,
+                                  (double*)&wf_coeffs_(0, i0__), 2 * num_gvec_loc(),
+                                  (double*)&ket__(0, j0__), 2 * num_gvec_loc(),
+                                  beta,
+                                  &inner_prod_buf_[0], m__);
+                if (mpi_grid_.communicator().rank() == 0)
+                {
+                    /* subtract one extra G=0 contribution */
+                    linalg<CPU>::ger(m__, n__, -1.0, (double*)&wf_coeffs_(0, i0__), 2 * num_gvec_loc(),
+                                    (double*)&ket__(0, j0__), 2 * num_gvec_loc(), &inner_prod_buf_[0], m__); 
+                }
                 break;
             }
             case GPU:
             {
                 #ifdef __GPU
-                linalg<GPU>::gemm(2, 0, m__, n__, 2 * num_gvec_loc(), (double*)wf_coeffs_.at<GPU>(0, i0__), 2 * num_gvec_loc(),
-                                  (double*)ket__.wf_coeffs_.at<GPU>(0, j0__), 2 * num_gvec_loc(), inner_prod_buf_.at<GPU>(), m__);
+                linalg<GPU>::gemm(1, 0, m__, n__, 2 * num_gvec_loc(),
+                                  &alpha,
+                                  (double*)wf_coeffs_.at<GPU>(0, i0__), 2 * num_gvec_loc(),
+                                  (double*)ket__.wf_coeffs_.at<GPU>(0, j0__), 2 * num_gvec_loc(),
+                                  &beta,
+                                  inner_prod_buf_.at<GPU>(), m__);
+                double alpha1 = -1;
+                if (mpi_grid_.communicator().rank() == 0)
+                {
+                    /* subtract one extra G=0 contribution */
+                    linalg<GPU>::ger(m__, n__, &alpha1, (double*)wf_coeffs_.at<GPU>(0, i0__), 2 * num_gvec_loc(),
+                                    (double*)ket__.wf_coeffs_.at<GPU>(0, j0__), 2 * num_gvec_loc(), inner_prod_buf_.at<GPU>(), m__); 
+                }
                 inner_prod_buf_.copy_to_host(m__ * n__);
                 #else
                 TERMINATE_NO_GPU
                 #endif
                 break;
-            }
-        }
-        if (mpi_grid_.communicator().rank() == 0)
-        {
-            for (int j = 0; j < n__; j++)
-            {
-                for (int i = 0; i < m__; i++)
-                {
-                    inner_prod_buf_[i + j * m__] = 2 * inner_prod_buf_[i + j * m__]  -
-                                                   wf_coeffs_(0, i0__ + i).real() * ket__(0, j0__ + j).real();
-                }
-            }
-        }
-        else
-        {
-            for (int j = 0; j < n__; j++)
-            {
-                for (int i = 0; i < m__; i++) inner_prod_buf_[i + j * m__] *= 2;
             }
         }
 

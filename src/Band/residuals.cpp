@@ -55,7 +55,7 @@ int Band::residuals(K_point* kp__,
         if (ctx_.processing_unit() == GPU)
         {
             evec_tmp = matrix<T>(evec__.template at<CPU>(0, num_bands__), evec__.template at<GPU>(0, num_bands__), evec__.ld(), n);
-            /* move matrix of eigen-vectors to GPU */
+            /* copy matrix of eigen-vectors to GPU */
             acc::copyin(evec_tmp.template at<GPU>(), evec_tmp.ld(), evec_tmp.template at<CPU>(), evec_tmp.ld(), N__, n);
         }
         #endif

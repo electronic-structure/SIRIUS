@@ -13,7 +13,9 @@ extern "C" void residuals_aux_gpu(int num_gvec_loc__,
                                   double const* o_diag__,
                                   cuDoubleComplex* res__,
                                   double* res_norm__,
-                                  double* p_norm__);
+                                  double* p_norm__,
+                                  int gkvec_reduced__,
+                                  int mpi_rank__);
 #endif
 
 void Band::residuals_aux(K_point* kp__,
@@ -66,56 +68,39 @@ void Band::residuals_aux(K_point* kp__,
     /* compute residuals norm and apply preconditioner */
     if (pu == CPU)
     {
-        if (kp__->gkvec().reduced())
+        #pragma omp parallel for
+        for (int i = 0; i < num_bands__; i++)
         {
-            #pragma omp parallel for
-            for (int i = 0; i < num_bands__; i++)
+            res_norm[i] = 0;
+            p_norm[i] = 0;
+            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
             {
-                res_norm[i] = 0;
-                p_norm[i] = 0;
-                for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
-                {
-                    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-                    res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
-                    res_norm__[i] += 2 * (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
-                }
-                if (kp__->comm().rank() == 0)
-                    res_norm__[i] -= std::pow(res__(0, i).real(), 2);
-
-                for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
-                {
-                    double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
-                    p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                    res__(ig, i) /= p;
-                    /* norm of the preconditioned residual */
-                    p_norm[i] += 2 * (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
-                }
-
-                if (kp__->comm().rank() == 0)
-                    p_norm[i] -= std::pow(res__(0, i).real(), 2);
+                /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
+                res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
+                res_norm__[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
             }
-        }
-        else
-        {
-            /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
-            #pragma omp parallel for
-            for (int i = 0; i < num_bands__; i++)
+            if (kp__->gkvec().reduced())
             {
-                res_norm__[i] = 0;
-                p_norm[i] = 0;
-                for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
-                {
-                    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-                    res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
-                    /* norm of the original (not preconditioned) residual */
-                    res_norm__[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
-                    /* apply preconditioner */
-                    double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
-                    p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                    res__(ig, i) /= p;
-                    /* norm of the preconditioned residual */
-                    p_norm[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
-                }
+                if (kp__->comm().rank() == 0)
+                    res_norm__[i] = 2 * res_norm__[i] - std::pow(res__(0, i).real(), 2);
+                else
+                    res_norm__[i] *= 2;
+            }
+            /* apply preconditioner */
+            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
+            {
+                double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
+                p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                res__(ig, i) /= p;
+                /* norm of the preconditioned residual */
+                p_norm[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
+            }
+            if (kp__->gkvec().reduced())
+            {
+                if (kp__->comm().rank() == 0)
+                    p_norm[i] = 2 * p_norm[i] - std::pow(res__(0, i).real(), 2);
+                else
+                    p_norm[i] *= 2;
             }
         }
     }
@@ -125,7 +110,7 @@ void Band::residuals_aux(K_point* kp__,
         residuals_aux_gpu(res__.num_gvec_loc(), num_bands__, res_idx.at<GPU>(), eval.at<GPU>(),
                           hpsi__.coeffs().at<GPU>(), opsi__.coeffs().at<GPU>(),
                           h_diag.at<GPU>(), o_diag.at<GPU>(), res__.coeffs().at<GPU>(),
-                          res_norm.at<GPU>(), p_norm.at<GPU>());
+                          res_norm.at<GPU>(), p_norm.at<GPU>(), kp__->gkvec().reduced(), kp__->comm().rank());
         res_norm.copy_to_host();
         p_norm.copy_to_host();
     }

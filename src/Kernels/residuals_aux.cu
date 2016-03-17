@@ -26,7 +26,9 @@ __global__ void compute_residuals_norm_gpu_kernel
     int num_gkvec_row,
     int* res_idx,
     cuDoubleComplex const* res,
-    double* res_norm
+    double* res_norm,
+    int reduced,
+    int mpi_rank
 )
 {
     int N = num_blocks(num_gkvec_row, blockDim.x);
@@ -35,7 +37,7 @@ __global__ void compute_residuals_norm_gpu_kernel
     double* sdata = (double*)&sdata_ptr[0];
 
     sdata[threadIdx.x] = 0.0;
-
+    
     for (int n = 0; n < N; n++)
     {
         int igk = n * blockDim.x + threadIdx.x;
@@ -45,7 +47,6 @@ __global__ void compute_residuals_norm_gpu_kernel
             sdata[threadIdx.x] += res[k].x * res[k].x + res[k].y * res[k].y;
         }
     }
-
     __syncthreads();
 
     for (int s = 1; s < blockDim.x; s *= 2) 
@@ -54,7 +55,22 @@ __global__ void compute_residuals_norm_gpu_kernel
         __syncthreads();
     }
     
-    res_norm[res_idx[blockIdx.x]] = sdata[0];
+    if (!reduced)
+    {
+        res_norm[res_idx[blockIdx.x]] = sdata[0];
+    }
+    else
+    {
+        if (mpi_rank == 0)
+        {
+            double x = res[array2D_offset(0, blockIdx.x, num_gkvec_row)].x;
+            res_norm[res_idx[blockIdx.x]] = 2 * sdata[0] - x * x;
+        }
+        else
+        {
+            res_norm[res_idx[blockIdx.x]] = 2 * sdata[0];
+        }
+    }
 }
 
 __global__ void apply_preconditioner_gpu_kernel
@@ -90,7 +106,9 @@ extern "C" void residuals_aux_gpu(int num_gvec_loc__,
                                   double const* o_diag__,
                                   cuDoubleComplex* res__,
                                   double* res_norm__,
-                                  double* p_norm__)
+                                  double* p_norm__,
+                                  int gkvec_reduced__,
+                                  int mpi_rank__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_res_local__);
@@ -112,7 +130,9 @@ extern "C" void residuals_aux_gpu(int num_gvec_loc__,
         num_gvec_loc__,
         res_idx__,
         res__,
-        res_norm__
+        res_norm__,
+        gkvec_reduced__,
+        mpi_rank__
     );
 
     grid_b = dim3(num_blocks(num_gvec_loc__, grid_t.x), num_res_local__);
@@ -134,7 +154,9 @@ extern "C" void residuals_aux_gpu(int num_gvec_loc__,
         num_gvec_loc__,
         res_idx__,
         res__,
-        p_norm__
+        p_norm__,
+        gkvec_reduced__,
+        mpi_rank__
     );
 }
 

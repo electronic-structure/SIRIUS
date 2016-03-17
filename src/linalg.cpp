@@ -23,7 +23,6 @@
  */
 
 #include "linalg.h"
-#include "constants.h"
 #ifdef __GPU
 #include "gpu.h"
 #endif
@@ -74,6 +73,20 @@ void linalg<CPU>::gemv<ftn_double>(int trans,
     const char *trans_c[] = {"N", "T", "C"};
 
     FORTRAN(dgemv)(trans_c[trans], &m, &n, &alpha, A, &lda, x, &incx, &beta, y, &incy, 1);
+}
+
+template<>
+void linalg<CPU>::ger<ftn_double>(ftn_int     m,
+                                  ftn_int     n,
+                                  ftn_double  alpha,
+                                  ftn_double* x,
+                                  ftn_int     incx,
+                                  ftn_double* y,
+                                  ftn_int     incy,
+                                  ftn_double* A,
+                                  ftn_int     lda)
+{
+    FORTRAN(dger)(&m, &n, &alpha, x, &incx, y, &incy, A, &lda);
 }
 
 template<>
@@ -664,4 +677,63 @@ void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n,
 {
     gemm(transa, transb, m, n, k, A.at<GPU>(), A.ld(), B.at<GPU>(), B.ld(), C.at<GPU>(), C.ld());
 }
+
+template<>
+ftn_int linalg<GPU>::potrf<ftn_double>(ftn_int n,
+                                       ftn_double* A,
+                                       ftn_int lda)
+{
+    #ifdef __MAGMA
+    return magma_dpotrf_wrapper('U', n, A, lda);
+    #else
+    printf("not compiled with MAGMA support\n");
+    raise(SIGTERM);
+    #endif
+    return -1;
+}
+
+template <>
+ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
+                                       ftn_double* A,
+                                       ftn_int lda)
+{
+    #ifdef __MAGMA
+    return magma_dtrtri_wrapper('U', n, A, lda);
+    #else
+    printf("not compiled with MAGMA support\n");
+    raise(SIGTERM);
+    #endif
+    return -1;
+}
+
+template <>
+void linalg<GPU>::trmm<ftn_double>(char side,
+                                   char uplo,
+                                   char transa,
+                                   ftn_int m,
+                                   ftn_int n,
+                                   ftn_double* alpha,
+                                   ftn_double* A,
+                                   ftn_int lda,
+                                   ftn_double* B,
+                                   ftn_int ldb)
+{
+    cublas_dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+}
+
+template<>
+void linalg<GPU>::ger<ftn_double>(ftn_int     m,
+                                  ftn_int     n,
+                                  ftn_double* alpha,
+                                  ftn_double* x,
+                                  ftn_int     incx,
+                                  ftn_double* y,
+                                  ftn_int     incy,
+                                  ftn_double* A,
+                                  ftn_int     lda)
+{
+    cublas_dger(m, n, alpha, x, incx, y, incy, A, lda);
+}
+
+
 #endif

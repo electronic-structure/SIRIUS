@@ -85,7 +85,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/pack_unpack_z_columns.o \
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \
-	Kernels/sum_q_pw_dm_pw.o
+	Kernels/sum_q_pw_dm_pw.o \
+	Kernels/generate_phase_factors.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

@@ -33,12 +33,17 @@ void Band::apply_h_o(K_point* kp__,
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    auto cs1 = mdarray<double_complex, 1>(&phi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
-    auto cs2 = mdarray<double_complex, 1>(&hphi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
-    kp__->comm().allreduce(&cs1, 1);
-    kp__->comm().allreduce(&cs2, 1);
-    DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
-    DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    {
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) phi__.copy_to_host(N__, n__);
+        #endif
+        auto cs1 = mdarray<double_complex, 1>(&phi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
+        auto cs2 = mdarray<double_complex, 1>(&hphi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
+        kp__->comm().allreduce(&cs1, 1);
+        kp__->comm().allreduce(&cs2, 1);
+        DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
+        DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
     #endif
 
     /* set intial ophi */

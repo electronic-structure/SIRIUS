@@ -213,11 +213,8 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                           h__.at<GPU>(), h__.ld(), omp_get_max_threads());
     }
 
-    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 
-                      h__.at<CPU>(), h__.ld());
-    
-    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<GPU>(0, 0), o__.ld(), 
-                      o__.at<CPU>(), o__.ld());
+    acc::copyout(h__.at<CPU>(), h__.ld(), h__.at<GPU>(), h__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
+    acc::copyout(o__.at<CPU>(), o__.ld(), o__.at<GPU>(), o__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
     
     double tval = t1.stop();
     if (kp__->comm().rank() == 0)

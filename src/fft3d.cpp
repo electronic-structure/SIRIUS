@@ -35,6 +35,16 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                   bool use_reduction,
                                   int stream_id__);
 
+extern "C" void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
+                                    cuDoubleComplex* z_cols_packed2__,
+                                    cuDoubleComplex* fft_buf__,
+                                    int size_x__,
+                                    int size_y__,
+                                    int size_z__,
+                                    int num_z_cols__,
+                                    int const* z_columns_pos__,
+                                    int stream_id__);
+
 extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                 cuDoubleComplex* fft_buf__,
                                 int size_x__,
@@ -43,6 +53,16 @@ extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                 int num_z_cols__,
                                 int const* z_columns_pos__,
                                 int stream_id__);
+
+extern "C" void pack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
+                                  cuDoubleComplex* z_cols_packed2__,
+                                  cuDoubleComplex* fft_buf__,
+                                  int size_x__,
+                                  int size_y__,
+                                  int size_z__,
+                                  int num_z_cols__,
+                                  int const* z_columns_pos__,
+                                  int stream_id__);
 #endif
 
 namespace sirius {
@@ -120,6 +140,7 @@ FFT3D::FFT3D(FFT3D_grid grid__,
 
             cufft_create_plan_handle(&cufft_plan_);
             cufft_create_batch_plan(cufft_plan_, 2, dim_xy, embed_xy, 1, grid_.size(0) * grid_.size(1), cufft_nbatch_, auto_alloc);
+            /* stream #0 will execute FFTs */
             cufft_set_stream(cufft_plan_, 0);
         }
     }
@@ -174,7 +195,6 @@ void FFT3D::transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buf
                 /* srteam #0 copies packed columns to GPU */
                 acc::copyin(fft_buffer_aux__.at<GPU>(), cufft_nbatch_, fft_buffer_aux__.at<CPU>(), local_size_z_,
                             cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
-
                 /* srteam #0 unpacks z-columns into proper position of FFT buffer */
                 unpack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
                                   cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(),
@@ -193,12 +213,11 @@ void FFT3D::transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buf
                 /* stream #0 packs z-columns */
                 pack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
                                 cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
-
                 /* srteam #0 copies packed columns to CPU */
                 acc::copyout(fft_buffer_aux__.at<CPU>(), local_size_z_, fft_buffer_aux__.at<GPU>(), cufft_nbatch_, 
                              cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
                 /* stream #1 waits to complete memory copy */
-                cuda_stream_synchronize(1);
+                acc::sync_stream(1);
                 break;
             }
         }
@@ -286,11 +305,10 @@ void FFT3D::transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buf
         {
             /* stream #1 copies data to GPU */
             acc::copyin(fft_buffer_.at<GPU>(cufft_nbatch_ * size_xy), fft_buffer_.at<CPU>(cufft_nbatch_ * size_xy),
-                        size_xy * (local_size_z_ - cufft_nbatch_), 1);
-            cuda_stream_synchronize(1);
+                        size_xy * (local_size_z_ - cufft_nbatch_));
         }
         /* wait for stram #0 */
-        cuda_stream_synchronize(0);
+        acc::sync_stream(0);
     }
     #endif
 
@@ -313,42 +331,45 @@ void FFT3D::transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buf
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        ///* stream #0 will be doing cuFFT */
-        //switch (direction)
-        //{
-        //    case 1:
-        //    {
-        //        /* srteam #0 copies packed columns to GPU */
-        //        acc::copyin(fft_buffer_aux__.at<GPU>(), cufft_nbatch_, fft_buffer_aux__.at<CPU>(), local_size_z_,
-        //                    cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
-
-        //        /* srteam #0 unpacks z-columns into proper position of FFT buffer */
-        //        unpack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
-        //                          cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(),
-        //                          use_reduction, 0);
-        //        /* stream #0 executes FFT */
-        //        cufft_backward_transform(cufft_plan_, fft_buffer_.at<GPU>());
-        //        break;
-        //    }
-        //    case -1:
-        //    {
-        //        /* stream #1 copies part of FFT buffer to CPU */
-        //        acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_ * size_xy),
-        //                     size_xy * (local_size_z_ - cufft_nbatch_), 1);
-        //        /* stream #0 executes FFT */
-        //        cufft_forward_transform(cufft_plan_, fft_buffer_.at<GPU>());
-        //        /* stream #0 packs z-columns */
-        //        pack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
-        //                        cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
-
-        //        /* srteam #0 copies packed columns to CPU */
-        //        acc::copyout(fft_buffer_aux__.at<CPU>(), local_size_z_, fft_buffer_aux__.at<GPU>(), cufft_nbatch_, 
-        //                     cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
-        //        /* stream #1 waits to complete memory copy */
-        //        cuda_stream_synchronize(1);
-        //        break;
-        //    }
-        //}
+        /* stream #0 will be doing cuFFT */
+        switch (direction)
+        {
+            case 1:
+            {
+                /* srteam #0 copies packed columns to GPU */
+                acc::copyin(fft_buffer_aux1__.at<GPU>(), cufft_nbatch_, fft_buffer_aux1__.at<CPU>(), local_size_z_,
+                            cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
+                acc::copyin(fft_buffer_aux2__.at<GPU>(), cufft_nbatch_, fft_buffer_aux2__.at<CPU>(), local_size_z_,
+                            cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
+                /* srteam #0 unpacks z-columns into proper position of FFT buffer */
+                unpack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
+                                    grid_.size(0), grid_.size(1), cufft_nbatch_,
+                                    static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
+                /* stream #0 executes FFT */
+                cufft_backward_transform(cufft_plan_, fft_buffer_.at<GPU>());
+                break;
+            }
+            case -1:
+            {
+                /* stream #1 copies part of FFT buffer to CPU */
+                acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_ * size_xy),
+                             size_xy * (local_size_z_ - cufft_nbatch_), 1);
+                /* stream #0 executes FFT */
+                cufft_forward_transform(cufft_plan_, fft_buffer_.at<GPU>());
+                /* stream #0 packs z-columns */
+                pack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
+                                  grid_.size(0), grid_.size(1), cufft_nbatch_,
+                                  static_cast<int>(gvec__.z_columns().size()), gvec__.z_columns_pos().at<GPU>(), 0);
+                /* srteam #0 copies packed columns to CPU */
+                acc::copyout(fft_buffer_aux1__.at<CPU>(), local_size_z_, fft_buffer_aux1__.at<GPU>(), cufft_nbatch_, 
+                             cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
+                acc::copyout(fft_buffer_aux2__.at<CPU>(), local_size_z_, fft_buffer_aux2__.at<GPU>(), cufft_nbatch_, 
+                             cufft_nbatch_, static_cast<int>(gvec__.z_columns().size()), 0);
+                /* stream #1 waits to complete memory copy */
+                acc::sync_stream(1);
+                break;
+            }
+        }
         first_z = cufft_nbatch_;
     }
     #endif
@@ -442,11 +463,10 @@ void FFT3D::transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buf
         {
             /* stream #1 copies data to GPU */
             acc::copyin(fft_buffer_.at<GPU>(cufft_nbatch_ * size_xy), fft_buffer_.at<CPU>(cufft_nbatch_ * size_xy),
-                        size_xy * (local_size_z_ - cufft_nbatch_), 1);
-            cuda_stream_synchronize(1);
+                        size_xy * (local_size_z_ - cufft_nbatch_));
         }
         /* wait for stram #0 */
-        cuda_stream_synchronize(0);
+        acc::sync_stream(0);
     }
     #endif
 

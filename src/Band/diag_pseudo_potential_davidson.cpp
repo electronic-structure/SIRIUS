@@ -129,6 +129,8 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         opsi.allocate_on_device();
 
         evec.allocate_on_device();
+
+        ovlp.allocate_on_device();
     }
     #endif
 

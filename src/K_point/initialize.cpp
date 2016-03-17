@@ -186,7 +186,7 @@ void K_point::initialize()
             spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
                                                                      ctx_.processing_unit());
 
-            for (int i = 0; i < nst; i++) // TODO: init from atomic WFs
+            for (int i = 0; i < nst; i++)
             {
                 double norm = 1.0 / std::sqrt(gkvec_.num_gvec());
                 for (int igk = 0; igk < num_gkvec_loc(); igk++) spinor_wave_functions<false>(ispn)(igk, i) = type_wrapper<double_complex>::random() * norm;
