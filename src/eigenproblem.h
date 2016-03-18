@@ -760,11 +760,6 @@ class Eigenproblem_scalapack: public Eigenproblem
             int32_t descz[9];
             linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
             
-            int32_t lwork = -1;
-            int32_t liwork;
-
-            double work1;
-
             double orfac = 1e-6;
             int32_t ione = 1;
             
@@ -777,17 +772,22 @@ class Eigenproblem_scalapack: public Eigenproblem
             std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
             std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
             std::vector<double> w(matrix_size);
+            std::vector<double> work(1);
+            std::vector<int32_t> iwork(1);
             
             /* work size query */
+            int32_t lwork = -1;
+            int32_t liwork = -1;
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
-                             &liwork, &lwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
             
-            lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
+            lwork = static_cast<int32_t>(work[0]) + 4 * (1 << 20);
+            liwork = iwork[0];
             
-            std::vector<double> work(lwork);
-            std::vector<int32_t> iwork(liwork);
-            
+            work = std::vector<double>(lwork);
+            iwork = std::vector<int32_t>(liwork);
+
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
                              &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
