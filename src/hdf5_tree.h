@@ -220,29 +220,19 @@ class HDF5_tree
             if (H5open() < 0) TERMINATE("error in H5open()");
             
             if (false) H5Eset_auto(H5E_DEFAULT, NULL, NULL);
-            
-            if (truncate)
+
+            if (!truncate && Utils::file_exists(file_name_))
             {
-                // create a new file
-                file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-                if (file_id_ < 0) TERMINATE("error in H5Fcreate()");
+                /* try to open existing file */
+                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+
+                if (file_id_ < 0) TERMINATE("H5Fopen() failed");
             }
             else
             {
-                if (Utils::file_exists(file_name_))
-                {
-                    // try to open existing file
-                    file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-
-                    if (file_id_ < 0) TERMINATE("H5Fopen() failed");
-                }
-                else
-                {
-                    // create a new file if it doesn't exist
-                    file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
-
-                    if (file_id_ < 0) TERMINATE("error in H5Fcreate()");
-                }
+                /* create a new file */
+                file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+                if (file_id_ < 0) TERMINATE("error in H5Fcreate()");
             }
 
             path_ = "/";

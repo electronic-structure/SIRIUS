@@ -160,7 +160,7 @@ int main(int argn, char **argv)
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
 
     //vector3d<int> dims = args.value< vector3d<int> >("dims");
