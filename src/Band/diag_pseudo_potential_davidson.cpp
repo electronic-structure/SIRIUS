@@ -79,15 +79,8 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     }
     #endif
 
-    matrix<T> evec;
-    if (converge_by_energy)
-    {
-        evec = matrix<T>(num_phi, num_bands * 2);
-    }
-    else
-    {
-        evec = matrix<T>(num_phi, num_bands);
-    }
+    /* ELPA requires the full matrix of eigen-vectors even only the fraction of them is computed */ 
+    matrix<T> evec(num_phi, num_phi);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -96,15 +89,15 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     dmatrix<T> evec_dist;
     if (kp__->comm().size() == 1)
     {
-        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     }
     else
     {
-        hmlt_dist = dmatrix<T>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);

@@ -280,6 +280,11 @@ class Band
                     std_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
+                case ev_elpa2:
+                {
+                    std_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
+                    break;
+                }
                 default:
                 {
                     TERMINATE("wrong standard eigen-value solver");
