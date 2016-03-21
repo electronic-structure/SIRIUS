@@ -1,0 +1,8 @@
+libs/fft*
+libs/gsl*
+libs/hdf5*
+libs/libxc*
+libs/spglib*
+Makefile
+platform.json
+make.inc
