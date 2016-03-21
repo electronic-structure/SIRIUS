@@ -32,7 +32,8 @@ void test_wf_write(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
         f.create_node("wf");
     }
     wf.swap_forward(0, num_bands__);
-
+    
+    runtime::Timer t("wf_write");
     for (int r = 0; r < mpi_comm_world().size(); r++)
     {
         if (r == mpi_comm_world().rank())
@@ -47,6 +48,12 @@ void test_wf_write(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
             }
         }
         mpi_comm_world().barrier();
+    }
+    double tval = t.stop();
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("io time  : %f (sec.)\n", tval);
+        printf("io speed : %f (Gb/sec.)\n", (gvec.num_gvec() * num_bands__ * sizeof(double_complex)) / double(1 << 30) / tval);
     }
 }
 
