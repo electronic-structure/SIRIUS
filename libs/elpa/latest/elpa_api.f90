@@ -80,7 +80,7 @@ complex*16 :: a(lda,matrixCols), q(ldq,matrixCols)
 real*8 :: ev(na)
 logical success
 
-  success = solve_evp_complex(na, nev, a, lda, ev, q, ldq, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+  success = solve_evp_complex_1stage(na, nev, a, lda, ev, q, ldq, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
 
 end subroutine
 
@@ -92,7 +92,7 @@ real*8 :: a(lda,matrixCols), q(ldq,matrixCols)
 real*8 :: ev(na)
 logical success
 
-  success = solve_evp_real(na, nev, a, lda, ev, q, ldq, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+  success = solve_evp_real_1stage(na, nev, a, lda, ev, q, ldq, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
 
 end subroutine
 
