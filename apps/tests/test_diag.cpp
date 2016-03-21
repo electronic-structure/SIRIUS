@@ -274,6 +274,87 @@ void test_diag(int N, int nrow, int ncol, int bs, std::string name)
     //linalg<scalapack>::free_blacs_handler(blacs_handler);
 }
 
+template <typename T>
+void test_std_diag(int N, int nrow, int ncol, int bs, std::string name)
+{
+    BLACS_grid blacs_grid(mpi_comm_world(), nrow, ncol);
+
+    dmatrix<T> A(N, N, blacs_grid, bs, bs);
+    dmatrix<T> Z(N, N, blacs_grid, bs, bs);
+
+    A.zero();
+    Z.zero();
+
+    for (int jloc = 0; jloc < A.num_cols_local(); jloc++)
+    {
+        for (int iloc = 0; iloc < A.num_rows_local(); iloc++)
+            A(iloc, jloc) = type_wrapper<T>::random();
+    }
+    
+    linalg<CPU>::tranc(N, N, A, 0, 0, Z, 0, 0);
+
+    for (int jloc = 0; jloc < A.num_cols_local(); jloc++)
+    {
+        for (int iloc = 0; iloc < A.num_rows_local(); iloc++)
+            A(iloc, jloc) += Z(iloc, jloc);
+    }
+
+    for (int i = 0; i < N; i++)
+        A.set(i, i, 10.0 * i / N + 1);
+
+    std::vector<double> eval(N);
+
+    Eigenproblem* solver;
+
+    if (name == "lapack")
+    {
+        solver = new Eigenproblem_lapack();
+    }
+    else if (name == "magma")
+    {
+        solver = new Eigenproblem_magma();
+    }
+    else if (name == "scalapack")
+    {
+        solver = new Eigenproblem_scalapack(blacs_grid, bs, bs);
+    }
+    else if (name == "elpa1")
+    {
+        solver = new Eigenproblem_elpa1(blacs_grid, bs);
+    }
+    else if (name == "elpa2")
+    {
+        solver = new Eigenproblem_elpa2(blacs_grid, bs);
+    }
+    else
+    {
+        printf("wrong eigenvalue solver\n");
+        return;
+    }
+
+    int nev = static_cast<int>(0.2 * N);
+    
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("generalized eigen value probelm size: %i\n", N);
+        printf("number of eigen-vectors: %i\n", nev);
+        printf("MPI grid size: %i %i\n", nrow, ncol);
+        printf("block size: %i\n", bs);
+    }
+    
+    runtime::Timer t("evp");
+    int result = solver->solve(N, nev, A.template at<CPU>(), A.ld(), &eval[0], Z.template at<CPU>(), Z.ld(),
+                               A.num_rows_local(), A.num_cols_local());
+    double tval = t.stop();
+
+    if (result)
+    {
+        printf("error in diagonalziation\n");
+    }
+
+    printf("time: %f\n", tval);
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -301,6 +382,7 @@ int main(int argn, char **argv)
     sirius::initialize(true);
 
     test_diag<double>(N, nrow, ncol, bs, name);
+    test_std_diag<double>(N, nrow, ncol, bs, name);
     test_diag<double_complex>(N, nrow, ncol, bs, name);
 
     ///sirius::Timer::print();
