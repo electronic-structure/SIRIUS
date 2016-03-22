@@ -490,7 +490,7 @@ void DFT_ground_state::initialize_subspace()
             band_.initialize_subspace<double_complex>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
         }
     }
-    kset_->find_band_occupancies();
+    //kset_->find_band_occupancies();
 }
 
 }
