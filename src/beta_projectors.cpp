@@ -377,10 +377,13 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
                               (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_,
                               &b,
                               beta_phi_.at<GPU>(), nbeta);
-            /* subtract one extra G=0 contribution */
-            linalg<GPU>::ger(nbeta, n__, &a1, (double*)beta_gk_.at<GPU>(0, 0), 2 * num_gkvec_loc_,
-                            (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta); 
-            beta_phi_.copy_to_host(nbeta * n__);
+            if (comm_.rank() == 0)
+            {
+                /* subtract one extra G=0 contribution */
+                linalg<GPU>::ger(nbeta, n__, &a1, (double*)beta_gk_.at<GPU>(0, 0), 2 * num_gkvec_loc_,
+                                (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta); 
+                beta_phi_.copy_to_host(nbeta * n__);
+            }
             #else
             TERMINATE_NO_GPU
             #endif
