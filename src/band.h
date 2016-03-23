@@ -279,6 +279,11 @@ class Band
                     std_evp_solver_ = new Eigenproblem_plasma();
                     break;
                 }
+                case ev_magma:
+                {
+                    std_evp_solver_ = new Eigenproblem_magma();
+                    break;
+                }
                 case ev_elpa1:
                 {
                     std_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
