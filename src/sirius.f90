@@ -12,10 +12,6 @@ interface
        &bind(C, name="sirius_clear")
     end subroutine
 
-    !subroutine sirius_create_global_parameters()&
-    !   &bind(C, name="sirius_create_global_parameters")
-    !end subroutine
-
     subroutine sirius_create_simulation_context(config_file_name)&
        &bind(C, name="sirius_create_simulation_context")
         character, dimension(*), intent(in) :: config_file_name
@@ -310,15 +306,18 @@ interface
         real(8),                 intent(in) :: band_occupancies
     end subroutine
 
-    subroutine sirius_set_rho_pw(num_gvec, rho_pw)&
+    subroutine sirius_set_rho_pw(num_gvec, gvec, rho_pw, comm)&
        &bind(C, name="sirius_set_rho_pw")
         integer,                 intent(in) :: num_gvec
+        integer,                 intent(in) :: gvec
         complex(8),              intent(in) :: rho_pw
+        integer,                 intent(in) :: comm
     end subroutine
 
-    subroutine sirius_get_rho_pw(num_gvec, rho_pw)&
+    subroutine sirius_get_rho_pw(num_gvec, gvec, rho_pw)&
        &bind(C, name="sirius_get_rho_pw")
         integer,                 intent(in)  :: num_gvec
+        integer,                 intent(in)  :: gvec
         complex(8),              intent(out) :: rho_pw
     end subroutine
 

@@ -118,7 +118,7 @@ class Simulation_parameters
             so_correction_       = false;
             uj_correction_       = false;
             gamma_point_         = false;
-            reduce_gvec_         = false;
+            reduce_gvec_         = true;
             mpi_grid_dims_       = {1};
             cyclic_block_size_   = 32;
             processing_unit_     = CPU;

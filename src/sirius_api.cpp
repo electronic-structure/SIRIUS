@@ -2124,24 +2124,59 @@ void sirius_symmetrize_density()
     dft_ground_state->symmetrize_density();
 }
 
-void sirius_get_rho_pw(int32_t* num_gvec__, 
-                       double_complex* rho_pw__)
+void sirius_get_rho_pw(ftn_int*            num_gvec__,
+                       ftn_int*            gvec__,
+                       ftn_double_complex* rho_pw__)
 {
     PROFILE();
 
-    int num_gvec = sim_ctx->gvec().num_gvec();
-    assert(*num_gvec__ == num_gvec);
-    memcpy(rho_pw__, &density->rho()->f_pw(0), num_gvec * sizeof(double_complex));
+    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+
+    for (int i = 0; i < *num_gvec__; i++)
+    {
+        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+        int ig = sim_ctx->gvec().index_by_gvec(G);
+        if (ig == -1)
+        {
+            if (sim_ctx->gvec().reduced())
+            {
+                int ig1 = sim_ctx->gvec().index_by_gvec(G * (-1));
+                if (ig1 == -1) TERMINATE("wrong index of G-vector");
+                rho_pw__[i] = std::conj(density->rho()->f_pw(ig1));
+            }
+            else
+            {
+                TERMINATE("wrong index of G-vector");
+            }
+        }
+        else
+        {
+            rho_pw__[i] = density->rho()->f_pw(ig);
+        }
+    }
 }
 
-void sirius_set_rho_pw(int32_t* num_gvec__,
-                       double_complex* rho_pw__)
+void sirius_set_rho_pw(ftn_int*        num_gvec__,
+                       ftn_int*        gvec__,
+                       double_complex* rho_pw__,
+                       ftn_int*        fcomm__)
+
 {
     PROFILE();
 
-    int num_gvec = sim_ctx->gvec().num_gvec();
-    assert(*num_gvec__ == num_gvec);
-    memcpy(&density->rho()->f_pw(0), rho_pw__, num_gvec * sizeof(double_complex));
+    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+
+    std::memset(&density->rho()->f_pw(0), 0, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
+    for (int i = 0; i < *num_gvec__; i++)
+    {
+        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+        int ig = sim_ctx->gvec().index_by_gvec(G);
+        if (ig >= 0) density->rho()->f_pw(ig) = rho_pw__[i];
+    }
+
+    Communicator comm(MPI_Comm_f2c(*fcomm__));
+    comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
+
     density->rho()->fft_transform(1);
 }
 

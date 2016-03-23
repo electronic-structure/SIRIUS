@@ -100,22 +100,23 @@ class Communicator
     private:
 
         MPI_Comm mpi_comm_;
+        bool need_to_free_;
 
         Communicator(Communicator const& src__) = delete;
 
     public:
     
-        Communicator() : mpi_comm_(MPI_COMM_NULL)
+        Communicator() : mpi_comm_(MPI_COMM_NULL), need_to_free_(true)
         {
         }
 
-        Communicator(MPI_Comm mpi_comm__) : mpi_comm_(mpi_comm__)
+        Communicator(MPI_Comm mpi_comm__) : mpi_comm_(mpi_comm__), need_to_free_(false)
         {
         }
 
         ~Communicator()
         {
-            if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF))
+            if (need_to_free_ && !(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF))
             {
                 CALL_MPI(MPI_Comm_free, (&mpi_comm_));
                 mpi_comm_ = MPI_COMM_NULL;
