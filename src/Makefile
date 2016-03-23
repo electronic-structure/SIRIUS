@@ -47,6 +47,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Band/diag_pseudo_potential.cpp \
        Band/diag_pseudo_potential_exact.cpp \
        Band/diag_pseudo_potential_davidson.cpp \
+       Band/diag_pseudo_potential_rmm_diis.cpp \
        Band/diag_h_o.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_aux.cpp \

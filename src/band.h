@@ -133,9 +133,13 @@ class Band
                                             D_operator<T>& d_op__,
                                             Q_operator<T>& q_op__) const;
 
-        //void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
-        //                                              double v0__,
-        //                                              std::vector<double>& veff_it_coarse__);
+        /// RMM-DIIS diagonalization.
+        template <typename T>
+        void diag_pseudo_potential_rmm_diis(K_point* kp__,
+                                            int ispn__,
+                                            Hloc_operator& h_op__,
+                                            D_operator<T>& d_op__,
+                                            Q_operator<T>& q_op__) const;
 
         //void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
         //                                               std::vector<double> const& veff_it_coarse__);

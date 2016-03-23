@@ -79,7 +79,6 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     }
     #endif
 
-    /* ELPA requires the full matrix of eigen-vectors even only the fraction of them is computed */ 
     matrix<T> evec(num_phi, num_phi);
 
     int bs = ctx_.cyclic_block_size();

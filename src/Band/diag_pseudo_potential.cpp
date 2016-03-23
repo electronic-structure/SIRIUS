@@ -17,18 +17,6 @@ void Band::diag_pseudo_potential(K_point* kp__,
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
-    //if (itso.type_ == "exact")
-    //{
-    //    diag_fv_pseudo_potential_exact_serial(kp__, veff_it_coarse);
-    //}
-    //else if (itso.type_ == "davidson")
-    //{
-    //    diag_fv_pseudo_potential_davidson(kp__, v0, veff_it_coarse);
-    //}
-    //else if (itso.type_ == "rmm-diis")
-    //{
-    //    diag_fv_pseudo_potential_rmm_diis_serial(kp__, v0, veff_it_coarse);
-    //}
     //else if (itso.type_ == "chebyshev")
     //{
     //    diag_fv_pseudo_potential_chebyshev_serial(kp__, veff_it_coarse);
@@ -58,6 +46,18 @@ void Band::diag_pseudo_potential(K_point* kp__,
         {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
                 diag_pseudo_potential_davidson(kp__, ispn, hloc, d_op, q_op);
+        }
+        else
+        {
+            STOP();
+        }
+    }
+    else if (itso.type_ == "rmm-diis")
+    {
+        if (ctx_.num_mag_dims() != 3)
+        {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+                diag_pseudo_potential_rmm_diis(kp__, ispn, hloc, d_op, q_op);
         }
         else
         {
