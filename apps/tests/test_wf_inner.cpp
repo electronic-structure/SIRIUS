@@ -26,12 +26,31 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
         for (int j = 0; j < spl_K.local_size(); j++)
             b(j, i) = 0.1; //type_wrapper<double_complex>::random();
     }
+    mdarray<double_complex, 3> c_tmp(c.num_rows_local(0), c.num_cols_local(0), 2);
+    c_tmp.zero();
+
+    runtime::Timer t2("reduce_only");
+    for (int rank_col = 0; rank_col < mpi_grid[1]; rank_col++)
+    {
+        for (int rank_row = 0; rank_row < mpi_grid[0]; rank_row++)
+        {
+            mpi_comm_world().reduce(c_tmp.at<CPU>(0, 0, 0), c_tmp.ld() * c.num_cols_local(rank_col), blacs_grid.cart_rank(rank_row, rank_col));
+        }
+    }
+    double tval2 = t2.stop();
+    double perf2 = 8e-9 * M * N * K / tval2 / mpi_comm_world().size();
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("reduction time (sec) : %12.6f\n", tval2);
+        printf("absolute peak performance (GFlops / rank): %12.6f\n", perf2);
+    }
+
+
 
     runtime::Timer t1("gemm_only");
 
     mdarray<double_complex, 2> a_tmp(spl_K.local_size(), c.num_rows_local(0));
     mdarray<double_complex, 2> b_tmp(spl_K.local_size(), c.num_cols_local(0));
-    mdarray<double_complex, 3> c_tmp(c.num_rows_local(0), c.num_cols_local(0), 2);
 
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::pair<int, int>, 2> pos;
