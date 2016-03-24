@@ -60,9 +60,11 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
     {
         for (int rank_row = 0; rank_row < mpi_grid[0]; rank_row++)
         {
+            #pragma omp parallel for
             for (int i = 0; i < c.num_rows_local(rank_row); i++)
                 std::memcpy(&a_tmp(0, i), &a(0, c.spl_row().global_index(i, rank_row)), spl_K.local_size() * sizeof(double_complex));
 
+            #pragma omp parallel for
             for (int i = 0; i < c.num_cols_local(rank_col); i++)
                 std::memcpy(&b_tmp(0, i), &b(0, c.spl_col().global_index(i, rank_col)), spl_K.local_size() * sizeof(double_complex));
 
@@ -74,6 +76,7 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
                 if (mpi_comm_world().rank() == blacs_grid.cart_rank(pos[s % 2].first, pos[s % 2].second))
                 {
                     printf("copy of %i to (%i,%i)\n", s % 2, pos[s % 2].first, pos[s % 2].second);
+                    #pragma omp parallel for
                     for (int i = 0; i < c.num_cols_local(); i++)
                         std::memcpy(&c(0, i), &c_tmp(0, i, s % 2), c.num_rows_local() * sizeof(double_complex));
                 }
@@ -81,7 +84,6 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
 
             pos[s % 2].first = rank_row;
             pos[s % 2].second = rank_col;
-
             
             printf("zgemm to %i\n", s % 2);
             linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
@@ -90,12 +92,6 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
             printf("ireduce of %i\n", s % 2);
             mpi_comm_world().ireduce(c_tmp.at<CPU>(0, 0, s % 2), c_tmp.ld() * c.num_cols_local(rank_col), blacs_grid.cart_rank(rank_row, rank_col), &req[s % 2]);
             
-            //if (mpi_comm_world().rank() == blacs_grid.cart_rank(rank_row, rank_col))
-            //{
-            //    for (int i = 0; i < c.num_cols_local(); i++)
-            //        std::memcpy(&c(0, i), &c_tmp(0, i), c.num_rows_local() * sizeof(double_complex));
-            //}
-
             s++;
         }
     }
@@ -110,6 +106,7 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
             if (mpi_comm_world().rank() == blacs_grid.cart_rank(pos[s].first, pos[s].second))
             {
                 printf("copy of %i to (%i,%i)\n", s, pos[s].first, pos[s].second);
+                #pragma omp parallel for
                 for (int i = 0; i < c.num_cols_local(); i++)
                     std::memcpy(&c(0, i), &c_tmp(0, i, s), c.num_rows_local() * sizeof(double_complex));
             }
