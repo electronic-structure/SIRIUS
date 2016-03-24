@@ -207,6 +207,19 @@ class Communicator
         }
 
         template <typename T>
+        inline void ireduce(T* buffer__, int count__, int root__, MPI_Request* req__) const
+        {
+            if (root__ == rank())
+            {
+                CALL_MPI(MPI_Ireduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_, req__));
+            }
+            else
+            {
+                CALL_MPI(MPI_Ireduce, (buffer__, NULL, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_, req__));
+            }
+        }
+
+        template <typename T>
         void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__) const
         {
             CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_));
