@@ -67,9 +67,6 @@ void Potential::generate_D_operator_matrix()
 
     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
     {
-        /* get plane-wave coefficients of effective potential */
-        veff_vec[iv]->fft_transform(-1);
-
         #ifdef __GPU
         /* copy plane wave coefficients of effective potential to GPU */
         mdarray<double_complex, 1> veff;

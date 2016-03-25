@@ -59,7 +59,16 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     /* add local ionic potential to the effective potential */
     effective_potential_->add(local_potential_);
 
-    generate_D_operator_matrix();
+    /* get plane-wave coefficients of effective potential;
+     * they will be used in two places:
+     *  1) compute D-matrix
+     *  2) establish a mapping between fine and coarse FFT grid for the Hloc operator */
+    effective_potential_->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++)
+        effective_magnetic_field_[j]->fft_transform(-1);
+
+    if (ctx_.esm_type() == ultrasoft_pseudopotential)
+        generate_D_operator_matrix();
 }
 
 };
