@@ -30,6 +30,19 @@ void Atom::init(int offset_aw__, int offset_lo__, int offset_wf__)
     {
         int nbf = type().mt_lo_basis_size();
         d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, num_mag_dims_ + 1);
+        d_mtrx_.zero();
+
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            int lm2 = type().indexb(xi2).lm;
+            int idxrf2 = type().indexb(xi2).idxrf;
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                int lm1 = type().indexb(xi1).lm;
+                int idxrf1 = type().indexb(xi1).idxrf;
+                if (lm1 == lm2) d_mtrx_(xi1, xi2, 0) = type().uspp().d_mtrx_ion(idxrf1, idxrf2);
+            }
+        }
     }
 }
 
