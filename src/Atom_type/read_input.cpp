@@ -191,11 +191,18 @@ void Atom_type::read_input(const std::string& fname)
         local_orbital_descriptor lod;
         for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
         {
-            parser["pseudo_potential"]["beta_projectors"][i]["cutoff_radius_index"] >> uspp_.num_beta_radial_points[i];
             std::vector<double> beta;
             parser["pseudo_potential"]["beta_projectors"][i]["radial_function"] >> beta;
-            if ((int)beta.size() != uspp_.num_beta_radial_points[i]) TERMINATE("wrong size of beta function");
-            std::memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
+            if ((int)beta.size() > num_mt_points_)
+            {
+                std::stringstream s;
+                s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+                  << "size of beta radial functions in the file: " << beta.size() << std::endl
+                  << "radial grid size: " << num_mt_points_;
+                TERMINATE(s);
+            }
+            uspp_.num_beta_radial_points[i] = static_cast<int>(beta.size());
+            std::memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], uspp_.num_beta_radial_points[i] * sizeof(double)); 
  
             parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"] >> uspp_.beta_l[i];
             lmax_beta = std::max(lmax_beta, uspp_.beta_l[i]);
@@ -232,18 +239,24 @@ void Atom_type::read_input(const std::string& fname)
             }
         }
 
-        if (parser["pseudo_potential"].exist("wave_functions"))
+        if (parser["pseudo_potential"].exist("atomic_wave_functions"))
         {
-            int nwf = parser["pseudo_potential"]["wave_functions"].size();
-            uspp_.wf_pseudo_ = mdarray<double, 2>(num_mt_points_, nwf);
-            uspp_.l_wf_pseudo_ = std::vector<int>(nwf);
+            int nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
             for (int k = 0; k < nwf; k++)
             {
-                std::vector<double> f;
-                parser["pseudo_potential"]["wave_functions"][k]["radial_function"] >> f;
-                std::memcpy(&uspp_.wf_pseudo_(0, k), &f[0], num_mt_points_ * sizeof(double));
+                std::pair<int, std::vector<double> > wf;
+                parser["pseudo_potential"]["atomic_wave_functions"][k]["radial_function"] >> wf.second;
 
-                parser["pseudo_potential"]["wave_functions"][k]["angular_momentum"] >> uspp_.l_wf_pseudo_[k];
+                if ((int)wf.second.size() != num_mt_points_)
+                {
+                    std::stringstream s;
+                    s << "wrong size of atomic functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+                      << "size of atomic radial functions in the file: " << wf.second.size() << std::endl
+                      << "radial grid size: " << num_mt_points_;
+                    TERMINATE(s);
+                }
+                parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"] >> wf.first;
+                uspp_.atomic_pseudo_wfs_.push_back(wf);
             }
         }
     }
