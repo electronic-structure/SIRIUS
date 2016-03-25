@@ -38,9 +38,9 @@ void Band::initialize_subspace(K_point* kp__,
                 double_complex phase_factor =  std::exp(double_complex(0.0, -phase));
 
                 auto& atom_type = unit_cell_.atom(ia).type();
-                for (size_t i = 0; i < atom_type.uspp().l_wf_pseudo_.size(); i++)
+                for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++)
                 {
-                    int l = atom_type.uspp().l_wf_pseudo_[i];
+                    int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
                     for (int m = -l; m <= l; m++)
                     {
                         int lm = Utils::lm_by_l_m(l, m);
@@ -82,8 +82,6 @@ void Band::initialize_subspace(K_point* kp__,
     
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
-
-
 
     /* allocate wave-functions */
     Wave_functions<false> hphi(num_phi, num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
