@@ -31,6 +31,8 @@ void Non_local_operator<double_complex>::apply(int chunk__, int ispn__, Wave_fun
 {
     PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
 
+    if (is_null_) return;
+
     assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
 
     auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
@@ -104,6 +106,8 @@ template<>
 void Non_local_operator<double>::apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+
+    if (is_null_) return;
 
     assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
 
