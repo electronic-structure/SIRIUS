@@ -401,7 +401,7 @@ void DFT_ground_state::print_info()
         printf("<rho|E^{XC}>              : %18.8f\n", eexc);
         printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
         printf("<rho|V^{H}>               : %18.8f\n", evha);
-        if (ctx_.esm_type() == ultrasoft_pseudopotential)
+        if (!ctx_.full_potential())
         {
             printf("one-electron contribution : %18.8f\n", evalsum1 - (evxc + evha)); // eband + deband in QE
             printf("hartree contribution      : %18.8f\n", 0.5 * evha);
@@ -427,7 +427,7 @@ void DFT_ground_state::initialize_subspace()
     /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
     Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
 
-    /* interpolate <jl(q*x) | wf_n(x) > with splines */
+    /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
     std::vector< std::vector< Spline<double> > > rad_int(unit_cell_.num_atom_types());
     
     /* spherical Bessel functions jl(qx) for atom types */
@@ -441,19 +441,19 @@ void DFT_ground_state::initialize_subspace()
         for (int iq = 0; iq < nq; iq++)
             jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
 
-        rad_int[iat].resize(atom_type.uspp().l_wf_pseudo_.size());
+        rad_int[iat].resize(atom_type.uspp().atomic_pseudo_wfs_.size());
         /* loop over all pseudo wave-functions */
-        for (size_t i = 0; i < atom_type.uspp().l_wf_pseudo_.size(); i++)
+        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++)
         {
             rad_int[iat][i] = Spline<double>(qgrid);
             
-            /* interpolate wf_pseudo(r) */
+            /* interpolate atomic_pseudo_wfs(r) */
             Spline<double> wf(atom_type.radial_grid());
             for (int ir = 0; ir < atom_type.num_mt_points(); ir++)
-                wf[ir] = atom_type.uspp().wf_pseudo_(ir, i);
+                wf[ir] = atom_type.uspp().atomic_pseudo_wfs_[i].second[ir];
             wf.interpolate();
             
-            int l = atom_type.uspp().l_wf_pseudo_[i];
+            int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
             #pragma omp parallel for
             for (int iq = 0; iq < nq; iq++)
                 rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
@@ -468,9 +468,9 @@ void DFT_ground_state::initialize_subspace()
     {
         auto& atom_type = unit_cell_.atom_type(iat);
         int n = 0;
-        for (auto l: atom_type.uspp().l_wf_pseudo_)
+        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_)
         {
-            n += (2 * l + 1);
+            n += (2 * wf.first + 1);
         }
         N += atom_type.num_atoms() * n;
     }
@@ -490,6 +490,7 @@ void DFT_ground_state::initialize_subspace()
             band_.initialize_subspace<double_complex>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
         }
     }
+
     //kset_->find_band_occupancies();
 }
 
