@@ -116,6 +116,14 @@ class Hloc_operator
                 }
                 fft_.transform<1>(gvec__, &v_pw_coarse[0]);
                 fft_.output(&veff_vec_(0, j));
+                #ifdef __PRINT_OBJECT_CHECKSUM
+                {
+                    auto cs1 = mdarray<double_complex, 1>(&v_pw_coarse[0], gvec__.num_gvec_fft()).checksum();
+                    auto cs2 = mdarray<double, 1>(&veff_vec_(0, j), fft_.local_size()).checksum();
+                    DUMP("checksum(v_pw_coarse): %18.10f %18.10f", cs1.real(), cs1.imag());
+                    DUMP("checksum(v_rg_coarse): %18.10f", cs2);
+                }
+                #endif
             }
 
             if (num_mag_dims__)
