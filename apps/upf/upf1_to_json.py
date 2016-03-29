@@ -200,9 +200,11 @@ def parse_non_local(upf_dict):
         s = upf.readline().split()
         upf_dict['beta_projectors'][i]['angular_momentum'] = int(s[1])
         s = upf.readline()
-        upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(s)
+        #upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(s)
+        nr = int(s)
+        beta = read_mesh_data(upf, nr)
 
-        upf_dict['beta_projectors'][i]['radial_function'] = read_mesh_data(upf, upf_dict['beta_projectors'][i]['cutoff_radius_index'])
+        upf_dict['beta_projectors'][i]['radial_function'] = beta #read_mesh_data(upf, upf_dict['beta_projectors'][i]['cutoff_radius_index'])
 
         upf_dict['beta_projectors'][i]['cutoff_radius'] = 0.0
         upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = 0.0
@@ -366,7 +368,7 @@ def parse_pswfc(upf_dict):
     
     print "parsing wfc"
 
-    upf_dict['wave_functions'] = []
+    upf_dict['atomic_wave_functions'] = []
 
     upf = open(sys.argv[1], "r")
 
@@ -386,7 +388,7 @@ def parse_pswfc(upf_dict):
         wf['label'] = s[0]
         wf['angular_momentum'] = int(s[1])
         wf['radial_function'] = read_mesh_data(upf, upf_dict['header']['mesh_size'])
-        upf_dict['wave_functions'].append(wf)
+        upf_dict['atomic_wave_functions'].append(wf)
     upf.close()
 
 #
