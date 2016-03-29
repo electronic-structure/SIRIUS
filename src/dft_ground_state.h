@@ -70,7 +70,7 @@ class DFT_ground_state
               band_(ctx_),
               use_symmetry_(use_symmetry__)
         {
-            if (ctx_.esm_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
+            if (!ctx_.full_potential()) ewald_energy_ = ewald_energy();
         }
 
         void move_atoms(int istep);
@@ -107,7 +107,7 @@ class DFT_ground_state
         double energy_exc()
         {
             double exc = Periodic_function<double>::inner(density_->rho(), potential_->xc_energy_density());
-            if (ctx_.esm_type() == ultrasoft_pseudopotential) 
+            if (!ctx_.full_potential())
                 exc += Periodic_function<double>::inner(density_->rho_pseudo_core(), potential_->xc_energy_density());
             return exc;
         }
