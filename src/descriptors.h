@@ -119,6 +119,10 @@ class uspp_descriptor
         mdarray<double, 2> wf_pseudo_;
 
         std::vector<int> l_wf_pseudo_;
+
+        /// Atomic wave-functions used to setup the initial subspace.
+        /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
+        std::vector< std::pair<int, std::vector<double> > > atomic_pseudo_wfs_;
 };
 
 struct nearest_neighbour_descriptor
