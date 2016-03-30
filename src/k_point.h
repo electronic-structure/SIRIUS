@@ -98,15 +98,15 @@ class K_point
         /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
 
-        /// Basis descriptors distributed along rows of the 2D MPI grid.
-        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
+        /// Basis descriptors distributed between rows of the 2D MPI grid.
+        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
         
-        /// basis descriptors distributed along columns of the 2D MPI grid
-        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
+        /// Basis descriptors distributed between columns of the 2D MPI grid.
+        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
+        /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
         std::vector< std::vector<int> > atom_lo_cols_;
 
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom

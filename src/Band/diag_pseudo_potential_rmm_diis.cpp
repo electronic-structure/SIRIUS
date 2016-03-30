@@ -43,15 +43,15 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 
     for (int i = 0; i < niter; i++)
     {
-        phi[i] = new Wave_functions<false>(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-        res[i] = new Wave_functions<false>(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-        hphi[i] = new Wave_functions<false>(num_bands, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-        ophi[i] = new Wave_functions<false>(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+        phi[i]  = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
+        res[i]  = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
+        hphi[i] = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
+        ophi[i] = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
     }
 
-    Wave_functions<false> phi_tmp(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hphi_tmp(num_bands, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> ophi_tmp(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false>  phi_tmp(kp__->num_gkvec_loc(), num_bands, pu);
+    Wave_functions<false> hphi_tmp(kp__->num_gkvec_loc(), num_bands, pu);
+    Wave_functions<false> ophi_tmp(kp__->num_gkvec_loc(), num_bands, pu);
 
     /* allocate Hamiltonian and overlap */
     matrix<T> hmlt(num_bands, num_bands);

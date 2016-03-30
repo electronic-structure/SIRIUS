@@ -15,7 +15,7 @@ void Band::initialize_subspace(K_point* kp__,
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
 
-    Wave_functions<false> phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> phi(kp__->num_gkvec_loc(), num_phi, pu);
 
     #pragma omp parallel
     {
@@ -77,15 +77,15 @@ void Band::initialize_subspace(K_point* kp__,
 
     ctx_.fft_coarse().prepare();
 
-    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
+    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.mpi_grid_fft(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
     /* allocate wave-functions */
-    Wave_functions<false> hphi(num_phi, num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> hphi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> ophi(kp__->num_gkvec_loc(), num_phi, pu);
 
     /* allocate Hamiltonian and overlap */
     matrix<T> hmlt(num_phi, num_phi);

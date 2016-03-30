@@ -23,9 +23,9 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
 
     auto pu = ctx_.processing_unit();
 
-    Wave_functions<false> phi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hphi(ngk, ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> ophi(ngk, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false>  phi(kp__->num_gkvec_loc(), ngk, pu);
+    Wave_functions<false> hphi(kp__->num_gkvec_loc(), ngk, pu);
+    Wave_functions<false> ophi(kp__->num_gkvec_loc(), ngk, pu);
     
     std::vector<double> eval(ngk);
 

@@ -36,13 +36,15 @@ class Hloc_operator
 
         FFT3D& fft_;
 
+        MPI_grid const& mpi_grid_fft_;
+
         Gvec const& gkvec_;
 
         std::vector<double> pw_ekin_;
 
         mdarray<double, 2> veff_vec_;
 
-        mdarray<double_complex, 1> vphi_;
+        mdarray<double_complex, 1> vphi1_;
 
         mdarray<double_complex, 1> vphi2_;
         
@@ -53,16 +55,18 @@ class Hloc_operator
         
         /** This is used internally to benchmark and profile the Hloc kernel */
         Hloc_operator(FFT3D& fft__,
+                      MPI_grid const& mpi_grid_fft__,
                       Gvec const& gkvec__,
                       std::vector<double> veff__)
             : fft_(fft__),
+              mpi_grid_fft_(mpi_grid_fft__),
               gkvec_(gkvec__)
         {
             pw_ekin_ = std::vector<double>(gkvec_.num_gvec_fft(), 0);
             
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), 1);
             std::memcpy(&veff_vec_[0], &veff__[0], fft_.local_size() * sizeof(double));
-            vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
+            vphi1_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
             if (gkvec_.reduced()) vphi2_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
             #ifdef __GPU
             if (fft_.hybrid())
@@ -78,12 +82,14 @@ class Hloc_operator
          *  \param [in] gkvec G-vectors of the wave-functions.
          */
         Hloc_operator(FFT3D& fft__,
+                      MPI_grid const& mpi_grid_fft__,
                       Gvec const& gvec__,
                       Gvec const& gkvec__,
                       int num_mag_dims__,
                       Periodic_function<double>* effective_potential__,
                       Periodic_function<double>* effective_magnetic_field__[3]) 
             : fft_(fft__),
+              mpi_grid_fft_(mpi_grid_fft__),
               gkvec_(gkvec__)
         {
             /* cache kinteic energy of plane-waves */
@@ -147,7 +153,7 @@ class Hloc_operator
                 v0_[1] = veff_vec[0]->f_pw(0).real() - veff_vec[1]->f_pw(0).real();
             }
 
-            vphi_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
+            vphi1_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
             if (gkvec_.reduced()) vphi2_ = mdarray<double_complex, 1>(gkvec__.num_gvec_fft());
 
             #ifdef __GPU
@@ -163,7 +169,7 @@ class Hloc_operator
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
-            hphi__.swap_forward(idx0__, n__);
+            hphi__.swap_forward(idx0__, n__, gkvec_, mpi_grid_fft_);
 
             int first = 0;
             /* if G-vectors are reduced, wave-functions are real and 
@@ -192,13 +198,13 @@ class Hloc_operator
 
                     }
                     /* V(r)phi(r) -> [V*phi](G) */
-                    fft_.transform<-1>(gkvec_, &vphi_[0], &vphi2_[0]);
+                    fft_.transform<-1>(gkvec_, &vphi1_[0], &vphi2_[0]);
 
                     /* add kinetic energy */
                     #pragma omp parallel for
                     for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
                     {
-                        hphi__[2 * i    ][ig] = hphi__[2 * i    ][ig] * pw_ekin_[ig] + vphi_[ig];
+                        hphi__[2 * i    ][ig] = hphi__[2 * i    ][ig] * pw_ekin_[ig] + vphi1_[ig];
                         hphi__[2 * i + 1][ig] = hphi__[2 * i + 1][ig] * pw_ekin_[ig] + vphi2_[ig];
                     }
                 }
@@ -229,15 +235,15 @@ class Hloc_operator
 
                 }
                 /* V(r)phi(r) -> [V*phi](G) */
-                fft_.transform<-1>(gkvec_, &vphi_[0]);
+                fft_.transform<-1>(gkvec_, &vphi1_[0]);
 
                 /* add kinetic energy */
                 #pragma omp parallel for
                 for (int ig = 0; ig < gkvec_.num_gvec_fft(); ig++)
-                    hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi_[ig];
+                    hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
             }
 
-            hphi__.swap_backward(idx0__, n__);
+            hphi__.swap_backward(idx0__, n__, gkvec_, mpi_grid_fft_);
         }
 
         inline double v0(int ispn__)

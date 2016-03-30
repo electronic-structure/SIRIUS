@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -28,7 +28,6 @@
 #include "sirius_internal.h"
 #include "descriptors.h"
 #include "fft3d_grid.h"
-//#include "splindex.h"
 
 namespace sirius {
 
@@ -305,9 +304,10 @@ class Gvec
             }
         }
 
+        /// Default move assigment operator.
         Gvec& operator=(Gvec&& src__) = default;
 
-        /// Return number of G-vectors within the cutoff.
+        /// Return the total number of G-vectors within the cutoff.
         inline int num_gvec() const
         {
             return num_gvec_;

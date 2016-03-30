@@ -57,13 +57,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
     /* allocate wave-functions */
-    Wave_functions<false> phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false>  phi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> hphi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> ophi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> hpsi(kp__->num_gkvec_loc(), num_bands, pu);
+    Wave_functions<false> opsi(kp__->num_gkvec_loc(), num_bands, pu);
     /* residuals */
-    Wave_functions<false> res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> res(kp__->num_gkvec_loc(), num_bands, pu);
 
     /* allocate Hamiltonian and overlap */
     matrix<T> hmlt(num_phi, num_phi);

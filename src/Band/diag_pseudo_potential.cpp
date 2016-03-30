@@ -11,7 +11,7 @@ void Band::diag_pseudo_potential(K_point* kp__,
 
     ctx_.fft_coarse().prepare();
 
-    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
+    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.mpi_grid_fft(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
@@ -25,7 +25,6 @@ void Band::diag_pseudo_potential(K_point* kp__,
     //{
     //    TERMINATE("unknown iterative solver type");
     //}
-
 
     auto& itso = ctx_.iterative_solver_input_section();
     if (itso.type_ == "exact")

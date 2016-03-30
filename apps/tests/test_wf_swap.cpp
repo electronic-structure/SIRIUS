@@ -147,6 +147,62 @@ void test3(std::vector<int> mpi_grid_dims__, double cutoff__)
     }
 }
 
+void test4(std::vector<int> mpi_grid_dims__, double cutoff__, int nwf__)
+{
+    MPI_grid mpi_grid1(mpi_grid_dims__, mpi_comm_world());
+    MPI_grid mpi_grid2({1, mpi_comm_world().size()}, mpi_comm_world());
+
+    matrix3d<double> M;
+    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+
+    FFT3D_grid fft_grid(cutoff__, M);
+
+    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid1.communicator(1 << 0),
+              mpi_grid1.dimension_size(1), false, false);
+
+    Gvec gvec2(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid2.communicator(1 << 0),
+              mpi_grid2.dimension_size(1), false, false);
+
+    if (gvec1.num_gvec(mpi_comm_world().rank()) != gvec2.num_gvec(mpi_comm_world().rank()))
+    {
+        TERMINATE("wrong number of G-vectors");
+    }
+
+    Wave_functions<false> wf(nwf__, gvec1, mpi_grid1, CPU);
+    for (int i = 0; i < nwf__; i++)
+    {
+        for (int ig = 0; ig < gvec1.num_gvec(mpi_comm_world().rank()); ig++) wf(ig, i) = type_wrapper<double_complex>::random();
+    }
+
+    auto h1 = mdarray<double_complex, 2>(&wf(0, 0), gvec1.num_gvec(mpi_comm_world().rank()), nwf__).hash();
+
+    wf.swap_forward(0, nwf__, gvec1, mpi_grid1);
+    wf.swap_backward(0, nwf__, gvec1, mpi_grid1);
+
+    auto h2 = mdarray<double_complex, 2>(&wf(0, 0), gvec1.num_gvec(mpi_comm_world().rank()), nwf__).hash();
+
+    if (h1 != h2)
+    {
+        TERMINATE("swap failed");
+    }
+    else
+    {
+        printf("OK first swap\n");
+    }
+
+    printf("swap forward\n");
+    wf.swap_forward(0, nwf__, gvec2, mpi_grid2);
+    printf("swap backward\n");
+    wf.swap_backward(0, nwf__, gvec2, mpi_grid2);
+
+    auto h3 = mdarray<double_complex, 2>(&wf(0, 0), gvec1.num_gvec(mpi_comm_world().rank()), nwf__).hash();
+
+    if (h1 != h3)
+    {
+        TERMINATE("swap failed");
+    }
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -165,7 +221,7 @@ int main(int argn, char **argv)
 
     //vector3d<int> dims = args.value< vector3d<int> >("dims");
     double cutoff = args.value<double>("cutoff", 1);
-    //int num_bands = args.value<int>("num_bands", 50);
+    int num_bands = args.value<int>("num_bands", 50);
     std::vector<int> mpi_grid = args.value< std::vector<int> >("mpi_grid", {1, 1});
 
     //Platform::initialize(1);
@@ -176,7 +232,8 @@ int main(int argn, char **argv)
     //Timer::print();
     sirius::initialize(true);
 
-    test3(mpi_grid, cutoff);
+    //test3(mpi_grid, cutoff);
+    test4(mpi_grid, cutoff, num_bands);
 
     sirius::finalize();
 }

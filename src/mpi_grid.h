@@ -195,6 +195,14 @@ class MPI_grid
             initialize();
         }
 
+        MPI_grid(Communicator const& parent_communicator__) 
+            : dimensions_({parent_communicator__.size()}),
+              parent_communicator_(parent_communicator__)
+        {
+            PROFILE();
+            initialize();
+        }
+
         ~MPI_grid()
         {
             PROFILE();

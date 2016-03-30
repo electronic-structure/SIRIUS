@@ -7,13 +7,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 {
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-    FFT3D_grid fft_grid(2.01 * cutoff__, M);
+    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    FFT3D fft(fft_grid, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
+    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.communicator(1 << 0),
               mpi_grid.dimension_size(1), false, false);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
@@ -23,7 +22,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
-        printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
+        printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
@@ -32,9 +31,11 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     fft.prepare();
     
-    Hloc_operator hloc(fft, gvec, veff);
+    Hloc_operator hloc(fft, mpi_grid, gvec, veff);
 
-    Wave_functions<false> phi(4 * num_bands__, gvec, mpi_grid, CPU);
+    int num_gvec_loc = gvec.num_gvec(mpi_grid.communicator().rank());
+
+    Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, CPU);
     for (int i = 0; i < 4 * num_bands__; i++)
     {
         for (int j = 0; j < phi.num_gvec_loc(); j++)
@@ -42,7 +43,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
             phi(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    Wave_functions<false> hphi(4 * num_bands__, num_bands__, gvec, mpi_grid, CPU);
+    Wave_functions<false> hphi(num_gvec_loc, 4 * num_bands__, CPU);
     
     mpi_comm_world().barrier();
     runtime::Timer t1("h_loc");

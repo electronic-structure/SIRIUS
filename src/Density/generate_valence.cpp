@@ -40,7 +40,7 @@ void Density::generate_valence(K_set& ks__)
             }
             else
             {
-                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
+                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn), kp->gkvec(), ctx_.mpi_grid_fft());
             }
         }
     }
