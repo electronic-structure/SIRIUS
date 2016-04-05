@@ -8,12 +8,14 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
     FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.communicator(1 << 0),
-              mpi_grid.dimension_size(1), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), false, false);
+
+    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft.local_size(), 2.0);
@@ -26,12 +28,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
-        printf("number of z-columns: %li\n", gvec.z_columns().size());
+        printf("number of z-columns: %i\n", gvec.num_z_cols());
     }
 
     fft.prepare();
     
-    Hloc_operator hloc(fft, mpi_grid, gvec, veff);
+    Hloc_operator hloc(fft, gvec_fft_distr, veff);
 
     int num_gvec_loc = gvec.num_gvec(mpi_grid.communicator().rank());
 
@@ -86,7 +88,7 @@ int main(int argn, char** argv)
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
     auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
     auto cutoff = args.value<double>("cutoff", 2.0);

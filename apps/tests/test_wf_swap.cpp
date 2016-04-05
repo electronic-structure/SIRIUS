@@ -93,93 +93,86 @@ void test2(std::vector<int> mpi_grid_dims__)
     //if (wf1.coeffs().panel().hash() != h) TERMINATE("wrong hash");
 }
 
-void test3(std::vector<int> mpi_grid_dims__, double cutoff__)
-{
-    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
-
-    vector3d<int> fft_grid_dims(3, 3, 3);
-    FFT3D_grid fft_grid(fft_grid_dims);
-
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
-              mpi_grid.dimension_size(1), false, false);
-    
-    int nwf = 8;
-    Wave_functions<false> wf(nwf, nwf, gvec, mpi_grid, CPU);
-    for (int i = 0; i < nwf; i++)
-    {
-        for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++) wf(ig, i) = gvec.offset_gvec(mpi_comm_world().rank()) + ig;
-    }
-
-    for (int r = 0; r < mpi_comm_world().size(); r++)
-    {
-        if (r == mpi_comm_world().rank())
-        {
-            printf("rank: %i\n", r);
-            for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++) 
-            {
-                for (int i = 0; i < nwf; i++) printf("%4.f ", wf(ig, i).real());
-                printf("\n");
-            }
-        }
-        mpi_comm_world().barrier();
-    }
-
-    wf.swap_forward(0, nwf);
-
-    for (int r = 0; r < mpi_grid.dimension_size(0); r++)
-    {
-        for (int c = 0; c < mpi_grid.dimension_size(1); c++)
-        {
-            if (r == mpi_grid.communicator(1 << 0).rank() && c == mpi_grid.communicator(1 << 1).rank())
-            {
-                printf("rank: %i %i, row: %i col: %i\n", mpi_comm_world().rank(), mpi_grid.communicator().rank(), r, c);
-                for (int ig = 0; ig < gvec.num_gvec_fft(); ig++) 
-                {
-                    for (int i = 0; i < wf.spl_num_swapped().local_size(); i++) printf("%4.f ", wf[i][ig].real());
-                    printf("\n");
-                }
-            }
-            mpi_comm_world().barrier();
-        }
-    }
-}
+//void test3(std::vector<int> mpi_grid_dims__, double cutoff__)
+//{
+//    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
+//
+//    vector3d<int> fft_grid_dims(3, 3, 3);
+//    FFT3D_grid fft_grid(fft_grid_dims);
+//
+//    matrix3d<double> M;
+//    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+//
+//    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
+//              mpi_grid.dimension_size(1), false, false);
+//    
+//    int nwf = 8;
+//    Wave_functions<false> wf(nwf, nwf, gvec, mpi_grid, CPU);
+//    for (int i = 0; i < nwf; i++)
+//    {
+//        for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++) wf(ig, i) = gvec.offset_gvec(mpi_comm_world().rank()) + ig;
+//    }
+//
+//    for (int r = 0; r < mpi_comm_world().size(); r++)
+//    {
+//        if (r == mpi_comm_world().rank())
+//        {
+//            printf("rank: %i\n", r);
+//            for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++) 
+//            {
+//                for (int i = 0; i < nwf; i++) printf("%4.f ", wf(ig, i).real());
+//                printf("\n");
+//            }
+//        }
+//        mpi_comm_world().barrier();
+//    }
+//
+//    wf.swap_forward(0, nwf);
+//
+//    for (int r = 0; r < mpi_grid.dimension_size(0); r++)
+//    {
+//        for (int c = 0; c < mpi_grid.dimension_size(1); c++)
+//        {
+//            if (r == mpi_grid.communicator(1 << 0).rank() && c == mpi_grid.communicator(1 << 1).rank())
+//            {
+//                printf("rank: %i %i, row: %i col: %i\n", mpi_comm_world().rank(), mpi_grid.communicator().rank(), r, c);
+//                for (int ig = 0; ig < gvec.num_gvec_fft(); ig++) 
+//                {
+//                    for (int i = 0; i < wf.spl_num_swapped().local_size(); i++) printf("%4.f ", wf[i][ig].real());
+//                    printf("\n");
+//                }
+//            }
+//            mpi_comm_world().barrier();
+//        }
+//    }
+//}
 
 void test4(std::vector<int> mpi_grid_dims__, double cutoff__, int nwf__)
 {
     MPI_grid mpi_grid1(mpi_grid_dims__, mpi_comm_world());
     MPI_grid mpi_grid2({1, mpi_comm_world().size()}, mpi_comm_world());
 
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     FFT3D_grid fft_grid(cutoff__, M);
 
-    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid1.communicator(1 << 0),
-              mpi_grid1.dimension_size(1), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), false, false);
 
-    Gvec gvec2(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid2.communicator(1 << 0),
-              mpi_grid2.dimension_size(1), false, false);
+    Gvec_FFT_distribution gvec_fft_distr1(gvec, mpi_grid1);
+    Gvec_FFT_distribution gvec_fft_distr2(gvec, mpi_grid2);
 
-    if (gvec1.num_gvec(mpi_comm_world().rank()) != gvec2.num_gvec(mpi_comm_world().rank()))
-    {
-        TERMINATE("wrong number of G-vectors");
-    }
-
-    Wave_functions<false> wf(nwf__, gvec1, mpi_grid1, CPU);
+    Wave_functions<false> wf(gvec.num_gvec(mpi_comm_world().rank()), nwf__, CPU);
     for (int i = 0; i < nwf__; i++)
     {
-        for (int ig = 0; ig < gvec1.num_gvec(mpi_comm_world().rank()); ig++) wf(ig, i) = type_wrapper<double_complex>::random();
+        for (int ig = 0; ig < wf.num_gvec_loc(); ig++) wf(ig, i) = type_wrapper<double_complex>::random();
     }
 
-    auto h1 = mdarray<double_complex, 2>(&wf(0, 0), gvec1.num_gvec(mpi_comm_world().rank()), nwf__).hash();
+    auto h1 = mdarray<double_complex, 2>(&wf(0, 0), wf.num_gvec_loc(), nwf__).hash();
 
-    wf.swap_forward(0, nwf__, gvec1, mpi_grid1);
-    wf.swap_backward(0, nwf__, gvec1, mpi_grid1);
+    wf.swap_forward(0, nwf__, gvec_fft_distr1);
+    wf.swap_backward(0, nwf__, gvec_fft_distr1);
 
-    auto h2 = mdarray<double_complex, 2>(&wf(0, 0), gvec1.num_gvec(mpi_comm_world().rank()), nwf__).hash();
+    auto h2 = mdarray<double_complex, 2>(&wf(0, 0), wf.num_gvec_loc(), nwf__).hash();
 
     if (h1 != h2)
     {
@@ -191,11 +184,11 @@ void test4(std::vector<int> mpi_grid_dims__, double cutoff__, int nwf__)
     }
 
     printf("swap forward\n");
-    wf.swap_forward(0, nwf__, gvec2, mpi_grid2);
+    wf.swap_forward(0, nwf__, gvec_fft_distr2);
     printf("swap backward\n");
-    wf.swap_backward(0, nwf__, gvec2, mpi_grid2);
+    wf.swap_backward(0, nwf__, gvec_fft_distr2);
 
-    auto h3 = mdarray<double_complex, 2>(&wf(0, 0), gvec1.num_gvec(mpi_comm_world().rank()), nwf__).hash();
+    auto h3 = mdarray<double_complex, 2>(&wf(0, 0), wf.num_gvec_loc(), nwf__).hash();
 
     if (h1 != h3)
     {
