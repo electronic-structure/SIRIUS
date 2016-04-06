@@ -67,10 +67,10 @@ extern "C" void pack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
 
 namespace sirius {
 
-FFT3D::FFT3D(FFT3D_grid grid__,
+FFT3D::FFT3D(FFT3D_grid          grid__,
              Communicator const& comm__,
-             processing_unit_t pu__,
-             double gpu_workload)
+             processing_unit_t   pu__,
+             double              gpu_workload)
     : comm_(comm__),
       pu_(pu__),
       grid_(grid__),
@@ -295,10 +295,12 @@ void FFT3D::transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<
         {
             /* stream #1 copies data to GPU */
             acc::copyin(fft_buffer_.at<GPU>(cufft_nbatch_ * size_xy), fft_buffer_.at<CPU>(cufft_nbatch_ * size_xy),
-                        size_xy * (local_size_z_ - cufft_nbatch_));
+                        size_xy * (local_size_z_ - cufft_nbatch_), 1);
         }
         /* wait for stram #0 */
         acc::sync_stream(0);
+        /* wait for stram #1 */
+        acc::sync_stream(1);
     }
     #endif
 
