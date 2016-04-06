@@ -2,12 +2,12 @@
 
 namespace sirius {
 
-void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
 
     /* comminicator for data exchange */
-    auto& comm_col = mpi_grid__.communicator(1 << 1);
+    auto& comm_col = gvec_fft_distr__.mpi_grid_fft().communicator(1 << 1);
 
     /* this is how n wave-functions will be distributed between columns of the MPI grid */
     spl_n_ = splindex<block>(n__, comm_col.size(), comm_col.rank());
@@ -23,36 +23,16 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__
         /* maximum local number of wave-functions */
         int max_nwf_loc = splindex_base<int>::block_size(n__, comm_col.size());
         /* upper limit for the size of swapped wfs */
-        size_t sz = gvec__.num_gvec_fft() * max_nwf_loc;
+        size_t sz = gvec_fft_distr__.num_gvec_fft() * max_nwf_loc;
         /* reallocate buffers if necessary */
         if (wf_coeffs_swapped_buf_.size() < sz)
         {
             wf_coeffs_swapped_buf_ = mdarray<double_complex, 1>(sz);
             send_recv_buf_ = mdarray<double_complex, 1>(sz, "send_recv_buf_");
         }
-        wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_swapped_buf_[0], gvec__.num_gvec_fft(), max_nwf_loc);
+        wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_swapped_buf_[0], gvec_fft_distr__.num_gvec_fft(), max_nwf_loc);
     }
     
-    /* build a table of {offset, count} values for G-vectors in the swapped wfs;
-     * we are preparing to swap wave-functions from a default slab distribution to a FFT-friendly distribution 
-     * +==============+      +----+----+----+
-     * |    :    :    |      I    I    I    I
-     * +==============+      I....I....I....I
-     * |    :    :    |  ->  I    I    I    I
-     * +==============+      I....I....I....I
-     * |    :    :    |      I    I    I    I
-     * +==============+      +----+----+----+
-     *
-     * i.e. we will make G-vector slabs more fat (pile-of-slabs) and at the same time reshulffle wave-functions
-     * between columns of the 2D MPI grid */
-    int rank_row = mpi_grid__.communicator(1 << 0).rank();
-    block_data_descriptor gvec_slab_pile(comm_col.size());
-    for (int i = 0; i < comm_col.size(); i++)
-        gvec_slab_pile.counts[i] = gvec__.num_gvec(rank_row * comm_col.size() + i);
-    gvec_slab_pile.calc_offsets();
-
-    assert(gvec_slab_pile.offsets.back() + gvec_slab_pile.counts.back() == gvec__.num_gvec_fft());
-
     /* local number of columns */
     int n_loc = spl_n_.local_size();
     
@@ -60,8 +40,8 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__
     block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
     for (int j = 0; j < comm_col.size(); j++)
     {
-        sd.counts[j] = spl_n_.local_size(j)               * gvec_slab_pile.counts[comm_col.rank()];
-        rd.counts[j] = spl_n_.local_size(comm_col.rank()) * gvec_slab_pile.counts[j];
+        sd.counts[j] = spl_n_.local_size(j)               * gvec_fft_distr__.gvec_slab_pile().counts[comm_col.rank()];
+        rd.counts[j] = spl_n_.local_size(comm_col.rank()) * gvec_fft_distr__.gvec_slab_pile().counts[j];
     }
     sd.calc_offsets();
     rd.calc_offsets();
@@ -75,19 +55,19 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__
     {
         for (int j = 0; j < comm_col.size(); j++)
         {
-            int offset = gvec_slab_pile.offsets[j];
-            int count = gvec_slab_pile.counts[j];
+            int offset = gvec_fft_distr__.gvec_slab_pile().offsets[j];
+            int count = gvec_fft_distr__.gvec_slab_pile().counts[j];
             std::memcpy(&wf_coeffs_swapped_(offset, i), &send_recv_buf_[offset * n_loc + count * i], count * sizeof(double_complex));
         }
     }
 }
 
-void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__)
+void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
 
     /* comminicator for data exchange */
-    auto& comm_col = mpi_grid__.communicator(1 << 1);
+    auto& comm_col = gvec_fft_distr__.mpi_grid_fft().communicator(1 << 1);
 
     if (comm_col.size() == 1) return;
 
@@ -96,23 +76,14 @@ void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec const& gvec_
     /* local number of columns */
     int n_loc = spl_n.local_size();
 
-    /* build a table of {offset, count} values for G-vectors in the swapped wfs */
-    int rank_row = mpi_grid__.communicator(1 << 0).rank();
-    block_data_descriptor gvec_slab_pile(comm_col.size());
-    for (int i = 0; i < comm_col.size(); i++)
-        gvec_slab_pile.counts[i] = gvec__.num_gvec(rank_row * comm_col.size() + i);
-    gvec_slab_pile.calc_offsets();
-    
-    assert(gvec_slab_pile.offsets.back() + gvec_slab_pile.counts.back() == gvec__.num_gvec_fft());
-
     /* reorder sending blocks */
     #pragma omp parallel for
     for (int i = 0; i < n_loc; i++)
     {
         for (int j = 0; j < comm_col.size(); j++)
         {
-            int offset = gvec_slab_pile.offsets[j];
-            int count = gvec_slab_pile.counts[j];
+            int offset = gvec_fft_distr__.gvec_slab_pile().offsets[j];
+            int count = gvec_fft_distr__.gvec_slab_pile().counts[j];
             std::memcpy(&send_recv_buf_[offset * n_loc + count * i], &wf_coeffs_swapped_(offset, i), count * sizeof(double_complex));
         }
     }
@@ -121,8 +92,8 @@ void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec const& gvec_
     block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
     for (int j = 0; j < comm_col.size(); j++)
     {
-        sd.counts[j] = spl_n.local_size(comm_col.rank()) * gvec_slab_pile.counts[j];
-        rd.counts[j] = spl_n.local_size(j)               * gvec_slab_pile.counts[comm_col.rank()];
+        sd.counts[j] = spl_n.local_size(comm_col.rank()) * gvec_fft_distr__.gvec_slab_pile().counts[j];
+        rd.counts[j] = spl_n.local_size(j)               * gvec_fft_distr__.gvec_slab_pile().counts[comm_col.rank()];
     }
     sd.calc_offsets();
     rd.calc_offsets();

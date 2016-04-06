@@ -105,6 +105,8 @@ class Communicator
         Communicator(Communicator const& src__) = delete;
 
     public:
+
+        // TODO: assigment operator?
     
         Communicator() : mpi_comm_(MPI_COMM_NULL), need_to_free_(true)
         {
@@ -258,7 +260,33 @@ class Communicator
         {
             allreduce<T, op__>(&buffer__[0], static_cast<int>(buffer__.size()));
         }
-        
+
+        template<typename T, mpi_op_t mpi_op__ = op_sum>
+        inline void iallreduce(T* buffer__, int count__, MPI_Request* req__) const
+        {
+            MPI_Op op;
+            switch (mpi_op__)
+            {
+                case op_sum:
+                {
+                    op = MPI_SUM;
+                    break;
+                }
+                case op_max:
+                {
+                    op = MPI_MAX;
+                    break;
+                }
+                default:
+                {
+                    printf("wrong operation\n");
+                    MPI_Abort(MPI_COMM_WORLD, -2);
+                }
+            }
+
+            CALL_MPI(MPI_Iallreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(), op, mpi_comm_, req__));
+        }
+
         /// Perform buffer broadcast.
         template <typename T>
         inline void bcast(T* buffer__, int count__, int root__) const

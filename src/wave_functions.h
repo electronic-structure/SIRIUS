@@ -85,9 +85,11 @@ class Wave_functions<false>
         {
         }
 
-        void swap_forward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__);
+        //void swap_forward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__);
+        void swap_forward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__);
 
-        void swap_backward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__);
+        //void swap_backward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__);
+        void swap_backward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__);
 
         inline double_complex& operator()(int igloc__, int i__)
         {

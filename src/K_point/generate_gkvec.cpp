@@ -25,8 +25,12 @@ void K_point::generate_gkvec(double gk_cutoff)
     }
     
     /* create G+k vectors */
-    gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(),
-                  ctx_.mpi_grid_fft().communicator(1 << 0), ctx_.mpi_grid_fft().dimension_size(1), false, ctx_.gamma_point());
+    gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(), num_ranks(), false, ctx_.gamma_point());
+
+    gkvec_fft_distr_ = new Gvec_FFT_distribution(gkvec_, ctx_.mpi_grid_fft());
+
+    if (!ctx_.full_potential())
+        gkvec_fft_distr_vloc_ = new Gvec_FFT_distribution(gkvec_, ctx_.mpi_grid_fft_vloc());
 }
 
 };

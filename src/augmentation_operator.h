@@ -43,36 +43,6 @@ class Augmentation_operator
 
         mdarray<double, 2> q_pw_real_t_;
         
-        //== /// Get Q-operator radial functions.
-        //== mdarray<double, 3> get_radial_functions()
-        //== {
-        //==     /* number of radial beta-functions */
-        //==     int nbrf = atom_type_.mt_radial_basis_size();
-        //==     /* maximum l of beta-projectors */
-        //==     int lmax_beta = atom_type_.indexr().lmax();
-
-        //==     mdarray<double, 3> qrf(atom_type_.num_mt_points(), 2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2);
-
-        //==     for (int l3 = 0; l3 <= 2 * lmax_beta; l3++)
-        //==     {
-        //==         for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++)
-        //==         {
-        //==             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-        //==             {
-        //==                 int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-        //==                 /* take initial radial function */
-        //==                 std::memcpy(&qrf(0, l3, idx), &atom_type_.uspp().q_radial_functions_l(0, idx, l3), 
-        //==                             atom_type_.num_mt_points() * sizeof(double));
-
-        //==                 ///* apply polynomial approximation */ 
-        //==                 //if (atom_type_.uspp().num_q_coefs)
-        //==                 //    atom_type_.fix_q_radial_function(l3, idxrf1, idxrf2, &qrf(0, l3, idx));
-        //==             }
-        //==         }
-        //==     }
-        //==     return std::move(qrf);
-        //== }
-        
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
         {
@@ -83,10 +53,6 @@ class Augmentation_operator
             int nbrf = atom_type_.mt_radial_basis_size();
             /* maximum l of beta-projectors */
             int lmax_beta = atom_type_.indexr().lmax();
-
-            /* get radial functions */
-            //== auto qrf = get_radial_functions();
-            
             /* interpolate Q-operator radial functions */
             mdarray<Spline<double>, 2> qrf_spline(2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2);
             

@@ -383,7 +383,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     }
     
     /* transform Hartree potential to real space */
-    vh->fft_transform(1);
+    vh->fft_transform(1, ctx_.gvec_fft_distr());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(vha_rg): %20.14f", vh->checksum_rg());

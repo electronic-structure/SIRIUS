@@ -53,6 +53,8 @@ class Simulation_context: public Simulation_parameters
         /// 2D MPI grid for the FFT driver.
         MPI_grid* mpi_grid_fft_;
 
+        MPI_grid* mpi_grid_fft_vloc_;
+
         /// 2D BLACS grid for distributed linear algebra operations.
         BLACS_grid* blacs_grid_;
 
@@ -73,6 +75,8 @@ class Simulation_context: public Simulation_parameters
         Gvec gvec_;
 
         Gvec gvec_coarse_;
+
+        Gvec_FFT_distribution* gvec_fft_distr_;
 
         std::vector<Augmentation_operator*> augmentation_op_;
 
@@ -103,11 +107,13 @@ class Simulation_context: public Simulation_parameters
 
             mpi_grid_ = nullptr;
             mpi_grid_fft_ = nullptr;
+            mpi_grid_fft_vloc_ = nullptr;
             blacs_grid_ = nullptr;
             blacs_grid_slice_ = nullptr;
             fft_ = nullptr;
             fft_coarse_ = nullptr;
             step_function_ = nullptr;
+            gvec_fft_distr_ = nullptr;
             real_space_prj_ = nullptr;
             std_evp_solver_type_ = ev_lapack;
             gen_evp_solver_type_ = ev_lapack;
@@ -156,12 +162,14 @@ class Simulation_context: public Simulation_parameters
             for (auto e: augmentation_op_) delete e;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
+            if (gvec_fft_distr_ != nullptr) delete gvec_fft_distr_;
             if (fft_ != nullptr) delete fft_;
             if (fft_coarse_ != nullptr) delete fft_coarse_;
             if (blacs_grid_slice_ != nullptr) delete blacs_grid_slice_;
             if (blacs_grid_ != nullptr) delete blacs_grid_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
+            if (mpi_grid_fft_vloc_ != nullptr) delete mpi_grid_fft_vloc_;
         }
 
         /// Initialize the similation (can only be called once).
@@ -194,6 +202,11 @@ class Simulation_context: public Simulation_parameters
             return gvec_;
         }
 
+        Gvec_FFT_distribution const& gvec_fft_distr() const
+        {
+            return *gvec_fft_distr_;
+        }
+
         Gvec const& gvec_coarse() const
         {
             return gvec_coarse_;
@@ -212,6 +225,11 @@ class Simulation_context: public Simulation_parameters
         MPI_grid const& mpi_grid_fft() const
         {
             return *mpi_grid_fft_;
+        }
+
+        MPI_grid const& mpi_grid_fft_vloc() const
+        {
+            return *mpi_grid_fft_vloc_;
         }
 
         BLACS_grid const& blacs_grid() const

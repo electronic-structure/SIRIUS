@@ -63,9 +63,9 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
      * they will be used in two places:
      *  1) compute D-matrix
      *  2) establish a mapping between fine and coarse FFT grid for the Hloc operator */
-    effective_potential_->fft_transform(-1);
+    effective_potential_->fft_transform(-1, ctx_.gvec_fft_distr());
     for (int j = 0; j < ctx_.num_mag_dims(); j++)
-        effective_magnetic_field_[j]->fft_transform(-1);
+        effective_magnetic_field_[j]->fft_transform(-1, ctx_.gvec_fft_distr());
 
     if (ctx_.esm_type() == ultrasoft_pseudopotential)
         generate_D_operator_matrix();

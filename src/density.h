@@ -286,7 +286,7 @@ class Density
 
         void generate_pw_coefs()
         {
-            rho_->fft_transform(-1);
+            rho_->fft_transform(-1, ctx_.gvec_fft_distr());
         }
          
         void save()
@@ -441,7 +441,7 @@ class Density
                 mixer_input();
                 rms = mixer_->mix();
                 mixer_output();
-                rho_->fft_transform(-1);
+                rho_->fft_transform(-1, ctx_.gvec_fft_distr());
             }
             else
             {
@@ -450,8 +450,8 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                rho_->fft_transform(1);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
+                rho_->fft_transform(1, ctx_.gvec_fft_distr());
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1, ctx_.gvec_fft_distr());
             }
 
             return rms;

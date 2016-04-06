@@ -96,7 +96,6 @@ class FFT3D
         std::vector<fftw_plan> plan_forward_xy_;
 
         #ifdef __GPU
-        bool cufft3d_;
         cufftHandle cufft_plan_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
@@ -109,16 +108,16 @@ class FFT3D
         double tcall_[5];
 
         template <int direction, bool use_reduction>
-        void transform_z_serial(Gvec const& gvec__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
+        void transform_z_serial(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction, bool use_reduction>
-        void transform_z_parallel(Gvec const& gvec__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
+        void transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction, bool use_reduction>
-        void transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buffer_aux__);
+        void transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction>
-        void transform_xy(Gvec const& gvec__, mdarray<double_complex, 1>& fft_buffer_aux1__, mdarray<double_complex, 1>& fft_buffer_aux2__);
+        void transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<double_complex, 1>& fft_buffer_aux1__, mdarray<double_complex, 1>& fft_buffer_aux2__);
 
     public:
 
@@ -130,10 +129,10 @@ class FFT3D
         ~FFT3D();
 
         template <int direction>
-        void transform(Gvec const& gvec__, double_complex* data__);
+        void transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__);
 
         template <int direction>
-        void transform(Gvec const& gvec__, double_complex* data1__, double_complex* data2__);
+        void transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data1__, double_complex* data2__);
 
         //template<typename T>
         //inline void input(int n__, int const* map__, T const* data__)
@@ -272,15 +271,8 @@ class FFT3D
             fft_buffer_.pin_memory();
             fft_buffer_.allocate_on_device();
             
-            size_t work_size;
-            if (comm_.size() == 1 && cufft3d_)
-            {
-                work_size = cufft_get_size_3d(grid_.size(0), grid_.size(1), grid_.size(2), 1);
-            }
-            else
-            {
-                work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
-            }
+            size_t work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
+
             cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
             cufft_work_buf_.allocate_on_device();
             cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
@@ -293,17 +285,17 @@ class FFT3D
             cufft_work_buf_.deallocate_on_device();
         }
 
-        template<typename T>
-        inline void input_on_device(int n__, int const* map__, T* data__)
-        {
-            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, fft_buffer_.at<GPU>());
-        }
+        //template<typename T>
+        //inline void input_on_device(int n__, int const* map__, T* data__)
+        //{
+        //    cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, fft_buffer_.at<GPU>());
+        //}
 
-        template<typename T>
-        inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
-        {
-            cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
-        }
+        //template<typename T>
+        //inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
+        //{
+        //    cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
+        //}
         #endif
 
         inline size_t ncall() const

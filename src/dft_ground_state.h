@@ -220,7 +220,7 @@ class DFT_ground_state
             if (ctx_.full_potential())
             {
                 for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(-1);
+                    density_->magnetization(j)->fft_transform(-1, ctx_.gvec_fft_distr());
             }
 
             /* symmetrize PW components */
@@ -266,9 +266,9 @@ class DFT_ground_state
 
             if (ctx_.full_potential())
             {
-                density_->rho()->fft_transform(1);
+                density_->rho()->fft_transform(1, ctx_.gvec_fft_distr());
                 for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(1);
+                    density_->magnetization(j)->fft_transform(1, ctx_.gvec_fft_distr());
             }
 
             #ifdef __PRINT_OBJECT_HASH

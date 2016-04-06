@@ -77,7 +77,9 @@ void Band::initialize_subspace(K_point* kp__,
 
     ctx_.fft_coarse().prepare();
 
-    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.mpi_grid_fft(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
+    Gvec_FFT_distribution gvec_coarse_fft_distr(ctx_.gvec_coarse(), ctx_.mpi_grid_fft_vloc().communicator(1 << 0));
+
+    Hloc_operator hloc(ctx_.fft_coarse(), gvec_coarse_fft_distr, kp__->gkvec_fft_distr_vloc(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
