@@ -213,6 +213,126 @@ double test_gemm(int M, int N, int K, std::vector<int> mpi_grid)
     return perf;
 }
 
+double test_gemm_2(int M, int N, int K, std::vector<int> mpi_grid)
+{
+    runtime::Timer t("test_gemm"); 
+
+    int bs = 32;
+    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
+
+    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
+    
+    matrix<double_complex> a(spl_K.local_size(), M);
+    matrix<double_complex> b(spl_K.local_size(), N);
+
+    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
+    c.zero();
+
+    for (int i = 0; i < M; i++)
+    {
+        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
+    }
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
+    }
+
+    int BS = 256;
+
+    mdarray<double_complex, 2> c_tmp(BS * BS, 2);
+    c_tmp.zero();
+
+    int nbr = M / BS + std::min(1, M % BS);
+    int nbc = N / BS + std::min(1, N % BS);
+
+    runtime::Timer t1("gemm_only");
+
+    std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+    std::array<std::array<int, 4>, 2> dims;
+    
+    int s = 0;
+    for (int ibc = 0; ibc < nbc; ibc++)
+    {
+        int col0 = ibc * BS;
+        int ncol = std::min(N, (ibc + 1) * BS) - col0;
+
+        for (int ibr = 0; ibr < nbr; ibr++)
+        {
+            int row0 = ibr * BS;
+            int nrow = std::min(N, (ibr + 1) * BS) - row0;
+
+            if (req[s % 2] != MPI_REQUEST_NULL)
+            {
+                runtime::Timer t2("store");
+                MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+                
+                #pragma omp parallel for
+                for (int icol = 0; icol < dims[s % 2][3]; icol++)
+                {
+                    for (int irow = 0; irow < dims[s % 2][2]; irow++)
+                    {
+                        c.set(irow +  dims[s % 2][0], icol +  dims[s % 2][1], c_tmp(irow + dims[s % 2][2] * icol, s % 2));
+                    }
+                }
+            }
+
+            dims[s % 2][0] = row0;
+            dims[s % 2][1] = col0;
+            dims[s % 2][2] = nrow;
+            dims[s % 2][3] = ncol;
+
+            runtime::Timer t3("local_gemm");
+            linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                              a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
+                              c_tmp.at<CPU>(0, s % 2), nrow);
+            t3.stop();
+
+            runtime::Timer t1("iallreduce");
+            mpi_comm_world().iallreduce(c_tmp.at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
+            t1.stop();
+            
+            s++;
+        }
+    }
+
+    for (int s: {0, 1})
+    {
+        if (req[s % 2] != MPI_REQUEST_NULL)
+        {
+            runtime::Timer t2("store");
+            MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+
+            #pragma omp parallel for
+            for (int icol = 0; icol < dims[s % 2][3]; icol++)
+            {
+                for (int irow = 0; irow < dims[s % 2][2]; irow++)
+                {
+                    c.set(irow +  dims[s % 2][0], icol +  dims[s % 2][1], c_tmp(irow + dims[s % 2][2] * icol, s % 2));
+                }
+            }
+        }
+    }
+
+    double tval = t1.stop();
+    double perf = 8e-9 * M * N * K / tval / mpi_comm_world().size();
+
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("execution time (sec) : %12.6f\n", tval);
+        printf("global matrix sizes: %i %i %i\n", M, N, K);
+        printf("number of ranks: %i\n", mpi_comm_world().size());
+        printf("performance (GFlops / rank): %12.6f\n", perf);
+    }
+    for (int i = 0; i < c.num_cols_local(); i++)
+    {
+        for (int j = 0; j < c.num_rows_local(); j++)
+        {
+            if (std::abs(c(j, i) - 0.01 * K) > 1e-10) TERMINATE("result is wrong");
+        }
+    }
+    return perf;
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -238,16 +358,18 @@ int main(int argn, char **argv)
 
     sirius::initialize(true);
     
-    test_reduce(M, N, K, mpi_grid);
-    test_reduce_2(M, N, K, mpi_grid);
+    //test_reduce(M, N, K, mpi_grid);
+    //test_reduce_2(M, N, K, mpi_grid);
 
     double perf = 0;
-    for (int i = 0; i < repeat; i++) perf += test_gemm(M, N, K, mpi_grid);
+    for (int i = 0; i < repeat; i++) perf += test_gemm_2(M, N, K, mpi_grid);
     if (mpi_comm_world().rank() == 0)
     {
         printf("\n");
         printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
     }
+
+    runtime::Timer::print();
 
     sirius::finalize();
 }
