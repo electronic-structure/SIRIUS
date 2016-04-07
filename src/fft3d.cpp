@@ -73,12 +73,10 @@ FFT3D::FFT3D(FFT3D_grid          grid__,
              double              gpu_workload)
     : comm_(comm__),
       pu_(pu__),
-      grid_(grid__),
+      grid_(grid__)
       #ifdef __GPU
-      cufft_nbatch_(0),
+      ,cufft_nbatch_(0)
       #endif
-      ncall_(0),
-      tcall_{0, 0, 0, 0, 0}
 {
     PROFILE();
 
@@ -166,8 +164,6 @@ void FFT3D::transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<
 {
     comm_.barrier();
     TIMER("sirius::FFT3D::transform_xy");
-
-    double t = omp_get_wtime();
 
     int size_xy = grid_.size(0) * grid_.size(1);
     int first_z = 0;
@@ -303,8 +299,6 @@ void FFT3D::transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<
         acc::sync_stream(1);
     }
     #endif
-
-    tcall_[1] += (omp_get_wtime() - t);
 }
 
 template <int direction>
@@ -316,8 +310,6 @@ void FFT3D::transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<
     auto& gvec = gvec_fft_distr__.gvec();
 
     if (!gvec.reduced()) TERMINATE("reduced set of G-vectors is required");
-
-    double t = omp_get_wtime();
 
     int size_xy = grid_.size(0) * grid_.size(1);
     int first_z = 0;
@@ -463,16 +455,12 @@ void FFT3D::transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<
         acc::sync_stream(0);
     }
     #endif
-
-    tcall_[1] += (omp_get_wtime() - t);
 }
 
 template <int direction, bool use_reduction>
 void FFT3D::transform_z_serial(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__)
 {
     TIMER("sirius::FFT3D::transform_z_serial");
-
-    double t = omp_get_wtime();
 
     auto& gvec = gvec_fft_distr__.gvec();
 
@@ -540,8 +528,6 @@ void FFT3D::transform_z_serial(Gvec_FFT_distribution const& gvec_fft_distr__, do
             }
         }
     }
-
-    tcall_[2] += (omp_get_wtime() - t);
 }
 
 template <int direction, bool use_reduction>
@@ -549,8 +535,6 @@ void FFT3D::transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, 
 {
     comm_.barrier();
     TIMER("sirius::FFT3D::transform_z_parallel");
-
-    double t = omp_get_wtime();
 
     auto& gvec = gvec_fft_distr__.gvec();
 
@@ -560,7 +544,7 @@ void FFT3D::transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, 
 
     if (direction == -1)
     {
-        double t1 = omp_get_wtime();
+        runtime::Timer t("sirius::FFT3D::transform_z_parallel|comm");
 
         block_data_descriptor send(comm_.size());
         block_data_descriptor recv(comm_.size());
@@ -576,8 +560,6 @@ void FFT3D::transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, 
                   &fft_buffer_[0]);
 
         comm_.alltoall(&fft_buffer_[0], &send.counts[0], &send.offsets[0], &fft_buffer_aux__[0], &recv.counts[0], &recv.offsets[0]);
-
-        tcall_[4] += (omp_get_wtime() - t1);
     }
 
     #pragma omp parallel
@@ -665,7 +647,7 @@ void FFT3D::transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, 
     /* scatter z-columns between slabs of FFT buffer */
     if (direction == 1)
     {
-        double t1 = omp_get_wtime();
+        runtime::Timer t("sirius::FFT3D::transform_z_parallel|comm");
 
         block_data_descriptor send(comm_.size());
         block_data_descriptor recv(comm_.size());
@@ -683,21 +665,14 @@ void FFT3D::transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, 
         /* copy local fractions of z-columns into auxiliary buffer */
         std::copy(&fft_buffer_[0], &fft_buffer_[0] + gvec.num_z_cols() * local_size_z_,
                   &fft_buffer_aux__[0]);
-
-        tcall_[4] += (omp_get_wtime() - t1);
     }
     comm_.barrier();
-
-    tcall_[3] += (omp_get_wtime() - t);
 }
 
 template <int direction>
 void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__)
 {
     TIMER("sirius::FFT3D::transform");
-
-    ncall_++;
-    double t = omp_get_wtime();
 
     /* reallocate auxiliary buffer if needed */
     size_t sz_max;
@@ -785,7 +760,6 @@ void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_comp
             }
         }   
     }
-    tcall_[0] += (omp_get_wtime() - t);
 }
 
 template <int direction>
@@ -794,9 +768,6 @@ void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_comp
     TIMER("sirius::FFT3D::transform");
 
     if (!gvec_fft_distr__.gvec().reduced()) TERMINATE("reduced set of G-vectors is required");
-
-    ncall_++;
-    double t = omp_get_wtime();
 
     /* reallocate auxiliary buffer if needed */
     size_t sz_max;
@@ -883,7 +854,6 @@ void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_comp
             }
         }   
     }
-    tcall_[0] += (omp_get_wtime() - t);
 }
 
 template void FFT3D::transform<1>(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__);

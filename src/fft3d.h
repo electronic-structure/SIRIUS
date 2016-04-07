@@ -81,7 +81,7 @@ class FFT3D
         /// Auxiliary array in case of simultaneous transformation of two wave-functions.
         mdarray<double_complex, 1> fft_buffer_aux2_;
         
-        /// Interbal buffer for independent z-transforms.
+        /// Internal buffer for independent z-transforms.
         std::vector<double_complex*> fftw_buffer_z_;
 
         /// Internal buffer for independent {xy}-transforms.
@@ -101,12 +101,6 @@ class FFT3D
         int cufft_nbatch_;
         #endif
         
-        /// Number of transfom calls.
-        size_t ncall_;
-
-        /// Timers for various parts of FFT.
-        double tcall_[5];
-
         template <int direction, bool use_reduction>
         void transform_z_serial(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
@@ -284,29 +278,7 @@ class FFT3D
             fft_buffer_.deallocate_on_device();
             cufft_work_buf_.deallocate_on_device();
         }
-
-        //template<typename T>
-        //inline void input_on_device(int n__, int const* map__, T* data__)
-        //{
-        //    cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, fft_buffer_.at<GPU>());
-        //}
-
-        //template<typename T>
-        //inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
-        //{
-        //    cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
-        //}
         #endif
-
-        inline size_t ncall() const
-        {
-            return ncall_;
-        }
-
-        inline double tcall(int i__) const
-        {
-            return tcall_[i__];
-        }
 };
 
 };
