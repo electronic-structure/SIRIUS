@@ -3,7 +3,7 @@
 using namespace sirius;
 
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
-               int use_gpu, double gpu_workload__)
+               int use_gpu__, double gpu_workload__)
 {
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
@@ -11,7 +11,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
+    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu__), gpu_workload__);
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), false, false);
 
@@ -29,6 +29,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
         printf("number of z-columns: %i\n", gvec.num_z_cols());
+        if (use_gpu__) printf("GPU workload: %f\n", gpu_workload__);
     }
 
     fft.prepare();
