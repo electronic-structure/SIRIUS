@@ -294,6 +294,18 @@ class Communicator
             CALL_MPI(MPI_Bcast, (buffer__, count__, mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
         }
 
+        inline void bcast(std::string& str__, int root__) const
+        {
+            int sz;
+            if (rank() == root__) sz = static_cast<int>(str__.size());
+            bcast(&sz, 1, root__);
+            char* buf = new char[sz + 1];
+            if (rank() == root__) std::copy(str__.c_str(), str__.c_str() + sz + 1, buf);
+            bcast(buf, sz + 1, root__);
+            str__ = std::string(buf);
+            delete[] buf;
+        }
+
         template<typename T>
         void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
         {

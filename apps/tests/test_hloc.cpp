@@ -101,5 +101,6 @@ int main(int argn, char** argv)
     test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
     mpi_comm_world().barrier();
     runtime::Timer::print();
+    runtime::Timer::print_all();
     sirius::finalize();
 }

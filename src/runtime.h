@@ -11,10 +11,77 @@
 #include <fstream>
 #include <chrono>
 #include <omp.h>
+#include <unistd.h>
+#include <cstdarg>
 #include "config.h"
 #include "communicator.h"
 
 namespace runtime {
+
+    /// Parallel standard output.
+    /** Proveides an ordered standard output from multiple MPI ranks. */
+    class pstdout
+    {
+        private:
+            
+            std::vector<char> buffer_;
+    
+            int fill_;
+    
+            Communicator const& comm_;
+    
+        public:
+    
+            pstdout(Communicator const& comm__) : fill_(0), comm_(comm__)
+            {
+                buffer_.resize(8129);
+            }
+    
+            ~pstdout()
+            {
+                flush();
+            }
+    
+            void printf(const char* fmt, ...)
+            {
+                std::vector<char> str(1024); // assume that one printf will not output more than this
+    
+                std::va_list arg;
+                va_start(arg, fmt);
+                int n = vsnprintf(&str[0], str.size(), fmt, arg);
+                va_end(arg);
+    
+                n = std::min(n, (int)str.size());
+                
+                if ((int)buffer_.size() - fill_ < n) buffer_.resize(buffer_.size() + str.size());
+                memcpy(&buffer_[fill_], &str[0], n);
+                fill_ += n;
+            }
+    
+            void flush()
+            {
+                std::vector<int> local_fills(comm_.size());
+                comm_.allgather(&fill_, &local_fills[0], comm_.rank(), 1); 
+                
+                int offset = 0;
+                for (int i = 0; i < comm_.rank(); i++) offset += local_fills[i];
+                
+                /* total size of the output buffer */
+                int sz = fill_;
+                comm_.allreduce(&sz, 1);
+                
+                if (sz != 0)
+                {
+                    std::vector<char> outb(sz + 1);
+                    comm_.allgather(&buffer_[0], &outb[0], offset, fill_);
+                    outb[sz] = 0;
+    
+                    if (comm_.rank() == 0) std::printf("%s", &outb[0]);
+                }
+                fill_ = 0;
+            }
+    };
+
 
     inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
     {
@@ -263,9 +330,9 @@ namespace runtime {
                 return timers_;
             }
     
-            static std::map< std::string, timer_stats> collect_timer_stats()
+            static std::map<std::string, timer_stats> collect_timer_stats()
             {
-                std::map< std::string, timer_stats> tstats;
+                std::map<std::string, timer_stats> tstats;
 
                 /* collect local timers */
                 for (auto& it: timers())
@@ -302,7 +369,7 @@ namespace runtime {
     
             static void print()
             {
-                std::map< std::string, timer_stats> tstats = collect_timer_stats();
+                auto tstats = collect_timer_stats();
 
                 if (mpi_comm_world().rank() == 0)
                 {
@@ -314,8 +381,7 @@ namespace runtime {
                     for (int i = 0; i < 115; i++) printf("-");
                     printf("\n");
 
-                    std::map<std::string, timer_stats>::iterator it;
-                    for (it = tstats.begin(); it != tstats.end(); it++)
+                    for (auto it = tstats.begin(); it != tstats.end(); it++)
                     {
                         auto ts = it->second;
                         printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), ts.count, ts.total_value, 
@@ -326,6 +392,81 @@ namespace runtime {
                     //print_cuda_timers();
                     //#endif
                 }
+            }
+
+            static void print_all()
+            {
+                char host_name[1024];
+                gethostname(host_name, 1024);
+
+                auto tstats = collect_timer_stats();
+
+                std::vector<std::string> timer_names;
+
+                if (mpi_comm_world().rank() == 0)
+                {
+                    for (auto it = tstats.begin(); it != tstats.end(); it++)
+                    {
+                        timer_names.push_back(it->first);
+                    }
+                }
+                int nt = static_cast<int>(timer_names.size());
+                mpi_comm_world().bcast(&nt, 1, 0);
+                if (mpi_comm_world().rank() != 0) timer_names = std::vector<std::string>(nt);
+
+                for (int i = 0; i < nt; i++)
+                    mpi_comm_world().bcast(timer_names[i], 0);
+
+                if (mpi_comm_world().rank() == 0)
+                {
+                    printf("\n");
+                    printf("Timers\n");
+                    for (int i = 0; i < 115; i++) printf("-");
+                    printf("\n");
+                    printf("name                                                              count      total        min        max    average\n");
+                    for (int i = 0; i < 115; i++) printf("-");
+                    printf("\n");
+                }
+                pstdout pout(mpi_comm_world());
+
+                for (int i = 0; i < nt; i++)
+                {
+                    if (mpi_comm_world().rank() == 0)
+                        pout.printf("---- %s ----\n", timer_names[i].c_str());
+
+                    if (tstats.count(timer_names[i]) != 0)
+                    {
+                        auto ts = tstats[timer_names[i]];
+                        pout.printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", host_name, ts.count, ts.total_value, 
+                                    ts.min_value, ts.max_value, ts.average_value);
+                    }
+                    pout.flush();
+                }
+
+
+
+                //std::vector<std::string> host_name(comm__.size());
+                //host_name[comm__.rank()] = std::string(buf);
+
+                //for (int i = 0; i < comm__.size(); i++)
+                //{
+                //    int sz;
+                //    if (i = comm__.rank())
+                //    {
+                //        sz = static_cast<int>(host_name[i].size());
+                //        std::memcpy(buf, host_name[i].str().c_str(), sz);
+                //    }
+                //    comm__.bcast(&sz, 1, i);
+                //    comm__.bcast(buf, sz, i);
+                //    buf[sz] = 0;
+                //    host_name[i] = std::string(buf);
+                //}
+
+                //for (int i = 0; i < comm__.size(); i++)
+                //{
+                //    if (i = comm__.rank());
+
+                //}
             }
             #else
             static void print()
