@@ -1,4 +1,5 @@
 #include "atom_type.h"
+#include <iostream>
 
 namespace sirius {
 
@@ -8,7 +9,7 @@ void Atom_type::init(int offset_lo__)
     if (initialized_) TERMINATE("can't initialize twice");
 
     offset_lo_ = offset_lo__;
-   
+
     /* read data from file if it exists */
     if (file_name_.length() > 0)
     {
@@ -49,13 +50,13 @@ void Atom_type::init(int offset_lo__)
             }
         }
     }
-    
+
     /* check the nuclear charge */
     if (zn_ == 0) TERMINATE("zero atom charge");
 
     /* set default radial grid if it was not done by user */
     if (radial_grid_.num_points() == 0) set_radial_grid();
-    
+
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
         /* initialize free atom density and potential */
@@ -64,7 +65,7 @@ void Atom_type::init(int offset_lo__)
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) init_aw_descriptors(parameters_.lmax_apw());
 
-        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) 
+        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1))
             TERMINATE("wrong size of augmented wave descriptors");
 
         max_aw_order_ = 0;
@@ -83,18 +84,18 @@ void Atom_type::init(int offset_lo__)
             lo_descriptors_.push_back(lod);
         }
     }
-    
+
     /* initialize index of radial functions */
     indexr_.init(aw_descriptors_, lo_descriptors_);
 
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
-    
+
     /* get the number of core electrons */
     num_core_electrons_ = 0;
     if (parameters_.full_potential())
     {
-        for (int i = 0; i < (int)atomic_levels_.size(); i++) 
+        for (int i = 0; i < (int)atomic_levels_.size(); i++)
         {
             if (atomic_levels_[i].core) num_core_electrons_ += atomic_levels_[i].occupancy;
         }
@@ -116,7 +117,7 @@ void Atom_type::init(int offset_lo__)
         for (int i2 = 0; i2 < indexr().size(); i2++)
         {
             int l2 = indexr(i2).l;
-            
+
             for (int i1 = 0; i1 <= i2; i1++)
             {
                 int l1 = indexr(i1).l;
@@ -132,7 +133,9 @@ void Atom_type::init(int offset_lo__)
             }
         }
     }
+
     idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
+
     for (size_t j = 0; j < non_zero_elements.size(); j++)
     {
         idx_radial_integrals_(0, j) = non_zero_elements[j].first;
@@ -147,15 +150,19 @@ void Atom_type::init(int offset_lo__)
         rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
         rf_coef_.allocate(1);
         rf_coef_.allocate_on_device();
-        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1)); 
+        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1));
         vrf_coef_.allocate(1);
         vrf_coef_.allocate_on_device();
         #else
         TERMINATE_NO_GPU
         #endif
     }
-    
+
     initialized_ = true;
 }
+
+
+
+
 
 }

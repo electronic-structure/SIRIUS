@@ -178,14 +178,14 @@ def parse_PAW(upf_dict, root):
     for i in range(size):
         upf_dict['paw_data']['occupations'] = [float(e) for e in str.split(node.text)]
 
-    #---- Reaf AE core correction (density of core charge)
+    #---- Read AE core correction (density of core charge)
     node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
     size = int(node.attrib['size'])
 
     for i in range(size):
         upf_dict['paw_data']['ae_core_charge_density'] = [float(e) for e in str.split(node.text)]
 
-    #---- Reaf AE local potential
+    #---- Read AE local potential
     node = root.findall("./PP_PAW/PP_AE_VLOC")[0]
     size = int(node.attrib['size'])
 

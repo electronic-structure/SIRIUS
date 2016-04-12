@@ -70,9 +70,13 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
-       K_point/num_occupied_bands.cpp
+       K_point/num_occupied_bands.cpp 
 
 OBJ = $(SRC:.cpp=.o) 
+
+
+
+
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
@@ -98,9 +102,11 @@ ifneq (,$(findstring D__PLASMA,$(CXX_OPT)))
 	OBJ := $(OBJ) plasma_interface.o
 endif
 
+
+OBJ_DBG = $(OBJ:%.o=%.o)
 	
-.cpp.o:
-	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
+#.cpp.o:
+#	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
 
 .cu.o:
 	$(NVCC) -DADD_ $(NVCC_OPT) -c -o $(*D)/$(*F).o $<
@@ -112,6 +118,16 @@ all: log $(OBJ) sirius_api.o sirius.o
 	ar -r libsirius.a $(OBJ)
 	ar -r libsirius_f.a $(OBJ) sirius_api.o sirius.o
 
+
+
+%.o: %.cpp
+	$(CXX) $(CXX_OPT_DBG) -c -o $(*D)/$(*F).o $<
+	
+debug: $(OBJ_DBG)
+	ar -r libsirius.dbg.a $(OBJ_DBG)
+
+
+	
 # TODO: platform-independent python script
 log:
 	@echo "#ifndef __VERSION_H__" > version.h

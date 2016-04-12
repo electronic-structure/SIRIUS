@@ -6,3 +6,15 @@ libs/spglib*
 Makefile
 platform.json
 make.inc
+
+.cproject
+.project
+.settings
+
+html/
+latex/
+.o
+.mod
+.plist
+
+*.dSYM/

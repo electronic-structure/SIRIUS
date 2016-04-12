@@ -51,6 +51,9 @@ enum electronic_structure_method_t
     /// Ultrasoft pseudopotential with plane wave basis (experimental).
     ultrasoft_pseudopotential,
 
+    /// PAW pseudopotential with plane wave basis (experimental).
+    PAW_pseudopotential,
+
     /// Norm-conserving pseudopotential with plane wave basis (experimental).
     norm_conserving_pseudopotential
 };
