@@ -397,6 +397,8 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 
 extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
                                              int32_t ldb, double* eval);
+
+extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval);
 #endif
 
 /// Interface for MAGMA eigen-value solvers.
@@ -454,6 +456,28 @@ class Eigenproblem_magma: public Eigenproblem
 
             return 0;
         }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+        {
+            assert(nevec <= matrix_size);
+
+            int nt = omp_get_max_threads();
+            
+            magma_dsyevdx_wrapper(matrix_size, nevec, A, lda, eval);
+
+            if (nt != omp_get_max_threads())
+            {
+                TERMINATE("magma has changed the number of threads");
+            }
+            
+            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+
+            return 0;
+        }
         #endif
 
         bool parallel() const
@@ -479,61 +503,61 @@ class Eigenproblem_scalapack: public Eigenproblem
         int blacs_context_;
         double abstol_;
         
-        #ifdef __SCALAPACK
-        std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
-                                            int blacs_context) const
-        {
-            std::vector<int32_t> work_sizes(3);
-            
-            int32_t nn = std::max(matrix_size, std::max(nb, 2));
-            
-            int32_t np0 = linalg_base::numroc(nn, nb, 0, 0, nprow);
-            int32_t mq0 = linalg_base::numroc(nn, nb, 0, 0, npcol);
-        
-            work_sizes[0] = matrix_size + (np0 + mq0 + nb) * nb;
-        
-            work_sizes[1] = 1 + 9 * matrix_size + 3 * np0 * mq0;
-        
-            work_sizes[2] = 7 * matrix_size + 8 * npcol + 2;
-            
-            return work_sizes;
-        }
+        //== #ifdef __SCALAPACK
+        //== std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
+        //==                                     int blacs_context) const
+        //== {
+        //==     std::vector<int32_t> work_sizes(3);
+        //==     
+        //==     int32_t nn = std::max(matrix_size, std::max(nb, 2));
+        //==     
+        //==     int32_t np0 = linalg_base::numroc(nn, nb, 0, 0, nprow);
+        //==     int32_t mq0 = linalg_base::numroc(nn, nb, 0, 0, npcol);
+        //== 
+        //==     work_sizes[0] = matrix_size + (np0 + mq0 + nb) * nb;
+        //== 
+        //==     work_sizes[1] = 1 + 9 * matrix_size + 3 * np0 * mq0;
+        //== 
+        //==     work_sizes[2] = 7 * matrix_size + 8 * npcol + 2;
+        //==     
+        //==     return work_sizes;
+        //== }
 
-        std::vector<int32_t> get_work_sizes_gevp(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
-                                                 int blacs_context) const
-        {
-            std::vector<int32_t> work_sizes(3);
-            
-            int32_t nn = std::max(matrix_size, std::max(nb, 2));
-            
-            int32_t neig = std::max(1024, nb);
+        //== std::vector<int32_t> get_work_sizes_gevp(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
+        //==                                          int blacs_context) const
+        //== {
+        //==     std::vector<int32_t> work_sizes(3);
+        //==     
+        //==     int32_t nn = std::max(matrix_size, std::max(nb, 2));
+        //==     
+        //==     int32_t neig = std::max(1024, nb);
 
-            int32_t nmax3 = std::max(neig, std::max(nb, 2));
-            
-            int32_t np = nprow * npcol;
+        //==     int32_t nmax3 = std::max(neig, std::max(nb, 2));
+        //==     
+        //==     int32_t np = nprow * npcol;
 
-            // due to the mess in the documentation, take the maximum of np0, nq0, mq0
-            int32_t nmpq0 = std::max(linalg_base::numroc(nn, nb, 0, 0, nprow), 
-                                  std::max(linalg_base::numroc(nn, nb, 0, 0, npcol),
-                                           linalg_base::numroc(nmax3, nb, 0, 0, npcol))); 
+        //==     // due to the mess in the documentation, take the maximum of np0, nq0, mq0
+        //==     int32_t nmpq0 = std::max(linalg_base::numroc(nn, nb, 0, 0, nprow), 
+        //==                           std::max(linalg_base::numroc(nn, nb, 0, 0, npcol),
+        //==                                    linalg_base::numroc(nmax3, nb, 0, 0, npcol))); 
 
-            int32_t anb = linalg_base::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
-            int32_t sqnpc = (int32_t)pow(double(np), 0.5);
-            int32_t nps = std::max(linalg_base::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
+        //==     int32_t anb = linalg_base::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
+        //==     int32_t sqnpc = (int32_t)pow(double(np), 0.5);
+        //==     int32_t nps = std::max(linalg_base::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
 
-            work_sizes[0] = matrix_size + (2 * nmpq0 + nb) * nb;
-            work_sizes[0] = std::max(work_sizes[0], matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
-            work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * nb + nb * nb);
+        //==     work_sizes[0] = matrix_size + (2 * nmpq0 + nb) * nb;
+        //==     work_sizes[0] = std::max(work_sizes[0], matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
+        //==     work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * nb + nb * nb);
 
-            work_sizes[1] = 4 * matrix_size + std::max(5 * matrix_size, nmpq0 * nmpq0) + 
-                            linalg_base::iceil(neig, np) * nn + neig * matrix_size;
+        //==     work_sizes[1] = 4 * matrix_size + std::max(5 * matrix_size, nmpq0 * nmpq0) + 
+        //==                     linalg_base::iceil(neig, np) * nn + neig * matrix_size;
 
-            int32_t nnp = std::max(matrix_size, std::max(np + 1, 4));
-            work_sizes[2] = 6 * nnp;
+        //==     int32_t nnp = std::max(matrix_size, std::max(np + 1, 4));
+        //==     work_sizes[2] = 6 * nnp;
 
-            return work_sizes;
-        }
-        #endif
+        //==     return work_sizes;
+        //== }
+        //== #endif
 
     public:
 
@@ -556,18 +580,32 @@ class Eigenproblem_scalapack: public Eigenproblem
             
             int descz[9];
             linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
-            
-            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, std::max(bs_row_, bs_col_),
-                                                             num_ranks_row_, num_ranks_col_, blacs_context_);
-            
-            std::vector<double_complex> work(work_sizes[0]);
-            std::vector<double> rwork(work_sizes[1]);
-            std::vector<int32_t> iwork(work_sizes[2]);
-            int32_t info;
 
+            int32_t info;
             int32_t ione = 1;
+
+            int32_t lwork = -1;
+            int32_t lrwork = -1;
+            int32_t liwork = -1;
+            std::vector<double_complex> work(1);
+            std::vector<double> rwork(1);
+            std::vector<int32_t> iwork(1);
+
+            /* work size query */
             FORTRAN(pzheevd)("V", "U", &matrix_size, A, &ione, &ione, desca, eval, Z, &ione, &ione, descz, &work[0], 
-                             &work_sizes[0], &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &info, (int32_t)1, 
+                             &lwork, &rwork[0], &lrwork, &iwork[0], &liwork, &info, (int32_t)1, 
+                             (int32_t)1);
+            
+            lwork = static_cast<int32_t>(work[0].real()) + 1;
+            lrwork = static_cast<int32_t>(rwork[0]) + 1;
+            liwork = iwork[0];
+
+            work = std::vector<double_complex>(lwork);
+            rwork = std::vector<double>(lrwork);
+            iwork = std::vector<int32_t>(liwork);
+
+            FORTRAN(pzheevd)("V", "U", &matrix_size, A, &ione, &ione, desca, eval, Z, &ione, &ione, descz, &work[0], 
+                             &lwork, &rwork[0], &lrwork, &iwork[0], &liwork, &info, (int32_t)1, 
                              (int32_t)1);
 
             if (info)
@@ -598,13 +636,10 @@ class Eigenproblem_scalapack: public Eigenproblem
             int32_t descz[9];
             linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz); 
 
-            std::vector<int32_t> work_sizes = get_work_sizes_gevp(matrix_size, std::max(bs_row_, bs_col_), 
-                                                                  num_ranks_row_, num_ranks_col_, blacs_context_);
-            
-            std::vector<double_complex> work(work_sizes[0]);
-            std::vector<double> rwork(work_sizes[1]);
-            std::vector<int32_t> iwork(work_sizes[2]);
-            
+            //std::vector<int32_t> work_sizes = get_work_sizes_gevp(matrix_size, std::max(bs_row_, bs_col_), 
+            //                                                      num_ranks_row_, num_ranks_col_, blacs_context_);
+            //
+
             std::vector<int32_t> ifail(matrix_size);
             std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
             std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
@@ -617,10 +652,29 @@ class Eigenproblem_scalapack: public Eigenproblem
             int32_t nz;
             double d1;
             int32_t info;
-
+            
+            int32_t lwork = -1;
+            int32_t lrwork = -1;
+            int32_t liwork = -1;
+            std::vector<double_complex> work(1);
+            std::vector<double> rwork(3);
+            std::vector<int32_t> iwork(1);
+            /* work size query */
             FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &work_sizes[0], 
-                             &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &ifail[0], &iclustr[0], &gap[0], &info, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+            lwork = static_cast<int32_t>(work[0].real()) + 1;
+            lrwork = static_cast<int32_t>(rwork[0]) + 1;
+            liwork = iwork[0];
+
+            work = std::vector<double_complex>(lwork);
+            rwork = std::vector<double>(lrwork);
+            iwork = std::vector<int32_t>(liwork);
+            
+            FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
             if (info)
@@ -772,10 +826,10 @@ class Eigenproblem_scalapack: public Eigenproblem
             std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
             std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
             std::vector<double> w(matrix_size);
-            std::vector<double> work(1);
-            std::vector<int32_t> iwork(1);
-            
+
             /* work size query */
+            std::vector<double> work(3);
+            std::vector<int32_t> iwork(1);
             int32_t lwork = -1;
             int32_t liwork = -1;
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
@@ -991,7 +1045,7 @@ class Eigenproblem_elpa: public Eigenproblem
         {
             mpi_comm_rows_ = MPI_Comm_c2f(comm_row_.mpi_comm());
             mpi_comm_cols_ = MPI_Comm_c2f(comm_col_.mpi_comm());
-            mpi_comm_all_ = MPI_Comm_c2f(comm_all_.mpi_comm());
+            mpi_comm_all_  = MPI_Comm_c2f(comm_all_.mpi_comm());
         }
 
         void transform_to_standard(int32_t matrix_size__,
@@ -1236,7 +1290,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            runtime::Timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                    &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
@@ -1262,7 +1316,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            runtime::Timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
@@ -1270,6 +1324,24 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             
             transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double* A, int32_t lda,
+                  double* eval, 
+                  double* Z, int32_t ldz,
+                  int32_t num_rows_loc, int32_t num_cols_loc) const
+        {
+            assert(nevec <= matrix_size);
+
+            std::vector<double> w(matrix_size);
+            runtime::Timer t("Eigenproblem_elpa2|diag");
+            FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
+                                                &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
+            t.stop();
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
             return 0;
         }
         #endif

@@ -10,7 +10,7 @@ void Density::generate_pseudo_core_charge_density()
 
     std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
     ctx_.fft().prepare();
-    ctx_.fft().transform<1>(ctx_.gvec(), &v[ctx_.gvec().offset_gvec_fft()]);
+    ctx_.fft().transform<1>(ctx_.gvec_fft_distr(), &v[ctx_.gvec_fft_distr().offset_gvec_fft()]);
     ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
     ctx_.fft().dismiss();
 }

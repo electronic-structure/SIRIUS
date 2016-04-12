@@ -62,13 +62,13 @@ class MPI_grid
             entire grid. */
         std::vector<Communicator> communicators_;
 
-        /// number of MPI ranks in each communicator
+        /// Number of MPI ranks in each communicator.
         std::vector<int> communicator_size_;
 
         /// true if this is the root of the communicator group
         std::vector<bool> communicator_root_;
 
-        /// return valid directions for the current grid dimensionality
+        /// Return valid directions for the current grid dimensionality.
         inline int valid_directions(int directions__) const
         {
             return (directions__ & ((1 << dimensions_.size()) - 1));
@@ -82,7 +82,7 @@ class MPI_grid
             if (dimensions_.size() == 0) TERMINATE("no dimensions provided for the MPI grid");
 
             int sz = 1;
-            for (int i = 0; i < (int)dimensions_.size(); i++) sz *= dimensions_[i];
+            for (size_t i = 0; i < dimensions_.size(); i++) sz *= dimensions_[i];
             
             if (parent_communicator_.size() != sz)
             {
@@ -189,6 +189,14 @@ class MPI_grid
         MPI_grid(std::vector<int> const& dimensions__,
                  Communicator const& parent_communicator__) 
             : dimensions_(dimensions__),
+              parent_communicator_(parent_communicator__)
+        {
+            PROFILE();
+            initialize();
+        }
+
+        MPI_grid(Communicator const& parent_communicator__) 
+            : dimensions_({parent_communicator__.size()}),
               parent_communicator_(parent_communicator__)
         {
             PROFILE();

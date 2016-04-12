@@ -108,17 +108,71 @@ class Periodic_function
 
         /// Constructor
         Periodic_function(Simulation_context& ctx__,
-                          int angular_domain_size__,
-                          Gvec const* gvec__);
+                          int                 angular_domain_size__,
+                          Gvec const*         gvec__)
+            : parameters_(ctx__),
+              unit_cell_(ctx__.unit_cell()), 
+              step_function_(ctx__.step_function()),
+              comm_(ctx__.comm()),
+              fft_(ctx__.fft()),
+              gvec_(gvec__),
+              angular_domain_size_(angular_domain_size__),
+              num_gvec_(0)
+        {
+            f_rg_ = mdarray<T, 1>(fft_.local_size());
+        
+            if (gvec_ != nullptr)
+            {
+                num_gvec_ = gvec_->num_gvec();
+                f_pw_ = mdarray<double_complex, 1>(num_gvec_);
+            }
+        
+            if (parameters_.full_potential())
+                f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
+        }
         
         /// Allocate memory for muffin-tin part.
-        void allocate_mt(bool allocate_global__);
+        void allocate_mt(bool allocate_global__)
+        {
+            if (parameters_.full_potential())
+            {
+                if (allocate_global__)
+                {
+                    f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+                    set_local_mt_ptr();
+                }
+                else
+                {
+                    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) 
+                    {
+                        int ia = unit_cell_.spl_num_atoms(ialoc);
+                        f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
+                    }
+                }
+            }
+        }
 
         /// Syncronize global muffin-tin array.
-        void sync_mt();
+        void sync_mt()
+        {
+            runtime::Timer t("sirius::Periodic_function::sync_mt");
+            assert(f_mt_.size() != 0); 
+
+            int ld = angular_domain_size_ * unit_cell_.max_num_mt_points(); 
+            comm_.allgather(&f_mt_(0, 0, 0), ld * unit_cell_.spl_num_atoms().global_offset(), ld * unit_cell_.spl_num_atoms().local_size());
+        }
 
         /// Zero the function.
-        void zero();
+        void zero()
+        {
+            f_mt_.zero();
+            f_rg_.zero();
+            f_pw_.zero();
+            if (parameters_.full_potential())
+            {
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
+            }
+        }
         
         /// Copy from source
         //void copy(Periodic_function<T>* src);
@@ -130,7 +184,20 @@ class Periodic_function
         T integrate(std::vector<T>& mt_val, T& it_val);
 
         template <index_domain_t index_domain>
-        inline T& f_mt(int idx0, int idx1, int ia);
+        inline T& f_mt(int idx0, int ir, int ia)
+        {
+            switch (index_domain)
+            {
+                case local:
+                {
+                    return f_mt_local_(ia)(idx0, ir);
+                }
+                case global:
+                {
+                    return f_mt_(idx0, ir, ia);
+                }
+            }
+        }
         
         /** \todo write and read distributed functions */
         void hdf5_write(HDF5_tree h5f);
@@ -239,7 +306,7 @@ class Periodic_function
             return h;
         }
 
-        void fft_transform(int direction__)
+        void fft_transform(int direction__, Gvec_FFT_distribution const& gvec_fft_distr__)
         {
             runtime::Timer t("sirius::Periodic_function::fft_transform");
             assert(gvec_ != nullptr);
@@ -249,15 +316,15 @@ class Periodic_function
             {
                 case 1:
                 {
-                    fft_.transform<1>(*gvec_, &f_pw_(gvec_->offset_gvec_fft()));
+                    fft_.transform<1>(gvec_fft_distr__, &f_pw_(gvec_fft_distr__.offset_gvec_fft()));
                     fft_.output(&f_rg_(0));
                     break;
                 }
                 case -1:
                 {
                     fft_.input(&f_rg_(0));
-                    fft_.transform<-1>(*gvec_, &f_pw_(gvec_->offset_gvec_fft()));
-                    fft_.comm().allgather(&f_pw_(0), gvec_->offset_gvec_fft(), gvec_->num_gvec_fft());
+                    fft_.transform<-1>(gvec_fft_distr__, &f_pw_(gvec_fft_distr__.offset_gvec_fft()));
+                    fft_.comm().allgather(&f_pw_(0), gvec_fft_distr__.offset_gvec_fft(), gvec_fft_distr__.num_gvec_fft());
                     break;
                 }
                 default:

@@ -247,7 +247,7 @@ void Force::total_force(Simulation_context& ctx__,
 
     auto& uc = ctx__.unit_cell();
 
-    auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells());
+    auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells(), ctx__.unit_cell(), ctx__.gvec(), ctx__.comm());
 
     force__.zero();
 

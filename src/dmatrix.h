@@ -200,6 +200,11 @@ class dmatrix
         {
             return spl_col_.local_size();
         }
+
+        inline int num_cols_local(int rank) const
+        {
+            return spl_col_.local_size(rank);
+        }
         
         /// Inindex of column in global matrix.
         inline int icol(int icol_loc) const

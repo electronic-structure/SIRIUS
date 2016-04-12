@@ -169,7 +169,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     /* compute product of magnetic field and wave-function */
     if (ctx_.num_spins() == 2)
     {
-        apply_magnetic_field(kp->fv_states<true>(), kp->gkvec(), effective_magnetic_field, hpsi);
+        apply_magnetic_field(kp->fv_states<true>(), kp->gkvec_fft_distr(), effective_magnetic_field, hpsi);
     }
     else
     {

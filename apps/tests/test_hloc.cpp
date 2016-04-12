@@ -3,18 +3,19 @@
 using namespace sirius;
 
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
-               int use_gpu, double gpu_workload__)
+               int use_gpu__, double gpu_workload__)
 {
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-    FFT3D_grid fft_grid(2.01 * cutoff__, M);
+    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(fft_grid, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu), gpu_workload__);
+    FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
-              mpi_grid.dimension_size(1), false, false);
+    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu__), gpu_workload__);
+
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), false, false);
+
+    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
 
     std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft.local_size(), 2.0);
@@ -23,18 +24,21 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
-        printf("FFT grid size: %i %i %i\n", fft_grid.size(0), fft_grid.size(1), fft_grid.size(2));
+        printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
-        printf("number of z-columns: %li\n", gvec.z_columns().size());
+        printf("number of z-columns: %i\n", gvec.num_z_cols());
+        if (use_gpu__) printf("GPU workload: %f\n", gpu_workload__);
     }
 
     fft.prepare();
     
-    Hloc_operator hloc(fft, gvec, veff);
+    Hloc_operator hloc(fft, gvec_fft_distr, veff);
 
-    Wave_functions<false> phi(4 * num_bands__, gvec, mpi_grid, CPU);
+    int num_gvec_loc = gvec.num_gvec(mpi_grid.communicator().rank());
+
+    Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, CPU);
     for (int i = 0; i < 4 * num_bands__; i++)
     {
         for (int j = 0; j < phi.num_gvec_loc(); j++)
@@ -42,7 +46,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
             phi(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    Wave_functions<false> hphi(4 * num_bands__, num_bands__, gvec, mpi_grid, CPU);
+    Wave_functions<false> hphi(num_gvec_loc, 4 * num_bands__, CPU);
     
     mpi_comm_world().barrier();
     runtime::Timer t1("h_loc");
@@ -85,7 +89,7 @@ int main(int argn, char** argv)
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
     auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
     auto cutoff = args.value<double>("cutoff", 2.0);
@@ -97,5 +101,6 @@ int main(int argn, char** argv)
     test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
     mpi_comm_world().barrier();
     runtime::Timer::print();
+    runtime::Timer::print_all();
     sirius::finalize();
 }

@@ -55,7 +55,7 @@ void Band::orthogonalize<double>(K_point* kp__,
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0)
     {
-        phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0);
+        phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
 
         if (ctx_.processing_unit() == CPU)
         {
@@ -94,7 +94,7 @@ void Band::orthogonalize<double>(K_point* kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    phi__.inner<double>(N__, n__, ophi__, N__, n__, o__, 0, 0);
+    phi__.inner<double>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
 
     if (ctx_.processing_unit() == CPU)
     {

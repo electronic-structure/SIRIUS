@@ -34,6 +34,8 @@ def parse_header(upf_dict, root):
     upf_dict['header']['z_valence'] = float(node.attrib['z_valence'])
     upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
 
+    if upf_dict['header']['pseudo_type'] == 'NC':
+        upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
 
 
 def parse_radial_grid(upf_dict, root):
@@ -62,27 +64,28 @@ def parse_non_local(upf_dict, root):
 
     for i in range(proj_num):
         node = root.findall("./PP_NONLOCAL/PP_BETA.%i"%(i+1))[0]
+        nr = int(node.attrib['cutoff_radius_index'])
         upf_dict['beta_projectors'].append({})
         beta = [float(e) for e in str.split(node.text)]
-        upf_dict['beta_projectors'][i]['radial_function'] = beta
+        upf_dict['beta_projectors'][i]['radial_function'] = beta[0:nr]
         upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
         upf_dict['beta_projectors'][i]['angular_momentum'] = int(node.attrib['angular_momentum'])
-        upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(node.attrib['cutoff_radius_index'])
+        #upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(node.attrib['cutoff_radius_index'])
         upf_dict['beta_projectors'][i]['cutoff_radius'] = float(node.attrib['cutoff_radius'])
         upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(node.attrib['ultrasoft_cutoff_radius'])
 
-    #----------------------------------------------------
-    #------- Dij coefs (dont know what is it) -------
-    #----------------------------------------------------
+    #--------------------------
+    #------- Dij matrix -------
+    #--------------------------
     node = root.findall('./PP_NONLOCAL/PP_DIJ')[0]
     dij = [float(e) for e in str.split(node.text)]
     upf_dict['D_ion'] = [float(e) / 2 for e in str.split(node.text)] #convert to hartree
 
-    #if upf_dict['header']['pseudo_type'] != "USPP": return
+    if upf_dict['header']['pseudo_type'] == 'NC': return
 
-    #--------------------------------------------------
-    #------- Big augmentation part: Qij  ----
-    #--------------------------------------------------
+    #------------------------------------
+    #------- augmentation part: Qij  ----
+    #------------------------------------
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
 
     if node.attrib['q_with_l'] != 'T':
@@ -114,12 +117,9 @@ def parse_non_local(upf_dict, root):
                     upf_dict['augmentation'].append(qij)
 
 
-
-
-
-######################################################
+####################################################
 ############# Read PAW data ########################
-######################################################
+####################################################
 def parse_PAW(upf_dict, root):
 
     if upf_dict['header']['pseudo_type'] != "PAW": return
@@ -135,9 +135,9 @@ def parse_PAW(upf_dict, root):
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION/PP_MULTIPOLES')[0]
     upf_dict['paw_data']['aug_multipoles'] = [float(e) for e in str.split(node.text)]
 
-    #---------------------------------------
+    #----------------------------------------
     #---- Read AE and PS basis wave functions
-    #---------------------------------------
+    #----------------------------------------
     nb = upf_dict['header']['number_of_proj']
 
 
@@ -192,6 +192,18 @@ def parse_PAW(upf_dict, root):
     for i in range(size):
         upf_dict['paw_data']['ae_local_potential'] = [float(e) for e in str.split(node.text)]
 
+def parse_pswfc(upf_dict, root):
+    #if upf_dict['header']['pseudo_type'] != 'NC': return
+
+    upf_dict['atomic_wave_functions']=[]
+
+    for i in range(upf_dict['header']['number_of_wfc']):
+        wfc={}
+        node = root.findall("./PP_PSWFC/PP_CHI.%i"%(i+1))[0]
+        wfc['radial_function'] = [float(e) for e in str.split(node.text)]
+        wfc['angular_momentum'] = int(node.attrib['l'])
+        wfc['label'] = node.attrib['label']
+        upf_dict['atomic_wave_functions'].append(wfc)
 
 ######################################################
 ################## MAIN ##############################
@@ -228,6 +240,9 @@ def main():
 
     # parse PAW data
     parse_PAW(upf_dict, root)
+    
+    # parse pseudo wavefunctions
+    parse_pswfc(upf_dict, root)
 
     # rho
     node = root.findall("./PP_RHOATOM")[0]

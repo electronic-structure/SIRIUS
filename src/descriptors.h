@@ -124,7 +124,12 @@ public:
 
 	std::vector<int> l_wf_pseudo_;
 
-	bool is_initialized;
+    /// Atomic wave-functions used to setup the initial subspace.
+    /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
+    std::vector< std::pair<int, std::vector<double> > > atomic_pseudo_wfs_;
+    
+    bool is_initialized;
+
 };
 
 struct nearest_neighbour_descriptor
@@ -242,7 +247,7 @@ struct block_data_descriptor
     std::vector<int> counts;
     std::vector<int> offsets;
 
-    block_data_descriptor()
+    block_data_descriptor() : num_ranks(-1)
     {
     }
 
@@ -262,7 +267,6 @@ struct z_column_descriptor
 {
     int x;
     int y;
-    int offset;
     std::vector<int> z;
 
     z_column_descriptor()

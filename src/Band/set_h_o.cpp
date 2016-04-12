@@ -30,9 +30,9 @@ void Band::set_h_o<double_complex>(K_point* kp__,
     }
 
     /* <{phi,res}|H|res> */
-    phi__.inner<double_complex>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
+    phi__.inner<double_complex>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
     /* <{phi,res}|O|res> */
-    phi__.inner<double_complex>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
+    phi__.inner<double_complex>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__, kp__->comm());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex cs1(0, 0);
@@ -153,7 +153,7 @@ void Band::set_h_o<double>(K_point* kp__,
         std::memcpy(&h__(0, i), &h_old__(0, i), N__ * sizeof(double));
 
     /* <{phi,res}|H|res> */
-    phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
+    phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
 
     int i0 = N__;
     if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2)

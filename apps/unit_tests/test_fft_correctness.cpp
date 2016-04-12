@@ -4,20 +4,23 @@ using namespace sirius;
 
 void test_fft(double cutoff__)
 {
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     FFT3D_grid fft_grid(cutoff__, M);
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
     
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world(), 1, false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), false, false);
 
     if (mpi_comm_world().rank() == 0)
     {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
-    printf("num_gvec_fft: %i\n", gvec.num_gvec_fft());
+    MPI_grid mpi_grid(mpi_comm_world());
+
+    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
+    printf("num_gvec_fft: %i\n", gvec_fft_distr.num_gvec_fft());
+    printf("offset_gvec_fft: %i\n", gvec_fft_distr.offset_gvec_fft());
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     for (int ig = 0; ig < gvec.num_gvec(); ig++)
@@ -26,7 +29,7 @@ void test_fft(double cutoff__)
         if (mpi_comm_world().rank() == 0) printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
         f.zero();
         f[ig] = 1.0;
-        fft.transform<1>(gvec, &f[gvec.offset_gvec_fft()]);
+        fft.transform<1>(gvec_fft_distr, &f[gvec_fft_distr.offset_gvec_fft()]);
 
         double diff = 0;
         /* loop over 3D array (real space) */

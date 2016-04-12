@@ -741,21 +741,6 @@ class Atom_type
             return parameters_;
         }
 
-        //= void fix_q_radial_function(int l, int i, int j, double* qrf) const
-        //= {
-        //=     for (int ir = 0; ir < num_mt_points(); ir++)
-        //=     {
-        //=         double x = radial_grid(ir);
-        //=         double x2 = x * x;
-        //=         if (x < uspp_.q_functions_inner_radii[l])
-        //=         {
-        //=             qrf[ir] = uspp_.q_coefs(0, l, i, j);
-        //=             for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * std::pow(x2, n);
-        //=             qrf[ir] *= std::pow(x, l + 2);
-        //=         }
-        //=     }
-        //= }
-
         void set_free_atom_radial_grid(int num_points__, double const* points__)
         {
             if (num_mt_points_ <= 0) TERMINATE("wrong number of radial points");

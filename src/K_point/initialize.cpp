@@ -183,8 +183,7 @@ void K_point::initialize()
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
-            spinor_wave_functions_[ispn] = new Wave_functions<false>(nst, nst, gkvec_, ctx_.mpi_grid_fft(),
-                                                                     ctx_.processing_unit());
+            spinor_wave_functions_[ispn] = new Wave_functions<false>(num_gkvec_loc(), nst, ctx_.processing_unit());
 
             for (int i = 0; i < nst; i++)
             {

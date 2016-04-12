@@ -302,7 +302,7 @@ void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
             /* check limits */
             for (int x = 0; x < 3; x++)
             {
-                auto limits = gvec__.fft_grid().limits(x);
+                auto limits = gvec__.fft_box().limits(x);
                 /* check boundaries */
                 if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
                 {

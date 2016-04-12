@@ -48,12 +48,14 @@ class Non_local_operator
 
         mdarray<T, 1> work_;
 
+        bool is_null_;
+
         Non_local_operator& operator=(Non_local_operator const& src) = delete;
         Non_local_operator(Non_local_operator const& src) = delete;
 
     public:
 
-        Non_local_operator(Beta_projectors& beta__, processing_unit_t pu__) : beta_(beta__), pu_(pu__)
+        Non_local_operator(Beta_projectors& beta__, processing_unit_t pu__) : beta_(beta__), pu_(pu__), is_null_(false)
         {
             PROFILE();
 
@@ -155,31 +157,38 @@ class Q_operator: public Non_local_operator<T>
         
         Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-            /* Q-operator is independent of spin */
-            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
-            this->op_.zero();
-
-            auto& uc = this->beta_.unit_cell();
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
+            if (ctx__.esm_type() == ultrasoft_pseudopotential)
             {
-                int iat = uc.atom(ia).type().id();
-                int nbf = uc.atom(ia).mt_basis_size();
-                for (int xi2 = 0; xi2 < nbf; xi2++)
+                /* Q-operator is independent of spin */
+                this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+                this->op_.zero();
+
+                auto& uc = this->beta_.unit_cell();
+                for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
+                    int iat = uc.atom(ia).type().id();
+                    int nbf = uc.atom(ia).mt_basis_size();
+                    for (int xi2 = 0; xi2 < nbf; xi2++)
                     {
-                        assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
-                        this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
+                        for (int xi1 = 0; xi1 < nbf; xi1++)
+                        {
+                            assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
+                        }
                     }
                 }
+                #ifdef __GPU
+                if (this->pu_ == GPU)
+                {
+                    this->op_.allocate_on_device();
+                    this->op_.copy_to_device();
+                }
+                #endif
             }
-            #ifdef __GPU
-            if (this->pu_ == GPU)
+            else
             {
-                this->op_.allocate_on_device();
-                this->op_.copy_to_device();
+                this->is_null_ = true;
             }
-            #endif
         }
 };
 

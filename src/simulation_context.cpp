@@ -10,16 +10,27 @@ void Simulation_context::init_fft()
 
     if (!(fft_mode_ == "serial" || fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
 
-    /* for now, use parallel fft only in pseudopotential part of the code */
-    if (full_potential() || fft_mode_ == "serial")
+    if (full_potential())
     {
         /* split bands between all ranks, use serial FFT */
         mpi_grid_fft_ = new MPI_grid({1, comm.size()}, comm);
     }
     else
     {
+        /* use parallel FFT for density and potential */
         mpi_grid_fft_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
                                       mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
+        
+        if (fft_mode_ == "serial")
+        {
+            /* serial FFT in Hloc */
+            mpi_grid_fft_vloc_ = new MPI_grid({1, comm.size()}, comm);
+        }
+        else
+        {
+            mpi_grid_fft_vloc_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                               mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
+        }
     }
 
     /* create FFT driver for dense mesh (density and potential) */
@@ -27,16 +38,18 @@ void Simulation_context::init_fft()
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
-                 fft_->comm(), mpi_grid_fft_->dimension_size(1), true, reduce_gvec_);
+                 mpi_grid_fft_->dimension_size(0), true, reduce_gvec_);
+
+    gvec_fft_distr_ = new Gvec_FFT_distribution(gvec_, mpi_grid_fft_->communicator(1 << 0));
 
     if (!full_potential())
     {
         /* create FFT driver for coarse mesh */
-        fft_coarse_ = new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
+        fft_coarse_ = new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_vloc_->communicator(1 << 0), processing_unit(), 0.9);
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), true, reduce_gvec_);
+                            mpi_grid_fft_vloc_->dimension_size(0), true, reduce_gvec_);
     }
 }
 
@@ -56,6 +69,8 @@ void Simulation_context::initialize()
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) mpi_grid_dims_ = {comm_.size()};
+
+    if (full_potential()) reduce_gvec_ = false;
 
     /* setup MPI grid */
     mpi_grid_ = new MPI_grid(mpi_grid_dims_, comm_);
@@ -107,7 +122,7 @@ void Simulation_context::initialize()
         }
     }
     
-    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, gvec_, comm_);
+    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, *gvec_fft_distr_, comm_);
 
     if (iterative_solver_input_section().real_space_prj_) 
     {
@@ -170,7 +185,7 @@ void Simulation_context::initialize()
     if (comm_.rank() == 0) print_info();
     #endif
 
-    if (!full_potential())
+    if (esm_type() == ultrasoft_pseudopotential)
     {
         /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)

@@ -57,13 +57,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
     /* allocate wave-functions */
-    Wave_functions<false> phi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hphi(num_phi, num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> ophi(num_phi, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> hpsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
-    Wave_functions<false> opsi(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false>  phi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> hphi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> ophi(kp__->num_gkvec_loc(), num_phi, pu);
+    Wave_functions<false> hpsi(kp__->num_gkvec_loc(), num_bands, pu);
+    Wave_functions<false> opsi(kp__->num_gkvec_loc(), num_bands, pu);
     /* residuals */
-    Wave_functions<false> res(num_bands, kp__->gkvec(), ctx_.mpi_grid_fft(), pu);
+    Wave_functions<false> res(kp__->num_gkvec_loc(), num_bands, pu);
 
     /* allocate Hamiltonian and overlap */
     matrix<T> hmlt(num_phi, num_phi);
@@ -79,15 +79,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     }
     #endif
 
-    matrix<T> evec;
-    if (converge_by_energy)
-    {
-        evec = matrix<T>(num_phi, num_bands * 2);
-    }
-    else
-    {
-        evec = matrix<T>(num_phi, num_bands);
-    }
+    matrix<T> evec(num_phi, num_phi);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -96,15 +88,15 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     dmatrix<T> evec_dist;
     if (kp__->comm().size() == 1)
     {
-        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     }
     else
     {
-        hmlt_dist = dmatrix<T>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(num_phi, num_phi,   ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(num_phi, num_bands, ctx_.blacs_grid(), bs, bs);
+        hmlt_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        ovlp_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+        evec_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);

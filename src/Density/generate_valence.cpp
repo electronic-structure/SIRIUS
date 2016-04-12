@@ -40,7 +40,7 @@ void Density::generate_valence(K_set& ks__)
             }
             else
             {
-                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
+                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn), kp->gkvec_fft_distr());
             }
         }
     }
@@ -86,8 +86,8 @@ void Density::generate_valence(K_set& ks__)
     //== printf("number of electrons: %f\n", nel);
     
     /* get rho(G) and mag(G) */
-    rho_->fft_transform(-1);
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
+    rho_->fft_transform(-1, ctx_.gvec_fft_distr());
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1, ctx_.gvec_fft_distr());
 
     //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
     //== STOP();

@@ -344,43 +344,51 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
         #endif
     }
 
+    double a = 2;
+    double a1 = -1;
+    double b = 0;
+
     switch (pu_)
     {
         case CPU:
         {
             /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_,
-                              (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<CPU>(), nbeta);
+            linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
+                              a,
+                              (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_,
+                              (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_,
+                              b,
+                              beta_phi_.at<CPU>(), nbeta);
+
+            if (comm_.rank() == 0)
+            {
+                /* subtract one extra G=0 contribution */
+                linalg<CPU>::ger(nbeta, n__, a1, (double*)&beta_gk_(0, 0), 2 * num_gkvec_loc_,
+                                (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_, &beta_phi_[0], nbeta); 
+            }
             break;
         }
         case GPU:
         {
             #ifdef __GPU
-            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_, (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_,
-                              (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta);
+            linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
+                              &a,
+                              (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_,
+                              (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_,
+                              &b,
+                              beta_phi_.at<GPU>(), nbeta);
+            if (comm_.rank() == 0)
+            {
+                /* subtract one extra G=0 contribution */
+                linalg<GPU>::ger(nbeta, n__, &a1, (double*)beta_gk_.at<GPU>(0, 0), 2 * num_gkvec_loc_,
+                                (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta); 
+            }
             beta_phi_.copy_to_host(nbeta * n__);
             #else
             TERMINATE_NO_GPU
             #endif
             break;
         }
-    }
-
-    if (comm_.rank() == 0)
-    {
-        for (int i = 0; i < n__; i++)
-        {
-            for (int j = 0; j < nbeta; j++)
-            {
-                beta_phi_(j + nbeta * i) = 2 * beta_phi_(j + nbeta * i) -
-                                           beta_gk_(0, j).real() * phi__(0, idx0__ + i).real();
-            }
-        }
-    }
-    else
-    {
-        for (int i = 0; i < n__; i++)
-            for (int j = 0; j < nbeta; j++) beta_phi_(j + nbeta * i) *= 2;
     }
 
     comm_.allreduce(beta_phi_.at<CPU>(), nbeta * n__);

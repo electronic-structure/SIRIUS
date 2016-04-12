@@ -95,7 +95,6 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int info;
     
     int lwork;
-    //int lrwork;
     int liwork;
     magma_dsyevdx_getworksize(matrix_size, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
 
@@ -105,12 +104,6 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
         printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
         exit(-1);
     }
-    //double* rwork;
-    //if (cudaMallocHost((void**)&rwork, lrwork * sizeof(double)) != cudaSuccess)
-    //{
-    //    printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
-    //    exit(-1);
-    //}
     
     magma_int_t *iwork;
     if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
@@ -148,10 +141,65 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     memcpy(eval, &w[0], nv * sizeof(double));
     
     cudaFreeHost(h_work);
-    //cudaFreeHost(rwork);
     free(iwork);
     free(w);
 }
+
+extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval)
+{
+    int info, m;
+
+    int lwork;
+    int liwork;
+    magma_dsyevdx_getworksize(matrix_size, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
+
+    double* h_work;
+    if (cudaMallocHost((void**)&h_work, lwork * sizeof(double)) != cudaSuccess)
+    {
+        printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
+        exit(-1);
+    }
+    
+    magma_int_t *iwork;
+    if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
+    {
+        printf("malloc failed\n");
+        exit(-1);
+    }
+
+    double* w;
+    if ((w = (double*)malloc(matrix_size * sizeof(double))) == NULL)
+    {
+        printf("malloc failed\n");
+        exit(-1);
+    }
+
+    magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size, a, lda, 0.0, 0.0, 1, nv, &m, &w[0],
+                  h_work, lwork, iwork, liwork, &info);
+    
+    if (info)
+    {
+        printf("magma_dsyevdx : %i\n", info);
+        if (info == MAGMA_ERR_DEVICE_ALLOC)
+            printf("this is MAGMA_ERR_DEVICE_ALLOC\n");
+        exit(-1);
+    }    
+
+    if (m < nv)
+    {
+        printf("Not all eigen-vectors are found.\n");
+        printf("requested number of eigen-vectors: %i\n", nv);
+        printf("found number of eigen-vectors: %i\n", m);
+        exit(-1);
+    }
+
+    memcpy(eval, &w[0], nv * sizeof(double));
+
+    cudaFreeHost(h_work);
+    free(iwork);
+    free(w);
+}
+
 
 extern "C" int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda)
 {

@@ -63,7 +63,7 @@ class Band
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(Wave_functions<true>& fv_states__,
-                                  Gvec const& gkvec__,
+                                  Gvec_FFT_distribution const& gkvec_fft_distr__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
                                   std::vector<Wave_functions<true>*>& hpsi__) const;
 
@@ -133,9 +133,13 @@ class Band
                                             D_operator<T>& d_op__,
                                             Q_operator<T>& q_op__) const;
 
-        //void diag_fv_pseudo_potential_rmm_diis_serial(K_point* kp__,
-        //                                              double v0__,
-        //                                              std::vector<double>& veff_it_coarse__);
+        /// RMM-DIIS diagonalization.
+        template <typename T>
+        void diag_pseudo_potential_rmm_diis(K_point* kp__,
+                                            int ispn__,
+                                            Hloc_operator& h_op__,
+                                            D_operator<T>& d_op__,
+                                            Q_operator<T>& q_op__) const;
 
         //void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
         //                                               std::vector<double> const& veff_it_coarse__);
@@ -275,9 +279,19 @@ class Band
                     std_evp_solver_ = new Eigenproblem_plasma();
                     break;
                 }
+                case ev_magma:
+                {
+                    std_evp_solver_ = new Eigenproblem_magma();
+                    break;
+                }
                 case ev_elpa1:
                 {
                     std_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
+                    break;
+                }
+                case ev_elpa2:
+                {
+                    std_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
                 default:

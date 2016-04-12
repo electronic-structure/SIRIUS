@@ -11,13 +11,13 @@ void K_point::distribute_basis_index()
         /* distribute Gk+lo basis between rows */
         splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
         gklo_basis_descriptors_row_.resize(spl_row.local_size());
-        for (int i = 0; i < (int)spl_row.local_size(); i++)
+        for (int i = 0; i < spl_row.local_size(); i++)
             gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
         /* distribute Gk+lo basis between columns */
         splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
         gklo_basis_descriptors_col_.resize(spl_col.local_size());
-        for (int i = 0; i < (int)spl_col.local_size(); i++)
+        for (int i = 0; i < spl_col.local_size(); i++)
             gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
 
         #ifdef __SCALAPACK

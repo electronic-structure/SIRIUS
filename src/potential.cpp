@@ -349,8 +349,8 @@ void Potential::generate_pw_coefs()
     DUMP("checksum(fft_buffer): %18.10f %18.10f", z2.real(), z2.imag());
     #endif
     
-    fft_.transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().offset_gvec_fft()));
-    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().offset_gvec_fft(), ctx_.gvec().num_gvec_fft());
+    fft_.transform<-1>(ctx_.gvec_fft_distr(), &effective_potential()->f_pw(ctx_.gvec_fft_distr().offset_gvec_fft()));
+    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec_fft_distr().offset_gvec_fft(), ctx_.gvec_fft_distr().num_gvec_fft());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), ctx_.gvec().num_gvec()).checksum();
