@@ -82,43 +82,49 @@ struct local_orbital_descriptor
 };
 
 
+
+
+
 class uspp_descriptor
 {
-    public:
+public:
+	uspp_descriptor(): is_initialized(false) {}
 
-        /// Radial mesh.
-        std::vector<double> r;
+	/// Radial mesh.
+	std::vector<double> r;
 
-        /// Local part of potential.
-        std::vector<double> vloc;
+	/// Local part of potential.
+	std::vector<double> vloc;
 
-        /// Maximum angular momentum for |beta> projectors.
-        int lmax_beta_;
+	/// Maximum angular momentum for |beta> projectors.
+	int lmax_beta_;
 
-        /// Number of radial functions for |beta> projectors.
-        int num_beta_radial_functions;
-        
-        /// Orbital quantum numbers of each beta radial function.
-        std::vector<int> beta_l;
-        
-        /// Number of radial grid points for each beta radial function.
-        std::vector<int> num_beta_radial_points;
+	/// Number of radial functions for |beta> projectors.
+	int num_beta_radial_functions;
 
-        /// Radial functions of beta-projectors.
-        mdarray<double, 2> beta_radial_functions;
-        
-        /// Radial functions of Q-operator.
-        mdarray<double, 3> q_radial_functions_l;
+	/// Orbital quantum numbers of each beta radial function.
+	std::vector<int> beta_l;
 
-        std::vector<double> core_charge_density;
+	/// Number of radial grid points for each beta radial function.
+	std::vector<int> num_beta_radial_points;
 
-        std::vector<double> total_charge_density;
+	/// Radial functions of beta-projectors.
+	mdarray<double, 2> beta_radial_functions;
 
-        mdarray<double, 2> d_mtrx_ion;
+	/// Radial functions of Q-operator.
+	mdarray<double, 3> q_radial_functions_l;
 
-        mdarray<double, 2> wf_pseudo_;
+	std::vector<double> core_charge_density;
 
-        std::vector<int> l_wf_pseudo_;
+	std::vector<double> total_charge_density;
+
+	mdarray<double, 2> d_mtrx_ion;
+
+	mdarray<double, 2> wf_pseudo_;
+
+	std::vector<int> l_wf_pseudo_;
+
+	bool is_initialized;
 };
 
 struct nearest_neighbour_descriptor

@@ -265,6 +265,11 @@ class Simulation_parameters
             xc_functionals_.push_back(name__);
         }
 
+        inline void set_esm_type(electronic_structure_method_t esm_type)
+        {
+        	esm_type_ = esm_type;
+        }
+
         inline void set_esm_type(std::string name__)
         {
             if (name__ == "full_potential_lapwlo")
@@ -287,6 +292,39 @@ class Simulation_parameters
             {
                 TERMINATE("wrong type of electronic structure method");
             }
+
+//            switch(name__)
+//            {
+//				case "full_potential_lapwlo":
+//				{
+//
+//				}break;
+//
+//				case "full_potential_pwlo":
+//				{
+//
+//				}break;
+//
+//				case "ultrasoft_pseudopotential":
+//				{
+//
+//				}break;
+//
+//				case "norm_conserving_pseudopotential":
+//				{
+//
+//				}break;
+//
+//				case "paw_pseudopotential":
+//				{
+//
+//				}break;
+//
+//				default:
+//				{
+//					TERMINATE("wrong type of electronic structure method");
+//				}break;
+//            }
         }
 
         inline void set_processing_unit(processing_unit_t pu__)

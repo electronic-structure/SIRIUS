@@ -32,6 +32,7 @@ def parse_header(upf_dict, root):
     upf_dict['header']['pseudo_type'] = node.attrib['pseudo_type']
     #upf_dict['header']['l_max'] = int(node.attrib['l_max'])
     upf_dict['header']['z_valence'] = float(node.attrib['z_valence'])
+    upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
 
 
 
@@ -177,14 +178,14 @@ def parse_PAW(upf_dict, root):
     for i in range(size):
         upf_dict['paw_data']['occupations'] = [float(e) for e in str.split(node.text)]
 
-    #---- Reaf AE core correction (density of core charge)
+    #---- Read AE core correction (density of core charge)
     node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
     size = int(node.attrib['size'])
 
     for i in range(size):
         upf_dict['paw_data']['ae_core_charge_density'] = [float(e) for e in str.split(node.text)]
 
-    #---- Reaf AE local potential
+    #---- Read AE local potential
     node = root.findall("./PP_PAW/PP_AE_VLOC")[0]
     size = int(node.attrib['size'])
 
