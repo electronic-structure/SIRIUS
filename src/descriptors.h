@@ -129,7 +129,6 @@ public:
     std::vector< std::pair<int, std::vector<double> > > atomic_pseudo_wfs_;
     
     bool is_initialized;
-
 };
 
 struct nearest_neighbour_descriptor
