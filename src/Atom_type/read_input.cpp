@@ -284,6 +284,8 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 	if( ! uspp_.is_initialized )
 		TERMINATE("Ultrasoft or base part of PAW is not initialized");
 
+	//---- read core energy ----
+	parser["pseudo_potential"]["header"]["paw_core_energy"] >> paw_.core_energy;
 
 	//---- read augmentation multipoles and integrals ---
 	parser["pseudo_potential"]["paw_data"]["aug_integrals"] >> paw_.aug_integrals;
@@ -305,6 +307,7 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 	int num_wfc = uspp_.num_beta_radial_functions;
 
 	paw_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
+	paw_.pseudo_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
 
 	// angular momentum array
 	paw_.ae_wfc_l.resize(num_wfc);
@@ -314,22 +317,40 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 	//---- read ae and ps wave functions ---
 	for(int i=0;i<num_wfc;i++)
 	{
-		// read ae wave func
+		// --- read ae wave func ---
 		std::vector<double> wfc;
 
 		parser["pseudo_potential"]["paw_data"]["ae_wfc"][i]["radial_function"] >> wfc;
+
+		if ((int)wfc.size() > num_mt_points_)
+		{
+			std::stringstream s;
+			s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+			  << "size of beta radial functions in the file: " << wfc.size() << std::endl
+			  << "radial grid size: " << num_mt_points_;
+			TERMINATE(s);
+		}
 
 		std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
 
 		// read ae moment
 		parser["pseudo_potential"]["paw_data"]["ae_wfc"][i]["angular_momentum"] >> paw_.ae_wfc_l[i];
 
-		// read ps wave func
+		// --- read ps wave func ---
 		wfc.clear();
 
 		parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"] >> wfc;
 
-		std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
+		if ((int)wfc.size() > num_mt_points_)
+		{
+			std::stringstream s;
+			s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+			  << "size of beta radial functions in the file: " << wfc.size() << std::endl
+			  << "radial grid size: " << num_mt_points_;
+			TERMINATE(s);
+		}
+
+		std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
 
 		// read ps moment
 		parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["angular_momentum"] >> paw_.ps_wfc_l[i];
@@ -348,7 +369,10 @@ void Atom_type::read_input(const std::string& fname)
     {
     	read_pseudo_uspp(parser);
 
-    	read_pseudo_paw(parser);
+    	if( this->parameters_.esm_type() == electronic_structure_method_t::paw_pseudopotential)
+    	{
+    		read_pseudo_paw(parser);
+    	}
     }
 
     if (parameters_.full_potential())

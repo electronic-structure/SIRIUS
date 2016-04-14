@@ -2,6 +2,8 @@ include ../../make.inc
 
 LIB_SIRIUS = ../../src/libsirius.a
 
+LIB_SIRIUS_DBG = ../../src/libsirius.dbg.a
+
 INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
@@ -13,6 +15,13 @@ dft_loop: dft_loop.cpp $(LIB_SIRIUS)
 
 plot:
 	$(CXX) $(CXX_OPT) $(INCLUDE) plot.cpp $(LIB_SIRIUS) $(LIBS) -o plot
+
+debug: dft_loop.cpp
+	$(CXX) $(CXX_OPT_DBG) $(INCLUDE) dft_loop.cpp $(LIB_SIRIUS_DBG) $(LIBS) -o debug/dft_loop
+
+
+
+debug:
 
 clean:
 	rm -f *.o dft_loop *.h5 timers.json

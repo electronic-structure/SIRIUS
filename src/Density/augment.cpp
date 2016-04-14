@@ -48,14 +48,14 @@ void Density::augment(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::augment");
 
-    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
-     * because density matrix is symmetric. */
-    int ndm = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
+    int ndm = this->ndm_;
     
     runtime::Timer t1("sirius::Density::augment|dm");
+
     /* complex density matrix */
-    mdarray<double_complex, 4> density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
-                                              ndm, unit_cell_.num_atoms());
+    // small crutch, create reference to the class field
+    mdarray<double_complex, 4> &density_matrix = this->density_matrix_;
+
     density_matrix.zero();
     
     /* add k-point contribution */

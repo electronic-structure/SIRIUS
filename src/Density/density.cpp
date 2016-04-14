@@ -39,6 +39,8 @@ Density::Density(Simulation_context& ctx__)
                                                                   ctx_.lmax_pw(), SHT::gaunt_hybrid);
             break;
         }
+
+        case paw_pseudopotential:
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
@@ -143,6 +145,18 @@ Density::Density(Simulation_context& ctx__)
             TERMINATE("wrong mixer type");
         }
     }
+
+
+    //--- Allocate density matrix ---
+
+    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
+     * because density matrix is symmetric. */
+    ndm_ = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
+
+    // density matrix is here
+    density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(),
+    		unit_cell_.max_mt_basis_size(), ndm_, unit_cell_.num_atoms());
+
 }
 
 Density::~Density()

@@ -34,8 +34,8 @@ def parse_header(upf_dict, root):
     upf_dict['header']['z_valence'] = float(node.attrib['z_valence'])
     upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
 
-    if upf_dict['header']['pseudo_type'] == 'NC':
-        upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
+    #if upf_dict['header']['pseudo_type'] == 'NC':
+    upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
 
 
 def parse_radial_grid(upf_dict, root):
@@ -240,7 +240,7 @@ def main():
 
     # parse PAW data
     parse_PAW(upf_dict, root)
-    
+
     # parse pseudo wavefunctions
     parse_pswfc(upf_dict, root)
 

@@ -116,6 +116,12 @@ class Density
         
         Unit_cell& unit_cell_;
 
+        /// density matrix of the system
+        mdarray<double_complex, 4> density_matrix_;
+
+        /// number of spin components for density matrix (can differ from total number of spin components due to symmetry)
+        int ndm_;
+
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
@@ -461,6 +467,16 @@ class Density
         {
             return low_freq_mixer_->rss();
         }
+
+        const mdarray<double_complex, 4>& get_density_matrix() const
+		{
+        	return density_matrix_;
+		}
+
+//        mdarray<double_complex, 4>& get_density_matrix_unsafe()
+//		{
+//			return density_matrix_;
+//		}
 };
 
 }

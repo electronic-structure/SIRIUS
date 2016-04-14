@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.h> 
 
 using namespace sirius;
 
@@ -22,7 +22,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
     {
         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
         JSON_write jw(fname);
-        
+
         jw.single("git_hash", git_hash);
         jw.single("build_date", build_date);
         jw.single("num_ranks", ctx.comm().size());
@@ -47,7 +47,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         jw.single("evha", evha, 8);
         jw.single("enuc", enuc, 8);
         jw.end_set();
-        
+
         //** if (num_mag_dims())
         //** {
         //**     std::vector<double> v(3, 0);
@@ -60,7 +60,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         //**     jw.single("total_moment", v);
         //**     jw.single("total_moment_len", Utils::vector_length(&v[0]));
         //** }
-        
+
         //** jw.single("total_energy", total_energy());
         //** jw.single("kinetic_energy", kinetic_energy());
         //** jw.single("energy_veff", rti_.energy_veff);
@@ -73,7 +73,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         //** jw.single("valence_eval_sum", rti_.valence_eval_sum);
         //** jw.single("band_gap", rti_.band_gap);
         //** jw.single("energy_fermi", rti_.energy_fermi);
-        
+
         jw.single("timers", ts);
     }
 }
@@ -86,7 +86,7 @@ void dft_loop(cmd_args args)
         TERMINATE("wrong task name");
 
     std::string fname = args.value<std::string>("input", "sirius.json");
-    
+
     Simulation_context ctx(fname, mpi_comm_world());
 
     std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
@@ -101,7 +101,7 @@ void dft_loop(cmd_args args)
     ctx.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
     ctx.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
     ctx.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
-    
+
     ctx.set_num_mag_dims(parser["num_mag_dims"].get(0));
 
     ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
@@ -121,11 +121,11 @@ void dft_loop(cmd_args args)
 
 
     ctx.initialize();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     Potential* potential = new Potential(ctx);
     potential->allocate();
 
@@ -137,18 +137,18 @@ void dft_loop(cmd_args args)
              vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), use_symmetry);
 
     ks.initialize();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     Density* density = new Density(ctx);
     density->allocate();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     DFT_ground_state dft(ctx, potential, density, &ks, use_symmetry);
 
     if (task_name == "gs_restart")
@@ -163,7 +163,7 @@ void dft_loop(cmd_args args)
         dft.generate_effective_potential();
         if (!ctx.full_potential()) dft.initialize_subspace();
     }
-    
+
     double potential_tol = parser["potential_tol"].get(1e-4);
     double energy_tol = parser["energy_tol"].get(1e-4);
 
@@ -210,6 +210,6 @@ int main(int argn, char** argv)
     }
 
     dft_loop(args);
-    
+
     sirius::finalize();
 }
