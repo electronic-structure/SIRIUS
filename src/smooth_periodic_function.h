@@ -23,6 +23,9 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
+#ifndef __SMOOTH_PERIODIC_FUNCTION_H__
+#define __SMOOTH_PERIODIC_FUNCTION_H__
+
 namespace sirius {
 
 /// Smooth periodic function on the regular real-space grid or in plane-wave domain.
@@ -73,6 +76,11 @@ class Smooth_periodic_function
         {
             return f_rg_(ir__);
         }
+
+        inline T const& f_rg(int ir__) const
+        {
+            return f_rg_(ir__);
+        }
         
         inline double_complex& f_pw_local(int ig__)
         {
@@ -80,6 +88,12 @@ class Smooth_periodic_function
         }
 
         FFT3D& fft()
+        {
+            assert(fft_ != nullptr);
+            return *fft_;
+        }
+
+        FFT3D const& fft() const
         {
             assert(fft_ != nullptr);
             return *fft_;
@@ -211,3 +225,5 @@ Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad
 }
 
 }
+
+#endif // __SMOOTH_PERIODIC_FUNCTION_H__

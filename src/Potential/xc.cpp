@@ -508,23 +508,17 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
         WARNING(s);
     }
     
-    Smooth_periodic_function<double> rho;
     Smooth_periodic_function_gradient<double> grad_rho;
     Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
     
     if (is_gga) 
     {
-        rho = Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_fft_distr());
-
-        for (int i = 0; i < num_points; i++)
-            rho.f_rg(i) = rho__->f_rg(i);
-
-        rho.fft_transform(-1);
+        rho__->Smooth_periodic_function<double>::fft_transform(-1);
 
         /* generate pw coeffs of the gradient and laplacian */
-        grad_rho = gradient(rho);
-        lapl_rho = laplacian(rho);
+        grad_rho = gradient(*rho__);
+        lapl_rho = laplacian(*rho__);
 
         /* gradient in real space */
         for (int x: {0, 1, 2}) grad_rho[x].fft_transform(1);

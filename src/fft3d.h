@@ -100,6 +100,8 @@ class FFT3D
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
         #endif
+
+        bool prepared_;
         
         template <int direction, bool use_reduction>
         void transform_z_serial(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
@@ -244,6 +246,7 @@ class FFT3D
                 allocate_on_device();
             }
             #endif
+            prepared_ = true;
         }
 
         void dismiss()
@@ -256,6 +259,7 @@ class FFT3D
                 deallocate_on_device();
             }
             #endif
+            prepared_ = false;
         }
 
         #ifdef __GPU

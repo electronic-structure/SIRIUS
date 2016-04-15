@@ -53,24 +53,24 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), &ctx_.gvec());
+    effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
     
-    Gvec const* gvec_ptr = (ctx_.full_potential()) ? nullptr : &ctx_.gvec();
+    int need_gvec = (ctx_.full_potential()) ? 0 : 1;
     for (int j = 0; j < ctx_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), gvec_ptr);
+        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
     
-    hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), &ctx_.gvec());
+    hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
     hartree_potential_->allocate_mt(false);
     
-    xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), nullptr);
+    xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
     xc_potential_->allocate_mt(false);
     
-    xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), nullptr);
+    xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
     xc_energy_density_->allocate_mt(false);
 
     if (!ctx_.full_potential())
     {
-        local_potential_ = new Periodic_function<double>(ctx_, 0, nullptr);
+        local_potential_ = new Periodic_function<double>(ctx_, 0, 0);
         local_potential_->zero();
 
         generate_local_potential();

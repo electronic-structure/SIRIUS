@@ -7,6 +7,8 @@ void Density::initial_density()
     PROFILE_WITH_TIMER("sirius::Density::initial_density");
 
     zero();
+
+    ctx_.fft().prepare();
     
     if (ctx_.full_potential())
     {
@@ -29,7 +31,7 @@ void Density::initial_density()
         /* set plane-wave coefficients of the charge density */
         std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
         /* convert charge deisnty to real space mesh */
-        rho_->fft_transform(1, ctx_.gvec_fft_distr());
+        rho_->fft_transform(1);
 
         #ifdef __PRINT_OBJECT_CHECKSUM
         DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
@@ -255,16 +257,16 @@ void Density::initial_density()
         
         std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
-        double charge = real(rho_->f_pw(0) * unit_cell_.omega());
+        double charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
         if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
         {
             std::stringstream s;
             s << "wrong initial charge density" << std::endl
-              << "  integral of the density : " << real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
+              << "  integral of the density : " << std::real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
               << "  target number of electrons : " << unit_cell_.num_valence_electrons();
             if (ctx_.comm().rank() == 0) WARNING(s);
         }
-        rho_->fft_transform(1, ctx_.gvec_fft_distr());
+        rho_->fft_transform(1);
 
         #ifdef __PRINT_OBJECT_HASH
         DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
@@ -441,8 +443,8 @@ void Density::initial_density()
         //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fclose(fout);
 
-        rho_->fft_transform(-1, ctx_.gvec_fft_distr());
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1, ctx_.gvec_fft_distr());
+        rho_->fft_transform(-1);
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
     }
     
     if (ctx_.full_potential())
@@ -470,6 +472,8 @@ void Density::initial_density()
             WARNING(s);
         }
     }
+
+    ctx_.fft().dismiss();
 }
 
 };

@@ -11,19 +11,19 @@ Density::Density(Simulation_context& ctx__)
       low_freq_mixer_(nullptr),
       mixer_(nullptr)
 {
-    rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), &ctx_.gvec());
+    rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
 
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential())
     {
-        rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, nullptr);
+        rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
         rho_pseudo_core_->zero();
 
         generate_pseudo_core_charge_density();
     }
 
     for (int i = 0; i < ctx_.num_mag_dims(); i++)
-        magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), &ctx_.gvec());
+        magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
     
     switch (ctx_.esm_type())
     {

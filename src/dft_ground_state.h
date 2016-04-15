@@ -101,14 +101,14 @@ class DFT_ground_state
         
         double energy_vxc()
         {
-            return Periodic_function<double>::inner(density_->rho(), potential_->xc_potential());
+            return density_->rho()->inner(potential_->xc_potential());
         }
         
         double energy_exc()
         {
-            double exc = Periodic_function<double>::inner(density_->rho(), potential_->xc_energy_density());
+            double exc = density_->rho()->inner(potential_->xc_energy_density());
             if (!ctx_.full_potential())
-                exc += Periodic_function<double>::inner(density_->rho_pseudo_core(), potential_->xc_energy_density());
+                exc += density_->rho_pseudo_core()->inner(potential_->xc_energy_density());
             return exc;
         }
 
@@ -116,13 +116,12 @@ class DFT_ground_state
         {
             double ebxc = 0.0;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) 
-                ebxc += Periodic_function<double>::inner(density_->magnetization(j), potential_->effective_magnetic_field(j));
+                ebxc += density_->magnetization(j)->inner(potential_->effective_magnetic_field(j));
             return ebxc;
         }
 
         double energy_veff()
         {
-            //return inner(ctx_, density_->rho(), potential_->effective_potential());
             return energy_vha() + energy_vxc();
         }
 
@@ -217,12 +216,6 @@ class DFT_ground_state
 
             auto& comm = ctx_.comm();
 
-            if (ctx_.full_potential())
-            {
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(-1, ctx_.gvec_fft_distr());
-            }
-
             /* symmetrize PW components */
             unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), ctx_.gvec(), comm);
             switch (ctx_.num_mag_dims())
@@ -266,9 +259,11 @@ class DFT_ground_state
 
             if (ctx_.full_potential())
             {
-                density_->rho()->fft_transform(1, ctx_.gvec_fft_distr());
+                ctx_.fft().prepare();
+                density_->rho()->fft_transform(1);
                 for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(1, ctx_.gvec_fft_distr());
+                    density_->magnetization(j)->fft_transform(1);
+                ctx_.fft().dismiss();
             }
 
             #ifdef __PRINT_OBJECT_HASH

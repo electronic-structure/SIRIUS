@@ -49,12 +49,12 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
     runtime::Timer t("sirius::Periodic_function::add");
 
     #pragma omp parallel for
-    for (int irloc = 0; irloc < fft_.local_size(); irloc++)
-        f_rg_(irloc) += g->f_rg(irloc);
+    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++)
+        this->f_rg_(irloc) += g->f_rg(irloc);
     
     if (parameters_.full_potential())
     {
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
             f_mt_local_(ialoc) += g->f_mt(ialoc);
     }
 }
@@ -73,7 +73,8 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
             T it_val_t = 0;
             
             #pragma omp for
-            for (int irloc = 0; irloc < fft_.local_size(); irloc++) it_val_t += f_rg_(irloc);
+            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++)
+                it_val_t += this->f_rg_(irloc);
 
             #pragma omp critical
             it_val += it_val_t;
@@ -81,13 +82,11 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
     }
     else
     {
-        for (int irloc = 0; irloc < fft_.local_size(); irloc++)
-        {
-            it_val += f_rg_(irloc) * step_function_.theta_r(irloc);
-        }
+        for (int irloc = 0; irloc < this->fft_->local_size(); irloc++)
+            it_val += this->f_rg_(irloc) * step_function_.theta_r(irloc);
     }
-    it_val *= (unit_cell_.omega() / fft_.size());
-    fft_.comm().allreduce(&it_val, 1);
+    it_val *= (unit_cell_.omega() / this->fft_->size());
+    this->fft_->comm().allreduce(&it_val, 1);
     T total = it_val;
     
     if (parameters_.full_potential())
@@ -116,22 +115,22 @@ template <typename T>
 void Periodic_function<T>::hdf5_write(HDF5_tree h5f)
 {
     if (parameters_.full_potential()) h5f.write("f_mt", f_mt_);
-    h5f.write("f_rg", f_rg_);
-    if (num_gvec_) h5f.write("f_pw", f_pw_);
+    h5f.write("f_rg", this->f_rg_);
+    //if (num_gvec_) h5f.write("f_pw", f_pw_);
 }
 
 template <typename T>
 void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 {
     if (parameters_.full_potential()) h5f.read_mdarray("f_mt", f_mt_);
-    h5f.read_mdarray("f_rg", f_rg_);
-    if (num_gvec_) h5f.read_mdarray("f_pw", f_pw_);
+    h5f.read_mdarray("f_rg", this->f_rg_);
+    //if (num_gvec_) h5f.read_mdarray("f_pw", f_pw_);
 }
 
 template <typename T>
 size_t Periodic_function<T>::size()
 {
-    size_t size = fft_.local_size();
+    size_t size = this->fft_->local_size();
     if (parameters_.full_potential())
     {
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
@@ -161,7 +160,7 @@ size_t Periodic_function<T>::pack(size_t offset__, Mixer<double>* mixer__)
         }
     }
 
-    for (int ir = 0; ir < fft_.local_size(); ir++) mixer__->input(offset__ + n++, f_rg_(ir));
+    for (int ir = 0; ir < this->fft_->local_size(); ir++) mixer__->input(offset__ + n++, this->f_rg_(ir));
 
     return n;
 }
@@ -184,7 +183,7 @@ size_t Periodic_function<T>::unpack(T const* array__)
         }
     }
 
-    for (int ir = 0; ir < fft_.local_size(); ir++) f_rg_(ir) = array__[n++];
+    for (int ir = 0; ir < this->fft_->local_size(); ir++) this->f_rg_(ir) = array__[n++];
 
     return n;
 }
