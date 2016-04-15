@@ -28,6 +28,7 @@
 #include "simulation_context.h"
 #include "mdarray.h"
 #include "spheric_function.h"
+#include "smooth_periodic_function.h"
 #include "mixer.h"
 
 namespace sirius
@@ -48,7 +49,7 @@ namespace sirius
  *   \f]
  */
 template<typename T> 
-class Periodic_function
+class Periodic_function: public Smooth_periodic_function<T>
 { 
     protected:
 
@@ -72,9 +73,9 @@ class Periodic_function
         Communicator const& comm_;
 
         /// Alias for FFT driver.
-        FFT3D& fft_;
+        //FFT3D& fft_;
 
-        Gvec const* gvec_;
+        //Gvec const* gvec_;
 
         /// Local part of muffin-tin functions.
         mdarray<Spheric_function<spectral, T>, 1> f_mt_local_;
@@ -83,7 +84,7 @@ class Periodic_function
         mdarray<T, 3> f_mt_;
 
         /// Regular grid part of periodic function.
-        mdarray<T, 1> f_rg_;
+        //mdarray<T, 1> f_rg_;
 
         /// Plane-wave expansion coefficients
         mdarray<complex_t, 1> f_pw_;
@@ -92,7 +93,7 @@ class Periodic_function
         int angular_domain_size_;
         
         /// Number of plane-wave expansion coefficients
-        int num_gvec_;
+        //int num_gvec_;
 
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
