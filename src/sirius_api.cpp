@@ -370,6 +370,11 @@ void sirius_set_esm_type(char const* name__)
     sim_ctx->set_esm_type(name__);
 }
 
+void sirius_set_gamma_point(ftn_int* gamma_point__)
+{
+    sim_ctx->set_gamma_point(*gamma_point__);
+}
+
 /// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
  *  atom types and atoms into the unit cell.

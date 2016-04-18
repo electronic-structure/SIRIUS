@@ -83,6 +83,11 @@ interface
         character, dimension(*), intent(in) :: esm_name
     end subroutine
 
+    subroutine sirius_set_gamma_point(gamma_point)&
+       &bind(C, name="sirius_set_gamma_point")
+        logical,                 intent(in) :: gamma_point
+    end subroutine
+
     subroutine sirius_set_mpi_grid_dims(ndims, dims)&
        &bind(C, name="sirius_set_mpi_grid_dims")
         integer,                 intent(in) :: ndims
