@@ -9,6 +9,8 @@ void test_fft(double cutoff__)
     FFT3D_grid fft_grid(cutoff__, M);
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+
+    fft.prepare();
     
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), false, false);
 
@@ -65,6 +67,8 @@ void test_fft(double cutoff__)
             }
         }
     }
+
+    fft.dismiss();
 }
 
 //void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_grid_dims__)

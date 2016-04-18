@@ -13,6 +13,8 @@ void test1(vector3d<int> const& dims__, double cutoff__)
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
 
+    fft.prepare();
+
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, false);
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, true);
 
@@ -54,6 +56,8 @@ void test1(vector3d<int> const& dims__, double cutoff__)
         printf("functions are different\n");
         exit(1);
     }
+
+    fft.dismiss();
 }
 
 void test2(vector3d<int> const& dims__, double cutoff__)
@@ -64,6 +68,8 @@ void test2(vector3d<int> const& dims__, double cutoff__)
     FFT3D_grid fft_grid(cutoff__, M);
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+
+    fft.prepare();
 
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, true);
 
@@ -113,6 +119,8 @@ void test2(vector3d<int> const& dims__, double cutoff__)
         diff += std::abs(phi2(i) - phi2_bt(i));
     }
     printf("diff: %18.10f\n", diff);
+
+    fft.dismiss();
 }
 
 int main(int argn, char **argv)
