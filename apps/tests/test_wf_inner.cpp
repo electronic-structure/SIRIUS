@@ -335,6 +335,165 @@ double test_gemm_2(int M, int N, int K, std::vector<int> mpi_grid, int BS)
     return perf;
 }
 
+double test_gemm_3(int M, int N, int K, std::vector<int> mpi_grid, int BS)
+{
+    runtime::Timer t("test_gemm"); 
+
+    int bs = 32;
+    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
+
+    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
+    
+    matrix<double_complex> a(spl_K.local_size(), M);
+    matrix<double_complex> b(spl_K.local_size(), N);
+
+    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
+    c.zero();
+
+    for (int i = 0; i < M; i++)
+    {
+        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
+    }
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
+    }
+
+    mdarray<double_complex, 2> c_tmp(BS * BS, 2);
+    c_tmp.zero();
+
+    int nbr = M / BS + std::min(1, M % BS);
+    int nbc = N / BS + std::min(1, N % BS);
+
+    runtime::Timer tt("gemm_only");
+
+    //std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+    //std::array<std::array<int, 4>, 2> dims;
+
+   /* state of the buffers:
+    * state = 0: buffer is free
+    * state = 1: buffer stores result of local zgemm */
+    int buf_state[] = {0, 0};
+
+
+    omp_set_nested(1);
+    int nt = omp_get_max_threads();
+    if (nt < 2) TERMINATE("minimum two threads are required");
+    double t1, t2;
+    #pragma omp parallel num_threads(2)
+    {
+        if (omp_get_thread_num() == 0)
+        {
+            t1 = -omp_get_wtime();
+            int s = 0;
+            omp_set_num_threads(nt - 1);
+
+            for (int ibc = 0; ibc < nbc; ibc++)
+            {
+                int col0 = ibc * BS;
+                int ncol = std::min(N, (ibc + 1) * BS) - col0;
+
+                for (int ibr = 0; ibr < nbr; ibr++)
+                {
+                    int row0 = ibr * BS;
+                    int nrow = std::min(N, (ibr + 1) * BS) - row0;
+
+                    /* wait for the release of the buffer */
+                    while (true)
+                    {
+                        int st;
+                        #pragma omp critical
+                        st = buf_state[s % 2];
+                        if (st == 0) break;
+                    }
+                    //runtime::Timer t3("local_gemm");
+                    linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                                      a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
+                                      c_tmp.at<CPU>(0, s % 2), nrow);
+                    //t3.stop();
+                    /* lock the buffer */
+                    #pragma omp critical
+                    buf_state[s % 2] = 1;
+
+                    s++;
+
+                }
+            }
+            t1 += omp_get_wtime();
+        }
+        else // thread#1
+        {
+            t2 = -omp_get_wtime();
+
+            int s = 0;
+
+            for (int ibc = 0; ibc < nbc; ibc++)
+            {
+                int col0 = ibc * BS;
+                int ncol = std::min(N, (ibc + 1) * BS) - col0;
+
+                for (int ibr = 0; ibr < nbr; ibr++)
+                {
+                    int row0 = ibr * BS;
+                    int nrow = std::min(N, (ibr + 1) * BS) - row0;
+
+                    /* wait for the release of the buffer */
+                    while (true)
+                    {
+                        int st;
+                        #pragma omp critical
+                        st = buf_state[s % 2];
+                        if (st == 1) break;
+                    }
+                    //runtime::Timer t3("store");
+                    mpi_comm_world().allreduce(c_tmp.at<CPU>(0, s % 2), nrow * ncol);
+
+                    #pragma omp parallel for
+                    for (int icol = 0; icol < ncol; icol++)
+                    {
+                        for (int irow = 0; irow < nrow; irow++)
+                        {
+                            c.set(irow + row0, icol + col0, c_tmp(irow + nrow * icol, s % 2));
+                        }
+                    }
+                    //t3.stop();
+
+                    /* release the buffer */
+                    #pragma omp critical
+                    buf_state[s % 2] = 0;
+
+                    s++;
+                }
+            }
+            t2 += omp_get_wtime();
+        }
+    }
+
+    omp_set_nested(0);
+    omp_set_num_threads(nt);
+
+
+    double tval = tt.stop();
+    double perf = 8e-9 * M * N * K / tval / mpi_comm_world().size();
+
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("execution time (sec) : %12.6f\n", tval);
+        printf("global matrix sizes: %i %i %i\n", M, N, K);
+        printf("number of ranks: %i\n", mpi_comm_world().size());
+        printf("performance (GFlops / rank): %12.6f\n", perf);
+        printf("t1(comp), t2(comm): %f %f\n", t1, t2);
+    }
+    for (int i = 0; i < c.num_cols_local(); i++)
+    {
+        for (int j = 0; j < c.num_rows_local(); j++)
+        {
+            if (std::abs(c(j, i) - 0.01 * K) > 1e-10) TERMINATE("result is wrong");
+        }
+    }
+    return perf;
+}
+
 int main(int argn, char **argv)
 {
     cmd_args args;
@@ -366,7 +525,7 @@ int main(int argn, char **argv)
     //test_reduce_2(M, N, K, mpi_grid);
 
     double perf = 0;
-    for (int i = 0; i < repeat; i++) perf += test_gemm_2(M, N, K, mpi_grid, BS);
+    for (int i = 0; i < repeat; i++) perf += test_gemm_3(M, N, K, mpi_grid, BS);
     if (mpi_comm_world().rank() == 0)
     {
         printf("\n");
