@@ -27,6 +27,7 @@
 
 #include <cstring>
 #include <initializer_list>
+#include <stdexcept>
 #include "vector3d.h"
 
 /// Handling of a 3x3 matrix of numerical data types.
