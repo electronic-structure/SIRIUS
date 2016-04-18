@@ -2167,10 +2167,10 @@ void sirius_get_rho_pw(ftn_int*            num_gvec__,
  *  \param [in] rho_pw plane-wave expansion coefficients of density
  *  \param [in] fcomm MPI communicator used in distribution of G-vectors
  */
-void sirius_set_rho_pw(ftn_int*        num_gvec__,
-                       ftn_int*        gvec__,
-                       double_complex* rho_pw__,
-                       ftn_int*        fcomm__)
+void sirius_set_rho_pw(ftn_int*            num_gvec__,
+                       ftn_int*            gvec__,
+                       ftn_double_complex* rho_pw__,
+                       ftn_int*            fcomm__)
 
 {
     PROFILE();
@@ -2188,8 +2188,10 @@ void sirius_set_rho_pw(ftn_int*        num_gvec__,
 
     Communicator comm(MPI_Comm_f2c(*fcomm__));
     comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
-
+    
+    sim_ctx->fft().prepare();
     density->rho()->fft_transform(1);
+    sim_ctx->fft().dismiss();
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
