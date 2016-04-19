@@ -152,7 +152,7 @@ class Simulation_context: public Simulation_parameters
         {
             PROFILE();
 
-            time_active_ += Utils::current_time();
+            time_active_ += runtime::wtime();
 
             if (mpi_comm_world().rank() == 0 && initialized_)
             {

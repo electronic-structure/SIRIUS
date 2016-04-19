@@ -792,7 +792,7 @@ void Atom_symmetry_class::generate_radial_integrals()
     }
 }
 
-void Atom_symmetry_class::write_enu(pstdout& pout) const
+void Atom_symmetry_class::write_enu(runtime::pstdout& pout) const
 {
     pout.printf("Atom : %s, class id : %i\n", atom_type_.symbol().c_str(), id_); 
     pout.printf("augmented waves\n");

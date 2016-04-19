@@ -233,7 +233,7 @@ void K_set::print_info()
 
     if (ctx_.blacs_grid().comm().rank() == 0)
     {
-        pstdout pout(comm_k_);
+        runtime::pstdout pout(comm_k_);
         for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
         {
             int ik = spl_num_kpoints(ikloc);

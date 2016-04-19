@@ -132,7 +132,7 @@ class Atom_symmetry_class
 
         void find_enu();
 
-        void write_enu(pstdout& pout) const;
+        void write_enu(runtime::pstdout& pout) const;
         
         /// Generate radial overlap and SO integrals
         /** In the case of spin-orbit interaction the following integrals are computed:
