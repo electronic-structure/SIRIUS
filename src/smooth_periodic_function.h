@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -23,237 +23,207 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
+#ifndef __SMOOTH_PERIODIC_FUNCTION_H__
+#define __SMOOTH_PERIODIC_FUNCTION_H__
+
 namespace sirius {
 
-/// Smooth periodic function on the real-space mesh or plane-wave domain.
+/// Smooth periodic function on the regular real-space grid or in plane-wave domain.
 /** Main purpose of this class is to provide a storage and representation of a smooth (Fourier-transformable)
- *  periodic function. The function is stored as a set of values on the regular grid (function_domain_t = spatial) or
- *  a set of plane-wave coefficients (function_domain_t = spectral).
+ *  periodic function.
  */
-template <function_domain_t domain_t, typename T>
+template <typename T>
 class Smooth_periodic_function
 {
-    private:
-        
-        mdarray<T, 1> data_;
+    protected:
 
+        /// FFT driver.
         FFT3D* fft_;
 
-        Gvec const* gvec_;
+        /// Distribution of G-vectors.
+        Gvec_FFT_distribution const* gvec_fft_distr_;
+        
+        /// Function on the regular real-space grid.
+        mdarray<T, 1> f_rg_;
+        
+        /// Local set of plane-wave expansion coefficients.
+        mdarray<double_complex, 1> f_pw_local_;
 
     public:
 
         Smooth_periodic_function() 
             : fft_(nullptr),
-              gvec_(nullptr)
+              gvec_fft_distr_(nullptr)
         {
+        }
+
+        Smooth_periodic_function(FFT3D& fft__)
+            : fft_(&fft__),
+              gvec_fft_distr_(nullptr)
+        {
+            f_rg_ = mdarray<T, 1>(fft_->local_size());
+        }
+
+        Smooth_periodic_function(FFT3D& fft__, Gvec_FFT_distribution const& gvec_fft_distr__)
+            : fft_(&fft__),
+              gvec_fft_distr_(&gvec_fft_distr__)
+        {
+            f_rg_ = mdarray<T, 1>(fft_->local_size());
+            f_pw_local_ = mdarray<double_complex, 1>(gvec_fft_distr_->num_gvec_fft());
+        }
+
+        inline T& f_rg(int ir__)
+        {
+            return f_rg_(ir__);
+        }
+
+        inline T const& f_rg(int ir__) const
+        {
+            return f_rg_(ir__);
         }
         
-        Smooth_periodic_function(T* ptr__, FFT3D* fft__, Gvec const* gvec__) 
-            : fft_(fft__),
-              gvec_(gvec__)
+        inline double_complex& f_pw_local(int ig__)
         {
-            if (domain_t == spatial)
-            {
-                data_ = mdarray<T, 1>(ptr__, fft_->local_size());
-            }
+            return f_pw_local_(ig__);
         }
 
-        Smooth_periodic_function(FFT3D* fft__, Gvec const* gvec__) 
-            : fft_(fft__),
-              gvec_(gvec__)
+        FFT3D& fft()
         {
-            switch (domain_t)
+            assert(fft_ != nullptr);
+            return *fft_;
+        }
+
+        FFT3D const& fft() const
+        {
+            assert(fft_ != nullptr);
+            return *fft_;
+        }
+
+        Gvec_FFT_distribution const& gvec_fft_distr() const
+        {
+            assert(gvec_fft_distr_ != nullptr);
+            return *gvec_fft_distr_;
+        }
+
+        void fft_transform(int direction__)
+        {
+            runtime::Timer t("sirius::Smooth_periodic_function::fft_transform");
+
+            assert(gvec_fft_distr_ != nullptr);
+
+            switch (direction__)
             {
-                case spectral:
+                case 1:
                 {
-                    data_ = mdarray<T, 1>(gvec_->num_gvec());
+                    fft_->transform<1>(gvec_fft_distr(), &f_pw_local_(0));
+                    fft_->output(&f_rg_(0));
                     break;
                 }
-                case spatial:
+                case -1:
                 {
-                    data_ = mdarray<T, 1>(fft_->local_size());
+                    fft_->input(&f_rg_(0));
+                    fft_->transform<-1>(gvec_fft_distr(), &f_pw_local_(0));
                     break;
                 }
+                default:
+                {
+                    TERMINATE("wrong fft direction");
+                }
             }
-        }
-
-        inline T& operator()(const int64_t idx__)
-        {
-            return data_(idx__);
-        }
-
-        inline size_t size()
-        {
-            return data_.size(0);
-        }
-
-        inline void zero()
-        {
-            data_.zero();
-        }
-
-        inline FFT3D* fft()
-        {
-            return fft_;
-        }
-
-        inline Gvec const* gvec() const
-        {
-            return gvec_;
         }
 };
 
-/// Transform funciton from real-space grid to plane-wave harmonics. 
-template<typename T>
-Smooth_periodic_function<spectral, double_complex> transform(Smooth_periodic_function<spatial, T>& f)
-{
-    auto fft = f.fft();
-    assert(fft != nullptr);
-
-    auto gvec = f.gvec();
-
-    Smooth_periodic_function<spectral, double_complex> g(fft, gvec);
-
-    STOP();
-        
-    //== fft->input(&f(0));
-    //== //fft->transform(-1);
-    //== fft->transform(-1, gvec->z_sticks_coord());
-    //== fft->output(gvec->num_gvec_loc(), gvec->index_map(), &g(gvec->gvec_offset()));
-    //== fft->comm().allgather(&g(0), gvec->gvec_offset(), gvec->num_gvec_loc());
-
-    return g;
-}
-
-/// Transform function from plane-wave domain to real-space grid.
-template<typename T>
-Smooth_periodic_function<spatial, T> transform(Smooth_periodic_function<spectral, double_complex>& f)
-{
-    auto fft = f.fft();
-    assert(fft != nullptr);
-
-    auto gvec = f.gvec();
-
-    Smooth_periodic_function<spatial, T> g(fft, gvec);
-    
-    STOP();
-    //fft->input(gvec->num_gvec_loc(), gvec->index_map(), &f(gvec->gvec_offset()));
-    //fft->transform(1, gvec->z_sticks_coord());
-    //fft->transform(1);
-    //fft->output(&g(0));
-    
-    return g; 
-}
-
-inline Smooth_periodic_function<spectral, double_complex> laplacian(Smooth_periodic_function<spectral, double_complex>& f)
-{
-    auto fft = f.fft();
-    auto gvec = f.gvec();
-
-    Smooth_periodic_function<spectral, double_complex> g(fft, gvec);
-    
-    #pragma omp parallel for schedule(static)
-    for (int ig = 0; ig < gvec->num_gvec(); ig++)
-    {
-        auto G = gvec->cart(ig);
-        g(ig) = f(ig) * double_complex(-std::pow(G.length(), 2), 0);
-    }
-    return g;
-}
-
 /// Gradient of the smooth periodic function.
-template<function_domain_t domaint_t, typename T = double_complex>
+template<typename T>
 class Smooth_periodic_function_gradient
 {
     private:
+        
+        Smooth_periodic_function<T>* f_;
 
-        std::array<Smooth_periodic_function<domaint_t, T>, 3> grad_;
-
-        FFT3D* fft_;
+        std::array<Smooth_periodic_function<T>, 3> grad_f_;
 
     public:
 
-        Smooth_periodic_function_gradient() : fft_(nullptr)
+        Smooth_periodic_function_gradient() : f_(nullptr)
         {
         }
 
-        Smooth_periodic_function_gradient(FFT3D* fft__) : fft_(fft__)
+        Smooth_periodic_function_gradient(Smooth_periodic_function<T>& f__) : f_(&f__)
         {
-            assert(fft__ != nullptr);
+            for (int x: {0, 1, 2}) grad_f_[x] = Smooth_periodic_function<T>(f_->fft(), f_->gvec_fft_distr());
         }
 
-        Smooth_periodic_function<domaint_t, T>& operator[](const int idx__)
+        Smooth_periodic_function<T>& operator[](const int idx__)
         {
-            return grad_[idx__];
+            return grad_f_[idx__];
         }
 
-        inline FFT3D* fft()
+        Smooth_periodic_function<T>& f()
         {
-            return fft_;
+            assert(f_ != nullptr);
+
+            return *f_;
         }
 };
 
-template<typename T>
-Smooth_periodic_function_gradient<spatial, T> transform(Smooth_periodic_function_gradient<spectral, double_complex>& f)
+/// Gradient of the function in the plane-wave domain.
+inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_function<double>& f__)
 {
-    auto fft = f.fft();
-    assert(fft != nullptr);
+    Smooth_periodic_function_gradient<double> g(f__);
 
-    Smooth_periodic_function_gradient<spatial, T> g(fft);
-
-    for (int x: {0, 1, 2}) g[x] = transform<T>(f[x]);
-
-    return g; 
-}
-        
-inline Smooth_periodic_function_gradient<spectral, double_complex> gradient(Smooth_periodic_function<spectral, double_complex>& f)
-{
-    auto fft = f.fft();
-    assert(fft != nullptr);
-
-    auto gvec = f.gvec();
-
-    Smooth_periodic_function_gradient<spectral, double_complex> g(fft);
-
-    for (int x: {0, 1, 2}) g[x] = Smooth_periodic_function<spectral, double_complex>(fft, gvec);
-    
-    #pragma omp parallel for schedule(static)
-    for (int ig = 0; ig < gvec->num_gvec(); ig++)
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < f__.gvec_fft_distr().num_gvec_fft(); igloc++)
     {
-        auto G = gvec->cart(ig);
-        for (int x: {0, 1, 2}) g[x](ig) = f(ig) * double_complex(0, G[x]); 
+        int ig = f__.gvec_fft_distr().offset_gvec_fft() + igloc;
+
+        auto G = f__.gvec_fft_distr().gvec().cart(ig);
+        for (int x: {0, 1, 2}) g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
     }
-    return g;
+    return std::move(g);
+}
+
+/// Laplacian of the function in the plane-wave domain.
+inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
+{
+    Smooth_periodic_function<double> g(f__.fft(), f__.gvec_fft_distr());
+    
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < f__.gvec_fft_distr().num_gvec_fft(); igloc++)
+    {
+        int ig = f__.gvec_fft_distr().offset_gvec_fft() + igloc;
+
+        auto G = f__.gvec_fft_distr().gvec().cart(ig);
+        g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
+    }
+
+    return std::move(g);
 }
 
 template <typename T>
-Smooth_periodic_function<spatial, T> operator*(Smooth_periodic_function_gradient<spatial, T>& f, 
-                                               Smooth_periodic_function_gradient<spatial, T>& g)
-
+Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad_f__, 
+                                      Smooth_periodic_function_gradient<T>& grad_g__)
 
 {
-    size_t size = f[0].size();
+    assert(&grad_f__.f().fft() == &grad_g__.f().fft());
+    assert(&grad_f__.f().gvec_fft_distr() == &grad_g__.f().gvec_fft_distr());
+    
+    Smooth_periodic_function<T> result(grad_f__.f().fft());
 
-    for (int x: {0, 1, 2})
+    #pragma omp parallel for
+    for (int ir = 0; ir < grad_f__.f().fft().local_size(); ir++)
     {
-        if (f[x].size() != size || g[x].size() != size) TERMINATE("wrong size");
-    }
-
-    assert(f.fft() != nullptr);
-    Smooth_periodic_function<spatial, T> result(f.fft(), f[0].gvec());
-    result.zero();
-
-    for (int x: {0, 1, 2})
-    {
-        #pragma omp parallel for schedule(static)
-        for (int ir = 0; ir < (int)size; ir++)
+        double d = 0;
+        for (int x: {0, 1, 2})
         {
-            result(ir) += f[x](ir) * g[x](ir);
+            d += grad_f__[x].f_rg(ir) * grad_g__[x].f_rg(ir);
         }
+        result.f_rg(ir) = d;
     }
 
-    return result;
+    return std::move(result);
 }
 
 }
+
+#endif // __SMOOTH_PERIODIC_FUNCTION_H__

@@ -39,7 +39,7 @@ void Potential::poisson_sum_G(int lmmax__,
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
-                int ig = (int)spl_num_gvec_[igloc];
+                int ig = spl_num_gvec_[igloc];
                 for (int i = 0; i < na; i++)
                 {
                     int ia = unit_cell_.atom_type(iat).atom_id(i);
@@ -68,7 +68,7 @@ void Potential::poisson_sum_G(int lmmax__,
         auto gvec = mdarray<int, 2>(3, ngv_loc);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[(int)spl_num_gvec_[igloc]][x];
+            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[spl_num_gvec_[igloc]][x];
         }
         gvec.allocate_on_device();
         gvec.copy_to_device();
@@ -99,7 +99,7 @@ void Potential::poisson_sum_G(int lmmax__,
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
-                int ig = (int)spl_num_gvec_[igloc];
+                int ig = spl_num_gvec_[igloc];
                 for (int lm = 0; lm < lmmax__; lm++)
                 {
                     int l = l_by_lm_[lm];
@@ -383,7 +383,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     }
     
     /* transform Hartree potential to real space */
-    vh->fft_transform(1, ctx_.gvec_fft_distr());
+    vh->fft_transform(1);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(vha_rg): %20.14f", vh->checksum_rg());
@@ -393,13 +393,13 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     #endif
     
     /* compute contribution from the smooth part of Hartree potential */
-    energy_vha_ = Periodic_function<double>::inner(rho, vh);
+    energy_vha_ = rho->inner(vh);
         
     /* add nucleus potential and contribution to Hartree energy */
     if (ctx_.full_potential())
     {
         double evha_nuc_ = 0;
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             auto& atom = unit_cell_.atom(ia);

@@ -5,7 +5,7 @@ namespace sirius {
 void Density::generate_valence(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::generate_valence");
-    
+
     double wt = 0.0;
     double ot = 0.0;
     for (int ik = 0; ik < ks__.num_kpoints(); ik++)
@@ -48,6 +48,8 @@ void Density::generate_valence(K_set& ks__)
     /* zero density and magnetization */
     zero();
 
+    ctx_.fft().prepare();
+
     /* interstitial part is independent of basis type */
     generate_valence_density_it(ks__);
 
@@ -86,11 +88,13 @@ void Density::generate_valence(K_set& ks__)
     //== printf("number of electrons: %f\n", nel);
     
     /* get rho(G) and mag(G) */
-    rho_->fft_transform(-1, ctx_.gvec_fft_distr());
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1, ctx_.gvec_fft_distr());
+    rho_->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 
     //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
     //== STOP();
+
+    ctx_.fft().dismiss();
 
     if (ctx_.esm_type() == ultrasoft_pseudopotential) augment(ks__);
 }

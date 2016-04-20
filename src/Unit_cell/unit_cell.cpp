@@ -755,7 +755,7 @@ void Unit_cell::generate_radial_functions()
     }
 
     #if (__VERBOSITY > 0) 
-    pstdout pout(comm_);
+    runtime::pstdout pout(comm_);
     
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
     {

@@ -73,10 +73,11 @@ FFT3D::FFT3D(FFT3D_grid          grid__,
              double              gpu_workload)
     : comm_(comm__),
       pu_(pu__),
-      grid_(grid__)
+      grid_(grid__),
       #ifdef __GPU
-      ,cufft_nbatch_(0)
+      cufft_nbatch_(0),
       #endif
+      prepared_(false)
 {
     PROFILE();
 
@@ -672,6 +673,8 @@ void FFT3D::transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, 
 template <int direction>
 void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__)
 {
+    if (!prepared_) TERMINATE("FFT3D is not ready");
+
     TIMER("sirius::FFT3D::transform");
 
     /* reallocate auxiliary buffer if needed */
@@ -765,6 +768,8 @@ void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_comp
 template <int direction>
 void FFT3D::transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data1__, double_complex* data2__)
 {
+    if (!prepared_) TERMINATE("FFT3D is not ready");
+
     TIMER("sirius::FFT3D::transform");
 
     if (!gvec_fft_distr__.gvec().reduced()) TERMINATE("reduced set of G-vectors is required");

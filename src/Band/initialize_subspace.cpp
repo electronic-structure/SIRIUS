@@ -52,23 +52,16 @@ void Band::initialize_subspace(K_point* kp__,
         }
     }
 
-    /* fill the remaining basis functions with random numbers */
+    /* fill the remaining basis functions with single PW harmonics */
     #pragma omp parallel for
     for (int i = num_ao__; i < num_phi; i++)
     {
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-            phi(igk_loc, i) = 0;
-
-        auto G = kp__->gkvec()[i];
-
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
         {
+            phi(igk_loc, i) = 0;
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
-            auto G1 = kp__->gkvec()[igk];
-
-            if (G[0] == G1[0] && G[1] == G1[1] && G[2] == G1[2]) phi(igk_loc, i) = 1;
-            if (G[0] == -G1[0] && G[1] == -G1[1] && G[2] == -G1[2]) phi(igk_loc, i) = 1;
+            if (igk == i) phi(igk_loc, i) = 1;
         }
     }
 

@@ -192,7 +192,7 @@ void Simulation_context::initialize()
             augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
     }
     
-    time_active_ = -Utils::current_time();
+    time_active_ = -runtime::wtime();
 
     initialized_ = true;
 }

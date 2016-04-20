@@ -209,7 +209,7 @@ class Communicator
         }
 
         template <typename T>
-        inline void ireduce(T* buffer__, int count__, int root__, MPI_Request* req__) const
+        inline void reduce(T* buffer__, int count__, int root__, MPI_Request* req__) const
         {
             if (root__ == rank())
             {
@@ -225,6 +225,12 @@ class Communicator
         void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__) const
         {
             CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_));
+        }
+
+        template <typename T>
+        void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__, MPI_Request* req__) const
+        {
+            CALL_MPI(MPI_Ireduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_, req__));
         }
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.

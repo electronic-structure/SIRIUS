@@ -304,7 +304,7 @@ class Density
 
         void generate_pw_coefs()
         {
-            rho_->fft_transform(-1, ctx_.gvec_fft_distr());
+            rho_->fft_transform(-1);
         }
          
         void save()
@@ -334,18 +334,6 @@ class Density
             return s;
         }
 
-        inline void pack(Mixer<double>* mixer__)
-        {
-            size_t n = rho_->pack(0, mixer__);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
-        }
-
-        inline void unpack(double const* buffer__)
-        {
-            size_t n = rho_->unpack(buffer__);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
-        }
-        
         Periodic_function<double>* rho()
         {
             return rho_;
@@ -381,7 +369,8 @@ class Density
         {
             if (mixer_ != nullptr)
             {
-                pack(mixer_);
+                size_t n = rho_->pack(0, mixer_);
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer_);
             }
             else
             {
@@ -409,7 +398,8 @@ class Density
         {
             if (mixer_ != nullptr)
             {
-                unpack(mixer_->output_buffer());
+                size_t n = rho_->unpack(mixer_->output_buffer());
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&mixer_->output_buffer()[n]);
             }
             else
             {
@@ -459,7 +449,8 @@ class Density
                 mixer_input();
                 rms = mixer_->mix();
                 mixer_output();
-                rho_->fft_transform(-1, ctx_.gvec_fft_distr());
+                /* get rho(G) after mixing */
+                rho_->fft_transform(-1);
             }
             else
             {
@@ -468,8 +459,10 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                rho_->fft_transform(1, ctx_.gvec_fft_distr());
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1, ctx_.gvec_fft_distr());
+                ctx_.fft().prepare();
+                rho_->fft_transform(1);
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
+                ctx_.fft().dismiss();
             }
 
             return rms;
