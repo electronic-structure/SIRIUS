@@ -45,7 +45,12 @@ void Band::diag_h_o<double_complex>(K_point* kp__,
         result = gen_evp_solver()->solve(N__, num_bands__, hmlt__.at<CPU>(), hmlt__.ld(), ovlp__.at<CPU>(), ovlp__.ld(),
                                          &eval__[0], evec__.at<CPU>(), evec__.ld());
     }
-    if (result) TERMINATE("error in diagonalziation");
+    if (result)
+    {
+        std::stringstream s;
+        s << "error in diagonalziation for k-point (" << kp__->vk()[0] << " " << kp__->vk()[1] << " " << kp__->vk()[2] << ")";
+        TERMINATE(s);
+    }
     t2.stop();
 
     runtime::Timer t3("sirius::Band::diag_h_o|gather");
