@@ -5,7 +5,7 @@
     "gen_evp_solver_type" : "lapack",
     "num_fv_states" : 40,
     "electronic_structure_method" : "ultrasoft_pseudopotential",
-
+    
     "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
     "iterative_solver" : {
@@ -16,26 +16,26 @@
         "type" : "davidson",
         "converge_by_energy" : 1
     },
-
+    
     "smearing_width" : 0.025,
-
+    
     "use_symmetry" : 1,
-
+    
     "num_mag_dims" : 0,
-
+    
     "gk_cutoff" : 6.0,
     "pw_cutoff" : 20.00,
-
+    
     "energy_tol" : 1e-10,
-
+    
     "num_dft_iter" : 100,
-
+    
     "ngridk" : [2,2,2],
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1, 0, 0],
-                              [0, 1, 0],
+        "lattice_vectors" : [ [1, 0, 0], 
+                              [0, 1, 0], 
                               [0, 0, 1]
                             ],
         "lattice_vectors_scale" : 7.260327248,
@@ -43,9 +43,9 @@
         "atom_types" : ["Sr", "V", "O"],
 
         "atom_files" : {
-            "Sr" : "Sr.pz-spn-rrkjus_psl.0.2.3.UPF.json",
-            "V"  : "V.pz-spn-rrkjus_psl.0.2.3.UPF.json",
-            "O"  : "O.pz-n-rrkjus_psl.0.1.UPF.json"
+            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
+            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
+            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
         },
 
         "atoms" : {
@@ -55,14 +55,14 @@
             "V" : [
                 [0, 0, 0, 0, 0, 4]
             ],
-            "O" : [
+            "O" : [ 
                 [0.5, 0.0, 0.0],
                 [0.0, 0.5, 0.0],
                 [0.0, 0.0, 0.5]
             ]
         }
     },
-
+    
     "mixer" : {
         "beta" : 0.95,
         "type" : "broyden1",

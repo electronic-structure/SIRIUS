@@ -1,6 +1,7 @@
 #include "density.h"
 
-namespace sirius {
+namespace sirius
+{
 
 void Density::generate_valence_density_mt(K_set& ks)
 {
@@ -185,6 +186,15 @@ void Density::generate_valence_density_mt(K_set& ks)
             }
         }
     }
+}
+
+
+
+
+
+void Density::generate_paw_local_density()
+{
+
 }
 
 };

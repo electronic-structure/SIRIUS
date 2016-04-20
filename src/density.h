@@ -119,6 +119,8 @@ class Density
         /// density matrix of the system
         mdarray<double_complex, 4> density_matrix_;
 
+//        mdarray<double_complex, 2> local_density_;
+
         /// number of spin components for density matrix (can differ from total number of spin components due to symmetry)
         int ndm_;
 
@@ -206,6 +208,12 @@ class Density
 
         void generate_pseudo_core_charge_density();
 
+        /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used also for PAW)
+        void initialize_beta_density_matrix();
+
+        /// generate n_1 and \tilda{n}_1 in lm components
+        void generate_paw_local_density();
+
     public:
 
         /// Constructor
@@ -250,6 +258,10 @@ class Density
 
         /// Generate initial charge density and magnetization
         void initial_density();
+
+        void initial_density_pdeudo();
+
+        void initial_density_full_pot();
 
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
         void generate(K_set& ks__);

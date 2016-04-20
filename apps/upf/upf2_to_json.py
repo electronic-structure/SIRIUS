@@ -192,6 +192,11 @@ def parse_PAW(upf_dict, root):
     for i in range(size):
         upf_dict['paw_data']['ae_local_potential'] = [float(e) for e in str.split(node.text)]
 
+
+
+####################################################
+############# Read starting wave functions #########
+####################################################
 def parse_pswfc(upf_dict, root):
     #if upf_dict['header']['pseudo_type'] != 'NC': return
 
@@ -203,6 +208,7 @@ def parse_pswfc(upf_dict, root):
         wfc['radial_function'] = [float(e) for e in str.split(node.text)]
         wfc['angular_momentum'] = int(node.attrib['l'])
         wfc['label'] = node.attrib['label']
+        wfc['occupation'] = float(node.attrib['occupation'])
         upf_dict['atomic_wave_functions'].append(wfc)
 
 ######################################################

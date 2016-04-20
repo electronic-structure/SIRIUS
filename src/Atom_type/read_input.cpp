@@ -251,6 +251,7 @@ void Atom_type::read_pseudo_uspp(JSON_tree& parser)
 		}
 	}
 
+	//---- read starting wave functions ( UPF CHI ) ----
 	if (parser["pseudo_potential"].exist("atomic_wave_functions"))
 	{
 		int nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
@@ -269,6 +270,11 @@ void Atom_type::read_pseudo_uspp(JSON_tree& parser)
 			}
 			parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"] >> wf.first;
 			uspp_.atomic_pseudo_wfs_.push_back(wf);
+
+			// read occupation of the function
+			double occ;
+			parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"] >> occ;
+			uspp_.atomic_pseudo_wfs_occ_.push_back(occ);
 		}
 	}
 
@@ -309,10 +315,6 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 	paw_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
 	paw_.pseudo_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
 
-	// angular momentum array
-	paw_.ae_wfc_l.resize(num_wfc);
-	paw_.ps_wfc_l.resize(num_wfc);
-
 
 	//---- read ae and ps wave functions ---
 	for(int i=0;i<num_wfc;i++)
@@ -333,9 +335,6 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 
 		std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
 
-		// read ae moment
-		parser["pseudo_potential"]["paw_data"]["ae_wfc"][i]["angular_momentum"] >> paw_.ae_wfc_l[i];
-
 		// --- read ps wave func ---
 		wfc.clear();
 
@@ -351,9 +350,6 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 		}
 
 		std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
-
-		// read ps moment
-		parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["angular_momentum"] >> paw_.ps_wfc_l[i];
 	}
 }
 

@@ -271,7 +271,7 @@ class Simulation_parameters
         }
 
         inline void set_esm_type(std::string name__)
-        {
+        {std::cout<<name__<<std::endl;
             if (name__ == "full_potential_lapwlo")
             {
                 esm_type_ = full_potential_lapwlo;
@@ -283,10 +283,14 @@ class Simulation_parameters
             else if (name__ == "ultrasoft_pseudopotential")
             {
                 esm_type_ = ultrasoft_pseudopotential;
-            } 
+            }
             else if (name__ == "norm_conserving_pseudopotential")
             {
                 esm_type_ = norm_conserving_pseudopotential;
+            }
+            else if (name__ == "paw_pseudopotential")
+            {
+            	esm_type_ = paw_pseudopotential;
             }
             else
             {

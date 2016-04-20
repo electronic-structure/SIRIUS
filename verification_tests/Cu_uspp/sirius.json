@@ -17,54 +17,44 @@
         "converge_by_energy" : 1
     },
 
-    "smearing_width" : 0.025,
+    "smearing_width" : 0.02,
 
     "use_symmetry" : 1,
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 6.0,
-    "pw_cutoff" : 20.00,
+    "gk_cutoff" : 10.0,
+    "pw_cutoff" : 30.00,
 
-    "energy_tol" : 1e-10,
+    "energy_tol" : 1e-8,
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [2,2,2],
+    "ngridk" : [8,8,8],
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1, 0, 0],
-                              [0, 1, 0],
-                              [0, 0, 1]
+        "lattice_vectors" : [ [0, 0.5, 0.5],
+                              [0.5, 0, 0.5],
+                              [0.5, 0.5, 0]
                             ],
-        "lattice_vectors_scale" : 7.260327248,
+        "lattice_vectors_scale" : 6.73,
 
-        "atom_types" : ["Sr", "V", "O"],
+        "atom_types" : ["Cu"],
 
         "atom_files" : {
-            "Sr" : "Sr.pz-spn-rrkjus_psl.0.2.3.UPF.json",
-            "V"  : "V.pz-spn-rrkjus_psl.0.2.3.UPF.json",
-            "O"  : "O.pz-n-rrkjus_psl.0.1.UPF.json"
+            "Cu" : "Cu.pz-dn-rrkjus_psl.0.2.UPF.json"
         },
 
         "atoms" : {
-            "Sr" : [
-                [0.5, 0.5, 0.5]
-            ],
-            "V" : [
-                [0, 0, 0, 0, 0, 4]
-            ],
-            "O" : [
-                [0.5, 0.0, 0.0],
-                [0.0, 0.5, 0.0],
-                [0.0, 0.0, 0.5]
+            "Cu" : [
+                [0.0, 0.0, 0.0]
             ]
         }
     },
 
     "mixer" : {
-        "beta" : 0.95,
+        "beta" : 0.7,
         "type" : "broyden1",
         "max_history" : 8
     }

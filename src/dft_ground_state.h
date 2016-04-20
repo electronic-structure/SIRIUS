@@ -202,6 +202,9 @@ class DFT_ground_state
                     potential_->generate_effective_potential(density_->rho(), density_->magnetization());
                     break;
                 }
+
+                //TODO case paw_pseudopotential think about
+                case paw_pseudopotential:
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {

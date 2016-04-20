@@ -128,6 +128,9 @@ public:
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector< std::pair<int, std::vector<double> > > atomic_pseudo_wfs_;
     
+    /// occupation of starting wave functions
+    std::vector< double > atomic_pseudo_wfs_occ_;
+
     bool is_initialized;
     
 };
