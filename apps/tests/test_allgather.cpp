@@ -15,7 +15,7 @@ void test_allgather()
     }
 
     {
-        pstdout pout(mpi_comm_world());
+        runtime::pstdout pout(mpi_comm_world());
         if (mpi_comm_world().rank() == 0) pout.printf("before\n");
         pout.printf("rank : %i array : ", mpi_comm_world().rank());
         for (int i = 0; i < N; i++)

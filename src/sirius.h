@@ -132,7 +132,7 @@
  *       
  *  Problem: all 'standard' naming conventions are not satisfactory. For example, we have a class 
  *  which does a DFT ground state. Following the common naming conventions it could be named like this:
- *  DftGroundState, DFTGroundState, dft_ground_state. Last two are bad, because DFT (and not Dft or dft)
+ *  DFTGroundState, DftGroundState, dft_ground_state. Last two are bad, because DFT (and not Dft or dft)
  *  is a well recognized abbreviation. First one is band because capital G adds to DFT and we automaticaly
  *  read DFTG round state.
  *  
