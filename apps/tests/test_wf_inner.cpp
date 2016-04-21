@@ -61,6 +61,7 @@ double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
     mdarray<double_complex, 2> c_tmp(M, N);
     c_tmp.zero();
     
+    mpi_comm_world().barrier();
     double t0 = omp_get_wtime();
     
     linalg<CPU>::gemm(2, 0, M, N, spl_K.local_size(), a, b, c_tmp);
@@ -80,6 +81,7 @@ double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
         }
     }
 
+    mpi_comm_world().barrier();
     double t3 = omp_get_wtime();
 
     double perf = 8e-9 * M * N * K / (t3 - t0) / mpi_comm_world().size();
@@ -131,6 +133,7 @@ double wf_inner_reduce_to_one(int M, int N, int K, std::vector<int> mpi_grid)
     mdarray<double_complex, 2> b_tmp(spl_K.local_size(), c.num_cols_local(0));
     b_tmp.zero();
     
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
     double tcomm{0}, tcomp{0}, tcopy{0};
     for (int rank_col = 0; rank_col < mpi_grid[1]; rank_col++)
@@ -160,6 +163,7 @@ double wf_inner_reduce_to_one(int M, int N, int K, std::vector<int> mpi_grid)
             tcomm += (t4 - t3);
         }
     }
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
@@ -220,6 +224,7 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
 
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
     double tcomm{0}, tcomp{0}, tcopy{0};
 
@@ -269,6 +274,7 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
     double t3 = omp_get_wtime();
     tcomm += (t3 - t2);
 
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
@@ -415,6 +421,7 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
 
     double tcomm{0}, tcomp{0}, tstore{0};
     
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
     int s = 0;
     for (int ibc = 0; ibc < nbc; ibc++)
@@ -482,6 +489,7 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
             tstore += (omp_get_wtime() - t);
         }
     }
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
@@ -547,6 +555,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
     int nt = omp_get_max_threads();
     if (nt < 2) TERMINATE("minimum two threads are required");
 
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
     double tcomp{0}, tcomm{0}, tstore{0};
 
@@ -630,6 +639,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
         }
     }
 
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     omp_set_nested(0);
@@ -701,6 +711,7 @@ double wf_inner_overlap_allreduce_async_omp(int M, int N, int K, std::vector<int
     if (nt < 2) TERMINATE("minimum two threads are required");
     double t1, t2;
 
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
 
     #pragma omp parallel num_threads(2)
@@ -776,6 +787,7 @@ double wf_inner_overlap_allreduce_async_omp(int M, int N, int K, std::vector<int
         }
     }
 
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     omp_set_nested(0);
@@ -843,6 +855,7 @@ double wf_inner_overlap_allreduce_pt(int M, int N, int K, std::vector<int> mpi_g
 
     omp_set_num_threads(nt - 1);
 
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
 
     std::thread work_thread([nbr, nbc, M, N, BS, &buf_lock, &a, &b, &c_tmp, &spl_K]()
@@ -912,6 +925,7 @@ double wf_inner_overlap_allreduce_pt(int M, int N, int K, std::vector<int> mpi_g
 
     omp_set_num_threads(nt);
 
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
@@ -979,6 +993,7 @@ double wf_inner_overlap_allreduce_async_pt(int M, int N, int K, std::vector<int>
 
     omp_set_num_threads(nt - 1);
 
+    mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
 
     std::thread work_thread([nbr, nbc, M, N, BS, &buf_lock, &a, &b, &c_tmp, &spl_K, &req, &dims]()
@@ -1058,6 +1073,7 @@ double wf_inner_overlap_allreduce_async_pt(int M, int N, int K, std::vector<int>
     //    }
     //}
 
+    mpi_comm_world().barrier();
     t0 += omp_get_wtime();
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
