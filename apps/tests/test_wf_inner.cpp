@@ -642,8 +642,13 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
     return perf;
 }
 
-double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
+double wf_inner_overlap_allreduce_pt(int M, int N, int K, std::vector<int> mpi_grid, int BS)
 {
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("=== wf_inner_overlap_allreduce_pt ===\n");
+    }
+
     int bs = 32;
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
 
@@ -683,8 +688,6 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
 
     std::thread work_thread([nbr, nbc, M, N, BS, &buf_lock, &a, &b, &c_tmp, &spl_K]()
     {
-        double tlock = 0;
-
         int s = 0;
 
         for (int ibc = 0; ibc < nbc; ibc++)
@@ -697,10 +700,8 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
                 int row0 = ibr * BS;
                 int nrow = std::min(M, (ibr + 1) * BS) - row0;
 
-                double t = omp_get_wtime();
                 /* wait for the release of the buffer */
                 while (buf_lock[s % 2].load());
-                tlock += (omp_get_wtime() - t);
 
                 linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                                   a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
@@ -711,13 +712,11 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
                 s++;
             }
         }
-        printf("work_thread_lock_time: %f\n", tlock);
     });
 
     std::thread comm_thread([nbr, nbc, M, N, BS, &buf_lock, &c_tmp, &c]()
     {
         int s = 0;
-        double tlock = 0;
 
         for (int ibc = 0; ibc < nbc; ibc++)
         {
@@ -729,10 +728,8 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
                 int row0 = ibr * BS;
                 int nrow = std::min(M, (ibr + 1) * BS) - row0;
                 
-                double t = omp_get_wtime();
                 /* wait for the release of the buffer */
                 while (!buf_lock[s % 2].load());
-                tlock += (omp_get_wtime() - t);
 
                 mpi_comm_world().allreduce(c_tmp.at<CPU>(0, s % 2), nrow * ncol);
 
@@ -749,7 +746,6 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
                 s++;
             }
         }
-        printf("comm_thread_lock_time: %f\n", tlock);
     });
 
     work_thread.join();
@@ -763,11 +759,12 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
 
     if (mpi_comm_world().rank() == 0)
     {
-        printf("execution time (sec) : %12.6f\n", t0);
-        printf("global matrix sizes: %i %i %i\n", M, N, K);
-        printf("number of ranks: %i\n", mpi_comm_world().size());
-        printf("performance (GFlops / rank): %12.6f\n", perf);
+        //printf("  gemm time: %f sec.\n", t1 - t0);
+        //printf("  comm time: %f sec.\n", t2 - t1);
+        //printf(" store time: %f sec.\n", t3 - t2);
+        printf("performance: %f Gflops / rank\n", perf);
     }
+
     for (int i = 0; i < c.num_cols_local(); i++)
     {
         for (int j = 0; j < c.num_rows_local(); j++)
@@ -777,6 +774,142 @@ double wf_inner_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
     }
     return perf;
 }
+
+//double wf_inner_allreduce_async_pthread(int M, int N, int K, std::vector<int> mpi_grid, int BS)
+//{
+//    int bs = 32;
+//    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
+//
+//    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
+//    
+//    matrix<double_complex> a(spl_K.local_size(), M);
+//    matrix<double_complex> b(spl_K.local_size(), N);
+//
+//    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
+//    c.zero();
+//
+//    for (int i = 0; i < M; i++)
+//    {
+//        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
+//    }
+//    for (int i = 0; i < N; i++)
+//    {
+//        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
+//    }
+//
+//    mdarray<double_complex, 2> c_tmp(BS * BS, 2);
+//    c_tmp.zero();
+//
+//    int nbr = M / BS + std::min(1, M % BS);
+//    int nbc = N / BS + std::min(1, N % BS);
+//
+//    std::atomic<bool> buf_lock[2];
+//    buf_lock[0].store(false);
+//    buf_lock[1].store(false);
+//
+//    int nt = omp_get_max_threads();
+//    if (nt < 2) TERMINATE("minimum two threads are required");
+//
+//    omp_set_num_threads(nt - 1);
+//
+//    double t0 = -omp_get_wtime();
+//
+//    std::thread work_thread([nbr, nbc, M, N, BS, &buf_lock, &a, &b, &c_tmp, &spl_K]()
+//    {
+//        double tlock = 0;
+//
+//        int s = 0;
+//
+//        for (int ibc = 0; ibc < nbc; ibc++)
+//        {
+//            int col0 = ibc * BS;
+//            int ncol = std::min(N, (ibc + 1) * BS) - col0;
+//
+//            for (int ibr = 0; ibr < nbr; ibr++)
+//            {
+//                int row0 = ibr * BS;
+//                int nrow = std::min(M, (ibr + 1) * BS) - row0;
+//
+//                double t = omp_get_wtime();
+//                /* wait for the release of the buffer */
+//                while (buf_lock[s % 2].load());
+//                tlock += (omp_get_wtime() - t);
+//
+//                linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+//                                  a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
+//                                  c_tmp.at<CPU>(0, s % 2), nrow);
+//
+//                buf_lock[s % 2].store(true);
+//
+//                s++;
+//            }
+//        }
+//        printf("work_thread_lock_time: %f\n", tlock);
+//    });
+//
+//    std::thread comm_thread([nbr, nbc, M, N, BS, &buf_lock, &c_tmp, &c]()
+//    {
+//        int s = 0;
+//        double tlock = 0;
+//
+//        for (int ibc = 0; ibc < nbc; ibc++)
+//        {
+//            int col0 = ibc * BS;
+//            int ncol = std::min(N, (ibc + 1) * BS) - col0;
+//
+//            for (int ibr = 0; ibr < nbr; ibr++)
+//            {
+//                int row0 = ibr * BS;
+//                int nrow = std::min(M, (ibr + 1) * BS) - row0;
+//                
+//                double t = omp_get_wtime();
+//                /* wait for the release of the buffer */
+//                while (!buf_lock[s % 2].load());
+//                tlock += (omp_get_wtime() - t);
+//
+//                mpi_comm_world().allreduce(c_tmp.at<CPU>(0, s % 2), nrow * ncol);
+//
+//                for (int icol = 0; icol < ncol; icol++)
+//                {
+//                    for (int irow = 0; irow < nrow; irow++)
+//                    {
+//                        c.set(irow + row0, icol + col0, c_tmp(irow + nrow * icol, s % 2));
+//                    }
+//                }
+//                /* release the buffer */
+//                buf_lock[s % 2].store(false);
+//
+//                s++;
+//            }
+//        }
+//        printf("comm_thread_lock_time: %f\n", tlock);
+//    });
+//
+//    work_thread.join();
+//    comm_thread.join();
+//
+//    omp_set_num_threads(nt);
+//
+//    t0 += omp_get_wtime();
+//
+//    double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
+//
+//    if (mpi_comm_world().rank() == 0)
+//    {
+//        printf("execution time (sec) : %12.6f\n", t0);
+//        printf("global matrix sizes: %i %i %i\n", M, N, K);
+//        printf("number of ranks: %i\n", mpi_comm_world().size());
+//        printf("performance (GFlops / rank): %12.6f\n", perf);
+//    }
+//    for (int i = 0; i < c.num_cols_local(); i++)
+//    {
+//        for (int j = 0; j < c.num_rows_local(); j++)
+//        {
+//            if (std::abs(c(j, i) - 0.01 * K) > 1e-10) TERMINATE("result is wrong");
+//        }
+//    }
+//    return perf;
+//}
 
 int main(int argn, char **argv)
 {
@@ -805,24 +938,6 @@ int main(int argn, char **argv)
 
     sirius::initialize(true);
     
-    //test_reduce(M, N, K, mpi_grid);
-    //test_reduce_2(M, N, K, mpi_grid);
-
-    //double perf = 0;
-    //for (int i = 0; i < repeat; i++) perf += test_gemm_2(M, N, K, mpi_grid, BS);
-    //if (mpi_comm_world().rank() == 0)
-    //{
-    //    printf("\n");
-    //    printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
-    //}
-    //perf = 0;
-    //for (int i = 0; i < repeat; i++) perf += wf_inner_pthread(M, N, K, mpi_grid, BS);
-    //if (mpi_comm_world().rank() == 0)
-    //{
-    //    printf("\n");
-    //    printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
-    //}
-
     if (mpi_comm_world().rank() == 0)
     {
         printf("global matrix sizes: %i %i %i\n", M, N, K);
@@ -830,7 +945,7 @@ int main(int argn, char **argv)
         printf("\n");
     }
     
-    Measurment perf1, perf2, perf3, perf4, perf5;
+    Measurment perf1, perf2, perf3, perf4, perf5, perf6;
     
     for (int i = 0; i < repeat; i++)
     {
@@ -839,6 +954,7 @@ int main(int argn, char **argv)
         perf3.push_back(wf_inner_reduce_to_one_async(M, N, K, mpi_grid));
         perf4.push_back(wf_inner_allreduce_async(M, N, K, mpi_grid, BS));
         perf5.push_back(wf_inner_overlap_allreduce_omp(M, N, K, mpi_grid, BS));
+        perf6.push_back(wf_inner_overlap_allreduce_pt(M, N, K, mpi_grid, BS));
     }
 
     if (mpi_comm_world().rank() == 0)
@@ -849,6 +965,7 @@ int main(int argn, char **argv)
         printf("wf_inner_reduce_to_one_async   : %12.6f GFlops / rank,  sigma: %12.6f\n", perf3.average(), perf3.sigma());
         printf("wf_inner_allreduce_async       : %12.6f GFlops / rank,  sigma: %12.6f\n", perf4.average(), perf4.sigma());
         printf("wf_inner_overlap_allreduce_omp : %12.6f GFlops / rank,  sigma: %12.6f\n", perf5.average(), perf5.sigma());
+        printf("wf_inner_overlap_allreduce_pt  : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
     }
 
     runtime::Timer::print();
