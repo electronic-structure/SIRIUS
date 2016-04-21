@@ -1112,7 +1112,7 @@ int main(int argn, char **argv)
         perf4.push_back(wf_inner_allreduce_async(M, N, K, mpi_grid, BS));
         perf5.push_back(wf_inner_overlap_allreduce_omp(M, N, K, mpi_grid, BS));
         //perf6.push_back(wf_inner_overlap_allreduce_async_omp(M, N, K, mpi_grid, BS));
-        perf6.push_back(wf_inner_overlap_allreduce_pt(M, N, K, mpi_grid, BS));
+        //perf6.push_back(wf_inner_overlap_allreduce_pt(M, N, K, mpi_grid, BS));
         //perf7.push_back(wf_inner_overlap_allreduce_async_pt(M, N, K, mpi_grid, BS));
     }
 
@@ -1125,7 +1125,7 @@ int main(int argn, char **argv)
         printf("wf_inner_allreduce_async       : %12.6f GFlops / rank,  sigma: %12.6f\n", perf4.average(), perf4.sigma());
         printf("wf_inner_overlap_allreduce_omp : %12.6f GFlops / rank,  sigma: %12.6f\n", perf5.average(), perf5.sigma());
         //printf("wf_inner_overlap_allreduce_async_omp : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
-        printf("wf_inner_overlap_allreduce_pt  : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
+        //printf("wf_inner_overlap_allreduce_pt  : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
         //printf("wf_inner_overlap_allreduce_async_pt : %12.6f GFlops / rank,  sigma: %12.6f\n", perf7.average(), perf7.sigma());
     }
 
