@@ -877,8 +877,8 @@ double wf_inner_overlap_allreduce_async_pt(int M, int N, int K, std::vector<int>
         }
     });
 
-    work_thread.join();
     comm_thread.join();
+    work_thread.join();
 
     omp_set_num_threads(nt);
 
