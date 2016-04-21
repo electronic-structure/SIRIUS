@@ -412,6 +412,8 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
 
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::array<int, 4>, 2> dims;
+
+    double tcomm{0}, tcomp{0}, tstore{0};
     
     double t0 = -omp_get_wtime();
     int s = 0;
@@ -427,8 +429,11 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
 
             if (req[s % 2] != MPI_REQUEST_NULL)
             {
+                double t = omp_get_wtime();
                 MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+                tcomm += (omp_get_wtime() - t);
 
+                t = omp_get_wtime();
                 #pragma omp parallel for
                 for (int icol = 0; icol < dims[s % 2][3]; icol++)
                 {
@@ -437,16 +442,19 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
                         c.set(irow +  dims[s % 2][0], icol +  dims[s % 2][1], c_tmp(irow + dims[s % 2][2] * icol, s % 2));
                     }
                 }
+                tstore += (omp_get_wtime() - t);
             }
 
             dims[s % 2][0] = row0;
             dims[s % 2][1] = col0;
             dims[s % 2][2] = nrow;
             dims[s % 2][3] = ncol;
-
+            
+            double t = omp_get_wtime();
             linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                               a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                               c_tmp.at<CPU>(0, s % 2), nrow);
+            tcomp += (omp_get_wtime() - t);
 
             mpi_comm_world().iallreduce(c_tmp.at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
             
@@ -458,8 +466,11 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
     {
         if (req[s % 2] != MPI_REQUEST_NULL)
         {
+            double t = omp_get_wtime();
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+            tcomm += (omp_get_wtime() - t);
 
+            t = omp_get_wtime();
             #pragma omp parallel for
             for (int icol = 0; icol < dims[s % 2][3]; icol++)
             {
@@ -468,6 +479,7 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
                     c.set(irow +  dims[s % 2][0], icol +  dims[s % 2][1], c_tmp(irow + dims[s % 2][2] * icol, s % 2));
                 }
             }
+            tstore += (omp_get_wtime() - t);
         }
     }
     t0 += omp_get_wtime();
@@ -476,9 +488,9 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
 
     if (mpi_comm_world().rank() == 0)
     {
-        //printf("  gemm time: %f sec.\n", t1 - t0);
-        //printf("  comm time: %f sec.\n", t2 - t1);
-        //printf(" store time: %f sec.\n", t3 - t2);
+        printf("  gemm time: %f sec.\n", tcomp);
+        printf("  comm time: %f sec.\n", tcomm);
+        printf(" store time: %f sec.\n", tstore);
         printf("performance: %f Gflops / rank\n", perf);
     }
 
