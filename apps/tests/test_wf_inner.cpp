@@ -882,22 +882,22 @@ double wf_inner_overlap_allreduce_async_pt(int M, int N, int K, std::vector<int>
 
     omp_set_num_threads(nt);
 
-    for (int s: {0, 1})
-    {
-        if (req[s % 2] != MPI_REQUEST_NULL)
-        {
-            MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+    //for (int s: {0, 1})
+    //{
+    //    if (req[s % 2] != MPI_REQUEST_NULL)
+    //    {
+    //        MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
 
-            #pragma omp parallel for
-            for (int icol = 0; icol < dims[s % 2][3]; icol++)
-            {
-                for (int irow = 0; irow < dims[s % 2][2]; irow++)
-                {
-                    c.set(irow +  dims[s % 2][0], icol +  dims[s % 2][1], c_tmp(irow + dims[s % 2][2] * icol, s % 2));
-                }
-            }
-        }
-    }
+    //        #pragma omp parallel for
+    //        for (int icol = 0; icol < dims[s % 2][3]; icol++)
+    //        {
+    //            for (int irow = 0; irow < dims[s % 2][2]; irow++)
+    //            {
+    //                c.set(irow +  dims[s % 2][0], icol +  dims[s % 2][1], c_tmp(irow + dims[s % 2][2] * icol, s % 2));
+    //            }
+    //        }
+    //    }
+    //}
 
     t0 += omp_get_wtime();
 
