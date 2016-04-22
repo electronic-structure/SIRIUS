@@ -1146,6 +1146,28 @@ int main(int argn, char **argv)
 
     if (mpi_comm_world().rank() == 0)
     {
+        std::stringstream s;
+        s << "output" << mpi_comm_world().size() << ".json";
+
+        JSON_write jw(s.str());
+        std::vector<double> v;
+
+        jw.single("num_ranks", mpi_comm_world().size());
+        jw.single("M", M);
+        jw.single("N", N);
+        jw.single("K", K);
+
+        v = {perf1.average(), perf1.sigma()};
+        jw.single("wf_inner_simple", v);
+        v = {perf2.average(), perf2.sigma()};
+        jw.single("wf_inner_reduce_to_one", v);
+        v = {perf3.average(), perf3.sigma()};
+        jw.single("wf_inner_reduce_to_one_async", v);
+        v = {perf4.average(), perf4.sigma()};
+        jw.single("wf_inner_allreduce_async", v);
+        v = {perf5.average(), perf5.sigma()};
+        jw.single("wf_inner_overlap_allreduce_omp", v);
+
         printf("\n");
         printf("wf_inner_simple                : %12.6f GFlops / rank,  sigma: %12.6f\n", perf1.average(), perf1.sigma());
         printf("wf_inner_reduce_to_one         : %12.6f GFlops / rank,  sigma: %12.6f\n", perf2.average(), perf2.sigma());
