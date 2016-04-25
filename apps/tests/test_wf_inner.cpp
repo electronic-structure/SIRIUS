@@ -59,12 +59,12 @@ class Measurment: public std::vector<double>
 
 
 
-void test_nested_omp()
+void test_nested_omp(int BS)
 {
-    int m{2000}, n{2000}, k{2000};
+    int m{BS}, n{BS}, k{5678};
 
-    mdarray<double_complex, 2> a(m, k);
-    mdarray<double_complex, 2> b(m, k);
+    mdarray<double_complex, 2> a(k, m);
+    mdarray<double_complex, 2> b(k, n);
     mdarray<double_complex, 2> c(m, n);
 
     for (int i = 0; i < m; i++)
@@ -74,6 +74,9 @@ void test_nested_omp()
         for (int j = 0; j < n; j++) b(j, i) = 0.1;
 
     c.zero();
+    
+    /* warmup */
+    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
 
     double t = omp_get_wtime();
     
@@ -98,10 +101,9 @@ void test_nested_omp()
         if (omp_get_thread_num() == 1)
         {
             #ifdef __MKL
-            mkl_set_num_threads(nt - 1);
-            #else
-            omp_set_num_threads(nt - 1);
+            mkl_set_num_threads_local(nt - 1);
             #endif
+            omp_set_num_threads(nt - 1);
 
             double t = omp_get_wtime();
             linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
@@ -109,17 +111,16 @@ void test_nested_omp()
         }
         else // thread#0
         {
-            double t = omp_get_wtime();
-            while (omp_get_wtime() - t < 2);
+            //double t = omp_get_wtime();
+            //while (omp_get_wtime() - t < 2);
         }
     }
 
     omp_set_nested(0);
     #ifdef __MKL
-    mkl_set_num_threads(nt);
-    #else
-    omp_set_num_threads(nt);
+    mkl_set_num_threads_local(0);
     #endif
+    omp_set_num_threads(nt);
 
     perf = 8e-9 * m * n * k / tcomp;
 
@@ -139,6 +140,42 @@ void test_nested_omp()
     {
         printf("test_nested_omp: performance (all threads): %f Gflops\n", perf);
     }
+
+    omp_set_nested(1);
+
+    #pragma omp parallel num_threads(2)
+    {
+        if (omp_get_thread_num() == 1)
+        {
+            #ifdef __MKL
+            mkl_set_num_threads_local(nt - 1);
+            #endif
+            omp_set_num_threads(nt - 1);
+
+            for (int i = 0; i < 4; i++)
+            {
+                double t = omp_get_wtime();
+                linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+                double perf = 8e-9 * m * n * k / (omp_get_wtime() - t);
+                if (mpi_comm_world().rank() == 0)
+                {
+                    printf("test_nested_omp: performance (N-1 threads): %f Gflops\n", perf);
+                    printf("    num_threads: %i\n", omp_get_max_threads());
+                }
+            }
+        }
+        else // thread#0
+        {
+            double t = omp_get_wtime();
+            while (omp_get_wtime() - t < 1);
+        }
+    }
+
+    omp_set_nested(0);
+    #ifdef __MKL
+    mkl_set_num_threads_local(0);
+    #endif
+    omp_set_num_threads(nt);
 }
 
 double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
@@ -589,10 +626,9 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
         {
             int s = 0;
             #ifdef __MKL
-            mkl_set_num_threads(nt - 1);
-            #else
-            omp_set_num_threads(nt - 1);
+            mkl_set_num_threads_local(nt - 1);
             #endif
+            omp_set_num_threads(nt - 1);
 
             for (int ibc = 0; ibc < nbc; ibc++)
             {
@@ -682,10 +718,9 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
 
     omp_set_nested(0);
     #ifdef __MKL
-    mkl_set_num_threads(nt);
-    #else
-    omp_set_num_threads(nt);
+    mkl_set_num_threads_local(0);
     #endif
+    omp_set_num_threads(nt);
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
 
@@ -704,6 +739,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
             if (std::abs(c(j, i) - 0.01 * K) > 1e-10) TERMINATE("result is wrong");
         }
     }
+
     return perf;
 }
 
@@ -1111,7 +1147,12 @@ int main(int argn, char **argv)
 
     sirius::initialize(true);
 
-    test_nested_omp();
+    #pragma omp parallel
+    {
+        int tid = omp_get_thread_num();
+    }
+
+    test_nested_omp(BS);
     
     if (mpi_comm_world().rank() == 0)
     {
