@@ -608,7 +608,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                     /* wait for the release of the buffer */
                     while (st)
                     {
-                        #pragma omp flush
+                        //#pragma omp flush
                         #pragma omp atomic read
                         st = buf_state[s % 2];
                     }
@@ -622,7 +622,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                     #pragma omp atomic write
                     /* lock the buffer */
                     buf_state[s % 2] = 1;
-                    #pragma omp flush
+                    //#pragma omp flush
 
                     s++;
 
@@ -647,7 +647,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                     /* wait for the lock of the buffer */
                     while (!st)
                     {
-                        #pragma omp flush
+                        //#pragma omp flush
                         #pragma omp atomic read
                         st = buf_state[s % 2];
                     }
@@ -669,7 +669,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                     #pragma omp atomic write
                     /* release the buffer */
                     buf_state[s % 2] = 0;
-                    #pragma omp flush
+                    //#pragma omp flush
 
                     s++;
                 }
