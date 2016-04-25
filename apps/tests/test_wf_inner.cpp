@@ -2,6 +2,10 @@
 #include <atomic>
 #include <sirius.h>
 
+#ifdef __MKL
+void mkl_set_num_threads(int);
+#endif
+
 class Measurment: public std::vector<double>
 {
     public:
@@ -31,6 +35,30 @@ class Measurment: public std::vector<double>
         }
 };
 
+#define COMMON_CODE_BLOCK                                                         \
+                                                                                  \
+    int bs = 32;                                                                  \
+    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);            \
+                                                                                  \
+    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());   \
+                                                                                  \
+    matrix<double_complex> a(spl_K.local_size(), M);                              \
+    matrix<double_complex> b(spl_K.local_size(), N);                              \
+                                                                                  \
+    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);                          \
+    c.zero();                                                                     \
+                                                                                  \
+    for (int i = 0; i < M; i++)                                                   \
+    {                                                                             \
+        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;               \
+    }                                                                             \
+    for (int i = 0; i < N; i++)                                                   \
+    {                                                                             \
+        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;               \
+    }                                                                             \
+
+
+
 double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
 {
     if (mpi_comm_world().rank() == 0)
@@ -38,25 +66,7 @@ double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
         printf("=== wf_inner_simple ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
-    }
+    COMMON_CODE_BLOCK
 
     mdarray<double_complex, 2> c_tmp(M, N);
     c_tmp.zero();
@@ -104,27 +114,8 @@ double wf_inner_reduce_to_one(int M, int N, int K, std::vector<int> mpi_grid)
         printf("=== wf_inner_reduce_to_one ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
+    COMMON_CODE_BLOCK
 
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++)
-            a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++)
-            b(j, i) = 0.1;
-    }
     mdarray<double_complex, 1> c_tmp(c.num_rows_local(0) * c.num_cols_local(0));
     c_tmp.zero();
 
@@ -132,7 +123,12 @@ double wf_inner_reduce_to_one(int M, int N, int K, std::vector<int> mpi_grid)
     a_tmp.zero();
     mdarray<double_complex, 2> b_tmp(spl_K.local_size(), c.num_cols_local(0));
     b_tmp.zero();
-    
+
+    if (mpi_grid[0] != mpi_grid[1]) TERMINATE("square grid only");
+    block_data_descriptor bdd(mpi_grid[0]);
+    for (int i = 0; i < mpi_grid[0]; i++) bdd.counts[i] = c.num_rows_local(i);
+    bdd.calc_offsets();
+
     mpi_comm_world().barrier();
     double t0 = -omp_get_wtime();
     double tcomm{0}, tcomp{0}, tcopy{0};
@@ -141,17 +137,20 @@ double wf_inner_reduce_to_one(int M, int N, int K, std::vector<int> mpi_grid)
         for (int rank_row = 0; rank_row < mpi_grid[0]; rank_row++)
         {
             double t1 = omp_get_wtime();
-            #pragma omp parallel for
-            for (int i = 0; i < c.num_rows_local(rank_row); i++)
-                std::memcpy(&a_tmp(0, i), &a(0, c.spl_row().global_index(i, rank_row)), spl_K.local_size() * sizeof(double_complex));
+            //#pragma omp parallel for
+            //for (int i = 0; i < c.num_rows_local(rank_row); i++)
+            //    std::memcpy(&a_tmp(0, i), &a(0, c.spl_row().global_index(i, rank_row)), spl_K.local_size() * sizeof(double_complex));
 
-            #pragma omp parallel for
-            for (int i = 0; i < c.num_cols_local(rank_col); i++)
-                std::memcpy(&b_tmp(0, i), &b(0, c.spl_col().global_index(i, rank_col)), spl_K.local_size() * sizeof(double_complex));
+            //#pragma omp parallel for
+            //for (int i = 0; i < c.num_cols_local(rank_col); i++)
+            //    std::memcpy(&b_tmp(0, i), &b(0, c.spl_col().global_index(i, rank_col)), spl_K.local_size() * sizeof(double_complex));
 
             double t2 = omp_get_wtime();
+            //linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
+            //                  a_tmp.at<CPU>(), a_tmp.ld(), b_tmp.at<CPU>(), b_tmp.ld(), c_tmp.at<CPU>(), c.num_rows_local(rank_row));
             linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
-                              a_tmp.at<CPU>(), a_tmp.ld(), b_tmp.at<CPU>(), b_tmp.ld(), c_tmp.at<CPU>(), c.num_rows_local(rank_row));
+                              a.at<CPU>(0, bdd.offsets[rank_row]), a.ld(), b.at<CPU>(0, bdd.offsets[rank_col]), b.ld(),
+                              c_tmp.at<CPU>(), c.num_rows_local(rank_row));
 
             double t3 = omp_get_wtime();
             mpi_comm_world().reduce(c_tmp.at<CPU>(), c.at<CPU>(), c.num_rows_local(rank_row) * c.num_cols_local(rank_col),
@@ -193,27 +192,8 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
         printf("=== wf_inner_reduce_to_one_async ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
+    COMMON_CODE_BLOCK
 
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++)
-            a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++)
-            b(j, i) = 0.1;
-    }
     mdarray<double_complex, 2> c_tmp(c.num_rows_local(0) * c.num_cols_local(0), 2);
     c_tmp.zero();
 
@@ -221,6 +201,11 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
     a_tmp.zero();
     mdarray<double_complex, 2> b_tmp(spl_K.local_size(), c.num_cols_local(0));
     b_tmp.zero();
+
+    if (mpi_grid[0] != mpi_grid[1]) TERMINATE("square grid only");
+    block_data_descriptor bdd(mpi_grid[0]);
+    for (int i = 0; i < mpi_grid[0]; i++) bdd.counts[i] = c.num_rows_local(i);
+    bdd.calc_offsets();
 
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     
@@ -235,13 +220,13 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
         {
             double t1 = omp_get_wtime();
 
-            #pragma omp parallel for
-            for (int i = 0; i < c.num_rows_local(rank_row); i++)
-                std::memcpy(&a_tmp(0, i), &a(0, c.spl_row().global_index(i, rank_row)), spl_K.local_size() * sizeof(double_complex));
+            //#pragma omp parallel for
+            //for (int i = 0; i < c.num_rows_local(rank_row); i++)
+            //    std::memcpy(&a_tmp(0, i), &a(0, c.spl_row().global_index(i, rank_row)), spl_K.local_size() * sizeof(double_complex));
 
-            #pragma omp parallel for
-            for (int i = 0; i < c.num_cols_local(rank_col); i++)
-                std::memcpy(&b_tmp(0, i), &b(0, c.spl_col().global_index(i, rank_col)), spl_K.local_size() * sizeof(double_complex));
+            //#pragma omp parallel for
+            //for (int i = 0; i < c.num_cols_local(rank_col); i++)
+            //    std::memcpy(&b_tmp(0, i), &b(0, c.spl_col().global_index(i, rank_col)), spl_K.local_size() * sizeof(double_complex));
 
             double t2 = omp_get_wtime();
 
@@ -250,8 +235,11 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
 
             double t3 = omp_get_wtime();
 
+            //linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
+            //                  a_tmp.at<CPU>(), a_tmp.ld(), b_tmp.at<CPU>(), b_tmp.ld(), c_tmp.at<CPU>(0, s % 2), c.num_rows_local(rank_row));
             linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
-                              a_tmp.at<CPU>(), a_tmp.ld(), b_tmp.at<CPU>(), b_tmp.ld(), c_tmp.at<CPU>(0, s % 2), c.num_rows_local(rank_row));
+                              a.at<CPU>(0, bdd.offsets[rank_row]), a.ld(), b.at<CPU>(0, bdd.offsets[rank_col]), b.ld(),
+                              c_tmp.at<CPU>(0, s % 2), c.num_rows_local(rank_row));
 
             double t4 = omp_get_wtime();
 
@@ -297,91 +285,81 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
     return perf;
 }
 
-//== void test_reduce(int M, int N, int K, std::vector<int> mpi_grid)
-//== {
-//==     int bs = 32;
-//==     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-//== 
-//==     dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-//==     c.zero();
-//== 
-//==     mdarray<double_complex, 3> c_tmp(c.num_rows_local(0), c.num_cols_local(0), 2);
-//==     c_tmp.zero();
-//== 
-//==     runtime::Timer t2("reduce");
-//==     for (int rank_col = 0; rank_col < mpi_grid[1]; rank_col++)
-//==     {
-//==         for (int rank_row = 0; rank_row < mpi_grid[0]; rank_row++)
-//==         {
-//==             //mpi_comm_world().reduce(c_tmp.at<CPU>(0, 0, 0), c_tmp.ld() * c.num_cols_local(rank_col), blacs_grid.cart_rank(rank_row, rank_col));
-//==            
-//==             blacs_grid.comm_col().reduce(c_tmp.at<CPU>(0, 0, 0), c_tmp.ld() * c.num_cols_local(rank_col), rank_col);
-//==             if (blacs_grid.rank_col() == rank_col)
-//==                 blacs_grid.comm_row().reduce(c_tmp.at<CPU>(0, 0, 0), c_tmp.ld() * c.num_cols_local(rank_col), rank_row);
-//==         }
-//==     }
-//==     double tval2 = t2.stop();
-//==     double perf2 = 8e-9 * M * N * K / tval2 / mpi_comm_world().size();
-//==     if (mpi_comm_world().rank() == 0)
-//==     {
-//==         printf("reduction time (sec) : %12.6f\n", tval2);
-//==         printf("absolute peak performance (GFlops / rank): %12.6f\n", perf2);
-//==     }
-//== }
-//== 
-//== void test_reduce_2(int M, int N, int K, std::vector<int> mpi_grid)
-//== {
-//==     int bs = 32;
-//==     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-//== 
-//==     dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-//==     c.zero();
-//== 
-//==     mdarray<double_complex, 3> c_tmp(c.num_rows_local(0), c.num_cols_local(0), 2);
-//==     c_tmp.zero();
-//== 
-//==     runtime::Timer t2("reduce");
-//== 
-//==     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
-//==     std::array<std::pair<int, int>, 2> pos;
-//==     
-//==     int s = 0;
-//==     for (int rank_col = 0; rank_col < mpi_grid[1]; rank_col++)
-//==     {
-//==         for (int rank_row = 0; rank_row < mpi_grid[0]; rank_row++)
-//==         {
-//==             if (req[s % 2] != MPI_REQUEST_NULL)
-//==             {
-//==                 MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
-//==             }
-//== 
-//==             pos[s % 2].first = rank_row;
-//==             pos[s % 2].second = rank_col;
-//==             
-//==             mpi_comm_world().ireduce(c_tmp.at<CPU>(0, 0, s % 2), c_tmp.ld() * c.num_cols_local(rank_col), blacs_grid.cart_rank(rank_row, rank_col), &req[s % 2]);
-//==             
-//==             s++;
-//==         }
-//==     }
-//== 
-//==     for (int s: {0, 1})
-//==     {
-//==         if (req[s] != MPI_REQUEST_NULL)
-//==         {
-//==             MPI_Wait(&req[s], MPI_STATUS_IGNORE);
-//==         }
-//==     }
-//== 
-//== 
-//==     double tval2 = t2.stop();
-//==     double perf2 = 8e-9 * M * N * K / tval2 / mpi_comm_world().size();
-//==     if (mpi_comm_world().rank() == 0)
-//==     {
-//==         printf("reduction time (sec) : %12.6f\n", tval2);
-//==         printf("absolute peak performance (GFlops / rank): %12.6f\n", perf2);
-//==     }
-//== }
+double wf_inner_allreduce(int M, int N, int K, std::vector<int> mpi_grid, int BS)
+{
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("=== wf_inner_allreduce ===\n");
+    }
 
+    COMMON_CODE_BLOCK
+
+    mdarray<double_complex, 1> c_tmp(BS * BS);
+    c_tmp.zero();
+
+    int nbr = M / BS + std::min(1, M % BS);
+    int nbc = N / BS + std::min(1, N % BS);
+
+    double tcomm{0}, tcomp{0}, tstore{0};
+    
+    mpi_comm_world().barrier();
+    double t0 = -omp_get_wtime();
+    for (int ibc = 0; ibc < nbc; ibc++)
+    {
+        int col0 = ibc * BS;
+        int ncol = std::min(N, (ibc + 1) * BS) - col0;
+
+        for (int ibr = 0; ibr < nbr; ibr++)
+        {
+            int row0 = ibr * BS;
+            int nrow = std::min(M, (ibr + 1) * BS) - row0;
+
+            double t = omp_get_wtime();
+            linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                              a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
+                              c_tmp.at<CPU>(), nrow);
+            tcomp += (omp_get_wtime() - t);
+
+            t = omp_get_wtime();
+            mpi_comm_world().allreduce(c_tmp.at<CPU>(), nrow * ncol);
+            tcomm += (omp_get_wtime() - t);
+
+            t = omp_get_wtime();
+            #pragma omp parallel for
+            for (int icol = 0; icol < ncol; icol++)
+            {
+                for (int irow = 0; irow < nrow; irow++)
+                {
+                    c.set(irow + row0, icol + col0, c_tmp(irow + nrow * icol));
+                }
+            }
+            tstore += (omp_get_wtime() - t);
+        }
+    }
+
+    mpi_comm_world().barrier();
+    t0 += omp_get_wtime();
+
+    double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
+
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("  gemm time: %f sec.\n", tcomp);
+        printf("  comm time: %f sec.\n", tcomm);
+        printf(" store time: %f sec.\n", tstore);
+        printf("performance: %f Gflops / rank\n", perf);
+    }
+
+    for (int i = 0; i < c.num_cols_local(); i++)
+    {
+        for (int j = 0; j < c.num_rows_local(); j++)
+        {
+            if (std::abs(c(j, i) - 0.01 * K) > 1e-10) TERMINATE("result is wrong");
+        }
+    }
+
+    return perf;
+}
 
 double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, int BS)
 {
@@ -390,25 +368,7 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
         printf("=== wf_inner_allreduce_async ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
-    }
+    COMMON_CODE_BLOCK
 
     mdarray<double_complex, 2> c_tmp(BS * BS, 2);
     c_tmp.zero();
@@ -520,25 +480,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
         printf("=== wf_inner_overlap_allreduce_omp ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
-    }
+    COMMON_CODE_BLOCK
 
     mdarray<double_complex, 2> c_tmp(BS * BS, 2);
     c_tmp.zero();
@@ -561,10 +503,14 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
 
     #pragma omp parallel num_threads(2)
     {
-        if (omp_get_thread_num() == 0)
+        if (omp_get_thread_num() == 1)
         {
             int s = 0;
+            #ifdef __MKL
+            mkl_set_num_threads(nt - 1);
+            #else
             omp_set_num_threads(nt - 1);
+            #endif
 
             for (int ibc = 0; ibc < nbc; ibc++)
             {
@@ -596,7 +542,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                 }
             }
         }
-        else // thread#1
+        else // thread#0
         {
             int s = 0;
 
@@ -643,7 +589,11 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
     t0 += omp_get_wtime();
 
     omp_set_nested(0);
+    #ifdef __MKL
+    mkl_set_num_threads(nt);
+    #else
     omp_set_num_threads(nt);
+    #endif
 
     double perf = 8e-9 * M * N * K / t0 / mpi_comm_world().size();
 
@@ -672,25 +622,7 @@ double wf_inner_overlap_allreduce_async_omp(int M, int N, int K, std::vector<int
         printf("=== wf_inner_overlap_allreduce_async_omp ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
-    }
+    COMMON_CODE_BLOCK
 
     mdarray<double_complex, 2> c_tmp(BS * BS, 2);
     c_tmp.zero();
@@ -820,25 +752,7 @@ double wf_inner_overlap_allreduce_pt(int M, int N, int K, std::vector<int> mpi_g
         printf("=== wf_inner_overlap_allreduce_pt ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
-    }
+    COMMON_CODE_BLOCK
 
     mdarray<double_complex, 2> c_tmp(BS * BS, 2);
     c_tmp.zero();
@@ -955,25 +869,7 @@ double wf_inner_overlap_allreduce_async_pt(int M, int N, int K, std::vector<int>
         printf("=== wf_inner_overlap_allreduce_async_pt ===\n");
     }
 
-    int bs = 32;
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid[0], mpi_grid[1]);
-
-    splindex<block> spl_K(K, mpi_comm_world().size(), mpi_comm_world().rank());
-    
-    matrix<double_complex> a(spl_K.local_size(), M);
-    matrix<double_complex> b(spl_K.local_size(), N);
-
-    dmatrix<double_complex> c(M, N, blacs_grid, bs, bs);
-    c.zero();
-
-    for (int i = 0; i < M; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) a(j, i) = 0.1;
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < spl_K.local_size(); j++) b(j, i) = 0.1;
-    }
+    COMMON_CODE_BLOCK
 
     mdarray<double_complex, 2> c_tmp(BS * BS, 2);
     c_tmp.zero();
@@ -1137,8 +1033,9 @@ int main(int argn, char **argv)
         perf1.push_back(wf_inner_simple(M, N, K, mpi_grid));
         perf2.push_back(wf_inner_reduce_to_one(M, N, K, mpi_grid));
         perf3.push_back(wf_inner_reduce_to_one_async(M, N, K, mpi_grid));
-        perf4.push_back(wf_inner_allreduce_async(M, N, K, mpi_grid, BS));
-        perf5.push_back(wf_inner_overlap_allreduce_omp(M, N, K, mpi_grid, BS));
+        perf4.push_back(wf_inner_allreduce(M, N, K, mpi_grid, BS));
+        perf5.push_back(wf_inner_allreduce_async(M, N, K, mpi_grid, BS));
+        perf6.push_back(wf_inner_overlap_allreduce_omp(M, N, K, mpi_grid, BS));
         //perf6.push_back(wf_inner_overlap_allreduce_async_omp(M, N, K, mpi_grid, BS));
         //perf6.push_back(wf_inner_overlap_allreduce_pt(M, N, K, mpi_grid, BS));
         //perf7.push_back(wf_inner_overlap_allreduce_async_pt(M, N, K, mpi_grid, BS));
@@ -1159,21 +1056,29 @@ int main(int argn, char **argv)
 
         v = {perf1.average(), perf1.sigma()};
         jw.single("wf_inner_simple", v);
+        
         v = {perf2.average(), perf2.sigma()};
         jw.single("wf_inner_reduce_to_one", v);
+        
         v = {perf3.average(), perf3.sigma()};
         jw.single("wf_inner_reduce_to_one_async", v);
+        
         v = {perf4.average(), perf4.sigma()};
-        jw.single("wf_inner_allreduce_async", v);
+        jw.single("wf_inner_allreduce", v);
+
         v = {perf5.average(), perf5.sigma()};
+        jw.single("wf_inner_allreduce_async", v);
+        
+        v = {perf6.average(), perf6.sigma()};
         jw.single("wf_inner_overlap_allreduce_omp", v);
 
         printf("\n");
         printf("wf_inner_simple                : %12.6f GFlops / rank,  sigma: %12.6f\n", perf1.average(), perf1.sigma());
         printf("wf_inner_reduce_to_one         : %12.6f GFlops / rank,  sigma: %12.6f\n", perf2.average(), perf2.sigma());
         printf("wf_inner_reduce_to_one_async   : %12.6f GFlops / rank,  sigma: %12.6f\n", perf3.average(), perf3.sigma());
-        printf("wf_inner_allreduce_async       : %12.6f GFlops / rank,  sigma: %12.6f\n", perf4.average(), perf4.sigma());
-        printf("wf_inner_overlap_allreduce_omp : %12.6f GFlops / rank,  sigma: %12.6f\n", perf5.average(), perf5.sigma());
+        printf("wf_inner_allreduce             : %12.6f GFlops / rank,  sigma: %12.6f\n", perf4.average(), perf4.sigma());
+        printf("wf_inner_allreduce_async       : %12.6f GFlops / rank,  sigma: %12.6f\n", perf5.average(), perf5.sigma());
+        printf("wf_inner_overlap_allreduce_omp : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
         //printf("wf_inner_overlap_allreduce_async_omp : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
         //printf("wf_inner_overlap_allreduce_pt  : %12.6f GFlops / rank,  sigma: %12.6f\n", perf6.average(), perf6.sigma());
         //printf("wf_inner_overlap_allreduce_async_pt : %12.6f GFlops / rank,  sigma: %12.6f\n", perf7.average(), perf7.sigma());
