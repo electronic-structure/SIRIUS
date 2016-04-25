@@ -119,7 +119,9 @@ class Density
         /// density matrix of the system
         mdarray<double_complex, 4> density_matrix_;
 
-//        mdarray<double_complex, 2> local_density_;
+        /// ae and ps local densities used for PAW
+        std::vector< mdarray<double, 3> > paw_ae_local_density_; //vector iterates atoms
+        std::vector< mdarray<double, 3> > paw_ps_local_density_;
 
         /// number of spin components for density matrix (can differ from total number of spin components due to symmetry)
         int ndm_;
@@ -208,11 +210,11 @@ class Density
 
         void generate_pseudo_core_charge_density();
 
-        /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used also for PAW)
+        /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
         void initialize_beta_density_matrix();
 
         /// generate n_1 and \tilda{n}_1 in lm components
-        void generate_paw_local_density();
+        void generate_paw_loc_density();
 
     public:
 
@@ -259,7 +261,7 @@ class Density
         /// Generate initial charge density and magnetization
         void initial_density();
 
-        void initial_density_pdeudo();
+        void initial_density_pseudo();
 
         void initial_density_full_pot();
 

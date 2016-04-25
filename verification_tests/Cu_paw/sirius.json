@@ -4,8 +4,8 @@
     "std_evp_solver_type" : "lapack",
     "gen_evp_solver_type" : "lapack",
     "num_fv_states" : 40,
-    "electronic_structure_method" : "ultrasoft_pseudopotential",
-    
+    "electronic_structure_method" : "paw_pseudopotential",
+
     "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
     "iterative_solver" : {
@@ -16,55 +16,45 @@
         "type" : "davidson",
         "converge_by_energy" : 1
     },
-    
-    "smearing_width" : 0.025,
-    
+
+    "smearing_width" : 0.02,
+
     "use_symmetry" : 1,
-    
+
     "num_mag_dims" : 0,
-    
-    "gk_cutoff" : 6.0,
-    "pw_cutoff" : 20.00,
-    
-    "energy_tol" : 1e-10,
-    
+
+    "gk_cutoff" : 10.0,
+    "pw_cutoff" : 30.00,
+
+    "energy_tol" : 1e-8,
+
     "num_dft_iter" : 100,
-    
-    "ngridk" : [2,2,2],
+
+    "ngridk" : [8,8,8],
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1, 0, 0], 
-                              [0, 1, 0], 
-                              [0, 0, 1]
+        "lattice_vectors" : [ [0, 0.5, 0.5],
+                              [0.5, 0, 0.5],
+                              [0.5, 0.5, 0]
                             ],
-        "lattice_vectors_scale" : 7.260327248,
+        "lattice_vectors_scale" : 6.73,
 
-        "atom_types" : ["Sr", "V", "O"],
+        "atom_types" : ["Cu"],
 
         "atom_files" : {
-            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
-            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
-            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+            "Cu" : "Cu.pz-dn-kjpaw_psl.0.2.UPF.json"
         },
 
         "atoms" : {
-            "Sr" : [
-                [0.5, 0.5, 0.5]
-            ],
-            "V" : [
-                [0, 0, 0, 0, 0, 4]
-            ],
-            "O" : [ 
-                [0.5, 0.0, 0.0],
-                [0.0, 0.5, 0.0],
-                [0.0, 0.0, 0.5]
+            "Cu" : [
+                [0.0, 0.0, 0.0]
             ]
         }
     },
-    
+
     "mixer" : {
-        "beta" : 0.95,
+        "beta" : 0.7,
         "type" : "broyden1",
         "max_history" : 8
     }

@@ -71,7 +71,9 @@ void Density::augment(K_set& ks__)
             add_k_point_contribution<double_complex>(ks__[ik], density_matrix);
         }
     }
+
     ctx_.comm().allreduce(density_matrix.at<CPU>(), static_cast<int>(density_matrix.size()));
+
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         auto cs = density_matrix.checksum();

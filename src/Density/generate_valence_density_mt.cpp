@@ -1,4 +1,7 @@
 #include "density.h"
+#include <fstream>
+
+using namespace std;
 
 namespace sirius
 {
@@ -192,9 +195,113 @@ void Density::generate_valence_density_mt(K_set& ks)
 
 
 
-void Density::generate_paw_local_density()
+void Density::generate_paw_loc_density()
 {
+	ofstream of("loc_density.txt");
+	//of<<"========================================"<<endl;
 
+	for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+	{
+		auto& atom = unit_cell_.atom(ia);
+
+		auto& atom_type = atom.type();
+
+		auto& paw = atom_type.get_PAW_descriptor();
+
+		auto& uspp = atom_type.uspp();
+
+		std::vector<int> l_by_lm = Utils::l_by_lm( 2 * atom_type.indexr().lmax_lo() );
+
+		//TODO calculate not for every atom but for every atom type
+		Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(),
+				2*atom_type.indexr().lmax_lo(),
+				atom_type.indexr().lmax_lo(),
+				SHT::gaunt_rlm);
+
+		// get density for current atom
+		auto &ae_atom_density = paw_ae_local_density_[ia];
+		auto &ps_atom_density = paw_ps_local_density_[ia];
+
+		ae_atom_density.zero();
+		ps_atom_density.zero();
+
+		// iterate over spin components
+		for(int ispin = 0; ispin < (int)ae_atom_density.size(2); ispin++)
+		{
+			// iterate over local basis functions (or over lm1 and lm2)
+			for(int ib2 = 0; ib2 < (int)atom_type.indexb().size(); ib2++)
+			{
+				for(int ib1 = 0; ib1 <= ib2; ib1++)
+				{
+					// get lm quantum numbers (lm index) of the basis functions
+					int lm2 = atom_type.indexb(ib2).lm;
+					int lm1 = atom_type.indexb(ib1).lm;
+
+					//get radial basis functions indices
+					int irb2 = atom_type.indexb(ib2).idxrf;
+					int irb1 = atom_type.indexb(ib1).idxrf;
+
+					// index to iterate Qij,
+					// TODO check indices
+					int iqij = irb2 * (irb2 + 1) / 2 + irb1;
+
+					// get num of non-zero GC
+					int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
+
+					// add nonzero coefficients
+					for(int inz = 0; inz < num_non_zero_gk; inz++)
+					{
+						auto& lm3coef = GC.gaunt(lm1,lm2,inz);
+
+						if(lm3coef.lm3 >= (int)ae_atom_density.size(1))
+						{
+							TERMINATE("PAW: lm3 index out of range of lm part of density array");
+						}
+
+						// iterate over radial points
+						// size of ps and ae must be equal TODO: if not?
+						// this part in fortran looks better, is there the same for c++?
+						for(int irad = 0; irad < (int)ae_atom_density.size(0); irad++)
+						{
+							// store part \phi_i * \phi_j here
+							double ae_part = paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
+							double ps_part = paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2);
+
+							ae_atom_density(irad,lm3coef.lm3,ispin) += density_matrix_(ib1,ib2,ispin,ia).real() * lm3coef.coef * ae_part;
+							ps_atom_density(irad,lm3coef.lm3,ispin) += density_matrix_(ib1,ib2,ispin,ia).real() * lm3coef.coef *
+									( ps_part + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+						}
+					}
+
+					// add QijL to pseudo part
+//					for(int lm=0; lm < ps_atom_density.size(1); lm++)
+//					{
+//						for(int irad = 0; irad < (int)ae_atom_density.size(0); irad++)
+//						{
+//							ps_atom_density(irad,lm,ispin) += density_matrix_(ib1,ib2,ispin,ia).real() * uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm]);
+//						}
+//					}
+				}
+			}
+		}
+
+		// test output
+		//of<<"--------------------------"<<endl;
+		for(int k = 0; k< ae_atom_density.size(2); k++)
+		{
+			for(int j = 0; j< ae_atom_density.size(1); j++)
+			{
+				for(int i = 0; i< ae_atom_density.size(0); i++)
+				{
+					of<< ae_atom_density(i,j,k) << " " << ps_atom_density(i,j,k) << endl;
+				}
+			}
+		}
+	}
+
+	of.close();
+
+	TERMINATE("terminated");
 }
 
 };

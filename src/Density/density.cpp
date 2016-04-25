@@ -157,6 +157,33 @@ Density::Density(Simulation_context& ctx__)
     density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(),
     		unit_cell_.max_mt_basis_size(), ndm_, unit_cell_.num_atoms());
 
+
+    //--- Allocate local density arrays ---
+
+    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    {
+    	auto& atom = unit_cell_.atom(ia);
+
+    	auto& atype = atom.type();
+
+    	int n_mt_points = atype.num_mt_points();
+
+    	int rad_func_lmax = atype.indexr().lmax_lo();
+
+    	// TODO am I right?
+    	int n_rho_lm_comp = (2 * rad_func_lmax + 1) * (2 * rad_func_lmax + 1);
+
+    	// ae
+    	mdarray<double_complex, 3> ae_atom_density(n_mt_points, n_rho_lm_comp, ndm_);
+
+    	paw_ae_local_density_.push_back(std::move(ae_atom_density));
+
+    	// ps
+    	mdarray<double_complex, 3> ps_atom_density(n_mt_points, n_rho_lm_comp, ndm_);
+
+    	paw_ps_local_density_.push_back(std::move(ps_atom_density));
+    }
+
 }
 
 Density::~Density()

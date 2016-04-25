@@ -157,8 +157,8 @@ class Q_operator: public Non_local_operator<T>
         
         Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-            if (ctx__.esm_type() == ultrasoft_pseudopotential)
-            {
+//            if (ctx__.esm_type() == ultrasoft_pseudopotential)
+//            {
                 /* Q-operator is independent of spin */
                 this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
                 this->op_.zero();
@@ -184,11 +184,11 @@ class Q_operator: public Non_local_operator<T>
                     this->op_.copy_to_device();
                 }
                 #endif
-            }
-            else
-            {
-                this->is_null_ = true;
-            }
+//            }
+//            else
+//            {
+//                this->is_null_ = true;
+//            }
         }
 };
 
