@@ -59,6 +59,88 @@ class Measurment: public std::vector<double>
 
 
 
+void test_nested_omp()
+{
+    int m{2000}, n{2000}, k{2000};
+
+    mdarray<double_complex, 2> a(m, k);
+    mdarray<double_complex, 2> b(m, k);
+    mdarray<double_complex, 2> c(m, n);
+
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < k; j++) a(j, i) = 0.1;
+
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++) b(j, i) = 0.1;
+
+    c.zero();
+
+    double t = omp_get_wtime();
+    
+    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+
+    double t0 = omp_get_wtime() - t;
+    double perf = 8e-9 * m * n * k / t0;
+
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("test_nested_omp: performance (all threads): %f Gflops\n", perf);
+    }
+
+    omp_set_nested(1);
+    int nt = omp_get_max_threads();
+    if (nt < 2) TERMINATE("minimum two threads are required");
+
+    double tcomp{0};
+
+    #pragma omp parallel num_threads(2)
+    {
+        if (omp_get_thread_num() == 1)
+        {
+            #ifdef __MKL
+            mkl_set_num_threads(nt - 1);
+            #else
+            omp_set_num_threads(nt - 1);
+            #endif
+
+            double t = omp_get_wtime();
+            linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+            tcomp = omp_get_wtime() - t;
+        }
+        else // thread#0
+        {
+            double t = omp_get_wtime();
+            while (omp_get_wtime() - t < 2);
+        }
+    }
+
+    omp_set_nested(0);
+    #ifdef __MKL
+    mkl_set_num_threads(nt);
+    #else
+    omp_set_num_threads(nt);
+    #endif
+
+    perf = 8e-9 * m * n * k / tcomp;
+
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("test_nested_omp: performance (N-1 threads): %f Gflops\n", perf);
+    }
+
+    t = omp_get_wtime();
+    
+    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+
+    t0 = omp_get_wtime() - t;
+    perf = 8e-9 * m * n * k / t0;
+
+    if (mpi_comm_world().rank() == 0)
+    {
+        printf("test_nested_omp: performance (all threads): %f Gflops\n", perf);
+    }
+}
+
 double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
 {
     if (mpi_comm_world().rank() == 0)
@@ -1028,6 +1110,8 @@ int main(int argn, char **argv)
     std::vector<int> mpi_grid = args.value< std::vector<int> >("mpi_grid", {1, 1});
 
     sirius::initialize(true);
+
+    test_nested_omp();
     
     if (mpi_comm_world().rank() == 0)
     {
