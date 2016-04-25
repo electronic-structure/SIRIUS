@@ -3,7 +3,7 @@
 #include <sirius.h>
 
 #ifdef __MKL
-void mkl_set_num_threads(int);
+#include <mkl_service.h>
 #endif
 
 class Measurment: public std::vector<double>
