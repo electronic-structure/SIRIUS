@@ -501,7 +501,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
     double t0 = -omp_get_wtime();
     double tcomp{0}, tcomm{0}, tstore{0};
 
-    #pragma omp parallel num_threads(2)
+    #pragma omp parallel num_threads(2) shared(buf_state)
     {
         if (omp_get_thread_num() == 1)
         {
@@ -521,11 +521,14 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                 {
                     int row0 = ibr * BS;
                     int nrow = std::min(M, (ibr + 1) * BS) - row0;
-
+                    
+                    int st = 1;
                     /* wait for the release of the buffer */
-                    while (buf_state[s % 2])
+                    while (st)
                     {
-                        #pragma omp flush(buf_state)
+                        #pragma omp flush
+                        #pragma omp atomic read
+                        st = buf_state[s % 2];
                     }
                     
                     double t = omp_get_wtime();
@@ -534,8 +537,10 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                                       c_tmp.at<CPU>(0, s % 2), nrow);
                     tcomp += (omp_get_wtime() - t);
 
+                    #pragma omp atomic write
                     /* lock the buffer */
                     buf_state[s % 2] = 1;
+                    #pragma omp flush
 
                     s++;
 
@@ -555,11 +560,14 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                 {
                     int row0 = ibr * BS;
                     int nrow = std::min(M, (ibr + 1) * BS) - row0;
-                    
-                    /* wait for the release of the buffer */
-                    while (!buf_state[s % 2])
+
+                    int st = 0;
+                    /* wait for the lock of the buffer */
+                    while (!st)
                     {
-                        #pragma omp flush(buf_state)
+                        #pragma omp flush
+                        #pragma omp atomic read
+                        st = buf_state[s % 2];
                     }
 
                     double t = omp_get_wtime();
@@ -576,8 +584,10 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                     }
                     tstore += (omp_get_wtime() - t);
 
+                    #pragma omp atomic write
                     /* release the buffer */
                     buf_state[s % 2] = 0;
+                    #pragma omp flush
 
                     s++;
                 }
