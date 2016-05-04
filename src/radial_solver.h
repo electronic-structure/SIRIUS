@@ -174,7 +174,7 @@ class Radial_solver
  *    q'(r) &=& \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
  *  \f}
  */
-class Radial_soultion
+class Radial_solution
 {
     private:
 
@@ -536,7 +536,7 @@ class Radial_soultion
     
     public:
         
-        Radial_soultion(int zn__, int l__, Radial_grid const& radial_grid__) 
+        Radial_solution(int zn__, int l__, Radial_grid const& radial_grid__) 
             : relativistic_(false),
               zn_(zn__),
               l_(l__),
@@ -565,7 +565,7 @@ class Radial_soultion
         }
 };
 
-class Bound_state: public Radial_soultion
+class Bound_state: public Radial_solution
 {
     private:
         
@@ -701,7 +701,7 @@ class Bound_state: public Radial_soultion
     public:
         
         Bound_state(int zn__, int n__, int l__, Radial_grid const& radial_grid__, std::vector<double> const& v__, double enu_start__)
-            : Radial_soultion(zn__, l__, radial_grid__),
+            : Radial_solution(zn__, l__, radial_grid__),
               n_(n__),
               l_(l__),
               enu_tolerance_(1e-12),
@@ -728,7 +728,7 @@ class Bound_state: public Radial_soultion
         }
 };
 
-class Enu_finder: public Radial_soultion
+class Enu_finder: public Radial_solution
 {
     private:
 
@@ -848,7 +848,7 @@ class Enu_finder: public Radial_soultion
     public:
         
         Enu_finder(int zn__, int n__, int l__, Radial_grid const& radial_grid__, std::vector<double> const& v__, double enu_start__)
-            : Radial_soultion(zn__, l__, radial_grid__),
+            : Radial_solution(zn__, l__, radial_grid__),
               n_(n__),
               l_(l__)
         {
@@ -869,14 +869,6 @@ class Enu_finder: public Radial_soultion
         {
             return etop_;
         }
-};
-
-class Unbound_state: public Radial_soultion
-{
-};
-
-class Confined_state: public Radial_soultion
-{
 };
 
 };

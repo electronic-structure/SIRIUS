@@ -39,7 +39,7 @@ void Atom_type::init(int offset_lo__)
 
             if (level.n != -1)
             {
-                for (int jst = 0; jst < (int)atomic_levels_.size(); jst++)
+                for (size_t jst = 0; jst < atomic_levels_.size(); jst++)
                 {
                     if ((atomic_levels_[jst].n == level.n) &&
                         (atomic_levels_[jst].l == level.l) &&
@@ -94,7 +94,7 @@ void Atom_type::init(int offset_lo__)
     num_core_electrons_ = 0;
     if (parameters_.full_potential())
     {
-        for (int i = 0; i < (int)atomic_levels_.size(); i++) 
+        for (size_t i = 0; i < atomic_levels_.size(); i++) 
         {
             if (atomic_levels_[i].core) num_core_electrons_ += atomic_levels_[i].occupancy;
         }
