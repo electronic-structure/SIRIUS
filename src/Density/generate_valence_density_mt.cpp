@@ -197,7 +197,7 @@ void Density::generate_valence_density_mt(K_set& ks)
 
 void Density::generate_paw_loc_density()
 {
-	ofstream of("loc_density.txt");
+//	ofstream of("loc_density.txt");
 	//of<<"========================================"<<endl;
 
 	for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -219,15 +219,24 @@ void Density::generate_paw_loc_density()
 				SHT::gaunt_rlm);
 
 		// get density for current atom
-		auto &ae_atom_density = paw_ae_local_density_[ia];
-		auto &ps_atom_density = paw_ps_local_density_[ia];
+		mdarray<double,2> &ae_atom_density = paw_ae_local_density_[ia];
+		mdarray<double,2> &ps_atom_density = paw_ps_local_density_[ia];
 
-		ae_atom_density.zero();
-		ps_atom_density.zero();
+		// and magnetization
+		auto &ae_atom_magnetization = paw_ae_local_magnetization_[ia];
+		auto &ps_atom_magnetization = paw_ps_local_magnetization_[ia];
+
+		// get radial grid to divide density over r^2
+		auto &grid = atom_type.radial_grid();
 
 		// iterate over spin components
-		for(int ispin = 0; ispin < (int)ae_atom_density.size(2); ispin++)
-		{
+//		for(int ispin = 0; ispin < (int)ae_atom_density.size(2); ispin++)
+//		{
+//			double spin_sgn = 1.0;
+//
+//			if(ispin==1) spin_sgn = -1.0;
+//			if(ispin>1) spin_sgn = 0.0;
+
 			// iterate over local basis functions (or over lm1 and lm2)
 			for(int ib2 = 0; ib2 < (int)atom_type.indexb().size(); ib2++)
 			{
@@ -261,47 +270,79 @@ void Density::generate_paw_loc_density()
 						// iterate over radial points
 						// size of ps and ae must be equal TODO: if not?
 						// this part in fortran looks better, is there the same for c++?
-						for(int irad = 0; irad < (int)ae_atom_density.size(0); irad++)
+						for(int irad = 0; irad < (int)grid.num_points(); irad++)
 						{
-							// store part \phi_i * \phi_j here
-							double ae_part = paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
-							double ps_part = paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2);
+							// we need to divide density over r^2 since wave functions are stored multiplied by r
+							double inv_r2 = 1./(grid[irad] * grid[irad]);
 
-							ae_atom_density(irad,lm3coef.lm3,ispin) += density_matrix_(ib1,ib2,ispin,ia).real() * lm3coef.coef * ae_part;
-							ps_atom_density(irad,lm3coef.lm3,ispin) += density_matrix_(ib1,ib2,ispin,ia).real() * lm3coef.coef *
-									( ps_part + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+							// TODO for 3 spin dimensions 3th density spin component must be complex
+							// replace order of indices for density from {irad,lm} to {lm,irad}
+							// to be in according with ELK and other SIRIUS code
+							double ae_part = inv_r2 * lm3coef.coef * paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
+							double ps_part = inv_r2 * lm3coef.coef *
+									( paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+
+							// calculate UP density (or total in case of nonmagnetic)
+							double ae_dens_u = density_matrix_(ib1,ib2,0,ia).real() * ae_part;
+							double ps_dens_u = density_matrix_(ib1,ib2,0,ia).real() * ps_part;
+
+							// add density UP to the total density
+							ae_atom_density(lm3coef.lm3,irad) += ae_dens_u;
+							ps_atom_density(lm3coef.lm3,irad) += ps_dens_u;
+
+							switch(ctx_.num_spins())
+							{
+								case 2:
+								{
+									double ae_dens_d = density_matrix_(ib1,ib2,1,ia).real() * ae_part;
+									double ps_dens_d = density_matrix_(ib1,ib2,1,ia).real() * ps_part;
+
+									// add density DOWN to the total density
+									ae_atom_density(lm3coef.lm3,irad) += ae_dens_d;
+									ps_atom_density(lm3coef.lm3,irad) += ps_dens_d;
+
+									// add magnetization to 2nd components (0th and 1st are always zero )
+									ae_atom_magnetization(lm3coef.lm3,irad,2)= ae_dens_u - ae_dens_d;
+									ps_atom_magnetization(lm3coef.lm3,irad,2)= ps_dens_u - ps_dens_d;
+								}break;
+
+								case 3:
+								{
+									TERMINATE("PAW: non collinear is not implemented");
+								}break;
+
+								default:break;
+							}
+
+
 						}
 					}
-
-					// add QijL to pseudo part
-//					for(int lm=0; lm < ps_atom_density.size(1); lm++)
-//					{
-//						for(int irad = 0; irad < (int)ae_atom_density.size(0); irad++)
-//						{
-//							ps_atom_density(irad,lm,ispin) += density_matrix_(ib1,ib2,ispin,ia).real() * uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm]);
-//						}
-//					}
 				}
 			}
-		}
+//		}
 
-		// test output
-		//of<<"--------------------------"<<endl;
-		for(int k = 0; k< ae_atom_density.size(2); k++)
-		{
-			for(int j = 0; j< ae_atom_density.size(1); j++)
-			{
-				for(int i = 0; i< ae_atom_density.size(0); i++)
-				{
-					of<< ae_atom_density(i,j,k) << " " << ps_atom_density(i,j,k) << endl;
-				}
-			}
-		}
+
+//		ofstream of("loc_density.txt");
+//
+//
+//
+//		for(int j = 0; j< ae_atom_density.size(0); j++)
+//		{
+//			for(int i = 0; i< ae_atom_density.size(1); i++)
+//			{
+//				of<< ae_atom_density(j,i) << " " << ps_atom_density(j,i) << endl;
+//			}
+//		}
+//
+//
+//		of.close();
+
+
 	}
 
-	of.close();
-
-	TERMINATE("terminated");
+//
+//
+//	TERMINATE("terminated");
 }
 
 };

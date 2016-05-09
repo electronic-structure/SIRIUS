@@ -12,7 +12,7 @@
         "energy_tolerance" : 1e-2,
         "residual_tolerance" : 1e-6,
         "num_steps" : 12,
-        "subspace_size" : 4,
+        "subspace_size" : 1,
         "type" : "davidson",
         "converge_by_energy" : 1
     },
@@ -23,8 +23,8 @@
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 10.0,
-    "pw_cutoff" : 30.00,
+    "gk_cutoff" : 6.0,
+    "pw_cutoff" : 20.00,
 
     "energy_tol" : 1e-8,
 

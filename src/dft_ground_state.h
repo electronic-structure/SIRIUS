@@ -209,7 +209,8 @@ class DFT_ground_state
                 {
                     potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
                     break;
-                }
+                };
+
             }
         }
 

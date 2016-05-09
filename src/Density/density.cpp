@@ -158,7 +158,7 @@ Density::Density(Simulation_context& ctx__)
     		unit_cell_.max_mt_basis_size(), ndm_, unit_cell_.num_atoms());
 
 
-    //--- Allocate local density arrays ---
+    //--- Allocate local PAW density arrays ---
 
     for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
@@ -173,15 +173,24 @@ Density::Density(Simulation_context& ctx__)
     	// TODO am I right?
     	int n_rho_lm_comp = (2 * rad_func_lmax + 1) * (2 * rad_func_lmax + 1);
 
-    	// ae
-    	mdarray<double_complex, 3> ae_atom_density(n_mt_points, n_rho_lm_comp, ndm_);
+    	// allocate
+    	mdarray<double, 2> ae_atom_density(n_rho_lm_comp, n_mt_points);
+    	mdarray<double, 2> ps_atom_density(n_rho_lm_comp, n_mt_points);
 
+    	// add
     	paw_ae_local_density_.push_back(std::move(ae_atom_density));
-
-    	// ps
-    	mdarray<double_complex, 3> ps_atom_density(n_mt_points, n_rho_lm_comp, ndm_);
-
     	paw_ps_local_density_.push_back(std::move(ps_atom_density));
+
+    	// magnetization
+		mdarray<double, 3> ae_atom_magn(n_rho_lm_comp, n_mt_points, 3);
+		mdarray<double, 3> ps_atom_magn(n_rho_lm_comp, n_mt_points, 3);
+
+		ae_atom_magn.zero();
+		ps_atom_magn.zero();
+
+		paw_ae_local_magnetization_.push_back(std::move(ae_atom_magn));
+		paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
+
     }
 
 }

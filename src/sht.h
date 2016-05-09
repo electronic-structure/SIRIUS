@@ -151,6 +151,14 @@ class SHT // TODO: better name
                               g.angular_domain_size(), &g(0, 0));
         }
 
+        template <typename T>
+        void transform(Spheric_function<spectral, T>& f, Spheric_function<spatial, T>&g)
+        {
+            assert(f.radial_grid().hash() == g.radial_grid().hash());
+
+            backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(),
+                                           std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
+        }
         
         //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
         //{

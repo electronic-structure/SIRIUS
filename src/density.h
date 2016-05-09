@@ -120,8 +120,11 @@ class Density
         mdarray<double_complex, 4> density_matrix_;
 
         /// ae and ps local densities used for PAW
-        std::vector< mdarray<double, 3> > paw_ae_local_density_; //vector iterates atoms
-        std::vector< mdarray<double, 3> > paw_ps_local_density_;
+        std::vector< mdarray<double, 2> > paw_ae_local_density_; //vector iterates atoms
+        std::vector< mdarray<double, 2> > paw_ps_local_density_;
+
+        std::vector< mdarray<double, 3> > paw_ae_local_magnetization_; //vector iterates atoms
+        std::vector< mdarray<double, 3> > paw_ps_local_magnetization_;
 
         /// number of spin components for density matrix (can differ from total number of spin components due to symmetry)
         int ndm_;
@@ -360,6 +363,26 @@ class Density
         {
             return rho_->f_mt(ialoc);
         }
+
+        std::vector< mdarray<double, 2> >* get_paw_ae_local_density()
+        {
+        	return &paw_ae_local_density_;
+        }
+
+        std::vector< mdarray<double, 2> >* get_paw_ps_local_density()
+		{
+			return &paw_ps_local_density_;
+		}
+
+        std::vector< mdarray<double, 3> >* get_paw_ae_local_magnetization()
+        {
+        	return &paw_ae_local_magnetization_;
+        }
+
+        std::vector< mdarray<double, 3> >* get_paw_ps_local_magnetization()
+		{
+			return &paw_ps_local_magnetization_;
+		}
 
         void allocate()
         {

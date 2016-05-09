@@ -100,6 +100,22 @@ class Spheric_function
             return *this;
         }
 
+//        inline Spheric_function<domain_t, T>& operator+(Spheric_function<domain_t, T>& rhs)
+//        {
+//        	Spheric_function<domain_t, T> res( angular_domain_size(), radial_grid() );
+//
+//        	T* ptr_lhs = &data_(0,0);
+//        	T* ptr_rhs = &rhs.data_(0,0);
+//        	T* ptr_res = &res(0,0);
+//
+//            for (size_t i = 0; i < data_.size(); i++)
+//            {
+//                ptr_res[i] = ptr_lhs[i] + ptr_rhs[i];
+//            }
+//
+//            return std::move(res);
+//        }
+
         inline int angular_domain_size() const
         {
             return angular_domain_size_;
@@ -138,8 +154,23 @@ class Spheric_function
             for (int ir = 0; ir < radial_grid_->num_points(); ir++) s[ir] = data_(lm__, ir);
             return std::move(s.interpolate());
         }
+
+//        mdarray<T, 2>& get_data()
+//		{
+//        	return data_;
+//		}
+//
+//        const mdarray<T, 2>& get_data() const
+//		{
+//        	return data_;
+//		}
 };
 
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+/// plus operator
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
 {
@@ -156,6 +187,69 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
     return result;
 }
 
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+/// minus operator
+template <function_domain_t domain_t, typename T>
+Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
+{
+	Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
+
+	const T* ptr_lhs = &a__(0,0);
+	const T* ptr_rhs = &b__(0,0);
+	T* ptr_res = &res(0,0);
+
+	for (int i = 0; i < a__.size(); i++)
+	{
+		ptr_res[i] = ptr_lhs[i] - ptr_rhs[i];
+	}
+
+	return std::move(res);
+}
+
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+/// scale sperical function
+template <function_domain_t domain_t, typename T>
+Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> const& b__)
+{
+	Spheric_function<domain_t, T> res( b__.angular_domain_size(), b__.radial_grid() );
+
+	const T* ptr_rhs = &b__(0,0);
+	T* ptr_res = &res(0,0);
+
+	for (int i = 0; i < b__.size(); i++)
+	{
+		ptr_res[i] = a__ * ptr_rhs[i];
+	}
+
+	return std::move(res);
+}
+
+
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+/// scale sperical function (inverse order)
+template <function_domain_t domain_t, typename T>
+Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__, T a__ )
+{
+	return std::move(a__ * b__);
+}
+
+
+
+
+
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 /// Inner product of two spherical functions.
 template <function_domain_t domain_t, typename T>
 T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)

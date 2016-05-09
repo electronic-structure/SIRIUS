@@ -21,6 +21,7 @@
  *   
  *  \brief Contains implementation of sirius::Potential::generate_D_operator_matrix method.
  */
+#include <fstream>
 
 #include "potential.h"
 
@@ -35,6 +36,11 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 double* veff_a__);
 #endif
 
+
+
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 void Potential::generate_D_operator_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
@@ -217,5 +223,10 @@ void Potential::generate_D_operator_matrix()
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         ctx_.augmentation_op(iat).dismiss(1);
 }
+
+
+
+
+
 
 };

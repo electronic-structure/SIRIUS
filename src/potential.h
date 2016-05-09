@@ -93,10 +93,26 @@ class Potential
 
         Mixer<double>* mixer_;
 
+        std::vector<XC_functional*> xc_func_;
+
+        //--- PAW local potential ---
+
+        std::vector< mdarray<double,3> > ae_paw_local_potential_;
+        std::vector< mdarray<double,3> > ps_paw_local_potential_;
+
+        //-----
+
+        //Spheric_function<function_domain_t::spectral,double>
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(Periodic_function<double>* rho__, 
                          Periodic_function<double>* vh__,
                          mdarray<double_complex, 2>& qmt__);
+
+        /// Compute MT part of the potential and MT multipole moments
+        void poisson_atom_vmt(Spheric_function<function_domain_t::spectral,double> &rho_mt,
+						Spheric_function<function_domain_t::spectral,double> &vh_mt,
+						mdarray<double_complex, 1>& qmt_mt,
+						Atom &atom);
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         void poisson_sum_G(int lmmax__, 
@@ -146,6 +162,28 @@ class Potential
                             Periodic_function<double>* exc);
 
         void init();
+
+
+        //--- PAW  functions ---
+        void init_PAW();
+
+        void xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
+								   Spheric_function<spectral,double> &full_rho_lm,
+								   Spheric_function<spectral,double> &out_vxc_lm,
+								   Spheric_function<spectral,double> &out_exc_lm);
+
+
+        void xc_mt_PAW_collinear(Radial_grid const& rgrid,
+								 Spheric_function<spectral,double> &full_rho_lm,
+								 Spheric_function<spectral,double> &magnetization_Z_lm,
+								 Spheric_function<spectral,double> &out_vxc_up_lm,
+								 Spheric_function<spectral,double> &out_vxc_dn_lm,
+								 Spheric_function<spectral,double> &out_exc_lm);
+
+        // TODO DO
+        void xc_mt_PAW_noncollinear(	)	{     };
+
+        //---
 
     public:
 
@@ -396,6 +434,11 @@ class Potential
          *  \f]
          */
         void generate_D_operator_matrix();
+
+        void generate_PAW_effective_potential(std::vector< mdarray<double, 2> > *paw_ae_local_density,
+				std::vector< mdarray<double, 2> > *paw_ps_local_density,
+				std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
+				std::vector< mdarray<double, 3> > *paw_ps_local_magnetization);
 
         void check_potential_continuity_at_mt();
 
