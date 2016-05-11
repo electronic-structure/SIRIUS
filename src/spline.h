@@ -27,6 +27,8 @@
 
 #include "linalg.h"
 
+// TODO: add back() method like in std::vector
+
 namespace sirius {
 
 /// Cubic spline with a not-a-knot boundary conditions.
