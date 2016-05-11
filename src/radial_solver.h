@@ -140,8 +140,8 @@ class Radial_solver
  *  \f[
  *    -\frac{1}{2}p''(r) + V_{eff}(r)p(r) = Ep(r)
  *  \f]
- *  where \f$ V_{eff}(r) = V(r) + \frac{\ell (\ell+1)}{2r^2} \f$, \f$ p(r) = u(r)r \f$ and \f$ u(r) \f$ are the 
- *  radial wave-functions. Energy derivatives of radial solutions obey the slightly different equation:
+ *  where \f$ V_{eff}(r) = V(r) + \frac{\ell (\ell+1)}{2r^2} \f$, \f$ p(r) = u(r)r \f$ and \f$ u(r) \f$ is the 
+ *  radial wave-function. Energy derivatives of radial solutions obey the slightly different equation:
  *  \f[
  *    -\frac{1}{2}\dot{p}''(r) + V_{eff}(r)\dot{p}(r) = E\dot{p}(r) + p(r)
  *  \f]
@@ -158,7 +158,7 @@ class Radial_solver
  *  Let's now decouple second-order differential equation into a system of two first-order euquations. From
  *  \f$ p(r) = u(r)r \f$ we have
  *  \f[
- *    p'(r) = u'(r)r + uyy(r) = 2q(r) + \frac{p(r)}{r}
+ *    p'(r) = u'(r)r + u''(r) = 2q(r) + \frac{p(r)}{r}
  *  \f]
  *  where we have introduced a new variable \f$ q(r) = \frac{u'(r) r}{2} \f$. Differentiating \f$ p'(r) \f$ again
  *  we arrive to the following equation for \f$ q'(r) \f$:
@@ -178,8 +178,8 @@ class Radial_solution
 {
     private:
 
-        /// True if scalar-relativistic equation is solved.
-        bool relativistic_;
+        /// Type of relativistic solution (0 - non-relativistic, 1 - scalar-relativistic).
+        int relativistic_;
         
         /// Positive charge of the nucleus.
         int zn_;
@@ -206,7 +206,7 @@ class Radial_solution
             /* number of mesh points */
             int nr = num_points();
             
-            double alpha2 = 0.5 * std::pow((1 / speed_of_light), 2);
+            double alpha2 = 0.5 * std::pow(speed_of_light, -2);
             if (!relativistic_) alpha2 = 0.0;
 
             double enu0 = 0.0;
@@ -219,15 +219,26 @@ class Radial_solution
             double v2 = ve__[0] - zn_ / x2;
             double M2 = 1 - (v2 - enu0) * alpha2;
 
-            p__[0] = std::pow(radial_grid_[0], l_ + 1);
             if (l_ == 0)
             {
-                q__[0] = -zn_ * radial_grid_[0] / M2 / 2;
+                p__[0] = 2 * zn_ * x2;
+                q__[0] = -std::pow(zn_, 2) * x2;
             }
             else
             {
-                q__[0] = std::pow(radial_grid_[0], l_) * l_ / M2 / 2;
+                p__[0] = std::pow(x2, l_ + 1);
+                q__[0] = std::pow(x2, l_) * l_ / 2;
             }
+
+            //p__[0] = std::pow(radial_grid_[0], l_ + 1);
+            //if (l_ == 0)
+            //{
+            //    q__[0] = -zn_ * radial_grid_[0] / M2 / 2;
+            //}
+            //else
+            //{
+            //    q__[0] = std::pow(radial_grid_[0], l_) * l_ / M2 / 2;
+            //}
 
             double p2 = p__[0];
             double q2 = q__[0];
@@ -536,8 +547,8 @@ class Radial_solution
     
     public:
         
-        Radial_solution(int zn__, int l__, Radial_grid const& radial_grid__) 
-            : relativistic_(false),
+        Radial_solution(int relativistic__, int zn__, int l__, Radial_grid const& radial_grid__)
+            : relativistic_(relativistic__),
               zn_(zn__),
               l_(l__),
               radial_grid_(radial_grid__)
@@ -700,8 +711,14 @@ class Bound_state: public Radial_solution
         
     public:
         
-        Bound_state(int zn__, int n__, int l__, Radial_grid const& radial_grid__, std::vector<double> const& v__, double enu_start__)
-            : Radial_solution(zn__, l__, radial_grid__),
+        Bound_state(int relativistic__,
+                    int zn__,
+                    int n__,
+                    int l__,
+                    Radial_grid const& radial_grid__,
+                    std::vector<double> const& v__,
+                    double enu_start__)
+            : Radial_solution(relativistic__, zn__, l__, radial_grid__),
               n_(n__),
               l_(l__),
               enu_tolerance_(1e-12),
@@ -848,7 +865,7 @@ class Enu_finder: public Radial_solution
     public:
         
         Enu_finder(int zn__, int n__, int l__, Radial_grid const& radial_grid__, std::vector<double> const& v__, double enu_start__)
-            : Radial_solution(zn__, l__, radial_grid__),
+            : Radial_solution(0, zn__, l__, radial_grid__),
               n_(n__),
               l_(l__)
         {
