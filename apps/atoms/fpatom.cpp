@@ -144,7 +144,7 @@ void generate_radial_functions(std::vector<fpatom::radial_function_index_descrip
         {
             for (int ispn: {0, 1})
             {
-                sirius::Bound_state bound_state(zn__, radial_functions_desc__[i].n, radial_functions_desc__[i].l, 
+                sirius::Bound_state bound_state(0, zn__, radial_functions_desc__[i].n, radial_functions_desc__[i].l, 
                                                 rgrid__, veff_spherical__[ispn], enu__(i, ispn));
                 enu__(i, ispn) = bound_state.enu();
                 auto& u = bound_state.u();
