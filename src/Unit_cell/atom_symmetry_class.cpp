@@ -866,9 +866,6 @@ void Atom_symmetry_class::generate_core_charge_density()
     }
     Radial_grid rgrid(free_atom_grid);
 
-    /* radial solver with a grid of a free atom */
-    Radial_solver solver(false, -1.0 * atom_type_.zn(), rgrid);
-        
     /* interpolate spherical potential inside muffin-tin */
     Spline<double> svmt(atom_type_.radial_grid());
     /* remove nucleus contribution from Vmt */
@@ -895,6 +892,7 @@ void Atom_symmetry_class::generate_core_charge_density()
     //==     fprintf(fout, "%18.10f %18.10f\n", rgrid[ir], veff[ir]);
     //== }
     //== fclose(fout);
+    //== STOP();
 
     /* charge density */
     Spline<double> rho(rgrid);
@@ -908,21 +906,21 @@ void Atom_symmetry_class::generate_core_charge_density()
     #pragma omp parallel default(shared)
     {
         std::vector<double> rho_t(rho.num_points());
-        memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
-        std::vector<double> p;
+        std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
         
         #pragma omp for
         for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++)
         {
             if (atom_type_.atomic_level(ist).core)
             {
-                level_energy[ist] = solver.bound_state(atom_type_.atomic_level(ist).n, atom_type_.atomic_level(ist).l, 
-                                                       level_energy[ist], veff, p);
-        
+                Bound_state bs(0, atom_type_.zn(), atom_type_.atomic_level(ist).n, atom_type_.atomic_level(ist).l,
+                               rgrid, veff, level_energy[ist]);
+
+                auto& u = bs.u();
                 for (int i = 0; i < rgrid.num_points(); i++)
-                {
-                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * std::pow(y00 * p[i] * rgrid.x_inv(i), 2);
-                }
+                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * std::pow(u[i], 2) / fourpi;
+
+                level_energy[ist] = bs.enu();
             }
         }
 
