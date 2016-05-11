@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -29,6 +29,7 @@ class Free_atom : public sirius::Atom_type
     public:
     
         double NIST_LDA_Etot;
+        double NIST_ScRLDA_Etot;
 
         Free_atom(Free_atom&& src) = default;
     
@@ -38,12 +39,13 @@ class Free_atom : public sirius::Atom_type
                   double mass, 
                   std::vector<atomic_level_descriptor>& levels_nl) 
             : Atom_type(parameters_, symbol, name, zn, mass, levels_nl, sirius::scaled_pow_grid), 
-              NIST_LDA_Etot(0.0)
+              NIST_LDA_Etot(0),
+              NIST_ScRLDA_Etot(0)
         {
             radial_grid_ = sirius::Radial_grid(sirius::exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
-        double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
+        double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
         {
             runtime::Timer t("sirius::Free_atom::ground_state");
         
@@ -54,6 +56,7 @@ class Free_atom : public sirius::Atom_type
             
             sirius::XC_functional Ex("XC_LDA_X", 1);
             sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
+            Ex.set_relativistic(rel);
         
             std::vector<double> veff(np);
             std::vector<double> vnuc(np);
@@ -62,6 +65,11 @@ class Free_atom : public sirius::Atom_type
                 vnuc[i] = -1.0 * zn() / radial_grid(i);
                 veff[i] = vnuc[i];
             }
+
+            std::vector<double> w;
+            sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(np, 12, 0.8, w, mpi_comm_self());
+            for (int i = 0; i < np; i++) mixer->input(i, veff[i]);
+            mixer->initialize();
         
             sirius::Spline<double> rho(radial_grid());
         
@@ -89,8 +97,6 @@ class Free_atom : public sirius::Atom_type
             double energy_kin = 0;
             double energy_coul = 0;
         
-            double beta = 0.9;
-            
             bool converged = false;
             
             /* starting values for E_{nu} */
@@ -101,24 +107,25 @@ class Free_atom : public sirius::Atom_type
             {
                 rho_old = rho.values();
                 
-                memset(&rho[0], 0, rho.num_points() * sizeof(double));
+                std::memset(&rho[0], 0, rho.num_points() * sizeof(double));
                 #pragma omp parallel default(shared)
                 {
-                    //std::vector<double> p(rho.num_points());
                     std::vector<double> rho_t(rho.num_points());
-                    memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
+                    std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
                 
                     #pragma omp for
                     for (int ist = 0; ist < num_atomic_levels(); ist++)
                     {
-                        sirius::Bound_state bound_state(zn(), atomic_level(ist).n, atomic_level(ist).l, radial_grid(), veff, enu[ist]);
+                        sirius::Bound_state bound_state(rel, zn(), atomic_level(ist).n, atomic_level(ist).l, radial_grid(), veff, enu[ist]);
                         enu[ist] = bound_state.enu();
-                        auto& u =  bound_state.u();
-                    
+                        auto& u = bound_state.u();
+                        
+                        /* assume a spherical symmetry */
                         for (int i = 0; i < np; i++)
                         {
                             free_atom_radial_functions_(i, ist) = u[i];
-                            rho_t[i] += atomic_level(ist).occupancy * std::pow(y00 * free_atom_radial_functions_(i, ist), 2);
+                            /* sum of squares of spherical harmonics for angular momentm l is (2l+1)/4pi */
+                            rho_t[i] += atomic_level(ist).occupancy * std::pow(free_atom_radial_functions_(i, ist), 2) / fourpi;
                         }
                     }
         
@@ -148,8 +155,13 @@ class Free_atom : public sirius::Atom_type
                 }
                
                 /* mix old and new effective potential */
-                for (int i = 0; i < np; i++)
-                    veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
+                for (int i = 0; i < np; i++) mixer->input(i, vnuc[i] + vh[i] + vxc[i]);
+                mixer->mix();
+                for (int i = 0; i < np; i++) veff[i] = mixer->output_buffer(i);
+
+                //= /* mix old and new effective potential */
+                //= for (int i = 0; i < np; i++)
+                //=     veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
                 
                 /* sum of occupied eigen values */
                 double eval_sum = 0.0;
@@ -183,13 +195,11 @@ class Free_atom : public sirius::Atom_type
                     printf("Converged in %i iterations.\n", iter);
                     break;
                 }
-                
-                beta = std::max(beta * 0.95, 0.005);
             }
         
             if (!converged)
             {
-                printf("energy_diff : %18.10f   charge_rms : %18.10f   beta : %18.10f\n", energy_diff, charge_rms, beta);
+                printf("energy_diff : %18.10f   charge_rms : %18.10f\n", energy_diff, charge_rms);
                 std::stringstream s;
                 s << "atom " << symbol() << " is not converged" << std::endl
                   << "  energy difference : " << energy_diff << std::endl
@@ -200,6 +210,8 @@ class Free_atom : public sirius::Atom_type
             free_atom_density_ = sirius::Spline<double>(radial_grid_, rho.values());
             
             free_atom_potential_ = sirius::Spline<double>(radial_grid_, veff);
+
+            double Eref = (rel) ? NIST_ScRLDA_Etot : NIST_LDA_Etot;
 
             printf("\n");
             printf("Radial gird\n");
@@ -216,10 +228,10 @@ class Free_atom : public sirius::Atom_type
             printf("Eenuc : %20.12f\n", energy_enuc);
             printf("Eexc  : %20.12f\n", energy_xc);
             printf("Total : %20.12f\n", energy_tot);
-            printf("NIST  : %20.12f\n", NIST_LDA_Etot);
+            printf("NIST  : %20.12f\n", Eref);
 
             /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-            double dE = (Utils::round(energy_tot, 6) - NIST_LDA_Etot);
+            double dE = (Utils::round(energy_tot, 6) - Eref);
             std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
             
             return energy_tot;
@@ -255,13 +267,21 @@ Free_atom init_atom_configuration(const std::string& label)
     jin[label]["name"] >> name;
     double NIST_LDA_Etot = 0.0;
     NIST_LDA_Etot = jin[label]["NIST_LDA_Etot"].get(NIST_LDA_Etot);
+    double NIST_ScRLDA_Etot = 0.0;
+    NIST_ScRLDA_Etot = jin[label]["NIST_ScRLDA_Etot"].get(NIST_ScRLDA_Etot);
     
     Free_atom a(label, name, zn, mass, levels_nlk);
     a.NIST_LDA_Etot = NIST_LDA_Etot;
+    a.NIST_ScRLDA_Etot = NIST_ScRLDA_Etot;
     return std::move(a);
 }
 
-void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::string& lo_type, int apw_order, bool write_to_xml)
+void generate_atom_file(Free_atom& a,
+                        double core_cutoff_energy,
+                        const std::string& lo_type,
+                        int apw_order,
+                        bool write_to_xml,
+                        bool rel)
 {
     std::vector<double> enu;
     
@@ -270,7 +290,7 @@ void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::stri
     printf("----------------------------------\n");
    
     /* solve a free atom */
-    a.ground_state(1e-10, 1e-8, 1e-7, enu);
+    a.ground_state(1e-10, 1e-8, 1e-7, enu, rel);
    
     /* find number of core states */
     int ncore = 0;
@@ -290,7 +310,6 @@ void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::stri
     std::vector<atomic_level_descriptor> core;
     std::vector<atomic_level_descriptor> valence;
     std::string level_symb[] = {"s", "p", "d", "f"};
-    //std::vector<double> enu_valence;
 
     int nl_c[8][4];
     int nl_v[8][4];
@@ -335,7 +354,6 @@ void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::stri
         else
         {
             valence.push_back(a.atomic_level(ist));
-            //enu_valence.push_back(enu[ist]);
             printf("  => valence\n");
 
             nl_v[n][l]++;
@@ -351,6 +369,23 @@ void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::stri
             if (nl_c[n][l]) e_nl_c[n][l] /= nl_c[n][l];
         }
     }
+
+    std::array<std::vector<int>, 4> n_v;
+    for (int n = 1; n <= 7; n++)
+    {
+        for (int l = 0; l < 4; l++)
+        {
+            if (nl_v[n][l]) n_v[l].push_back(n);
+        }
+    }
+
+    for (int l = 0; l < 4; l++)
+    {
+        printf("l: %i, n: ", l);
+        for (int n: n_v[l]) printf("%i ", n);
+        printf("\n");
+    }
+
 
     //FILE* fout = fopen("rho.dat", "w");
     //for (int ir = 0; ir < a.radial_grid().num_points(); ir++) 
@@ -433,19 +468,19 @@ void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::stri
     
     int lmax = 0;
     for (size_t i = 0; i < valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
-    lmax = std::min(lmax + 1, 3);
+    //lmax = std::min(lmax + 1, 3);
     //lmax = 8;
     int nmax[9];
     for (int l = 0; l <= lmax; l++)
     {
         int n = l + 1;
         
-        for (int i = 0; i < (int)core.size(); i++) 
+        for (size_t i = 0; i < core.size(); i++) 
         {
             if (core[i].l == l) n = core[i].n + 1;
         }
         
-        for (int i = 0; i < (int)valence.size(); i++)
+        for (size_t i = 0; i < valence.size(); i++)
         {
             if (valence[i].l == l) n = valence[i].n;
         }
@@ -583,24 +618,113 @@ void generate_atom_file(Free_atom& a, double core_cutoff_energy, const std::stri
         }
         fprintf(fout, "      <basis>\n");
         fprintf(fout, "        <default type=\"lapw\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-        for (int n = 1; n <= 7; n++)
+        for (int l = 0; l < 4; l++)
         {
-            for (int l = 0; l < 4; l++)
+            if (n_v[l].size() == 1)
             {
-                if (nl_v[n][l])
+                int n = n_v[l][0];
+
+                fprintf(fout, "        <lo l=\"%i\">\n", l);
+                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "        </lo>\n");
+
+                fprintf(fout, "        <lo l=\"%i\">\n", l);
+                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "        </lo>\n");
+                
+                fprintf(fout, "        <lo l=\"%i\">\n", l);
+                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "        </lo>\n");
+            }
+            if (n_v[l].size() > 1)
+            {
+                for (size_t i = 0; i < n_v[l].size() - 1; i++)
                 {
+                    int n = n_v[l][i];
+                    int n1 = n_v[l][i + 1];
+
                     fprintf(fout, "        <lo l=\"%i\">\n", l);
-                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
-                    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
                     fprintf(fout, "        </lo>\n");
 
                     fprintf(fout, "        <lo l=\"%i\">\n", l);
-                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-                    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+                    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                    fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                    fprintf(fout, "        </lo>\n");
+                    
+                    fprintf(fout, "        <lo l=\"%i\">\n", l);
+                    fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n1][l]);
                     fprintf(fout, "        </lo>\n");
                 }
+                int n = n_v[l].back();
+                fprintf(fout, "        <lo l=\"%i\">\n", l);
+                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+                fprintf(fout, "        </lo>\n");
             }
+
+
+
+            //if (n_v[l].size())
+            //    fprintf(fout, "        <custom l=\"%i\" type=\"lapw\" trialEnergy=\"%f\" searchE=\"false\"/>\n", l, e_nl_v[n_v[l].front()][l]);
+
+            //for (int n = 1; n <= 7; n++)
+            //{
+            //    if (nl_v[n][l])
+            //    {
+            //        fprintf(fout, "        <lo l=\"%i\">\n", l);
+            //        fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+            //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+            //        fprintf(fout, "        </lo>\n");
+
+            //        //if (e_nl_v[n][l] > -5.0)
+            //        //{
+            //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+            //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+            //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+            //            fprintf(fout, "        </lo>\n");
+            //        //}
+            //        
+            //        //if (e_nl_v[n][l] > -1.0)
+            //        //{
+            //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+            //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+            //            fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+            //            fprintf(fout, "        </lo>\n");
+            //        //}
+
+            //        //fprintf(fout, "        <lo l=\"%i\">\n", l);
+            //        //fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+            //        //fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+            //        //fprintf(fout, "        </lo>\n");
+            //        //
+            //        //if (e_nl_v[n][l] < -1.0)
+            //        //{
+            //        //    fprintf(fout, "        <lo l=\"%i\">\n", l);
+            //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+            //        //    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+            //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+            //        //    fprintf(fout, "        </lo>\n");
+            //        //}
+            //    }
+            //}
+        }
+        for (int l = lmax + 1; l <= lmax + 3; l++)
+        {
+            fprintf(fout, "        <lo l=\"%i\">\n", l);
+            fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+            fprintf(fout, "        </lo>\n");
+
+            fprintf(fout, "        <lo l=\"%i\">\n", l);
+            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+            fprintf(fout, "        </lo>\n");
         }
         fprintf(fout, "      </basis>\n");
         fprintf(fout, "  </sp>\n");
@@ -626,9 +750,10 @@ int main(int argn, char **argv)
     args.register_key("--core=", "{double} cutoff energy (in Ha) for the core states");
     args.register_key("--order=", "{int} order of augmentation");
     args.register_key("--xml", "xml output for Exciting code");
+    args.register_key("--rel", "use scalar-relativistic solver");
     args.parse_args(argn, argv);
     
-    if (argn == 1)
+    if (argn == 1 || args.exist("help"))
     {
         printf("\n");
         printf("Atom (L)APW+lo basis generation.\n");
@@ -670,10 +795,12 @@ int main(int argn, char **argv)
     if (args.exist("order")) apw_order = args.value<int>("order");
 
     bool write_to_xml = args.exist("xml");
+
+    bool rel = args.exist("rel");
    
     Free_atom a = init_atom_configuration(symbol);
     
-    generate_atom_file(a, core_cutoff_energy, lo_type, apw_order, write_to_xml);
+    generate_atom_file(a, core_cutoff_energy, lo_type, apw_order, write_to_xml, rel);
 
     sirius::finalize();
 }
