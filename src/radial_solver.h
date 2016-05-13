@@ -148,7 +148,7 @@ class Radial_solver
  *  \f[
  *    -\frac{1}{2}\ddot{p}''(r) + V_{eff}(r)\ddot{p}(r) = E\ddot{p}(r) + 2\dot{p}(r)
  *  \f]
- *  So we can generalize the radial Schrodinger equation like this:
+ *  and so on. We can generalize the radial Schrodinger equation like this:
  *  \f[
  *    -\frac{1}{2}p''(r) + \big(V_{eff}(r) - E\big) p(r) = \chi(r)
  *  \f]
@@ -168,10 +168,27 @@ class Radial_solver
  *  \f[
  *    q'(r) = \frac{1}{2}p''(r) - \frac{q(r)}{r} = \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
  *  \f]
- *  Final expression for a linear system of differential equations:
+ *  Final expression for a linear system of differential equations for m-th energy derivative is:
  *  \f{eqnarray*}{
  *    p'(r) &=& 2q(r) + \frac{p(r)}{r} \\
  *    q'(r) &=& \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
+ *  \f}
+ *  Scalar-relativistic equations look similar. For m = 0 (no energy derivative) we have:
+ *  \f{eqnarray*}{
+ *    p'(r) &=& 2Mq(r) + \frac{p(r)}{r} \\
+ *    q'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) p(r) - \frac{q(r)}{r}
+ *  \f}
+ *  where \f$ M = 1 + \frac{\alpha^2}{2}\big(E-V(r)\big) \f$. Because M depends on energy, the m-th energy
+ *  derivatives of the scalar-relativistic solution take a slighly different form. For m=1 we have:
+ *  \f{eqnarray*}{
+ *    \dot{p}'(r) &=& 2M\dot{q}(r) + \frac{\dot{p}(r)}{r} + \alpha^2 q(r) \\
+ *    \dot{q}'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) \dot{p}(r) - \frac{\dot{q}(r)}{r} - \big(1 + \frac{\ell(\ell+1)\alpha^2}{4M^2r^2}\big)p(r) 
+ *  \f}
+ *  For m=2:
+ *  \f{eqnarray*}{
+ *    \ddot{p}'(r) &=& 2M\ddot{q}(r) + \frac{\ddot{p}(r)}{r} + 2 \alpha^2 \dot{q}(r) \\
+ *    \ddot{q}'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) \ddot{p}(r) - \frac{\ddot{q}(r)}{r} - 2 \big(1 + \frac{\ell(\ell+1)\alpha^2}{4M^2r^2}\big)\dot{p}(r) 
+ *      + \frac{\ell(\ell+1)\alpha^4}{4M^3r^2} p(r)
  *  \f}
  */
 class Radial_solution
@@ -209,26 +226,33 @@ class Radial_solution
             double alpha2 = 0.5 * std::pow(speed_of_light, -2);
             if (!relativistic_) alpha2 = 0.0;
 
-            double enu0 = 0.0;
-            if (relativistic_) enu0 = enu__;
-
             double ll2 = 0.5 * l_ * (l_ + 1);
 
             double x2 = radial_grid_[0];
             double x2inv = radial_grid_.x_inv(0);
             double v2 = ve__[0] - zn_ / x2;
-            double M2 = 1 - (v2 - enu0) * alpha2;
+            double M2 = 1 - (v2 - enu__) * alpha2;
 
-            if (l_ == 0)
-            {
-                p__[0] = 2 * zn_ * x2;
-                q__[0] = -std::pow(zn_, 2) * x2;
-            }
-            else
-            {
-                p__[0] = std::pow(x2, l_ + 1);
-                q__[0] = std::pow(x2, l_) * l_ / 2;
-            }
+            //if (!relativistic_)
+            //{
+                if (l_ == 0)
+                {
+                    p__[0] = 2 * zn_ * x2;
+                    q__[0] = -std::pow(zn_, 2) * x2;
+                }
+                else
+                {
+                    p__[0] = std::pow(x2, l_ + 1);
+                    q__[0] = std::pow(x2, l_) * l_ / 2;
+                }
+            //}
+            //else
+            //{
+            //    double a = (l_ * (l_ + 1) * std::pow(speed_of_light, -2) * zn_ - std::pow(speed_of_light, -4) * std::pow(zn_, 3) + 1) / std::pow(speed_of_light, -2) / zn_;
+            //    p__[0] = std::pow(x2, 0.5 * (1 + std::sqrt(1 + 4 * a)));
+            //    q__[0] = 0.5 * (-1 + std::sqrt(1 + 4 * a) * std::pow(x2, 0.5 * (-1 + std::sqrt(1 + 4 * a)))) / 2 / M2;
+            //}
+
 
             //p__[0] = std::pow(radial_grid_[0], l_ + 1);
             //if (l_ == 0)
@@ -272,8 +296,8 @@ class Radial_solution
                 mp2 = mp__[i + 1];
                 double mp1 = mp__(i, h1);
                 double v1 = ve__(i, h1) - zn_ * x1inv;
-                double M1 = 1 - (v1 - enu0) * alpha2;
-                M2 = 1 - (v2 - enu0) * alpha2;
+                double M1 = 1 - (v1 - enu__) * alpha2;
+                M2 = 1 - (v2 - enu__) * alpha2;
                 vl2 = ll2 / M2 / std::pow(x2, 2);
                 
                 double v0enuvl0 = v2enuvl2;
@@ -283,23 +307,23 @@ class Radial_solution
 
                 double v1enuvl1 = (v1 - enu__ + vl1);
                 
-                // k0 = F(Y(x), x)
+                /* k0 = F(Y(x), x) */
                 pk[0] = 2 * M0 * q0 + p0 * x0inv;
                 qk[0] = v0enuvl0 * p0 - q0 * x0inv - mp0;
 
-                // k1 = F(Y(x) + k0 * h/2, x + h/2)
+                /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
                 pk[1] = 2 * M1 * (q0 + qk[0] * h1) + (p0 + pk[0] * h1) * x1inv;
                 qk[1] = v1enuvl1 * (p0 + pk[0] * h1) - (q0 + qk[0] * h1) * x1inv - mp1;
 
-                // k2 = F(Y(x) + k1 * h/2, x + h/2)
+                /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
                 pk[2] = 2 * M1 * (q0 + qk[1] * h1) + (p0 + pk[1] * h1) * x1inv; 
                 qk[2] = v1enuvl1 * (p0 + pk[1] * h1) - (q0 + qk[1] * h1) * x1inv - mp1;
 
-                // k3 = F(Y(x) + k2 * h, x + h)
+                /* k3 = F(Y(x) + k2 * h, x + h) */
                 pk[3] = 2 * M2 * (q0 + qk[2] * h) + (p0 + pk[2] * h) * x2inv; 
                 qk[3] = v2enuvl2 * (p0 + pk[2] * h) - (q0 + qk[2] * h) * x2inv - mp2;
                 
-                // Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6
+                /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
                 p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
                 q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
 
@@ -355,7 +379,7 @@ class Radial_solution
             for (int i = 0; i < nr; i++)
             {
                 double V = ve__[i] - zn_ * radial_grid_.x_inv(i); 
-                double M = 1.0 - (V - enu0) * alpha2;
+                double M = 1.0 - (V - enu__) * alpha2;
 
                 /* P' = 2MQ + \frac{P}{r} */
                 dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
