@@ -36,7 +36,7 @@ const int minor_version = 6;
 const double speed_of_light = 137.035999139; 
 
 // This value reproduces NIST ScRLDA total energy much better.
-const double speed_of_light = 137.0359895;
+//const double speed_of_light = 137.0359895;
 
 /// \f$ \pi \f$
 const double pi = 3.1415926535897932385;
