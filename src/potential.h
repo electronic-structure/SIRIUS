@@ -100,6 +100,9 @@ class Potential
         std::vector< mdarray<double,3> > ae_paw_local_potential_;
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
 
+        // TODO probably replace to non_local_operator
+        std::vector< mdarray<double,2> > paw_local_Dij_matrix_; // 3 dimensions: i, j, spin
+
         //-----
 
         //Spheric_function<function_domain_t::spectral,double>
@@ -168,20 +171,29 @@ class Potential
         void init_PAW();
 
         void xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
+								   Spheric_function<spectral,double> &out_atom_pot_sf,
 								   Spheric_function<spectral,double> &full_rho_lm,
-								   Spheric_function<spectral,double> &out_vxc_lm,
-								   Spheric_function<spectral,double> &out_exc_lm);
+								   const std::vector<double> &rho_core);
 
 
         void xc_mt_PAW_collinear(Radial_grid const& rgrid,
+								 Spheric_function<spectral,double>  &out_atom_pot_up_sf,
+								 Spheric_function<spectral,double>  &out_atom_pot_dn_sf,
 								 Spheric_function<spectral,double> &full_rho_lm,
-								 Spheric_function<spectral,double> &magnetization_Z_lm,
-								 Spheric_function<spectral,double> &out_vxc_up_lm,
-								 Spheric_function<spectral,double> &out_vxc_dn_lm,
-								 Spheric_function<spectral,double> &out_exc_lm);
+								 mdarray<double,3> &magnetization_lm,
+								 const std::vector<double> &rho_core);
 
         // TODO DO
         void xc_mt_PAW_noncollinear(	)	{     };
+
+        void calc_PAW_local_potential(int atom_index,
+									  mdarray<double, 2> &ae_full_density,
+									  mdarray<double, 2> &ps_full_density,
+									  mdarray<double, 3> &ae_local_magnetization,
+									  mdarray<double, 3> &ps_local_magnetization);
+
+
+        void calc_PAW_local_Dij(int atom_index);
 
         //---
 
@@ -435,10 +447,13 @@ class Potential
          */
         void generate_D_operator_matrix();
 
+        //--- PAW functions ------------------------------
         void generate_PAW_effective_potential(std::vector< mdarray<double, 2> > *paw_ae_local_density,
 				std::vector< mdarray<double, 2> > *paw_ps_local_density,
 				std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
 				std::vector< mdarray<double, 3> > *paw_ps_local_magnetization);
+
+        //------------------------------------------------
 
         void check_potential_continuity_at_mt();
 

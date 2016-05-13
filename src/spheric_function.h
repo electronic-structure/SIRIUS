@@ -100,6 +100,16 @@ class Spheric_function
             return *this;
         }
 
+        inline Spheric_function<domain_t, T>& operator+=(Spheric_function<domain_t, T>&& rhs)
+        {
+            for (size_t i1 = 0; i1 < data_.size(1); i1++)
+            {
+                for (size_t i0 = 0; i0 < data_.size(0); i0++) data_(i0, i1) += rhs.data_(i0, i1);
+            }
+
+            return *this;
+        }
+
 //        inline Spheric_function<domain_t, T>& operator+(Spheric_function<domain_t, T>& rhs)
 //        {
 //        	Spheric_function<domain_t, T> res( angular_domain_size(), radial_grid() );

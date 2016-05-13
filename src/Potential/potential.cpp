@@ -36,10 +36,17 @@ Potential::Potential(Simulation_context& ctx__)
 {
     runtime::Timer t("sirius::Potential::Potential");
 
+//    if(ctx_.full_potential())
+//	{
+    	lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+//	}
+//    else
+//    {
+//    	lmax_ =
+//    }
+
     if (ctx_.esm_type() == full_potential_lapwlo)
     {
-        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */
@@ -52,6 +59,8 @@ Potential::Potential(Simulation_context& ctx__)
             for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
         }
     }
+
+    std::cout<<lmax_<<" !!!!" <<std::endl;
 
     sht_ = new SHT(lmax_);
 

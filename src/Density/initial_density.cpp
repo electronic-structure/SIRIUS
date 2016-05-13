@@ -514,7 +514,6 @@ void Density::initialize_beta_density_matrix()
 {
 	density_matrix_.zero();
 
-	ofstream of("density.txt");
 
 	for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
 	{
@@ -533,6 +532,7 @@ void Density::initialize_beta_density_matrix()
 			vector3d<double> magn = unit_cell_.atom(ia).vector_field();
 			double norm = magn.length();
 
+
 			for (int xi = 0; xi < nbf; xi++)
 			{
 				basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
@@ -548,14 +548,15 @@ void Density::initialize_beta_density_matrix()
 					case 0:
 					{
 						density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
-
-						of <<  density_matrix_(xi,xi,0,ia) << " ";
 						break;
 					}
+
 					case 1:
 					{
-						density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 + magn[2]/norm ) * occ / (double)( 2 * l + 1 );
-						density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - magn[2]/norm ) * occ / (double)( 2 * l + 1 );
+						double nm = (norm !=0 ) ? magn[2] / norm : 0;
+
+						density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
+						density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
 						break;
 					}
 				}
@@ -563,8 +564,6 @@ void Density::initialize_beta_density_matrix()
 			}
 		}
 	}
-
-	of.close();
 
 	//TERMINATE("finished");
 }
