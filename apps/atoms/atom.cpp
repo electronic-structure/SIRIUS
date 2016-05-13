@@ -290,7 +290,7 @@ void generate_atom_file(Free_atom& a,
     printf("----------------------------------\n");
    
     /* solve a free atom */
-    a.ground_state(1e-10, 1e-8, 1e-7, enu, rel);
+    a.ground_state(1e-10, 1e-8, 1e-8, enu, rel);
    
     /* find number of core states */
     int ncore = 0;
