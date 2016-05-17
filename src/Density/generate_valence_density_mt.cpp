@@ -264,7 +264,7 @@ void Density::generate_paw_loc_density()
 
 						if(lm3coef.lm3 >= (int)ae_atom_density.size(1))
 						{
-							TERMINATE("PAW: lm3 index out of range of lm part of density array");
+							TERMINATE("PAW: lm3 index out of range of lm part of density array");;
 						}
 
 						// iterate over radial points
