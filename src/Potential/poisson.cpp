@@ -222,7 +222,7 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
 
 	std::vector<int> l_by_lm = Utils::l_by_lm(lmax_rho);
 
-	std::cout<<lmsize<<" "<<lmax_rho<<" "<< R <<std::endl;
+//	std::cout<<lmsize<<" "<<lmax_rho<<" "<< R <<std::endl;
 
 	#pragma omp parallel default(shared)
 	{
@@ -247,18 +247,27 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
 				double d2 = 1.0 / double(2 * l + 1);
 				for (int ir = 0; ir < nmtp; ir++)
 				{
+
+
 					double r = atom.radial_grid(ir);
 
 					double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
 								  (g2[nmtp - 1] - g2[ir]) * std::pow(r, l) - (g1[nmtp - 1] - g1[ir]) * std::pow(r, l) * d1;
 
 					vh_mt(lm, ir) = fourpi * vlm * d2;
+
+					////////////////////////////////////////////////////////////////////
+//					if(lm==0 && ir> 930)
+//					{
+//						std::cout<<"g2 " << g2[ir]<<" vh "<<vh_mt(lm, ir)<<std::endl;
+//					}
+					//////////////////////////////////////////////////////////////////////
 				}
 			}
 		}
 	}
 
-	std::cout<<"pvmt done"<<std::endl;
+//	std::cout<<"pvmt done"<<std::endl;
 
 	SHT::convert(lmax_rho, &qmt[0], &qmt_ext(0));
 

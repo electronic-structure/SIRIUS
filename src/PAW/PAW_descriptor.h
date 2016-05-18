@@ -43,6 +43,8 @@ public:
 	/// electrostatic potential of all electron core charge
 	std::vector<double> all_elec_loc_potential;
 
+	int cutoff_radius_index;
+
 	bool is_initialized;
 };
 

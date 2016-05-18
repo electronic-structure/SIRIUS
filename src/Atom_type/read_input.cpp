@@ -293,6 +293,9 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 	//---- read core energy ----
 	parser["pseudo_potential"]["header"]["paw_core_energy"] >> paw_.core_energy;
 
+	//--- cutoff index ---
+	parser["pseudo_potential"]["header"]["cutoff_radius_index"] >> paw_.cutoff_radius_index;
+
 	//---- read augmentation multipoles and integrals ---
 	parser["pseudo_potential"]["paw_data"]["aug_integrals"] >> paw_.aug_integrals;
 
@@ -315,6 +318,8 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 	paw_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
 	paw_.pseudo_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
 
+	paw_.all_elec_wfc.zero();
+	paw_.pseudo_wfc.zero();
 
 	//---- read ae and ps wave functions ---
 	for(int i=0;i<num_wfc;i++)
@@ -333,7 +338,7 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 			TERMINATE(s);
 		}
 
-		std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
+		std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), paw_.cutoff_radius_index * sizeof(double));
 
 		// --- read ps wave func ---
 		wfc.clear();
@@ -349,7 +354,7 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 			TERMINATE(s);
 		}
 
-		std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), wfc.size() * sizeof(double));
+		std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), paw_.cutoff_radius_index * sizeof(double));
 	}
 }
 

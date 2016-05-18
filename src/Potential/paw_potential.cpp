@@ -220,8 +220,8 @@ void Potential::calc_PAW_local_potential(int atom_index,
 //		std::cout<<"hartree done"<<std::endl;
 //
 //		std::stringstream s,sd;
-//		s<<"hartree_2_"<<ia<<".dat";
-//		sd<<"density_2_"<<ia<<".dat";
+//		s<<"hartree_2_"<<atom_index<<".dat";
+//		sd<<"density_2_"<<atom_index<<".dat";
 //
 //		std::ofstream of(s.str());
 //		std::ofstream ofd(sd.str());
@@ -234,7 +234,6 @@ void Potential::calc_PAW_local_potential(int atom_index,
 //			{
 //				of<< ae_atom_pot_sfs[0](j,i) << " " << ps_atom_pot_sfs[0](j,i) << std::endl;
 //				ofd<< ae_full_density(j,i) << " " << ps_full_density(j,i) << std::endl;
-//
 //			}
 //		}
 //
@@ -351,20 +350,22 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 	auto integrate = [&] (int ispin, int irb1, int irb2, int iqij, int lm3 )
 			{
 				//create array for integration
-				std::vector<double> intdata(atom_type.radial_grid().num_points());
+				std::vector<double> intdata(atom_type.radial_grid().num_points(),0);
 
 				// fill array
-				for(int irad=0; irad< intdata.size(); irad++)
+				for(int irad=0; irad< paw.cutoff_radius_index-1; irad++)
 				{
 					double ae_part = paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
 					double ps_part = paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
 
 					intdata[irad] = ae_atom_pot(lm3,irad,ispin) * ae_part - ps_atom_pot(lm3,irad,ispin) * ps_part;
 
-					if(std::abs(intdata[irad]) > 300)
-					{
-						std::cout<<irb1<<" "<< irb2<< " "<< iqij <<" "<< lm3 <<" | "<< irad<<" | "<<intdata[irad] <<" || "<<ae_part << " " << ae_atom_pot(lm3,irad,ispin)<< " "<< ps_part << " "<<ps_atom_pot(lm3,irad,ispin) << std::endl;
-					}
+					//////////////////////////////////////////////////////////////////////////////
+//					if(std::abs(intdata[irad]) > 300)
+//					{
+//						std::cout<<irb1<<" "<< irb2<< " "<< iqij <<" "<< lm3 <<" | "<< irad<<" | "<<intdata[irad] <<" || "<<ae_part << " " << ae_atom_pot(lm3,irad,ispin)<< " "<< ps_part << " "<<ps_atom_pot(lm3,irad,ispin) << std::endl;
+//					}
+					//////////////////////////////////////////////////////////////////////////////
 				}
 
 
@@ -372,20 +373,20 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 				Spline<double> dij_spl(atom_type.radial_grid(),intdata);
 
 				//////////////////////////////////////////////////////////////////
-				std::stringstream s;
-				s<<"dij_arr_"<<irb1<<"_"<<irb2<<".dat";
-
-				std::ofstream of(s.str());
-
-
-				for(int j = 0; j< intdata.size(); j++)
-				{
-
-					of<< intdata[j] <<" ";
-
-				}
-
-				of.close();
+//				std::stringstream s;
+//				s<<"dij_arr_"<<irb1<<"_"<<irb2<<".dat";
+//
+//				std::ofstream of(s.str());
+//
+//
+//				for(int j = 0; j< intdata.size(); j++)
+//				{
+//
+//					of<< intdata[j] <<" ";
+//
+//				}
+//
+//				of.close();
 				//////////////////////////////////////////////////////////////////
 				// integrate
 				return dij_spl.integrate(0);
@@ -427,7 +428,9 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 				// add to Dij an integral of dij array
 				for(int ispin = 0; ispin < ctx_.num_spins(); ispin++)
 				{
-					std::cout<<integrate(ispin,irb1,irb2,iqij,lm3coef.lm3)<<std::endl;
+					/////////////////////////////////////////////////////////////
+//					std::cout<<integrate(ispin,irb1,irb2,iqij,lm3coef.lm3)<<std::endl;
+					//////////////////////////////////////////////////////////////
 					paw_local_Dij_matrix_[atom_index]( idij, ispin) += lm3coef.coef * integrate(ispin,irb1,irb2,iqij,lm3coef.lm3);
 				}
 			}
@@ -435,14 +438,14 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 	}
 
 	//////////////////////////////////////////////////////////////////
-	std::ofstream ofxc("dij.dat");
-
-	for(int j = 0; j< paw_local_Dij_matrix_[atom_index].size(0); j++)
-	{
-			ofxc<< paw_local_Dij_matrix_[atom_index](j,0) << std::endl;
-	}
-
-	ofxc.close();
+//	std::ofstream ofxc("dij.dat");
+//
+//	for(int j = 0; j< paw_local_Dij_matrix_[atom_index].size(0); j++)
+//	{
+//			ofxc<< paw_local_Dij_matrix_[atom_index](j,0) << std::endl;
+//	}
+//
+//	ofxc.close();
 	//////////////////////////////////////////////////////////////////
 }
 

@@ -89,10 +89,12 @@ def parse_non_local(upf_dict, root):
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
 
     if node.attrib['q_with_l'] != 'T':
-        print("Don't know how to parse this")
+        print("Don't know how to parse this 'q_with_l != T'")
         sys.exit(0)
 
+
     upf_dict['augmentation'] = []
+    upf_dict['header']['cutoff_radius_index'] = int(node.attrib['cutoff_r_index'])
 
     nb = upf_dict['header']['number_of_proj']
 
@@ -125,6 +127,7 @@ def parse_PAW(upf_dict, root):
     if upf_dict['header']['pseudo_type'] != "PAW": return
 
     upf_dict["paw_data"] = {}
+
 
     #-------------------------------------
     #---- Read PP_Q and PP_MULTIPOLES ----
