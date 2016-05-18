@@ -103,6 +103,10 @@ class Simulation_parameters
 
         std::string fft_mode_;
 
+        relativity_t valence_relativity_;
+
+        relativity_t core_relativity_;
+
         void set_defaults()
         {
             lmax_apw_            = -1;
@@ -127,6 +131,8 @@ class Simulation_parameters
             std_evp_solver_name_ = "";
             gen_evp_solver_name_ = "";
             fft_mode_            = "serial";
+            valence_relativity_  = relativity_t::none;
+            core_relativity_     = relativity_t::dirac;
         }
         
         /// Import data from initial input parameters.
@@ -443,6 +449,16 @@ class Simulation_parameters
         inline std::string const& gen_evp_solver_name() const
         {
             return gen_evp_solver_name_;
+        }
+
+        inline relativity_t valence_relativity() const
+        {
+            return valence_relativity_;
+        }
+
+        inline relativity_t core_relativity() const
+        {
+            return core_relativity_;
         }
 };
 
