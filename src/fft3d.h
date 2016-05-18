@@ -34,8 +34,6 @@
 #include "fft3d_grid.h"
 #include "gvec.h"
 
-// TODO: allocate and deallocate buffers manually
-
 namespace sirius {
 
 /// Implementation of FFT3D.

@@ -3,15 +3,15 @@
 namespace sirius {
 
 Atom_type::Atom_type(Simulation_parameters const& parameters__,
-                     const char* symbol__, 
-                     const char* name__, 
+                     const std::string symbol__, 
+                     const std::string name__, 
                      int zn__, 
                      double mass__, 
                      std::vector<atomic_level_descriptor>& levels__,
                      radial_grid_t grid_type__) 
     : parameters_(parameters__),
-      symbol_(std::string(symbol__)), 
-      name_(std::string(name__)), 
+      symbol_(symbol__), 
+      name_(name__), 
       zn_(zn__), 
       mass_(mass__), 
       mt_radius_(2.0), 

@@ -244,7 +244,7 @@ class basis_functions_index
         /// Return total number of MT basis functions.
         inline int size() const
         {
-            return (int)basis_function_index_descriptors_.size();
+            return static_cast<int>(basis_function_index_descriptors_.size());
         }
 
         inline int size_aw() const
@@ -398,8 +398,8 @@ class Atom_type
     public:
         
         Atom_type(Simulation_parameters const& parameters__,
-                  const char* symbol__, 
-                  const char* name__, 
+                  const std::string symbol__, 
+                  const std::string name__, 
                   int zn__, 
                   double mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
@@ -407,8 +407,10 @@ class Atom_type
  
         Atom_type(Simulation_parameters const& parameters__,
                   const int id__, 
-                  const std::string label, 
+                  const std::string label__, 
                   const std::string file_name__);
+
+        Atom_type(Atom_type&& src) = default;
 
         ~Atom_type();
         
@@ -487,7 +489,7 @@ class Atom_type
         
         inline int num_atomic_levels() const
         {
-            return (int)atomic_levels_.size();
+            return static_cast<int>(atomic_levels_.size());
         }    
         
         inline atomic_level_descriptor const& atomic_level(int idx) const

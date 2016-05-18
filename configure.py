@@ -26,11 +26,11 @@ packages = {
                      "--with-szlib=no"]
     },
     "xc"   : {
-        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz",
+        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz",
         "options" : []
     },
     "spg"  : {
-        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.8/spglib-1.8.3.tar.gz",
+        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.9/spglib-1.9.2.tar.gz",
         "options" : []
     }
 }

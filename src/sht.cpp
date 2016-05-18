@@ -68,7 +68,7 @@ double SHT::gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3)
     assert(m2 >= -l2 && m2 <= l2);
     assert(m3 >= -l3 && m3 <= l3);
     
-    return pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
+    return std::pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
            gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
 }

@@ -189,4 +189,18 @@ class type_wrapper<char>
         }
 };
 
+enum class relativity_t
+{
+    none,
+
+    koelling_harmon,
+
+    zora,
+
+    iora,
+
+    dirac
+};
+
+
 #endif // __TYPEDEFS_H__

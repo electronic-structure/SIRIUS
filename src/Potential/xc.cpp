@@ -37,7 +37,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     runtime::Timer t("sirius::Potential::xc_mt_nonmagnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
+    for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
 
     Spheric_function_gradient<spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
     Spheric_function<spatial, double> lapl_rho_tp;
@@ -75,7 +75,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     for (auto& ixc: xc_func)
     {
         /* if this is an LDA functional */
-        if (ixc->lda())
+        if (ixc->is_lda())
         {
             #pragma omp parallel
             {
@@ -96,7 +96,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                 }
             }
         }
-        if (ixc->gga())
+        if (ixc->is_gga())
         {
             #pragma omp parallel
             {
@@ -162,7 +162,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     runtime::Timer t("sirius::Potential::xc_mt_magnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
+    for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
 
     Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
     Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
@@ -226,7 +226,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     for (auto& ixc: xc_func)
     {
         /* if this is an LDA functional */
-        if (ixc->lda())
+        if (ixc->is_lda())
         {
             #pragma omp parallel
             {
@@ -249,7 +249,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
                 }
             }
         }
-        if (ixc->gga())
+        if (ixc->is_gga())
         {
             #pragma omp parallel
             {
@@ -481,7 +481,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     PROFILE_WITH_TIMER("sirius::Potential::xc_it_nonmagnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func__) if (ixc->gga()) is_gga = true;
+    for (auto& ixc: xc_func__) if (ixc->is_gga()) is_gga = true;
 
     int num_points = fft_.local_size();
 
@@ -554,7 +554,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
             std::vector<double> exc_t(spl_np_t.local_size());
 
             /* if this is an LDA functional */
-            if (ixc->lda())
+            if (ixc->is_lda())
             {
                 std::vector<double> vxc_t(spl_np_t.local_size());
 
@@ -572,7 +572,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
                     vxc_tmp(spl_np_t[i]) += vxc_t[i];
                 }
             }
-            if (ixc->gga())
+            if (ixc->is_gga())
             {
                 std::vector<double> vrho_t(spl_np_t.local_size());
                 std::vector<double> vsigma_t(spl_np_t.local_size());
@@ -648,7 +648,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     runtime::Timer t("sirius::Potential::xc_it_magnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
+    for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
 
     int num_loc_points = fft_.local_size();
     
@@ -759,7 +759,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
             std::vector<double> exc_t(spl_t.local_size());
 
             /* if this is an LDA functional */
-            if (ixc->lda())
+            if (ixc->is_lda())
             {
                 std::vector<double> vxc_up_t(spl_t.local_size());
                 std::vector<double> vxc_dn_t(spl_t.local_size());
@@ -781,7 +781,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                     vxc_dn_tmp(spl_t[i]) += vxc_dn_t[i];
                 }
             }
-            if (ixc->gga())
+            if (ixc->is_gga())
             {
                 STOP();
                 //std::vector<double> vrho_up_t(spl_t.local_size());

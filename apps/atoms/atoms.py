@@ -7,7 +7,7 @@ fout = open("run.x", "w")
 
 atoms = {}
 
-while 1:
+while True:
     line = fin.readline()
     if not line: break
     if line.find("atom") == 0:
@@ -52,6 +52,12 @@ while 1:
         if  (line != ""):
             s1 = line.split()
             atoms[symbol]["NIST_LDA_Etot"] = float(s1[0])
+        
+            line = fin.readline() # NIST ScRLDA Etot
+            line = line.strip()
+            if  (line != ""):
+                s1 = line.split()
+                atoms[symbol]["NIST_ScRLDA_Etot"] = float(s1[0])
 
 fout.close()
 fin.close()
