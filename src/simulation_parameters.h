@@ -131,7 +131,7 @@ class Simulation_parameters
             std_evp_solver_name_ = "";
             gen_evp_solver_name_ = "";
             fft_mode_            = "serial";
-            valence_relativity_  = relativity_t::none;
+            valence_relativity_  = relativity_t::zora;
             core_relativity_     = relativity_t::dirac;
         }
         
