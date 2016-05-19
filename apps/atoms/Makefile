@@ -6,7 +6,7 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: atom fpatom
+all: atom
 
 atom: atom.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
