@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -31,111 +31,7 @@
 
 namespace sirius {
 
-/// Solves a "classical" or scalar relativistic radial Schroedinger equation
-/** Second order differential equation is converted into the system of coupled first-order differential equations, 
- *  which are then solved by the Runge–Kutta 4th order method.
- *
- *  \f{eqnarray*}{
- *     P' &=& 2 M Q + \frac{P}{r} \\
- *     Q' &=& (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
- *  \f}
- *
- *  \todo Correct relativistic DFT 
- */
-class Radial_solver
-{
-    private:
-
-        /// True if scalar-relativistic equation is solved.
-        bool relativistic_;
-        
-        /// Negative charge of the nucleus.
-        double zn_;
-        
-        /// Radial grid.
-        Radial_grid const& radial_grid_;
-        
-        /// Tolerance of bound state energy. 
-        double enu_tolerance_;
-       
-        /// Integrate system of two first-order differential equations forward starting from the origin. 
-        int integrate(int l, 
-                      double enu, 
-                      Spline<double>& ve,
-                      Spline<double>& mp, 
-                      std::vector<double>& p, 
-                      std::vector<double>& dpdr, 
-                      std::vector<double>& q, 
-                      std::vector<double>& dqdr) const;
-
-    public:
-
-        /// Constructor
-        Radial_solver(bool relativistic__, double zn__, Radial_grid const& radial_grid__) 
-            : relativistic_(relativistic__), 
-              zn_(zn__), 
-              radial_grid_(radial_grid__),
-              enu_tolerance_(1e-10)
-        {
-        }
-        
-        /// Explicitly specify tolerance of the solver.
-        inline void set_tolerance(double tolerance__)
-        {
-            enu_tolerance_ = tolerance__;
-        }
-        
-        /// Find center of band (linearization energy).
-        double find_enu(int n, int l, std::vector<double>& v, double enu0);
-
-        /// Find m-th energy derivative of the radial solution.
-        /** Return raw data: P and Q functions and their radial derivatives */
-        int solve(int l,
-                  double enu,
-                  int m,
-                  const std::vector<double>& v,
-                  std::vector<double>& p0,
-                  std::vector<double>& p1,
-                  std::vector<double>& q0,
-                  std::vector<double>& q1);
-        
-        /// Find m-th energy derivative of the radial solution.
-        /** Solve radial equation and return \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$ and \f$ p'(R) \f$ at the 
-         *  muffin-tin boundary.
-         *
-         *  \param [in] l Oribtal quantum number.
-         *  \param [in] m Order of energy derivative.
-         *  \param [in] e Integration energy.
-         *  \param [in] v Spherical potential.
-         *  \param [out] p \f$ p(r) = ru(r) \f$ radial function.
-         *  \param [out] rdudr \f$ ru'(r) \f$.
-         *  \param [out] dpdr \f$ p'(R) \f$ on the sphere.
-         */
-        int solve(int l__,
-                  int m__,
-                  double e__,
-                  const std::vector<double>& v__,
-                  std::vector<double>& p__,
-                  std::vector<double>& rdudr__,
-                  double* dpdr__);
-        
-        /// Find a bound state.
-        /** Radial grid must be large enough to fully hold the bound state. */
-        double bound_state(int n__,
-                           int l__,
-                           double enu__,
-                           const std::vector<double>& v__,
-                           std::vector<double>& p__) const;
-
-        double bound_state(int n__,
-                           int l__,
-                           double enu__,
-                           const std::vector<double>& v__,
-                           std::vector<double>& p__,
-                           std::vector<double>& rdudr__) const;
-};
-
-/// Find a solution to radial Schrodinger equation.
+/// Finds a solution to radial Schrodinger, Koelling-Harmon or Dirac equation.
 /** Non-relativistic radial Schrodinger equation:
  *  \f[
  *    -\frac{1}{2}p''(r) + V_{eff}(r)p(r) = Ep(r)
@@ -191,30 +87,27 @@ class Radial_solver
  *      + \frac{\ell(\ell+1)\alpha^4}{4M^3r^2} p(r)
  *  \f}
  */
-class Radial_solution
+class Radial_solver
 {
-    private:
+    protected:
 
-        /// Type of relativistic solution (0 - non-relativistic, 1 - scalar-relativistic).
-        int relativistic_;
-        
         /// Positive charge of the nucleus.
         int zn_;
-
-        /// Orbital quantum number.
-        int l_;
 
         /// Radial grid.
         Radial_grid const& radial_grid_;
 
-    protected: 
+        /// Electronic part of potential.
+        Spline<double> ve_;
 
         /// Integrate system of two first-order differential equations forward starting from the origin. 
         /** Use Runge-Kutta 4th order method */
-        template <bool check_overflow>
+        template <relativity_t rel, bool prevent_overflow>
         int integrate_forward_rk4(double enu__,
-                                  Spline<double> const& ve__,
-                                  Spline<double> const& mp__,
+                                  int l__,
+                                  int k__,
+                                  Spline<double> const& chi_p__,
+                                  Spline<double> const& chi_q__,
                                   std::vector<double>& p__,
                                   std::vector<double>& dpdr__,
                                   std::vector<double>& q__,
@@ -222,37 +115,93 @@ class Radial_solution
         {
             /* number of mesh points */
             int nr = num_points();
+
+            double rest_energy = std::pow(speed_of_light, 2);
+
+            double alpha = 1.0 / speed_of_light;
             
-            double alpha2 = 0.5 * std::pow(speed_of_light, -2);
-            if (!relativistic_) alpha2 = 0.0;
+            double sq_alpha_half = 0.5 / rest_energy;
 
-            double ll2 = 0.5 * l_ * (l_ + 1);
+            if (rel == relativity_t::none || rel == relativity_t::dirac) sq_alpha_half = 0;
 
+            double enu0 = enu__;
+
+            if (rel == relativity_t::zora) enu0 = 0;
+
+            double ll_half = l__ * (l__ + 1) / 2.0;
+
+            if (rel == relativity_t::dirac) ll_half = 0;
+            
+            double kappa{0};
+            if (rel == relativity_t::dirac)
+            {
+                if (k__ == l__)
+                {
+                    kappa = k__;
+                }
+                else if (k__ == l__ + 1)
+                {
+                    kappa = -k__;
+                }
+                else
+                {
+                    TERMINATE("wrong k");
+                }
+            }
+
+            /* try to find classical turning point */
+            int idx_ctp{-1};
+            for (int ir = 0; ir < nr; ir++)
+            {
+                if (ve_[ir] - zn_ * radial_grid_.x_inv(ir) > enu__)
+                {
+                    idx_ctp = ir;
+                    break;
+                }
+            }
+            /* if we didn't fint the classical turning point, take half of the grid */
+            if (idx_ctp == -1)
+            {
+                double rmid = radial_grid_.last() / 2;
+                for (int ir = 0; ir < nr; ir++)
+                {
+                    if (radial_grid_[ir] > rmid)
+                    {
+                        idx_ctp = ir;
+                        break;
+                    }
+                }
+            }
+
+            /* here and below var0 means var(x), var2 means var(x+h) and var1 means var(x+h/2) */
             double x2 = radial_grid_[0];
-            double x2inv = radial_grid_.x_inv(0);
-            double v2 = ve__[0] - zn_ / x2;
-            double M2 = 1 - (v2 - enu__) * alpha2;
+            double xinv2 = radial_grid_.x_inv(0);
+            double v2 = ve_[0] - zn_ / x2;
+            double M2 = 1 - (v2 - enu0) * sq_alpha_half;
+            double chiq2 = chi_q__[0];
+            double vll2 = ll_half / M2 / std::pow(x2, 2);
+            double veff2 = (v2 + vll2);
 
-            //if (!relativistic_)
-            //{
-                if (l_ == 0)
+            /* r->0 asymptotics */
+            if (rel != relativity_t::dirac)
+            {
+                if (l__ == 0)
                 {
                     p__[0] = 2 * zn_ * x2;
                     q__[0] = -std::pow(zn_, 2) * x2;
                 }
                 else
                 {
-                    p__[0] = std::pow(x2, l_ + 1);
-                    q__[0] = std::pow(x2, l_) * l_ / 2;
+                    p__[0] = std::pow(x2, l__ + 1);
+                    q__[0] = std::pow(x2, l__) * l__ / 2;
                 }
-            //}
-            //else
-            //{
-            //    double a = (l_ * (l_ + 1) * std::pow(speed_of_light, -2) * zn_ - std::pow(speed_of_light, -4) * std::pow(zn_, 3) + 1) / std::pow(speed_of_light, -2) / zn_;
-            //    p__[0] = std::pow(x2, 0.5 * (1 + std::sqrt(1 + 4 * a)));
-            //    q__[0] = 0.5 * (-1 + std::sqrt(1 + 4 * a) * std::pow(x2, 0.5 * (-1 + std::sqrt(1 + 4 * a)))) / 2 / M2;
-            //}
-
+            }
+            else
+            {
+                double b = std::sqrt(std::pow(kappa, 2) - std::pow(zn_ / speed_of_light, 2));
+                p__[0] = std::pow(x2, b);
+                q__[0] = std::pow(x2, b) * speed_of_light * (b + kappa) / zn_;
+            }
 
             //p__[0] = std::pow(radial_grid_[0], l_ + 1);
             //if (l_ == 0)
@@ -266,92 +215,116 @@ class Radial_solution
 
             double p2 = p__[0];
             double q2 = q__[0];
-            double mp2 = mp__[0];
-            double vl2 = ll2 / M2 / std::pow(x2, 2);
-
-            double v2enuvl2 = (v2 - enu__ + vl2);
 
             double pk[4];
             double qk[4];
 
-            int last = 0;
+            int last{0};
             
             for (int i = 0; i < nr - 1; i++)
             {
-                double x0 = x2;
-                x2 = radial_grid_[i + 1];
-                double x0inv = x2inv;
-                x2inv = radial_grid_.x_inv(i + 1);
+                /* copy previous values */
+                double x0    = x2;
+                double xinv0 = xinv2;
+                double M0    = M2;
+                double chiq0 = chiq2;
+                double veff0 = veff2;
+                double p0    = p2;
+                double q0    = q2;
+
+                /* radial grid step */
                 double h = radial_grid_.dx(i);
-                double h1 = h / 2;
+                /* mid-point */
+                double h_half = h / 2;
+                double x1     = x0 + h_half;
+                double xinv1  = 1.0 / x1;
+                double chiq1  = chi_q__(i, h_half);
+                double v1     = ve_(i, h_half) - zn_ * xinv1;
+                double M1     = 1 - (v1 - enu0) * sq_alpha_half;
+                double vll1   = ll_half / M1 / std::pow(x1, 2);
+                double veff1  = (v1 + vll1);
 
-                double x1 = x0 + h1;
-                double x1inv = 1.0 / x1;
-                double p0 = p2;
-                double q0 = q2;
-                double M0 = M2;
-                v2 = ve__[i + 1] - zn_ * x2inv;
-
-                double mp0 = mp2;
-                mp2 = mp__[i + 1];
-                double mp1 = mp__(i, h1);
-                double v1 = ve__(i, h1) - zn_ * x1inv;
-                double M1 = 1 - (v1 - enu__) * alpha2;
-                M2 = 1 - (v2 - enu__) * alpha2;
-                vl2 = ll2 / M2 / std::pow(x2, 2);
+                /* next point */
+                x2    = radial_grid_[i + 1];
+                xinv2 = radial_grid_.x_inv(i + 1);
+                chiq2 = chi_q__[i + 1];
+                v2    = ve_[i + 1] - zn_ * xinv2;
+                M2    = 1 - (v2 - enu0) * sq_alpha_half;
+                vll2  = ll_half / M2 / std::pow(x2, 2);
+                veff2 = (v2 + vll2);
                 
-                double v0enuvl0 = v2enuvl2;
-                v2enuvl2 = (v2 - enu__ + vl2);
-                
-                double vl1 = ll2 / M1 / std::pow(x1, 2);
-
-                double v1enuvl1 = (v1 - enu__ + vl1);
-                
-                /* k0 = F(Y(x), x) */
-                pk[0] = 2 * M0 * q0 + p0 * x0inv;
-                qk[0] = v0enuvl0 * p0 - q0 * x0inv - mp0;
-
-                /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
-                pk[1] = 2 * M1 * (q0 + qk[0] * h1) + (p0 + pk[0] * h1) * x1inv;
-                qk[1] = v1enuvl1 * (p0 + pk[0] * h1) - (q0 + qk[0] * h1) * x1inv - mp1;
-
-                /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
-                pk[2] = 2 * M1 * (q0 + qk[1] * h1) + (p0 + pk[1] * h1) * x1inv; 
-                qk[2] = v1enuvl1 * (p0 + pk[1] * h1) - (q0 + qk[1] * h1) * x1inv - mp1;
-
-                /* k3 = F(Y(x) + k2 * h, x + h) */
-                pk[3] = 2 * M2 * (q0 + qk[2] * h) + (p0 + pk[2] * h) * x2inv; 
-                qk[3] = v2enuvl2 * (p0 + pk[2] * h) - (q0 + qk[2] * h) * x2inv - mp2;
-                
-                /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
-                p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
-                q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
-
-                /* don't allow overflow */
-                if (check_overflow && std::abs(p2) > 1e10)
+                if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora)
                 {
-                    last = i;
-                    break;
+                    /* k0 = F(Y(x), x) */
+                    pk[0] = 2 * M0 * q0          + p0 * xinv0;
+                    qk[0] = (veff0 - enu__) * p0 - q0 * xinv0 + chiq0;
+
+                    /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
+                    pk[1] = 2 * M1          * (q0 + qk[0] * h_half) + (p0 + pk[0] * h_half) * xinv1;
+                    qk[1] = (veff1 - enu__) * (p0 + pk[0] * h_half) - (q0 + qk[0] * h_half) * xinv1 + chiq1;
+
+                    /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
+                    pk[2] = 2 * M1          * (q0 + qk[1] * h_half) + (p0 + pk[1] * h_half) * xinv1; 
+                    qk[2] = (veff1 - enu__) * (p0 + pk[1] * h_half) - (q0 + qk[1] * h_half) * xinv1 + chiq1;
+
+                    /* k3 = F(Y(x) + k2 * h, x + h) */
+                    pk[3] = 2 * M2          * (q0 + qk[2] * h) + (p0 + pk[2] * h) * xinv2; 
+                    qk[3] = (veff2 - enu__) * (p0 + pk[2] * h) - (q0 + qk[2] * h) * xinv2 + chiq2;
+                    
+                    /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
+                    p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
+                    q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
+                }
+                if (rel == relativity_t::dirac)
+                {
+                    /* k0 = F(Y(x), x) */
+                    pk[0] = alpha * (2 * rest_energy + enu__ - veff0) * q0 - kappa * p0 * xinv0;
+                    qk[0] = alpha * (veff0 - enu__)                   * p0 + kappa * q0 * xinv0;
+
+                    /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
+                    pk[1] = alpha * (2 * rest_energy + enu__ - veff1) * (q0 + qk[0] * h_half) - kappa * (p0 + pk[0] * h_half) * xinv1;
+                    qk[1] = alpha * (veff1 - enu__)                   * (p0 + pk[0] * h_half) + kappa * (q0 + qk[0] * h_half) * xinv1;
+
+                    /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
+                    pk[2] = alpha * (2 * rest_energy + enu__ - veff1) * (q0 + qk[1] * h_half) - kappa * (p0 + pk[1] * h_half) * xinv1;
+                    qk[2] = alpha * (veff1 - enu__)                   * (p0 + pk[1] * h_half) + kappa * (q0 + qk[1] * h_half) * xinv1;
+                    
+                    /* k3 = F(Y(x) + k2 * h, x + h) */
+                    pk[3] = alpha * (2 * rest_energy + enu__ - veff2) * (q0 + qk[2] * h) - kappa * (p0 + pk[2] * h) * xinv2;
+                    qk[3] = alpha * (veff2 - enu__)                   * (p0 + pk[2] * h) + kappa * (q0 + qk[2] * h) * xinv2;
+
+                    /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
+                    p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
+                    q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
                 }
 
-                if (!check_overflow && std::abs(p2) > 1e10)
+                /* check overflow */
+                if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10)
                 {
-                    std::stringstream s;
-                    s << "overflow for atom type with zn = " << zn_ << ", l = " << l_ << ", enu = " << enu__;
-                    TERMINATE(s);
-                    p2 = std::max(std::min(1e10, p2), -1e10);
-                    q2 = std::max(std::min(1e10, q2), -1e10);
+                    /* if we didn't expect the overflow and it happended, or it happended before the 
+                     * classical turning point, it's bad */
+                    if (!prevent_overflow || (prevent_overflow && i < idx_ctp))
+                    {
+                        std::stringstream s;
+                        s << "overflow for atom type with zn = " << zn_ << ", l = " << l__ << ", enu = " << enu__;
+                        TERMINATE(s);
+                    }
+                    else /* if overflow happened after the classical turning point, it's ok */
+                    {
+                        last = i;
+                        break;
+                    }
                 }
                
                 p__[i + 1] = p2;
                 q__[i + 1] = q2;
             }
 
-            if (check_overflow && last)
+            if (prevent_overflow && last)
             {
                 /* find the minimum value of the "tail" */
                 double pmax = std::abs(p__[last]);
-                for (int j = last - 1; j >= 0; j++)
+                for (int j = last; j >= 0; j--)
                 {
                     if (std::abs(p__[j]) < pmax)
                     {
@@ -365,6 +338,7 @@ class Radial_solution
                         break;
                     }
                 }
+                /* zero the tail */
                 for (int j = last; j < nr; j++)
                 {
                     p__[j] = 0;
@@ -378,205 +352,328 @@ class Radial_solution
 
             for (int i = 0; i < nr; i++)
             {
-                double V = ve__[i] - zn_ * radial_grid_.x_inv(i); 
-                double M = 1.0 - (V - enu__) * alpha2;
+                if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora)
+                {
+                    double V = ve_[i] - zn_ * radial_grid_.x_inv(i); 
+                    double M = 1.0 - (V - enu0) * sq_alpha_half;
 
-                /* P' = 2MQ + \frac{P}{r} */
-                dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
+                    /* P' = 2MQ + \frac{P}{r} */
+                    dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
 
-                /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
-                dqdr__[i] = (V - enu__ + double(l_ * (l_ + 1)) / (2 * M * std::pow(radial_grid_[i], 2))) * p__[i] - 
-                            q__[i] * radial_grid_.x_inv(i) - mp__[i];
+                    /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
+                    dqdr__[i] = (V - enu__ + ll_half / M / std::pow(radial_grid_[i], 2)) * p__[i] - 
+                                q__[i] * radial_grid_.x_inv(i) + chi_q__[i];
+                }
+                if (rel == relativity_t::dirac)
+                {
+                    double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
+                    /* P' = ... */
+                    dpdr__[i] = alpha * (2 * rest_energy + enu__ - V) * q__[i] - kappa * p__[i] * radial_grid_.x_inv(i);
+                    /* Q' = ... */
+                    dqdr__[i] = alpha * (V - enu__) * p__[i] + kappa * q__[i] * radial_grid_.x_inv(i);
+                }
             }
 
             return nn;
         }
 
-        inline double extrapolate_to_zero(int istep, double y, double* x, double* work) const
-        {
-            double dy = y;
-            double result = y;
-             
-            if (istep == 0) 
-            {
-                work[0] = y;
-            } 
-            else 
-            {
-                double c = y;
-                for (int k = 1; k < istep; k++) 
-                {
-                    double delta = 1.0 / (x[istep - k] - x[istep]);
-                    double f1 = x[istep] * delta;
-                    double f2 = x[istep - k] * delta;
-             
-                    double q = work[k];
-                    work[k] = dy;
-                    delta = c - q;
-                    dy = f1 * delta;
-                    c = f2 * delta;
-                    result += dy;
-                }
-            }
-            work[istep] = dy;
-            return result;
-        }
+        //== inline double extrapolate_to_zero(int istep, double y, double* x, double* work) const
+        //== {
+        //==     double dy = y;
+        //==     double result = y;
+        //==      
+        //==     if (istep == 0) 
+        //==     {
+        //==         work[0] = y;
+        //==     } 
+        //==     else 
+        //==     {
+        //==         double c = y;
+        //==         for (int k = 1; k < istep; k++) 
+        //==         {
+        //==             double delta = 1.0 / (x[istep - k] - x[istep]);
+        //==             double f1 = x[istep] * delta;
+        //==             double f2 = x[istep - k] * delta;
+        //==      
+        //==             double q = work[k];
+        //==             work[k] = dy;
+        //==             delta = c - q;
+        //==             dy = f1 * delta;
+        //==             c = f2 * delta;
+        //==             result += dy;
+        //==         }
+        //==     }
+        //==     work[istep] = dy;
+        //==     return result;
+        //== }
 
-        /// Integrate system of two first-order differential equations forward starting from the origin.
-        /** Use Bulirsch-Stoer technique with Gragg's modified midpoint method */
-        template <bool check_overflow>
-        int integrate_forward_gbs(double enu__,
-                                  Spline<double> const& ve__,
-                                  Spline<double> const& mp__,
-                                  std::vector<double>& p__,
-                                  std::vector<double>& dpdr__,
-                                  std::vector<double>& q__,
-                                  std::vector<double>& dqdr__) const
-        {
-            /* number of mesh points */
-            int nr = num_points();
-            
-            double alpha2 = 0.5 * std::pow((1 / speed_of_light), 2);
-            if (!relativistic_) alpha2 = 0.0;
+        //== /// Integrate system of two first-order differential equations forward starting from the origin.
+        //== /** Use Bulirsch-Stoer technique with Gragg's modified midpoint method */
+        //== template <bool check_overflow>
+        //== int integrate_forward_gbs(double enu__,
+        //==                           Spline<double> const& ve__,
+        //==                           Spline<double> const& mp__,
+        //==                           std::vector<double>& p__,
+        //==                           std::vector<double>& dpdr__,
+        //==                           std::vector<double>& q__,
+        //==                           std::vector<double>& dqdr__) const
+        //== {
+        //==     /* number of mesh points */
+        //==     int nr = num_points();
+        //==     
+        //==     double alpha2 = 0.5 * std::pow((1 / speed_of_light), 2);
+        //==     if (!relativistic_) alpha2 = 0.0;
 
-            double enu0 = 0.0;
-            if (relativistic_) enu0 = enu__;
+        //==     double enu0 = 0.0;
+        //==     if (relativistic_) enu0 = enu__;
 
-            double ll2 = 0.5 * l_ * (l_ + 1);
+        //==     double ll2 = 0.5 * l_ * (l_ + 1);
 
-            double x2 = radial_grid_[0];
-            double v2 = ve__[0] - zn_ / x2;
-            double M2 = 1 - (v2 - enu0) * alpha2;
+        //==     double x2 = radial_grid_[0];
+        //==     double v2 = ve__[0] - zn_ / x2;
+        //==     double M2 = 1 - (v2 - enu0) * alpha2;
 
-            p__[0] = std::pow(radial_grid_[0], l_ + 1);
-            if (l_ == 0)
-            {
-                q__[0] = -zn_ * radial_grid_[0] / M2 / 2;
-            }
-            else
-            {
-                q__[0] = std::pow(radial_grid_[0], l_) * l_ / M2 / 2;
-            }
-            
-            double step_size2[20];
-            double work_p[20];
-            double work_q[20];
+        //==     p__[0] = std::pow(radial_grid_[0], l_ + 1);
+        //==     if (l_ == 0)
+        //==     {
+        //==         q__[0] = -zn_ * radial_grid_[0] / M2 / 2;
+        //==     }
+        //==     else
+        //==     {
+        //==         q__[0] = std::pow(radial_grid_[0], l_) * l_ / M2 / 2;
+        //==     }
+        //==     
+        //==     double step_size2[20];
+        //==     double work_p[20];
+        //==     double work_q[20];
 
-            int last = 0;
+        //==     int last = 0;
 
-            for (int ir = 0; ir < nr - 1; ir++)
-            {
-                double H = radial_grid_.dx(ir);
-                double p_est, q_est, p_old, q_old;
-                for (int j = 0; j < 12; j++)
-                {
-                    int num_steps = 2 * (j + 1);
-                    double h = H / num_steps;
-                    double h2 = h + h;
-                    step_size2[j] = std::pow(h, 2);
-                    double x0 = radial_grid_[ir];
-                    double x0inv = radial_grid_.x_inv(ir);
-                    double x1inv = radial_grid_.x_inv(ir + 1);
+        //==     for (int ir = 0; ir < nr - 1; ir++)
+        //==     {
+        //==         double H = radial_grid_.dx(ir);
+        //==         double p_est, q_est, p_old, q_old;
+        //==         for (int j = 0; j < 12; j++)
+        //==         {
+        //==             int num_steps = 2 * (j + 1);
+        //==             double h = H / num_steps;
+        //==             double h2 = h + h;
+        //==             step_size2[j] = std::pow(h, 2);
+        //==             double x0 = radial_grid_[ir];
+        //==             double x0inv = radial_grid_.x_inv(ir);
+        //==             double x1inv = radial_grid_.x_inv(ir + 1);
 
-                    p_old = p__[ir + 1];
-                    q_old = q__[ir + 1];
+        //==             p_old = p__[ir + 1];
+        //==             q_old = q__[ir + 1];
 
-                    double p0 = p__[ir];
-                    double q0 = q__[ir];
-                    double p1 = p0 + h * (2 * q0 + p0 * x0inv);
-                    double q1 = q0 + h * ((ve__[ir] + x0inv * (ll2 * x0inv - zn_) - enu__) * p0 - q0 * x0inv - mp__[ir]);
+        //==             double p0 = p__[ir];
+        //==             double q0 = q__[ir];
+        //==             double p1 = p0 + h * (2 * q0 + p0 * x0inv);
+        //==             double q1 = q0 + h * ((ve__[ir] + x0inv * (ll2 * x0inv - zn_) - enu__) * p0 - q0 * x0inv - mp__[ir]);
 
-                    for (int step = 1; step < num_steps; step++)
-                    {
-                        double x = x0 + h * step;
-                        double xinv = 1.0 / x;
-                        double p2 = p0 + h2 * (2 * q1 + p1 * xinv);
-                        double q2 = q0 + h2 * ((ve__(ir, h * step) + xinv * (ll2 * xinv - zn_) - enu__) * p1 -
-                                               q1 * xinv - mp__(ir, h * step));
-                        p0 = p1;
-                        p1 = p2;
-                        q0 = q1;
-                        q1 = q2;
-                    }
-                    p_est = 0.5 * (p0 + p1 + h * (2 * q1 + p1 * x1inv));
-                    q_est = 0.5 * (q0 + q1 + h * ((ve__[ir + 1] + x1inv * (ll2 * x1inv - zn_) - enu__) * p1 -
-                                                   q1 * x1inv - mp__[ir + 1]));
+        //==             for (int step = 1; step < num_steps; step++)
+        //==             {
+        //==                 double x = x0 + h * step;
+        //==                 double xinv = 1.0 / x;
+        //==                 double p2 = p0 + h2 * (2 * q1 + p1 * xinv);
+        //==                 double q2 = q0 + h2 * ((ve__(ir, h * step) + xinv * (ll2 * xinv - zn_) - enu__) * p1 -
+        //==                                        q1 * xinv - mp__(ir, h * step));
+        //==                 p0 = p1;
+        //==                 p1 = p2;
+        //==                 q0 = q1;
+        //==                 q1 = q2;
+        //==             }
+        //==             p_est = 0.5 * (p0 + p1 + h * (2 * q1 + p1 * x1inv));
+        //==             q_est = 0.5 * (q0 + q1 + h * ((ve__[ir + 1] + x1inv * (ll2 * x1inv - zn_) - enu__) * p1 -
+        //==                                            q1 * x1inv - mp__[ir + 1]));
 
-                    p__[ir + 1] = extrapolate_to_zero(j, p_est, step_size2, work_p);
-                    q__[ir + 1] = extrapolate_to_zero(j, q_est, step_size2, work_q);
-                    
-                    if (j > 1)
-                    {
-                        if (std::abs(p__[ir + 1] - p_old) < 1e-12 && std::abs(q__[ir + 1] - q_old) < 1e-12) break;
-                    }
-                }
+        //==             p__[ir + 1] = extrapolate_to_zero(j, p_est, step_size2, work_p);
+        //==             q__[ir + 1] = extrapolate_to_zero(j, q_est, step_size2, work_q);
+        //==             
+        //==             if (j > 1)
+        //==             {
+        //==                 if (std::abs(p__[ir + 1] - p_old) < 1e-12 && std::abs(q__[ir + 1] - q_old) < 1e-12) break;
+        //==             }
+        //==         }
 
-                /* don't allow overflow */
-                if (check_overflow && std::abs(p__[ir + 1]) > 1e10)
-                {
-                    last = ir;
-                    break;
-                }
+        //==         /* don't allow overflow */
+        //==         if (check_overflow && std::abs(p__[ir + 1]) > 1e10)
+        //==         {
+        //==             last = ir;
+        //==             break;
+        //==         }
 
-                if (!check_overflow && std::abs(p__[ir + 1]) > 1e10)
-                {
-                    TERMINATE("overflow");
-                }
-            }
+        //==         if (!check_overflow && std::abs(p__[ir + 1]) > 1e10)
+        //==         {
+        //==             TERMINATE("overflow");
+        //==         }
+        //==     }
 
-            if (check_overflow && last)
-            {
-                /* find the minimum value of the "tail" */
-                double pmax = std::abs(p__[last]);
-                for (int j = last - 1; j >= 0; j++)
-                {
-                    if (std::abs(p__[j]) < pmax)
-                    {
-                        pmax = std::abs(p__[j]);
-                    }
-                    else
-                    {
-                        /* we may go through zero here and miss one node,
-                         * so stay on the safe side with one extra point */
-                        last = j + 1;
-                        break;
-                    }
-                }
-                for (int j = last; j < nr; j++)
-                {
-                    p__[j] = 0;
-                    q__[j] = 0;
-                }
-            }
-            
-            /* get number of nodes */
-            int nn = 0;
-            for (int i = 0; i < nr - 1; i++) if (p__[i] * p__[i + 1] < 0.0) nn++;
+        //==     if (check_overflow && last)
+        //==     {
+        //==         /* find the minimum value of the "tail" */
+        //==         double pmax = std::abs(p__[last]);
+        //==         for (int j = last - 1; j >= 0; j++)
+        //==         {
+        //==             if (std::abs(p__[j]) < pmax)
+        //==             {
+        //==                 pmax = std::abs(p__[j]);
+        //==             }
+        //==             else
+        //==             {
+        //==                 /* we may go through zero here and miss one node,
+        //==                  * so stay on the safe side with one extra point */
+        //==                 last = j + 1;
+        //==                 break;
+        //==             }
+        //==         }
+        //==         for (int j = last; j < nr; j++)
+        //==         {
+        //==             p__[j] = 0;
+        //==             q__[j] = 0;
+        //==         }
+        //==     }
+        //==     
+        //==     /* get number of nodes */
+        //==     int nn = 0;
+        //==     for (int i = 0; i < nr - 1; i++) if (p__[i] * p__[i + 1] < 0.0) nn++;
 
-            for (int i = 0; i < nr; i++)
-            {
-                double V = ve__[i] - zn_ * radial_grid_.x_inv(i); 
-                double M = 1.0 - (V - enu0) * alpha2;
+        //==     for (int i = 0; i < nr; i++)
+        //==     {
+        //==         double V = ve__[i] - zn_ * radial_grid_.x_inv(i); 
+        //==         double M = 1.0 - (V - enu0) * alpha2;
 
-                /* P' = 2MQ + \frac{P}{r} */
-                dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
+        //==         /* P' = 2MQ + \frac{P}{r} */
+        //==         dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
 
-                /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
-                dqdr__[i] = (V - enu__ + double(l_ * (l_ + 1)) / (2 * M * std::pow(radial_grid_[i], 2))) * p__[i] - 
-                            q__[i] * radial_grid_.x_inv(i) - mp__[i];
-            }
+        //==         /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
+        //==         dqdr__[i] = (V - enu__ + double(l_ * (l_ + 1)) / (2 * M * std::pow(radial_grid_[i], 2))) * p__[i] - 
+        //==                     q__[i] * radial_grid_.x_inv(i) - mp__[i];
+        //==     }
 
-            return nn;
-        }
+        //==     return nn;
+        //== }
     
     public:
         
-        Radial_solution(int relativistic__, int zn__, int l__, Radial_grid const& radial_grid__)
-            : relativistic_(relativistic__),
-              zn_(zn__),
-              l_(l__),
+        Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid const& radial_grid__)
+            : zn_(zn__),
               radial_grid_(radial_grid__)
         {
+            ve_ = Spline<double>(radial_grid__);
+
+            for (int i = 0; i < num_points(); i++) ve_[i] = v__[i] + zn_ * radial_grid_.x_inv(i);
+            ve_.interpolate();
+        }
+
+        /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
+        /** \param [in] rel Type of relativity
+         *  \param [in] dme Order of energy derivative.
+         *  \param [in] l Oribtal quantum number.
+         *  \param [in] enu Integration energy.
+         *  \param [out] p \f$ p(r) = ru(r) \f$ radial function.
+         *  \param [out] rdudr \f$ ru'(r) \f$.
+         *  \param [out] uderiv \f$ u'(R) \f$ and \f$ u''(R) \f$.
+         *
+         *  Returns \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$, \f$ u'(R) \f$ and \f$ u''(R) \f$.
+         *
+         *  Surface derivatives:
+         *  
+         *  From 
+         *  \f[
+         *    u(r) = \frac{p(r)}{r}
+         *  \f]
+         *  we have
+         *  \f[
+         *    u'(r) = \frac{p'(r)}{r} - \frac{p(r)}{r^2} = \frac{1}{r}\big(p'(r) - \frac{p(r)}{r}\big)
+         *  \f]
+         *
+         *  \f[
+         *    u''(r) = \frac{p''(r)}{r} - \frac{p'(r)}{r^2} - \frac{p'(r)}{r^2} + 2 \frac{p(r)}{r^3} = 
+         *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
+         *  \f]
+         */
+        int solve(relativity_t rel__, int dme__, int l__, double enu__, std::vector<double>& p__,
+                  std::vector<double>& rdudr__, std::array<double, 2>& uderiv__) const
+        {
+            int nr = num_points();
+            std::vector< std::vector<double> > p;
+            std::vector< std::vector<double> > q;
+            std::vector< std::vector<double> > dpdr;
+            std::vector< std::vector<double> > dqdr;
+
+            Spline<double> chi_p(radial_grid_);
+            Spline<double> chi_q(radial_grid_);
+
+            int nn{0};
+
+            for (int j = 0; j <= dme__; j++)
+            {
+                p.push_back(std::move(std::vector<double>(nr)));
+                q.push_back(std::move(std::vector<double>(nr)));
+                dpdr.push_back(std::move(std::vector<double>(nr)));
+                dqdr.push_back(std::move(std::vector<double>(nr)));
+
+                if (j)
+                {
+                    if (rel__ == relativity_t::none || rel__ == relativity_t::zora)
+                    {
+                        for (int i = 0; i < nr; i++) chi_q[i] = -j * p[j - 1][i];
+                        chi_q.interpolate();
+                    }
+                    else if (rel__ == relativity_t::koelling_harmon)
+                    {
+                        STOP();
+                    }
+                    else
+                    {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+
+                switch (rel__)
+                {
+                    case relativity_t::none:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::none, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    case relativity_t::zora:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::zora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+            }
+
+            /* save the results */
+            p__.resize(nr);
+            rdudr__.resize(nr);
+            for (int i = 0; i < radial_grid_.num_points(); i++)
+            {
+                p__[i] = p[dme__][i];
+                rdudr__[i] = dpdr[dme__][i] - p__[i] * radial_grid_.x_inv(i);
+            }
+
+            double R = radial_grid_.last();
+
+            /* 1st radial derivative of u(r) */
+            uderiv__[0] = (dpdr[dme__].back() - p[dme__].back() / R) / R;
+            /* 2nd radial derivative of u(r) */
+            Spline<double> sdpdr(radial_grid_, dpdr[dme__]);
+            sdpdr.interpolate();
+            uderiv__[1] = (sdpdr.deriv(1, nr - 1) - 2 * dpdr[dme__].back() / R + 2 * p[dme__].back() / std::pow(R, 2)) / R;
+
+            return nn;
         }
 
         inline int num_points() const
@@ -600,13 +697,15 @@ class Radial_solution
         }
 };
 
-class Bound_state: public Radial_solution
+class Bound_state: public Radial_solver
 {
     private:
         
         int n_;
 
         int l_;
+
+        int k_;
         
         /// Tolerance of bound state energy. 
         double enu_tolerance_;
@@ -615,19 +714,20 @@ class Bound_state: public Radial_solution
 
         Spline<double> p_;
 
+        Spline<double> q_;
+
         Spline<double> u_;
 
         Spline<double> rdudr_;
 
-        void solve(std::vector<double> const& v__, double enu_start__)
+        Spline<double> rho_;
+
+        void solve(relativity_t rel__, double enu_start__)
         {
             int np = num_points();
 
-            Spline<double> vs(radial_grid());
-            for (int i = 0; i < np; i++) vs[i] = v__[i] + zn() / radial_grid(i);
-            vs.interpolate();
-
-            Spline<double> mp(radial_grid());
+            Spline<double> chi_p(radial_grid());
+            Spline<double> chi_q(radial_grid());
             
             std::vector<double> p(np);
             std::vector<double> q(np);
@@ -635,16 +735,43 @@ class Bound_state: public Radial_solution
             std::vector<double> dqdr(np);
             std::vector<double> rdudr(np);
             
-            int s = 1;
+            int s{1};
             int sp;
             enu_ = enu_start__;
-            double denu = 0.1;
+            double denu{0.1};
             
             /* search for the bound state */
             for (int iter = 0; iter < 1000; iter++)
             {
-                int nn = integrate_forward_rk4<true>(enu_, vs, mp, p, dpdr, q, dqdr);
-                //int nn = integrate_forward_gbs<true>(enu_, vs, mp, p, dpdr, q, dqdr);
+                int nn{0};
+
+                switch (rel__)
+                {
+                    case relativity_t::none:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::none, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::koelling_harmon, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::zora:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::zora, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::dirac:
+                    {
+                        nn = integrate_forward_rk4<relativity_t::dirac, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
                 
                 sp = s;
                 s = (nn > (n_ - l_ - 1)) ? -1 : 1;
@@ -671,7 +798,7 @@ class Bound_state: public Radial_solution
             int idxtp = np - 1;
             for (int i = 0; i < np; i++)
             {
-                if (v__[i] > enu_)
+                if (ve_[i] - zn_ * radial_grid_.x_inv(i) > enu_)
                 {
                     idxtp = i;
                     break;
@@ -690,6 +817,7 @@ class Bound_state: public Radial_solution
                 {
                     t1 = 0.0;
                     p[i] = 0.0;
+                    q[i] = 0.0;
                     rdudr[i] = 0.0;
                 }
             }
@@ -697,16 +825,22 @@ class Bound_state: public Radial_solution
             for (int i = 0; i < np; i++)
             {
                 p_[i] = p[i];
-                u_[i] = p[i] / radial_grid(i);
+                q_[i] = q[i];
+                u_[i] = p[i] * radial_grid_.x_inv(i);
                 rdudr_[i] = rdudr[i];
             }
             p_.interpolate();
+            q_.interpolate();
             u_.interpolate();
             rdudr_.interpolate();
 
             /* p is not divided by r, so we integrate with r^0 prefactor */
-            double norm = 1.0 / std::sqrt(inner(p_, p_, 0));
+            double norm = inner(p_, p_, 0);
+            if (rel__ == relativity_t::dirac) norm += inner(q_, q_, 0);
+
+            norm = 1.0 / std::sqrt(norm);
             p_.scale(norm);
+            q_.scale(norm);
             u_.scale(norm);
             rdudr_.scale(norm);
 
@@ -731,26 +865,36 @@ class Bound_state: public Radial_solution
                   << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1);
                 TERMINATE(s);
             }
+
+            for (int i = 0; i < np - 1; i++)
+            {
+                rho_[i] += std::pow(u_[i], 2);
+                if (rel__ == relativity_t::dirac) rho_[i] += std::pow(q_[i] * radial_grid_.x_inv(i), 2);
+            }
         }
         
     public:
         
-        Bound_state(int relativistic__,
+        Bound_state(relativity_t rel__,
                     int zn__,
                     int n__,
                     int l__,
+                    int k__,
                     Radial_grid const& radial_grid__,
                     std::vector<double> const& v__,
                     double enu_start__)
-            : Radial_solution(relativistic__, zn__, l__, radial_grid__),
+            : Radial_solver(zn__, v__, radial_grid__),
               n_(n__),
               l_(l__),
+              k_(k__),
               enu_tolerance_(1e-12),
               p_(radial_grid__),
+              q_(radial_grid__),
               u_(radial_grid__),
-              rdudr_(radial_grid__)
+              rdudr_(radial_grid__),
+              rho_(radial_grid__)
         {
-            solve(v__, enu_start__);
+            solve(rel__, enu_start__);
         }
 
         inline double enu() const
@@ -758,18 +902,13 @@ class Bound_state: public Radial_solution
             return enu_;
         }
 
-        Spline<double> const& u() const
+        Spline<double> const& rho() const
         {
-            return u_;
-        }
-
-        Spline<double> const& rdudr() const
-        {
-            return rdudr_;
+            return rho_;
         }
 };
 
-class Enu_finder: public Radial_solution
+class Enu_finder: public Radial_solver
 {
     private:
 
@@ -782,15 +921,12 @@ class Enu_finder: public Radial_solution
         double etop_;
         double ebot_;
 
-        void find_enu(std::vector<double> const& v__, double enu_start__)
+        void find_enu(relativity_t rel__, double enu_start__)
         {
             int np = num_points();
 
-            Spline<double> vs(radial_grid());
-            for (int i = 0; i < np; i++) vs[i] = v__[i] + zn() / radial_grid(i);
-            vs.interpolate();
-
-            Spline<double> mp(radial_grid());
+            Spline<double> chi_p(radial_grid());
+            Spline<double> chi_q(radial_grid());
             
             std::vector<double> p(np);
             std::vector<double> q(np);
@@ -807,41 +943,93 @@ class Enu_finder: public Radial_solution
              * of the band. */
             for (int i = 0; i < 1000; i++)
             {
-                int nnd = integrate_forward_rk4<false>(enu, vs, mp, p, dpdr, q, dqdr) - (n_ - l_ - 1);
-                //int nnd = integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr) - (n_ - l_ - 1);
+                int nnd{0};
+
+                switch (rel__)
+                {
+                    case relativity_t::none:
+                    {
+                        nnd = integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon:
+                    {
+                        nnd = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::zora:
+                    {
+                        nnd = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+                nnd -= (n_ - l_ - 1);
 
                 enu = (nnd > 0) ? enu - de : enu + de;
 
-                if (i > 0)
+                if (i)
                 {
                     de = (nnd != nndp) ? de * 0.5 : de * 1.25;
                 }
-                nndp = nnd;
                 if (std::abs(de) < 1e-10)
                 {
                     found = true;
                     break;
                 }
+                nndp = nnd;
             }
             etop_ = (!found) ? enu_start__ : enu;
 
-            auto ptop = p;
+            auto surface_deriv = [this, &dpdr, &p]()
+            {
+                if (true)
+                {
+                    /* return  p'(R) */
+                    return dpdr.back();
+                }
+                else
+                {
+                    /* return R*u'(R) */
+                    return dpdr.back() - p.back() / radial_grid_.last();
+                }
+            };
 
-            // TODO: try u'(R) == 0 instead of p'(R) == 0
+            double sd = surface_deriv();
             
             /* Now we go down in energy and serach for enu such that the wave-function derivative is zero
              * at the muffin-tin boundary. This will be the bottom of the band. */
             de = 0.001;
-            found = false;
-
-            double dpdr_R = dpdr[np - 1];
             do
             {
                 enu -= de;
-                integrate_forward_rk4<false>(enu, vs, mp, p, dpdr, q, dqdr);
-                //integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr);
+                switch (rel__)
+                {
+                    case relativity_t::none:
+                    {
+                        integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon:
+                    {
+                        integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::zora:
+                    {
+                        integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
                 de *= 1.5;
-            } while (dpdr[np - 1] * dpdr_R > 0);
+            } while (surface_deriv() * sd > 0);
 
             /* refine bottom energy */
             double e1 = enu;
@@ -850,11 +1038,32 @@ class Enu_finder: public Radial_solution
             while (true)
             {
                 enu = (e1 + e0) / 2.0;
-                integrate_forward_rk4<false>(enu, vs, mp, p, dpdr, q, dqdr);
-                //integrate_forward_gbs<false>(enu, vs, mp, p, dpdr, q, dqdr);
-                if (std::abs(dpdr[np - 1]) < 1e-10) break;
+                switch (rel__)
+                {
+                    case relativity_t::none:
+                    {
+                        integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon:
+                    {
+                        integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::zora:
+                    {
+                        integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    default:
+                    {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+                /* derivative at the boundary */
+                if (std::abs(surface_deriv()) < 1e-10) break;
 
-                if (dpdr[np - 1] * dpdr_R > 0)
+                if (surface_deriv() * sd > 0)
                 {
                     e0 = enu;
                 }
@@ -865,9 +1074,32 @@ class Enu_finder: public Radial_solution
             }
         
             ebot_ = enu;
-            int nn = integrate_forward_rk4<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
-            //int nn = integrate_forward_gbs<false>(ebot_, vs, mp, p, dpdr, q, dqdr);
-            if (nn != (n_ - l_ - 1))
+            /* last check */
+            int nn{0};
+            switch (rel__)
+            {
+                case relativity_t::none:
+                {
+                    nn = integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                    break;
+                }
+                case relativity_t::koelling_harmon:
+                {
+                    nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                    break;
+                }
+                case relativity_t::zora:
+                {
+                    nn = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                    break;
+                }
+                default:
+                {
+                    TERMINATE_NOT_IMPLEMENTED
+                }
+            }
+
+            if (nn != n_ - l_ - 1)
             {
                 //FILE* fout = fopen("p.dat", "w");
                 //for (int ir = 0; ir < np; ir++) 
@@ -880,7 +1112,6 @@ class Enu_finder: public Radial_solution
                 //printf("n: %i, l: %i, nn: %i", n_, l_, nn);
 
                 TERMINATE("wrong number of nodes");
-
             }
                 
             enu_ = (ebot_ + etop_) / 2.0;
@@ -888,12 +1119,18 @@ class Enu_finder: public Radial_solution
 
     public:
         
-        Enu_finder(int zn__, int n__, int l__, Radial_grid const& radial_grid__, std::vector<double> const& v__, double enu_start__)
-            : Radial_solution(0, zn__, l__, radial_grid__),
+        Enu_finder(relativity_t rel__,
+                   int zn__,
+                   int n__,
+                   int l__,
+                   Radial_grid const& radial_grid__,
+                   std::vector<double> const& v__,
+                   double enu_start__)
+            : Radial_solver(zn__, v__, radial_grid__),
               n_(n__),
               l_(l__)
         {
-            find_enu(v__, enu_start__);
+            find_enu(rel__, enu_start__);
         }
 
         inline double enu() const
