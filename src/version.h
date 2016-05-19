@@ -1,5 +1,5 @@
 #ifndef __VERSION_H__
 #define __VERSION_H__
-const char* const git_hash = "4cb4f3f4b852e1f01082cf5af29a0b47da496995";
-const char* const build_date = "Mon Apr  4 12:07:59 CEST 2016";
+const char* const git_hash = "b3acd41f6b83e1227145d22f02717892baeaa86a";
+const char* const build_date = "Thu May 19 12:18:42 CEST 2016";
 #endif

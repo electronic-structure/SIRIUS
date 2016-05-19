@@ -393,17 +393,17 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 			};
 	//---------------------------------------
 
-	paw_local_Dij_matrix_[atom_index].zero();
+//	paw_local_Dij_matrix_[atom_index].zero();
 
 		// iterate over spin components
 //		for(int ispin = 0; ispin < (int)ae_atom_density.size(2); ispin++)
 //		{
 	// iterate over local basis functions (or over lm1 and lm2)
-	for(int ib2 = 0; ib2 < (int)atom_type.indexb().size(); ib2++)
+	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
 	{
 		for(int ib1 = 0; ib1 <= ib2; ib1++)
 		{
-			int idij = (ib2 * (ib2 + 1)) / 2 + ib1;
+			//int idij = (ib2 * (ib2 + 1)) / 2 + ib1;
 
 			// get lm quantum numbers (lm index) of the basis functions
 			int lm1 = atom_type.indexb(ib1).lm;
@@ -420,29 +420,39 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 			// get num of non-zero GC
 			int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
 
-			// add nonzero coefficients
-			for(int inz = 0; inz < num_non_zero_gk; inz++)
+			for(int ispin = 0; ispin < ctx_.num_spins(); ispin++)
 			{
-				auto& lm3coef = GC.gaunt(lm1,lm2,inz);
+				atom.d_mtrx(ib1,ib2,ispin)=0.0;
 
-				// add to Dij an integral of dij array
-				for(int ispin = 0; ispin < ctx_.num_spins(); ispin++)
+				// add nonzero coefficients
+				for(int inz = 0; inz < num_non_zero_gk; inz++)
 				{
+					auto& lm3coef = GC.gaunt(lm1,lm2,inz);
+
 					/////////////////////////////////////////////////////////////
 //					std::cout<<integrate(ispin,irb1,irb2,iqij,lm3coef.lm3)<<std::endl;
 					//////////////////////////////////////////////////////////////
-					paw_local_Dij_matrix_[atom_index]( idij, ispin) += lm3coef.coef * integrate(ispin,irb1,irb2,iqij,lm3coef.lm3);
+
+					// add to atom Dij an integral of dij array
+					atom.d_mtrx(ib1,ib2,ispin) += lm3coef.coef * integrate(ispin,irb1,irb2,iqij,lm3coef.lm3);
+
+//					paw_local_Dij_matrix_[atom_index]( idij, ispin) += lm3coef.coef * integrate(ispin,irb1,irb2,iqij,lm3coef.lm3);
 				}
+
+				atom.d_mtrx(ib2,ib1,ispin) = atom.d_mtrx(ib1,ib2,ispin);
 			}
 		}
 	}
 
 	//////////////////////////////////////////////////////////////////
-//	std::ofstream ofxc("dij.dat");
+//	std::ofstream ofxc("atom_dij.dat");
 //
-//	for(int j = 0; j< paw_local_Dij_matrix_[atom_index].size(0); j++)
+//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
 //	{
-//			ofxc<< paw_local_Dij_matrix_[atom_index](j,0) << std::endl;
+//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
+//		{
+//			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
+//		}
 //	}
 //
 //	ofxc.close();

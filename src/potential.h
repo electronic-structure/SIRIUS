@@ -101,7 +101,7 @@ class Potential
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
 
         // TODO probably replace to non_local_operator
-        std::vector< mdarray<double,2> > paw_local_Dij_matrix_; // 3 dimensions: i, j, spin
+        //std::vector< mdarray<double,2> > paw_local_Dij_matrix_; // 3 dimensions: i, j, spin
 
         //-----
 
