@@ -745,7 +745,7 @@ void Unit_cell::generate_radial_functions()
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic).generate_radial_functions();
+        atom_symmetry_class(ic).generate_radial_functions(parameters_.valence_relativity());
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
@@ -778,7 +778,7 @@ void Unit_cell::generate_radial_integrals()
     for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic).generate_radial_integrals();
+        atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
