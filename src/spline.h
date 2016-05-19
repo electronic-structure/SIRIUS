@@ -78,7 +78,7 @@ class Spline
         }
 
         /// Constructor of a spline from a list of values.
-        Spline(Radial_grid const& radial_grid__, std::vector<T> y__) : radial_grid_(&radial_grid__)
+        Spline(Radial_grid const& radial_grid__, std::vector<T> const& y__) : radial_grid_(&radial_grid__)
         {
             assert(radial_grid_->num_points() == (int)y__.size());
             coeffs_ = mdarray<T, 2>(num_points(), 4);
