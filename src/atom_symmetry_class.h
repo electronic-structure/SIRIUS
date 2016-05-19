@@ -82,10 +82,10 @@ class Atom_symmetry_class
         mutable std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// Generate radial functions for augmented waves
-        void generate_aw_radial_functions();
+        void generate_aw_radial_functions(relativity_t rel__);
 
         /// Generate local orbital raidal functions
-        void generate_lo_radial_functions();
+        void generate_lo_radial_functions(relativity_t rel__);
 
         /// Check if local orbitals are linearly independent
         void check_lo_linear_independence();
@@ -116,7 +116,7 @@ class Atom_symmetry_class
         /** Atoms belonging to the same symmetry class have the same spherical potential. */
         void set_spherical_potential(std::vector<double> const& vs__);
 
-        void generate_radial_functions();
+        void generate_radial_functions(relativity_t rel__);
 
         void sync_radial_functions(Communicator const& comm__, int const rank__);
       
@@ -128,9 +128,9 @@ class Atom_symmetry_class
         double aw_surface_dm(int l, int order, int dm) const;
         
         /// Find core states and generate core density.
-        void generate_core_charge_density();
+        void generate_core_charge_density(relativity_t core_rel__);
 
-        void find_enu();
+        void find_enu(relativity_t rel__);
 
         void write_enu(runtime::pstdout& pout) const;
         
@@ -145,7 +145,7 @@ class Atom_symmetry_class
          *      M = 1 - \frac{1}{2 c^2} V
          *  \f]
          */
-        void generate_radial_integrals();
+        void generate_radial_integrals(relativity_t rel__);
         
         /// Return symmetry class id.
         inline int id() const
