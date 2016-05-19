@@ -56,9 +56,25 @@ void Simulation_context::init_fft()
 void Simulation_context::initialize()
 {
     PROFILE();
-
+    
+    /* can't initialize twice */
     if (initialized_) TERMINATE("Simulation context is already initialized.");
     
+    /* get processing unit */
+    std::string pu = control_input_section_.processing_unit_;
+    if (pu == "cpu")
+    {
+        processing_unit_ = CPU;
+    }
+    else if (pu == "gpu")
+    {
+        processing_unit_ = GPU;
+    }
+    else
+    {
+        TERMINATE("wrong processing unit");
+    }
+
     /* check if we can use a GPU device */
     if (processing_unit() == GPU)
     {
@@ -66,10 +82,14 @@ void Simulation_context::initialize()
         TERMINATE_NO_GPU
         #endif
     }
-
+    
+    /* set electronic structure method */
+    set_esm_type(control_input_section_.esm_);
+    
     /* check MPI grid dimensions and set a default grid if needed */
     if (!control_input_section_.mpi_grid_dims_.size()) control_input_section_.mpi_grid_dims_ = {comm_.size()};
-
+    
+    /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) control_input_section_.reduce_gvec_ = false;
 
     /* setup MPI grid */

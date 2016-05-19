@@ -19,7 +19,7 @@
 
 /** \file input.h
  *   
- *  \brief Contains declarations and implementations of input paramaters structures.
+ *  \brief Contains declarations and implementations of input parameters structures.
  */
 
 #ifndef __INPUT_H__
@@ -305,6 +305,42 @@ struct Control_input_section
 
         fft_mode_ = parser["control"]["fft_mode"].get(fft_mode_);
         reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
+    }
+};
+
+struct Parameters_input_section
+{
+    std::vector<std::string> xc_functionals_;
+    int num_fv_states_;
+    double smearing_width_;
+
+    Parameters_input_section()
+        : num_fv_states_(-1),
+          smearing_width_(0.01)
+    {
+    }
+
+    void read(JSON_tree const& parser)
+    {
+        /* read list of XC functionals */
+        /* The following part of the input file is parsed:
+         * \code{.json}
+         *     "xc_functionals" : ["name1", "name2", ...]
+         * \endcode
+         */
+        if (parser["parameters"].exist("xc_functionals"))
+        {
+            xc_functionals_.clear();
+            for (int i = 0; i < parser["parameters"]["xc_functionals"].size(); i++)
+            {
+                std::string s;
+                parser["parameters"]["xc_functionals"][i] >> s;
+                xc_functionals_.push_back(s);
+            }
+        }
+
+        num_fv_states_ = parser["parameters"]["num_fv_states"].get(num_fv_states_);
+        smearing_width_ = parser["parameters"]["smearing_width"].get(smearing_width_);
     }
 };
 

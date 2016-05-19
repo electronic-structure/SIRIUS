@@ -94,6 +94,13 @@ void dft_loop(cmd_args args)
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     JSON_tree parser(fname);
+    Parameters_input_section input_params;
+    input_params.read(parser);
+
+    ctx.set_num_fv_states(input_params.num_fv_states_);
+    ctx.set_smearing_width(input_params.smearing_width_);
+    for (auto& s: input_params.xc_functionals_) ctx.add_xc_functional(s);
+
 
     ctx.set_lmax_apw(parser["lmax_apw"].get(10));
     ctx.set_lmax_pot(parser["lmax_pot"].get(10));

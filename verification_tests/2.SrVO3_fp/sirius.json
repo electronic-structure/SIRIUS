@@ -7,16 +7,17 @@
         "electronic_structure_method" : "full_potential_lapwlo"
     },
 
-    "!num_fv_states" : 50,
+    "parameters" : {
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+        "smearing_width" : 0.05,
+        "!num_fv_states" : 50
+    },
 
-    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
     "gk_cutoff" : 6.0,
     "pw_cutoff" : 20.00,
     
     "energy_tol" : 1e-8,
-    
-    "smearing_width" : 0.05,
     
     "num_dft_iter" : 100,
     

@@ -57,21 +57,22 @@ class Simulation_parameters
         /// Cutoff for |G+k| plane-waves.
         double gk_cutoff_;
         
-        /// number of first-variational states
+        /// Number of first-variational states.
         int num_fv_states_;
     
-        /// number of spin componensts (1 or 2)
+        /// Number of spin componensts (1 or 2).
         int num_spins_;
     
-        /// number of dimensions of the magnetization and effective magnetic field (0, 1 or 3)
+        /// Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).
         int num_mag_dims_;
     
-        /// true if spin-orbit correction is applied
+        /// True if spin-orbit correction is applied.
         bool so_correction_;
        
-        /// true if UJ correction is applied
+        /// True if UJ correction is applied.
         bool uj_correction_;
-
+        
+        /// True if gamma-point (real) version of the PW code is used.
         bool gamma_point_;
 
         /// Type of the processing unit.
@@ -79,7 +80,17 @@ class Simulation_parameters
     
         /// Smearing function width.
         double smearing_width_;
-
+        
+        /// List of XC functionals.
+        std::vector<std::string> xc_functionals_;
+        
+        /// Type of relativity for valence states.
+        relativity_t valence_relativity_;
+        
+        /// Type of relativity for core states.
+        relativity_t core_relativity_;
+        
+        /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
 
         Iterative_solver_input_section iterative_solver_input_section_;
@@ -90,12 +101,6 @@ class Simulation_parameters
 
         Control_input_section control_input_section_;
         
-        std::vector<std::string> xc_functionals_;
-
-        relativity_t valence_relativity_;
-
-        relativity_t core_relativity_;
-
         void set_defaults()
         {
             lmax_apw_            = -1;
@@ -130,42 +135,6 @@ class Simulation_parameters
             iterative_solver_input_section_.read(parser);
             /* read controls */
             control_input_section_.read(parser);
-
-            /* read list of XC functionals */
-            /* The following part of the input file is parsed:
-             * \code{.json}
-             *     "xc_functionals" : ["name1", "name2", ...]
-             * \endcode
-             */
-            if (parser.exist("xc_functionals"))
-            {
-                xc_functionals_.clear();
-                for (int i = 0; i < parser["xc_functionals"].size(); i++)
-                {
-                    std::string s;
-                    parser["xc_functionals"][i] >> s;
-                    xc_functionals_.push_back(s);
-                }
-            }
-
-            num_fv_states_       = parser["num_fv_states"].get(num_fv_states_);
-            smearing_width_      = parser["smearing_width"].get(smearing_width_);
-
-            std::string pu = control_input_section_.processing_unit_;
-            if (pu == "cpu")
-            {
-                processing_unit_ = CPU;
-            }
-            else if (pu == "gpu")
-            {
-                processing_unit_ = GPU;
-            }
-            else
-            {
-                TERMINATE("wrong processing unit");
-            }
-
-            set_esm_type(control_input_section_.esm_);
         }
 
     public:
@@ -365,6 +334,11 @@ class Simulation_parameters
         inline double smearing_width() const
         {
             return smearing_width_;
+        }
+
+        inline double set_smearing_width(double smearing_width__)
+        {
+            return smearing_width_ = smearing_width__;
         }
     
         bool need_sv() const
