@@ -23,7 +23,7 @@ class Free_atom : public sirius::Atom_type
 {
     private:
 
-        mdarray<double, 2> free_atom_radial_functions_;
+        mdarray<double, 2> free_atom_orbital_density_;
         sirius::Simulation_parameters parameters_;
 
     public:
@@ -52,7 +52,7 @@ class Free_atom : public sirius::Atom_type
             int np = radial_grid().num_points();
             assert(np > 0);
 
-            free_atom_radial_functions_ = mdarray<double, 2>(np, num_atomic_levels()); 
+            free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels()); 
             
             sirius::XC_functional Ex("XC_LDA_X", 1);
             sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
@@ -116,16 +116,19 @@ class Free_atom : public sirius::Atom_type
                     #pragma omp for
                     for (int ist = 0; ist < num_atomic_levels(); ist++)
                     {
-                        sirius::Bound_state bound_state(rel, zn(), atomic_level(ist).n, atomic_level(ist).l, radial_grid(), veff, enu[ist]);
+                        //relativity_t rt = (rel) ? relativity_t::koelling_harmon : relativity_t::none;
+                        relativity_t rt = (rel) ? relativity_t::dirac : relativity_t::none;
+                        sirius::Bound_state bound_state(rt, zn(), atomic_level(ist).n, atomic_level(ist).l,
+                                                        atomic_level(ist).k, radial_grid(), veff, enu[ist]);
                         enu[ist] = bound_state.enu();
-                        auto& u = bound_state.u();
+                        auto& bs_rho = bound_state.rho();
                         
                         /* assume a spherical symmetry */
                         for (int i = 0; i < np; i++)
                         {
-                            free_atom_radial_functions_(i, ist) = u[i];
+                            free_atom_orbital_density_(i, ist) = bs_rho[i];
                             /* sum of squares of spherical harmonics for angular momentm l is (2l+1)/4pi */
-                            rho_t[i] += atomic_level(ist).occupancy * std::pow(free_atom_radial_functions_(i, ist), 2) / fourpi;
+                            rho_t[i] += atomic_level(ist).occupancy * free_atom_orbital_density_(i, ist) / fourpi;
                         }
                     }
         
@@ -187,7 +190,7 @@ class Free_atom : public sirius::Atom_type
         
                 energy_tot = energy_kin + energy_xc + energy_coul + energy_enuc; 
                 
-                energy_diff = fabs(energy_tot - energy_tot_old);
+                energy_diff = std::abs(energy_tot - energy_tot_old);
                 
                 if (energy_diff < energy_tol && charge_rms < charge_tol) 
                 { 
@@ -237,9 +240,9 @@ class Free_atom : public sirius::Atom_type
             return energy_tot;
         }
 
-        inline double free_atom_radial_function(int ir, int ist)
+        inline double free_atom_orbital_density(int ir, int ist)
         {
-            return free_atom_radial_functions_(ir, ist);
+            return free_atom_orbital_density_(ir, ist);
         }
 };
 
@@ -338,7 +341,7 @@ void generate_atom_file(Free_atom& a,
         
         /* total density */
         for (int ir = 0; ir < a.radial_grid().num_points(); ir++) 
-            rho[ir] += a.atomic_level(ist).occupancy * std::pow(y00 * a.free_atom_radial_function(ir, ist), 2);
+            rho[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
 
         if (enu[ist] < core_cutoff_energy)
         {
@@ -346,7 +349,7 @@ void generate_atom_file(Free_atom& a,
             printf("  => core \n");
 
             for (int ir = 0; ir < a.radial_grid().num_points(); ir++) 
-                rho_c[ir] += a.atomic_level(ist).occupancy * std::pow(y00 * a.free_atom_radial_function(ir, ist), 2);
+                rho_c[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
 
             nl_c[n][l]++;
             e_nl_c[n][l] += enu[ist];
@@ -466,38 +469,40 @@ void generate_atom_file(Free_atom& a,
     }
     jw.end_set();
     
+    /* get the lmax for valence states */
     int lmax = 0;
     for (size_t i = 0; i < valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
     //lmax = std::min(lmax + 1, 3);
     //lmax = 8;
+
     int nmax[9];
     for (int l = 0; l <= lmax; l++)
     {
         int n = l + 1;
         
-        for (size_t i = 0; i < core.size(); i++) 
-        {
-            if (core[i].l == l) n = core[i].n + 1;
-        }
+        //for (size_t i = 0; i < core.size(); i++) 
+        //{
+        //    if (core[i].l == l) n = core[i].n + 1;
+        //}
         
         for (size_t i = 0; i < valence.size(); i++)
         {
             if (valence[i].l == l) n = valence[i].n;
         }
-        nmax[l] = n;
+        //nmax[l] = n;
                
-        //== jw.begin_set();
-        //== jw.single("l", l);
-        //== jw.single("n", n);
-        //== if (apw_order == 1)
-        //== {
-        //==     jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
-        //== }
-        //== if (apw_order == 2)
-        //== {
-        //==     jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
-        //== }
-        //== jw.end_set();
+        jw.begin_set();
+        jw.single("l", l);
+        jw.single("n", n);
+        if (apw_order == 1)
+        {
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
+        }
+        if (apw_order == 2)
+        {
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
+        }
+        jw.end_set();
     }
     jw.end_array();
     jw.begin_array("lo");
@@ -547,6 +552,23 @@ void generate_atom_file(Free_atom& a,
     }
     if (lo_type == "lo+LO")
     {
+        //for (int n = 1; n <= 3; n++)
+        //{
+        //    for (int l = 0; l < n; l++)
+        //    {
+        //        if (l < 4 && n <= 7 && nl_c[n][l]) continue;
+
+        //        jw.begin_set();
+        //        std::stringstream s;
+        //        s << "[{" << "\"n\" : " << n << ", \"enu\" : " << 0.15 << ", \"dme\" : 0, \"auto\" : 1}," 
+        //          << " {" << "\"n\" : " << n << ", \"enu\" : " << 0.15 << ", \"dme\" : 1, \"auto\" : 1}," 
+        //          << " {" << "\"n\" : " << n + 1<< ", \"enu\" : " << 0.15 << ", \"dme\" : 0, \"auto\" : 1}]";
+        //        jw.single("l", l);
+        //        jw.string("basis", s.str());
+        //        jw.end_set();
+        //    }
+        //}
+
         for (int n = 1; n <= 7; n++)
         {
             for (int l = 0; l < 4; l++)
@@ -555,15 +577,36 @@ void generate_atom_file(Free_atom& a,
                 {
                     jw.begin_set();
                     std::stringstream s;
-                    s << "[{" << "\"n\" : " << n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
-                      << " {" << "\"n\" : " << n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}," 
+                    s << "[{" << "\"n\" : " << 0 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
+                      << " {" << "\"n\" : " << 0 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}," 
                       << " {" << "\"n\" : " << n << ", \"enu\" : " << e_nl_v[n][l] << ", \"dme\" : 0, \"auto\" : 1}]";
+                    jw.single("l", l);
+                    jw.string("basis", s.str());
+                    jw.end_set();
+
+                    jw.begin_set();
+                    s.str("");
+                    s << "[{" << "\"n\" : " << 0 << ", \"enu\" : 0.35, \"dme\" : 0, \"auto\" : 0}," 
+                      << " {" << "\"n\" : " << 0 << ", \"enu\" : 0.35, \"dme\" : 1, \"auto\" : 0}," 
+                      << " {" << "\"n\" : " << n + 1 << ", \"enu\" : " << e_nl_v[n][l] + 1.0 << ", \"dme\" : 0, \"auto\" : 1}]";
                     jw.single("l", l);
                     jw.string("basis", s.str());
                     jw.end_set();
                 }
             }
         }
+
+        for (int l = lmax + 1; l < lmax + 3; l++)
+        {
+            jw.begin_set();
+            std::stringstream s;
+            s << "[{" << "\"n\" : " << 0 << ", \"enu\" : " << 0.15 << ", \"dme\" : 0, \"auto\" : 0}," 
+              << " {" << "\"n\" : " << 0 << ", \"enu\" : " << 0.15 << ", \"dme\" : 1, \"auto\" : 0}]";
+            jw.single("l", l);
+            jw.string("basis", s.str());
+            jw.end_set();
+        }
+
         //for (int i = 0; i < (int)valence.size(); i++)
         //{
         //    jw.begin_set();
