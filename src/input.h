@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file input.h
+ *   
+ *  \brief Contains declarations and implementations of input paramaters structures.
+ */
+
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
@@ -229,26 +253,40 @@ struct Iterative_solver_input_section
     }
 };
 
+/// Parse control input section.
+/** The following part of the input file is parsed:
+ *  \code{.json}
+ *    "control" : {
+ *      "mpi_grid_dims" : (1- 2- or 3-dimensional vector<int>) MPI grid layout
+ *      "cyclic_block_size" : (int) PBLAS / ScaLAPACK block size
+ *      "reduce_gvec" : (int) use reduced G-vector set (reduce_gvec = 1) or full set (reduce_gvec = 0)
+ *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
+ *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
+ *      "electronic_structure_method" : (string) electronic structure method
+ *      "processing_unit" : (string) primary processing unit
+ *      "fft_mode" : (string) serial or parallel FFT
+ *    }
+ *  \endcode
+ */
 struct Control_input_section
 {
     std::vector<int> mpi_grid_dims_;
     int cyclic_block_size_;
+    bool reduce_gvec_;
     std::string std_evp_solver_name_;
     std::string gen_evp_solver_name_;
     std::string esm_;
     std::string fft_mode_;
-    bool reduce_gvec_;
-
-    /// Type of the processing unit.
-    processing_unit_t processing_unit_;
+    std::string processing_unit_;
 
     Control_input_section()
         : cyclic_block_size_(32),
+          reduce_gvec_(true),
           std_evp_solver_name_("lapack"),
           gen_evp_solver_name_("lapack"),
           esm_("none"),
           fft_mode_("serial"),
-          reduce_gvec_(true)
+          processing_unit_("cpu")
     {
     }
 
@@ -259,21 +297,8 @@ struct Control_input_section
         std_evp_solver_name_ = parser["control"]["std_evp_solver_type"].get(std_evp_solver_name_);
         gen_evp_solver_name_ = parser["control"]["gen_evp_solver_type"].get(gen_evp_solver_name_);
 
-        std::string pu = "cpu";
-        pu = parser["control"]["processing_unit"].get(pu);
-        std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
-        if (pu == "cpu")
-        {
-            processing_unit_ = CPU;
-        }
-        else if (pu == "gpu")
-        {
-            processing_unit_ = GPU;
-        }
-        else
-        {
-            TERMINATE("wrong processing unit");
-        }
+        processing_unit_ = parser["control"]["processing_unit"].get(processing_unit_);
+        std::transform(processing_unit_.begin(), processing_unit_.end(), processing_unit_.begin(), ::tolower);
 
         esm_ = parser["control"]["electronic_structure_method"].get(esm_);
         std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);

@@ -74,17 +74,6 @@ class Simulation_parameters
 
         bool gamma_point_;
 
-        bool reduce_gvec_;
-    
-        /// MPI grid dimensions
-        //std::vector<int> mpi_grid_dims_;
-
-        int cyclic_block_size_;
-
-        std::string std_evp_solver_name_;
-
-        std::string gen_evp_solver_name_;
-    
         /// Type of the processing unit.
         processing_unit_t processing_unit_;
     
@@ -102,8 +91,6 @@ class Simulation_parameters
         Control_input_section control_input_section_;
         
         std::vector<std::string> xc_functionals_;
-
-        std::string fft_mode_;
 
         relativity_t valence_relativity_;
 
@@ -124,15 +111,9 @@ class Simulation_parameters
             so_correction_       = false;
             uj_correction_       = false;
             gamma_point_         = false;
-            reduce_gvec_         = true;
-            //mpi_grid_dims_       = {1};
-            cyclic_block_size_   = 32;
             processing_unit_     = CPU;
             smearing_width_      = 0.001;
             esm_type_            = full_potential_lapwlo;
-            std_evp_solver_name_ = "";
-            gen_evp_solver_name_ = "";
-            fft_mode_            = "serial";
             valence_relativity_  = relativity_t::zora;
             core_relativity_     = relativity_t::dirac;
         }
@@ -167,16 +148,10 @@ class Simulation_parameters
                 }
             }
 
-            //mpi_grid_dims_       = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
-            cyclic_block_size_   = parser["cyclic_block_size"].get(cyclic_block_size_);
             num_fv_states_       = parser["num_fv_states"].get(num_fv_states_);
             smearing_width_      = parser["smearing_width"].get(smearing_width_);
-            std_evp_solver_name_ = parser["std_evp_solver_type"].get(std_evp_solver_name_);
-            gen_evp_solver_name_ = parser["gen_evp_solver_type"].get(gen_evp_solver_name_);
 
-            std::string pu = "cpu";
-            pu = parser["processing_unit"].get(pu);
-            std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
+            std::string pu = control_input_section_.processing_unit_;
             if (pu == "cpu")
             {
                 processing_unit_ = CPU;
@@ -190,13 +165,7 @@ class Simulation_parameters
                 TERMINATE("wrong processing unit");
             }
 
-            std::string esm = "full_potential_lapwlo";
-            esm = parser["electronic_structure_method"].get(esm);
-            std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
-            set_esm_type(esm);
-
-            fft_mode_ = parser["fft_mode"].get(fft_mode_);
-            reduce_gvec_ = parser["reduce_gvec"].get<int>(reduce_gvec_);
+            set_esm_type(control_input_section_.esm_);
         }
 
     public:
@@ -277,26 +246,20 @@ class Simulation_parameters
 
         inline void set_esm_type(std::string name__)
         {
-            if (name__ == "full_potential_lapwlo")
+            std::map<std::string, electronic_structure_method_t> m;
+
+            m["full_potential_lapwlo"]           = full_potential_lapwlo;
+            m["full_potential_pwlo"]             = full_potential_pwlo;
+            m["ultrasoft_pseudopotential"]       = ultrasoft_pseudopotential;
+            m["norm_conserving_pseudopotential"] = norm_conserving_pseudopotential;
+
+            if (m.count(name__) == 0)
             {
-                esm_type_ = full_potential_lapwlo;
+                std::stringstream s;
+                s << "wrong type of electronic structure method: " << name__;
+                TERMINATE(s);
             }
-            else if (name__ == "full_potential_pwlo")
-            {
-                esm_type_ = full_potential_pwlo;
-            }
-            else if (name__ == "ultrasoft_pseudopotential")
-            {
-                esm_type_ = ultrasoft_pseudopotential;
-            } 
-            else if (name__ == "norm_conserving_pseudopotential")
-            {
-                esm_type_ = norm_conserving_pseudopotential;
-            }
-            else
-            {
-                TERMINATE("wrong type of electronic structure method");
-            }
+            esm_type_ = m[name__];
         }
 
         inline void set_processing_unit(processing_unit_t pu__)
@@ -417,7 +380,7 @@ class Simulation_parameters
 
         inline int cyclic_block_size() const
         {
-            return cyclic_block_size_;
+            return control_input_section_.cyclic_block_size_;
         }
     
         inline electronic_structure_method_t esm_type() const
@@ -447,12 +410,12 @@ class Simulation_parameters
 
         inline std::string const& std_evp_solver_name() const
         {
-            return std_evp_solver_name_;
+            return control_input_section_.std_evp_solver_name_;
         }
 
         inline std::string const& gen_evp_solver_name() const
         {
-            return gen_evp_solver_name_;
+            return control_input_section_.gen_evp_solver_name_;
         }
 
         inline relativity_t valence_relativity() const
