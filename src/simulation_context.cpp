@@ -68,12 +68,12 @@ void Simulation_context::initialize()
     }
 
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!mpi_grid_dims_.size()) mpi_grid_dims_ = {comm_.size()};
+    if (!control_input_section_.mpi_grid_dims_.size()) control_input_section_.mpi_grid_dims_ = {comm_.size()};
 
     if (full_potential()) reduce_gvec_ = false;
 
     /* setup MPI grid */
-    mpi_grid_ = new MPI_grid(mpi_grid_dims_, comm_);
+    mpi_grid_ = new MPI_grid(control_input_section_.mpi_grid_dims_, comm_);
 
     blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
                                  mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_));

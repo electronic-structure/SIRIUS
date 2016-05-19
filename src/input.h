@@ -229,6 +229,60 @@ struct Iterative_solver_input_section
     }
 };
 
+struct Control_input_section
+{
+    std::vector<int> mpi_grid_dims_;
+    int cyclic_block_size_;
+    std::string std_evp_solver_name_;
+    std::string gen_evp_solver_name_;
+    std::string esm_;
+    std::string fft_mode_;
+    bool reduce_gvec_;
+
+    /// Type of the processing unit.
+    processing_unit_t processing_unit_;
+
+    Control_input_section()
+        : cyclic_block_size_(32),
+          std_evp_solver_name_("lapack"),
+          gen_evp_solver_name_("lapack"),
+          esm_("none"),
+          fft_mode_("serial"),
+          reduce_gvec_(true)
+    {
+    }
+
+    void read(JSON_tree const& parser)
+    {
+        mpi_grid_dims_       = parser["control"]["mpi_grid_dims"].get(mpi_grid_dims_); 
+        cyclic_block_size_   = parser["control"]["cyclic_block_size"].get(cyclic_block_size_);
+        std_evp_solver_name_ = parser["control"]["std_evp_solver_type"].get(std_evp_solver_name_);
+        gen_evp_solver_name_ = parser["control"]["gen_evp_solver_type"].get(gen_evp_solver_name_);
+
+        std::string pu = "cpu";
+        pu = parser["control"]["processing_unit"].get(pu);
+        std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
+        if (pu == "cpu")
+        {
+            processing_unit_ = CPU;
+        }
+        else if (pu == "gpu")
+        {
+            processing_unit_ = GPU;
+        }
+        else
+        {
+            TERMINATE("wrong processing unit");
+        }
+
+        esm_ = parser["control"]["electronic_structure_method"].get(esm_);
+        std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
+
+        fft_mode_ = parser["control"]["fft_mode"].get(fft_mode_);
+        reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
+    }
+};
+
 };
 
 #endif // __INPUT_H__

@@ -77,7 +77,7 @@ class Simulation_parameters
         bool reduce_gvec_;
     
         /// MPI grid dimensions
-        std::vector<int> mpi_grid_dims_;
+        //std::vector<int> mpi_grid_dims_;
 
         int cyclic_block_size_;
 
@@ -98,6 +98,8 @@ class Simulation_parameters
         Mixer_input_section mixer_input_section_;
 
         Unit_cell_input_section unit_cell_input_section_;
+
+        Control_input_section control_input_section_;
         
         std::vector<std::string> xc_functionals_;
 
@@ -123,7 +125,7 @@ class Simulation_parameters
             uj_correction_       = false;
             gamma_point_         = false;
             reduce_gvec_         = true;
-            mpi_grid_dims_       = {1};
+            //mpi_grid_dims_       = {1};
             cyclic_block_size_   = 32;
             processing_unit_     = CPU;
             smearing_width_      = 0.001;
@@ -145,6 +147,8 @@ class Simulation_parameters
             mixer_input_section_.read(parser);
             /* read parameters of iterative solver */
             iterative_solver_input_section_.read(parser);
+            /* read controls */
+            control_input_section_.read(parser);
 
             /* read list of XC functionals */
             /* The following part of the input file is parsed:
@@ -163,7 +167,7 @@ class Simulation_parameters
                 }
             }
 
-            mpi_grid_dims_       = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
+            //mpi_grid_dims_       = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
             cyclic_block_size_   = parser["cyclic_block_size"].get(cyclic_block_size_);
             num_fv_states_       = parser["num_fv_states"].get(num_fv_states_);
             smearing_width_      = parser["smearing_width"].get(smearing_width_);
@@ -263,7 +267,7 @@ class Simulation_parameters
 
         inline void set_mpi_grid_dims(std::vector<int> mpi_grid_dims__)
         {
-            mpi_grid_dims_ = mpi_grid_dims__;
+            control_input_section_.mpi_grid_dims_ = mpi_grid_dims__;
         }
 
         inline void add_xc_functional(std::string name__)
@@ -408,7 +412,7 @@ class Simulation_parameters
         
         inline std::vector<int> const& mpi_grid_dims() const
         {
-            return mpi_grid_dims_;
+            return control_input_section_.mpi_grid_dims_;
         }
 
         inline int cyclic_block_size() const
