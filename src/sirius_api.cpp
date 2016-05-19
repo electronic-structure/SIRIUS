@@ -1719,23 +1719,24 @@ void sirius_scalar_radial_solver(int32_t* zn, int32_t* l, int32_t* dme, double* 
                                  double* v__, int32_t* nn, double* p0__, double* p1__, double* q0__, double* q1__)
 {
     PROFILE();
-    sirius::Radial_grid rgrid(*nr, r);
-    sirius::Radial_solver solver(false, *zn, rgrid);
+    STOP();
+    //sirius::Radial_grid rgrid(*nr, r);
+    //sirius::Radial_solver solver(false, *zn, rgrid);
 
-    std::vector<double> v(*nr);
-    std::vector<double> p0;
-    std::vector<double> p1;
-    std::vector<double> q0;
-    std::vector<double> q1;
+    //std::vector<double> v(*nr);
+    //std::vector<double> p0;
+    //std::vector<double> p1;
+    //std::vector<double> q0;
+    //std::vector<double> q1;
 
-    memcpy(&v[0], v__, (*nr) * sizeof(double));
+    //memcpy(&v[0], v__, (*nr) * sizeof(double));
 
-    *nn = solver.solve(*l, *enu, *dme, v, p0, p1, q0, q1);
+    //*nn = solver.solve(*l, *enu, *dme, v, p0, p1, q0, q1);
 
-    memcpy(p0__, &p0[0], (*nr) * sizeof(double));
-    memcpy(p1__, &p1[0], (*nr) * sizeof(double));
-    memcpy(q0__, &q0[0], (*nr) * sizeof(double));
-    memcpy(q1__, &q1[0], (*nr) * sizeof(double));
+    //memcpy(p0__, &p0[0], (*nr) * sizeof(double));
+    //memcpy(p1__, &p1[0], (*nr) * sizeof(double));
+    //memcpy(q0__, &q0[0], (*nr) * sizeof(double));
+    //memcpy(q1__, &q1[0], (*nr) * sizeof(double));
 }
 
 void sirius_get_aw_radial_function(int32_t const* ia__,
