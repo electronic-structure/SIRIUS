@@ -15,7 +15,7 @@ packages = {
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
-        "url"     : "http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.16.tar.gz",
+        "url"     : "http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.17.tar.gz",
         "options" : ["--enable-fortran",
                      "--disable-shared",
                      "--enable-static=yes", 
