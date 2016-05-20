@@ -73,11 +73,7 @@ struct Unit_cell_input_section
     std::map<std::string, std::string> atom_files_;
     std::vector< std::vector< std::vector<double> > > coordinates_;
 
-    bool exist_;
-
-    Unit_cell_input_section() : exist_(false)
-    {
-    }
+    bool exist_{false};
 
     void read(JSON_tree const& parser)
     {
@@ -144,21 +140,11 @@ struct Unit_cell_input_section
 
 struct Mixer_input_section
 {
-    double beta_;
-    double gamma_;
-    std::string type_;
-    int max_history_;
-
-    bool exist_;
-
-    Mixer_input_section() 
-        : beta_(0.9),
-          gamma_(1.0),
-          type_("broyden2"),
-          max_history_(8),
-          exist_(false)
-    {
-    }
+    double beta_{0.9};
+    double gamma_{1.0};
+    std::string type_{"broyden2"};
+    int max_history_{8};
+    bool exist_{false};
 
     void read(JSON_tree const& parser)
     {
@@ -210,32 +196,17 @@ struct Mixer_input_section
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
-    std::string type_;
-    int num_steps_;
-    int subspace_size_;
-    double energy_tolerance_;
-    double residual_tolerance_;
-    int converge_by_energy_; // TODO: rename, this is meaningless
-    int converge_occupied_;
-    int min_num_res_;
-    int real_space_prj_;
-    double R_mask_scale_;
-    double mask_alpha_;
-
-    Iterative_solver_input_section() 
-        : type_("davidson"),
-          num_steps_(20),
-          subspace_size_(4),
-          energy_tolerance_(1e-6),
-          residual_tolerance_(1e-6),
-          converge_by_energy_(1),
-          converge_occupied_(1),
-          min_num_res_(0),
-          real_space_prj_(0),
-          R_mask_scale_(1.5),
-          mask_alpha_(3)
-    {
-    }
+    std::string type_{"davidson"};
+    int num_steps_{20};
+    int subspace_size_{4};
+    double energy_tolerance_{1e-6};
+    double residual_tolerance_{1e-6};
+    int converge_by_energy_{1}; // TODO: rename, this is meaningless
+    int converge_occupied_{1};
+    int min_num_res_{0};
+    int real_space_prj_{0}; // TODO: move it from here to parameters
+    double R_mask_scale_{1.5};
+    double mask_alpha_{3};
 
     void read(JSON_tree const& parser)
     {

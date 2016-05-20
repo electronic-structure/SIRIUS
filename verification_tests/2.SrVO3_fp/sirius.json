@@ -12,19 +12,14 @@
         "smearing_width" : 0.05,
         "!num_fv_states" : 50,
         "aw_cutoff" : 7.0,
-        "pw_cutoff" : 20.00
+        "pw_cutoff" : 20.00,
+        "auto_rmt" : 1,
+        "use_symmetry": 1,
+        "ngridk" : [2, 2, 2],
+        "potential_tol" : 1e-5,
+        "energy_tol" : 1e-8,
+        "num_dft_iter" : 100
     },
-
-
-    "energy_tol" : 1e-8,
-    
-    "num_dft_iter" : 100,
-    
-    "ngridk" : [2, 2, 2],
-    
-    "auto_rmt" : 0,
-    
-    "use_symmetry": 1,
 
     "unit_cell" : {
 

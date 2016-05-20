@@ -48,77 +48,61 @@ class Simulation_context: public Simulation_parameters
         Communicator const& comm_;
 
         /// MPI grid for this simulation.
-        MPI_grid* mpi_grid_;
+        MPI_grid* mpi_grid_{nullptr};
         
         /// 2D MPI grid for the FFT driver.
-        MPI_grid* mpi_grid_fft_;
+        MPI_grid* mpi_grid_fft_{nullptr};
 
-        MPI_grid* mpi_grid_fft_vloc_;
+        MPI_grid* mpi_grid_fft_vloc_{nullptr};
 
         /// 2D BLACS grid for distributed linear algebra operations.
-        BLACS_grid* blacs_grid_;
+        BLACS_grid* blacs_grid_{nullptr};
 
         /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
         /** This grid is used to distribute band index and keep a whole wave-function */
-        BLACS_grid* blacs_grid_slice_;
+        BLACS_grid* blacs_grid_slice_{nullptr};
 
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
-        FFT3D* fft_;
+        FFT3D* fft_{nullptr};
 
-        FFT3D* fft_coarse_;
+        FFT3D* fft_coarse_{nullptr};
 
         /// Step function is used in full-potential methods.
-        Step_function* step_function_;
+        Step_function* step_function_{nullptr};
 
         Gvec gvec_;
 
         Gvec gvec_coarse_;
 
-        Gvec_FFT_distribution* gvec_fft_distr_;
+        Gvec_FFT_distribution* gvec_fft_distr_{nullptr};
 
-        std::vector<Augmentation_operator*> augmentation_op_;
+        std::vector<Augmentation_operator*> augmentation_op_{nullptr};
 
-        Real_space_prj* real_space_prj_;
+        Real_space_prj* real_space_prj_{nullptr};
 
         /// Creation time of the context.
         timeval start_time_;
 
         std::string start_time_tag_;
 
-        ev_solver_t std_evp_solver_type_;
+        ev_solver_t std_evp_solver_type_{ev_lapack};
 
-        ev_solver_t gen_evp_solver_type_;
+        ev_solver_t gen_evp_solver_type_{ev_lapack};
 
         mdarray<double_complex, 3> phase_factors_;
 
         double time_active_;
         
-        bool initialized_;
+        bool initialized_{false};
 
         void init_fft();
 
         Simulation_context(Simulation_context const&) = delete;
 
-        void set_defaults()
+        void init()
         {
-            Simulation_parameters::set_defaults();
-
-            mpi_grid_ = nullptr;
-            mpi_grid_fft_ = nullptr;
-            mpi_grid_fft_vloc_ = nullptr;
-            blacs_grid_ = nullptr;
-            blacs_grid_slice_ = nullptr;
-            fft_ = nullptr;
-            fft_coarse_ = nullptr;
-            step_function_ = nullptr;
-            gvec_fft_distr_ = nullptr;
-            real_space_prj_ = nullptr;
-            std_evp_solver_type_ = ev_lapack;
-            gen_evp_solver_type_ = ev_lapack;
-            initialized_ = false;
-            
             gettimeofday(&start_time_, NULL);
             
             tm const* ptm = localtime(&start_time_.tv_sec); 
@@ -135,7 +119,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE();
-            set_defaults();
+            init();
             import(fname__);
             unit_cell_.import(unit_cell_input_section_);
         }
@@ -145,7 +129,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE();
-            set_defaults();
+            init();
         }
 
         ~Simulation_context()

@@ -37,64 +37,64 @@ class Simulation_parameters
     protected:
     
         /// Maximum l for APW functions.
-        int lmax_apw_;
+        int lmax_apw_{-1};
         
         /// Maximum l for plane waves.
-        int lmax_pw_;
+        int lmax_pw_{-1};
         
         /// Maximum l for density.
-        int lmax_rho_;
+        int lmax_rho_{-1};
         
         /// Maximum l for potential
-        int lmax_pot_;
+        int lmax_pot_{-1};
 
         /// Cutoff for augmented-wave functions.
-        double aw_cutoff_;
+        double aw_cutoff_{7};
     
         /// Cutoff for plane-waves (for density and potential expansion).
-        double pw_cutoff_;
+        double pw_cutoff_{20};
     
         /// Cutoff for |G+k| plane-waves.
-        double gk_cutoff_;
+        double gk_cutoff_{6};
         
         /// Number of first-variational states.
-        int num_fv_states_;
+        int num_fv_states_{-1};
     
         /// Number of spin componensts (1 or 2).
-        int num_spins_;
+        int num_spins_{1};
     
         /// Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).
-        int num_mag_dims_;
+        int num_mag_dims_{0};
 
         /// Scale muffin-tin radii automatically.
-        int auto_rmt_;
+        int auto_rmt_{1};
     
         /// True if spin-orbit correction is applied.
-        bool so_correction_;
+        bool so_correction_{false};
        
         /// True if UJ correction is applied.
-        bool uj_correction_;
+        bool uj_correction_{false};
         
         /// True if gamma-point (real) version of the PW code is used.
-        bool gamma_point_;
+        bool gamma_point_{false};
 
         /// Type of the processing unit.
-        processing_unit_t processing_unit_;
+        processing_unit_t processing_unit_{CPU};
     
         /// Smearing function width.
-        double smearing_width_;
+        double smearing_width_{0.001};
         
         /// List of XC functionals.
         std::vector<std::string> xc_functionals_;
         
         /// Type of relativity for valence states.
-        relativity_t valence_relativity_;
+        relativity_t valence_relativity_{relativity_t::zora};
         
         /// Type of relativity for core states.
-        relativity_t core_relativity_;
+        relativity_t core_relativity_{relativity_t::dirac};
         
         /// Type of electronic structure method.
-        electronic_structure_method_t esm_type_;
+        electronic_structure_method_t esm_type_{full_potential_lapwlo};
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
@@ -103,28 +103,6 @@ class Simulation_parameters
         Unit_cell_input_section unit_cell_input_section_;
 
         Control_input_section control_input_section_;
-        
-        void set_defaults()
-        {
-            lmax_apw_            = -1;
-            lmax_pw_             = -1;
-            lmax_rho_            = -1;
-            lmax_pot_            = -1;
-            aw_cutoff_           = 7.0;
-            pw_cutoff_           = 20.0;
-            gk_cutoff_           = 6.0;
-            num_fv_states_       = -1;
-            num_spins_           = 1;
-            num_mag_dims_        = 0;
-            so_correction_       = false;
-            uj_correction_       = false;
-            gamma_point_         = false;
-            processing_unit_     = CPU;
-            smearing_width_      = 0.001;
-            esm_type_            = full_potential_lapwlo;
-            valence_relativity_  = relativity_t::zora;
-            core_relativity_     = relativity_t::dirac;
-        }
         
         /// Import data from initial input parameters.
         void import(std::string const& fname__)

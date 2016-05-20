@@ -162,8 +162,8 @@ void dft_loop(cmd_args args)
         if (!ctx.full_potential()) dft.initialize_subspace();
     }
     
-    double potential_tol = parser["potential_tol"].get(1e-4);
-    double energy_tol = parser["energy_tol"].get(1e-4);
+    double potential_tol = parser["parameters"]["potential_tol"].get(1e-4);
+    double energy_tol = parser["parameters"]["energy_tol"].get(1e-4);
 
     if (task_name == "test_init")
     {
@@ -175,7 +175,7 @@ void dft_loop(cmd_args args)
     }
     if (task_name == "gs_new" || task_name == "gs_restart")
     {
-        dft.scf_loop(potential_tol, energy_tol, parser["num_dft_iter"].get(100));
+        dft.scf_loop(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
     }
     if (task_name == "gs_relax")
     {

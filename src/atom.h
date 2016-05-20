@@ -233,30 +233,30 @@ class Atom
             {
                 switch (sblock)
                 {
-                    case nm:
+                    case spin_block_t::nm:
                     {
                         zsum += gnt[i].coef * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
                         break;
                     }
-                    case uu:
+                    case spin_block_t::uu:
                     {
                         zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
                                                b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
                         break;
                     }
-                    case dd:
+                    case spin_block_t::dd:
                     {
                         zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
                                                b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
                         break;
                     }
-                    case ud:
+                    case spin_block_t::ud:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
                                                             -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
-                    case du:
+                    case spin_block_t::du:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
                                                              b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));

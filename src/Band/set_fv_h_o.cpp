@@ -67,7 +67,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                         for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
                     }
                     kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
-                    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+                    apply_hmt_to_apw<spin_block_t::nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
 
                     /* setup apw-lo and lo-apw blocks */
                     set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());

@@ -42,7 +42,7 @@ class Spline
     private:
         
         /// Radial grid.
-        Radial_grid const* radial_grid_;
+        Radial_grid const* radial_grid_{nullptr};
 
         mdarray<T, 2> coeffs_;
 
@@ -54,7 +54,7 @@ class Spline
     public:
 
         /// Default constructor.
-        Spline() : radial_grid_(nullptr)
+        Spline()
         {
         }
         
@@ -125,7 +125,7 @@ class Spline
         {
             std::vector<T> a(num_points());
             for (int i = 0; i < num_points(); i++) a[i] = coeffs_(i, 0);
-            return a;
+            return std::move(a);
         }
         
         /// Return number of spline points.
