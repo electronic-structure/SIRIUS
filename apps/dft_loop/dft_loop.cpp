@@ -94,38 +94,29 @@ void dft_loop(cmd_args args)
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     JSON_tree parser(fname);
-    Parameters_input_section input_params;
-    input_params.read(parser);
+    Parameters_input_section inp;
+    inp.read(parser);
 
-    ctx.set_num_fv_states(input_params.num_fv_states_);
-    ctx.set_smearing_width(input_params.smearing_width_);
-    for (auto& s: input_params.xc_functionals_) ctx.add_xc_functional(s);
+    ctx.set_num_fv_states(inp.num_fv_states_);
+    ctx.set_smearing_width(inp.smearing_width_);
+    for (auto& s: inp.xc_functionals_) ctx.add_xc_functional(s);
+    ctx.set_pw_cutoff(inp.pw_cutoff_);
+    ctx.set_aw_cutoff(inp.aw_cutoff_);
+    ctx.set_gk_cutoff(inp.gk_cutoff_);
+    ctx.set_lmax_apw(inp.lmax_apw_);
+    ctx.set_lmax_pot(inp.lmax_pot_);
+    ctx.set_lmax_rho(inp.lmax_rho_);
+    ctx.set_num_mag_dims(inp.num_mag_dims_);
+    ctx.set_auto_rmt(inp.auto_rmt_);
 
+    auto ngridk = parser["parameters"]["ngridk"].get(std::vector<int>(3, 1));
+    auto shiftk = parser["parameters"]["shiftk"].get(std::vector<int>(3, 0));
 
-    ctx.set_lmax_apw(parser["lmax_apw"].get(10));
-    ctx.set_lmax_pot(parser["lmax_pot"].get(10));
-    ctx.set_lmax_rho(parser["lmax_rho"].get(10));
-    ctx.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
-    ctx.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
-    ctx.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
-    
-    ctx.set_num_mag_dims(parser["num_mag_dims"].get(0));
-
-    ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
-
-    auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
-    auto shiftk = parser["shiftk"].get(std::vector<int>(3, 0));
-
-    int use_symmetry = parser["use_symmetry"].get(1);
-
-    auto gamma_point = parser["gamma_point"].get(0);
-
-    if (gamma_point && !(ngridk[0] * ngridk[1] * ngridk[2] == 1))
+    if (inp.gamma_point_ && !(ngridk[0] * ngridk[1] * ngridk[2] == 1))
     {
         TERMINATE("this is not a Gamma-point calculation")
     }
-    ctx.set_gamma_point(gamma_point);
-
+    ctx.set_gamma_point(inp.gamma_point_);
 
     ctx.initialize();
     
@@ -141,7 +132,7 @@ void dft_loop(cmd_args args)
     #endif
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[2]),
-             vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), use_symmetry);
+             vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), inp.use_symmetry_);
 
     ks.initialize();
     
@@ -156,7 +147,7 @@ void dft_loop(cmd_args args)
     MEMORY_USAGE_INFO();
     #endif
     
-    DFT_ground_state dft(ctx, potential, density, &ks, use_symmetry);
+    DFT_ground_state dft(ctx, potential, density, &ks, inp.use_symmetry_);
 
     if (task_name == "gs_restart")
     {

@@ -65,6 +65,9 @@ class Simulation_parameters
     
         /// Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).
         int num_mag_dims_;
+
+        /// Scale muffin-tin radii automatically.
+        int auto_rmt_;
     
         /// True if spin-orbit correction is applied.
         bool so_correction_;
@@ -339,6 +342,16 @@ class Simulation_parameters
         inline double set_smearing_width(double smearing_width__)
         {
             return smearing_width_ = smearing_width__;
+        }
+
+        inline void set_auto_rmt(int auto_rmt__)
+        {
+            auto_rmt_ = auto_rmt__;
+        }
+
+        inline int auto_rmt() const
+        {
+            return auto_rmt_;
         }
     
         bool need_sv() const

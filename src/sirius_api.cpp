@@ -163,7 +163,7 @@ void sirius_set_gk_cutoff(double* gk_cutoff__)
 void sirius_set_auto_rmt(int32_t* auto_rmt__)
 {
     PROFILE();
-    sim_ctx->unit_cell().set_auto_rmt(*auto_rmt__);
+    sim_ctx->set_auto_rmt(*auto_rmt__);
 }
 
 /// Add atom type to the unit cell.

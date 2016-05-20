@@ -271,24 +271,13 @@ struct Iterative_solver_input_section
 struct Control_input_section
 {
     std::vector<int> mpi_grid_dims_;
-    int cyclic_block_size_;
-    bool reduce_gvec_;
-    std::string std_evp_solver_name_;
-    std::string gen_evp_solver_name_;
-    std::string esm_;
-    std::string fft_mode_;
-    std::string processing_unit_;
-
-    Control_input_section()
-        : cyclic_block_size_(32),
-          reduce_gvec_(true),
-          std_evp_solver_name_("lapack"),
-          gen_evp_solver_name_("lapack"),
-          esm_("none"),
-          fft_mode_("serial"),
-          processing_unit_("cpu")
-    {
-    }
+    int cyclic_block_size_{32};
+    bool reduce_gvec_{true};
+    std::string std_evp_solver_name_{"lapack"};
+    std::string gen_evp_solver_name_{"lapack"};
+    std::string esm_{"none"};
+    std::string fft_mode_{"serial"};
+    std::string processing_unit_{"cpu"};
 
     void read(JSON_tree const& parser)
     {
@@ -311,23 +300,22 @@ struct Control_input_section
 struct Parameters_input_section
 {
     std::vector<std::string> xc_functionals_;
-    int num_fv_states_;
-    double smearing_width_;
-
-    Parameters_input_section()
-        : num_fv_states_(-1),
-          smearing_width_(0.01)
-    {
-    }
+    int num_fv_states_{-1};
+    double smearing_width_{0.01}; // in Ha
+    double pw_cutoff_{20.0}; // in a.u.^-1
+    double aw_cutoff_{7.0}; // this is R_{MT} * |G+k|_{max}
+    double gk_cutoff_{6.0}; // in a.u.^-1
+    int lmax_apw_{10};
+    int lmax_rho_{10};
+    int lmax_pot_{10};
+    int num_mag_dims_{0};
+    int auto_rmt_{1};
+    int use_symmetry_{1};
+    int gamma_point_{0};
 
     void read(JSON_tree const& parser)
     {
         /* read list of XC functionals */
-        /* The following part of the input file is parsed:
-         * \code{.json}
-         *     "xc_functionals" : ["name1", "name2", ...]
-         * \endcode
-         */
         if (parser["parameters"].exist("xc_functionals"))
         {
             xc_functionals_.clear();
@@ -339,8 +327,18 @@ struct Parameters_input_section
             }
         }
 
-        num_fv_states_ = parser["parameters"]["num_fv_states"].get(num_fv_states_);
+        num_fv_states_  = parser["parameters"]["num_fv_states"].get(num_fv_states_);
         smearing_width_ = parser["parameters"]["smearing_width"].get(smearing_width_);
+        pw_cutoff_      = parser["parameters"]["pw_cutoff"].get(pw_cutoff_);
+        aw_cutoff_      = parser["parameters"]["aw_cutoff"].get(aw_cutoff_);
+        gk_cutoff_      = parser["parameters"]["gk_cutoff"].get(gk_cutoff_);
+        lmax_apw_       = parser["parameters"]["lmax_apw"].get(lmax_apw_);
+        lmax_rho_       = parser["parameters"]["lmax_rho"].get(lmax_rho_);
+        lmax_pot_       = parser["parameters"]["lmax_pot"].get(lmax_pot_);
+        num_mag_dims_   = parser["parameters"]["num_mag_dims"].get(num_mag_dims_);
+        auto_rmt_       = parser["parameters"]["auto_rmt"].get(auto_rmt_);
+        use_symmetry_   = parser["parameters"]["use_symmetry"].get(use_symmetry_);
+        gamma_point_    = parser["parameters"]["gamma_point"].get(gamma_point_);
     }
 };
 

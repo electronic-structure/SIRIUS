@@ -316,7 +316,7 @@ void Unit_cell::initialize()
     if (parameters_.full_potential())
     {
         /* find new MT radii and initialize radial grid */
-        if (auto_rmt())
+        if (parameters_.auto_rmt())
         {
             std::vector<double> Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) 
