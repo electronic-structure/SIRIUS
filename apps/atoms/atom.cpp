@@ -586,8 +586,8 @@ void generate_atom_file(Free_atom& a,
 
                     jw.begin_set();
                     s.str("");
-                    s << "[{" << "\"n\" : " << 0 << ", \"enu\" : 0.35, \"dme\" : 0, \"auto\" : 0}," 
-                      << " {" << "\"n\" : " << 0 << ", \"enu\" : 0.35, \"dme\" : 1, \"auto\" : 0}," 
+                    s << "[{" << "\"n\" : " << 0 << ", \"enu\" : 1.15, \"dme\" : 0, \"auto\" : 0}," 
+                      << " {" << "\"n\" : " << 0 << ", \"enu\" : 1.15, \"dme\" : 1, \"auto\" : 0}," 
                       << " {" << "\"n\" : " << n + 1 << ", \"enu\" : " << e_nl_v[n][l] + 1.0 << ", \"dme\" : 0, \"auto\" : 1}]";
                     jw.single("l", l);
                     jw.string("basis", s.str());

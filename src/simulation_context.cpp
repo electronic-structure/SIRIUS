@@ -83,9 +83,6 @@ void Simulation_context::initialize()
         #endif
     }
     
-    /* set electronic structure method */
-    set_esm_type(control_input_section_.esm_);
-    
     /* check MPI grid dimensions and set a default grid if needed */
     if (!control_input_section_.mpi_grid_dims_.size()) control_input_section_.mpi_grid_dims_ = {comm_.size()};
     

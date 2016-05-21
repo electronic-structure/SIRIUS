@@ -97,6 +97,7 @@ void dft_loop(cmd_args args)
     Parameters_input_section inp;
     inp.read(parser);
 
+    ctx.set_esm_type(inp.esm_);
     ctx.set_num_fv_states(inp.num_fv_states_);
     ctx.set_smearing_width(inp.smearing_width_);
     for (auto& s: inp.xc_functionals_) ctx.add_xc_functional(s);

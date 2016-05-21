@@ -160,39 +160,6 @@ struct Mixer_input_section
     }
 };
 
-//== /// Parse XC functionals input section.
-//== /** The following part of the input file is parsed:
-//==  *  \code{.json}
-//==  *      "xc_functionals" : ["name1", "name2", ...]
-//==  *  \endcode
-//==  */
-//== struct XC_functionals_input_section
-//== {
-//==     /// List of XC functionals.
-//==     std::vector<std::string> xc_functional_names_;
-//== 
-//==     /// Set default variables.
-//==     XC_functionals_input_section()
-//==     {
-//==         //== xc_functional_names_.push_back("XC_LDA_X");
-//==         //== xc_functional_names_.push_back("XC_LDA_C_VWN");
-//==     }
-//== 
-//==     void read(JSON_tree const& parser)
-//==     {
-//==         if (parser.exist("xc_functionals"))
-//==         {
-//==             xc_functional_names_.clear();
-//==             for (int i = 0; i < parser["xc_functionals"].size(); i++)
-//==             {
-//==                 std::string s;
-//==                 parser["xc_functionals"][i] >> s;
-//==                 xc_functional_names_.push_back(s);
-//==             }
-//==         }
-//==     }
-//== };
-
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
@@ -246,7 +213,6 @@ struct Control_input_section
     bool reduce_gvec_{true};
     std::string std_evp_solver_name_{"lapack"};
     std::string gen_evp_solver_name_{"lapack"};
-    std::string esm_{"none"};
     std::string fft_mode_{"serial"};
     std::string processing_unit_{"cpu"};
 
@@ -260,9 +226,6 @@ struct Control_input_section
         processing_unit_ = parser["control"]["processing_unit"].get(processing_unit_);
         std::transform(processing_unit_.begin(), processing_unit_.end(), processing_unit_.begin(), ::tolower);
 
-        esm_ = parser["control"]["electronic_structure_method"].get(esm_);
-        std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
-
         fft_mode_ = parser["control"]["fft_mode"].get(fft_mode_);
         reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
     }
@@ -270,6 +233,7 @@ struct Control_input_section
 
 struct Parameters_input_section
 {
+    std::string esm_{"none"};
     std::vector<std::string> xc_functionals_;
     int num_fv_states_{-1};
     double smearing_width_{0.01}; // in Ha
@@ -286,6 +250,9 @@ struct Parameters_input_section
 
     void read(JSON_tree const& parser)
     {
+        esm_ = parser["parameters"]["electronic_structure_method"].get(esm_);
+        std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
+
         /* read list of XC functionals */
         if (parser["parameters"].exist("xc_functionals"))
         {

@@ -3,11 +3,11 @@
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack",
-        "electronic_structure_method" : "full_potential_lapwlo"
+        "gen_evp_solver_type" : "lapack"
     },
 
     "parameters" : {
+        "electronic_structure_method" : "full_potential_lapwlo",
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
         "smearing_width" : 0.05,
         "!num_fv_states" : 50,
