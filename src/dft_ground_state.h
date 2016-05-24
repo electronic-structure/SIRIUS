@@ -177,6 +177,7 @@ class DFT_ground_state
                 {
                     return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                 }
+                case paw_pseudopotential:
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {

@@ -35,9 +35,9 @@ void Potential::init_PAW()
 		ps_paw_local_potential_.push_back(std::move(ps_atom_potential));
 
 		// allocate Dij
-		mdarray<double, 2> atom_Dij( (atype.indexb().size() * (atype.indexb().size()+1)) / 2, ctx_.num_spins());
+//		mdarray<double, 2> atom_Dij( (atype.indexb().size() * (atype.indexb().size()+1)) / 2, ctx_.num_spins());
 
-		paw_local_Dij_matrix_.push_back(std::move(atom_Dij));
+//		paw_local_Dij_matrix_.push_back(std::move(atom_Dij));
 	}
 }
 
@@ -399,6 +399,23 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 //		for(int ispin = 0; ispin < (int)ae_atom_density.size(2); ispin++)
 //		{
 	// iterate over local basis functions (or over lm1 and lm2)
+
+	//////////////////////////////////////////////////////////////////////////////
+//	std::ofstream of("deeqs.dat");
+//
+//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
+//	{
+//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
+//		{
+//			of<<atom.d_mtrx(ib1,ib2,0).real()<<std::endl;
+//		}
+//	}
+//
+//	of.close();
+
+
+	//////////////////////////////////////////////////////////////////////////////
+
 	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
 	{
 		for(int ib1 = 0; ib1 <= ib2; ib1++)
@@ -422,7 +439,7 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 			for(int ispin = 0; ispin < ctx_.num_spins(); ispin++)
 			{
-				atom.d_mtrx(ib1,ib2,ispin)=0.0;
+				//atom.d_mtrx(ib1,ib2,ispin)=0.0;
 
 				// add nonzero coefficients
 				for(int inz = 0; inz < num_non_zero_gk; inz++)
@@ -444,19 +461,22 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 		}
 	}
 
+
 	//////////////////////////////////////////////////////////////////
-//	std::ofstream ofxc("atom_dij.dat");
-//
-//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
-//	{
-//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
-//		{
-//			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
-//		}
-//	}
-//
-//	ofxc.close();
+	std::ofstream ofxc("atom_dij.dat");
+
+	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
+	{
+		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
+		{
+			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
+		}
+	}
+
+	ofxc.close();
 	//////////////////////////////////////////////////////////////////
+
+//	TERMINATE("ololo");
 }
 
 }

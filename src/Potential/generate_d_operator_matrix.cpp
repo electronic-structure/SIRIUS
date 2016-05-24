@@ -45,7 +45,7 @@ void Potential::generate_D_operator_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
 
-    if (ctx_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
+    //if (ctx_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
     
     /* store effective potential and magnetic field in a vector */
     std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);

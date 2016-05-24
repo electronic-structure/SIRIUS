@@ -222,9 +222,15 @@ void Density::generate_paw_loc_density()
 		mdarray<double,2> &ae_atom_density = paw_ae_local_density_[ia];
 		mdarray<double,2> &ps_atom_density = paw_ps_local_density_[ia];
 
+		ae_atom_density.zero();
+		ps_atom_density.zero();
+
 		// and magnetization
 		auto &ae_atom_magnetization = paw_ae_local_magnetization_[ia];
 		auto &ps_atom_magnetization = paw_ps_local_magnetization_[ia];
+
+		ae_atom_magnetization.zero();
+		ps_atom_magnetization.zero();
 
 		// get radial grid to divide density over r^2
 		auto &grid = atom_type.radial_grid();
