@@ -2744,10 +2744,10 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
     //}
 }
 
-void FORTRAN(sirius_scf_loop)()
-{
-    dft_ground_state->scf_loop(1e-6, 1e-6, 20);
-}
+//void FORTRAN(sirius_scf_loop)()
+//{
+//    dft_ground_state->find(1e-6, 1e-6, 20);
+//}
 
 //void FORTRAN(sirius_potential_checksum)()
 //{

@@ -10,7 +10,9 @@ enum class task_t
     relaxation_restart = 3
 };
 
-void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida_output)
+const double au2angs = 0.5291772108;
+
+void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida_output, int result)
 {
     //double evalsum1 = gs.kset_->valence_eval_sum();
     //double evalsum2 = gs.core_eval_sum();
@@ -26,8 +28,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
     double enuc = gs.energy_enuc();
 
     auto ts = runtime::Timer::collect_timer_stats();
-    if (ctx.comm().rank() == 0)
-    {
+    if (ctx.comm().rank() == 0) {
         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
         JSON_write jw(fname);
         
@@ -38,7 +39,9 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         //jw.single("cyclic_block_size", p->cyclic_block_size());
         jw.single("mpi_grid", ctx.mpi_grid_dims());
         std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) fftgrid[i] = ctx.fft().grid().size(i);
+        for (int i = 0; i < 3; i++) {
+            fftgrid[i] = ctx.fft().grid().size(i);
+        }
         jw.single("fft_grid", fftgrid);
         jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
         jw.single("num_atoms", ctx.unit_cell().num_atoms());
@@ -85,12 +88,19 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         jw.single("timers", ts);
     }
 
-    if (ctx.comm().rank() == 0)
-    {
+    if (ctx.comm().rank() == 0) {
         std::string fname = std::string("output_aiida.json");
         JSON_write jw(fname);
-        jw.single("omega", ctx.unit_cell().omega());
-        jw.single("total_energy", etot);
+        if (result == 0) {
+            jw.single("status", "converged");
+        } else {
+            jw.single("status", "unconverged");
+        }
+
+        jw.single("volume", ctx.unit_cell().omega() * std::pow(au2angs, 3));
+        jw.single("volume_units", "angstrom^3");
+        jw.single("energy", etot * ha2ev);
+        jw.single("energy_units", "eV");
     }
 }
 
@@ -113,7 +123,9 @@ void ground_state(cmd_args args)
     ctx.set_esm_type(inp.esm_);
     ctx.set_num_fv_states(inp.num_fv_states_);
     ctx.set_smearing_width(inp.smearing_width_);
-    for (auto& s: inp.xc_functionals_) ctx.add_xc_functional(s);
+    for (auto& s: inp.xc_functionals_) {
+        ctx.add_xc_functional(s);
+    }
     ctx.set_pw_cutoff(inp.pw_cutoff_);
     ctx.set_aw_cutoff(inp.aw_cutoff_);
     ctx.set_gk_cutoff(inp.gk_cutoff_);
@@ -126,8 +138,7 @@ void ground_state(cmd_args args)
     auto ngridk = parser["parameters"]["ngridk"].get(std::vector<int>(3, 1));
     auto shiftk = parser["parameters"]["shiftk"].get(std::vector<int>(3, 0));
 
-    if (inp.gamma_point_ && !(ngridk[0] * ngridk[1] * ngridk[2] == 1))
-    {
+    if (inp.gamma_point_ && !(ngridk[0] * ngridk[1] * ngridk[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
     ctx.set_gamma_point(inp.gamma_point_);
@@ -163,17 +174,18 @@ void ground_state(cmd_args args)
     
     DFT_ground_state dft(ctx, potential, density, &ks, inp.use_symmetry_);
 
-    if (task == task_t::ground_state_restart)
-    {
-        if (!Utils::file_exists(storage_file_name)) TERMINATE("storage file is not found");
+    if (task == task_t::ground_state_restart) {
+        if (!Utils::file_exists(storage_file_name)) {
+            TERMINATE("storage file is not found");
+        }
         density->load();
         potential->load();
-    }
-    else
-    {
+    } else {
         density->initial_density();
         dft.generate_effective_potential();
-        if (!ctx.full_potential()) dft.initialize_subspace();
+        if (!ctx.full_potential()) {
+            dft.initialize_subspace();
+        }
     }
     
     double potential_tol = parser["parameters"]["potential_tol"].get(1e-4);
@@ -187,16 +199,16 @@ void ground_state(cmd_args args)
     //    ctx.create_storage_file();
     //    density->save();
     //}
-    if (task == task_t::ground_state_new || task == task_t::ground_state_restart)
-    {
-        dft.scf_loop(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
+    int result = 0;
+    if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
+        result = dft.find(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
     }
     //if (task_name == "gs_relax")
     //{
     //    dft.relax_atom_positions();
     //}
 
-    write_json_output(ctx, dft, args.exist("aiida_output"));
+    write_json_output(ctx, dft, args.exist("aiida_output"), result);
 
     delete density;
     delete potential;

@@ -176,7 +176,7 @@ void dft_loop(cmd_args args)
     }
     if (task_name == "gs_new" || task_name == "gs_restart")
     {
-        dft.scf_loop(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
+        dft.find(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
     }
     if (task_name == "gs_relax")
     {

@@ -78,8 +78,7 @@ double DFT_ground_state::ewald_energy()
     ewald_g *= (twopi / unit_cell_.omega());
 
     /* remove self-interaction */
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         ewald_g -= std::sqrt(alpha / pi) * std::pow(unit_cell_.atom(ia).zn(), 2);
     }
 
@@ -127,8 +126,7 @@ double DFT_ground_state::energy_enuc()
 double DFT_ground_state::core_eval_sum()
 {
     double sum = 0.0;
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
-    {
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
         sum += unit_cell_.atom_symmetry_class(ic).core_eval_sum() * 
                unit_cell_.atom_symmetry_class(ic).num_atoms();
     }
@@ -171,24 +169,22 @@ void DFT_ground_state::forces(mdarray<double, 2>& forces__)
     Force::total_force(ctx_, potential_, density_, kset_, forces__);
 }
 
-void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
+int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
 {
     runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
     double eold = 0.0;
     double rms = 0;
 
-    if (ctx_.full_potential())
-    {
+    if (ctx_.full_potential()) {
         potential_->mixer_init();
-    }
-    else
-    {
+    } else {
         density_->mixer_init();
     }
 
-    for (int iter = 0; iter < num_dft_iter; iter++)
-    {
+    int result = 1;
+
+    for (int iter = 0; iter < num_dft_iter; iter++) {
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
@@ -200,14 +196,16 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* compute new total energy for a new density */
         double etot = total_energy();
         /* symmetrize density and magnetization */
-        if (use_symmetry_) symmetrize_density();
-
-        if (!ctx_.full_potential())
-        {
+        if (use_symmetry_) {
+            symmetrize_density();
+        }
+        /* set new tolerance of iterative solver */
+        if (!ctx_.full_potential()) {
             rms = density_->mix();
             double tol = std::max(1e-12, 0.1 * density_->dr2() / ctx_.unit_cell().num_valence_electrons());
-            if (ctx_.comm().rank() == 0)
+            if (ctx_.comm().rank() == 0) {
                 printf("dr2: %18.10f, tol: %18.10f\n",  density_->dr2(), tol);
+            }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
@@ -258,18 +256,21 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* compute new potential */
         generate_effective_potential();
 
-        if (ctx_.full_potential()) rms = potential_->mix();
+        if (ctx_.full_potential()) {
+            rms = potential_->mix();
+        }
 
-        
         /* write some information */
         print_info();
 
-        if (ctx_.comm().rank() == 0)
-        {
+        if (ctx_.comm().rank() == 0) {
             printf("iteration : %3i, RMS %18.12f, energy difference : %12.6f\n", iter, rms, etot - eold);
         }
         
-        if (std::abs(eold - etot) < energy_tol && rms < potential_tol) break;
+        if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
+            result = 0;
+            break;
+        }
 
         eold = etot;
     }
@@ -277,6 +278,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     ctx_.create_storage_file();
     potential_->save();
     density_->save();
+
+    return result;
 }
 
 void DFT_ground_state::relax_atom_positions()
