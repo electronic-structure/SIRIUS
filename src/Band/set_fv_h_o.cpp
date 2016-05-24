@@ -194,7 +194,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                     kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
                     alm_col_tmp.async_copy_to_device(tid);
 
-                    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+                    apply_hmt_to_apw<spin_block_t::nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
                     halm_col_tmp.async_copy_to_device(tid);
 
                     /* setup apw-lo and lo-apw blocks */
