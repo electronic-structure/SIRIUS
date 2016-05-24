@@ -1,7 +1,7 @@
 {
     "control" : {
         "cyclic_block_size" : 16,
-        "processing_unit" : "cpu",
+        "processing_unit" : "gpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack"
     },

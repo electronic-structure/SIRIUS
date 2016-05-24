@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -229,9 +229,12 @@ void K_point::generate_fv_states()
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
+            alm.pin_memory();
             alm.allocate_on_device();
-            tmp = mdarray<double_complex, 2>(unit_cell_.max_mt_aw_basis_size(), nbnd_loc);
+            tmp = mdarray<double_complex, 2>(nullptr, unit_cell_.max_mt_aw_basis_size(), nbnd_loc);
             tmp.allocate_on_device();
+
+            // TODO: pin memory for fv_states (output buffer), otherwise async copy won't work
         }
         #endif
         
@@ -243,7 +246,8 @@ void K_point::generate_fv_states()
             int offset_wf = unit_cell_.atom(ia).offset_wf();
             /* generate matching coefficients for all G-vectors */
             alm_coeffs_->generate(ia, alm);
-
+            
+            /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
             switch (ctx_.processing_unit()) {
                 case CPU: {
                     /* multiply eigen-vectors and matching coefficients */
