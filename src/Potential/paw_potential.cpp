@@ -349,11 +349,13 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 	//--- λ ------------------------
 	auto integrate = [&] (int ispin, int irb1, int irb2, int iqij, int lm3 )
 			{
+				Radial_grid newgrid = atom_type.radial_grid().segment(paw.cutoff_radius_index);
+
 				//create array for integration
-				std::vector<double> intdata(atom_type.radial_grid().num_points(),0);
+				std::vector<double> intdata(newgrid.num_points(),0);
 
 				// fill array
-				for(int irad=0; irad< paw.cutoff_radius_index-1; irad++)
+				for(int irad=0; irad< intdata.size(); irad++)
 				{
 					double ae_part = paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
 					double ps_part = paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
@@ -370,7 +372,8 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 
 				// create spline from data arrays
-				Spline<double> dij_spl(atom_type.radial_grid(),intdata);
+
+				Spline<double> dij_spl(newgrid,intdata);
 
 				//////////////////////////////////////////////////////////////////
 //				std::stringstream s;
