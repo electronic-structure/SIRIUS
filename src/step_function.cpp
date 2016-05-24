@@ -33,7 +33,9 @@ Step_function::Step_function(Unit_cell             const& unit_cell__,
 {
     PROFILE();
 
-    if (unit_cell__.num_atoms() == 0) return;
+    if (unit_cell__.num_atoms() == 0) {
+        return;
+    }
 
     auto& gvec = gvec_fft_distr__.gvec();
     
@@ -43,7 +45,9 @@ Step_function::Step_function(Unit_cell             const& unit_cell__,
     step_function_.resize(fft__->local_size());
     
     std::vector<double_complex> f_pw = unit_cell__.make_periodic_function(ffac, gvec);
-    for (int ig = 0; ig < gvec.num_gvec(); ig++) step_function_pw_[ig] = -f_pw[ig];
+    for (int ig = 0; ig < gvec.num_gvec(); ig++) {
+        step_function_pw_[ig] = -f_pw[ig];
+    }
     step_function_pw_[0] += 1.0;
     
     fft__->prepare();
@@ -52,22 +56,24 @@ Step_function::Step_function(Unit_cell             const& unit_cell__,
     fft__->dismiss();
     
     double vit = 0.0;
-    for (int i = 0; i < fft__->local_size(); i++) vit += step_function_[i];
+    for (int i = 0; i < fft__->local_size(); i++) {
+        vit += step_function_[i];
+    }
     vit *= (unit_cell__.omega() / fft__->size());
     fft__->comm().allreduce(&vit, 1);
     
-    if (std::abs(vit - unit_cell__.volume_it()) > 1e-10)
-    {
+    if (std::abs(vit - unit_cell__.volume_it()) > 1e-10) {
         std::stringstream s;
         s << "step function gives a wrong volume for IT region" << std::endl
           << "  difference with exact value : " << std::abs(vit - unit_cell__.volume_it());
         WARNING(s);
     }
     #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], fft_->size()).checksum();
-    double d1 = mdarray<double, 1>(&step_function_[0], fft_->size()).checksum();
+    //double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], fft__->local_size()).checksum();
+    double d1 = mdarray<double, 1>(&step_function_[0], fft__->local_size()).checksum();
+    comm__.allreduce(&d1, 1);
     DUMP("checksum(step_function): %18.10f", d1);
-    DUMP("checksum(step_function_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    //DUMP("checksum(step_function_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
     #endif
 }
 

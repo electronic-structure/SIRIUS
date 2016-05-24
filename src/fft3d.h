@@ -280,6 +280,11 @@ class FFT3D
             fft_buffer_.deallocate_on_device();
             cufft_work_buf_.deallocate_on_device();
         }
+
+        void copy_to_device()
+        {
+            fft_buffer_.copy_to_device();
+        }
         #endif
 };
 

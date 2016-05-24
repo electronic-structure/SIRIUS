@@ -72,10 +72,10 @@ class Atom
         int offset_aw_;
 
         /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
-        int offset_lo_;
+        int offset_lo_; // TODO: better name for this
 
         /// Offset in the wave-function array.
-        int offset_wf_;
+        int offset_wf_; // TODO: better name for this
 
         /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
         mdarray<double_complex, 4> occupation_matrix_;

@@ -255,6 +255,11 @@ class Wave_functions<true>
             return wf_coeffs_;
         }
 
+        dmatrix<double_complex>& coeffs_swapped()
+        {
+            return wf_coeffs_swapped_;
+        }
+
         inline int wf_size() const
         {
             return wf_size_;

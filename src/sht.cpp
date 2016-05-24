@@ -21,7 +21,6 @@
  *   
  *  \brief Contains remaining implementation and full template specializations of sirius::SHT class.
  */
-
 #include "sht.h"
 
 namespace sirius
@@ -224,7 +223,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             s << "spherical mesh error is too big" << std::endl
               << "  real spherical integration error " << dr << std::endl
               << "  complex spherical integration error " << dy;
-            warning_local(__FILE__, __LINE__, s);
+            WARNING(s.str())
         }
 
         std::vector<double> flm(lmmax_);
@@ -247,7 +246,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
                 std::stringstream s;
                 s << "test of backward / forward real SHT failed" << std::endl
                   << "  total error " << t;
-                warning_local(__FILE__, __LINE__, s);
+                WARNING(s.str());
             }
         }
     }
