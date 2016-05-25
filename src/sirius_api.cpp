@@ -2127,7 +2127,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize_density();
+    dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
 }
 
 void sirius_get_rho_pw(ftn_int*            num_gvec__,
