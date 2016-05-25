@@ -229,6 +229,9 @@ void Atom_symmetry_class::check_lo_linear_independence()
         
     Eigenproblem_lapack stdevp;
 
+    mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
+    loprod >> ovlp;
+
     std::vector<double> loprod_eval(num_lo_descriptors());
     mdarray<double, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
@@ -249,8 +252,38 @@ void Atom_symmetry_class::check_lo_linear_independence()
         for (int i = 0; i < num_lo_descriptors(); i++) {
             printf("%12.6f", loprod_eval[i]);
         }
-        printf("smallest eigenvalue: %20.16f\n", loprod_eval[0]);
         printf("\n");
+        printf("smallest eigenvalue: %20.16f\n", loprod_eval[0]);
+    }
+
+    std::vector<int> inc(num_lo_descriptors(), 0);
+
+    /* try all local orbitals */
+    for (int i = 0; i < num_lo_descriptors(); i++) {
+        inc[i] = 1;
+
+        std::vector<int> ilo;
+        for (int j = 0; j < num_lo_descriptors(); j++) {
+            if (inc[j] == 1) {
+                ilo.push_back(j);
+            }
+        }
+
+        std::vector<double> eval(ilo.size());
+        mdarray<double, 2> evec(ilo.size(), ilo.size());
+        mdarray<double, 2> tmp(ilo.size(), ilo.size());
+        for (size_t j1 = 0; j1 < ilo.size(); j1++) {
+            for (size_t j2 = 0; j2 < ilo.size(); j2++) {
+                tmp(j1, j2) = ovlp(ilo[j1], ilo[j2]);
+            }
+        }
+
+        stdevp.solve(static_cast<int>(ilo.size()), tmp.at<CPU>(), tmp.ld(), &eval[0], evec.at<CPU>(), evec.ld());
+
+        if (eval[0] < 0.0001) {
+            printf("local orbital %i can be removed\n", i);
+            inc[i] = 0;
+        }
     }
 }
 
