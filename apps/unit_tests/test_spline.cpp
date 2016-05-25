@@ -304,6 +304,33 @@ void test6()
     //== fclose(fout);
 }
 
+void test7()
+{
+
+    int N = 2000;
+    Radial_grid r(exponential_grid, N, 1e-7, 2.0);
+    Spline<double> s(r, [](double x){return std::sin(8 * x) / (x + 0.1);});
+
+    Spline<double> s1(r);
+    for (int ir = 0; ir < r.num_points(); ir++) {
+        s1[ir] = s.deriv(1, ir);
+    }
+    s1.interpolate();
+
+    double err1{0}, err2{0};
+    for (int ir = 0; ir < r.num_points(); ir++) {
+        double x = r[ir];
+        double d2s = (-16*std::cos(8*x))/std::pow(0.1 + x,2) + (2*std::sin(8*x))/std::pow(0.1 + x,3) - 
+                     (64*std::sin(8*x))/(0.1 + x);
+        err1 += std::abs(d2s - s.deriv(2, ir));
+        err2 += std::abs(d2s - s1.deriv(1, ir));
+    }
+    printf("error of 2nd derivative: %18.10f\n", err1);
+    printf("error of two 1st derivatives: %18.10f\n", err2);
+
+}
+
+
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
@@ -339,6 +366,8 @@ int main(int argn, char** argv)
     test5();
 
     test6();
+
+    test7();
 
     sirius::finalize();
     

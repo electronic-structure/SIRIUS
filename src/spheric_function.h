@@ -196,18 +196,22 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T>& f__)
     int lmax = Utils::lmax_by_lmmax(lmmax);
     g = Spheric_function<spectral, T>(lmmax, rgrid);
     
-    Spline<T> s(rgrid);
-    for (int l = 0; l <= lmax; l++)
-    {
+    Spline<T> s1(rgrid);
+    for (int l = 0; l <= lmax; l++) {
         int ll = l * (l + 1);
-        for (int m = -l; m <= l; m++)
-        {
+        for (int m = -l; m <= l; m++) {
             int lm = Utils::lm_by_l_m(l, m);
-            for (int ir = 0; ir < s.num_points(); ir++) s[ir] = f__(lm, ir);
-            s.interpolate();
+            /* get lm component */
+            auto s = f__.component(lm);
+            /* compute 1st derivative */
+            for (int ir = 0; ir < s.num_points(); ir++) {
+                s1[ir] = s.deriv(1, ir);
+            }
+            s1.interpolate();
             
-            for (int ir = 0; ir < s.num_points(); ir++) 
-                g(lm, ir) = 2 * s.deriv(1, ir) * rgrid.x_inv(ir) + s.deriv(2, ir) - f__(lm, ir) * ll / std::pow(rgrid[ir], 2);
+            for (int ir = 0; ir < s.num_points(); ir++) {
+                g(lm, ir) = 2 * s1[ir] * rgrid.x_inv(ir) + s1.deriv(1, ir) - s[ir] * ll / std::pow(rgrid[ir], 2);
+            }
         }
     }
 
