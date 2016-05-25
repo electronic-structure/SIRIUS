@@ -209,51 +209,47 @@ void Atom_symmetry_class::check_lo_linear_independence()
     
     Spline<double> s(atom_type_.radial_grid());
     mdarray<double, 2> loprod(num_lo_descriptors(), num_lo_descriptors());
-    mdarray<double_complex, 2> loprod_tmp(num_lo_descriptors(), num_lo_descriptors());
-    for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++)
-    {
+    loprod.zero();
+    for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
         int idxrf1 = atom_type_.indexr().index_by_idxlo(idxlo1);
         
-        for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++)
-        {
+        for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++) {
             int idxrf2 = atom_type_.indexr().index_by_idxlo(idxlo2);
             
-            for (int ir = 0; ir < nmtp; ir++)
+            for (int ir = 0; ir < nmtp; ir++) {
                 s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+            }
             s.interpolate();
             
-            if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l)
-            {
+            if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l) {
                 loprod(idxlo1, idxlo2) = s.integrate(2);
             }
-            else
-            {
-                loprod(idxlo1, idxlo2) = 0.0;
-            }
-            loprod_tmp(idxlo1, idxlo2) = double_complex(loprod(idxlo1, idxlo2), 0);
         }
     }
         
     Eigenproblem_lapack stdevp;
 
     std::vector<double> loprod_eval(num_lo_descriptors());
-    mdarray<double_complex, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    mdarray<double, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
-    stdevp.solve(num_lo_descriptors(), loprod_tmp.at<CPU>(), loprod_tmp.ld(), &loprod_eval[0], 
+    stdevp.solve(num_lo_descriptors(), loprod.at<CPU>(), loprod.ld(), &loprod_eval[0], 
                  loprod_evec.at<CPU>(), loprod_evec.ld());
 
-    if (std::abs(loprod_eval[0]) < 0.001) 
-    {
+    if (std::abs(loprod_eval[0]) < 0.001) {
         printf("\n");
         printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
         printf("local orbitals overlap matrix:\n");
-        for (int i = 0; i < num_lo_descriptors(); i++)
-        {
-            for (int j = 0; j < num_lo_descriptors(); j++) printf("%12.6f", loprod(i, j));
+        for (int i = 0; i < num_lo_descriptors(); i++) {
+            for (int j = 0; j < num_lo_descriptors(); j++) {
+                printf("%12.6f", loprod(i, j));
+            }
             printf("\n");
         }
         printf("overlap matrix eigen-values:\n");
-        for (int i = 0; i < num_lo_descriptors(); i++) printf("%12.6f", loprod_eval[i]);
+        for (int i = 0; i < num_lo_descriptors(); i++) {
+            printf("%12.6f", loprod_eval[i]);
+        }
+        printf("smallest eigenvalue: %20.16f\n", loprod_eval[0]);
         printf("\n");
     }
 }

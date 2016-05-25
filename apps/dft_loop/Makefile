@@ -6,7 +6,7 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: dft_loop sirius.scf
+all: sirius.scf
 
 %: %.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
