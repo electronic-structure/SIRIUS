@@ -210,59 +210,59 @@ class DFT_ground_state
             }
         }
 
-        void symmetrize_density()
+        void symmetrize(Periodic_function<double>* f__,
+                        Periodic_function<double>* gz__,
+                        Periodic_function<double>* gx__,
+                        Periodic_function<double>* gy__)
         {
             PROFILE();
 
             auto& comm = ctx_.comm();
 
             /* symmetrize PW components */
-            unit_cell_.symmetry()->symmetrize_function(&density_->rho()->f_pw(0), ctx_.gvec(), comm);
-            switch (ctx_.num_mag_dims())
-            {
-                case 1:
-                {
-                    unit_cell_.symmetry()->symmetrize_vector_z_component(&density_->magnetization(0)->f_pw(0), ctx_.gvec(), comm);
+            unit_cell_.symmetry()->symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
+            switch (ctx_.num_mag_dims()) {
+                case 1: {
+                    unit_cell_.symmetry()->symmetrize_vector_z_component(&gz__->f_pw(0), ctx_.gvec(), comm);
                     break;
                 }
-                case 3:
-                {
-                    unit_cell_.symmetry()->symmetrize_vector(&density_->magnetization(1)->f_pw(0),
-                                                             &density_->magnetization(2)->f_pw(0), 
-                                                             &density_->magnetization(0)->f_pw(0),
+                case 3: {
+                    unit_cell_.symmetry()->symmetrize_vector(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
                                                              ctx_.gvec(), comm);
                     break;
                 }
             }
 
-            if (ctx_.full_potential())
-            {
+            if (ctx_.full_potential()) {
                 /* symmetrize MT components */
-                unit_cell_.symmetry()->symmetrize_function(density_->rho()->f_mt(), comm);
-                switch (ctx_.num_mag_dims())
-                {
-                    case 1:
-                    {
-                        unit_cell_.symmetry()->symmetrize_vector_z_component(density_->magnetization(0)->f_mt(), comm);
+                unit_cell_.symmetry()->symmetrize_function(f__->f_mt(), comm);
+                switch (ctx_.num_mag_dims()) {
+                    case 1: {
+                        unit_cell_.symmetry()->symmetrize_vector_z_component(gz__->f_mt(), comm);
                         break;
                     }
-                    case 3:
-                    {
-                        unit_cell_.symmetry()->symmetrize_vector(density_->magnetization(1)->f_mt(),
-                                                                 density_->magnetization(2)->f_mt(),
-                                                                 density_->magnetization(0)->f_mt(),
-                                                                 comm);
+                    case 3: {
+                        unit_cell_.symmetry()->symmetrize_vector(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
                         break;
                     }
                 }
             }
 
-            if (ctx_.full_potential())
-            {
+            if (ctx_.full_potential()) {
                 ctx_.fft().prepare();
-                density_->rho()->fft_transform(1);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                    density_->magnetization(j)->fft_transform(1);
+                f__->fft_transform(1);
+                switch (ctx_.num_mag_dims()) {
+                    case 3: {
+                        gx__->fft_transform(1);
+                        gy__->fft_transform(1);
+                    }
+                    case 1: {
+                        gz__->fft_transform(1);
+                    }
+                    case 0: {
+                        f__->fft_transform(1);
+                    }
+                }
                 ctx_.fft().dismiss();
             }
 

@@ -197,7 +197,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         double etot = total_energy();
         /* symmetrize density and magnetization */
         if (use_symmetry_) {
-            symmetrize_density();
+            symmetrize(density_->rho(), density_->magnetization(0), density_->magnetization(1),
+                       density_->magnetization(2));
         }
         /* set new tolerance of iterative solver */
         if (!ctx_.full_potential()) {
@@ -255,6 +256,12 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
         /* compute new potential */
         generate_effective_potential();
+
+        /* symmetrize density and magnetization */
+        if (use_symmetry_) {
+            symmetrize(potential_->effective_potential(), potential_->effective_magnetic_field(0),
+                       potential_->effective_magnetic_field(1), potential_->effective_magnetic_field(2));
+        }
 
         if (ctx_.full_potential()) {
             rms = potential_->mix();

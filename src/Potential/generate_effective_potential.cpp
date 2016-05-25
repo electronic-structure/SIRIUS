@@ -22,13 +22,20 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
    
     effective_potential_->add(xc_potential_);
     
-    if (ctx_.full_potential())
-    {
+    if (ctx_.full_potential()) {
         effective_potential_->sync_mt();
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync_mt();
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            effective_magnetic_field_[j]->sync_mt();
+        }
     }
 
     //if (debug_level > 1) check_potential_continuity_at_mt();
+    
+    /* needed to symmetrize potential and magentic field */
+    effective_potential_->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        effective_magnetic_field_[j]->fft_transform(-1);
+    }
     ctx_.fft().dismiss();
 }
 
