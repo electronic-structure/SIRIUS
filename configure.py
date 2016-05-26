@@ -30,7 +30,7 @@ packages = {
         "options" : []
     },
     "spg"  : {
-        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.9/spglib-1.9.2.tar.gz",
+        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.9/spglib-1.9.4.tar.gz",
         "options" : []
     }
 }
