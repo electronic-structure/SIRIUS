@@ -423,6 +423,11 @@ class Simulation_parameters
         {
             return core_relativity_;
         }
+
+        inline double rmt_max() const
+        {
+            return control_input_section_.rmt_max_;
+        }
 };
 
 };

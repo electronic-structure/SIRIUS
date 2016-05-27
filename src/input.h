@@ -215,6 +215,7 @@ struct Control_input_section
     std::string gen_evp_solver_name_{"lapack"};
     std::string fft_mode_{"serial"};
     std::string processing_unit_{"cpu"};
+    double rmt_max_{2.2};
 
     void read(JSON_tree const& parser)
     {
@@ -228,6 +229,8 @@ struct Control_input_section
 
         fft_mode_ = parser["control"]["fft_mode"].get(fft_mode_);
         reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
+
+        rmt_max_ = parser["control"]["rmt_max"].get(rmt_max_);
     }
 };
 
@@ -256,11 +259,9 @@ struct Parameters_input_section
         std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
 
         /* read list of XC functionals */
-        if (parser["parameters"].exist("xc_functionals"))
-        {
+        if (parser["parameters"].exist("xc_functionals")) {
             xc_functionals_.clear();
-            for (int i = 0; i < parser["parameters"]["xc_functionals"].size(); i++)
-            {
+            for (int i = 0; i < parser["parameters"]["xc_functionals"].size(); i++) {
                 std::string s;
                 parser["parameters"]["xc_functionals"][i] >> s;
                 xc_functionals_.push_back(s);
