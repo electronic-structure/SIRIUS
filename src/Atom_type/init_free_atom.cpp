@@ -27,8 +27,8 @@ void Atom_type::init_free_atom(bool smooth)
     std::vector<double> v;
     parser["free_atom"]["density"] >> v;
     free_atom_density_ = Spline<double>(free_atom_radial_grid_, v);
-    parser["free_atom"]["potential"] >> v;
-    free_atom_potential_ = Spline<double>(free_atom_radial_grid_, v);
+    //parser["free_atom"]["potential"] >> v;
+    //free_atom_potential_ = Spline<double>(free_atom_radial_grid_, v);
 
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth)

@@ -382,7 +382,7 @@ class Atom_type
         Spline<double> free_atom_density_;
         
         /// Potential of a free atom.
-        Spline<double> free_atom_potential_;
+        //Spline<double> free_atom_potential_;
 
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
@@ -509,20 +509,20 @@ class Atom_type
             return free_atom_density_(x);
         }
         
-        inline double free_atom_potential(const int idx) const
-        {
-            return free_atom_potential_[idx];
-        }
+        //inline double free_atom_potential(const int idx) const
+        //{
+        //    return free_atom_potential_[idx];
+        //}
 
-        inline double free_atom_potential(double x) const
-        {
-            return free_atom_potential_(x);
-        }
+        //inline double free_atom_potential(double x) const
+        //{
+        //    return free_atom_potential_(x);
+        //}
 
-        Spline<double> const& free_atom_potential() const
-        {
-            return free_atom_potential_;
-        }
+        //Spline<double> const& free_atom_potential() const
+        //{
+        //    return free_atom_potential_;
+        //}
 
         inline int num_aw_descriptors() const
         {
@@ -737,16 +737,16 @@ class Atom_type
 
         void set_free_atom_radial_grid(int num_points__, double const* points__)
         {
-            if (num_mt_points_ <= 0) TERMINATE("wrong number of radial points");
+            if (num_points__ <= 0) TERMINATE("wrong number of radial points");
             free_atom_radial_grid_ = Radial_grid(num_points__, points__);
         }
 
-        void set_free_atom_potential(int num_points__, double const* vs__)
-        {
-            free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
-            for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
-            free_atom_potential_.interpolate();
-        }
+        //void set_free_atom_potential(int num_points__, double const* vs__)
+        //{
+        //    free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
+        //    for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
+        //    free_atom_potential_.interpolate();
+        //}
 };
 
 };

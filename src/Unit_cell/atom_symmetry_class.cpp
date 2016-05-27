@@ -155,8 +155,7 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
 
             int info = linalg<CPU>::gesv(num_rs, 1, &a[0][0], 3, b, 3);
 
-            if (info) 
-            {
+            if (info) {
                 std::stringstream s;
                 s << "gesv returned " << info;
                 TERMINATE(s);
@@ -165,32 +164,36 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
             /* index of local orbital radial function */
             int idxrf = atom_type_.indexr().index_by_idxlo(idxlo);
             /* take linear combination of radial solutions */
-            for (int order = 0; order < num_rs; order++)
-            {
-                for (int ir = 0; ir < nmtp; ir++)
-                {
+            for (int order = 0; order < num_rs; order++) {
+                for (int ir = 0; ir < nmtp; ir++) {
                     radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
                     radial_functions_(ir, idxrf, 1) += b[order] * rdudr[order][ir];
                 }
             }
 
             /* find norm of constructed local orbital */
-            for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+            for (int ir = 0; ir < nmtp; ir++) {
+                s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+            }
             double norm = 1.0 / std::sqrt(s.interpolate().integrate(2));
 
             /* normalize */
-            for (int ir = 0; ir < nmtp; ir++)
-            {
+            for (int ir = 0; ir < nmtp; ir++) {
                 radial_functions_(ir, idxrf, 0) *= norm;
                 radial_functions_(ir, idxrf, 1) *= norm;
             }
             
-            if (std::abs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
-            {
+            if (std::abs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10) {
                 std::stringstream s;
-                s << "atom symmetry class id : " << id() << " (" << atom_type().symbol() << ")" << std::endl
-                  << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
-                  << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
+                s << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
+                  << "  atom symmetry class id : " << id() << " (" << atom_type().symbol() << ")" << std::endl
+                  << "  value : " << radial_functions_(nmtp - 1, idxrf, 0) << std::endl
+                  << "  number of MT points: " << nmtp << std::endl
+                  << "  MT radius: " << atom_type_.radial_grid().last() << std::endl
+                  << "  b_coeffs: ";
+                for (int j = 0; j < num_rs; j++) {
+                    s << b[j] << " ";
+                }
                 WARNING(s);
             }
         }
@@ -215,14 +218,13 @@ void Atom_symmetry_class::check_lo_linear_independence()
         
         for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++) {
             int idxrf2 = atom_type_.indexr().index_by_idxlo(idxlo2);
-            
-            for (int ir = 0; ir < nmtp; ir++) {
-                s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
-            }
-            s.interpolate();
-            
+
             if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l) {
-                loprod(idxlo1, idxlo2) = s.integrate(2);
+            
+                for (int ir = 0; ir < nmtp; ir++) {
+                    s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                }
+                loprod(idxlo1, idxlo2) = s.interpolate().integrate(2);
             }
         }
     }
@@ -244,7 +246,7 @@ void Atom_symmetry_class::check_lo_linear_independence()
         printf("local orbitals overlap matrix:\n");
         for (int i = 0; i < num_lo_descriptors(); i++) {
             for (int j = 0; j < num_lo_descriptors(); j++) {
-                printf("%12.6f", loprod(i, j));
+                printf("%12.6f", ovlp(i, j));
             }
             printf("\n");
         }
