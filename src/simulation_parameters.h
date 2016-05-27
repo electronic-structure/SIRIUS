@@ -212,6 +212,37 @@ class Simulation_parameters
             esm_type_ = m[name__];
         }
 
+        inline void set_core_relativity(std::string name__)
+        {
+            std::map<std::string, relativity_t> m;
+
+            m["none"]  = relativity_t::none;
+            m["dirac"] = relativity_t::dirac;
+
+            if (m.count(name__) == 0) {
+                std::stringstream s;
+                s << "wrong type of core relativity: " << name__;
+                TERMINATE(s);
+            }
+            core_relativity_ = m[name__];
+        }
+
+        inline void set_valence_relativity(std::string name__)
+        {
+            std::map<std::string, relativity_t> m;
+
+            m["none"]            = relativity_t::none;
+            m["zora"]            = relativity_t::zora;
+            m["koelling_harmon"] = relativity_t::koelling_harmon;
+
+            if (m.count(name__) == 0) {
+                std::stringstream s;
+                s << "wrong type of valence relativity: " << name__;
+                TERMINATE(s);
+            }
+            valence_relativity_ = m[name__];
+        }
+
         inline void set_processing_unit(processing_unit_t pu__)
         {
             processing_unit_ = pu__;

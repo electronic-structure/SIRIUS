@@ -235,6 +235,8 @@ struct Parameters_input_section
 {
     std::string esm_{"none"};
     std::vector<std::string> xc_functionals_;
+    std::string core_relativity_{"dirac"};
+    std::string valence_relativity_{"zora"};
     int num_fv_states_{-1};
     double smearing_width_{0.01}; // in Ha
     double pw_cutoff_{20.0}; // in a.u.^-1
@@ -264,6 +266,12 @@ struct Parameters_input_section
                 xc_functionals_.push_back(s);
             }
         }
+
+        core_relativity_ = parser["parameters"]["core_relativity"].get(core_relativity_);
+        std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
+
+        valence_relativity_ = parser["parameters"]["valence_relativity"].get(valence_relativity_);
+        std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(), ::tolower);
 
         num_fv_states_  = parser["parameters"]["num_fv_states"].get(num_fv_states_);
         smearing_width_ = parser["parameters"]["smearing_width"].get(smearing_width_);

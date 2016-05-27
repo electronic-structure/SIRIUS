@@ -134,6 +134,8 @@ void ground_state(cmd_args args)
     ctx.set_lmax_rho(inp.lmax_rho_);
     ctx.set_num_mag_dims(inp.num_mag_dims_);
     ctx.set_auto_rmt(inp.auto_rmt_);
+    ctx.set_core_relativity(inp.core_relativity_);
+    ctx.set_valence_relativity(inp.valence_relativity_);
 
     auto ngridk = parser["parameters"]["ngridk"].get(std::vector<int>(3, 1));
     auto shiftk = parser["parameters"]["shiftk"].get(std::vector<int>(3, 0));
