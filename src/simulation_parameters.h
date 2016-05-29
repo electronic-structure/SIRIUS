@@ -428,6 +428,11 @@ class Simulation_parameters
         {
             return control_input_section_.rmt_max_;
         }
+
+        inline double spglib_tolerance() const
+        {
+            return control_input_section_.spglib_tolerance_;
+        }
 };
 
 };

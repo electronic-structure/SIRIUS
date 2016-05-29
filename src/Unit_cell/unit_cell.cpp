@@ -106,7 +106,7 @@ void Unit_cell::get_symmetry()
         types[ia] = atom(ia).type_id();
     }
     
-    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, 1e-4);
+    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, parameters_.spglib_tolerance());
 
     Atom_symmetry_class* atom_symmetry_class;
     

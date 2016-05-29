@@ -200,13 +200,13 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
     }
     
     #if (__VERIFICATION > 0)
-    if (num_lo_descriptors() > 0) check_lo_linear_independence();
+    if (num_lo_descriptors() > 0) check_lo_linear_independence(0.0001);
     #endif
 
     //if (verbosity_level > 0) dump_lo();
 }
 
-void Atom_symmetry_class::check_lo_linear_independence()
+std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double tol__)
 {
     int nmtp = atom_type_.num_mt_points();
     
@@ -214,9 +214,11 @@ void Atom_symmetry_class::check_lo_linear_independence()
     mdarray<double, 2> loprod(num_lo_descriptors(), num_lo_descriptors());
     loprod.zero();
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
+        
         int idxrf1 = atom_type_.indexr().index_by_idxlo(idxlo1);
         
         for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++) {
+            
             int idxrf2 = atom_type_.indexr().index_by_idxlo(idxlo2);
 
             if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l) {
@@ -229,10 +231,10 @@ void Atom_symmetry_class::check_lo_linear_independence()
         }
     }
         
-    Eigenproblem_lapack stdevp;
-
     mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
+
+    Eigenproblem_lapack stdevp;
 
     std::vector<double> loprod_eval(num_lo_descriptors());
     mdarray<double, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
@@ -240,7 +242,7 @@ void Atom_symmetry_class::check_lo_linear_independence()
     stdevp.solve(num_lo_descriptors(), loprod.at<CPU>(), loprod.ld(), &loprod_eval[0], 
                  loprod_evec.at<CPU>(), loprod_evec.ld());
 
-    if (std::abs(loprod_eval[0]) < 0.001) {
+    if (std::abs(loprod_eval[0]) < tol__) {
         printf("\n");
         printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
         printf("local orbitals overlap matrix:\n");
@@ -282,11 +284,12 @@ void Atom_symmetry_class::check_lo_linear_independence()
 
         stdevp.solve(static_cast<int>(ilo.size()), tmp.at<CPU>(), tmp.ld(), &eval[0], evec.at<CPU>(), evec.ld());
 
-        if (eval[0] < 0.0001) {
+        if (eval[0] < tol__) {
             printf("local orbital %i can be removed\n", i);
             inc[i] = 0;
         }
     }
+    return inc;
 }
 
 void Atom_symmetry_class::dump_lo()

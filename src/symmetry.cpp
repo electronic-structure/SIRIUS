@@ -111,7 +111,7 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             for (int k = 0; k < num_atoms_; k++)
             {
                 vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-                if ((v.first - pos1).length() < 1e-6)
+                if ((v.first - pos1).length() < tolerance_)
                 {
                     ja = k;
                     break;

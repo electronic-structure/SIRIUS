@@ -216,6 +216,7 @@ struct Control_input_section
     std::string fft_mode_{"serial"};
     std::string processing_unit_{"cpu"};
     double rmt_max_{2.2};
+    double spglib_tolerance_{1e-4};
 
     void read(JSON_tree const& parser)
     {
@@ -231,6 +232,7 @@ struct Control_input_section
         reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
 
         rmt_max_ = parser["control"]["rmt_max"].get(rmt_max_);
+        spglib_tolerance_ = parser["control"]["spglib_tolerance"].get(spglib_tolerance_);
     }
 };
 
