@@ -729,7 +729,7 @@ void generate_atom_file(Free_atom& a,
             }
         }
         s << "]";
-        return s;
+        return s.str();
     };
 
     //== std::vector<int> inc(a.num_lo_descriptors(), 1);
@@ -788,7 +788,7 @@ void generate_atom_file(Free_atom& a,
         } else {
             printf("  ");
         }
-        printf("l: %i, basis: %s\n", a.lo_descriptor(j).l, s.str().c_str());
+        printf("l: %i, basis: %s\n", a.lo_descriptor(j).l, s.c_str());
     }
 
     jw.begin_array("lo");
@@ -797,7 +797,7 @@ void generate_atom_file(Free_atom& a,
             auto s = lo_to_str(a.lo_descriptor(j));
             jw.begin_set();
             jw.single("l",  a.lo_descriptor(j).l);
-            jw.string("basis", s.str());
+            jw.string("basis", s);
             jw.end_set();
         }
     }
