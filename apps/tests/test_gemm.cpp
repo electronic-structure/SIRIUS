@@ -1,5 +1,35 @@
 #include <sirius.h>
 
+class Measurement: public std::vector<double>
+{
+    public:
+
+        inline double val(size_t i)
+        {
+            return (*this)[i];
+        }
+
+        double average()
+        {
+            double d = 0;
+            for (size_t i = 0; i < this->size(); i++)
+                d += val(i);
+            d /= static_cast<double>(this->size());
+            return d;
+        }
+
+        double sigma()
+        {
+            double avg = average();
+            double variance = 0;
+            for (size_t i = 0; i < this->size(); i++)
+                variance += std::pow(val(i) - avg, 2);
+            variance /= static_cast<double>(this->size());
+            return std::sqrt(variance);
+        }
+};
+
+
 #ifdef _TEST_REAL_
 typedef double gemm_type;
 int const nop_gemm = 2;
@@ -9,7 +39,7 @@ int const nop_gemm = 8;
 #endif
 
 
-void test_gemm(int M, int N, int K, int transa)
+double test_gemm(int M, int N, int K, int transa)
 {
     runtime::Timer t("test_gemm"); 
     
@@ -51,8 +81,11 @@ void test_gemm(int M, int N, int K, int transa)
     runtime::Timer t1("gemm_only"); 
     linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
     double tval = t1.stop();
+    double perf = nop_gemm * 1e-9 * M * N * K / tval;
     printf("execution time (sec) : %12.6f\n", tval);
-    printf("performance (GFlops) : %12.6f\n", nop_gemm * 1e-9 * M * N * K / tval);
+    printf("performance (GFlops) : %12.6f\n", perf);
+
+    return perf;
 }
 
 #ifdef _SCALAPACK_
@@ -181,7 +214,7 @@ int main(int argn, char **argv)
     {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        exit(0);
+        return 0;
     }
 
     int nrow = args.value<int>("nrow", 1);
@@ -193,16 +226,21 @@ int main(int argn, char **argv)
 
     int transa = args.value<int>("opA", 0);
 
+    int repeat = args.value<int>("repeat", 5);
+
     sirius::initialize(true);
 
     if (nrow * ncol == 1)
     {
-        test_gemm(M, N, K, transa);
+        Measurement perf;
+        for (int i = 0; i < repeat; i++) {
+            perf.push_back(test_gemm(M, N, K, transa));
+        }
+        printf("average performance: %12.6f GFlops / rank,  sigma: %12.6f\n", perf.average(), perf.sigma());
     }
     else
     {
         #ifdef _SCALAPACK_
-        int repeat = args.value<int>("repeat", 1);
         int n = args.value<int>("n", 0);
         int bs = args.value<int>("bs");
         double perf = 0;

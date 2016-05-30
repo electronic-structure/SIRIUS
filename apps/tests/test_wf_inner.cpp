@@ -6,7 +6,7 @@
 #include <mkl_service.h>
 #endif
 
-class Measurment: public std::vector<double>
+class Measurement: public std::vector<double>
 {
     public:
 
@@ -1161,7 +1161,7 @@ int main(int argn, char **argv)
         printf("\n");
     }
     
-    Measurment perf1, perf2, perf3, perf4, perf5, perf6, perf7;
+    Measurement perf1, perf2, perf3, perf4, perf5, perf6, perf7;
     
     for (int i = 0; i < repeat; i++)
     {
