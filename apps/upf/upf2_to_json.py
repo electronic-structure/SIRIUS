@@ -22,12 +22,15 @@ import sys
 import re
 import xml.etree.ElementTree as ET
 
+def str2bool(v):
+  return v.lower() in ("yes", "true", "t", "1")
+
 def parse_header(upf_dict, root):
     # header
     node = root.findall("./PP_HEADER")[0]
     upf_dict['header'] = {}
     upf_dict['header']['number_of_proj'] = int(node.attrib['number_of_proj'])
-    upf_dict['header']['core_correction'] = bool(node.attrib['core_correction'])
+    upf_dict['header']['core_correction'] = str2bool(node.attrib['core_correction'])
     upf_dict['header']['element'] = node.attrib['element']
     upf_dict['header']['pseudo_type'] = node.attrib['pseudo_type']
     #upf_dict['header']['l_max'] = int(node.attrib['l_max'])

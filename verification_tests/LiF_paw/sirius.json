@@ -23,35 +23,39 @@
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 10.0,
+    "gk_cutoff" : 6.0,
     "pw_cutoff" : 20.00,
 
     "energy_tol" : 1e-8,
 
-    "num_dft_iter" : 100,
+    "num_dft_iter" : 3,
 
     "ngridk" : [8,8,8],
 
+
     "unit_cell" : {
 
-        "lattice_vectors" : [ [0, 0.5, 0.5],
-                              [0.5, 0, 0.5],
-                              [0.5, 0.5, 0]
-                            ],
-        "lattice_vectors_scale" : 6.73,
+            "lattice_vectors" : [ [0, 3.80402, 3.80402],
+                                  [3.80402, 0, 3.80402],
+                                  [3.80402, 3.80402, 0]
+                                ],
 
-        "atom_types" : ["Cu"],
+            "atom_types" : ["Li", "F"],
 
-        "atom_files" : {
-            "Cu" : "Cu.pz-dn-kjpaw_psl.0.2.UPF.json"
+            "atom_files" : {
+                "Li" : "Li.json",
+                "F"  : "F.json"
+            },
+
+            "atoms" : {
+                "F" : [
+                    [0.5, 0.5, 0.5]
+                ],
+                "Li" : [
+                    [0, 0, 0]
+                ]
+            }
         },
-
-        "atoms" : {
-            "Cu" : [
-                [0.0, 0.0, 0.0]
-            ]
-        }
-    },
 
     "mixer" : {
         "beta" : 0.7,
