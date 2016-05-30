@@ -479,10 +479,19 @@ void generate_atom_file(Free_atom& a,
     jw.end_set();
     
     for (int l = 0; l <= lmax; l++) {
+        /* default value for n */
         int n = l + 1;
+        /* next n above the core */
+        for (size_t i = 0; i < core.size(); i++) {
+            if (core[i].l == l) {
+                n = std::max(core[i].n + 1, n);
+            }
+        }
         /* APW for s,p,d,f is constructed for the highest valence state */ 
         for (size_t i = 0; i < valence.size(); i++) {
-            if (valence[i].l == l) n = valence[i].n;
+            if (valence[i].l == l) {
+                n = std::max(n, valence[i].n);
+            }
         }
                
         jw.begin_set();
