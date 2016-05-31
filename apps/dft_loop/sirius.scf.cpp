@@ -93,7 +93,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         JSON_write jw(fname);
         if (result >= 0) {
             jw.single("status", "converged");
-            jw.single("num_scf_iterations" : result);
+            jw.single("num_scf_iterations", result);
         } else {
             jw.single("status", "unconverged");
         }
