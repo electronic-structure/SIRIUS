@@ -91,8 +91,9 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
     if (ctx.comm().rank() == 0) {
         std::string fname = std::string("output_aiida.json");
         JSON_write jw(fname);
-        if (result == 0) {
+        if (result >= 0) {
             jw.single("status", "converged");
+            jw.single("num_scf_iterations" : result);
         } else {
             jw.single("status", "unconverged");
         }
@@ -201,7 +202,7 @@ void ground_state(cmd_args args)
     //    ctx.create_storage_file();
     //    density->save();
     //}
-    int result = 0;
+    int result{0};
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         result = dft.find(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
     }
@@ -228,8 +229,7 @@ int main(int argn, char** argv)
 
     args.parse_args(argn, argv);
 
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options] \n", argv[0]);
         args.print_help();
         return 0;
