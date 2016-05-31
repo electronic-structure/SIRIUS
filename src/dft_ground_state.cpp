@@ -173,8 +173,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 {
     runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
-    double eold = 0.0;
-    double rms = 0;
+    double eold{0}, rms{0};
 
     if (ctx_.full_potential()) {
         potential_->mixer_init();
@@ -182,7 +181,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         density_->mixer_init();
     }
 
-    int result = 1;
+    int result{-1};
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
@@ -275,7 +274,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         }
         
         if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-            result = 0;
+            result = iter;
             break;
         }
 
