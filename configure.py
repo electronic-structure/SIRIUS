@@ -1,6 +1,5 @@
 import sys
 import os
-import urllib.request
 import tarfile
 import subprocess
 import json
@@ -49,20 +48,30 @@ def configure_package(package_name, platform):
     
     if (not os.path.exists("./libs/" + local_file_name)):
         try:
-            print("Downloading %s"%file_url)
-            req = urllib.request.Request(file_url)
-            furl = urllib.request.urlopen(req)
+            if sys.version_info < (3, 0):
+                import urllib
+                print("Downloading %s"%file_url)
+                urllib.urlretrieve(file_url, "./libs/" + local_file_name)
+            else:
+                import urllib.request
+                print("Downloading %s"%file_url)
+                req = urllib.request.Request(file_url)
+                furl = urllib.request.urlopen(req)
             
-            local_file = open("./libs/" + local_file_name, "wb")
-            local_file.write(furl.read())
-            local_file.close()
+                local_file = open("./libs/" + local_file_name, "wb")
+                local_file.write(furl.read())
+                local_file.close()
+
+        except Exception as e:
+            print("{0}".format(e));
+            sys.exit(1)
         
-        except urllib2.HTTPError as err:
-            print("HTTP Error: %i %s"%(e.code, url))
-
-        except urllib2.URLError as err:
-            print("URL Error: %i %s"%(err.reason, url))
-
+#        except urllib2.HTTPError as err:
+#            print("HTTP Error: %i %s"%(e.code, url))
+#
+#        except urllib2.URLError as err:
+#            print("URL Error: %i %s"%(err.reason, url))
+#
     tf = tarfile.open("./libs/" + local_file_name)
     tf.extractall("./libs/")
 

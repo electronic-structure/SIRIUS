@@ -106,7 +106,7 @@ void Unit_cell::get_symmetry()
         types[ia] = atom(ia).type_id();
     }
     
-    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, 1e-4);
+    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, parameters_.spglib_tolerance());
 
     Atom_symmetry_class* atom_symmetry_class;
     
@@ -141,24 +141,22 @@ void Unit_cell::get_symmetry()
 
 std::vector<double> Unit_cell::find_mt_radii()
 {
-    if (nearest_neighbours_.size() == 0) TERMINATE("array of nearest neighbours is empty");
+    if (nearest_neighbours_.size() == 0) {
+        TERMINATE("array of nearest neighbours is empty");
+    }
 
     std::vector<double> Rmt(num_atom_types(), 1e10);
     
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < num_atoms(); ia++) {
         int id1 = atom(ia).type_id();
-        if (nearest_neighbours_[ia].size() > 1)
-        {
+        if (nearest_neighbours_[ia].size() > 1) {
             /* don't allow spheres to touch: take a smaller value than half a distance */
             double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
 
             /* take minimal R for the given atom type */
             Rmt[id1] = std::min(R, Rmt[id1]);
-        }
-        else
-        {
-            Rmt[id1] = std::min(3.0, Rmt[id1]);
+        } else {
+            Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1]);
         }
     }
     
@@ -169,45 +167,42 @@ std::vector<double> Unit_cell::find_mt_radii()
      */
     bool inflate = true;
     
-    if (inflate)
-    {
+    if (inflate) {
         std::vector<bool> scale_Rmt(num_atom_types(), true);
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
+        for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
 
-            if (nearest_neighbours_[ia].size() > 1)
-            {
+            if (nearest_neighbours_[ia].size() > 1) {
                 int ja = nearest_neighbours_[ia][1].atom_id;
                 int id2 = atom(ja).type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
             
-                if (Rmt[id1] + Rmt[id2] > dist * 0.94)
-                {
+                if (Rmt[id1] + Rmt[id2] > dist * 0.94) {
                     scale_Rmt[id1] = false;
                     scale_Rmt[id2] = false;
                 }
             }
         }
 
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
+        for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
-            if (nearest_neighbours_[ia].size() > 1)
-            {
+            if (nearest_neighbours_[ia].size() > 1) {
                 int ja = nearest_neighbours_[ia][1].atom_id;
                 int id2 = atom(ja).type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
                 
-                if (scale_Rmt[id1]) Rmt[id1] = 0.95 * (dist - Rmt[id2]);
+                if (scale_Rmt[id1]) {
+                    Rmt[id1] = 0.95 * (dist - Rmt[id2]);
+                }
             }
         }
     }
     
-    for (int i = 0; i < num_atom_types(); i++) 
-    {
-        Rmt[i] = std::min(Rmt[i], 3.0);
-        if (Rmt[i] < 0.3) TERMINATE("Muffin-tin radius is too small");
+    for (int i = 0; i < num_atom_types(); i++) {
+        Rmt[i] = std::min(Rmt[i], parameters_.rmt_max());
+        if (Rmt[i] < 0.3) {
+            TERMINATE("Muffin-tin radius is too small");
+        }
     }
 
     return Rmt;

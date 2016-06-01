@@ -87,9 +87,6 @@ class Atom_symmetry_class
         /// Generate local orbital raidal functions
         void generate_lo_radial_functions(relativity_t rel__);
 
-        /// Dump local orbitals to the file for debug purposes
-        void dump_lo();
-        
         /// Transform radial functions
         /** Local orbitals are orthogonalized and all radial functions are divided by r. */
         void transform_radial_functions(bool ort_lo, bool ort_aw);
@@ -122,7 +119,10 @@ class Atom_symmetry_class
         void sync_core_charge_density(Communicator const& comm__, int const rank__);
 
         /// Check if local orbitals are linearly independent
-        void check_lo_linear_independence();
+        std::vector<int> check_lo_linear_independence(double etol__);
+
+        /// Dump local orbitals to the file for debug purposes
+        void dump_lo();
        
         /// Compute m-th order radial derivative at the MT surface.
         double aw_surface_dm(int l, int order, int dm) const;

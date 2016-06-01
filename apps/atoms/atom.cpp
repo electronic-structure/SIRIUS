@@ -479,10 +479,19 @@ void generate_atom_file(Free_atom& a,
     jw.end_set();
     
     for (int l = 0; l <= lmax; l++) {
+        /* default value for n */
         int n = l + 1;
+        /* next n above the core */
+        for (size_t i = 0; i < core.size(); i++) {
+            if (core[i].l == l) {
+                n = std::max(core[i].n + 1, n);
+            }
+        }
         /* APW for s,p,d,f is constructed for the highest valence state */ 
         for (size_t i = 0; i < valence.size(); i++) {
-            if (valence[i].l == l) n = valence[i].n;
+            if (valence[i].l == l) {
+                n = std::max(n, valence[i].n);
+            }
         }
                
         jw.begin_set();
@@ -506,9 +515,9 @@ void generate_atom_file(Free_atom& a,
                 a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
                 idxlo++;
 
-                //= a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
-                //= a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 2, 1);
-                //= idxlo++;
+                a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
+                a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 2, 1);
+                idxlo++;
             }
         }
     }
@@ -526,6 +535,10 @@ void generate_atom_file(Free_atom& a,
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 1, 0);
                     a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v[n][l] + 1, 0, 1);
                     idxlo++;
+
+                    //a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v[n][l] + 1, 0, 1);
+                    //a.add_lo_descriptor(idxlo, n + 2, l, e_nl_v[n][l] + 2, 0, 1);
+                    //idxlo++;
                 }
             }
         }
@@ -533,6 +546,10 @@ void generate_atom_file(Free_atom& a,
         for (int l = lmax + 1; l < lmax + 3; l++) {
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
+            idxlo++;
+
+            a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
+            a.add_lo_descriptor(idxlo, 0, l, 0.15, 2, 0);
             idxlo++;
         }
     }
@@ -721,58 +738,67 @@ void generate_atom_file(Free_atom& a,
             }
         }
         s << "]";
-        return s;
+        return s.str();
     };
 
-    std::vector<int> inc(a.num_lo_descriptors(), 1);
+    //== std::vector<int> inc(a.num_lo_descriptors(), 1);
 
-    mdarray<double, 2> rad_func(rg.num_points(), a.num_lo_descriptors());
+    //== mdarray<double, 2> rad_func(rg.num_points(), a.num_lo_descriptors());
 
-    for (int i = 0; i < a.num_lo_descriptors(); i++) {
-        int idxrf = a.indexr().index_by_idxlo(i);
-        int l = a.lo_descriptor(i).l;
+    //== for (int i = 0; i < a.num_lo_descriptors(); i++) {
+    //==     int idxrf = a.indexr().index_by_idxlo(i);
+    //==     int l = a.lo_descriptor(i).l;
 
-        sirius::Spline<double> f(rg);
-        for (int ir = 0; ir < a.num_mt_points(); ir++) {
-            f[ir] = atom_class.radial_function(ir, idxrf);
-        }
+    //==     sirius::Spline<double> f(rg);
+    //==     for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==         f[ir] = atom_class.radial_function(ir, idxrf);
+    //==     }
 
-        sirius::Spline<double> s(rg);
+    //==     sirius::Spline<double> s(rg);
 
-        for (int j = 0; j < i; j++) {
-            int l1 = a.lo_descriptor(j).l;
+    //==     for (int j = 0; j < i; j++) {
+    //==         int l1 = a.lo_descriptor(j).l;
 
-            if (l1 == l && inc[j]) {
-                for (int ir = 0; ir < a.num_mt_points(); ir++) {
-                    s[ir] = f[ir] * rad_func(ir, j);
-                }
-                double ovlp = s.interpolate().integrate(2);
-                for (int ir = 0; ir < a.num_mt_points(); ir++) {
-                    f[ir] -= ovlp * rad_func(ir, j);
-                }
-            }
-        }
-        for (int ir = 0; ir < a.num_mt_points(); ir++) {
-            s[ir] = std::pow(f[ir], 2);
-        }
-        double norm = std::sqrt(s.interpolate().integrate(2));
-        printf("orbital: %i, norm: %f\n", i, norm);
-        if (norm < 1e-2) {
-            auto s = lo_to_str(a.lo_descriptor(i));
-            printf("local orbital %i is linearly dependent\n", i);
-            printf("l: %i\n", l);
-            printf("basis: %s\n", s.str().c_str());
-            inc[i] = 0;
-        } else {
-            norm = 1 / norm;
-            for (int ir = 0; ir < a.num_mt_points(); ir++) {
-                rad_func(ir, i) = f[ir] * norm;
-                atom_class.radial_function(ir, idxrf) = rad_func(ir, i);
-            }
-        }
-    }
+    //==         if (l1 == l && inc[j]) {
+    //==             for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==                 s[ir] = f[ir] * rad_func(ir, j);
+    //==             }
+    //==             double ovlp = s.interpolate().integrate(2);
+    //==             for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==                 f[ir] -= ovlp * rad_func(ir, j);
+    //==             }
+    //==         }
+    //==     }
+    //==     for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==         s[ir] = std::pow(f[ir], 2);
+    //==     }
+    //==     double norm = std::sqrt(s.interpolate().integrate(2));
+    //==     printf("orbital: %i, norm: %f\n", i, norm);
+    //==     if (norm < 0.05) {
+    //==         auto s = lo_to_str(a.lo_descriptor(i));
+    //==         printf("local orbital %i is linearly dependent\n", i);
+    //==         printf("  l: %i, basis: %s\n", l, s.str().c_str());
+    //==         inc[i] = 0;
+    //==     } else {
+    //==         norm = 1 / norm;
+    //==         for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==             rad_func(ir, i) = f[ir] * norm;
+    //==             //atom_class.radial_function(ir, idxrf) = rad_func(ir, i);
+    //==         }
+    //==     }
+    //== }
     
-    atom_class.check_lo_linear_independence();
+    auto inc = atom_class.check_lo_linear_independence(0.0001);
+
+    for (int j = 0; j < a.num_lo_descriptors(); j++) {
+        auto s = lo_to_str(a.lo_descriptor(j));
+        if (!inc[j]) {
+            printf("X ");
+        } else {
+            printf("  ");
+        }
+        printf("l: %i, basis: %s\n", a.lo_descriptor(j).l, s.c_str());
+    }
 
     jw.begin_array("lo");
     for (int j = 0; j < a.num_lo_descriptors(); j++) {
@@ -780,7 +806,7 @@ void generate_atom_file(Free_atom& a,
             auto s = lo_to_str(a.lo_descriptor(j));
             jw.begin_set();
             jw.single("l",  a.lo_descriptor(j).l);
-            jw.string("basis", s.str());
+            jw.string("basis", s);
             jw.end_set();
         }
     }
@@ -790,6 +816,28 @@ void generate_atom_file(Free_atom& a,
     jw.single("density", fa_rho);
     jw.single("radial_grid", fa_r);
     jw.end_set();
+    
+    //== std::vector<atomic_level_descriptor> levels;
+
+    //== sirius::Atom_type a2(a.parameters(), a.symbol(), a.name(), a.zn(), a.mass(), levels, sirius::radial_grid_t::exponential_grid);
+    //== a2.set_mt_radius(2.0);
+    //== a2.set_num_mt_points(1500);
+    //== a2.set_radial_grid(1500, &x[0]);
+
+    //== for (int j = 0; j < a.num_lo_descriptors(); j++) {
+    //==     if (inc[j]) {
+    //==         a2.add_lo_descriptor(a.lo_descriptor(j));
+    //==     }
+    //== }
+
+    //== a2.init(0);
+
+    //== sirius::Atom_symmetry_class c2(0, a2);
+    //== c2.initialize();
+    //== c2.set_spherical_potential(veff);
+    //== c2.generate_radial_functions(relativity_t::none);
+    //== c2.check_lo_linear_independence();
+    //== c2.dump_lo();
 }
 
 int main(int argn, char **argv)

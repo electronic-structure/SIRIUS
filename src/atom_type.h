@@ -416,6 +416,11 @@ class Atom_type
         /// Add local orbital descriptor
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
+        void add_lo_descriptor(local_orbital_descriptor const& lod__)
+        {
+            lo_descriptors_.push_back(lod__);
+        }
+
         void init_free_atom(bool smooth);
 
         void print_info() const;
