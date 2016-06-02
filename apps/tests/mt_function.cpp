@@ -53,8 +53,8 @@ void test1_angular_radial()
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
-    auto f2 = sht.convert(f1);
-    auto f3 = sht.convert(f2);
+    auto f2 = convert(f1);
+    auto f3 = convert(f2);
 
     double d = 0;
     for (int ir = 0; ir < r.num_points(); ir++) 
@@ -78,8 +78,8 @@ void test2(int lmax, int nr)
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
-    auto f2 = sht.transform(f1);
-    auto f3 = sht.transform(f2);
+    auto f2 = transform(&sht, f1);
+    auto f3 = transform(&sht, f2);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
@@ -106,14 +106,14 @@ void test3(int lmax, int nr)
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<double>::random();
     }
-    auto f2 = sht.transform(f1);
+    auto f2 = transform(&sht, f1);
     for (int ir = 0; ir < nr; ir++)
     {
         for (int tp = 0; tp < sht.num_points(); tp++) f3(tp, ir) = f2(tp, ir);
     }
 
-    auto f4 = sht.transform(f3);
-    auto f5 = sht.convert(f4);
+    auto f4 = transform(&sht, f3);
+    auto f5 = convert(f4);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
@@ -463,8 +463,8 @@ void test10()
     /* backward transform gradient from Rlm to (theta, phi) */
     for (int x = 0; x < 3; x++)
     {
-        grad_rho_up_tp[x] = sht.transform(grad_rho_up_lm[x]);
-        grad_rho_dn_tp[x] = sht.transform(grad_rho_dn_lm[x]);
+        grad_rho_up_tp[x] = transform(&sht, grad_rho_up_lm[x]);
+        grad_rho_dn_tp[x] = transform(&sht, grad_rho_dn_lm[x]);
     }
 
     Spheric_function<spatial, double> grad_rho_up_grad_rho_up_tp;

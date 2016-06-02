@@ -19,11 +19,51 @@ void test1()
     f.create_node("aaa");
     f["aaa"].write("dat_name", dat);
     dat.zero();
-    f["aaa"].read_mdarray("dat_name", dat);
+    f["aaa"].read("dat_name", dat);
     std::cout << "hash  = " << dat.hash() << std::endl;
     
     f.write("dat_name", dat);
     
+}
+
+void test2()
+{
+    sirius::HDF5_tree f("f.h5", true);
+    f.create_node("node1");
+
+    mdarray<double, 2> md1(2, 4);
+    md1.zero();
+    f["node1"].write("md1", md1);
+    f["node1"].write(0, md1);
+
+    mdarray<double_complex, 2> md2(2, 4);
+    md2.zero();
+    f["node1"].write("md2", md2);
+    f["node1"].write(1, md2);
+
+    mdarray<int, 2> md3(2, 4);
+    md3.zero();
+    f["node1"].write("md3", md3);
+    f["node1"].write(2, md3);
+}
+
+void test3()
+{
+    sirius::HDF5_tree f("f.h5", false);
+
+    mdarray<double, 2> md1(2, 4);
+    f["node1"].read("md1", md1);
+    f["node1"].read(0, md1);
+
+    mdarray<double_complex, 2> md2(2, 4);
+    md2.zero();
+    f["node1"].read("md2", md2);
+    f["node1"].read(1, md2);
+
+    mdarray<int, 2> md3(2, 4);
+    md3.zero();
+    f["node1"].read("md3", md3);
+    f["node1"].read(2, md3);
 }
 
 
@@ -31,5 +71,6 @@ int main(int argn, char** argv)
 {
     test1();
     test1();
-
+    test2();
+    test3();
 }
