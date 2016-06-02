@@ -38,10 +38,10 @@ class Smooth_periodic_function
     protected:
 
         /// FFT driver.
-        FFT3D* fft_;
+        FFT3D* fft_{nullptr};
 
         /// Distribution of G-vectors.
-        Gvec_FFT_distribution const* gvec_fft_distr_;
+        Gvec_FFT_distribution const* gvec_fft_distr_{nullptr};
         
         /// Function on the regular real-space grid.
         mdarray<T, 1> f_rg_;
@@ -52,14 +52,11 @@ class Smooth_periodic_function
     public:
 
         Smooth_periodic_function() 
-            : fft_(nullptr),
-              gvec_fft_distr_(nullptr)
         {
         }
 
         Smooth_periodic_function(FFT3D& fft__)
-            : fft_(&fft__),
-              gvec_fft_distr_(nullptr)
+            : fft_(&fft__)
         {
             f_rg_ = mdarray<T, 1>(fft_->local_size());
         }
