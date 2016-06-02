@@ -49,7 +49,9 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
         auto grad_rho_lm = gradient(rho_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
-        for (int x = 0; x < 3; x++) grad_rho_tp[x] = sht_->transform(grad_rho_lm[x]);
+        for (int x = 0; x < 3; x++) {
+            grad_rho_tp[x] = transform(sht_, grad_rho_lm[x]);
+        }
 
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
@@ -58,7 +60,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
         auto lapl_rho_lm = laplacian(rho_lm);
 
         /* backward transform Laplacian from Rlm to (theta, phi) */
-        lapl_rho_tp = sht_->transform(lapl_rho_lm);
+        lapl_rho_tp = transform(sht_, lapl_rho_lm);
     }
 
     exc_tp.zero();
@@ -126,14 +128,16 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     if (is_gga)
     {
         /* forward transform vsigma to Rlm */
-        auto vsigma_lm = sht_->transform(vsigma_tp);
+        auto vsigma_lm = transform(sht_, vsigma_tp);
 
         /* compute gradient of vsgima in spherical harmonics */
         auto grad_vsigma_lm = gradient(vsigma_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
         Spheric_function_gradient<spatial, double> grad_vsigma_tp(sht_->num_points(), rgrid);
-        for (int x = 0; x < 3; x++) grad_vsigma_tp[x] = sht_->transform(grad_vsigma_lm[x]);
+        for (int x = 0; x < 3; x++) {
+            grad_vsigma_tp[x] = transform(sht_, grad_vsigma_lm[x]);
+        }
 
         /* compute scalar product of two gradients */
         auto grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
@@ -189,8 +193,8 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++)
         {
-            grad_rho_up_tp[x] = sht_->transform(grad_rho_up_lm[x]);
-            grad_rho_dn_tp[x] = sht_->transform(grad_rho_dn_lm[x]);
+            grad_rho_up_tp[x] = transform(sht_, grad_rho_up_lm[x]);
+            grad_rho_dn_tp[x] = transform(sht_, grad_rho_dn_lm[x]);
         }
 
         /* compute density gradient products */
@@ -203,8 +207,8 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         auto lapl_rho_dn_lm = laplacian(rho_dn_lm);
 
         /* backward transform Laplacians from Rlm to (theta, phi) */
-        lapl_rho_up_tp = sht_->transform(lapl_rho_up_lm);
-        lapl_rho_dn_tp = sht_->transform(lapl_rho_dn_lm);
+        lapl_rho_up_tp = transform(sht_, lapl_rho_up_lm);
+        lapl_rho_dn_tp = transform(sht_, lapl_rho_dn_lm);
     }
 
     Spheric_function<spatial, double> vsigma_uu_tp;
@@ -297,9 +301,9 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     if (is_gga)
     {
         /* forward transform vsigma to Rlm */
-        auto vsigma_uu_lm = sht_->transform(vsigma_uu_tp);
-        auto vsigma_ud_lm = sht_->transform(vsigma_ud_tp);
-        auto vsigma_dd_lm = sht_->transform(vsigma_dd_tp);
+        auto vsigma_uu_lm = transform(sht_, vsigma_uu_tp);
+        auto vsigma_ud_lm = transform(sht_, vsigma_ud_tp);
+        auto vsigma_dd_lm = transform(sht_, vsigma_dd_tp);
 
         /* compute gradient of vsgima in spherical harmonics */
         auto grad_vsigma_uu_lm = gradient(vsigma_uu_lm);
@@ -312,9 +316,9 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         Spheric_function_gradient<spatial, double> grad_vsigma_dd_tp(sht_->num_points(), rgrid);
         for (int x = 0; x < 3; x++)
         {
-            grad_vsigma_uu_tp[x] = sht_->transform(grad_vsigma_uu_lm[x]);
-            grad_vsigma_ud_tp[x] = sht_->transform(grad_vsigma_ud_lm[x]);
-            grad_vsigma_dd_tp[x] = sht_->transform(grad_vsigma_dd_lm[x]);
+            grad_vsigma_uu_tp[x] = transform(sht_, grad_vsigma_uu_lm[x]);
+            grad_vsigma_ud_tp[x] = transform(sht_, grad_vsigma_ud_lm[x]);
+            grad_vsigma_dd_tp[x] = transform(sht_, grad_vsigma_dd_lm[x]);
         }
 
         /* compute scalar product of two gradients */
@@ -351,12 +355,12 @@ void Potential::xc_mt(Periodic_function<double>* rho,
         int nmtp = unit_cell_.atom(ia).num_mt_points();
 
         /* backward transform density from Rlm to (theta, phi) */
-        auto rho_tp = sht_->transform(rho->f_mt(ialoc));
+        auto rho_tp = transform(sht_, rho->f_mt(ialoc));
 
         /* backward transform magnetization from Rlm to (theta, phi) */
         std::vector< Spheric_function<spatial, double> > vecmagtp(ctx_.num_mag_dims());
         for (int j = 0; j < ctx_.num_mag_dims(); j++)
-            vecmagtp[j] = sht_->transform(magnetization[j]->f_mt(ialoc));
+            vecmagtp[j] = transform(sht_, magnetization[j]->f_mt(ialoc));
        
         /* "up" component of the density */
         Spheric_function<spectral, double> rho_up_lm;
@@ -423,8 +427,8 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             }
 
             /* transform from (theta, phi) to Rlm */
-            rho_up_lm = sht_->transform(rho_up_tp);
-            rho_dn_lm = sht_->transform(rho_dn_tp);
+            rho_up_lm = transform(sht_, rho_up_tp);
+            rho_dn_lm = transform(sht_, rho_dn_tp);
         }
 
         Spheric_function<spatial, double> exc_tp(sht_->num_points(), rgrid);
@@ -464,12 +468,14 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                 }       
             }
             /* convert magnetic field back to Rlm */
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) sht_->transform(vecmagtp[j], bxc[j]->f_mt(ialoc));
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                bxc[j]->f_mt(ialoc) = transform(sht_, vecmagtp[j]);
+            }
         }
 
         /* forward transform from (theta, phi) to Rlm */
-        sht_->transform(vxc_tp, vxc->f_mt(ialoc));
-        sht_->transform(exc_tp, exc->f_mt(ialoc));
+        vxc->f_mt(ialoc) = transform(sht_, vxc_tp);
+        exc->f_mt(ialoc) = transform(sht_, exc_tp);
     }
 }
 

@@ -329,28 +329,6 @@ void SHT::spherical_harmonics(int lmax, double theta, double phi, double* rlm)
     }
 }
                 
-double_complex SHT::ylm_dot_rlm(int l, int m1, int m2)
-{
-    const double isqrt2 = 0.70710678118654752440;
-
-    assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
-
-    if (!((m1 == m2) || (m1 == -m2))) return double_complex(0, 0);
-
-    if (m1 == 0) return double_complex(1, 0);
-
-    if (m1 < 0)
-    {
-        if (m2 < 0) return -double_complex(0, isqrt2);
-        else return pow(-1.0, m2) * double_complex(isqrt2, 0);
-    }
-    else
-    {
-        if (m2 < 0) return pow(-1.0, m1) * double_complex(0, isqrt2);
-        else return double_complex(isqrt2, 0);
-    }
-}
-
 void SHT::uniform_coverage()
 {
     tp_(0, 0) = pi;
@@ -366,57 +344,6 @@ void SHT::uniform_coverage()
     
     tp_(0, num_points_ - 1) = 0;
     tp_(1, num_points_ - 1) = 0;
-}
-
-Spheric_function<spectral, double> SHT::convert(Spheric_function<spectral, double_complex>& f__)
-{
-    auto g = Spheric_function<spectral, double>(f__.angular_domain_size(), f__.radial_grid());
-
-    convert(f__, g);
-
-    return std::move(g);
-}
-
-Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectral, double>& f)
-{
-    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
-
-    /* cache transformation arrays */
-    std::vector<double_complex> tpp(f.angular_domain_size());
-    std::vector<double_complex> tpm(f.angular_domain_size());
-    for (int l = 0; l <= lmax; l++)
-    {
-        for (int m = -l; m <= l; m++) 
-        {
-            int lm = Utils::lm_by_l_m(l, m);
-            tpp[lm] = ylm_dot_rlm(l, m, m);
-            tpm[lm] = ylm_dot_rlm(l, m, -m);
-        }
-    }
-
-    auto g = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
-    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int m = -l; m <= l; m++)
-            {
-                if (m == 0)
-                {
-                    g(lm, ir) = f(lm, ir);
-                }
-                else 
-                {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
-                    g(lm, ir) = tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir);
-                }
-                lm++;
-            }
-        }
-    }
-
-    return std::move(g);
 }
 
 void SHT::convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__)
@@ -457,49 +384,6 @@ void SHT::convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__)
                 f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
             }
             lm++;
-        }
-    }
-}
-
-void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g)
-{
-    if (f.radial_grid().hash() != g.radial_grid().hash())
-        TERMINATE("radial grids don't match");
-
-    int lmmax = std::min(f.angular_domain_size(), g.angular_domain_size());
-    int lmax = Utils::lmax_by_lmmax(lmmax);
-
-    /* cache transformation arrays */
-    std::vector<double_complex> tpp(lmmax);
-    std::vector<double_complex> tpm(lmmax);
-    for (int l = 0; l <= lmax; l++)
-    {
-        for (int m = -l; m <= l; m++) 
-        {
-            int lm = Utils::lm_by_l_m(l, m);
-            tpp[lm] = rlm_dot_ylm(l, m, m);
-            tpm[lm] = rlm_dot_ylm(l, m, -m);
-        }
-    }
-
-    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int m = -l; m <= l; m++)
-            {
-                if (m == 0)
-                {
-                    g(lm, ir) = std::real(f(lm, ir));
-                }
-                else 
-                {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
-                    g(lm, ir) = std::real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
-                }
-                lm++;
-            }
         }
     }
 }
