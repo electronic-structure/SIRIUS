@@ -78,6 +78,8 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// Global muffin-tin array 
         mdarray<T, 3> f_mt_;
 
+        Gvec const& gvec_;
+
         /// Plane-wave expansion coefficients
         mdarray<complex_t, 1> f_pw_;
 
@@ -87,10 +89,10 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-            {
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
-                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_, unit_cell_.atom(ia).radial_grid());
+                f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_,
+                                                                   unit_cell_.atom(ia).radial_grid());
             }
         }
         
@@ -105,32 +107,35 @@ class Periodic_function: public Smooth_periodic_function<T>
               unit_cell_(ctx__.unit_cell()), 
               step_function_(ctx__.step_function()),
               comm_(ctx__.comm()),
+              gvec_(ctx__.gvec()),
               angular_domain_size_(angular_domain_size__)
         {
-            if (allocate_pw__)
-            {
-                f_pw_ = mdarray<double_complex, 1>(ctx__.gvec().num_gvec());
-                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec_fft_distr().offset_gvec_fft()], this->fft_->local_size());
+            if (parameters_.full_potential()) {
+                if (ctx__.fft().parallel()) {
+                    TERMINATE_NOT_IMPLEMENTED
+                }
             }
-        
-            if (parameters_.full_potential())
+
+            if (allocate_pw__) {
+                f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
+                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec_fft_distr().offset_gvec_fft()],
+                                                               this->fft_->local_size());
+            }
+
+            if (parameters_.full_potential()) {
                 f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
+            }
         }
         
         /// Allocate memory for muffin-tin part.
         void allocate_mt(bool allocate_global__)
         {
-            if (parameters_.full_potential())
-            {
-                if (allocate_global__)
-                {
+            if (parameters_.full_potential()) {
+                if (allocate_global__) {
                     f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
                     set_local_mt_ptr();
-                }
-                else
-                {
-                    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) 
-                    {
+                } else {
+                    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                         int ia = unit_cell_.spl_num_atoms(ialoc);
                         f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
                     }
@@ -154,20 +159,96 @@ class Periodic_function: public Smooth_periodic_function<T>
             f_mt_.zero();
             this->f_rg_.zero();
             f_pw_.zero();
-            if (parameters_.full_potential())
-            {
-                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
+            if (parameters_.full_potential()) {
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    f_mt_local_(ialoc).zero();
+                }
             }
         }
         
         /// Copy from source
         //void copy(Periodic_function<T>* src);
-        inline void copy_to_global_ptr(T* f_mt__, T* f_it__);
+
+        inline void copy_to_global_ptr(T* f_mt__, T* f_it__) const
+        {
+            STOP();
+            //comm_.allgather(f_it_local_.template at<CPU>(), f_it__, (int)spl_fft_size_.global_offset(), (int)spl_fft_size_.local_size());
+
+            //if (parameters_.full_potential()) 
+            //{
+            //    mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+            //    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+            //    {
+            //        int ia = unit_cell_.spl_num_atoms(ialoc);
+            //        memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
+            //    }
+            //    int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
+            //    comm_.allgather(f_mt__, static_cast<int>(ld * unit_cell_.spl_num_atoms().global_offset()),
+            //                    static_cast<int>(ld * unit_cell_.spl_num_atoms().local_size()));
+            //}
+        }
 
         /// Add the function
-        void add(Periodic_function<T>* g);
+        void add(Periodic_function<T>* g)
+        {
+            runtime::Timer t("sirius::Periodic_function::add");
 
-        T integrate(std::vector<T>& mt_val, T& it_val);
+            #pragma omp parallel for
+            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                this->f_rg_(irloc) += g->f_rg(irloc);
+            }
+            
+            if (parameters_.full_potential()) {
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
+                    f_mt_local_(ialoc) += g->f_mt(ialoc);
+            }
+        }
+
+        T integrate(std::vector<T>& mt_val, T& it_val)
+        {
+            runtime::Timer t("sirius::Periodic_function::integrate");
+
+            it_val = 0;
+            
+            if (!parameters_.full_potential()) {
+                #pragma omp parallel
+                {
+                    T it_val_t = 0;
+                    
+                    #pragma omp for
+                    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                        it_val_t += this->f_rg_(irloc);
+                    }
+
+                    #pragma omp critical
+                    it_val += it_val_t;
+                }
+            } else {
+                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                    it_val += this->f_rg_(irloc) * step_function_.theta_r(irloc);
+                }
+            }
+            it_val *= (unit_cell_.omega() / this->fft_->size());
+            this->fft_->comm().allreduce(&it_val, 1);
+            T total = it_val;
+            
+            if (parameters_.full_potential()) {
+                mt_val.resize(unit_cell_.num_atoms());
+                std::memset(&mt_val[0], 0, unit_cell_.num_atoms() * sizeof(T));
+
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    int ia = unit_cell_.spl_num_atoms(ialoc);
+                    mt_val[ia] = f_mt_local_(ialoc).component(0).integrate(2) * fourpi * y00;
+                }
+                
+                comm_.allreduce(&mt_val[0], unit_cell_.num_atoms());
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    total += mt_val[ia];
+                }
+            }
+
+            return total;
+        }
 
         template <index_domain_t index_domain>
         inline T& f_mt(int idx0, int ir, int ia)
@@ -186,15 +267,81 @@ class Periodic_function: public Smooth_periodic_function<T>
         }
         
         /** \todo write and read distributed functions */
-        void hdf5_write(HDF5_tree h5f);
+        void hdf5_write(HDF5_tree h5f)
+        {
+            if (parameters_.full_potential()) {
+                h5f.write("f_mt", f_mt_);
+            }
+            h5f.write("f_pw", f_pw_);
+            //h5f.write("f_rg", this->f_rg_);
+        }
 
-        void hdf5_read(HDF5_tree h5f);
+        void hdf5_read(HDF5_tree h5f)
+        {
+            if (parameters_.full_potential()) {
+                h5f.read("f_mt", f_mt_);
+            }
+            h5f.read("f_pw", f_pw_);
+            //h5f.read_mdarray("f_rg", this->f_rg_);
+        }
 
-        size_t size();
+        size_t size() const
+        {
+            size_t size = this->fft_->local_size();
+            if (parameters_.full_potential()) {
+                for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                    size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points() * 
+                            unit_cell_.atom_symmetry_class(ic).num_atoms();
+                }
+            }
+            return size;
+        }
 
-        size_t pack(size_t offset, Mixer<double>* mixer);
+        size_t pack(size_t offset__, Mixer<double>* mixer__)
+        {
+            runtime::Timer t("sirius::Periodic_function::pack");
+
+            size_t n = 0;
+            
+            if (parameters_.full_potential()) {
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
+                        for (int i0 = 0; i0 < angular_domain_size_; i0++) {
+                            mixer__->input(offset__ + n++, f_mt_(i0, i1, ia));
+                        }
+                    }
+                }
+            }
+
+            for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+                mixer__->input(offset__ + n++, this->f_rg_(ir));
+            }
+
+            return n;
+        }
         
-        size_t unpack(T const* array);
+        size_t unpack(T const* array__)
+        {
+            runtime::Timer t("sirius::Periodic_function::unpack");
+
+            size_t n = 0;
+
+            if (parameters_.full_potential()) {
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
+                        for (int i0 = 0; i0 < angular_domain_size_; i0++) {
+                            f_mt_(i0, i1, ia) = array__[n++];
+                        }
+                    }
+                }
+            }
+
+            for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+                this->f_rg_(ir) = array__[n++];
+            }
+
+            return n;
+        }
        
         /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr__)
@@ -229,37 +376,31 @@ class Periodic_function: public Smooth_periodic_function<T>
             return f_pw_(this->gvec_fft_distr().gvec().index_by_gvec(G__));
         }
 
-        //double value(vector3d<double>& vc)
-        //{
-        //    int ja, jr;
-        //    double dr, tp[2];
-        //
-        //    if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) 
-        //    {
-        //        int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
-        //        std::vector<double> rlm(angular_domain_size_);
-        //        SHT::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
-        //        double p = 0.0;
-        //        for (int lm = 0; lm < angular_domain_size_; lm++)
-        //        {
-        //            double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / 
-        //                       (unit_cell_.atom(ja).type().radial_grid(jr + 1) - unit_cell_.atom(ja).type().radial_grid(jr));
-        //
-        //            p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
-        //        }
-        //        return p;
-        //    }
-        //    else
-        //    {
-        //        double p = 0.0;
-        //        for (int ig = 0; ig < num_gvec_; ig++)
-        //        {
-        //            vector3d<double> vgc = gvec_->cart(ig);
-        //            p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
-        //        }
-        //        return p;
-        //    }
-        //}
+        double value(vector3d<double>& vc)
+        {
+            int ja, jr;
+            double dr, tp[2];
+        
+            if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
+                int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
+                std::vector<double> rlm(angular_domain_size_);
+                SHT::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
+                double p = 0.0;
+                for (int lm = 0; lm < angular_domain_size_; lm++) {
+                    double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / unit_cell_.atom(ja).type().radial_grid().dx(jr);
+        
+                    p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
+                }
+                return p;
+            } else {
+                double p = 0.0;
+                for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
+                    vector3d<double> vgc = gvec_.cart(ig);
+                    p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
+                }
+                return p;
+            }
+        }
 
         inline T checksum_rg() const
         {
@@ -284,9 +425,12 @@ class Periodic_function: public Smooth_periodic_function<T>
         void fft_transform(int direction__)
         {
             Smooth_periodic_function<T>::fft_transform(direction__);
-
-            runtime::Timer t("sirius::Periodic_function::fft_transform|comm");
-            this->fft_->comm().allgather(&f_pw_(0), this->gvec_fft_distr().offset_gvec_fft(), this->gvec_fft_distr().num_gvec_fft());
+            
+            /* collect all PW coefficients */
+            if (direction__ == -1) {
+                runtime::Timer t("sirius::Periodic_function::fft_transform|comm");
+                this->fft_->comm().allgather(&f_pw_(0), this->gvec_fft_distr().offset_gvec_fft(), this->gvec_fft_distr().num_gvec_fft());
+            }
         }
         
         mdarray<T, 3>& f_mt()
@@ -295,7 +439,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         }
 
         /// Compute inner product <f|g>
-        T inner(Periodic_function<T> const* g__)
+        T inner(Periodic_function<T> const* g__) const
         {
             runtime::Timer t("sirius::Periodic_function::inner");
         
@@ -344,8 +488,6 @@ class Periodic_function: public Smooth_periodic_function<T>
         }
 
 };
-
-#include "periodic_function.hpp"
 
 };
 
