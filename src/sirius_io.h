@@ -50,8 +50,8 @@ class sirius_io
             HDF5_tree fout(full_name, true);
             int size0 = (int)matrix.size(0);
             int size1 = (int)matrix.size(1);
-            fout.write("nrow", &size0); 
-            fout.write("ncol", &size1);
+            fout.write("nrow", size0); 
+            fout.write("ncol", size1);
             fout.write("matrix", matrix);
         }
 

@@ -307,7 +307,7 @@ class HDF5_tree
 
         /// Write a buffer.
         template <typename T>
-        void write(const std::string& name, T const* data, int size = 1)
+        void write(const std::string& name, T const* data, int size)
         {
             std::vector<int> dims(1);
             dims[0] = size;
@@ -368,7 +368,7 @@ class HDF5_tree
 
         /// Read a vector or a scalar.
         template<typename T>
-        void read(const std::string& name, T* data, int size = 1)
+        void read(const std::string& name, T* data, int size)
         {
             std::vector<int> dims(1);
             dims[0] = size;
