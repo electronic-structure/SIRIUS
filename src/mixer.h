@@ -377,6 +377,9 @@ template <typename T>
 class Broyden2: public Mixer<T>
 {
     private:
+        
+        double beta0_;
+        double linear_mix_rms_tol_;
 
         std::vector<double> weights_;
 
@@ -387,9 +390,13 @@ class Broyden2: public Mixer<T>
         Broyden2(size_t size__,
                  int max_history__,
                  double beta__,
+                 double beta0__,
+                 double linear_mix_rms_tol__,
                  std::vector<double>& weights__,
                  Communicator const& comm__) 
-            : Mixer<T>(size__, max_history__, beta__, comm__)
+            : Mixer<T>(size__, max_history__, beta__, comm__),
+              beta0_(beta0__),
+              linear_mix_rms_tol_(linear_mix_rms_tol__)
         {
             weights_ = weights__;
             residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
@@ -429,7 +436,7 @@ class Broyden2: public Mixer<T>
             /* at this point we have min(count_, max_history_) residuals and vectors from the previous iterations */
             int N = std::min(this->count_, this->max_history_);
 
-            if (N > 1)
+            if (N > 1 && rms < linear_mix_rms_tol_)
             {
                 mdarray<long double, 2> S(N, N);
                 S.zero();
@@ -467,10 +474,10 @@ class Broyden2: public Mixer<T>
                     /* denominator df_k^{T} S df_k */
                     long double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
                     /* nominator */
-                    memset(&v1[0], 0, N * sizeof(long double));
+                    std::memset(&v1[0], 0, N * sizeof(long double));
                     for (int j = 0; j < N; j++) v1[j] = S(k + 1, j) - S(k, j);
 
-                    memset(&v2[0], 0, 2 * N * sizeof(long double));
+                    std::memset(&v2[0], 0, 2 * N * sizeof(long double));
                     for (int j = 0; j < 2 * N; j++) v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
                     v2[N + k] -= 1;
                     v2[N + k + 1] += 1;
@@ -500,7 +507,7 @@ class Broyden2: public Mixer<T>
             }
             else
             {
-                this->mix_linear(0.05);
+                this->mix_linear(beta0_);
             }
 
             return rms;
