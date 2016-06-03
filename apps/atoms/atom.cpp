@@ -295,6 +295,8 @@ void generate_atom_file(Free_atom& a,
                         double core_cutoff_energy,
                         const std::string& lo_type,
                         int apw_order,
+                        double apw_enu,
+                        bool auto_enu,
                         bool write_to_xml,
                         bool rel)
 {
@@ -471,39 +473,45 @@ void generate_atom_file(Free_atom& a,
     jw.begin_array("valence");
     jw.begin_set();
     if (apw_order == 1) {
-        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}]");
+        std::stringstream s;
+        s << "[{\"enu\" : " << apw_enu << ", \"dme\" : 0, \"auto\" : 0}]";
+        jw.string("basis", s.str());
     }
     if (apw_order == 2) {
-        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
+        std::stringstream s;
+        s << "[{\"enu\" : " << apw_enu << ", \"dme\" : 0, \"auto\" : 0}, {\"enu\" : " << apw_enu << ", \"dme\" : 1, \"auto\" : 0}]";
+        jw.string("basis", s.str());
     }
     jw.end_set();
     
-    for (int l = 0; l <= lmax; l++) {
-        /* default value for n */
-        int n = l + 1;
-        /* next n above the core */
-        for (size_t i = 0; i < core.size(); i++) {
-            if (core[i].l == l) {
-                n = std::max(core[i].n + 1, n);
+    if (auto_enu) {
+        for (int l = 0; l <= lmax; l++) {
+            /* default value for n */
+            int n = l + 1;
+            /* next n above the core */
+            for (size_t i = 0; i < core.size(); i++) {
+                if (core[i].l == l) {
+                    n = std::max(core[i].n + 1, n);
+                }
             }
-        }
-        /* APW for s,p,d,f is constructed for the highest valence state */ 
-        for (size_t i = 0; i < valence.size(); i++) {
-            if (valence[i].l == l) {
-                n = std::max(n, valence[i].n);
+            /* APW for s,p,d,f is constructed for the highest valence state */ 
+            for (size_t i = 0; i < valence.size(); i++) {
+                if (valence[i].l == l) {
+                    n = std::max(n, valence[i].n);
+                }
             }
+                   
+            jw.begin_set();
+            jw.single("l", l);
+            jw.single("n", n);
+            if (apw_order == 1) {
+                jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
+            }
+            if (apw_order == 2) {
+                jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
+            }
+            jw.end_set();
         }
-               
-        jw.begin_set();
-        jw.single("l", l);
-        jw.single("n", n);
-        if (apw_order == 1) {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
-        }
-        if (apw_order == 2) {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
-        }
-        jw.end_set();
     }
     jw.end_array();
 
@@ -511,38 +519,36 @@ void generate_atom_file(Free_atom& a,
     for (int n = 1; n <= 7; n++) {
         for (int l = 0; l < 4; l++) {
             if (nl_v[n][l]) {
-                a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 0, 1);
-                a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
-                idxlo++;
+                if (lo_type.find("lo1") != std::string::npos) {
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 0, 1);
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
+                    idxlo++;
+                }
 
-                a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
-                a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 2, 1);
-                idxlo++;
-            }
-        }
-    }
+                if (lo_type.find("lo2") != std::string::npos) {
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 2, 1);
+                    idxlo++;
+                }
 
-    if (lo_type == "lo+LO") {
-        for (int n = 1; n <= 7; n++) {
-            for (int l = 0; l < 4; l++) {
-                if (nl_v[n][l]) {
+                if (lo_type.find("LO1") != std::string::npos) {
                     a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
                     a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
                     a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 0, 1);
                     idxlo++;
+                }
 
+                if (lo_type.find("LO1") != std::string::npos) {
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 0, 0);
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 1, 0);
                     a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v[n][l] + 1, 0, 1);
                     idxlo++;
-
-                    //a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v[n][l] + 1, 0, 1);
-                    //a.add_lo_descriptor(idxlo, n + 2, l, e_nl_v[n][l] + 2, 0, 1);
-                    //idxlo++;
                 }
             }
         }
-
+    }
+    
+    if (lo_type.find("lo3") != std::string::npos) {
         for (int l = lmax + 1; l < lmax + 3; l++) {
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
@@ -847,9 +853,11 @@ int main(int argn, char **argv)
     /* handle command line arguments */
     cmd_args args;
     args.register_key("--symbol=", "{string} symbol of a chemical element");
-    args.register_key("--type=", "{lo, lo+LO, lo+SLO} type of local orbital basis");
+    args.register_key("--type=", "{lo1, lo2, lo3, LO1, LO2} type of local orbital basis");
     args.register_key("--core=", "{double} cutoff energy (in Ha) for the core states");
     args.register_key("--order=", "{int} order of augmentation");
+    args.register_key("--apw_enu=", "{double} default value for APW linearization energies");
+    args.register_key("--auto_enu", "allow search of APW linearization energies");
     args.register_key("--xml", "xml output for Exciting code");
     args.register_key("--rel", "use scalar-relativistic solver");
     args.parse_args(argn, argv);
@@ -867,8 +875,6 @@ int main(int argn, char **argv)
         printf("        where E is the energy of the bound-state level {n,l}\n");
         printf("  LO  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
         printf("        where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
-        printf("  SLO : sequence of 3rd order local orbitals composed of u(E), udot(E) and u(En),\n");
-        printf("        where E is fixed and En is chosen in such a way that u(En) has n nodes inside the muffin-tin\n");
         printf("\n");
         printf("Examples:\n");
         printf("\n");
@@ -876,7 +882,7 @@ int main(int argn, char **argv)
         printf("    ./atom --symbol=Li\n"); 
         printf("\n");
         printf("  generate high precision basis for titanium:\n");
-        printf("    ./atom --type=lo+SLO --symbol=Ti\n"); 
+        printf("    ./atom --type=lo+LO --symbol=Ti\n"); 
         printf("\n");
         printf("  make all states of iron to be valence:\n");
         printf("    ./atom --core=-1000 --symbol=Fe\n"); 
@@ -886,14 +892,15 @@ int main(int argn, char **argv)
 
     auto symbol = args.value<std::string>("symbol");
 
-    double core_cutoff_energy = -10.0;
-    if (args.exist("core")) core_cutoff_energy = args.value<double>("core");
+    double core_cutoff_energy = args.value<double>("core", -10.0);
 
-    std::string lo_type = "lo";
-    if (args.exist("type")) lo_type = args.value<std::string>("type");
+    std::string lo_type = args.value<std::string>("type", "lo1");
 
-    int apw_order = 1;
-    if (args.exist("order")) apw_order = args.value<int>("order");
+    int apw_order = args.value<int>("order", 2);
+
+    double apw_enu = args.value<double>("apw_enu", 0.15);
+
+    bool auto_enu = args.exist("auto_enu");
 
     bool write_to_xml = args.exist("xml");
 
@@ -903,7 +910,7 @@ int main(int argn, char **argv)
     param.set_lmax_apw(-1);
     Free_atom a = init_atom_configuration(symbol, param);
     
-    generate_atom_file(a, core_cutoff_energy, lo_type, apw_order, write_to_xml, rel);
+    generate_atom_file(a, core_cutoff_energy, lo_type, apw_order, apw_enu, auto_enu, write_to_xml, rel);
 
     sirius::finalize();
 }

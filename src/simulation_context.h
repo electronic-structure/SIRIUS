@@ -78,7 +78,7 @@ class Simulation_context: public Simulation_parameters
 
         Gvec_FFT_distribution* gvec_fft_distr_{nullptr};
 
-        std::vector<Augmentation_operator*> augmentation_op_{nullptr};
+        std::vector<Augmentation_operator*> augmentation_op_;
 
         Real_space_prj* real_space_prj_{nullptr};
 
@@ -238,8 +238,7 @@ class Simulation_context: public Simulation_parameters
         
         void create_storage_file() const
         {
-            if (comm_.rank() == 0)
-            {
+            if (comm_.rank() == 0) {
                 /* create new hdf5 file */
                 HDF5_tree fout(storage_file_name, true);
                 fout.create_node("parameters");
@@ -251,6 +250,14 @@ class Simulation_context: public Simulation_parameters
                 fout["parameters"].write("num_spins", num_spins());
                 fout["parameters"].write("num_mag_dims", num_mag_dims());
                 fout["parameters"].write("num_bands", num_bands());
+
+                mdarray<int, 2> gv(3, gvec_.num_gvec());
+                for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
+                    auto G = gvec_[ig];
+                    for (int x: {0, 1, 2}) gv(x, ig) = G[x];
+                }
+                fout["parameters"].write("num_gvec", gvec_.num_gvec());
+                fout["parameters"].write("gvec", gv);
             }
             comm_.barrier();
         }

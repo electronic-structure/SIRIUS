@@ -1,9 +1,10 @@
 {
     "control" : {
         "cyclic_block_size" : 16,
-        "processing_unit" : "gpu",
+        "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack"
+        "gen_evp_solver_type" : "lapack",
+        "rmt_max" : 3.0
     },
 
     "parameters" : {
@@ -54,6 +55,7 @@
     
     "mixer" : {
         "beta" : 0.95,
+        "beta0" : 0.15,
         "type" : "broyden1",
         "max_history" : 8
     }

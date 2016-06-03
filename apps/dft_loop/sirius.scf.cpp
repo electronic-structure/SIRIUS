@@ -88,7 +88,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         jw.single("timers", ts);
     }
 
-    if (ctx.comm().rank() == 0) {
+    if (ctx.comm().rank() == 0 && aiida_output) {
         std::string fname = std::string("output_aiida.json");
         JSON_write jw(fname);
         if (result >= 0) {
@@ -130,9 +130,11 @@ void ground_state(cmd_args args)
     ctx.set_pw_cutoff(inp.pw_cutoff_);
     ctx.set_aw_cutoff(inp.aw_cutoff_);
     ctx.set_gk_cutoff(inp.gk_cutoff_);
-    ctx.set_lmax_apw(inp.lmax_apw_);
-    ctx.set_lmax_pot(inp.lmax_pot_);
-    ctx.set_lmax_rho(inp.lmax_rho_);
+    if (inp.esm_ == "full_potential_lapwlo") {
+        ctx.set_lmax_apw(inp.lmax_apw_);
+        ctx.set_lmax_pot(inp.lmax_pot_);
+        ctx.set_lmax_rho(inp.lmax_rho_);
+    }
     ctx.set_num_mag_dims(inp.num_mag_dims_);
     ctx.set_auto_rmt(inp.auto_rmt_);
     ctx.set_core_relativity(inp.core_relativity_);

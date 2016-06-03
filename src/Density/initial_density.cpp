@@ -168,7 +168,7 @@ void Density::initial_density()
                 double x = unit_cell_.atom(ia).radial_grid(ir);
                 rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
             }
-            sht.convert(rhoylm, rho_->f_mt(ialoc));
+            rho_->f_mt(ialoc) = convert(rhoylm);
         }
         
         t4.stop();

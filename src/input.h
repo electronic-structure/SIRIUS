@@ -141,7 +141,8 @@ struct Unit_cell_input_section
 struct Mixer_input_section
 {
     double beta_{0.9};
-    double gamma_{1.0};
+    double beta0_{0.15};
+    double linear_mix_rms_tol_{1e6};
     std::string type_{"broyden2"};
     int max_history_{8};
     bool exist_{false};
@@ -152,10 +153,11 @@ struct Mixer_input_section
         {
             exist_ = true;
             auto section = parser["mixer"];
-            beta_        = section["beta"].get(beta_);
-            gamma_       = section["gamma"].get(gamma_);
-            max_history_ = section["max_history"].get(max_history_);
-            type_        = section["type"].get(type_);
+            beta_               = section["beta"].get(beta_);
+            beta0_              = section["beta0"].get(beta0_);
+            linear_mix_rms_tol_ = section["linear_mix_rms_tol"].get(linear_mix_rms_tol_);
+            max_history_        = section["max_history"].get(max_history_);
+            type_               = section["type"].get(type_);
         }
     }
 };

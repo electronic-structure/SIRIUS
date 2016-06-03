@@ -1,0 +1,104 @@
+{
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "gpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "fft_mode" : "serial",
+        "reduce_gvec" : 1
+    },
+
+    "parameters" : {
+
+        "electronic_structure_method" : "norm_conserving_pseudopotential",
+        
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "num_fv_states" : 37,
+        
+        "smearing_width" : 0.025,
+        
+        "use_symmetry" : 1,
+        
+        "num_mag_dims" : 0,
+        
+        "gk_cutoff" : 6.33,
+        "pw_cutoff" : 17.33,
+        
+        "energy_tol" : 1e-10,
+        
+        "num_dft_iter" : 100,
+        
+        "ngridk" : [2,2,2],
+
+        "gamma_point" : 0
+    },
+
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "broyden1",
+        "max_history" : 8
+    },
+
+    "iterative_solver" : {
+        "residual_tolerance" : 1e-6,
+        "energy_tolerance" : 1e-2,
+        "num_steps" : 12,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+
+    "unit_cell": {
+        "lattice_vectors": [
+            [
+                5.4307, 0, 0
+            ], 
+            [
+                0, 5.4307, 0
+            ], 
+            [
+                0, 0, 5.4307
+            ]
+        ], 
+        "lattice_vectors_scale": 1.8897261245650618, 
+        "atom_types": [
+            "Si",
+            "Ge"
+        ], 
+        "atom_files": {
+            "Si": "Si.pz-n-nc.UPF.json",
+            "Ge": "Ge.pz-n-nc.UPF.json"
+        }, 
+        "atoms": {
+            "Ge": [
+                [
+                    0.0, 0.0, 0.0
+                ]
+            ],
+            "Si": [
+                [
+                    0.0, 0.5, 0.5
+                ], 
+                [
+                    0.5, 0.0, 0.5
+                ], 
+                [
+                    0.5, 0.5, 0.0
+                ], 
+                [
+                    0.75, 0.75, 0.25
+                ], 
+                [
+                    0.75, 0.25, 0.75
+                ], 
+                [
+                    0.25, 0.75, 0.75
+                ], 
+                [
+                    0.25, 0.25, 0.25
+                ]
+            ]
+        }
+    }
+}

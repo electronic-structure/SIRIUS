@@ -1996,7 +1996,7 @@ void sirius_potential_mixer_initialize(void)
 {
     if (sim_ctx->mixer_input_section().type_ == "linear")
     {
-        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().gamma_, sim_ctx->comm());
+        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().beta_, sim_ctx->comm());
 
         /* initialize potential mixer */
         potential->pack(mixer_pot);

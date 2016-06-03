@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 { 
 
 "control" : {
@@ -13,6 +14,39 @@
     "electronic_structure_method" : "ultrasoft_pseudopotential",
     
     "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+=======
+{
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "gpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack"
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "ultrasoft_pseudopotential",
+
+        "num_fv_states" : 40,
+        
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "smearing_width" : 0.025,
+        
+        "use_symmetry" : 1,
+        
+        "num_mag_dims" : 0,
+        
+        "gk_cutoff" : 6.0,
+        "pw_cutoff" : 20.00,
+        
+        "energy_tol" : 1e-8,
+        "potential_tol" : 1e-8,
+        
+        "num_dft_iter" : 100,
+        
+        "ngridk" : [2,2,2]
+    },
+>>>>>>> upstream/develop
 
     "!num_fv_states" : 40,
     "iterative_solver" : {
@@ -23,6 +57,7 @@
         "type" : "davidson",
         "converge_by_energy" : 1
     },
+<<<<<<< HEAD
     
     "smearing_width" : 0.025,
     
@@ -40,6 +75,9 @@
     "ngridk" : [2,2,2] 
 },
 
+=======
+        
+>>>>>>> upstream/develop
     "unit_cell" : {
 
         "lattice_vectors" : [ [1, 0, 0], 

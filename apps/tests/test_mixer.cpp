@@ -53,7 +53,7 @@ int main(int argn, char** argv)
     Broyden1<double> mixer2(N, 8, beta, weights, mpi_comm_world());
     test_mixer(mixer2);
 
-    Broyden2<double> mixer3(N, 8, beta, weights, mpi_comm_world());
+    Broyden2<double> mixer3(N, 8, beta, 0.15, 100.0, weights, mpi_comm_world());
     test_mixer(mixer3);
 
     sirius::finalize();

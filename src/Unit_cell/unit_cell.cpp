@@ -675,8 +675,6 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
 
 bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
 {
-    vector3d<int> ntr;
-    
     /* reduce coordinates to the primitive unit cell */
     auto vr = Utils::reduce_coordinates(get_fractional_coordinates(vc));
 

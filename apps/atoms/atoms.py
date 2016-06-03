@@ -24,7 +24,7 @@ while True:
         s1 = line.split()
         mass = float(s1[0]) # mass
 
-        fout.write("./atom --order=2 --type=lo+LO --symbol=" + symbol + "\n");
+        fout.write("./atom --type=lo1 --symbol=" + symbol + "\n");
         
         atoms[symbol] = {}
         atoms[symbol]["name"] = name
