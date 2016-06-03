@@ -202,11 +202,11 @@ void Simulation_context::initialize()
     if (comm_.rank() == 0) print_info();
     #endif
 
-    if (esm_type() == ultrasoft_pseudopotential)
-    {
+    if (esm_type() == ultrasoft_pseudopotential) {
         /* create augmentation operator Q_{xi,xi'}(G) here */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
+        }
     }
     
     time_active_ = -runtime::wtime();

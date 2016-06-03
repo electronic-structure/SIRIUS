@@ -78,7 +78,7 @@ class Simulation_context: public Simulation_parameters
 
         Gvec_FFT_distribution* gvec_fft_distr_{nullptr};
 
-        std::vector<Augmentation_operator*> augmentation_op_{nullptr};
+        std::vector<Augmentation_operator*> augmentation_op_;
 
         Real_space_prj* real_space_prj_{nullptr};
 
