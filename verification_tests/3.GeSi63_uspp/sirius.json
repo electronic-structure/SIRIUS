@@ -1,36 +1,32 @@
 {
-    "cyclic_block_size" : 32,
-    "processing_unit" : "cpu",
-    "std_evp_solver_type" : "lapack",
-    "gen_evp_solver_type" : "lapack",
-    "electronic_structure_method" : "ultrasoft_pseudopotential",
-    
-    "fft_mode" : "serial",
-    
-    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-    "iterative_solver" : {
-        "tolerance" : 1e-10,
-        "num_steps" : 20,
-        "subspace_size" : 4,
-        "type" : "davidson",
-        "converge_by_energy" : 1
+    "control" : {
+        "cyclic_block_size" : 32,
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "fft_mode" : "serial"
     },
     
-    "smearing_width" : 0.025,
+    "parameters" : {
+        "electronic_structure_method" : "ultrasoft_pseudopotential",
     
-    "use_symmetry" : 1,
-    
-    "num_mag_dims" : 0,
-    
-    "gk_cutoff" : 6.33,
-    "pw_cutoff" : 17.33,
-    
-    "energy_tol" : 1e-10,
-    
-    "num_dft_iter" : 100,
-    
-    "ngridk" : [2, 2, 2],
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "smearing_width" : 0.025,
+        
+        "use_symmetry" : 1,
+        
+        "num_mag_dims" : 0,
+        
+        "gk_cutoff" : 6.33,
+        "pw_cutoff" : 17.33,
+        
+        "energy_tol" : 1e-10,
+        
+        "num_dft_iter" : 100,
+        
+        "ngridk" : [2, 2, 2]
+    },
 
     "mixer" : {
         "beta" : 0.95,
@@ -38,6 +34,15 @@
         "max_history" : 8
     },
 
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 12,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+    
     "unit_cell" : {
         "lattice_vectors" : [
             [20.525071, 0.0, 0.0],
