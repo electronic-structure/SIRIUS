@@ -511,7 +511,8 @@ class Unit_cell
         {
             return reciprocal_lattice_vectors_;
         }
-
+        
+        /// Return a single lattice vector.
         inline vector3d<double> lattice_vector(int idx__) const
         {
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));

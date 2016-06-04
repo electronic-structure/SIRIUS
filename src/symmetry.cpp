@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -300,20 +300,23 @@ void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
             /* apply symmetry operation to the G-vector */
             auto gv_rot = transpose(sm) * gv;
             /* check limits */
-            for (int x = 0; x < 3; x++)
-            {
+            for (int x: {0, 1, 2}) {
                 auto limits = gvec__.fft_box().limits(x);
                 /* check boundaries */
-                if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
-                {
+                if (gv_rot[x] < limits.first || gv_rot[x] > limits.second) {
                     std::stringstream s;
                     s << "rotated G-vector is outside of grid limits" << std::endl
-                      << "original G-vector: " << gv << std::endl
+                      << "original G-vector: " << gv << ", length: " << gvec__.cart(ig).length() << std::endl
                       << "rotation matrix: " << std::endl
                       << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
                       << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
                       << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
-                      << "rotated G-vector: " << gv_rot;
+                      << "rotated G-vector: " << gv_rot << std::endl
+                      << "limits: " 
+                      << gvec__.fft_box().limits(0).first << " " <<  gvec__.fft_box().limits(0).second << " "
+                      << gvec__.fft_box().limits(1).first << " " <<  gvec__.fft_box().limits(1).second << " "
+                      << gvec__.fft_box().limits(2).first << " " <<  gvec__.fft_box().limits(2).second;
+
                       TERMINATE(s);
                 }
             }

@@ -108,5 +108,16 @@ std::ostream& operator<<(std::ostream &out, vector3d<T>& v)
     return out;
 }
 
+template <typename T>
+inline vector3d<T> cross(vector3d<T> const a, vector3d<T> const b)
+{
+    vector3d<T> res;
+    res[0] = a[1] * b[2] - a[2] * b[1];
+    res[1] = a[2] * b[0] - a[0] * b[2];
+    res[2] = a[0] * b[1] - a[1] * b[0];
+
+    return res;
+}
+
 #endif // __VECTOR3D_H__
 
