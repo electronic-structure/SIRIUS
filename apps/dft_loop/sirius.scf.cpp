@@ -130,7 +130,7 @@ void ground_state(cmd_args args)
     ctx.set_pw_cutoff(inp.pw_cutoff_);
     ctx.set_aw_cutoff(inp.aw_cutoff_);
     ctx.set_gk_cutoff(inp.gk_cutoff_);
-    if (inp.esm_ == "full_potential_lapwlo") {
+    if (ctx.esm_type() == full_potential_lapwlo) {
         ctx.set_lmax_apw(inp.lmax_apw_);
         ctx.set_lmax_pot(inp.lmax_pot_);
         ctx.set_lmax_rho(inp.lmax_rho_);
@@ -214,6 +214,9 @@ void ground_state(cmd_args args)
     //}
 
     write_json_output(ctx, dft, args.exist("aiida_output"), result);
+
+    /* wait for all */
+    ctx.comm().barrier();
 
     delete density;
     delete potential;
