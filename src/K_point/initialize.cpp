@@ -60,7 +60,8 @@ void K_point::initialize()
         }
         case full_potential_lapwlo:
         {
-            gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
+            //gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
+            gk_cutoff = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
             break;
         }
         default:

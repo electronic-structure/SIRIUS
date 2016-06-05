@@ -132,8 +132,7 @@ class Unit_cell
 
         /// List of augmented wave basis descriptors.
         /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) 
-         *  and corresponding atom and local index \f$ \xi \f$ 
-         */
+         *  and corresponding atom and local index \f$ \xi \f$ */
         std::vector<mt_basis_descriptor> mt_aw_basis_descriptors_; 
 
         std::vector<mt_basis_descriptor> mt_lo_basis_descriptors_; 
