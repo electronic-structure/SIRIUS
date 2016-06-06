@@ -652,7 +652,8 @@ class Atom_type
             mass_ = mass__;
         }
         
-        inline void set_mt_radius(double mt_radius__)
+        inline void set_mt_radius(double mt_radius__) // TODO: this can cause iconsistency with radial_grid; remove this method
+                                                      // mt_radius should always be a last point of radial_grid
         {
             mt_radius_ = mt_radius__;
         }

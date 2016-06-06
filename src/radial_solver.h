@@ -941,8 +941,7 @@ class Enu_finder: public Radial_solver
             /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
              * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top 
              * of the band. */
-            for (int i = 0; i < 1000; i++)
-            {
+            for (int i = 0; i < 1000; i++) {
                 int nnd{0};
 
                 switch (rel__)
@@ -971,12 +970,10 @@ class Enu_finder: public Radial_solver
 
                 enu = (nnd > 0) ? enu - de : enu + de;
 
-                if (i)
-                {
+                if (i) {
                     de = (nnd != nndp) ? de * 0.5 : de * 1.25;
                 }
-                if (std::abs(de) < 1e-10)
-                {
+                if (std::abs(de) < 1e-10) {
                     found = true;
                     break;
                 }
@@ -986,13 +983,10 @@ class Enu_finder: public Radial_solver
 
             auto surface_deriv = [this, &dpdr, &p]()
             {
-                if (true)
-                {
+                if (true) {
                     /* return  p'(R) */
                     return dpdr.back();
-                }
-                else
-                {
+                } else {
                     /* return R*u'(R) */
                     return dpdr.back() - p.back() / radial_grid_.last();
                 }
@@ -1002,9 +996,8 @@ class Enu_finder: public Radial_solver
             
             /* Now we go down in energy and serach for enu such that the wave-function derivative is zero
              * at the muffin-tin boundary. This will be the bottom of the band. */
-            de = 0.001;
-            do
-            {
+            de = 1e-4;
+            for (int i = 0; i < 100; i++) {
                 enu -= de;
                 switch (rel__)
                 {
@@ -1028,15 +1021,17 @@ class Enu_finder: public Radial_solver
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
-                de *= 1.5;
-            } while (surface_deriv() * sd > 0);
+                de *= 1.1;
+                if (surface_deriv() * sd <= 0) {
+                    break;
+                }
+            }
 
             /* refine bottom energy */
             double e1 = enu;
             double e0 = enu + de;
 
-            while (true)
-            {
+            for (int i = 0; i < 100; i++) {
                 enu = (e1 + e0) / 2.0;
                 switch (rel__)
                 {
@@ -1061,14 +1056,13 @@ class Enu_finder: public Radial_solver
                     }
                 }
                 /* derivative at the boundary */
-                if (std::abs(surface_deriv()) < 1e-10) break;
-
-                if (surface_deriv() * sd > 0)
-                {
-                    e0 = enu;
+                if (std::abs(surface_deriv()) < 1e-10) {
+                    break;
                 }
-                else
-                {
+
+                if (surface_deriv() * sd > 0) {
+                    e0 = enu;
+                } else {
                     e1 = enu;
                 }
             }
