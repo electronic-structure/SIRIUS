@@ -55,9 +55,9 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
-        Gvec_FFT_distribution* gkvec_fft_distr_;
+        Gvec_FFT_distribution* gkvec_fft_distr_{nullptr};
 
-        Gvec_FFT_distribution* gkvec_fft_distr_vloc_;
+        Gvec_FFT_distribution* gkvec_fft_distr_vloc_{nullptr};
 
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -196,9 +196,13 @@ class K_point
                 }
             }
 
-            if (gkvec_fft_distr_ != nullptr) delete gkvec_fft_distr_;
+            if (gkvec_fft_distr_ != nullptr) {
+                delete gkvec_fft_distr_;
+            }
 
-            if (gkvec_fft_distr_vloc_ != nullptr) delete gkvec_fft_distr_vloc_;
+            if (gkvec_fft_distr_vloc_ != nullptr) {
+                delete gkvec_fft_distr_vloc_;
+            }
         }
 
         /// Initialize the k-point related arrays and data

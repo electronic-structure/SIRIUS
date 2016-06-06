@@ -29,8 +29,9 @@ void K_point::generate_gkvec(double gk_cutoff)
 
     gkvec_fft_distr_ = new Gvec_FFT_distribution(gkvec_, ctx_.mpi_grid_fft());
 
-    if (!ctx_.full_potential())
+    if (!ctx_.full_potential()) {
         gkvec_fft_distr_vloc_ = new Gvec_FFT_distribution(gkvec_, ctx_.mpi_grid_fft_vloc());
+    }
 }
 
 };
