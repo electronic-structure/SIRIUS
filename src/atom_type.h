@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -405,7 +405,24 @@ class Atom_type
         
         void init(int offset_lo__);
 
-        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
+        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr)
+        {
+            if (num_mt_points_ == 0) {
+                TERMINATE("number of muffin-tin points is zero");
+            }
+            if (num_points__ < 0 && points__ == nullptr) {
+                /* create default exponential grid */
+                radial_grid_ = Radial_grid(lin_exp_grid, num_mt_points_, radial_grid_origin_, mt_radius_); 
+            } else {
+                assert(num_points__ == num_mt_points_);
+                radial_grid_ = Radial_grid(num_points__, points__);
+            }
+            if (parameters_.processing_unit() == GPU) {
+                #ifdef __GPU
+                radial_grid_.copy_to_device();
+                #endif
+            }
+        }
 
         /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
