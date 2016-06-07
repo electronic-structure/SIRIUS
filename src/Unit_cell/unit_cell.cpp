@@ -145,16 +145,36 @@ std::vector<double> Unit_cell::find_mt_radii()
         TERMINATE("array of nearest neighbours is empty");
     }
 
-    std::vector<double> Rmt(num_atom_types(), 1e10);
-    
+    int ia, ja;
+    bool mt_overlap = check_mt_overlap(ia, ja);
+
+    std::vector<double> Rmt(num_atom_types());
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        if (mt_overlap) {
+            Rmt[iat] = 1000;
+        } else {
+            Rmt[iat] = atom_type(iat).mt_radius();
+        }
+    }
+
     for (int ia = 0; ia < num_atoms(); ia++) {
         int id1 = atom(ia).type_id();
         if (nearest_neighbours_[ia].size() > 1) {
-            /* don't allow spheres to touch: take a smaller value than half a distance */
-            double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
-
-            /* take minimal R for the given atom type */
-            Rmt[id1] = std::min(R, Rmt[id1]);
+            int ja = nearest_neighbours_[ia][1].atom_id;
+            int id2 = atom(ja).type_id();
+            if (mt_overlap) {
+                /* don't allow spheres to touch: take a smaller value than half a distance */
+                double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
+                /* take minimal R for the given atom type */
+                Rmt[id1] = std::min(R, Rmt[id1]);
+                Rmt[id2] = std::min(R, Rmt[id2]);
+            } else {
+                double d = nearest_neighbours_[ia][1].distance * 0.95 - Rmt[id1] - Rmt[id2];
+                if (d > 0) {
+                     Rmt[id1] += 0.5 * d;
+                     Rmt[id2] += 0.5 * d;
+                }
+            }
         } else {
             Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1]);
         }
@@ -163,8 +183,7 @@ std::vector<double> Unit_cell::find_mt_radii()
     /* Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, 
      * then we determine Rmt between (let's say) 2nd and 3rd atom and at this point we reduce 
      * the Rmt of the 2nd atom. This means that the 1st atom gets a possibility to expand if 
-     * he is far from the 3rd atom.
-     */
+     * it is far from the 3rd atom. */
     bool inflate = true;
     
     if (inflate) {
@@ -210,23 +229,23 @@ std::vector<double> Unit_cell::find_mt_radii()
 
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
-    if (num_atoms() != 0 && nearest_neighbours_.size() == 0) 
+    if (num_atoms() != 0 && nearest_neighbours_.size() == 0) {
         TERMINATE("array of nearest neighbours is empty");
+    }
 
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
-        if (nearest_neighbours_[ia].size() <= 1) // first atom is always the central one itself
-        {
-            std::stringstream s;
-            s << "array of nearest neighbours for atom " << ia << " is empty";
-            TERMINATE(s);
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        /* first atom is always the central one itself */
+        if (nearest_neighbours_[ia].size() <= 1) {
+            continue;
+            //std::stringstream s;
+            //s << "array of nearest neighbours for atom " << ia << " is empty";
+            //TERMINATE(s);
         }
 
         int ja = nearest_neighbours_[ia][1].atom_id;
         double dist = nearest_neighbours_[ia][1].distance;
         
-        if ((atom(ia).mt_radius() + atom(ja).mt_radius()) > dist)
-        {
+        if (atom(ia).mt_radius() + atom(ja).mt_radius() >= dist) {
             ia__ = ia;
             ja__ = ja;
             return true;
@@ -308,22 +327,18 @@ void Unit_cell::initialize()
     double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
     find_nearest_neighbours(r);
 
-    if (parameters_.full_potential())
-    {
+    if (parameters_.full_potential()) {
         /* find new MT radii and initialize radial grid */
-        if (parameters_.auto_rmt())
-        {
+        if (parameters_.auto_rmt()) {
             std::vector<double> Rmt = find_mt_radii();
-            for (int iat = 0; iat < num_atom_types(); iat++) 
-            {
+            for (int iat = 0; iat < num_atom_types(); iat++) {
                 atom_type(iat).set_mt_radius(Rmt[iat]);
                 atom_type(iat).set_radial_grid();
             }
         }
         
         int ia, ja;
-        if (check_mt_overlap(ia, ja))
-        {
+        if (check_mt_overlap(ia, ja)) {
             std::stringstream s;
             s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")" << " and " 
               << ja << "(" << atom(ja).type().symbol() << ")" << std::endl 
@@ -335,8 +350,7 @@ void Unit_cell::initialize()
         
         min_mt_radius_ = 1e100;
         max_mt_radius_ = 0;
-        for (int i = 0; i < num_atom_types(); i++)
-        {
+        for (int i = 0; i < num_atom_types(); i++) {
              min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
              max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
         }

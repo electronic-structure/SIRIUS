@@ -381,9 +381,6 @@ class Atom_type
         /// Density of a free atom.
         Spline<double> free_atom_density_;
         
-        /// Potential of a free atom.
-        //Spline<double> free_atom_potential_;
-
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
 
