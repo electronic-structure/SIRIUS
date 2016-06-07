@@ -164,19 +164,19 @@ std::vector<double> Unit_cell::find_mt_radii()
             int id2 = atom(ja).type_id();
             if (mt_overlap) {
                 /* don't allow spheres to touch: take a smaller value than half a distance */
-                double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
+                double R = std::min(parameters_.rmt_max(), 0.95 * nearest_neighbours_[ia][1].distance / 2);
                 /* take minimal R for the given atom type */
                 Rmt[id1] = std::min(R, Rmt[id1]);
                 Rmt[id2] = std::min(R, Rmt[id2]);
             } else {
                 double d = nearest_neighbours_[ia][1].distance * 0.95 - Rmt[id1] - Rmt[id2];
                 if (d > 0) {
-                     Rmt[id1] += 0.5 * d;
-                     Rmt[id2] += 0.5 * d;
+                     Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1] + 0.5 * d);
+                     Rmt[id2] = std::min(parameters_.rmt_max(), Rmt[id2] + 0.5 * d);
                 }
             }
         } else {
-            Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1]);
+            Rmt[id1] = parameters_.rmt_max();
         }
     }
     
@@ -211,14 +211,13 @@ std::vector<double> Unit_cell::find_mt_radii()
                 double dist = nearest_neighbours_[ia][1].distance;
                 
                 if (scale_Rmt[id1]) {
-                    Rmt[id1] = 0.95 * (dist - Rmt[id2]);
+                    Rmt[id1] = std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2]));
                 }
             }
         }
     }
     
     for (int i = 0; i < num_atom_types(); i++) {
-        Rmt[i] = std::min(Rmt[i], parameters_.rmt_max());
         if (Rmt[i] < 0.3) {
             TERMINATE("Muffin-tin radius is too small");
         }
