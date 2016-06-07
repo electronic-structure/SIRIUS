@@ -145,39 +145,54 @@ std::vector<double> Unit_cell::find_mt_radii()
         TERMINATE("array of nearest neighbours is empty");
     }
 
-    int ia, ja;
-    bool mt_overlap = check_mt_overlap(ia, ja);
+    //int ia, ja;
+    //bool mt_overlap = check_mt_overlap(ia, ja);
 
     std::vector<double> Rmt(num_atom_types());
     for (int iat = 0; iat < num_atom_types(); iat++) {
-        if (mt_overlap) {
-            Rmt[iat] = 1000;
-        } else {
+        //if (mt_overlap) {
+        //    Rmt[iat] = 1000;
+        //} else {
             Rmt[iat] = atom_type(iat).mt_radius();
-        }
+        //}
     }
+
+    std::vector<double> scale(num_atom_types(), 1e10);
 
     for (int ia = 0; ia < num_atoms(); ia++) {
         int id1 = atom(ia).type_id();
         if (nearest_neighbours_[ia].size() > 1) {
             int ja = nearest_neighbours_[ia][1].atom_id;
             int id2 = atom(ja).type_id();
-            if (mt_overlap) {
-                /* don't allow spheres to touch: take a smaller value than half a distance */
-                double R = std::min(parameters_.rmt_max(), 0.95 * nearest_neighbours_[ia][1].distance / 2);
-                /* take minimal R for the given atom type */
-                Rmt[id1] = std::min(R, Rmt[id1]);
-                Rmt[id2] = std::min(R, Rmt[id2]);
-            } else {
-                double d = nearest_neighbours_[ia][1].distance * 0.95 - Rmt[id1] - Rmt[id2];
-                if (d > 0) {
-                     Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1] + 0.5 * d);
-                     Rmt[id2] = std::min(parameters_.rmt_max(), Rmt[id2] + 0.5 * d);
-                }
-            }
+
+            double d = nearest_neighbours_[ia][1].distance;
+            double s = 0.95 * d / (Rmt[id1] + Rmt[id2]);
+            scale[id1] = std::min(s, scale[id1]);                 
+            scale[id2] = std::min(s, scale[id2]);                 
+
+            //if (mt_overlap) {
+            //    /* don't allow spheres to touch: take a smaller value than half a distance */
+            //    double R = std::min(parameters_.rmt_max(), 0.95 * nearest_neighbours_[ia][1].distance / 2);
+            //    /* take minimal R for the given atom type */
+            //    Rmt[id1] = std::min(R, Rmt[id1]);
+            //    Rmt[id2] = std::min(R, Rmt[id2]);
+            //} else {
+            //    double d = nearest_neighbours_[ia][1].distance;
+            //    double s = 0.95 * d / (Rmt[id1] + Rmt[id2]);
+            //    scale[id1] = std::min(s, scale[id1]);                 
+            //    scale[id2] = std::min(s, scale[id2]);                 
+            //    ////if (d > 0) {
+            //    //    Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1] + 0.5 * d);
+            //    //    Rmt[id2] = std::min(parameters_.rmt_max(), Rmt[id2] + 0.5 * d);
+            //    ////}
+            //}
         } else {
             Rmt[id1] = parameters_.rmt_max();
         }
+    }
+
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        Rmt[iat] = std::min(parameters_.rmt_max(), Rmt[iat] * scale[iat]);
     }
     
     /* Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, 
@@ -215,6 +230,9 @@ std::vector<double> Unit_cell::find_mt_radii()
                 }
             }
         }
+    }
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        printf("Rmt[%i]=%f\n", iat, Rmt[iat]);
     }
     
     for (int i = 0; i < num_atom_types(); i++) {
