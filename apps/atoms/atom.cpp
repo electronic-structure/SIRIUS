@@ -39,11 +39,11 @@ class Free_atom : public sirius::Atom_type
                   int zn, 
                   double mass, 
                   std::vector<atomic_level_descriptor>& levels_nl) 
-            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::scaled_pow_grid), 
+            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::lin_exp_grid), 
               NIST_LDA_Etot(0),
               NIST_ScRLDA_Etot(0)
         {
-            radial_grid_ = sirius::Radial_grid(sirius::exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
+            radial_grid_ = sirius::Radial_grid(sirius::scaled_pow_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
@@ -309,14 +309,6 @@ void generate_atom_file(Free_atom& a,
     /* solve a free atom */
     a.ground_state(1e-10, 1e-8, 1e-8, enu, rel);
    
-    /* find number of core states */
-    int ncore = 0;
-    for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
-        if (enu[ist] < core_cutoff_energy) {
-            ncore += int(a.atomic_level(ist).occupancy + 1e-12);
-        }
-    }
-
     std::string fname = a.symbol() + std::string(".json");
     JSON_write jw(fname);
     jw.single("name", a.name());
@@ -338,14 +330,18 @@ void generate_atom_file(Free_atom& a,
     std::memset(&nl_v[0][0], 0, 32 * sizeof(int));
     std::memset(&e_nl_c[0][0], 0, 32 * sizeof(double));
     std::memset(&e_nl_v[0][0], 0, 32 * sizeof(double));
+
+    double core_cutoff_radius{1.5};
     
     printf("\n");
     printf("Core / valence partitioning\n");
     printf("---------------------------\n");
     printf("core cutoff energy       : %f\n", core_cutoff_energy);
-    printf("number of core electrons : %i\n", ncore);
-    sirius::Spline <double> rho_c(a.radial_grid());
-    sirius::Spline <double> rho(a.radial_grid());
+    printf("core cutoff radius       : %f\n", core_cutoff_radius);
+    sirius::Spline<double> rho_c(a.radial_grid());
+    sirius::Spline<double> rho(a.radial_grid());
+    sirius::Spline<double> s(a.radial_grid());
+    int ncore{0};
     for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
         int n = a.atomic_level(ist).n;
         int l = a.atomic_level(ist).l;
@@ -355,13 +351,26 @@ void generate_atom_file(Free_atom& a,
         
         /* total density */
         for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
-            rho[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
+            s[ir] = a.free_atom_orbital_density(ir, ist);
+            rho[ir] += a.atomic_level(ist).occupancy * s[ir] / fourpi;
+        }
+
+        std::vector<double> g;
+        s.interpolate().integrate(g, 2);
+        double rc{100};
+
+        for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
+            if (1.0 - g[ir] < 1e-5) {
+                rc = a.radial_grid(ir);
+                break;
+            }
         }
 
         /* assign this state to core */
-        if (enu[ist] < core_cutoff_energy) {
+        //if (enu[ist] < core_cutoff_energy) {
+        if (rc < core_cutoff_radius) {
             core.push_back(a.atomic_level(ist));
-            printf("  => core \n");
+            printf("  => core (rc = %f)\n", rc);
 
             for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
                 rho_c[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
@@ -369,14 +378,16 @@ void generate_atom_file(Free_atom& a,
 
             nl_c[n][l]++;
             e_nl_c[n][l] += enu[ist];
+            ncore += static_cast<int>(a.atomic_level(ist).occupancy + 1e-12);
         } else { /* assign this state to valence */
             valence.push_back(a.atomic_level(ist));
-            printf("  => valence\n");
+            printf("  => valence (rc = %f)\n", rc);
 
             nl_v[n][l]++;
             e_nl_v[n][l] += enu[ist];
         }
     }
+    printf("number of core electrons : %i\n", ncore);
     
     /* average energies for {n,l} level */
     for (int n = 1; n <= 7; n++) {
@@ -401,7 +412,8 @@ void generate_atom_file(Free_atom& a,
             }
         }
     }
-
+    
+    printf("valence n for each l:\n");
     for (int l = 0; l < 4; l++) {
         printf("l: %i, n: ", l);
         for (int n: n_v[l]) {
@@ -421,40 +433,36 @@ void generate_atom_file(Free_atom& a,
     /* estimate effective infinity */
     std::vector<double> g;
     rho.interpolate().integrate(g, 2);
-    double rinf = 0;
+    double rinf{0};
     for (int ir = a.radial_grid().num_points() - 1; ir >= 0; ir--) {
         if (g[ir] / g.back() < 0.99999999) {
             rinf = a.radial_grid(ir);
             break;
         }
     }
-
-    ///* estimate effective infinity */
-    //double rinf = 0.0;
-    //for (int ir = 0; ir < a.radial_grid().num_points(); ir++)
-    //{
-    //    rinf = a.radial_grid(ir);
-    //    if (rinf > 5.0 && (rho[ir] * rinf * rinf) < 1e-7) break;
-    //}
     printf("Effective infinity : %f\n", rinf);
 
-    double core_radius = 2.0;
-    int nrmt = 1500;
+    /* estimate core radius */
+    double core_radius = core_cutoff_radius;
     if (ncore != 0) {
         std::vector<double> g;
         rho_c.interpolate().integrate(g, 2);
 
-        for (int ir = a.radial_grid().num_points() - 1; ir >= 0; ir--) {
-            if (std::abs(fourpi * g[ir] - ncore) / ncore > 1e-5) {
+        for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
+            if ((ncore - fourpi * g[ir]) / ncore < 1e-5) {
                 core_radius = a.radial_grid(ir);
                 break;
             }
         }
     }
 
+    /* good number of MT points */
+    int nrmt{1500};
+
     printf("minimum MT radius : %f\n", core_radius);
     jw.single("rmt", core_radius);
     jw.single("nrmt", nrmt);
+    jw.single("rinf", rinf);
     
     /* compact representation of core states */
     std::string core_str;
@@ -705,7 +713,7 @@ void generate_atom_file(Free_atom& a,
         fclose(fout);
     }
 
-    auto rg = sirius::Radial_grid(sirius::exponential_grid, 1500, 1e-7, 2.3);
+    auto rg = sirius::Radial_grid(sirius::lin_exp_grid, 1500, 1e-7, 2.0);
     std::vector<double> x;
     std::vector<double> veff;
     for (int ir = 0; ir < rg.num_points(); ir++) {
@@ -717,12 +725,6 @@ void generate_atom_file(Free_atom& a,
     a.set_radial_grid(1500, &x[0]);
 
     a.init(0);
-    printf("num_points: %i\n", a.radial_grid().num_points());
-    printf("num_mt_points: %i\n", a.num_mt_points());
-    printf("num_lo_descriptors: %i\n", a.num_lo_descriptors());
-    printf("mt_radius: %f\n", a.mt_radius());
-    printf("effective potential: %f %f\n", a.free_atom_potential(rg.first()), a.free_atom_potential(rg.last()));
-
     sirius::Atom_symmetry_class atom_class(0, a);
     atom_class.initialize();
     atom_class.set_spherical_potential(veff);
@@ -825,7 +827,7 @@ void generate_atom_file(Free_atom& a,
     
     //== std::vector<atomic_level_descriptor> levels;
 
-    //== sirius::Atom_type a2(a.parameters(), a.symbol(), a.name(), a.zn(), a.mass(), levels, sirius::radial_grid_t::exponential_grid);
+    //== sirius::Atom_type a2(a.parameters(), a.symbol(), a.name(), a.zn(), a.mass(), levels, sirius::radial_grid_t::lin_exp_grid);
     //== a2.set_mt_radius(2.0);
     //== a2.set_num_mt_points(1500);
     //== a2.set_radial_grid(1500, &x[0]);
@@ -862,12 +864,11 @@ int main(int argn, char **argv)
     args.register_key("--rel", "use scalar-relativistic solver");
     args.parse_args(argn, argv);
     
-    if (argn == 1 || args.exist("help"))
-    {
+    if (argn == 1 || args.exist("help")) {
         printf("\n");
         printf("Atom (L)APW+lo basis generation.\n");
         printf("\n");
-        printf("Usage: ./plot [options] \n");
+        printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         printf("\n");
         printf("Definition of the local orbital types:\n");
