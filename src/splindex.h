@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -33,24 +33,19 @@ enum splindex_t {block, block_cyclic};
 template <typename T>
 class splindex_base
 {
-    private:
-        
-        /* forbid copy constructor */
-        splindex_base(const splindex_base& src) = delete;
-
     protected:
         
         /// Rank of the block with local fraction of the global index.
-        int rank_;
+        int rank_{-1};
         
         /// Number of ranks over which the global index is distributed.
-        int num_ranks_;
+        int num_ranks_{-1};
 
         /// size of the global index 
         T global_index_size_;
 
         /// Default constructor.
-        splindex_base() : rank_(-1), num_ranks_(-1)
+        splindex_base()
         {
         }
 
@@ -119,7 +114,7 @@ class splindex<block, T>: public splindex_base<T>
         splindex()
         {
         }
-        
+
         /// Constructor.
         splindex(T global_index_size__, int num_ranks__, int rank__)
         {
@@ -221,7 +216,7 @@ class splindex<block_cyclic, T>: public splindex_base<T>
     private:
 
         /// cyclic block size of the distribution
-        int block_size_;
+        int block_size_{-1};
 
         // Check and initialize variables.
         void init(T global_index_size__, int num_ranks__, int rank__, int block_size__)
@@ -256,10 +251,10 @@ class splindex<block_cyclic, T>: public splindex_base<T>
     public:
         
         /// Default constructor
-        splindex() : block_size_(-1)
+        splindex()
         {
         }
-        
+
         /// Constructor with implicit cyclic block size
         splindex(T global_index_size__, int num_ranks__, int rank__, int bs__)
         {
@@ -339,80 +334,6 @@ class splindex<block_cyclic, T>: public splindex_base<T>
             return global_index(idxloc__, this->rank_);
         }
 };
-
-/// Iterator for split index.
-/** Split index iterator is introduced to simplify the loop over local part of global index.
- *
- *  Example:
- *  \code{.cpp}
-    splindex<block> spl(17, Platform::num_mpi_ranks(), Platform::mpi_rank());
-    #pragma omp parallel
-    for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
-    {
-        printf("thread_id: %i, local index : %i, global index : %i\n", 
-               Platform::thread_id(), it.idx_local(), it.idx());
-    }
-    \endcode
- */ 
-//== template <splindex_t type> 
-//== class splindex_iterator
-//== {
-//==     private:
-//==         
-//==         /// current global index
-//==         size_t idx_;
-//==         
-//==         /// current local index
-//==         size_t idx_local_;
-//== 
-//==         /// incremental step for operator++
-//==         int inc_;
-//==         
-//==         /// pointer to split index
-//==         splindex<type>& splindex_;
-//== 
-//==     public:
-//==         
-//==         /// Constructor
-//==         splindex_iterator(splindex<type>& splindex__) 
-//==             : idx_(-1), 
-//==               idx_local_(Platform::thread_id()), 
-//==               inc_(Platform::num_threads()),
-//==               splindex_(splindex__)
-//==         {
-//==             valid();
-//==         }
-//==         
-//==         /// Incremental operator
-//==         splindex_iterator<type>& operator++(int)
-//==         {
-//==             this->idx_local_ += inc_;
-//==             return *this;
-//==         }
-//== 
-//==         /// Update the global index and check if it is valid.
-//==         /** Global index is updated using the current value of the local index. 
-//==          *  Return true if the index is valid, otherwise return false. 
-//==          */
-//==         inline bool valid()
-//==         {
-//==             if (idx_local_ >= splindex_.local_size()) return false;
-//==             idx_ = splindex_[idx_local_];
-//==             return true;
-//==         }
-//==         
-//==         /// Return current global index.
-//==         inline size_t idx() const
-//==         {
-//==             return idx_;
-//==         }
-//== 
-//==         /// Return current local index.
-//==         inline size_t idx_local() const
-//==         {
-//==             return idx_local_;
-//==         }
-//== };
 
 #endif // __SPLINDEX_H__
 
