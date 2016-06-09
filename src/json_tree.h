@@ -102,6 +102,24 @@ class JSON_value_parser
             }
         }
 
+        JSON_value_parser(JSONNode const& value, vector3d<int>& data) : type_name_("vector3d<int>"), is_valid_(false)
+        {
+            if (value.type() == JSON_ARRAY) {
+                if (value.size() != 3) {
+                    return;
+                }
+                is_valid_ = true;
+                for (int i = 0; i < 3; i++) {
+                    int t{0};
+                    JSON_value_parser v(value[i], t);
+                    is_valid_ = is_valid_ && v.is_valid();
+                    if (is_valid_) {
+                        data[i] = t;
+                    }
+                }
+            }
+        }
+
         JSON_value_parser(JSONNode const& value, std::string& data) : type_name_("string"), is_valid_(false)
         {
             if (value.type() == JSON_STRING) 
