@@ -460,7 +460,11 @@ void generate_atom_file(Free_atom& a,
     int nrmt{1500};
 
     printf("minimum MT radius : %f\n", core_radius);
-    jw.single("rmt", core_radius);
+    if (ncore) {
+        jw.single("rmt", core_radius);
+    } else {
+        jw.single("rmt", 0.65);
+    }
     jw.single("nrmt", nrmt);
     jw.single("rinf", rinf);
     

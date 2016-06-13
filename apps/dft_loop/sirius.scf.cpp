@@ -7,7 +7,8 @@ enum class task_t
     ground_state_new = 0,
     ground_state_restart = 1,
     relaxation_new = 2,
-    relaxation_restart = 3
+    relaxation_restart = 3,
+    lattice_relaxation_new = 4
 };
 
 const double au2angs = 0.5291772108;
@@ -105,123 +106,271 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
     }
 }
 
-void ground_state(cmd_args args)
+Simulation_context* create_sim_ctx(std::string                     fname__,
+                                   cmd_args const&                 args__,
+                                   Parameters_input_section const& inp__)
 {
-    task_t task = static_cast<task_t>(args.value<int>("task", 0));
-
-    std::string fname = args.value<std::string>("input", "sirius.json");
-    
-    Simulation_context ctx(fname, mpi_comm_world());
+    Simulation_context* ctx_ptr = new Simulation_context(fname__, mpi_comm_world());
+    Simulation_context& ctx = *ctx_ptr;
 
     std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
-    mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
+    mpi_grid_dims = args__.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
-    JSON_tree parser(fname);
-    Parameters_input_section inp;
-    inp.read(parser);
-
-    ctx.set_esm_type(inp.esm_);
-    ctx.set_num_fv_states(inp.num_fv_states_);
-    ctx.set_smearing_width(inp.smearing_width_);
-    for (auto& s: inp.xc_functionals_) {
+    ctx.set_esm_type(inp__.esm_);
+    ctx.set_num_fv_states(inp__.num_fv_states_);
+    ctx.set_smearing_width(inp__.smearing_width_);
+    for (auto& s: inp__.xc_functionals_) {
         ctx.add_xc_functional(s);
     }
-    ctx.set_pw_cutoff(inp.pw_cutoff_);
-    ctx.set_aw_cutoff(inp.aw_cutoff_);
-    ctx.set_gk_cutoff(inp.gk_cutoff_);
+    ctx.set_pw_cutoff(inp__.pw_cutoff_);
+    ctx.set_aw_cutoff(inp__.aw_cutoff_);
+    ctx.set_gk_cutoff(inp__.gk_cutoff_);
     if (ctx.esm_type() == full_potential_lapwlo) {
-        ctx.set_lmax_apw(inp.lmax_apw_);
-        ctx.set_lmax_pot(inp.lmax_pot_);
-        ctx.set_lmax_rho(inp.lmax_rho_);
+        ctx.set_lmax_apw(inp__.lmax_apw_);
+        ctx.set_lmax_pot(inp__.lmax_pot_);
+        ctx.set_lmax_rho(inp__.lmax_rho_);
     }
-    ctx.set_num_mag_dims(inp.num_mag_dims_);
-    ctx.set_auto_rmt(inp.auto_rmt_);
-    ctx.set_core_relativity(inp.core_relativity_);
-    ctx.set_valence_relativity(inp.valence_relativity_);
+    ctx.set_num_mag_dims(inp__.num_mag_dims_);
+    ctx.set_auto_rmt(inp__.auto_rmt_);
+    ctx.set_core_relativity(inp__.core_relativity_);
+    ctx.set_valence_relativity(inp__.valence_relativity_);
+    ctx.set_gamma_point(inp__.gamma_point_);
 
-    auto ngridk = parser["parameters"]["ngridk"].get(std::vector<int>(3, 1));
-    auto shiftk = parser["parameters"]["shiftk"].get(std::vector<int>(3, 0));
+    return ctx_ptr;
+}
 
-    if (inp.gamma_point_ && !(ngridk[0] * ngridk[1] * ngridk[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
-    }
-    ctx.set_gamma_point(inp.gamma_point_);
-
-    ctx.initialize();
-    
+double ground_state(Simulation_context&       ctx,
+                    task_t                    task,
+                    cmd_args const&           args,
+                    Parameters_input_section& inp,
+                    int                       write_output)
+{
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
-    Potential* potential = new Potential(ctx);
-    potential->allocate();
+    Potential potential(ctx);
+    potential.allocate();
+
+    Density density(ctx);
+    density.allocate();
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
 
-    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), vector3d<int>(ngridk[0], ngridk[1], ngridk[2]),
-             vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), inp.use_symmetry_);
-
+    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
     
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
     
-    Density* density = new Density(ctx);
-    density->allocate();
-    
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
-    
-    DFT_ground_state dft(ctx, potential, density, &ks, inp.use_symmetry_);
+    DFT_ground_state dft(ctx, potential, density, ks, inp.use_symmetry_);
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {
             TERMINATE("storage file is not found");
         }
-        density->load();
-        potential->load();
+        density.load();
+        potential.load();
     } else {
-        density->initial_density();
+        density.initial_density();
         dft.generate_effective_potential();
         if (!ctx.full_potential()) {
             dft.initialize_subspace();
         }
     }
     
-    double potential_tol = parser["parameters"]["potential_tol"].get(1e-4);
-    double energy_tol = parser["parameters"]["energy_tol"].get(1e-4);
-
-    //if (task_name == "test_init")
-    //{
-    //    potential->update_atomic_potential();
-    //    ctx.unit_cell().generate_radial_functions();
-    //    dft.print_info();
-    //    ctx.create_storage_file();
-    //    density->save();
-    //}
-    int result{0};
-    if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
-        result = dft.find(potential_tol, energy_tol, parser["parameters"]["num_dft_iter"].get(100));
+    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_);
+    
+    if (write_output) {
+        write_json_output(ctx, dft, args.exist("aiida_output"), result);
     }
-    //if (task_name == "gs_relax")
-    //{
-    //    dft.relax_atom_positions();
-    //}
-
-    write_json_output(ctx, dft, args.exist("aiida_output"), result);
 
     /* wait for all */
     ctx.comm().barrier();
 
-    delete density;
-    delete potential;
-
     runtime::Timer::print();
+
+    return dft.total_energy();
+}
+
+double Etot_fake(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__)
+{
+    vector3d<double> a0{0, 5, 5};
+    vector3d<double> a1{5, 0, 5};
+    vector3d<double> a2{5, 5, 0};
+
+    return std::pow((a0 - a0__).length(), 2) + std::pow((a1 - a1__).length(), 2) + std::pow((a2 - a2__).length(), 2);
+}
+
+void lattice_relaxation(task_t task, cmd_args args, Parameters_input_section& inp)
+{
+    /* get the input file name */
+    std::string fname = args.value<std::string>("input", "sirius.json");
+
+    std::vector< matrix3d<double> > strain;
+
+    strain.push_back({{1, 0, 0},
+                      {0, 0, 0},
+                      {0, 0, 0}});
+
+    strain.push_back({{0, 0, 0},
+                      {0, 1, 0},
+                      {0, 0, 0}});
+
+    strain.push_back({{0, 0, 0},
+                      {0, 0, 0},
+                      {0, 0, 1}});
+    
+    strain.push_back({{0, 1, 0},
+                      {1, 0, 0},
+                      {0, 0, 0}});
+    
+    strain.push_back({{0, 0, 0},
+                      {0, 0, 1},
+                      {0, 1, 0}});
+    
+    strain.push_back({{0, 0, 1},
+                      {0, 0, 0},
+                      {1, 0, 0}});
+
+    Simulation_context* ctx0 = create_sim_ctx(fname, args, inp);
+    auto a0 = ctx0->unit_cell().lattice_vector(0);
+    auto a1 = ctx0->unit_cell().lattice_vector(1);
+    auto a2 = ctx0->unit_cell().lattice_vector(2);
+
+    ///double step = 1e-4;
+    std::vector<double> lat_step(6, 1e-1);
+    std::vector<double> stress_prev(6, 0);
+    
+    matrix3d<double> mt, mtprev;
+
+    for (int iter = 0; iter < 100; iter++) {
+        matrix3d<double> latv;
+        for (int x: {0, 1, 2}) {
+            latv(x, 0) = a0[x];
+            latv(x, 1) = a1[x];
+            latv(x, 2) = a2[x];
+        }
+        std::vector< matrix3d<double> > strain_cart;
+        for (int i = 0; i < 6; i++) {
+            strain_cart.push_back(latv * strain[i]);
+        }
+
+        double e0 = Etot_fake(a0, a1, a2);
+        std::vector<double> stress(6);
+        for (int i = 0; i < 6; i++) {
+            double step = lat_step[i] / 8;
+            vector3d<double> c0 = a0;
+            vector3d<double> c1 = a1;
+            vector3d<double> c2 = a2;
+
+            for (int j = 0; j < 3; j++) {
+                c0[j] += step * strain[i](0, j);
+                c1[j] += step * strain[i](1, j);
+                c2[j] += step * strain[i](2, j);
+            }
+
+            double e1 = Etot_fake(c0, c1, c2);
+
+            stress[i] = -(e1 - e0) / step;
+        }
+
+        for (int i = 0; i < 6; i++) {
+            if (stress[i] * stress_prev[i] >= 0) {
+                lat_step[i] *= 1.25;
+            }
+            else {
+                lat_step[i] *= 0.5;
+            }
+        }
+        stress_prev = stress;
+        
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                a0[j] += stress[i] * lat_step[i] * strain[i](0, j);
+                a1[j] += stress[i] * lat_step[i] * strain[i](1, j);
+                a2[j] += stress[i] * lat_step[i] * strain[i](2, j);
+            }
+        }
+
+        double d{0};
+        for (int i = 0; i < 6; i++) {
+            d += std::abs(lat_step[i]);
+        }
+        std::cout << "diff in step=" << d << std::endl;
+        if (d < 1e-7) {
+            printf("Done in %i iterations!\n", iter);
+            break;
+        }
+
+        for (int i = 0; i < 6; i++) {
+            std::cout << i << " " << stress[i] << " " << lat_step[i] << std::endl;
+        }
+
+        mtprev = mt;
+
+        mt(0, 0) = a0 * a0;
+        mt(0, 1) = a0 * a1;
+        mt(0, 2) = a0 * a2;
+
+        mt(1, 0) = a1 * a0;
+        mt(1, 1) = a1 * a1;
+        mt(1, 2) = a1 * a2;
+        
+        mt(2, 0) = a2 * a0;
+        mt(2, 1) = a2 * a1;
+        mt(2, 2) = a2 * a2;
+
+        d = 0;
+        for (int i: {0, 1, 2}) {
+            for (int j: {0, 1, 2}) {
+                d += std::abs(mt(i, j) - mtprev(i, j));
+            }
+        }
+        std::cout << "diff in mt=" << d << std::endl;
+        if (d < 1e-4) {
+            printf("Metric tensor converged in %i iter!\n", iter);
+            break;
+        }
+
+
+        std::cout << "new vectors: " << std::endl;
+        std::cout << a0 << std::endl;
+        std::cout << a1 << std::endl;
+        std::cout << a2 << std::endl;
+    }
+}
+
+void run_tasks(cmd_args const& args)
+{
+    /* get the task id */
+    task_t task = static_cast<task_t>(args.value<int>("task", 0));
+    /* get the input file name */
+    std::string fname = args.value<std::string>("input", "sirius.json");
+    /* read input section */
+    JSON_tree parser(fname);
+    Parameters_input_section inp;
+    inp.read(parser);
+
+    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
+        TERMINATE("this is not a Gamma-point calculation")
+    }
+
+    if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
+        Simulation_context* ctx = create_sim_ctx(fname, args, inp);
+        ctx->initialize();
+        ground_state(*ctx, task, args, inp, 1);
+        delete ctx;
+    }
+
+    if (task == task_t::lattice_relaxation_new) {
+        lattice_relaxation(task, args, inp);
+    }
+
 }
 
 int main(int argn, char** argv)
@@ -242,7 +391,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
 
-    ground_state(args);
+    run_tasks(args);
     
     sirius::finalize();
 }
