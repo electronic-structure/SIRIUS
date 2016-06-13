@@ -334,91 +334,56 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 	auto& uspp = atom_type.uspp();
 
-	std::vector<int> l_by_lm = Utils::l_by_lm( 2 * atom_type.indexr().lmax_lo() );
+	int lmax = atom_type.indexr().lmax_lo();
+	int lmsize_rho = ( lmax * 2 + 1) * ( lmax * 2 + 1);
+
+	std::vector<int> l_by_lm = Utils::l_by_lm( 2 * lmax );
 
 	//TODO calculate not for every atom but for every atom type
-	Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(),
-			2*atom_type.indexr().lmax_lo(),
-			atom_type.indexr().lmax_lo(),
-			SHT::gaunt_rlm);
+	Gaunt_coefficients<double> GC(lmax, 2*lmax, lmax, SHT::gaunt_rlm);
 
 	auto &ae_atom_pot = ae_paw_local_potential_[atom_index];
 	auto &ps_atom_pot = ps_paw_local_potential_[atom_index];
 
+	//---- precalc integrals ----
+	mdarray<double,3> integrals( lmsize_rho , uspp.num_beta_radial_functions * (uspp.num_beta_radial_functions + 1) / 2, ctx_.num_spins() );
 
-	//--- λ ------------------------
-	auto integrate = [&] (int ispin, int irb1, int irb2, int iqij, int lm3 )
+	for(int ispin = 0; ispin < ctx_.num_spins(); ispin++ )
+	{
+		for(int irb2 = 0; irb2 < uspp.num_beta_radial_functions; irb2++)
+		{
+			for(int irb1 = 0; irb1 <= irb2; irb1++)
 			{
+				// common index
+				int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
+
 				Radial_grid newgrid = atom_type.radial_grid().segment(paw.cutoff_radius_index);
 
-				//create array for integration
+				// create array for integration
 				std::vector<double> intdata(newgrid.num_points(),0);
 
-				// fill array
-				for(int irad=0; irad< intdata.size(); irad++)
+				for(int lm3 = 0; lm3 < lmsize_rho; lm3++ )
 				{
-					double ae_part = paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
-					double ps_part = paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
+					// fill array
+					for(int irad=0; irad< intdata.size(); irad++)
+					{
+						double ae_part = paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
+						double ps_part = paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
 
-					intdata[irad] = ae_atom_pot(lm3,irad,ispin) * ae_part - ps_atom_pot(lm3,irad,ispin) * ps_part;
+						intdata[irad] = ae_atom_pot(lm3,irad,ispin) * ae_part - ps_atom_pot(lm3,irad,ispin) * ps_part;
+					}
 
-					//////////////////////////////////////////////////////////////////////////////
-//					if(std::abs(intdata[irad]) > 300)
-//					{
-//						std::cout<<irb1<<" "<< irb2<< " "<< iqij <<" "<< lm3 <<" | "<< irad<<" | "<<intdata[irad] <<" || "<<ae_part << " " << ae_atom_pot(lm3,irad,ispin)<< " "<< ps_part << " "<<ps_atom_pot(lm3,irad,ispin) << std::endl;
-//					}
-					//////////////////////////////////////////////////////////////////////////////
+					// create spline from data arrays
+					Spline<double> dij_spl(newgrid,intdata);
+
+					// integrate
+					integrals(lm3, iqij, ispin) = dij_spl.integrate(0);
 				}
+			}
+		}
+	}
 
-
-				// create spline from data arrays
-
-				Spline<double> dij_spl(newgrid,intdata);
-
-				//////////////////////////////////////////////////////////////////
-//				std::stringstream s;
-//				s<<"dij_arr_"<<irb1<<"_"<<irb2<<".dat";
-//
-//				std::ofstream of(s.str());
-//
-//
-//				for(int j = 0; j< intdata.size(); j++)
-//				{
-//
-//					of<< intdata[j] <<" ";
-//
-//				}
-//
-//				of.close();
-				//////////////////////////////////////////////////////////////////
-				// integrate
-				return dij_spl.integrate(0);
-			};
-	//---------------------------------------
-
-//	paw_local_Dij_matrix_[atom_index].zero();
-
-		// iterate over spin components
-//		for(int ispin = 0; ispin < (int)ae_atom_density.size(2); ispin++)
-//		{
-	// iterate over local basis functions (or over lm1 and lm2)
-
-	//////////////////////////////////////////////////////////////////////////////
-//	std::ofstream of("deeqs.dat");
-//
-//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
-//	{
-//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
-//		{
-//			of<<atom.d_mtrx(ib1,ib2,0).real()<<std::endl;
-//		}
-//	}
-//
-//	of.close();
-
-
-	//////////////////////////////////////////////////////////////////////////////
-
+	//---- calc Dij ----
 	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
 	{
 		for(int ib1 = 0; ib1 <= ib2; ib1++)
@@ -433,8 +398,7 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 			int irb1 = atom_type.indexb(ib1).idxrf;
 			int irb2 = atom_type.indexb(ib2).idxrf;
 
-			// index to iterate Qij,
-			// TODO check indices
+			// common index
 			int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
 			// get num of non-zero GC
@@ -442,21 +406,13 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 			for(int ispin = 0; ispin < ctx_.num_spins(); ispin++)
 			{
-				//atom.d_mtrx(ib1,ib2,ispin)=0.0;
-
 				// add nonzero coefficients
 				for(int inz = 0; inz < num_non_zero_gk; inz++)
 				{
 					auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
-					/////////////////////////////////////////////////////////////
-//					std::cout<<integrate(ispin,irb1,irb2,iqij,lm3coef.lm3)<<std::endl;
-					//////////////////////////////////////////////////////////////
-
 					// add to atom Dij an integral of dij array
-					atom.d_mtrx(ib1,ib2,ispin) += lm3coef.coef * integrate(ispin,irb1,irb2,iqij,lm3coef.lm3);
-
-//					paw_local_Dij_matrix_[atom_index]( idij, ispin) += lm3coef.coef * integrate(ispin,irb1,irb2,iqij,lm3coef.lm3);
+					atom.d_mtrx(ib1,ib2,ispin) += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
 				}
 
 				atom.d_mtrx(ib2,ib1,ispin) = atom.d_mtrx(ib1,ib2,ispin);
@@ -466,17 +422,17 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 
 	//////////////////////////////////////////////////////////////////
-	std::ofstream ofxc("atom_dij.dat");
-
-	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
-	{
-		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
-		{
-			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
-		}
-	}
-
-	ofxc.close();
+//	std::ofstream ofxc("atom_dij.dat");
+//
+//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
+//	{
+//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
+//		{
+//			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
+//		}
+//	}
+//
+//	ofxc.close();
 	//////////////////////////////////////////////////////////////////
 
 //	TERMINATE("ololo");

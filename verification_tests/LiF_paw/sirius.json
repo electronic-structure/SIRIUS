@@ -23,12 +23,12 @@
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 6.0,
+    "gk_cutoff" : 5.0,
     "pw_cutoff" : 20.00,
 
     "energy_tol" : 1e-8,
 
-    "num_dft_iter" : 3,
+    "num_dft_iter" : 100,
 
     "ngridk" : [8,8,8],
 
@@ -43,8 +43,8 @@
             "atom_types" : ["Li", "F"],
 
             "atom_files" : {
-                "Li" : "Li.json",
-                "F"  : "F.json"
+                "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
+                "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
             },
 
             "atoms" : {
