@@ -23,8 +23,8 @@
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 10.0,
-    "pw_cutoff" : 20.00,
+    "gk_cutoff" : 5.0,
+    "pw_cutoff" : 60.00,
 
     "energy_tol" : 1e-8,
 
