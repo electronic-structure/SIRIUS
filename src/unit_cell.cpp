@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -26,252 +26,6 @@
 
 namespace sirius {
 
-int Unit_cell::next_atom_type_id(const std::string label__)
-{
-    /* check if the label was already added */
-    if (atom_type_id_map_.count(label__) != 0) 
-    {   
-        std::stringstream s;
-        s << "atom type with label " << label__ << " is already in list";
-        TERMINATE(s);
-    }
-    /* take text id */
-    atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
-    return atom_type_id_map_[label__];
-}
-
-void Unit_cell::add_atom_type(const std::string label, const std::string file_name)
-{
-    int id = next_atom_type_id(label);
-    atom_types_.push_back(new Atom_type(parameters_, id, label, file_name));
-}
-
-void Unit_cell::add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
-{
-    if (atom_type_id_map_.count(label) == 0)
-    {
-        std::stringstream s;
-        s << "atom type with label " << label << " is not found";
-        TERMINATE(s);
-    }
-    if (atom_id_by_position(position) >= 0)
-    {
-        std::stringstream s;
-        s << "atom with the same position is already in list" << std::endl
-          << "  position : " << position[0] << " " << position[1] << " " << position[2];
-        TERMINATE(s);
-    }
-
-    atoms_.push_back(new Atom(atom_type(label), position, vector_field));
-    atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
-}
-
-void Unit_cell::add_atom(const std::string label, vector3d<double> position)
-{
-    vector3d<double> vector_field(0, 0, 0);
-    add_atom(label, position, vector_field);
-}
-
-void Unit_cell::get_symmetry()
-{
-    runtime::Timer t("sirius::Unit_cell::get_symmetry");
-    
-    if (num_atoms() == 0) return;
-    
-    if (atom_symmetry_classes_.size() != 0)
-    {
-        for (int ic = 0; ic < (int)atom_symmetry_classes_.size(); ic++) delete atom_symmetry_classes_[ic];
-        atom_symmetry_classes_.clear();
-
-        for (int ia = 0; ia < num_atoms(); ia++) atom(ia).set_symmetry_class(nullptr);
-    }
-
-    if (symmetry_ != nullptr)
-    {
-        TERMINATE("Symmetry() object is already allocated");
-    }
-
-    mdarray<double, 2> positions(3, num_atoms());
-    mdarray<double, 2> spins(3, num_atoms());
-    std::vector<int> types(num_atoms());
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
-        auto vp = atom(ia).position();
-        auto vf = atom(ia).vector_field();
-        for (int x: {0, 1, 2})
-        {
-            positions(x, ia) = vp[x];
-            spins(x, ia) = vf[x];
-        }
-        types[ia] = atom(ia).type_id();
-    }
-    
-    symmetry_ = new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types, parameters_.spglib_tolerance());
-
-    Atom_symmetry_class* atom_symmetry_class;
-    
-    int atom_class_id = -1;
-
-    for (int i = 0; i < num_atoms(); i++)
-    {
-        /* if symmetry class is not assigned to this atom */
-        if (atom(i).symmetry_class_id() == -1)
-        {
-            /* take next id */
-            atom_class_id++;
-            atom_symmetry_class = new Atom_symmetry_class(atom_class_id, atoms_[i]->type());
-            atom_symmetry_classes_.push_back(atom_symmetry_class);
-
-            for (int j = 0; j < num_atoms(); j++) // scan all atoms
-            {
-                bool is_equal = (equivalent_atoms_.size()) ? (equivalent_atoms_[j] == equivalent_atoms_[i]) :  
-                                (symmetry_->atom_symmetry_class(j) == symmetry_->atom_symmetry_class(i));
-                
-                if (is_equal) // assign new class id for all equivalent atoms
-                {
-                    atom_symmetry_class->add_atom_id(j);
-                    atoms_[j]->set_symmetry_class(atom_symmetry_class);
-                }
-            }
-        }
-    }
-    
-    assert(num_atom_symmetry_classes() != 0);
-}
-
-std::vector<double> Unit_cell::find_mt_radii()
-{
-    if (nearest_neighbours_.size() == 0) {
-        TERMINATE("array of nearest neighbours is empty");
-    }
-
-    //int ia, ja;
-    //bool mt_overlap = check_mt_overlap(ia, ja);
-
-    std::vector<double> Rmt(num_atom_types());
-    for (int iat = 0; iat < num_atom_types(); iat++) {
-        //if (mt_overlap) {
-        //    Rmt[iat] = 1000;
-        //} else {
-            Rmt[iat] = atom_type(iat).mt_radius();
-        //}
-    }
-
-    std::vector<double> scale(num_atom_types(), 1e10);
-
-    for (int ia = 0; ia < num_atoms(); ia++) {
-        int id1 = atom(ia).type_id();
-        if (nearest_neighbours_[ia].size() > 1) {
-            int ja = nearest_neighbours_[ia][1].atom_id;
-            int id2 = atom(ja).type_id();
-
-            double d = nearest_neighbours_[ia][1].distance;
-            double s = 0.95 * d / (Rmt[id1] + Rmt[id2]);
-            scale[id1] = std::min(s, scale[id1]);                 
-            scale[id2] = std::min(s, scale[id2]);                 
-
-            //if (mt_overlap) {
-            //    /* don't allow spheres to touch: take a smaller value than half a distance */
-            //    double R = std::min(parameters_.rmt_max(), 0.95 * nearest_neighbours_[ia][1].distance / 2);
-            //    /* take minimal R for the given atom type */
-            //    Rmt[id1] = std::min(R, Rmt[id1]);
-            //    Rmt[id2] = std::min(R, Rmt[id2]);
-            //} else {
-            //    double d = nearest_neighbours_[ia][1].distance;
-            //    double s = 0.95 * d / (Rmt[id1] + Rmt[id2]);
-            //    scale[id1] = std::min(s, scale[id1]);                 
-            //    scale[id2] = std::min(s, scale[id2]);                 
-            //    ////if (d > 0) {
-            //    //    Rmt[id1] = std::min(parameters_.rmt_max(), Rmt[id1] + 0.5 * d);
-            //    //    Rmt[id2] = std::min(parameters_.rmt_max(), Rmt[id2] + 0.5 * d);
-            //    ////}
-            //}
-        } else {
-            Rmt[id1] = parameters_.rmt_max();
-        }
-    }
-
-    for (int iat = 0; iat < num_atom_types(); iat++) {
-        Rmt[iat] = std::min(parameters_.rmt_max(), Rmt[iat] * scale[iat]);
-    }
-    
-    /* Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, 
-     * then we determine Rmt between (let's say) 2nd and 3rd atom and at this point we reduce 
-     * the Rmt of the 2nd atom. This means that the 1st atom gets a possibility to expand if 
-     * it is far from the 3rd atom. */
-    bool inflate = true;
-    
-    if (inflate) {
-        std::vector<bool> scale_Rmt(num_atom_types(), true);
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            int id1 = atom(ia).type_id();
-
-            if (nearest_neighbours_[ia].size() > 1) {
-                int ja = nearest_neighbours_[ia][1].atom_id;
-                int id2 = atom(ja).type_id();
-                double dist = nearest_neighbours_[ia][1].distance;
-            
-                if (Rmt[id1] + Rmt[id2] > dist * 0.94) {
-                    scale_Rmt[id1] = false;
-                    scale_Rmt[id2] = false;
-                }
-            }
-        }
-
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            int id1 = atom(ia).type_id();
-            if (nearest_neighbours_[ia].size() > 1) {
-                int ja = nearest_neighbours_[ia][1].atom_id;
-                int id2 = atom(ja).type_id();
-                double dist = nearest_neighbours_[ia][1].distance;
-                
-                if (scale_Rmt[id1]) {
-                    Rmt[id1] = std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2]));
-                }
-            }
-        }
-    }
-    for (int iat = 0; iat < num_atom_types(); iat++) {
-        printf("Rmt[%i]=%f\n", iat, Rmt[iat]);
-    }
-    
-    for (int i = 0; i < num_atom_types(); i++) {
-        if (Rmt[i] < 0.3) {
-            TERMINATE("Muffin-tin radius is too small");
-        }
-    }
-
-    return Rmt;
-}
-
-bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
-{
-    if (num_atoms() != 0 && nearest_neighbours_.size() == 0) {
-        TERMINATE("array of nearest neighbours is empty");
-    }
-
-    for (int ia = 0; ia < num_atoms(); ia++) {
-        /* first atom is always the central one itself */
-        if (nearest_neighbours_[ia].size() <= 1) {
-            continue;
-            //std::stringstream s;
-            //s << "array of nearest neighbours for atom " << ia << " is empty";
-            //TERMINATE(s);
-        }
-
-        int ja = nearest_neighbours_[ia][1].atom_id;
-        double dist = nearest_neighbours_[ia][1].distance;
-        
-        if (atom(ia).mt_radius() + atom(ja).mt_radius() >= dist) {
-            ia__ = ia;
-            ja__ = ja;
-            return true;
-        }
-    }
-    
-    return false;
-}
-
 void Unit_cell::initialize()
 {
     PROFILE();
@@ -279,34 +33,20 @@ void Unit_cell::initialize()
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
 
-    //if (num_atoms() != 0)
-    //{
-    //    comm_bundle_atoms_ = Communicator_bundle(comm_, num_atoms());
-    //    spl_atoms_ = splindex<block>(num_atoms(), comm_bundle_atoms_.size(), comm_bundle_atoms_.id());
-    //    for (int ia = 0; ia < num_atoms(); ia++)
-    //    {
-    //        int rank = spl_num_atoms().local_rank(ia);
-    //        if (comm_.rank() == rank)
-    //        {
-    //            if (comm_bundle_atoms_.comm().rank() != 0) TERMINATE("wrong root rank");
-    //        }
-    //    }
-    //}
-
     /* initialize atom types */
-    max_num_mt_points_ = 0;
-    max_mt_basis_size_ = 0;
+    max_num_mt_points_        = 0;
+    max_mt_basis_size_        = 0;
     max_mt_radial_basis_size_ = 0;
-    max_mt_aw_basis_size_ = 0;
+    max_mt_aw_basis_size_     = 0;
     lmax_ = -1;
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
         atom_type(iat).init(offs_lo);
-        max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
-        max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
+        max_num_mt_points_        = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
+        max_mt_basis_size_        = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
-        max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
+        max_mt_aw_basis_size_     = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
         lmax_ = std::max(lmax_, atom_type(iat).indexr().lmax());
         offs_lo += atom_type(iat).mt_lo_basis_size(); 
     }
@@ -407,6 +147,196 @@ void Unit_cell::initialize()
             mt_lo_basis_descriptors_[n].xi = xi;
         }
     }
+}
+
+void Unit_cell::get_symmetry()
+{
+    runtime::Timer t("sirius::Unit_cell::get_symmetry");
+    
+    if (num_atoms() == 0) {
+        return;
+    }
+    
+    if (atom_symmetry_classes_.size() != 0) {
+        atom_symmetry_classes_.clear();
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            atom(ia).set_symmetry_class(nullptr);
+        }
+    }
+
+    if (symmetry_ != nullptr) {
+        TERMINATE("Symmetry() object is already allocated");
+    }
+
+    mdarray<double, 2> positions(3, num_atoms());
+    mdarray<double, 2> spins(3, num_atoms());
+    std::vector<int> types(num_atoms());
+    for (int ia = 0; ia < num_atoms(); ia++)
+    {
+        auto vp = atom(ia).position();
+        auto vf = atom(ia).vector_field();
+        for (int x: {0, 1, 2})
+        {
+            positions(x, ia) = vp[x];
+            spins(x, ia) = vf[x];
+        }
+        types[ia] = atom(ia).type_id();
+    }
+    
+    symmetry_ = std::unique_ptr<Symmetry>(new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types,
+                                                       parameters_.spglib_tolerance()));
+
+    int atom_class_id{-1};
+
+    for (int i = 0; i < num_atoms(); i++) {
+        /* if symmetry class is not assigned to this atom */
+        if (atom(i).symmetry_class_id() == -1) {
+            /* take next id */
+            atom_class_id++;
+            atom_symmetry_classes_.push_back(std::move(Atom_symmetry_class(atom_class_id, atoms_[i].type())));
+            
+            /* scan all atoms */
+            for (int j = 0; j < num_atoms(); j++) {
+                bool is_equal = (equivalent_atoms_.size()) ? (equivalent_atoms_[j] == equivalent_atoms_[i]) :  
+                                (symmetry_->atom_symmetry_class(j) == symmetry_->atom_symmetry_class(i));
+                /* assign new class id for all equivalent atoms */
+                if (is_equal) {
+                    atom_symmetry_classes_.back().add_atom_id(j);
+                }
+            }
+        }
+    }
+
+    for (auto& e: atom_symmetry_classes_) {
+        for (int i = 0; i < e.num_atoms(); i++) {
+            int ia = e.atom_id(i);
+            atoms_[ia].set_symmetry_class(&e);
+        }
+    }
+    
+    assert(num_atom_symmetry_classes() != 0);
+}
+
+std::vector<double> Unit_cell::find_mt_radii()
+{
+    if (nearest_neighbours_.size() == 0) {
+        TERMINATE("array of nearest neighbours is empty");
+    }
+
+    std::vector<double> Rmt(num_atom_types(), 1e10);
+    
+    if (parameters_.auto_rmt() == 1) {
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int id1 = atom(ia).type_id();
+            if (nearest_neighbours_[ia].size() > 1) {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja).type_id();
+                /* don't allow spheres to touch: take a smaller value than half a distance */
+                double R = std::min(parameters_.rmt_max(), 0.95 * nearest_neighbours_[ia][1].distance / 2);
+                /* take minimal R for the given atom type */
+                Rmt[id1] = std::min(R, Rmt[id1]);
+                Rmt[id2] = std::min(R, Rmt[id2]);
+            } else {
+                Rmt[id1] = parameters_.rmt_max();
+            }
+        }
+    }
+
+    if (parameters_.auto_rmt() == 2) {
+        std::vector<double> scale(num_atom_types(), 1e10);
+
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int id1 = atom(ia).type_id();
+            if (nearest_neighbours_[ia].size() > 1) {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja).type_id();
+
+                double d = nearest_neighbours_[ia][1].distance;
+                double s = 0.95 * d / (atom_type(id1).mt_radius() + atom_type(id2).mt_radius());
+                scale[id1] = std::min(s, scale[id1]);
+                scale[id2] = std::min(s, scale[id2]);
+            } else {
+                scale[id1] = parameters_.rmt_max() / atom_type(id1).mt_radius();
+            }
+        }
+
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            Rmt[iat] = std::min(parameters_.rmt_max(),  atom_type(iat).mt_radius() * scale[iat]);
+        }
+    }
+    
+    /* Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, 
+     * then we determine Rmt between (let's say) 2nd and 3rd atom and at this point we reduce 
+     * the Rmt of the 2nd atom. This means that the 1st atom gets a possibility to expand if 
+     * it is far from the 3rd atom. */
+    bool inflate = true;
+    
+    if (inflate) {
+        std::vector<bool> scale_Rmt(num_atom_types(), true);
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int id1 = atom(ia).type_id();
+
+            if (nearest_neighbours_[ia].size() > 1) {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja).type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+            
+                if (Rmt[id1] + Rmt[id2] > dist * 0.94) {
+                    scale_Rmt[id1] = false;
+                    scale_Rmt[id2] = false;
+                }
+            }
+        }
+
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int id1 = atom(ia).type_id();
+            if (nearest_neighbours_[ia].size() > 1) {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja).type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                if (scale_Rmt[id1]) {
+                    Rmt[id1] = std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2]));
+                }
+            }
+        }
+    }
+    
+    for (int i = 0; i < num_atom_types(); i++) {
+        if (Rmt[i] < 0.3) {
+            TERMINATE("Muffin-tin radius is too small");
+        }
+    }
+
+    return Rmt;
+}
+
+bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
+{
+    if (num_atoms() != 0 && nearest_neighbours_.size() == 0) {
+        TERMINATE("array of nearest neighbours is empty");
+    }
+
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        /* first atom is always the central one itself */
+        if (nearest_neighbours_[ia].size() <= 1) {
+            continue;
+            //std::stringstream s;
+            //s << "array of nearest neighbours for atom " << ia << " is empty";
+            //TERMINATE(s);
+        }
+
+        int ja = nearest_neighbours_[ia][1].atom_id;
+        double dist = nearest_neighbours_[ia][1].distance;
+        
+        if (atom(ia).mt_radius() + atom(ja).mt_radius() >= dist) {
+            ia__ = ia;
+            ja__ = ja;
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 void Unit_cell::print_info()
@@ -608,19 +538,6 @@ void Unit_cell::write_json()
         out.end_set();
         out.end_set();
     }
-}
-
-void Unit_cell::set_lattice_vectors(double const* a0__, double const* a1__, double const* a2__)
-{
-    for (int x = 0; x < 3; x++)
-    {
-        lattice_vectors_(x, 0) = a0__[x];
-        lattice_vectors_(x, 1) = a1__[x];
-        lattice_vectors_(x, 2) = a2__[x];
-    }
-    inverse_lattice_vectors_ = inverse(lattice_vectors_);
-    omega_ = std::abs(lattice_vectors_.det());
-    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
 }
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)
@@ -844,6 +761,37 @@ std::string Unit_cell::chemical_formula()
     }
 
     return name;
+}
+
+std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const
+{
+    PROFILE_WITH_TIMER("sirius::Unit_cell::make_periodic_function");
+
+    assert((int)form_factors__.size(0) == num_atom_types());
+
+    std::vector<double_complex> f_pw(gvec__.num_gvec(), double_complex(0, 0));
+
+    double fourpi_omega = fourpi / omega();
+
+    splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
+
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+    {
+        int ig = spl_ngv[igloc];
+        int igs = gvec__.shell(ig);
+
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            int iat = atom(ia).type_id();
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__[ig] * atom(ia).position())));
+            f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
+        }
+    }
+
+    comm_.allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
+
+    return std::move(f_pw);
 }
 
 }

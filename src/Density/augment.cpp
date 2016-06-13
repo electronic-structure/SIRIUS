@@ -121,6 +121,10 @@ void Density::augment(K_set& ks__)
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
         auto& atom_type = unit_cell_.atom_type(iat);
+        if (!atom_type.uspp().augmentation_) {
+            continue;
+        }
+
         int nbf = atom_type.mt_basis_size();
         
         /* convert to real matrix */

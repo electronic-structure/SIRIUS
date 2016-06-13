@@ -41,11 +41,11 @@ class DFT_ground_state
 
         Unit_cell& unit_cell_;
 
-        Potential* potential_;
+        Potential& potential_;
 
-        Density* density_;
+        Density& density_;
 
-        K_set* kset_;
+        K_set& kset_;
 
         Band band_;
 
@@ -58,9 +58,9 @@ class DFT_ground_state
     public:
 
         DFT_ground_state(Simulation_context& ctx__,
-                         Potential* potential__,
-                         Density* density__,
-                         K_set* kset__,
+                         Potential& potential__,
+                         Density& density__,
+                         K_set& kset__,
                          int use_symmetry__)
             : ctx_(ctx__),
               unit_cell_(ctx__.unit_cell()),
@@ -96,27 +96,29 @@ class DFT_ground_state
         double energy_vha()
         {
             //return inner(parameters_, density_->rho(), potential_->hartree_potential());
-            return potential_->energy_vha();
+            return potential_.energy_vha();
         }
         
         double energy_vxc()
         {
-            return density_->rho()->inner(potential_->xc_potential());
+            return density_.rho()->inner(potential_.xc_potential());
         }
         
         double energy_exc()
         {
-            double exc = density_->rho()->inner(potential_->xc_energy_density());
-            if (!ctx_.full_potential())
-                exc += density_->rho_pseudo_core()->inner(potential_->xc_energy_density());
+            double exc = density_.rho()->inner(potential_.xc_energy_density());
+            if (!ctx_.full_potential()) {
+                exc += density_.rho_pseudo_core()->inner(potential_.xc_energy_density());
+            }
             return exc;
         }
 
         double energy_bxc()
         {
             double ebxc = 0.0;
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) 
-                ebxc += density_->magnetization(j)->inner(potential_->effective_magnetic_field(j));
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                ebxc += density_.magnetization(j)->inner(potential_.effective_magnetic_field(j));
+            }
             return ebxc;
         }
 
@@ -128,7 +130,7 @@ class DFT_ground_state
         /// Full eigen-value sum (core + valence)
         double eval_sum()
         {
-            return (core_eval_sum() + kset_->valence_eval_sum());
+            return (core_eval_sum() + kset_.valence_eval_sum());
         }
         
         /// Kinetic energy
@@ -180,7 +182,7 @@ class DFT_ground_state
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
-                    return (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() + 
+                    return (kset_.valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() + 
                             energy_exc() + ewald_energy_);
                 }
                 default:
@@ -198,13 +200,13 @@ class DFT_ground_state
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
                 {
-                    potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+                    potential_.generate_effective_potential(density_.rho(), density_.magnetization());
                     break;
                 }
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
-                    potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
+                    potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
                     break;
                 }
             }
@@ -220,29 +222,29 @@ class DFT_ground_state
             auto& comm = ctx_.comm();
 
             /* symmetrize PW components */
-            unit_cell_.symmetry()->symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
+            unit_cell_.symmetry().symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    unit_cell_.symmetry()->symmetrize_vector_z_component(&gz__->f_pw(0), ctx_.gvec(), comm);
+                    unit_cell_.symmetry().symmetrize_vector_z_component(&gz__->f_pw(0), ctx_.gvec(), comm);
                     break;
                 }
                 case 3: {
-                    unit_cell_.symmetry()->symmetrize_vector(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
-                                                             ctx_.gvec(), comm);
+                    unit_cell_.symmetry().symmetrize_vector(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
+                                                            ctx_.gvec(), comm);
                     break;
                 }
             }
 
             if (ctx_.full_potential()) {
                 /* symmetrize MT components */
-                unit_cell_.symmetry()->symmetrize_function(f__->f_mt(), comm);
+                unit_cell_.symmetry().symmetrize_function(f__->f_mt(), comm);
                 switch (ctx_.num_mag_dims()) {
                     case 1: {
-                        unit_cell_.symmetry()->symmetrize_vector_z_component(gz__->f_mt(), comm);
+                        unit_cell_.symmetry().symmetrize_vector_z_component(gz__->f_mt(), comm);
                         break;
                     }
                     case 3: {
-                        unit_cell_.symmetry()->symmetrize_vector(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
+                        unit_cell_.symmetry().symmetrize_vector(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
                         break;
                     }
                 }

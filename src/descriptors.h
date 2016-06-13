@@ -110,6 +110,8 @@ class uspp_descriptor
         /// Radial functions of Q-operator.
         mdarray<double, 3> q_radial_functions_l;
 
+        bool augmentation_{false};
+
         std::vector<double> core_charge_density;
 
         std::vector<double> total_charge_density;

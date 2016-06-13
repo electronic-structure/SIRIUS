@@ -86,6 +86,8 @@ class Hloc_operator
             : fft_(fft__),
               gkvec_fft_distr_(gkvec_fft_distr__)
         {
+            PROFILE();
+
             /* cache kinteic energy of plane-waves */
             pw_ekin_ = std::vector<double>(gkvec_fft_distr_.num_gvec_fft());
             for (int ig_loc = 0; ig_loc < gkvec_fft_distr_.num_gvec_fft(); ig_loc++)

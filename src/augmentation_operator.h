@@ -208,6 +208,8 @@ class Augmentation_operator
             #endif
         }
 
+        bool augmentation_{false};
+
     public:
        
         Augmentation_operator(Communicator const& comm__,
@@ -217,7 +219,10 @@ class Augmentation_operator
             : comm_(comm__),
               atom_type_(atom_type__)
         {
-            generate_pw_coeffs(omega__, gvec__);
+            augmentation_ = atom_type__.uspp().augmentation_;
+            if (augmentation_) {
+                generate_pw_coeffs(omega__, gvec__);
+            }
         }
 
         void prepare(int what__) const

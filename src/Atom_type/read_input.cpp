@@ -221,6 +221,7 @@ void Atom_type::read_input(const std::string& fname)
 
         if (parser["pseudo_potential"].exist("augmentation"))
         {
+            uspp_.augmentation_ = true;
             uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * lmax_beta + 1);
             uspp_.q_radial_functions_l.zero();
 

@@ -89,6 +89,8 @@ class Gvec
         Gvec()
         {
         }
+        
+        Gvec(Gvec&& src__) = default;
 
         Gvec(vector3d<double>        q__,
              matrix3d<double> const& M__,
@@ -489,8 +491,9 @@ class Gvec_FFT_distribution
             : gvec_(gvec__),
               mpi_grid_fft_(mpi_grid_fft__)
         {
-            if (mpi_grid_fft__.size() != gvec__.num_ranks_)
-            {
+            PROFILE();
+
+            if (mpi_grid_fft__.size() != gvec__.num_ranks_) {
                 TERMINATE("inconsistent number of ranks");
             }
 
@@ -505,8 +508,8 @@ class Gvec_FFT_distribution
             : gvec_(gvec__),
               mpi_grid_fft_(comm__)
         {
-            if (comm__.size() != gvec__.num_ranks_)
-            {
+            PROFILE();
+            if (comm__.size() != gvec__.num_ranks_) {
                 TERMINATE("inconsistent number of ranks");
             }
 

@@ -115,7 +115,7 @@ double DFT_ground_state::energy_enuc()
         {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             int zn = unit_cell_.atom(ia).zn();
-            enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
+            enuc -= 0.5 * zn * potential_.vh_el(ia) * y00;
         }
         ctx_.comm().allreduce(&enuc, 1);
     }
@@ -166,7 +166,9 @@ void DFT_ground_state::move_atoms(int istep)
 
 void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {
-    Force::total_force(ctx_, potential_, density_, kset_, forces__);
+    STOP();
+
+    //Force::total_force(ctx_, potential_, density_, kset_, forces__);
 }
 
 int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
@@ -176,9 +178,9 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
     double eold{0}, rms{0};
 
     if (ctx_.full_potential()) {
-        potential_->mixer_init();
+        potential_.mixer_init();
     } else {
-        density_->mixer_init();
+        density_.mixer_init();
     }
 
     int result{-1};
@@ -187,24 +189,24 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
-        kset_->find_eigen_states(potential_, band_, true);
+        kset_.find_eigen_states(&potential_, band_, true);
         /* find band occupancies */
-        kset_->find_band_occupancies();
+        kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
-        density_->generate(*kset_);
+        density_.generate(kset_);
         /* compute new total energy for a new density */
         double etot = total_energy();
         /* symmetrize density and magnetization */
         if (use_symmetry_) {
-            symmetrize(density_->rho(), density_->magnetization(0), density_->magnetization(1),
-                       density_->magnetization(2));
+            symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
+                       density_.magnetization(2));
         }
         /* set new tolerance of iterative solver */
         if (!ctx_.full_potential()) {
-            rms = density_->mix();
-            double tol = std::max(1e-12, 0.1 * density_->dr2() / ctx_.unit_cell().num_valence_electrons());
+            rms = density_.mix();
+            double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
             if (ctx_.comm().rank() == 0) {
-                printf("dr2: %18.10f, tol: %18.10f\n",  density_->dr2(), tol);
+                printf("dr2: %18.10f, tol: %18.10f\n",  density_.dr2(), tol);
             }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
@@ -240,7 +242,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
         //==                                 if (a <= 2.0)
         //==                                 {
-        //==                                     mag[2] += density_->magnetization(0)->f_rg(ir);
+        //==                                     mag[2] += density_.magnetization(0)->f_rg(ir);
         //==                                 }
         //==                             }
         //==                         }
@@ -258,12 +260,12 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
         /* symmetrize potential and effective magnetic field */
         if (use_symmetry_) {
-            symmetrize(potential_->effective_potential(), potential_->effective_magnetic_field(0),
-                       potential_->effective_magnetic_field(1), potential_->effective_magnetic_field(2));
+            symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
+                       potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
 
         if (ctx_.full_potential()) {
-            rms = potential_->mix();
+            rms = potential_.mix();
         }
 
         /* write some information */
@@ -282,8 +284,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
     }
     
     ctx_.create_storage_file();
-    potential_->save();
-    density_->save();
+    potential_.save();
+    density_.save();
 
     return result;
 }
@@ -303,7 +305,7 @@ void DFT_ground_state::relax_atom_positions()
 
 void DFT_ground_state::print_info()
 {
-    double evalsum1 = kset_->valence_eval_sum();
+    double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum();
     double ekin = energy_kin();
     double evxc = energy_vxc();
@@ -311,20 +313,20 @@ void DFT_ground_state::print_info()
     double ebxc = energy_bxc();
     double evha = energy_vha();
     double etot = total_energy();
-    double gap = kset_->band_gap() * ha2ev;
-    double ef = kset_->energy_fermi();
-    double core_leak = density_->core_leakage();
+    double gap = kset_.band_gap() * ha2ev;
+    double ef = kset_.energy_fermi();
+    double core_leak = density_.core_leakage();
     double enuc = energy_enuc();
 
     std::vector<double> mt_charge;
     double it_charge;
-    double total_charge = density_->rho()->integrate(mt_charge, it_charge); 
+    double total_charge = density_.rho()->integrate(mt_charge, it_charge); 
     
     double total_mag[3];
     std::vector<double> mt_mag[3];
     double it_mag[3];
     for (int j = 0; j < ctx_.num_mag_dims(); j++) 
-        total_mag[j] = density_->magnetization(j)->integrate(mt_mag[j], it_mag[j]);
+        total_mag[j] = density_.magnetization(j)->integrate(mt_mag[j], it_mag[j]);
     
     if (ctx_.comm().rank() == 0)
     {
@@ -482,22 +484,22 @@ void DFT_ground_state::initialize_subspace()
     }
     printf("number of atomic orbitals: %i\n", N);
 
-    for (int ikloc = 0; ikloc < kset_->spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = kset_->spl_num_kpoints(ikloc);
-        auto kp = (*kset_)[ik];
+        int ik = kset_.spl_num_kpoints(ikloc);
+        auto kp = kset_[ik];
         
         if (ctx_.gamma_point())
         {
-            band_.initialize_subspace<double>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
+            band_.initialize_subspace<double>(kp, potential_.effective_potential(), potential_.effective_magnetic_field(), N, lmax, rad_int);
         }
         else
         {
-            band_.initialize_subspace<double_complex>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
+            band_.initialize_subspace<double_complex>(kp, potential_.effective_potential(), potential_.effective_magnetic_field(), N, lmax, rad_int);
         }
     }
 
-    //kset_->find_band_occupancies();
+    //kset_.find_band_occupancies();
 }
 
 }

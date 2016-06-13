@@ -89,7 +89,7 @@ class K_set
             std::vector<double> wk;
             if (use_symmetry__)
             {
-                nk = unit_cell_.symmetry()->get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
+                nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
             }
             else
             {
