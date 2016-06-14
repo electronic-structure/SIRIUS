@@ -54,14 +54,14 @@ void Band::initialize_subspace(K_point* kp__,
 
     /* fill the remaining basis functions with single PW harmonics */
     #pragma omp parallel for
-    for (int i = num_ao__; i < num_phi; i++)
-    {
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-        {
+    for (int i = num_ao__; i < num_phi; i++) {
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             phi(igk_loc, i) = 0;
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
-            if (igk == i) phi(igk_loc, i) = 1;
+            if (igk == i) {
+                phi(igk_loc, i) = 1;
+            }
         }
     }
 
@@ -157,9 +157,10 @@ void Band::initialize_subspace(K_point* kp__,
         diag_h_o<T>(kp__, num_phi, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
 
         #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0)
-        {
-            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f", i, eval[i]);
+        if (kp__->comm().rank() == 0) {
+            for (int i = 0; i < num_bands; i++) {
+                DUMP("eval[%i]=%20.16f", i, eval[i]);
+            }
         }
         #endif
         
@@ -182,6 +183,16 @@ void Band::initialize_subspace(K_point* kp__,
         for (int j = 0; j < ctx_.num_fv_states(); j++) {
             kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
         }
+
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        {
+            double cs{0};
+            for (int i = 0; i < num_bands; i++) {
+                cs += eval[i];
+            }
+            DUMP("checksum(eval): %18.10f", cs);
+        }
+        #endif
     }
 
     kp__->beta_projectors().dismiss();

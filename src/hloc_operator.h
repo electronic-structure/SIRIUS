@@ -122,6 +122,7 @@ class Hloc_operator
                 {
                     //auto cs1 = mdarray<double_complex, 1>(&v_pw_coarse[0], gvec__.num_gvec_fft()).checksum();
                     auto cs2 = mdarray<double, 1>(&veff_vec_(0, j), fft_.local_size()).checksum();
+                    fft_.comm().allreduce(&cs2, 1);
                     //DUMP("checksum(v_pw_coarse): %18.10f %18.10f", cs1.real(), cs1.imag());
                     DUMP("checksum(v_rg_coarse): %18.10f", cs2);
                 }
