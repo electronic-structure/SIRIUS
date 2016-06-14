@@ -472,6 +472,7 @@ void DFT_ground_state::initialize_subspace()
 
     kset_.find_band_occupancies();
 
+    /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
         for (int i = 0; i < ctx_.num_bands(); i++) {
             kset_[ik]->band_energy(i) = 0;
