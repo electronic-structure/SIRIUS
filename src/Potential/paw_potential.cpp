@@ -13,6 +13,8 @@ namespace sirius
 void Potential::init_PAW()
 {
 	//--- allocate PAW potential array ---
+	paw_hartree_energies_.resize(unit_cell_.num_atoms());
+	paw_xc_energies_.resize(unit_cell_.num_atoms());
 
 	for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 	{
@@ -35,9 +37,9 @@ void Potential::init_PAW()
 		ps_paw_local_potential_.push_back(std::move(ps_atom_potential));
 
 		// allocate Dij
-//		mdarray<double, 2> atom_Dij( (atype.indexb().size() * (atype.indexb().size()+1)) / 2, ctx_.num_spins());
+		//		mdarray<double, 2> atom_Dij( (atype.indexb().size() * (atype.indexb().size()+1)) / 2, ctx_.num_spins());
 
-//		paw_local_Dij_matrix_.push_back(std::move(atom_Dij));
+		//		paw_local_Dij_matrix_.push_back(std::move(atom_Dij));
 	}
 }
 
@@ -46,16 +48,16 @@ void Potential::init_PAW()
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 void Potential::generate_PAW_effective_potential(std::vector< mdarray<double, 2> > *paw_ae_local_density,
-												std::vector< mdarray<double, 2> > *paw_ps_local_density,
-												std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
-												std::vector< mdarray<double, 3> > *paw_ps_local_magnetization)
+												 std::vector< mdarray<double, 2> > *paw_ps_local_density,
+												 std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
+												 std::vector< mdarray<double, 3> > *paw_ps_local_magnetization)
 {
 	for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 	{
 		calc_PAW_local_potential(ia, paw_ae_local_density->at(ia),
-									paw_ps_local_density->at(ia),
-									paw_ae_local_magnetization->at(ia),
-									paw_ps_local_magnetization->at(ia));
+								 paw_ps_local_density->at(ia),
+								 paw_ae_local_magnetization->at(ia),
+								 paw_ps_local_magnetization->at(ia));
 
 		calc_PAW_local_Dij(ia);
 	}
@@ -66,12 +68,16 @@ void Potential::generate_PAW_effective_potential(std::vector< mdarray<double, 2>
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
-void Potential::xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
-									  Spheric_function<spectral,double> &out_atom_pot_sf,
-									  Spheric_function<spectral,double> &full_rho_lm,
+void Potential::xc_mt_PAW_nonmagnetic(const Radial_grid& rgrid,
+									  mdarray<double, 3> &out_atom_pot,
+									  mdarray<double, 2> &full_rho_lm,
 									  const std::vector<double> &rho_core)
 {
-	Spheric_function<spatial,double> full_rho_tp_sf = sht_->transform(full_rho_lm);
+	Spheric_function<spectral,double> out_atom_pot_sf(&out_atom_pot(0,0,0), full_rho_lm.size(0), rgrid);
+
+	Spheric_function<spectral,double> full_rho_lm_sf(&full_rho_lm(0,0), full_rho_lm.size(0), rgrid);
+
+	Spheric_function<spatial,double> full_rho_tp_sf = sht_->transform(full_rho_lm_sf);
 
 	Spheric_function<spatial,double> vxc_tp_sf(sht_->num_points(), rgrid);
 
@@ -85,7 +91,7 @@ void Potential::xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
 		}
 	}
 
-	xc_mt_nonmagnetic(rgrid, xc_func_, full_rho_lm, full_rho_tp_sf, vxc_tp_sf, exc_tp_sf);
+	xc_mt_nonmagnetic(rgrid, xc_func_, full_rho_lm_sf, full_rho_tp_sf, vxc_tp_sf, exc_tp_sf);
 
 	out_atom_pot_sf += sht_->transform(vxc_tp_sf);
 
@@ -96,22 +102,28 @@ void Potential::xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
-void Potential::xc_mt_PAW_collinear(Radial_grid const& rgrid,
-									 Spheric_function<spectral,double>  &out_atom_pot_up_sf,
-									 Spheric_function<spectral,double>  &out_atom_pot_dn_sf,
-									 Spheric_function<spectral,double> &full_rho_lm,
-									 mdarray<double,3> &magnetization_lm,
-									 const std::vector<double> &rho_core)
+void Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
+									mdarray<double,3> &out_atom_pot,
+									mdarray<double,2> &full_rho_lm,
+									mdarray<double,3> &magnetization_lm,
+									const std::vector<double> &rho_core)
 {
-	int lmsize_rho = full_rho_lm.angular_domain_size();
+	int lmsize_rho = full_rho_lm.size(0);
+
+	// make spherical functions for input density
+	Spheric_function<spectral,double> full_rho_lm_sf(&full_rho_lm(0,0),lmsize_rho,rgrid);
+
+	// make spherical functions for output potential
+	Spheric_function<spectral,double> out_atom_pot_up_sf(&out_atom_pot(0,0,0),lmsize_rho,rgrid);
+	Spheric_function<spectral,double> out_atom_pot_dn_sf(&out_atom_pot(0,0,1),lmsize_rho,rgrid);
 
 	// make magnetization from z component in lm components
 	Spheric_function<spectral,double> magnetization_Z_lm(&magnetization_lm(0,0,2), lmsize_rho, rgrid );
 
 	// calculate spin up spin down density components in lm components
 	// up = 1/2 ( rho + magn );  down = 1/2 ( rho - magn )
-	Spheric_function<spectral,double> rho_u_lm_sf =  0.5 * (full_rho_lm + magnetization_Z_lm);
-	Spheric_function<spectral,double> rho_d_lm_sf =  0.5 * (full_rho_lm - magnetization_Z_lm);
+	Spheric_function<spectral,double> rho_u_lm_sf =  0.5 * (full_rho_lm_sf + magnetization_Z_lm);
+	Spheric_function<spectral,double> rho_d_lm_sf =  0.5 * (full_rho_lm_sf - magnetization_Z_lm);
 
 	// transform density to theta phi components
 	Spheric_function<spatial,double> rho_u_tp_sf = sht_->transform( rho_u_lm_sf );
@@ -154,11 +166,76 @@ void Potential::xc_mt_PAW_collinear(Radial_grid const& rgrid,
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
+double Potential::calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
+											 mdarray<double, 2> &full_density,
+											 mdarray<double, 3> &out_atom_pot)
+{
+	//---------------------
+	//-- calc potential --
+	//---------------------
+	int lmsize_rho = full_density.size(0);
+
+	Spheric_function<function_domain_t::spectral,double> dens_sf(&full_density(0,0), lmsize_rho, grid);
+
+	// make spher funcs from arrays
+	std::vector< Spheric_function<spectral,double> > atom_pot_sfs;
+
+	for(int i=0;i<ctx_.num_spins();i++)
+	{
+		Spheric_function<spectral,double> atom_pot_sf(&out_atom_pot(0,0,i), lmsize_rho, grid);
+
+		atom_pot_sfs.push_back(std::move(atom_pot_sf));
+	}
+
+	// create qmt to store multipoles
+	mdarray<double_complex,1> qmt(lmsize_rho);
+
+	// solve poisson eq and fill 0th spin component of hartree array (in nonmagnetic we have only this)
+	qmt.zero();
+	poisson_atom_vmt(dens_sf, atom_pot_sfs[0], qmt, atom);
+
+	// if we have collinear megnetic states we need to add the same Hartree potential to DOWN-DOWN channel
+	if(ctx_.num_spins() == 2)
+	{
+		atom_pot_sfs[1] += atom_pot_sfs[0];
+	}
+
+	//---------------------
+	//--- calc energy ---
+	//---------------------
+	std::vector<int> l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
+
+	// create array for integration
+	std::vector<double> intdata(grid.num_points(),0);
+
+	double hartree_energy=0.0;
+
+	for(int lm=0; lm < lmsize_rho; lm++)
+	{
+		// fill data to integrate
+		for(int irad = 0; irad < grid.num_points(); irad++)
+		{
+			intdata[irad] = full_density(lm,irad) * out_atom_pot(lm, irad, 0) * grid[irad] * grid[irad];
+		}
+
+		// create spline from the data
+		Spline<double> h_spl(grid,intdata);
+
+		hartree_energy += 0.5 * h_spl.integrate(0);
+	}
+
+	return hartree_energy;
+}
+
+
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 void Potential::calc_PAW_local_potential(int atom_index,
-							  mdarray<double, 2> &ae_full_density,
-							  mdarray<double, 2> &ps_full_density,
-							  mdarray<double, 3> &ae_local_magnetization,
-							  mdarray<double, 3> &ps_local_magnetization)
+										 mdarray<double, 2> &ae_full_density,
+										 mdarray<double, 2> &ps_full_density,
+										 mdarray<double, 3> &ae_local_magnetization,
+										 mdarray<double, 3> &ps_local_magnetization)
 {
 	auto& atom = unit_cell_.atom(atom_index);
 
@@ -169,87 +246,26 @@ void Potential::calc_PAW_local_potential(int atom_index,
 
 	//std::cout<< ae_full_density(0,0);
 
-	int lmax = atom_type.indexr().lmax_lo();
-	int lmsize_rho = ( lmax * 2 + 1) * ( lmax * 2 + 1);
-
-	// make spheric functions from data arrays
-	Spheric_function<function_domain_t::spectral,double> ae_dens_sf(&ae_full_density(0,0), lmsize_rho, atom.radial_grid());
-	Spheric_function<function_domain_t::spectral,double> ps_dens_sf(&ps_full_density(0,0), lmsize_rho, atom.radial_grid());
-
+//	int lmax = atom_type.indexr().lmax_lo();
+//	int lmsize_rho = ( lmax * 2 + 1) * ( lmax * 2 + 1);
+//
+//	// make spheric functions from data arrays
+//	Spheric_function<function_domain_t::spectral,double> ae_dens_sf(&ae_full_density(0,0), lmsize_rho, atom.radial_grid());
+//	Spheric_function<function_domain_t::spectral,double> ps_dens_sf(&ps_full_density(0,0), lmsize_rho, atom.radial_grid());
+//
 
 	//-----------------------------------------
 	//---- Calculation of Hartree potential ---
 	//-----------------------------------------
-	auto &ae_atom_pot = ae_paw_local_potential_[atom_index];
-	auto &ps_atom_pot = ps_paw_local_potential_[atom_index];
+	double ae_hartree_energy = calc_PAW_hartree_potential(atom,
+														  atom.radial_grid(),
+														  ae_full_density,
+														  ae_paw_local_potential_[atom_index]);
 
-	ae_atom_pot.zero();
-	ps_atom_pot.zero();
-
-	// make spher funcs from arrays
-	std::vector< Spheric_function<spectral,double> > ae_atom_pot_sfs;
-	std::vector< Spheric_function<spectral,double> > ps_atom_pot_sfs;
-
-	for(int i=0;i<ctx_.num_spins();i++)
-	{
-		Spheric_function<spectral,double> ae_atom_pot_sf(&ae_atom_pot(0,0,i), lmsize_rho, atom.radial_grid());
-		Spheric_function<spectral,double> ps_atom_pot_sf(&ps_atom_pot(0,0,i), lmsize_rho, atom.radial_grid());
-
-		ae_atom_pot_sfs.push_back(std::move(ae_atom_pot_sf));
-		ps_atom_pot_sfs.push_back(std::move(ps_atom_pot_sf));
-	}
-
-	// create qmt to store multipoles
-	mdarray<double_complex,1> qmt(lmsize_rho);
-
-	// solve poisson eq and fill 0th spin component of hartree array (in nonmagnetic we have only this)
-	qmt.zero();
-	poisson_atom_vmt(ae_dens_sf, ae_atom_pot_sfs[0], qmt, atom);
-
-	qmt.zero();
-	poisson_atom_vmt(ps_dens_sf, ps_atom_pot_sfs[0], qmt, atom);
-
-	// if we have collinear megnetic states we need to add the same Hartree potential to DOWN-DOWN channel
-	if(ctx_.num_spins() == 2)
-	{
-		ae_atom_pot_sfs[1] += ae_atom_pot_sfs[0];
-		ps_atom_pot_sfs[1] += ps_atom_pot_sfs[0];
-	}
-
-	//// DEBUG //////////////////////////////////////////////
-//		std::cout<<"hartree done"<<std::endl;
-//
-//		std::stringstream s,sd;
-//		s<<"hartree_2_"<<atom_index<<".dat";
-//		sd<<"density_2_"<<atom_index<<".dat";
-//
-//		std::ofstream of(s.str());
-//		std::ofstream ofd(sd.str());
-//		std::ofstream ofg("grid.dat");
-//
-//
-//		for(int j = 0; j< ae_full_density.size(0); j++)
-//		{
-//			for(int i = 0; i< ae_full_density.size(1); i++)
-//			{
-//				of<< ae_atom_pot_sfs[0](j,i) << " " << ps_atom_pot_sfs[0](j,i) << std::endl;
-//				ofd<< ae_full_density(j,i) << " " << ps_full_density(j,i) << std::endl;
-//			}
-//		}
-//
-//		for(int i = 0; i< ae_full_density.size(1); i++)
-//		{
-//			ofg << atom.radial_grid(i)<< " ";
-//		}
-//
-//		std::cout<<"hartree out done"<<std::endl;
-//
-//		of.close();
-//		ofd.close();
-//		ofg.close();
-
-	/////////////////////////////////////////////////////////////////
-
+	double ps_hartree_energy = calc_PAW_hartree_potential(atom,
+														  atom.radial_grid(),
+														  ps_full_density,
+														  ps_paw_local_potential_[atom_index]);
 
 	//-----------------------------------------
 	//---- Calculation of XC potential ---
@@ -258,52 +274,20 @@ void Potential::calc_PAW_local_potential(int atom_index,
 	{
 		case 1:
 		{
-			xc_mt_PAW_nonmagnetic(atom.radial_grid(), ae_atom_pot_sfs[0], ae_dens_sf ,paw.all_elec_core_charge);
-			xc_mt_PAW_nonmagnetic(atom.radial_grid(), ps_atom_pot_sfs[0], ps_dens_sf ,uspp.core_charge_density);
+			xc_mt_PAW_nonmagnetic(atom.radial_grid(), ae_paw_local_potential_[atom_index],
+								  ae_full_density ,paw.all_elec_core_charge);
 
-			//////// DEBUG ///////////////////////////////////
-//				std::ofstream ofxc("tot.dat");
-//
-//				for(int j = 0; j< ae_atom_pot_sfs[0].angular_domain_size(); j++)
-//				{
-//					for(int i = 0; i< ae_atom_pot_sfs[0].radial_grid().num_points(); i++)
-//					{
-//						ofxc<< ae_atom_pot_sfs[0](j,i) << " " << ps_atom_pot_sfs[0](j,i) << std::endl;
-//
-//					}
-//				}
-//
-//				ofxc.close();
-			////////////////////////////////////////////////////
+			xc_mt_PAW_nonmagnetic(atom.radial_grid(), ps_paw_local_potential_[atom_index],
+								  ps_full_density,uspp.core_charge_density);
 		}break;
 
 		case 2:
 		{
-
-
-			xc_mt_PAW_collinear(atom.radial_grid(), ae_atom_pot_sfs[0],ae_atom_pot_sfs[1], ae_dens_sf,
+			xc_mt_PAW_collinear(atom.radial_grid(), ae_paw_local_potential_[atom_index], ae_full_density,
 								ae_local_magnetization, paw.all_elec_core_charge);
 
-			xc_mt_PAW_collinear(atom.radial_grid(), ps_atom_pot_sfs[0], ps_atom_pot_sfs[1], ps_dens_sf,
+			xc_mt_PAW_collinear(atom.radial_grid(), ps_paw_local_potential_[atom_index], ps_full_density,
 								ps_local_magnetization, uspp.core_charge_density);
-
-			//////// DEBUG ///////////////////////////////////
-//				std::ofstream ofxc_up("tot_up.dat");
-//				std::ofstream ofxc_dn("tot_dn.dat");
-//
-//				for(int j = 0; j< ae_atom_pot_sfs[0].angular_domain_size(); j++)
-//				{
-//					for(int i = 0; i< ae_atom_pot_sfs[0].radial_grid().num_points(); i++)
-//					{
-//						ofxc_up<< ae_atom_pot_sfs[0](j,i) << " " << ae_atom_pot_sfs[0](j,i) << std::endl;
-//						ofxc_dn<< ps_atom_pot_sfs[0](j,i) << " " << ps_atom_pot_sfs[0](j,i) << std::endl;
-//
-//					}
-//				}
-//
-//				ofxc_up.close();
-//				ofxc_dn.close();
-			////////////////////////////////////////////////////
 		}break;
 
 		case 3:
@@ -334,6 +318,7 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 	auto& uspp = atom_type.uspp();
 
+	// get lm size for density
 	int lmax = atom_type.indexr().lmax_lo();
 	int lmsize_rho = ( lmax * 2 + 1) * ( lmax * 2 + 1);
 
@@ -422,20 +407,20 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
 
 	//////////////////////////////////////////////////////////////////
-//	std::ofstream ofxc("atom_dij.dat");
-//
-//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
-//	{
-//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
-//		{
-//			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
-//		}
-//	}
-//
-//	ofxc.close();
+	//	std::ofstream ofxc("atom_dij.dat");
+	//
+	//	for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
+	//	{
+	//		for(int ib1 = 0; ib1 < (int)atom_type.mt_lo_basis_size(); ib1++)
+	//		{
+	//			ofxc<< atom.d_mtrx(ib1,ib2,0).real() << std::endl;
+	//		}
+	//	}
+	//
+	//	ofxc.close();
 	//////////////////////////////////////////////////////////////////
 
-//	TERMINATE("ololo");
+	//	TERMINATE("ololo");
 }
 
 }

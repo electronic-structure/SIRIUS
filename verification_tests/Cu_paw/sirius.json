@@ -9,28 +9,28 @@
     "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
     "iterative_solver" : {
-        "energy_tolerance" : 1e-12,
-        "residual_tolerance" : 1e-6,
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-10,
         "num_steps" : 20,
         "subspace_size" : 4,
         "type" : "davidson",
         "converge_by_energy" : 1
     },
 
-    "smearing_width" : 0.02,
+    "smearing_width" : 0.1,
 
     "use_symmetry" : 1,
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 5.0,
-    "pw_cutoff" : 60.00,
+    "gk_cutoff" : 6.0,
+    "pw_cutoff" : 25.00,
 
     "energy_tol" : 1e-8,
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [8,8,8],
+    "ngridk" : [4,4,4],
 
     "unit_cell" : {
 

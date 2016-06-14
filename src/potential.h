@@ -100,6 +100,9 @@ class Potential
         std::vector< mdarray<double,3> > ae_paw_local_potential_;
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
 
+        std::vector< double > paw_hartree_energies_;
+        std::vector< double > paw_xc_energies_;
+
         // TODO probably replace to non_local_operator
         //std::vector< mdarray<double,2> > paw_local_Dij_matrix_; // 3 dimensions: i, j, spin
 
@@ -171,17 +174,16 @@ class Potential
         void init_PAW();
 
         void xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
-								   Spheric_function<spectral,double> &out_atom_pot_sf,
-								   Spheric_function<spectral,double> &full_rho_lm,
-								   const std::vector<double> &rho_core);
+									  mdarray<double, 3> &out_atom_pot,
+									  mdarray<double, 2> &full_rho_lm,
+									  const std::vector<double> &rho_core);
 
 
         void xc_mt_PAW_collinear(Radial_grid const& rgrid,
-								 Spheric_function<spectral,double>  &out_atom_pot_up_sf,
-								 Spheric_function<spectral,double>  &out_atom_pot_dn_sf,
-								 Spheric_function<spectral,double> &full_rho_lm,
-								 mdarray<double,3> &magnetization_lm,
-								 const std::vector<double> &rho_core);
+									mdarray<double,3> &out_atom_pot,
+									mdarray<double,2> &full_rho_lm,
+									mdarray<double,3> &magnetization_lm,
+									const std::vector<double> &rho_core);
 
         // TODO DO
         void xc_mt_PAW_noncollinear(	)	{     };
@@ -194,6 +196,10 @@ class Potential
 
 
         void calc_PAW_local_Dij(int atom_index);
+
+        double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
+											 mdarray<double, 2> &full_density,
+											 mdarray<double, 3> &out_atom_pot);
 
         //---
 
