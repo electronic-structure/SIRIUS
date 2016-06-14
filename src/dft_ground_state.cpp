@@ -106,32 +106,6 @@ double DFT_ground_state::ewald_energy()
     return (ewald_g + ewald_r);
 }
 
-double DFT_ground_state::energy_enuc()
-{
-    double enuc = 0.0;
-    if (ctx_.full_potential())
-    {
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-        {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            int zn = unit_cell_.atom(ia).zn();
-            enuc -= 0.5 * zn * potential_.vh_el(ia) * y00;
-        }
-        ctx_.comm().allreduce(&enuc, 1);
-    }
-    
-    return enuc;
-}
-
-double DFT_ground_state::core_eval_sum()
-{
-    double sum = 0.0;
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-        sum += unit_cell_.atom_symmetry_class(ic).core_eval_sum() * 
-               unit_cell_.atom_symmetry_class(ic).num_atoms();
-    }
-    return sum;
-}
 
 void DFT_ground_state::move_atoms(int istep)
 {
@@ -441,65 +415,68 @@ void DFT_ground_state::initialize_subspace()
     /* spherical Bessel functions jl(qx) for atom types */
     mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         /* create jl(qx) */
         #pragma omp parallel for
-        for (int iq = 0; iq < nq; iq++)
+        for (int iq = 0; iq < nq; iq++) {
             jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
+        }
 
         rad_int[iat].resize(atom_type.uspp().atomic_pseudo_wfs_.size());
         /* loop over all pseudo wave-functions */
-        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++)
-        {
+        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++) {
             rad_int[iat][i] = Spline<double>(qgrid);
             
             /* interpolate atomic_pseudo_wfs(r) */
             Spline<double> wf(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++)
+            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
                 wf[ir] = atom_type.uspp().atomic_pseudo_wfs_[i].second[ir];
+            }
             wf.interpolate();
             
             int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
             #pragma omp parallel for
-            for (int iq = 0; iq < nq; iq++)
+            for (int iq = 0; iq < nq; iq++) {
                 rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
+            }
 
             rad_int[iat][i].interpolate();
         }
     }
 
     /* get the total number of atomic-centered orbitals */
-    int N = 0;
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    int N{0};
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        int n = 0;
-        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_)
-        {
+        int n{0};
+        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_) {
             n += (2 * wf.first + 1);
         }
         N += atom_type.num_atoms() * n;
     }
     printf("number of atomic orbitals: %i\n", N);
 
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
-    {
+    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
         
-        if (ctx_.gamma_point())
-        {
-            band_.initialize_subspace<double>(kp, potential_.effective_potential(), potential_.effective_magnetic_field(), N, lmax, rad_int);
-        }
-        else
-        {
-            band_.initialize_subspace<double_complex>(kp, potential_.effective_potential(), potential_.effective_magnetic_field(), N, lmax, rad_int);
+        if (ctx_.gamma_point()) {
+            band_.initialize_subspace<double>(kp, potential_.effective_potential(),
+                                              potential_.effective_magnetic_field(), N, lmax, rad_int);
+        } else {
+            band_.initialize_subspace<double_complex>(kp, potential_.effective_potential(),
+                                                      potential_.effective_magnetic_field(), N, lmax, rad_int);
         }
     }
 
-    //kset_.find_band_occupancies();
+    kset_.find_band_occupancies();
+
+    for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
+        for (int i = 0; i < ctx_.num_bands(); i++) {
+            kset_[ik]->band_energy(i) = 0;
+        }
+    }
 }
 
 }

@@ -179,9 +179,9 @@ void Band::initialize_subspace(K_point* kp__,
         }
         #endif
 
-        //for (int j = 0; j < ctx_.num_fv_states(); j++)
-        //    //kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
-        //    kp__->band_energy(j + ispn * ctx_.num_fv_states()) = j;
+        for (int j = 0; j < ctx_.num_fv_states(); j++) {
+            kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
+        }
     }
 
     kp__->beta_projectors().dismiss();

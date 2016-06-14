@@ -249,17 +249,17 @@ class K_set
         {
             kpoints_[ik]->set_band_occupancies(band_occupancies);
         }
-        
-        void get_band_energies(int ik, double* band_energies)
-        {
-            kpoints_[ik]->get_band_energies(band_energies);
-        }
-        
+
         void get_band_occupancies(int ik, double* band_occupancies)
         {
             kpoints_[ik]->get_band_occupancies(band_occupancies);
         }
 
+        void get_band_energies(int ik, double* band_energies)
+        {
+            kpoints_[ik]->get_band_energies(band_energies);
+        }
+        
         inline double energy_fermi()
         {
             return energy_fermi_;
