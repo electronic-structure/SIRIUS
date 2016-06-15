@@ -171,12 +171,10 @@ void Unit_cell::get_symmetry()
     mdarray<double, 2> positions(3, num_atoms());
     mdarray<double, 2> spins(3, num_atoms());
     std::vector<int> types(num_atoms());
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < num_atoms(); ia++) {
         auto vp = atom(ia).position();
         auto vf = atom(ia).vector_field();
-        for (int x: {0, 1, 2})
-        {
+        for (int x: {0, 1, 2}) {
             positions(x, ia) = vp[x];
             spins(x, ia) = vf[x];
         }
@@ -187,10 +185,10 @@ void Unit_cell::get_symmetry()
                                                        parameters_.spglib_tolerance()));
 
     int atom_class_id{-1};
-
+    std::vector<int> asc(num_atoms(), -1);
     for (int i = 0; i < num_atoms(); i++) {
         /* if symmetry class is not assigned to this atom */
-        if (atom(i).symmetry_class_id() == -1) {
+        if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
             atom_symmetry_classes_.push_back(std::move(Atom_symmetry_class(atom_class_id, atoms_[i].type())));
@@ -201,6 +199,7 @@ void Unit_cell::get_symmetry()
                                 (symmetry_->atom_symmetry_class(j) == symmetry_->atom_symmetry_class(i));
                 /* assign new class id for all equivalent atoms */
                 if (is_equal) {
+                    asc[j] = atom_class_id;
                     atom_symmetry_classes_.back().add_atom_id(j);
                 }
             }

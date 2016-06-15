@@ -10,6 +10,8 @@ void Band::initialize_subspace(K_point* kp__,
                                int lmax__,
                                std::vector< std::vector< Spline<double> > >& rad_int__) const
 {
+    PROFILE();
+
     auto pu = ctx_.processing_unit();
 
     /* number of basis functions */
