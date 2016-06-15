@@ -22,8 +22,7 @@ void Band::initialize_subspace(K_point* kp__,
         std::vector<double> gkvec_rlm(Utils::lmmax(lmax__));
         /* fill first N functions with atomic orbitals */
         #pragma omp for
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-        {
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
             /* vs = {r, theta, phi} */
@@ -31,18 +30,15 @@ void Band::initialize_subspace(K_point* kp__,
             /* compute real spherical harmonics for G+k vector */
             SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_rlm[0]);
 
-            int n = 0;
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            {
+            int n{0};
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 double phase = twopi * (kp__->gkvec().gvec_shifted(igk) * unit_cell_.atom(ia).position());
-                double_complex phase_factor =  std::exp(double_complex(0.0, -phase));
+                double_complex phase_factor = std::exp(double_complex(0.0, -phase));
 
                 auto& atom_type = unit_cell_.atom(ia).type();
-                for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++)
-                {
+                for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++) {
                     int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
-                    for (int m = -l; m <= l; m++)
-                    {
+                    for (int m = -l; m <= l; m++) {
                         int lm = Utils::lm_by_l_m(l, m);
                         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                         phi(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
@@ -52,16 +48,21 @@ void Band::initialize_subspace(K_point* kp__,
         }
     }
 
-    /* fill the remaining basis functions with single PW harmonics */
+    /* fill the remaining basis functions with gaussians */
     #pragma omp parallel for
     for (int i = num_ao__; i < num_phi; i++) {
+        auto r = (ctx_.unit_cell().lattice_vector(0) +
+                  ctx_.unit_cell().lattice_vector(1) +
+                  ctx_.unit_cell().lattice_vector(2)) * (double(i - num_ao__) / (num_phi - num_ao__));
+
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-            phi(igk_loc, i) = 0;
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
-            if (igk == i) {
-                phi(igk_loc, i) = 1;
-            }
+            auto gv = kp__->gkvec().cart_shifted(igk);
+            double phase = gv * r;
+            double_complex phase_factor = std::exp(double_complex(0.0, -phase));
+
+            phi(igk_loc, i) = std::exp(-4 * std::pow(gv.length(), 2)) * phase_factor;
         }
     }
 

@@ -90,19 +90,27 @@ class Hloc_operator
 
             /* cache kinteic energy of plane-waves */
             pw_ekin_ = std::vector<double>(gkvec_fft_distr_.num_gvec_fft());
-            for (int ig_loc = 0; ig_loc < gkvec_fft_distr_.num_gvec_fft(); ig_loc++)
-            {
+            for (int ig_loc = 0; ig_loc < gkvec_fft_distr_.num_gvec_fft(); ig_loc++) {
                 /* global index of G-vector */
                 int ig = gkvec_fft_distr_.offset_gvec_fft() + ig_loc;
                 /* get G+k in Cartesian coordinates */
                 auto gv = gkvec_fft_distr_.gvec().cart_shifted(ig);
                 pw_ekin_[ig_loc] = 0.5 * (gv * gv);
             }
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            {
+                auto cs = std::accumulate(pw_ekin_.begin(), pw_ekin_.end(), 0.0);
+                fft_.comm().allreduce(&cs, 1);
+                DUMP("checksum(pw_ekin): %18.10f", cs);
+            }
+            #endif
             
             /* group effective fields into single vector */
             std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
             veff_vec[0] = effective_potential__;
-            for (int j = 0; j < num_mag_dims__; j++) veff_vec[1 + j] = effective_magnetic_field__[j];
+            for (int j = 0; j < num_mag_dims__; j++) {
+                veff_vec[1 + j] = effective_magnetic_field__[j];
+            }
 
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), num_mag_dims__ + 1);
 
@@ -212,32 +220,29 @@ class Hloc_operator
             }
             
             /* if we don't have G-vector reductions, first = 0 and we start a normal loop */
-            for (int i = first; i < hphi__.spl_num_swapped().local_size(); i++)
-            {
+            for (int i = first; i < hphi__.spl_num_swapped().local_size(); i++) {
                 /* phi(G) -> phi(r) */
                 fft_.transform<1>(gkvec_fft_distr_, hphi__[i]);
                 /* multiply by effective potential */
-                if (fft_.hybrid())
-                {
+                if (fft_.hybrid()) {
                     #ifdef __GPU
                     scale_matrix_rows_gpu(fft_.local_size(), 1, fft_.buffer<GPU>(), veff_vec_.at<GPU>(0, ispn__));
                     #else
                     TERMINATE_NO_GPU
                     #endif
-                }
-                else
-                {
+                } else {
                     #pragma omp parallel for
-                    for (int ir = 0; ir < fft_.local_size(); ir++) fft_.buffer(ir) *= veff_vec_(ir, ispn__);
-
+                    for (int ir = 0; ir < fft_.local_size(); ir++) {
+                        fft_.buffer(ir) *= veff_vec_(ir, ispn__);
+                    }
                 }
                 /* V(r)phi(r) -> [V*phi](G) */
                 fft_.transform<-1>(gkvec_fft_distr_, &vphi1_[0]);
-
                 /* add kinetic energy */
                 #pragma omp parallel for
-                for (int ig = 0; ig < gkvec_fft_distr_.num_gvec_fft(); ig++)
+                for (int ig = 0; ig < gkvec_fft_distr_.num_gvec_fft(); ig++) {
                     hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
+                }
             }
 
             hphi__.swap_backward(idx0__, n__, gkvec_fft_distr_);

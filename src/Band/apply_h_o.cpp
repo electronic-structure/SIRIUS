@@ -66,7 +66,7 @@ void Band::apply_h_o(K_point* kp__,
             //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
         }
     }
-    
+
     //== if (!kp__->gkvec().reduced())
     //== {
     //==     // --== DEBUG ==--
