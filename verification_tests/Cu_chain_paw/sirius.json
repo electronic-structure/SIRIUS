@@ -17,7 +17,7 @@
         "converge_by_energy" : 1
     },
 
-    "smearing_width" : 0.02,
+    "smearing_width" : 0.1,
 
     "use_symmetry" : 1,
 
@@ -30,15 +30,15 @@
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [7,7,7],
+    "ngridk" : [1,1,100],
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [0, 0.5, 0.5],
-                              [0.5, 0, 0.5],
-                              [0.5, 0.5, 0]
+        "lattice_vectors" : [ [4, 0.0, 0.0],
+                              [0.0, 4, 0.0],
+                              [0.0, 0.0, 1.0]
                             ],
-        "lattice_vectors_scale" : 6.73,
+        "lattice_vectors_scale" : 4.5,
 
         "atom_types" : ["Cu"],
 
@@ -55,7 +55,7 @@
 
     "mixer" : {
         "beta" : 0.7,
-        "type" : "linear",
+        "type" : "broyden1",
         "max_history" : 8
     }
 

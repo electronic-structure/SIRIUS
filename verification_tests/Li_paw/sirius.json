@@ -34,20 +34,20 @@
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [0, 0.5, 0.5],
-                              [0.5, 0, 0.5],
-                              [0.5, 0.5, 0]
+        "lattice_vectors" : [ [0.5, 0.5, -0.5],
+                              [-0.5, 0.5, 0.5],
+                              [0.5, -0.5, 0.5]
                             ],
-        "lattice_vectors_scale" : 6.73,
+        "lattice_vectors_scale" : 6.597,
 
-        "atom_types" : ["Cu"],
+        "atom_types" : ["Li"],
 
         "atom_files" : {
-            "Cu" : "Cu.pz-dn-kjpaw_psl.0.2.UPF.json"
+            "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json"
         },
 
         "atoms" : {
-            "Cu" : [
+            "Li" : [
                 [0.0, 0.0, 0.0]
             ]
         }
