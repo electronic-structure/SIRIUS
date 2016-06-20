@@ -75,6 +75,11 @@ class vector3d
             return vec_[i];
         }
 
+        inline T l1norm() const
+        {
+            return std::abs(vec_[0]) + std::abs(vec_[1]) + std::abs(vec_[2]);
+        }
+
         /// Return vector length
         inline double length() const
         {

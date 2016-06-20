@@ -49,22 +49,46 @@ void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
-
-    /* fill the remaining basis functions with gaussians */
     #pragma omp parallel for
     for (int i = num_ao__; i < num_phi; i++) {
-        auto r = (ctx_.unit_cell().lattice_vector(0) +
-                  ctx_.unit_cell().lattice_vector(1) +
-                  ctx_.unit_cell().lattice_vector(2)) * (double(i - num_ao__) / (num_phi - num_ao__));
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+            phi(igk_loc, i) = 0;
+        }
+    }
 
+    std::vector< vector3d<int> > gkv;
+    for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
+        gkv.push_back(kp__->gkvec()[igk]);
+    }
+    std::sort(gkv.begin(), gkv.end(), [](vector3d<int>& a, vector3d<int>& b) {
+        int la = a.l1norm();
+        int lb = b.l1norm();
+        if (la < lb) {
+            return true;
+        }
+        if (la > lb) {
+            return false;
+        }
+        for (int x: {0, 1, 2}) {
+            if (a[x] < b[x]) {
+                return true;
+            }
+            if (a[x] > b[x]) {
+                return false;
+            }
+        }
+        return false;
+    });
+    
+    for (int i = 0; i < num_phi - num_ao__; i++) {
+        auto v1 = gkv[i];
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
-            auto gv = kp__->gkvec().cart_shifted(igk);
-            double phase = gv * r;
-            double_complex phase_factor = std::exp(double_complex(0.0, -phase));
-
-            phi(igk_loc, i) = std::exp(-4 * std::pow(gv.length(), 2)) * phase_factor;
+            auto v2 = kp__->gkvec()[igk];
+            if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
+                phi(igk_loc, num_ao__ + i) = 1.0;
+            }
         }
     }
 
