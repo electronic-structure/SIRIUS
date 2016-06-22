@@ -2,13 +2,142 @@
 
 using namespace sirius;
 
+class lattice3d
+{
+    private:
+
+        /// Bravais lattice vectors in column order.
+        /** The following convention is used to transform fractional coordinates to Cartesian:  
+         *  \f[
+         *    \vec v_{C} = {\bf L} \vec v_{f}
+         *  \f]
+         */
+        matrix3d<double> lattice_vectors_;
+
+    public:
+        
+        lattice3d(vector3d<double> a0__,
+                  vector3d<double> a1__,
+                  vector3d<double> a2__)
+        {
+            for (int x: {0, 1, 2}) {
+                lattice_vectors_(x, 0) = a0__[x];
+                lattice_vectors_(x, 1) = a1__[x];
+                lattice_vectors_(x, 2) = a2__[x];
+            }
+        }
+
+        lattice3d(double a__,
+                  double b__,
+                  double c__,
+                  double alpha__,
+                  double beta__,
+                  double gamma__)
+        {
+            lattice_vectors_(0, 0) = a__;
+            lattice_vectors_(1, 0) = 0.0;
+            lattice_vectors_(2, 0) = 0.0;
+
+            lattice_vectors_(0, 1) = b__ * std::cos(gamma__);
+            lattice_vectors_(1, 1) = b__ * std::sin(gamma__);
+            lattice_vectors_(2, 1) = 0.0;
+
+            lattice_vectors_(0, 2) = c__ * std::cos(beta__);
+            lattice_vectors_(1, 2) = c__ * (std::cos(alpha__) - std::cos(gamma__) * std::cos(beta__)) / std::sin(gamma__);
+            lattice_vectors_(2, 2) = std::sqrt(c__ * c__ - std::pow(lattice_vectors_(0, 2), 2) - std::pow(lattice_vectors_(1, 2), 2));
+        }
+
+        unit_cell_parameters_descriptor parameters()
+        {
+            unit_cell_parameters_descriptor d;
+        
+            vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
+            vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
+            vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
+        
+            d.a = v0.length();
+            d.b = v1.length();
+            d.c = v2.length();
+        
+            d.alpha = std::acos((v1 * v2) / d.b / d.c);
+            d.beta  = std::acos((v0 * v2) / d.a / d.c);
+            d.gamma = std::acos((v0 * v1) / d.a / d.b);
+        
+            return d;
+        }
+
+};
+
+class Parameter_optimization
+{
+    private:
+
+        double step_;
+
+        bool can_increase_step_{true};
+
+        std::vector<double> x_;
+
+        std::vector<double> f_;
+
+        std::vector<double> df_;
+
+        std::vector<int> df_sign_change_;
+
+    public:
+
+        Parameter_optimization(double step__)
+            : step_(step__)
+        {
+        }
+        
+        void add_point(double x__, double f__, double df__)
+        {
+            if (df_.size() > 0) {
+                if (df_.back() * df__ > 0) {
+                    if (can_increase_step_) {
+                        step_ *= 1.5;
+                    }
+                } else {
+                    step_ *= 0.25;
+                    can_increase_step_ = false;
+                    df_sign_change_.push_back(static_cast<int>(df_.size()));
+                }
+            }
+            
+            x_.push_back(x__);
+            f_.push_back(f__);
+            df_.push_back(df__);
+        }
+
+        double next_x()
+        {
+            return x_.back() - Utils::sign(df_.back()) * step_;
+        }
+
+        void estimate_x0()
+        {
+            //for (int i = *(df_sign_change_.end() - 4); i < df_.size(); i++) {
+            for (int i = df_sign_change_[0]; i < (int)df_.size(); i++) {
+                printf("%18.10f %18.10f\n", x_[i], df_[i]);
+            }
+        }
+
+        double step() const
+        {
+            return step_;
+        }
+
+};
+
 enum class task_t
 {
     ground_state_new = 0,
     ground_state_restart = 1,
     relaxation_new = 2,
     relaxation_restart = 3,
-    lattice_relaxation_new = 4
+    lattice_relaxation_new = 4,
+    volume_relaxation_new = 5
 };
 
 const double au2angs = 0.5291772108;
@@ -206,143 +335,156 @@ double Etot_fake(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> 
     return std::pow((a0 - a0__).length(), 2) + std::pow((a1 - a1__).length(), 2) + std::pow((a2 - a2__).length(), 2);
 }
 
+double Etot_fake(double a__, double b__, double c__, double alpha__, double beta__, double gamma__)
+{
+    vector3d<double> a0{0, 5, 5};
+    vector3d<double> a1{5, 0, 5};
+    vector3d<double> a2{5, 5, 0};
+
+    lattice3d ref_lat(a0, a1, a2);
+
+    auto ref_lat_param = ref_lat.parameters();
+
+    //std::cout << ref_lat_param.a << " " << ref_lat_param.b << " " << ref_lat_param.c << " "
+    //          << ref_lat_param.alpha << " " << ref_lat_param.beta << " " << ref_lat_param.gamma << std::endl;
+
+    //std::cout << a__ << " " << b__ << " " << c__ << " "
+    //          << alpha__ << " " << beta__ << " " << gamma__ << std::endl;
+
+    return std::pow(a__ - ref_lat_param.a, 2) +
+           std::pow(b__ - ref_lat_param.b, 2) +
+           std::pow(c__ - ref_lat_param.c, 2) + 
+           std::pow(std::abs(alpha__ - ref_lat_param.alpha), 2) +
+           std::pow(std::abs(beta__ - ref_lat_param.beta), 2) +
+           std::pow(std::abs(gamma__ - ref_lat_param.gamma), 2);
+}
+
 void lattice_relaxation(task_t task, cmd_args args, Parameters_input_section& inp)
 {
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
 
-    std::vector< matrix3d<double> > strain;
+    std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
 
-    strain.push_back({{1, 0, 0},
-                      {0, 0, 0},
-                      {0, 0, 0}});
-
-    strain.push_back({{0, 0, 0},
-                      {0, 1, 0},
-                      {0, 0, 0}});
-
-    strain.push_back({{0, 0, 0},
-                      {0, 0, 0},
-                      {0, 0, 1}});
-    
-    strain.push_back({{0, 1, 0},
-                      {1, 0, 0},
-                      {0, 0, 0}});
-    
-    strain.push_back({{0, 0, 0},
-                      {0, 0, 1},
-                      {0, 1, 0}});
-    
-    strain.push_back({{0, 0, 1},
-                      {0, 0, 0},
-                      {1, 0, 0}});
-
-    Simulation_context* ctx0 = create_sim_ctx(fname, args, inp);
     auto a0 = ctx0->unit_cell().lattice_vector(0);
     auto a1 = ctx0->unit_cell().lattice_vector(1);
     auto a2 = ctx0->unit_cell().lattice_vector(2);
 
-    ///double step = 1e-4;
-    std::vector<double> lat_step(6, 1e-1);
-    std::vector<double> stress_prev(6, 0);
-    
-    matrix3d<double> mt, mtprev;
+    auto lat_param = lattice3d(a0, a1, a2).parameters();
+
+    std::vector<double> params({lat_param.a,
+                                lat_param.b,
+                                lat_param.c,
+                                lat_param.alpha,
+                                lat_param.beta,
+                                lat_param.gamma});
+
+    std::vector<Parameter_optimization> param_opt({Parameter_optimization(0.25),
+                                                   Parameter_optimization(0.25),
+                                                   Parameter_optimization(0.25),
+                                                   Parameter_optimization(0.1),
+                                                   Parameter_optimization(0.1),
+                                                   Parameter_optimization(0.1)});
+
 
     for (int iter = 0; iter < 100; iter++) {
-        matrix3d<double> latv;
-        for (int x: {0, 1, 2}) {
-            latv(x, 0) = a0[x];
-            latv(x, 1) = a1[x];
-            latv(x, 2) = a2[x];
-        }
-        std::vector< matrix3d<double> > strain_cart;
-        for (int i = 0; i < 6; i++) {
-            strain_cart.push_back(latv * strain[i]);
-        }
-
-        double e0 = Etot_fake(a0, a1, a2);
-        std::vector<double> stress(6);
-        for (int i = 0; i < 6; i++) {
-            double step = lat_step[i] / 8;
-            vector3d<double> c0 = a0;
-            vector3d<double> c1 = a1;
-            vector3d<double> c2 = a2;
-
-            for (int j = 0; j < 3; j++) {
-                c0[j] += step * strain[i](0, j);
-                c1[j] += step * strain[i](1, j);
-                c2[j] += step * strain[i](2, j);
-            }
-
-            double e1 = Etot_fake(c0, c1, c2);
-
-            stress[i] = -(e1 - e0) / step;
-        }
+        std::vector<double> p0 = params;
+        double e0 = Etot_fake(p0[0], p0[1], p0[2], p0[3], p0[4], p0[5]);
 
         for (int i = 0; i < 6; i++) {
-            if (stress[i] * stress_prev[i] >= 0) {
-                lat_step[i] *= 1.25;
-            }
-            else {
-                lat_step[i] *= 0.5;
-            }
+            double step = 1e-5;
+            std::vector<double> p1 = params;
+            p1[i] += step;
+            double e1 = Etot_fake(p1[0], p1[1], p1[2], p1[3], p1[4], p1[5]);
+            param_opt[i].add_point(p0[i], e0, (e1 - e0) / step);
         }
-        stress_prev = stress;
-        
         for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 3; j++) {
-                a0[j] += stress[i] * lat_step[i] * strain[i](0, j);
-                a1[j] += stress[i] * lat_step[i] * strain[i](1, j);
-                a2[j] += stress[i] * lat_step[i] * strain[i](2, j);
-            }
+            params[i] = param_opt[i].next_x();
         }
 
         double d{0};
         for (int i = 0; i < 6; i++) {
-            d += std::abs(lat_step[i]);
+            d += std::abs(param_opt[i].step());
         }
         std::cout << "diff in step=" << d << std::endl;
-        if (d < 1e-7) {
+        if (d < 1e-5) {
             printf("Done in %i iterations!\n", iter);
             break;
         }
+    }
+    param_opt[0].estimate_x0();
+    param_opt[3].estimate_x0();
+}
 
-        for (int i = 0; i < 6; i++) {
-            std::cout << i << " " << stress[i] << " " << lat_step[i] << std::endl;
-        }
+void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp)
+{
+    /* get the input file name */
+    std::string fname = args.value<std::string>("input", "sirius.json");
 
-        mtprev = mt;
+    int npt{5};
 
-        mt(0, 0) = a0 * a0;
-        mt(0, 1) = a0 * a1;
-        mt(0, 2) = a0 * a2;
+    Radial_grid scale(linear_grid, npt, 0.9, 1.1);
+    Spline<double> etot(scale);
+    
+    for (int i = 0; i < npt; i++) {
+        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
 
-        mt(1, 0) = a1 * a0;
-        mt(1, 1) = a1 * a1;
-        mt(1, 2) = a1 * a2;
-        
-        mt(2, 0) = a2 * a0;
-        mt(2, 1) = a2 * a1;
-        mt(2, 2) = a2 * a2;
+        auto a0 = ctx0->unit_cell().lattice_vector(0) * scale[i];
+        auto a1 = ctx0->unit_cell().lattice_vector(1) * scale[i];
+        auto a2 = ctx0->unit_cell().lattice_vector(2) * scale[i];
+        ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
+        ctx0->initialize();
 
-        d = 0;
-        for (int i: {0, 1, 2}) {
-            for (int j: {0, 1, 2}) {
-                d += std::abs(mt(i, j) - mtprev(i, j));
+        //etot[i] = Etot_fake(a0, a1, a2);
+        etot[i] = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
+    }
+    etot.interpolate();
+
+    double s0{0};
+    bool found{false};
+    for (int i = 0; i < npt - 1; i++) {
+        if (etot.deriv(1, i) * etot.deriv(1, i + 1) < 0) {
+            for (int j = 0; j < 10000; j++) {
+                double dx = scale.dx(i) / 10000.0;
+                if (etot.deriv(1, i, dx * j) * etot.deriv(1, i, dx * (j + 1)) < 0) {
+                    if (found) {
+                        TERMINATE("one minimum was already found");
+                    }
+                    s0 = scale[i] + dx * j;
+                    found = true;
+                    break;
+                }
             }
         }
-        std::cout << "diff in mt=" << d << std::endl;
-        if (d < 1e-4) {
-            printf("Metric tensor converged in %i iter!\n", iter);
-            break;
-        }
-
-
-        std::cout << "new vectors: " << std::endl;
-        std::cout << a0 << std::endl;
-        std::cout << a1 << std::endl;
-        std::cout << a2 << std::endl;
     }
+    
+    if (found) {
+        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
+        auto a0 = ctx0->unit_cell().lattice_vector(0) * s0;
+        auto a1 = ctx0->unit_cell().lattice_vector(1) * s0;
+        auto a2 = ctx0->unit_cell().lattice_vector(2) * s0;
+        ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
+        ctx0->unit_cell().write_json("relaxed_unit_cell.json");
+    }
+
+
+    //double scale = 1.0;
+    //Parameter_optimization scale_opt(0.01);
+
+    //for (int iter = 0; iter < 100; iter++) {
+    //    double e0 = Etot_fake(a0 * scale, a1 * scale, a2 * scale);
+    //    double step = 1e-6;
+    //    double e1 = Etot_fake(a0 * scale * (1 + step), a1 * scale * (1 + step), a2 * scale * (1 + step));
+    //    scale_opt.add_point(scale, e0, (e1 - e0) / step);
+    //    scale = scale_opt.next_x();
+
+    //    std::cout << scale << std::endl;
+
+    //    if (scale_opt.step() < 1e-6) {
+    //        printf("Done in %i iterations!\n", iter);
+    //        break;
+    //    }
+    //}
 }
 
 void run_tasks(cmd_args const& args)
@@ -361,14 +503,17 @@ void run_tasks(cmd_args const& args)
     }
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
-        Simulation_context* ctx = create_sim_ctx(fname, args, inp);
+        std::unique_ptr<Simulation_context> ctx(create_sim_ctx(fname, args, inp));
         ctx->initialize();
         ground_state(*ctx, task, args, inp, 1);
-        delete ctx;
     }
 
     if (task == task_t::lattice_relaxation_new) {
         lattice_relaxation(task, args, inp);
+    }
+
+    if (task == task_t::volume_relaxation_new) {
+        volume_relaxation(task, args, inp);
     }
 
 }
