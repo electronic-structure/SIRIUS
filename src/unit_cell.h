@@ -34,8 +34,11 @@
 #include "symmetry.h"
 #include "input.h"
 #include "simulation_parameters.h"
+#include "json.hpp"
 
 namespace sirius {
+
+using json = nlohmann::json;
 
 class Unit_cell
 {
@@ -260,6 +263,8 @@ class Unit_cell
 
         /// Write structure to JSON file.
         void write_json(std::string fname__);
+
+        void serialize(json& dict__);
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
