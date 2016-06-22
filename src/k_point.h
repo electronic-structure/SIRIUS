@@ -195,14 +195,6 @@ class K_point
                     }
                 }
             }
-
-            //if (gkvec_fft_distr_ != nullptr) {
-            //    delete gkvec_fft_distr_;
-            //}
-
-            //if (gkvec_fft_distr_vloc_ != nullptr) {
-            //    delete gkvec_fft_distr_vloc_;
-            //}
         }
 
         /// Initialize the k-point related arrays and data

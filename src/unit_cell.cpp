@@ -500,34 +500,37 @@ void Unit_cell::write_cif()
     }
 }
 
-void Unit_cell::write_json()
+void Unit_cell::write_json(std::string fname__)
 {
     if (comm_.rank() == 0)
     {
-        JSON_write out("unit_cell.json");
+        JSON_write out(fname__);
 
         out.begin_set("unit_cell");
         out.begin_array("lattice_vectors");
-        for (int i = 0; i < 3; i++)
-        {
+        for (int i = 0; i < 3; i++) {
             std::vector<double> v(3);
-            for (int x = 0; x < 3; x++) v[x] = lattice_vectors_(x, i);
+            for (int x = 0; x < 3; x++) {
+                v[x] = lattice_vectors_(x, i);
+            }
             out.write(v);
         }
         out.end_array();
         out.begin_array("atom_types");
-        for (int iat = 0; iat < num_atom_types(); iat++) out.write(atom_type(iat).label());
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            out.write(atom_type(iat).label());
+        }
         out.end_array();
         out.begin_set("atom_files");
-        for (int iat = 0; iat < num_atom_types(); iat++) out.single(atom_type(iat).label().c_str(), atom_type(iat).file_name().c_str());
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            out.single(atom_type(iat).label().c_str(), atom_type(iat).file_name().c_str());
+        }
         out.end_set();
 
         out.begin_set("atoms");
-        for (int iat = 0; iat < num_atom_types(); iat++)
-        {
+        for (int iat = 0; iat < num_atom_types(); iat++) {
             out.begin_array(atom_type(iat).label().c_str());
-            for (int i = 0; i < atom_type(iat).num_atoms(); i++)
-            {
+            for (int i = 0; i < atom_type(iat).num_atoms(); i++) {
                 int ia = atom_type(iat).atom_id(i);
                 auto v = atom(ia).position();
                 out.write(v);

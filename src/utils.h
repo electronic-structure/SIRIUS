@@ -192,6 +192,12 @@ class Utils
             double b = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
             return a0 + b;
         }
+
+        template <typename T>
+        inline static int sign(T val)
+        {
+            return (T(0) < val) - (val < T(0));
+        }
 };
 
 #endif

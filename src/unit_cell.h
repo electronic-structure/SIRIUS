@@ -258,7 +258,8 @@ class Unit_cell
         /// Write structure to CIF file.
         void write_cif();
 
-        void write_json();
+        /// Write structure to JSON file.
+        void write_json(std::string fname__);
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
