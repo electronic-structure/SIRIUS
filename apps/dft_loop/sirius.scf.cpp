@@ -1,6 +1,8 @@
 #include <sirius.h>
+#include <json.hpp>
 
 using namespace sirius;
+using json = nlohmann::json;
 
 class lattice3d
 {
@@ -216,6 +218,15 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         //** jw.single("energy_fermi", rti_.energy_fermi);
         
         jw.single("timers", ts);
+
+        //json out_dict;
+        //out_dict["git_hash"] = git_hash;
+        //out_dict["build_date"] =  build_date;
+        //out_dict["num_ranks"] = ctx.comm().size();
+
+        //std::ofstream ofs("out.json", std::ofstream::out | std::ofstream::trunc);
+        //ofs << out_dict.dump(4);
+        //ofs.close();
     }
 
     if (ctx.comm().rank() == 0 && aiida_output) {
@@ -458,13 +469,26 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
         }
     }
     
-    if (found) {
+    if (found && mpi_comm_world().rank() == 0) {
         std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
         auto a0 = ctx0->unit_cell().lattice_vector(0) * s0;
         auto a1 = ctx0->unit_cell().lattice_vector(1) * s0;
         auto a2 = ctx0->unit_cell().lattice_vector(2) * s0;
         ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
         ctx0->unit_cell().write_json("relaxed_unit_cell.json");
+
+        if (args.exist("aiida_output")) {
+
+            json out_dict;
+            out_dict["git_hash"] = git_hash;
+            out_dict["build_date"] =  build_date;
+            out_dict["task"] = static_cast<int>(task);
+            ctx0->unit_cell().serialize(out_dict);
+
+            std::ofstream ofs("output_aiida.json", std::ofstream::out | std::ofstream::trunc);
+            ofs << out_dict.dump(4);
+            ofs.close();
+        }
     }
 
 
