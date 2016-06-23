@@ -29,6 +29,9 @@
 #include "density.h"
 #include "k_set.h"
 #include "force.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 namespace sirius
 {
@@ -298,6 +301,49 @@ class DFT_ground_state
         Band const& band() const
         {
             return band_;
+        }
+
+        json serialize()
+        {
+            json dict;
+
+            dict["mpi_grid"] = ctx_.mpi_grid_dims();
+
+            std::vector<int> fftgrid(3);
+            for (int i = 0; i < 3; i++) {
+                fftgrid[i] = ctx_.fft().grid().size(i);
+            }
+            dict["fft_grid"] = fftgrid;
+            if (!ctx_.full_potential()) {
+                for (int i = 0; i < 3; i++) {
+                    fftgrid[i] = ctx_.fft_coarse().grid().size(i);
+                }
+                dict["fft_coarse_grid"] = fftgrid;
+            }
+            dict["num_fv_states"] = ctx_.num_fv_states();
+            dict["num_bands"] = ctx_.num_bands();
+            dict["aw_cutoff"] = ctx_.aw_cutoff();
+            dict["pw_cutoff"] = ctx_.pw_cutoff();
+            dict["omega"] = ctx_.unit_cell().omega();
+            dict["chemical_formula"] = ctx_.unit_cell().chemical_formula();
+            dict["num_atoms"] = ctx_.unit_cell().num_atoms();
+            dict["energy"] = json::object();
+            dict["energy"]["total"] = total_energy();
+            dict["energy"]["enuc"] = energy_enuc();
+            dict["energy"]["core_eval_sum"] = core_eval_sum();
+            dict["energy"]["vha"] = energy_vha();
+            dict["energy"]["vxc"] = energy_vxc();
+            dict["energy"]["exc"] = energy_exc();
+            dict["energy"]["bxc"] = energy_bxc();
+            dict["energy"]["veff"] = energy_veff();
+            dict["energy"]["eval_sum"] = eval_sum();
+            dict["energy"]["kin"] = energy_kin();
+            dict["energy"]["ewald"] = energy_ewald();
+            dict["efermi"] = kset_.energy_fermi();
+            dict["band_gap"] = kset_.band_gap();
+            dict["core_leakage"] = density_.core_leakage();
+
+            return std::move(dict);
         }
 };
 

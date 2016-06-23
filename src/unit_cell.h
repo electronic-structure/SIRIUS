@@ -264,7 +264,7 @@ class Unit_cell
         /// Write structure to JSON file.
         void write_json(std::string fname__);
 
-        void serialize(json& dict__);
+        json serialize();
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
