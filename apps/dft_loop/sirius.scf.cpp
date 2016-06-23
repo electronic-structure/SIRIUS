@@ -4,6 +4,8 @@
 using namespace sirius;
 using json = nlohmann::json;
 
+const std::string aiida_output_file = "output_aiida.json";
+
 class lattice3d
 {
     private:
@@ -67,7 +69,6 @@ class lattice3d
         
             return d;
         }
-
 };
 
 class Parameter_optimization
@@ -144,107 +145,46 @@ enum class task_t
 
 const double au2angs = 0.5291772108;
 
-void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida_output, int result)
+void json_output_common(json& dict__)
 {
-    //double evalsum1 = gs.kset_->valence_eval_sum();
-    //double evalsum2 = gs.core_eval_sum();
-    //double ekin = gs.energy_kin();
-    double evxc = gs.energy_vxc();
-    double eexc = gs.energy_exc();
-    //double ebxc = gs.energy_bxc();
-    double evha = gs.energy_vha();
-    double etot = gs.total_energy();
-    //double gap = kset_->band_gap() * ha2ev;
-    //double ef = kset_->energy_fermi();
-    //double core_leak = density_->core_leakage();
-    double enuc = gs.energy_enuc();
-
-    auto ts = runtime::Timer::collect_timer_stats();
-    if (ctx.comm().rank() == 0) {
-        std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
-        JSON_write jw(fname);
-        
-        jw.single("git_hash", git_hash);
-        jw.single("build_date", build_date);
-        jw.single("num_ranks", ctx.comm().size());
-        jw.single("max_num_threads", omp_get_max_threads());
-        //jw.single("cyclic_block_size", p->cyclic_block_size());
-        jw.single("mpi_grid", ctx.mpi_grid_dims());
-        std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) {
-            fftgrid[i] = ctx.fft().grid().size(i);
-        }
-        jw.single("fft_grid", fftgrid);
-        jw.single("chemical_formula", ctx.unit_cell().chemical_formula());
-        jw.single("num_atoms", ctx.unit_cell().num_atoms());
-        jw.single("num_fv_states", ctx.num_fv_states());
-        jw.single("num_bands", ctx.num_bands());
-        jw.single("aw_cutoff", ctx.aw_cutoff());
-        jw.single("pw_cutoff", ctx.pw_cutoff());
-        jw.single("omega", ctx.unit_cell().omega());
-
-        jw.begin_set("energy");
-        jw.single("total", etot, 8);
-        jw.single("evxc", evxc, 8);
-        jw.single("eexc", eexc, 8);
-        jw.single("evha", evha, 8);
-        jw.single("enuc", enuc, 8);
-        jw.end_set();
-        
-        //** if (num_mag_dims())
-        //** {
-        //**     std::vector<double> v(3, 0);
-        //**     v[2] = rti().total_magnetization[0];
-        //**     if (num_mag_dims() == 3)
-        //**     {
-        //**         v[0] = rti().total_magnetization[1];
-        //**         v[1] = rti().total_magnetization[2];
-        //**     }
-        //**     jw.single("total_moment", v);
-        //**     jw.single("total_moment_len", Utils::vector_length(&v[0]));
-        //** }
-        
-        //** jw.single("total_energy", total_energy());
-        //** jw.single("kinetic_energy", kinetic_energy());
-        //** jw.single("energy_veff", rti_.energy_veff);
-        //** jw.single("energy_vha", rti_.energy_vha);
-        //** jw.single("energy_vxc", rti_.energy_vxc);
-        //** jw.single("energy_bxc", rti_.energy_bxc);
-        //** jw.single("energy_exc", rti_.energy_exc);
-        //** jw.single("energy_enuc", rti_.energy_enuc);
-        //** jw.single("core_eval_sum", rti_.core_eval_sum);
-        //** jw.single("valence_eval_sum", rti_.valence_eval_sum);
-        //** jw.single("band_gap", rti_.band_gap);
-        //** jw.single("energy_fermi", rti_.energy_fermi);
-        
-        jw.single("timers", ts);
-
-        //json out_dict;
-        //out_dict["git_hash"] = git_hash;
-        //out_dict["build_date"] =  build_date;
-        //out_dict["num_ranks"] = ctx.comm().size();
-
-        //std::ofstream ofs("out.json", std::ofstream::out | std::ofstream::trunc);
-        //ofs << out_dict.dump(4);
-        //ofs.close();
-    }
-
-    if (ctx.comm().rank() == 0 && aiida_output) {
-        std::string fname = std::string("output_aiida.json");
-        JSON_write jw(fname);
-        if (result >= 0) {
-            jw.single("status", "converged");
-            jw.single("num_scf_iterations", result);
-        } else {
-            jw.single("status", "unconverged");
-        }
-
-        jw.single("volume", ctx.unit_cell().omega() * std::pow(au2angs, 3));
-        jw.single("volume_units", "angstrom^3");
-        jw.single("energy", etot * ha2ev);
-        jw.single("energy_units", "eV");
-    }
+    dict__["git_hash"] = git_hash;
+    dict__["build_date"] = build_date;
+    dict__["comm_world_size"] = mpi_comm_world().size();
+    dict__["threads_per_rank"] = omp_get_max_threads();
 }
+
+//== void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida_output, int result)
+//== {
+//==     json dict;
+//==     json_output_common(dict);
+//==     
+//==     dict["ground_state"] = gs.serialize();
+//==     dict["timers"] = runtime::Timer::serialize();
+//==  
+//==     if (ctx.comm().rank() == 0) {
+//==         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
+//== 
+//==         std::ofstream ofs(fname, std::ofstream::out | std::ofstream::trunc);
+//==         ofs << dict.dump(4);
+//==         ofs.close();
+//==     }
+//== 
+//==     //== if (ctx.comm().rank() == 0 && aiida_output) {
+//==     //==     std::string fname = std::string("output_aiida.json");
+//==     //==     JSON_write jw(fname);
+//==     //==     if (result >= 0) {
+//==     //==         jw.single("status", "converged");
+//==     //==         jw.single("num_scf_iterations", result);
+//==     //==     } else {
+//==     //==         jw.single("status", "unconverged");
+//==     //==     }
+//== 
+//==     //==     jw.single("volume", ctx.unit_cell().omega() * std::pow(au2angs, 3));
+//==     //==     jw.single("volume_units", "angstrom^3");
+//==     //==     jw.single("energy", etot * ha2ev);
+//==     //==     jw.single("energy_units", "eV");
+//==     //== }
+//== }
 
 Simulation_context* create_sim_ctx(std::string                     fname__,
                                    cmd_args const&                 args__,
@@ -326,7 +266,37 @@ double ground_state(Simulation_context&       ctx,
     int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_);
     
     if (write_output) {
-        write_json_output(ctx, dft, args.exist("aiida_output"), result);
+        json dict;
+        json_output_common(dict);
+        
+        dict["task"] = static_cast<int>(task);
+        dict["ground_state"] = dft.serialize();
+        dict["timers"] = runtime::Timer::serialize();
+ 
+        if (ctx.comm().rank() == 0) {
+            std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
+                              std::ofstream::out | std::ofstream::trunc);
+            ofs << dict.dump(4);
+        }
+        if (args.exist("aiida_output")) {
+            json dict;
+            json_output_common(dict);
+            dict["task"] = static_cast<int>(task);
+            if (result >= 0) {
+                dict["task_status"] = "converged";
+                dict["num_scf_iterations"] =  result;
+            } else {
+                dict["task_status"] = "unconverged";
+            }
+            dict["volume"] = ctx.unit_cell().omega() * std::pow(au2angs, 3);
+            dict["volume_units"] = "angstrom^3";
+            dict["energy"] = dft.total_energy() * ha2ev;
+            dict["energy_units"] = "eV";
+            if (ctx.comm().rank() == 0) {
+                std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+                ofs << dict.dump(4);
+            }
+        }
     }
 
     /* wait for all */
@@ -469,29 +439,34 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
         }
     }
     
-    if (found && mpi_comm_world().rank() == 0) {
+    json dict;
+    json_output_common(dict);
+    dict["task"] = static_cast<int>(task);
+
+    if (found) {
         std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
         auto a0 = ctx0->unit_cell().lattice_vector(0) * s0;
         auto a1 = ctx0->unit_cell().lattice_vector(1) * s0;
         auto a2 = ctx0->unit_cell().lattice_vector(2) * s0;
         ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
-        ctx0->unit_cell().write_json("relaxed_unit_cell.json");
+
+        dict["unit_cell"] = ctx0->unit_cell().serialize();
+        dict["task_status"] = "success";
+    } else {
+        dict["task_status"] = "failure";
+    }
+
+    if (mpi_comm_world().rank() == 0) {
+        std::ofstream ofs("relaxed_unit_cell.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
 
         if (args.exist("aiida_output")) {
-
-            json out_dict;
-            out_dict["git_hash"] = git_hash;
-            out_dict["build_date"] =  build_date;
-            out_dict["task"] = static_cast<int>(task);
-            ctx0->unit_cell().serialize(out_dict);
-
-            std::ofstream ofs("output_aiida.json", std::ofstream::out | std::ofstream::trunc);
-            ofs << out_dict.dump(4);
-            ofs.close();
+            std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+            ofs << dict.dump(4);
         }
     }
 
-
+    
     //double scale = 1.0;
     //Parameter_optimization scale_opt(0.01);
 
