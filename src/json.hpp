@@ -6020,8 +6020,8 @@ class basic_json
                         const auto hexify = [](const int v) -> char
                         {
                             return (v < 10)
-                            ? ('0' + static_cast<char>(v))
-                            : ('a' + static_cast<char>((v - 10) & 0x1f));
+                            ? static_cast<char>('0' + v)
+                            : static_cast<char>('a' + ((v - 10) & 0x1f));
                         };
 
                         // print character c as \uxxxx
@@ -10002,9 +10002,12 @@ basic_json_parser_63:
                     // in a second pass, traverse the remaining elements
 
                     // remove my remaining elements
+                    const auto end_index = static_cast<difference_type>(result.size());
                     while (i < source.size())
                     {
-                        result.push_back(object(
+                        // add operations in reverse order to avoid invalid
+                        // indices
+                        result.insert(result.begin() + end_index, object(
                         {
                             {"op", "remove"},
                             {"path", path + "/" + std::to_string(i)}

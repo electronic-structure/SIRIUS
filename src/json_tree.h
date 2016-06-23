@@ -296,228 +296,228 @@ class JSON_tree
         }
 }; 
 
-/// Simple JSON serializer.
-class JSON_write
-{
-    private:
-
-        std::string fname_;
-        
-        FILE* fout_;
-
-        int indent_step_;
-
-        int indent_level_;
-
-        bool new_block_;
-
-        inline void new_indent_level(int shift)
-        {
-            indent_level_ += shift;
-            new_block_ = true;
-        }
-        
-        inline void new_line()
-        {
-            std::string s(indent_level_, ' ');
-            if (new_block_)
-            {
-                fprintf(fout_, "\n%s", s.c_str());
-                new_block_ = false;
-            }
-            else
-            {
-                fprintf(fout_, ",\n%s", s.c_str());
-            }
-        }
-
-    public:
-        
-        JSON_write(const std::string fname__) 
-            : fname_(fname__), 
-              indent_step_(4), 
-              new_block_(true)
-        {
-            fout_ = fopen(fname_.c_str(), "w");
-            fprintf(fout_, "{");
-            indent_level_ = indent_step_;
-        }
-
-        ~JSON_write()
-        {
-            fprintf(fout_, "\n}\n");
-            fclose(fout_);
-        }
-
-        inline void write(std::vector<double>& v)
-        {
-            new_line();
-            fprintf(fout_, "[");
-            for (size_t i = 0; i < v.size(); i++)
-            {
-                if (i != 0) fprintf(fout_, ", ");
-                fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
-            }
-            fprintf(fout_, "]");
-        } 
-
-        inline void write(vector3d<double>& v)
-        {
-            new_line();
-            fprintf(fout_, "[");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i != 0) fprintf(fout_, ", ");
-                fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
-            }
-            fprintf(fout_, "]");
-        } 
-
-        inline void write(std::string s)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\"", s.c_str());
-        }
-
-        inline void single(const char* name, int value)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : %i", name, value);
-        }
-
-        inline void single(const char* name, double value, int precision = -1)
-        {
-            new_line();
-            std::string s = Utils::double_to_string(value, precision);
-            fprintf(fout_, "\"%s\" : %s", name, s.c_str());
-        }
-
-        inline void single(const char* name, const std::string& value)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : \"%s\"", name, value.c_str());
-        }
-
-        inline void string(const char* name, const std::string& value)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : %s", name, value.c_str());
-        }
-       
-        /// Write array of doubles
-        /** The following data structure is written:
-         *  \code{.json}
-         *      "name" : [v1, v2, v2, ...]
-         *  \endcode
-         */
-        inline void single(const char* name, std::vector<double> const& values)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : [", name);
-            for (int i = 0; i < (int)values.size(); i++)
-            {
-                if (i) fprintf(fout_, ", ");
-                std::string s = Utils::double_to_string(values[i]);
-                fprintf(fout_, "%s", s.c_str());
-            }
-            fprintf(fout_, "]");
-        }
-        
-        inline void single(const char* name, std::vector<int> const& values)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : [", name);
-            for (int i = 0; i < (int)values.size(); i++)
-            {
-                if (i) fprintf(fout_, ",");
-                fprintf(fout_, "%i", values[i]);
-            }
-            fprintf(fout_, "]");
-        }
-        
-        inline void single(const char* name, std::vector<std::string> const& values)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : [", name);
-            for (int i = 0; i < (int)values.size(); i++)
-            {
-                if (i) fprintf(fout_, ",");
-                fprintf(fout_, "\"%s\"", values[i].c_str());
-            }
-            fprintf(fout_, "]");
-        }
-        
-        inline void single(const char* name, std::map<std::string, runtime::Timer::timer_stats> timers)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : {", name);
-            
-            indent_level_ += indent_step_;
-            new_block_ = true;
-            for (auto it = timers.begin(); it != timers.end(); it++)
-            {
-                std::vector<double> values(4); // total, min, max, average
-                values[0] = it->second.total_value;
-                values[1] = it->second.min_value;
-                values[2] = it->second.max_value;
-                values[3] = it->second.average_value;
-                single(it->first.c_str(), values);
-            }
-            
-            end_set();
-        }
-
-        inline void key(const char* name)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : ", name);
-        }
-            
-        inline void begin_array(const char* name) // TODO: check for closed array wuth the same name
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : [", name);
-            
-            new_indent_level(indent_step_);
-        }
-
-        inline void begin_array()
-        {
-            new_line();
-            fprintf(fout_, "[");
-            
-            new_indent_level(indent_step_);
-        }
-        
-        inline void end_array()
-        {
-            new_indent_level(-indent_step_);
-            new_line();
-            fprintf(fout_, "]");
-        }
-        
-        inline void begin_set(const char* name)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : {", name);
-            
-            new_indent_level(indent_step_);
-        }
-
-        inline void begin_set()
-        {
-            new_line();
-            fprintf(fout_, "{");
-            
-            new_indent_level(indent_step_);
-        }
-        
-        inline void end_set()
-        {
-            new_indent_level(-indent_step_);
-            new_line();
-            fprintf(fout_, "}");
-        }
-};
+//== /// Simple JSON serializer.
+//== class JSON_write
+//== {
+//==     private:
+//== 
+//==         std::string fname_;
+//==         
+//==         FILE* fout_;
+//== 
+//==         int indent_step_;
+//== 
+//==         int indent_level_;
+//== 
+//==         bool new_block_;
+//== 
+//==         inline void new_indent_level(int shift)
+//==         {
+//==             indent_level_ += shift;
+//==             new_block_ = true;
+//==         }
+//==         
+//==         inline void new_line()
+//==         {
+//==             std::string s(indent_level_, ' ');
+//==             if (new_block_)
+//==             {
+//==                 fprintf(fout_, "\n%s", s.c_str());
+//==                 new_block_ = false;
+//==             }
+//==             else
+//==             {
+//==                 fprintf(fout_, ",\n%s", s.c_str());
+//==             }
+//==         }
+//== 
+//==     public:
+//==         
+//==         JSON_write(const std::string fname__) 
+//==             : fname_(fname__), 
+//==               indent_step_(4), 
+//==               new_block_(true)
+//==         {
+//==             fout_ = fopen(fname_.c_str(), "w");
+//==             fprintf(fout_, "{");
+//==             indent_level_ = indent_step_;
+//==         }
+//== 
+//==         ~JSON_write()
+//==         {
+//==             fprintf(fout_, "\n}\n");
+//==             fclose(fout_);
+//==         }
+//== 
+//==         inline void write(std::vector<double>& v)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "[");
+//==             for (size_t i = 0; i < v.size(); i++)
+//==             {
+//==                 if (i != 0) fprintf(fout_, ", ");
+//==                 fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
+//==             }
+//==             fprintf(fout_, "]");
+//==         } 
+//== 
+//==         inline void write(vector3d<double>& v)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "[");
+//==             for (int i = 0; i < 3; i++)
+//==             {
+//==                 if (i != 0) fprintf(fout_, ", ");
+//==                 fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
+//==             }
+//==             fprintf(fout_, "]");
+//==         } 
+//== 
+//==         inline void write(std::string s)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\"", s.c_str());
+//==         }
+//== 
+//==         inline void single(const char* name, int value)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : %i", name, value);
+//==         }
+//== 
+//==         inline void single(const char* name, double value, int precision = -1)
+//==         {
+//==             new_line();
+//==             std::string s = Utils::double_to_string(value, precision);
+//==             fprintf(fout_, "\"%s\" : %s", name, s.c_str());
+//==         }
+//== 
+//==         inline void single(const char* name, const std::string& value)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : \"%s\"", name, value.c_str());
+//==         }
+//== 
+//==         inline void string(const char* name, const std::string& value)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : %s", name, value.c_str());
+//==         }
+//==        
+//==         /// Write array of doubles
+//==         /** The following data structure is written:
+//==          *  \code{.json}
+//==          *      "name" : [v1, v2, v2, ...]
+//==          *  \endcode
+//==          */
+//==         inline void single(const char* name, std::vector<double> const& values)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : [", name);
+//==             for (int i = 0; i < (int)values.size(); i++)
+//==             {
+//==                 if (i) fprintf(fout_, ", ");
+//==                 std::string s = Utils::double_to_string(values[i]);
+//==                 fprintf(fout_, "%s", s.c_str());
+//==             }
+//==             fprintf(fout_, "]");
+//==         }
+//==         
+//==         inline void single(const char* name, std::vector<int> const& values)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : [", name);
+//==             for (int i = 0; i < (int)values.size(); i++)
+//==             {
+//==                 if (i) fprintf(fout_, ",");
+//==                 fprintf(fout_, "%i", values[i]);
+//==             }
+//==             fprintf(fout_, "]");
+//==         }
+//==         
+//==         inline void single(const char* name, std::vector<std::string> const& values)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : [", name);
+//==             for (int i = 0; i < (int)values.size(); i++)
+//==             {
+//==                 if (i) fprintf(fout_, ",");
+//==                 fprintf(fout_, "\"%s\"", values[i].c_str());
+//==             }
+//==             fprintf(fout_, "]");
+//==         }
+//==         
+//==         inline void single(const char* name, std::map<std::string, runtime::Timer::timer_stats> timers)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : {", name);
+//==             
+//==             indent_level_ += indent_step_;
+//==             new_block_ = true;
+//==             for (auto it = timers.begin(); it != timers.end(); it++)
+//==             {
+//==                 std::vector<double> values(4); // total, min, max, average
+//==                 values[0] = it->second.total_value;
+//==                 values[1] = it->second.min_value;
+//==                 values[2] = it->second.max_value;
+//==                 values[3] = it->second.average_value;
+//==                 single(it->first.c_str(), values);
+//==             }
+//==             
+//==             end_set();
+//==         }
+//== 
+//==         inline void key(const char* name)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : ", name);
+//==         }
+//==             
+//==         inline void begin_array(const char* name) // TODO: check for closed array wuth the same name
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : [", name);
+//==             
+//==             new_indent_level(indent_step_);
+//==         }
+//== 
+//==         inline void begin_array()
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "[");
+//==             
+//==             new_indent_level(indent_step_);
+//==         }
+//==         
+//==         inline void end_array()
+//==         {
+//==             new_indent_level(-indent_step_);
+//==             new_line();
+//==             fprintf(fout_, "]");
+//==         }
+//==         
+//==         inline void begin_set(const char* name)
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "\"%s\" : {", name);
+//==             
+//==             new_indent_level(indent_step_);
+//==         }
+//== 
+//==         inline void begin_set()
+//==         {
+//==             new_line();
+//==             fprintf(fout_, "{");
+//==             
+//==             new_indent_level(indent_step_);
+//==         }
+//==         
+//==         inline void end_set()
+//==         {
+//==             new_indent_level(-indent_step_);
+//==             new_line();
+//==             fprintf(fout_, "}");
+//==         }
+//== };
 
 #endif // __JSON_TREE_H__

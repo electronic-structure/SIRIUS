@@ -1025,12 +1025,14 @@ void sirius_write_json_output(void)
 {
     PROFILE();
 
+    STOP();
+
 #ifdef __TIMER
     auto ts = runtime::Timer::collect_timer_stats();
     if (mpi_comm_world().rank() == 0)
     {
-        std::string fname = std::string("output_") + sim_ctx->start_time_tag() + std::string(".json");
-        JSON_write jw(fname);
+        //std::string fname = std::string("output_") + sim_ctx->start_time_tag() + std::string(".json");
+        //JSON_write jw(fname);
 
         //== jw.single("git_hash", git_hash);
         //== jw.single("build_date", build_date);
@@ -1083,7 +1085,7 @@ void sirius_write_json_output(void)
         //== //** jw.single("band_gap", rti_.band_gap);
         //== //** jw.single("energy_fermi", rti_.energy_fermi);
 
-        jw.single("timers", ts);
+        //jw.single("timers", ts);
     }
 #endif
 }
