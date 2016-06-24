@@ -492,6 +492,7 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     json dict;
     json_output_common(dict);
     dict["task"] = static_cast<int>(task);
+    dict["etot"] = e.values();
 
     if (found) {
         std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
@@ -502,7 +503,6 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
 
         dict["unit_cell"] = ctx0->unit_cell().serialize();
         dict["task_status"] = "success";
-        dict["etot"] = e.values();
 
     } else {
         dict["task_status"] = "failure";
