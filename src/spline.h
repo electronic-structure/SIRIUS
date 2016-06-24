@@ -69,8 +69,7 @@ class Spline
         Spline(Radial_grid const& radial_grid__, std::function<T(double)> f__) : radial_grid_(&radial_grid__)
         {
             coeffs_ = mdarray<T, 2>(num_points(), 4);
-            for (int i = 0; i < num_points(); i++)
-            {
+            for (int i = 0; i < num_points(); i++) {
                 double x = (*radial_grid_)[i];
                 coeffs_(i, 0) = f__(x);
             }
@@ -82,7 +81,9 @@ class Spline
         {
             assert(radial_grid_->num_points() == (int)y__.size());
             coeffs_ = mdarray<T, 2>(num_points(), 4);
-            for (int i = 0; i < num_points(); i++) coeffs_(i, 0) = y__[i];
+            for (int i = 0; i < num_points(); i++) {
+                coeffs_(i, 0) = y__[i];
+            }
             interpolate();
         }
 
@@ -124,7 +125,9 @@ class Spline
         inline std::vector<T> values() const
         {
             std::vector<T> a(num_points());
-            for (int i = 0; i < num_points(); i++) a[i] = coeffs_(i, 0);
+            for (int i = 0; i < num_points(); i++) {
+                a[i] = coeffs_(i, 0);
+            }
             return std::move(a);
         }
         
@@ -206,7 +209,7 @@ class Spline
             return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
         }
         
-        inline T deriv(const int dm, const int i, const double dx)
+        inline T deriv(const int dm, const int i, const double dx) const
         {
             assert(i >= 0);
             assert(i < num_points() - 1);
@@ -242,14 +245,15 @@ class Spline
             }
         }
 
-        inline T deriv(const int dm, const int i)
+        inline T deriv(int dm, int i) const
         {
-            if (i == num_points() - 1) 
-            {
+            assert(i >= 0);
+            assert(i < num_points());
+            assert(radial_grid_ != nullptr);
+
+            if (i == num_points() - 1) {
                 return deriv(dm, i - 1, radial_grid_->dx(i - 1));
-            }
-            else 
-            {
+            } else {
                 return deriv(dm, i, 0);
             }
         }

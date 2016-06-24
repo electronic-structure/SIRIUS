@@ -265,20 +265,29 @@ class Unit_cell
         void write_json(std::string fname__);
 
         json serialize();
+
+        void set_lattice_vectors(matrix3d<double> lattice_vectors__)
+        {
+            lattice_vectors_ = lattice_vectors__;
+            inverse_lattice_vectors_ = inverse(lattice_vectors_);
+            omega_ = std::abs(lattice_vectors_.det());
+            reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
+        }
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
          *  unit cell volume. */
-        void set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__)
+        void set_lattice_vectors(vector3d<double> a0__,
+                                 vector3d<double> a1__,
+                                 vector3d<double> a2__)
         {
+            matrix3d<double> lv;
             for (int x: {0, 1, 2}) {
-                lattice_vectors_(x, 0) = a0__[x];
-                lattice_vectors_(x, 1) = a1__[x];
-                lattice_vectors_(x, 2) = a2__[x];
+                lv(x, 0) = a0__[x];
+                lv(x, 1) = a1__[x];
+                lv(x, 2) = a2__[x];
             }
-            inverse_lattice_vectors_ = inverse(lattice_vectors_);
-            omega_ = std::abs(lattice_vectors_.det());
-            reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
+            set_lattice_vectors(lv);
         }
 
         /// Find the cluster of nearest neighbours around each atom
