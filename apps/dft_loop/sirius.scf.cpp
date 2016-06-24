@@ -472,21 +472,23 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
 
 
     double scale0{0};
-    bool found{false};
+    int found{0};
     for (int i = 0; i < scale.num_points() - 1; i++) {
         if (e.deriv(1, i) * e.deriv(1, i + 1) < 0) {
             for (int j = 0; j < 10000; j++) {
                 double dx = scale.dx(i) / 10000.0;
                 if (e.deriv(1, i, dx * j) * e.deriv(1, i, dx * (j + 1)) < 0) {
-                    if (found) {
-                        TERMINATE("one minimum was already found");
+                    if (!found) {
+                        scale0 = scale[i] + dx * j;
                     }
-                    scale0 = scale[i] + dx * j;
-                    found = true;
+                    found++;
                     break;
                 }
             }
         }
+    }
+    if (found > 1) {
+        WARNING("more than one minimum has been found");
     }
     
     json dict;
@@ -494,7 +496,7 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     dict["task"] = static_cast<int>(task);
     dict["etot"] = e.values();
 
-    if (found) {
+    if (found == 1) {
         std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
         auto a0 = ctx0->unit_cell().lattice_vector(0) * scale0;
         auto a1 = ctx0->unit_cell().lattice_vector(1) * scale0;
