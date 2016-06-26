@@ -110,22 +110,6 @@ class Spheric_function
             return *this;
         }
 
-//        inline Spheric_function<domain_t, T>& operator+(Spheric_function<domain_t, T>& rhs)
-//        {
-//        	Spheric_function<domain_t, T> res( angular_domain_size(), radial_grid() );
-//
-//        	T* ptr_lhs = &data_(0,0);
-//        	T* ptr_rhs = &rhs.data_(0,0);
-//        	T* ptr_res = &res(0,0);
-//
-//            for (size_t i = 0; i < data_.size(); i++)
-//            {
-//                ptr_res[i] = ptr_lhs[i] + ptr_rhs[i];
-//            }
-//
-//            return std::move(res);
-//        }
-
         inline int angular_domain_size() const
         {
             return angular_domain_size_;
@@ -175,6 +159,30 @@ class Spheric_function
 //        	return data_;
 //		}
 };
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+/// dot operator
+template <function_domain_t domain_t, typename T>
+Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
+{
+	if (a__.radial_grid().hash() != b__.radial_grid().hash()) TERMINATE("wrong radial grids");
+	if (a__.angular_domain_size() != b__.angular_domain_size()) TERMINATE("wrong angular domain sizes");
+
+	Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
+
+	const T* ptr_lhs = &a__(0,0);
+	const T* ptr_rhs = &b__(0,0);
+	T* ptr_res = &res(0,0);
+
+	for (int i = 0; i < a__.size(); i++)
+	{
+		ptr_res[i] = ptr_lhs[i] * ptr_rhs[i];
+	}
+
+	return std::move(res);
+}
 
 
 
@@ -285,6 +293,11 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
     return s.interpolate().integrate(2);
 }
 
+
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 /// Compute Laplacian of the spheric function.
 /** Laplacian in spherical coordinates has the following expression:
  *  \f[
@@ -318,6 +331,10 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T>& f__)
     return g;
 }
 
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 /// Gradient of a spheric function.
 template <function_domain_t domain_t, typename T = double_complex>
 class Spheric_function_gradient
@@ -355,12 +372,24 @@ class Spheric_function_gradient
         }
 };
 
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 /// Gradient of the function in complex spherical harmonics.
 Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f);
 
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 /// Gradient of the function in real spherical harmonics.
 Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double>& f);
 
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double>& f, 
                                             Spheric_function_gradient<spatial, double>& g);
 

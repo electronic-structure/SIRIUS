@@ -16,7 +16,7 @@ dft_loop: dft_loop.cpp $(LIB_SIRIUS)
 plot:
 	$(CXX) $(CXX_OPT) $(INCLUDE) plot.cpp $(LIB_SIRIUS) $(LIBS) -o plot
 
-debug: dft_loop.cpp
+debug: dft_loop.cpp $(LIB_SIRIUS_DBG)
 	$(CXX) $(CXX_OPT_DBG) $(INCLUDE) dft_loop.cpp $(LIB_SIRIUS_DBG) $(LIBS) -o debug/dft_loop
 
 

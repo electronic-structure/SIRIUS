@@ -96,7 +96,14 @@ class DFT_ground_state
         double energy_vha()
         {
             //return inner(parameters_, density_->rho(), potential_->hartree_potential());
-            return potential_->energy_vha();
+        	double eh = potential_->energy_vha();
+
+        	if(ctx_.esm_type() == paw_pseudopotential)
+			{
+				eh += potential_->PAW_hartree_total_energy();
+			}
+
+            return eh;
         }
         
         double energy_vxc()
@@ -107,8 +114,15 @@ class DFT_ground_state
         double energy_exc()
         {
             double exc = density_->rho()->inner(potential_->xc_energy_density());
+
             if (!ctx_.full_potential())
                 exc += density_->rho_pseudo_core()->inner(potential_->xc_energy_density());
+
+            if(ctx_.esm_type() == paw_pseudopotential)
+            {
+            	exc += potential_->PAW_xc_total_energy();
+            }
+
             return exc;
         }
 
@@ -170,26 +184,40 @@ class DFT_ground_state
          */
         double total_energy()
         {
+        	double tot_en=0.0;
+
             switch (ctx_.esm_type())
             {
                 case full_potential_lapwlo:
                 case full_potential_pwlo:
                 {
-                    return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
-                }
-                case paw_pseudopotential:
+                	tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
+                }break;
+
+
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
-                    return (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() + 
+                	tot_en = (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() +
                             energy_exc() + ewald_energy_);
-                }
+                }break;
+
+                case paw_pseudopotential:
+                {
+                	tot_en =  (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() +
+                			energy_exc() + ewald_energy_) +
+                					potential_->PAW_xc_total_energy() +
+									potential_->PAW_hartree_total_energy() +
+									potential_->PAW_total_core_energy();
+                }break;
+
                 default:
                 {
                     STOP();
                 }
             }
-            return 0; // make compiler happy
+
+            return tot_en; // make compiler happy
         }
 
         void generate_effective_potential()

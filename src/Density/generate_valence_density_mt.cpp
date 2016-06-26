@@ -268,10 +268,10 @@ void Density::generate_paw_loc_density()
 					{
 						auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
-						if(lm3coef.lm3 >= (int)ae_atom_density.size(1))
-						{
-							TERMINATE("PAW: lm3 index out of range of lm part of density array");;
-						}
+//						if(lm3coef.lm3 >= (int)ae_atom_density.size(1))
+//						{
+//							TERMINATE("PAW: lm3 index out of range of lm part of density array");;
+//						}
 
 						// iterate over radial points
 						// size of ps and ae must be equal TODO: if not?
