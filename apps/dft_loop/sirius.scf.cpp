@@ -154,39 +154,6 @@ void json_output_common(json& dict__)
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-//== void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida_output, int result)
-//== {
-//==     json dict;
-//==     json_output_common(dict);
-//==     
-//==     dict["ground_state"] = gs.serialize();
-//==     dict["timers"] = runtime::Timer::serialize();
-//==  
-//==     if (ctx.comm().rank() == 0) {
-//==         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
-//== 
-//==         std::ofstream ofs(fname, std::ofstream::out | std::ofstream::trunc);
-//==         ofs << dict.dump(4);
-//==         ofs.close();
-//==     }
-//== 
-//==     //== if (ctx.comm().rank() == 0 && aiida_output) {
-//==     //==     std::string fname = std::string("output_aiida.json");
-//==     //==     JSON_write jw(fname);
-//==     //==     if (result >= 0) {
-//==     //==         jw.single("status", "converged");
-//==     //==         jw.single("num_scf_iterations", result);
-//==     //==     } else {
-//==     //==         jw.single("status", "unconverged");
-//==     //==     }
-//== 
-//==     //==     jw.single("volume", ctx.unit_cell().omega() * std::pow(au2angs, 3));
-//==     //==     jw.single("volume_units", "angstrom^3");
-//==     //==     jw.single("energy", etot * ha2ev);
-//==     //==     jw.single("energy_units", "eV");
-//==     //== }
-//== }
-
 Simulation_context* create_sim_ctx(std::string                     fname__,
                                    cmd_args const&                 args__,
                                    Parameters_input_section const& inp__)
@@ -327,12 +294,6 @@ double Etot_fake(double a__, double b__, double c__, double alpha__, double beta
 
     auto ref_lat_param = ref_lat.parameters();
 
-    //std::cout << ref_lat_param.a << " " << ref_lat_param.b << " " << ref_lat_param.c << " "
-    //          << ref_lat_param.alpha << " " << ref_lat_param.beta << " " << ref_lat_param.gamma << std::endl;
-
-    //std::cout << a__ << " " << b__ << " " << c__ << " "
-    //          << alpha__ << " " << beta__ << " " << gamma__ << std::endl;
-
     return std::pow(a__ - ref_lat_param.a, 2) +
            std::pow(b__ - ref_lat_param.b, 2) +
            std::pow(c__ - ref_lat_param.c, 2) + 
@@ -463,31 +424,25 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     }
     Radial_grid scale_steps(x);
     Spline<double> e(scale_steps, y);
-
+    
+    double e0{1e100};
     double scale0{0};
-    int found{0};
     for (int i = 0; i < scale_steps.num_points() - 1; i++) {
-        if (e.deriv(1, i) * e.deriv(1, i + 1) < 0) {
-            for (int j = 0; j < 10000; j++) {
-                double dx = scale_steps.dx(i) / 10000.0;
-                if (e.deriv(1, i, dx * j) * e.deriv(1, i, dx * (j + 1)) < 0) {
-                    if (!found) {
-                        scale0 = scale_steps[i] + dx * j;
-                    }
-                    found++;
-                    break;
-                }
+        double dx = scale_steps.dx(i) / 1000.0;
+        for (int j = 0; j < 1000; j++) {
+            if (e(i, dx * j) < e0) {
+                e0 = e(i, dx * j);
+                scale0 = scale_steps[i] + dx * j;
             }
         }
     }
-    if (found > 1) {
-        WARNING("more than one minimum has been found");
-    }
+
     dict["etot"] = json::object();
     dict["etot"]["x"] = x;
     dict["etot"]["y"] = y;
+    dict["etot"]["scale0"] = scale0;
 
-    if (found) {
+    if (true) {
         std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
         auto lv = ctx0->unit_cell().lattice_vectors();
         ctx0->unit_cell().set_lattice_vectors(lv * scale0);
