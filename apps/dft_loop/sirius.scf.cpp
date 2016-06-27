@@ -411,11 +411,11 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
         ctx0->unit_cell().set_lattice_vectors(lv * s);
         ctx0->initialize();
 
-        double e = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
+        //double e = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
         
-        //double e = Etot_fake(ctx0->unit_cell().lattice_vector(0),
-        //                     ctx0->unit_cell().lattice_vector(1),
-        //                     ctx0->unit_cell().lattice_vector(2));
+        double e = Etot_fake(ctx0->unit_cell().lattice_vector(0),
+                             ctx0->unit_cell().lattice_vector(1),
+                             ctx0->unit_cell().lattice_vector(2));
         etot[s] = e;
 
         return e;
@@ -517,11 +517,12 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     }
 
     if (task == task_t::volume_relaxation_descent) {
-        double scale = 1.0;
-        double step = 0.05;
+        double scale{1};
+        double step{0.05};
         double e1 = run_gs(scale);
         double de{0}, de_prev;
-        int sgn = 1;
+        int sgn{1};
+        int num_sign_changes{0};
         
         bool found{false};
         for (int iter = 0; iter < 100; iter++) {
@@ -534,17 +535,49 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
 
             if (iter > 0) {
                 if (de_prev * de < 0) {
-                    step *= 0.5;
+                    step *= 0.55;
+                    num_sign_changes++;
+                } else {
+                    step *= 1.25;
                 }
             }
             sgn = -Utils::sign(de);
 
-            if (step < 1e-3) {
+            if (etot.size() > 4 && num_sign_changes > 0) {
                 found = true;
                 printf("converged in %i iterations\n", iter);
                 break;
             }
         }
+        std::vector<double> x, y;
+
+        for (auto it: etot) {
+            x.push_back(it.first);
+            y.push_back(it.second);
+        }
+        Radial_grid rscale(x);
+        Spline<double> e(rscale, y);
+
+        double scale0{0};
+        int found1{0};
+        for (int i = 0; i < rscale.num_points() - 1; i++) {
+            if (e.deriv(1, i) * e.deriv(1, i + 1) < 0) {
+                for (int j = 0; j < 10000; j++) {
+                    double dx = rscale.dx(i) / 10000.0;
+                    if (e.deriv(1, i, dx * j) * e.deriv(1, i, dx * (j + 1)) < 0) {
+                        if (!found1) {
+                            scale0 = rscale[i] + dx * j;
+                        }
+                        found1++;
+                        break;
+                    }
+                }
+            }
+        }
+        if (found1 > 1) {
+            WARNING("more than one minimum has been found");
+        }
+        dict["etot"] = e.values();
 
         //== double scale = 1.0;
         //== Parameter_optimization scale_opt(0.01);
@@ -566,9 +599,9 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
 
         if (found) {
             std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
-            auto a0 = ctx0->unit_cell().lattice_vector(0) * scale;
-            auto a1 = ctx0->unit_cell().lattice_vector(1) * scale;
-            auto a2 = ctx0->unit_cell().lattice_vector(2) * scale;
+            auto a0 = ctx0->unit_cell().lattice_vector(0) * scale0;
+            auto a1 = ctx0->unit_cell().lattice_vector(1) * scale0;
+            auto a2 = ctx0->unit_cell().lattice_vector(2) * scale0;
             ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
 
             dict["unit_cell"] = ctx0->unit_cell().serialize();
