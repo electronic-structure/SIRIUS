@@ -425,190 +425,76 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     json_output_common(dict);
     dict["task"] = static_cast<int>(task);
 
-    if (task == task_t::volume_relaxation_new) {
-        /* test first three points */
-        std::vector<double> s0({0.9, 1.0, 1.1});
-        for (double s: s0) {
-            run_gs(s);
-        }
+    double scale{1};
+    double step{0.05};
+    double e1 = run_gs(scale);
+    double de{0}, de_prev;
+    int sgn{1};
+    int num_sign_changes{0};
+    
+    for (int iter = 0; iter < 100; iter++) {
+        double e0 = e1;
+        e1 = run_gs(scale + sgn * step);
+        de_prev = de;
+        de = sgn * (e1 - e0) / step;
         
-        std::vector<double> s1;
-        if (etot[s0[1]] < etot[s0[0]] && etot[s0[1]] < etot[s0[2]]) {
-            s1 = std::vector<double>({0.95, 1.05});
-        }
-        if (etot[s0[1]] >= etot[s0[0]]) {
-            s1 = std::vector<double>({0.8, 0.85});
-        }
-        if (etot[s0[1]] >= etot[s0[2]]) {
-            s1 = std::vector<double>({1.15, 1.2});
-        }
+        scale = scale + sgn * step;
 
-        for (double s: s1) {
-            run_gs(s);
-        }
-
-        std::vector<double> x;
-        std::vector<double> y;
-
-        for (auto it: etot) {
-            x.push_back(it.first);
-            y.push_back(it.second);
-        }
-        Radial_grid scale(x);
-        Spline<double> e(scale, y);
-
-
-        //int npt{5};
-
-        //Radial_grid scale(linear_grid, npt, 0.9, 1.1);
-        //Spline<double> etot(scale);
-        //
-        //for (int i = 0; i < npt; i++) {
-        //    std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
-
-        //    auto a0 = ctx0->unit_cell().lattice_vector(0) * scale[i];
-        //    auto a1 = ctx0->unit_cell().lattice_vector(1) * scale[i];
-        //    auto a2 = ctx0->unit_cell().lattice_vector(2) * scale[i];
-        //    ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
-        //    ctx0->initialize();
-
-        //    etot[i] = Etot_fake(a0, a1, a2);
-        //    //etot[i] = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
-        //}
-        //etot.interpolate();
-
-
-
-        double scale0{0};
-        int found{0};
-        for (int i = 0; i < scale.num_points() - 1; i++) {
-            if (e.deriv(1, i) * e.deriv(1, i + 1) < 0) {
-                for (int j = 0; j < 10000; j++) {
-                    double dx = scale.dx(i) / 10000.0;
-                    if (e.deriv(1, i, dx * j) * e.deriv(1, i, dx * (j + 1)) < 0) {
-                        if (!found) {
-                            scale0 = scale[i] + dx * j;
-                        }
-                        found++;
-                        break;
-                    }
-                }
+        if (iter > 0) {
+            if (de_prev * de < 0) {
+                step *= 0.55;
+                num_sign_changes++;
+            } else {
+                step *= 1.25;
             }
         }
-        if (found > 1) {
-            WARNING("more than one minimum has been found");
+        sgn = -Utils::sign(de);
+
+        if (etot.size() > 4 && num_sign_changes > 0) {
+            printf("converged in %i iterations\n", iter);
+            break;
         }
-        
-        dict["etot"] = e.values();
-        if (found == 1) {
-            std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
-            auto a0 = ctx0->unit_cell().lattice_vector(0) * scale0;
-            auto a1 = ctx0->unit_cell().lattice_vector(1) * scale0;
-            auto a2 = ctx0->unit_cell().lattice_vector(2) * scale0;
-            ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
-
-            dict["unit_cell"] = ctx0->unit_cell().serialize();
-            dict["task_status"] = "success";
-
-        } else {
-            dict["task_status"] = "failure";
-        }
-
     }
+    std::vector<double> x, y;
 
-    if (task == task_t::volume_relaxation_descent) {
-        double scale{1};
-        double step{0.05};
-        double e1 = run_gs(scale);
-        double de{0}, de_prev;
-        int sgn{1};
-        int num_sign_changes{0};
-        
-        bool found{false};
-        for (int iter = 0; iter < 100; iter++) {
-            double e0 = e1;
-            e1 = run_gs(scale + sgn * step);
-            de_prev = de;
-            de = sgn * (e1 - e0) / step;
-            
-            scale = scale + sgn * step;
+    for (auto it: etot) {
+        x.push_back(it.first);
+        y.push_back(it.second);
+    }
+    Radial_grid scale_steps(x);
+    Spline<double> e(scale_steps, y);
 
-            if (iter > 0) {
-                if (de_prev * de < 0) {
-                    step *= 0.55;
-                    num_sign_changes++;
-                } else {
-                    step *= 1.25;
-                }
-            }
-            sgn = -Utils::sign(de);
-
-            if (etot.size() > 4 && num_sign_changes > 0) {
-                found = true;
-                printf("converged in %i iterations\n", iter);
-                break;
-            }
-        }
-        std::vector<double> x, y;
-
-        for (auto it: etot) {
-            x.push_back(it.first);
-            y.push_back(it.second);
-        }
-        Radial_grid rscale(x);
-        Spline<double> e(rscale, y);
-
-        double scale0{0};
-        int found1{0};
-        for (int i = 0; i < rscale.num_points() - 1; i++) {
-            if (e.deriv(1, i) * e.deriv(1, i + 1) < 0) {
-                for (int j = 0; j < 10000; j++) {
-                    double dx = rscale.dx(i) / 10000.0;
-                    if (e.deriv(1, i, dx * j) * e.deriv(1, i, dx * (j + 1)) < 0) {
-                        if (!found1) {
-                            scale0 = rscale[i] + dx * j;
-                        }
-                        found1++;
-                        break;
+    double scale0{0};
+    int found{0};
+    for (int i = 0; i < scale_steps.num_points() - 1; i++) {
+        if (e.deriv(1, i) * e.deriv(1, i + 1) < 0) {
+            for (int j = 0; j < 10000; j++) {
+                double dx = scale_steps.dx(i) / 10000.0;
+                if (e.deriv(1, i, dx * j) * e.deriv(1, i, dx * (j + 1)) < 0) {
+                    if (!found) {
+                        scale0 = scale_steps[i] + dx * j;
                     }
+                    found++;
+                    break;
                 }
             }
         }
-        if (found1 > 1) {
-            WARNING("more than one minimum has been found");
-        }
-        dict["etot"] = e.values();
+    }
+    if (found > 1) {
+        WARNING("more than one minimum has been found");
+    }
+    dict["etot"] = json::object();
+    dict["etot"]["x"] = x;
+    dict["etot"]["y"] = y;
 
-        //== double scale = 1.0;
-        //== Parameter_optimization scale_opt(0.01);
-        //== 
-        //== bool found{false};
-        //== for (int iter = 0; iter < 100; iter++) {
-        //==     double e0 = run_gs(scale);
-        //==     double step = 1e-6;
-        //==     double e1 = run_gs(scale + step);
-        //==     scale_opt.add_point(scale, e0, (e1 - e0) / step);
-        //==     scale = scale_opt.next_x();
-
-        //==     if (scale_opt.step() < 1e-6) {
-        //==         found = true;
-        //==         printf("converged in %i iterations\n", iter);
-        //==         break;
-        //==     }
-        //== }
-
-        if (found) {
-            std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
-            auto a0 = ctx0->unit_cell().lattice_vector(0) * scale0;
-            auto a1 = ctx0->unit_cell().lattice_vector(1) * scale0;
-            auto a2 = ctx0->unit_cell().lattice_vector(2) * scale0;
-            ctx0->unit_cell().set_lattice_vectors(a0, a1, a2);
-
-            dict["unit_cell"] = ctx0->unit_cell().serialize();
-            dict["task_status"] = "success";
-        } else {
-            dict["task_status"] = "failure";
-        }
+    if (found) {
+        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
+        auto lv = ctx0->unit_cell().lattice_vectors();
+        ctx0->unit_cell().set_lattice_vectors(lv * scale0);
+        dict["unit_cell"] = ctx0->unit_cell().serialize();
+        dict["task_status"] = "success";
+    } else {
+        dict["task_status"] = "failure";
     }
 
     if (mpi_comm_world().rank() == 0) {
