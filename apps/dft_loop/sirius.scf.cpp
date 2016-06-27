@@ -411,11 +411,11 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
         ctx0->unit_cell().set_lattice_vectors(lv * s);
         ctx0->initialize();
 
-        //double e = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
+        double e = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
         
-        double e = Etot_fake(ctx0->unit_cell().lattice_vector(0),
-                             ctx0->unit_cell().lattice_vector(1),
-                             ctx0->unit_cell().lattice_vector(2));
+        //double e = Etot_fake(ctx0->unit_cell().lattice_vector(0),
+        //                     ctx0->unit_cell().lattice_vector(1),
+        //                     ctx0->unit_cell().lattice_vector(2));
         etot[s] = e;
 
         return e;
