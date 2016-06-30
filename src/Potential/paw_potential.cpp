@@ -444,16 +444,16 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 	}
 
 	///////////////////////////////////////////////////////////////////////
-	std::cout<<"INT"<<std::endl;
-	for(int irb2 = 0; irb2 < uspp.num_beta_radial_functions; irb2++)
-		for(int irb1 = 0; irb1 <= irb2; irb1++)
-			for(int lm3 = 0; lm3 < lmsize_rho; lm3++ )
-			{
-				int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
-				std::cout<<integrals(lm3, iqij, 0) - integrals(lm3, iqij, 1)<<"   ";
-			}
-
-	std::cout<<std::endl;
+//	std::cout<<"INT"<<std::endl;
+//	for(int irb2 = 0; irb2 < uspp.num_beta_radial_functions; irb2++)
+//		for(int irb1 = 0; irb1 <= irb2; irb1++)
+//			for(int lm3 = 0; lm3 < lmsize_rho; lm3++ )
+//			{
+//				int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
+//				std::cout<<integrals(lm3, iqij, 0) - integrals(lm3, iqij, 1)<<"   ";
+//			}
+//
+//	std::cout<<std::endl;
 	///////////////////////////////////////////////////////////////////////
 
 	//---- calc Dij ----

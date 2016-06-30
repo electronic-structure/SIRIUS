@@ -106,16 +106,10 @@ void Density::add_k_point_contribution(K_point* kp__,
 
     if (ctx_.num_mag_dims() != 3)
     {
-
-
         for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
         {
-        	////////////////////////////////////////////////
-        	std::vector<double_complex> ss[]={std::vector<double_complex>(100),std::vector<double_complex>(100)};
-        	int inds[]={0,0};
-        	////////////////////////////////////////////////
-
             kp__->beta_projectors().generate(chunk);
+
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
@@ -146,7 +140,6 @@ void Density::add_k_point_contribution(K_point* kp__,
                             int offs = kp__->beta_projectors().beta_chunk(chunk).desc_(1, ia);
                             int ja = kp__->beta_projectors().beta_chunk(chunk).desc_(3, ia);
 
-                            std::cout<<"spin "<<ispn<<" offs "<<offs<<std::endl;
                             for (int i = 0; i < nbnd_loc; i++)
                             {
                                 int j = spl_nbnd[i];
@@ -154,34 +147,18 @@ void Density::add_k_point_contribution(K_point* kp__,
                                 for (int xi = 0; xi < nbf; xi++)
                                 {
                                     bp1(xi, i) = beta_psi(offs + xi, j);
-                                    ////////////////////////////////////////////////
-                                    if(inds[ispn] < ss[ispn].size())
-                                    	ss[ispn][inds[ispn]] = bp1(xi, i);
-                                    inds[ispn]++;
-                                    ////////////////////////////////////////////////
-
                                     bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->weight() *
                                                  kp__->band_occupancy(j + ispn * ctx_.num_fv_states());
-
-
                                 }
                             }
 
                             linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
                                               &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, ispn, ja), 
                                               density_matrix__.ld());
-
                         }
                     }
                 }
             }
-
-            ////////////////////////////////////////////////
-			std::cout<<" dm \n";
-			for (int ia = 0; ia < ss[0].size(); ia++)
-				std::cout<<ss[0][ia]-ss[1][ia]<<" ";
-			std::cout<<"\n";
-			/////////////////////////////////////////////////
         }
     }
     else

@@ -200,20 +200,20 @@ void Potential::generate_D_operator_matrix()
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
-	std::cout <<" DIJ"<<std::endl;
-	for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-	{
-		auto& atom = unit_cell_.atom(ia);
-		auto& atom_type = atom.type();
-		for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
-		{
-			for(int ib1 = 0; ib1 <= ib2; ib1++)
-			{
-				std::cout << atom.d_mtrx(ib2,ib1,0) - atom.d_mtrx(ib2,ib1,1) << " ";
-			}
-		}
-	}
-	std::cout <<std::endl;
+//	std::cout <<" DIJ"<<std::endl;
+//	for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+//	{
+//		auto& atom = unit_cell_.atom(ia);
+//		auto& atom_type = atom.type();
+//		for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
+//		{
+//			for(int ib1 = 0; ib1 <= ib2; ib1++)
+//			{
+//				std::cout << atom.d_mtrx(ib2,ib1,0) - atom.d_mtrx(ib2,ib1,1) << " ";
+//			}
+//		}
+//	}
+//	std::cout <<std::endl;
 	//////////////////////////////////////////////////////////////////////////////////////
 
 
