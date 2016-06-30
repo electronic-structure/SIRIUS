@@ -236,16 +236,16 @@ void Potential::generate_D_operator_matrix()
                 if (lm1 == lm2)
 				{
                 	unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
-
-                	if(ctx_.num_mag_dims()>=1)
-                	{
-                		unit_cell_.atom(ia).d_mtrx(xi1, xi2, 1) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
-                	}
-
-                	if(ctx_.num_mag_dims()==3)
-                	{
-                		TERMINATE("NONCOLLINEAR IS NOT IMPLEMENTED");
-                	}
+//
+//                	if(ctx_.num_mag_dims()>=1)
+//                	{
+//                		unit_cell_.atom(ia).d_mtrx(xi1, xi2, 1) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
+//                	}
+//
+//                	if(ctx_.num_mag_dims()==3)
+//                	{
+//                		TERMINATE("NONCOLLINEAR IS NOT IMPLEMENTED");
+//                	}
 				}
             }
         }
