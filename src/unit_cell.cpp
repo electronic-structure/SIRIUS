@@ -547,9 +547,9 @@ json Unit_cell::serialize()
 {
     json dict;
 
-    dict["lattice"] = {{lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0)},
-                       {lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1)},
-                       {lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2)}};
+    dict["lattice_vectors"] = {{lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0)},
+                               {lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1)},
+                               {lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2)}};
     dict["atom_types"] = json::array();
     for (int iat = 0; iat < num_atom_types(); iat++) {
         dict["atom_types"].push_back(atom_type(iat).label());

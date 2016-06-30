@@ -17,7 +17,7 @@ for node in struct_q.run_query():
 
 fout = open("run.x", "w")
 for s in symbols:
-    t = sys.argv[1] if len(sys.argv) >= 2 else " --type=lo1"
+    t = sys.argv[1] if len(sys.argv) >= 2 else " --type=lo1+lo2+lo3+LO1"
     fout.write("./atom --symbol=" + s + t + "\n");
 fout.close()
 os.chmod("run.x", os.stat("run.x").st_mode | stat.S_IEXEC)
