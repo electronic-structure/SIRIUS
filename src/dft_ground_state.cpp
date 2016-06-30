@@ -404,6 +404,10 @@ void DFT_ground_state::print_info()
             printf("hartree contribution      : %18.8f\n", 0.5 * evha);
             printf("xc contribution           : %18.8f\n", eexc);
             printf("ewald contribution        : %18.8f\n", ewald_energy_);
+
+			std::cout<<"PAW contribution:      "<< potential_->PAW_xc_total_energy() +
+			potential_->PAW_hartree_total_energy() << ", core_en" <<
+			potential_->PAW_total_core_energy() << std::endl;
         }
         printf("Total energy              : %18.8f\n", etot);
 

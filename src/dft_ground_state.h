@@ -98,10 +98,10 @@ class DFT_ground_state
             //return inner(parameters_, density_->rho(), potential_->hartree_potential());
         	double eh = potential_->energy_vha();
 
-        	if(ctx_.esm_type() == paw_pseudopotential)
-			{
-				eh += potential_->PAW_hartree_total_energy();
-			}
+//        	if(ctx_.esm_type() == paw_pseudopotential)
+//			{
+//				eh += potential_->PAW_hartree_total_energy();
+//			}
 
             return eh;
         }
@@ -118,10 +118,10 @@ class DFT_ground_state
             if (!ctx_.full_potential())
                 exc += density_->rho_pseudo_core()->inner(potential_->xc_energy_density());
 
-            if(ctx_.esm_type() == paw_pseudopotential)
-            {
-            	exc += potential_->PAW_xc_total_energy();
-            }
+//            if(ctx_.esm_type() == paw_pseudopotential)
+//            {
+//            	exc += potential_->PAW_xc_total_energy();
+//            }
 
             return exc;
         }
@@ -205,10 +205,10 @@ class DFT_ground_state
                 case paw_pseudopotential:
                 {
                 	tot_en =  (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() +
-                			energy_exc() + ewald_energy_) +
+                			energy_exc() + ewald_energy_) ;/*+
                 					potential_->PAW_xc_total_energy() +
 									potential_->PAW_hartree_total_energy() +
-									potential_->PAW_total_core_energy();
+									potential_->PAW_total_core_energy();*/
                 }break;
 
                 default:

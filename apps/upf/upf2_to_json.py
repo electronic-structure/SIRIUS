@@ -97,7 +97,8 @@ def parse_non_local(upf_dict, root):
 
 
     upf_dict['augmentation'] = []
-    upf_dict['header']['cutoff_radius_index'] = int(node.attrib['cutoff_r_index'])
+
+
 
     nb = upf_dict['header']['number_of_proj']
 
@@ -129,6 +130,10 @@ def parse_PAW(upf_dict, root):
 
     if upf_dict['header']['pseudo_type'] != "PAW": return
 
+    node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
+    upf_dict['header']['cutoff_radius_index'] = int(node.attrib['cutoff_r_index'])
+
+    
     upf_dict["paw_data"] = {}
 
 

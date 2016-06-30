@@ -325,6 +325,8 @@ void Density::generate_paw_loc_density()
 					}
 				}
 			}
+
+
 //		}
 
 
@@ -332,13 +334,11 @@ void Density::generate_paw_loc_density()
 //
 //
 //
-//		for(int j = 0; j< ae_atom_density.size(0); j++)
-//		{
-//			for(int i = 0; i< ae_atom_density.size(1); i++)
-//			{
-//				of<< ae_atom_density(j,i) << " " << ps_atom_density(j,i) << endl;
-//			}
-//		}
+			std::cout <<" DM "<<std::endl;
+			for(int i=0;i<density_matrix_.size(1);i++)
+				for(int j=0;j<density_matrix_.size(0);j++)
+					std::cout<<density_matrix_(j,i,1,ia)-density_matrix_(j,i,0,ia)<<" ";
+			std::cout <<std::endl;
 //
 //
 //		of.close();

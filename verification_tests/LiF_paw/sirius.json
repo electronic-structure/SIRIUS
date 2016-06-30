@@ -21,17 +21,18 @@
 
     "use_symmetry" : 1,
 
-    "num_mag_dims" : 0,
+    "num_mag_dims" : 1,
 
     "gk_cutoff" : 5.0,
     "pw_cutoff" : 20.00,
 
     "energy_tol" : 1e-8,
 
-    "num_dft_iter" : 100,
+    "num_dft_iter" : 2,
 
     "ngridk" : [8,8,8],
 
+    "reduce_gvec": 0,
 
     "unit_cell" : {
 

@@ -118,7 +118,7 @@ class Potential
 									  const std::vector<double> &rho_core);
 
 
-		void xc_mt_PAW_collinear(Radial_grid const& rgrid,
+		double xc_mt_PAW_collinear(Radial_grid const& rgrid,
 									mdarray<double,3> &out_atom_pot,
 									mdarray<double,2> &full_rho_lm,
 									mdarray<double,3> &magnetization_lm,

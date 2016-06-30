@@ -25,6 +25,8 @@
 #ifndef __GVEC_H__
 #define __GVEC_H__
 
+#include <numeric>
+
 #include "sirius_internal.h"
 #include "descriptors.h"
 #include "fft3d_grid.h"

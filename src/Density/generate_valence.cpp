@@ -99,8 +99,12 @@ void Density::generate_valence(K_set& ks__)
     if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential)
 	{
     	augment(ks__);
-    	generate_paw_loc_density();
 	}
+
+    if (ctx_.esm_type() == paw_pseudopotential)
+    {
+    	generate_paw_loc_density();
+    }
 }
 
 };
