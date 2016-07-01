@@ -485,8 +485,8 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 					auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
 					// add to atom Dij an integral of dij array
-					//atom.d_mtrx(ib1,ib2,ispin) += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
-					//atom.d_mtrx(ib2,ib1,ispin) += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
+					atom.d_mtrx(ib1,ib2,ispin) += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
+					atom.d_mtrx(ib2,ib1,ispin) += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
 				}
 			}
 		}

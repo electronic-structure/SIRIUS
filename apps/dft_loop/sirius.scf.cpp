@@ -130,11 +130,13 @@ void ground_state(cmd_args args)
     ctx.set_pw_cutoff(inp.pw_cutoff_);
     ctx.set_aw_cutoff(inp.aw_cutoff_);
     ctx.set_gk_cutoff(inp.gk_cutoff_);
-    if (ctx.esm_type() == full_potential_lapwlo) {
+
+    //if (ctx.esm_type() == full_potential_lapwlo) {
         ctx.set_lmax_apw(inp.lmax_apw_);
         ctx.set_lmax_pot(inp.lmax_pot_);
         ctx.set_lmax_rho(inp.lmax_rho_);
-    }
+    //}
+
     ctx.set_num_mag_dims(inp.num_mag_dims_);
     ctx.set_auto_rmt(inp.auto_rmt_);
     ctx.set_core_relativity(inp.core_relativity_);
