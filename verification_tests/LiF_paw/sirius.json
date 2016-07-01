@@ -29,7 +29,7 @@
 
       "ngridk" : [8,8,8],
 
-      "reduce_gvec": 0,
+      "reduce_gvec": 0
   },
 
     "iterative_solver" : {
