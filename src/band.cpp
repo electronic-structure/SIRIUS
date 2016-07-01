@@ -1053,7 +1053,7 @@ void Band::solve_fd(K_point* kp__,
 {
     switch (ctx_.esm_type())
     {
-    	case paw_pseudopotential:
+        case paw_pseudopotential:
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {

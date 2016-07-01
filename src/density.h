@@ -366,23 +366,23 @@ class Density
 
         std::vector< mdarray<double, 2> >* get_paw_ae_local_density()
         {
-        	return &paw_ae_local_density_;
+            return &paw_ae_local_density_;
         }
 
         std::vector< mdarray<double, 2> >* get_paw_ps_local_density()
-		{
-			return &paw_ps_local_density_;
-		}
+        {
+            return &paw_ps_local_density_;
+        }
 
         std::vector< mdarray<double, 3> >* get_paw_ae_local_magnetization()
         {
-        	return &paw_ae_local_magnetization_;
+            return &paw_ae_local_magnetization_;
         }
 
         std::vector< mdarray<double, 3> >* get_paw_ps_local_magnetization()
-		{
-			return &paw_ps_local_magnetization_;
-		}
+        {
+            return &paw_ps_local_magnetization_;
+        }
 
         void allocate()
         {
@@ -499,14 +499,14 @@ class Density
         }
 
         const mdarray<double_complex, 4>& get_density_matrix() const
-		{
-        	return density_matrix_;
-		}
+        {
+            return density_matrix_;
+        }
 
 //        mdarray<double_complex, 4>& get_density_matrix_unsafe()
-//		{
-//			return density_matrix_;
-//		}
+//      {
+//          return density_matrix_;
+//      }
 };
 
 }

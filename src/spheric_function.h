@@ -174,21 +174,21 @@ class Spheric_function
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
 {
-	if (a__.radial_grid().hash() != b__.radial_grid().hash()) TERMINATE("wrong radial grids");
-	if (a__.angular_domain_size() != b__.angular_domain_size()) TERMINATE("wrong angular domain sizes");
+    if (a__.radial_grid().hash() != b__.radial_grid().hash()) TERMINATE("wrong radial grids");
+    if (a__.angular_domain_size() != b__.angular_domain_size()) TERMINATE("wrong angular domain sizes");
 
-	Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
+    Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
 
-	const T* ptr_lhs = &a__(0,0);
-	const T* ptr_rhs = &b__(0,0);
-	T* ptr_res = &res(0,0);
+    const T* ptr_lhs = &a__(0,0);
+    const T* ptr_rhs = &b__(0,0);
+    T* ptr_res = &res(0,0);
 
-	for (int i = 0; i < a__.size(); i++)
-	{
-		ptr_res[i] = ptr_lhs[i] * ptr_rhs[i];
-	}
+    for (int i = 0; i < a__.size(); i++)
+    {
+        ptr_res[i] = ptr_lhs[i] * ptr_rhs[i];
+    }
 
-	return std::move(res);
+    return std::move(res);
 }
 
 
@@ -225,18 +225,18 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
 {
-	Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
+    Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
 
-	const T* ptr_lhs = &a__(0,0);
-	const T* ptr_rhs = &b__(0,0);
-	T* ptr_res = &res(0,0);
+    const T* ptr_lhs = &a__(0,0);
+    const T* ptr_rhs = &b__(0,0);
+    T* ptr_res = &res(0,0);
 
-	for (int i = 0; i < a__.size(); i++)
-	{
-		ptr_res[i] = ptr_lhs[i] - ptr_rhs[i];
-	}
+    for (int i = 0; i < a__.size(); i++)
+    {
+        ptr_res[i] = ptr_lhs[i] - ptr_rhs[i];
+    }
 
-	return std::move(res);
+    return std::move(res);
 }
 
 
@@ -247,17 +247,17 @@ Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> const& b__)
 {
-	Spheric_function<domain_t, T> res( b__.angular_domain_size(), b__.radial_grid() );
+    Spheric_function<domain_t, T> res( b__.angular_domain_size(), b__.radial_grid() );
 
-	const T* ptr_rhs = &b__(0,0);
-	T* ptr_res = &res(0,0);
+    const T* ptr_rhs = &b__(0,0);
+    T* ptr_res = &res(0,0);
 
-	for (int i = 0; i < b__.size(); i++)
-	{
-		ptr_res[i] = a__ * ptr_rhs[i];
-	}
+    for (int i = 0; i < b__.size(); i++)
+    {
+        ptr_res[i] = a__ * ptr_rhs[i];
+    }
 
-	return std::move(res);
+    return std::move(res);
 }
 
 
@@ -269,7 +269,7 @@ Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> con
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__, T a__ )
 {
-	return std::move(a__ * b__);
+    return std::move(a__ * b__);
 }
 
 

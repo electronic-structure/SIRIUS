@@ -110,38 +110,38 @@ class Potential
         double paw_total_core_energy_;
 
         //--- PAW  functions ---
-		void init_PAW();
+        void init_PAW();
 
-		double xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
-									  mdarray<double, 3> &out_atom_pot,
-									  mdarray<double, 2> &full_rho_lm,
-									  const std::vector<double> &rho_core);
-
-
-		double xc_mt_PAW_collinear(Radial_grid const& rgrid,
-									mdarray<double,3> &out_atom_pot,
-									mdarray<double,2> &full_rho_lm,
-									mdarray<double,3> &magnetization_lm,
-									const std::vector<double> &rho_core);
-
-		// TODO DO
-		void xc_mt_PAW_noncollinear(	)	{     };
-
-		void calc_PAW_local_potential(int atom_index,
-									  mdarray<double, 2> &ae_full_density,
-									  mdarray<double, 2> &ps_full_density,
-									  mdarray<double, 3> &ae_local_magnetization,
-									  mdarray<double, 3> &ps_local_magnetization);
+        double xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
+                                      mdarray<double, 3> &out_atom_pot,
+                                      mdarray<double, 2> &full_rho_lm,
+                                      const std::vector<double> &rho_core);
 
 
-		void calc_PAW_local_Dij(int atom_index);
+        double xc_mt_PAW_collinear(Radial_grid const& rgrid,
+                                    mdarray<double,3> &out_atom_pot,
+                                    mdarray<double,2> &full_rho_lm,
+                                    mdarray<double,3> &magnetization_lm,
+                                    const std::vector<double> &rho_core);
 
-		double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
-											 mdarray<double, 2> &full_density,
-											 mdarray<double, 3> &out_atom_pot);
+        // TODO DO
+        void xc_mt_PAW_noncollinear(    )   {     };
 
-		//------------------------------------------------
-		//------------------------------------------------
+        void calc_PAW_local_potential(int atom_index,
+                                      mdarray<double, 2> &ae_full_density,
+                                      mdarray<double, 2> &ps_full_density,
+                                      mdarray<double, 3> &ae_local_magnetization,
+                                      mdarray<double, 3> &ps_local_magnetization);
+
+
+        void calc_PAW_local_Dij(int atom_index);
+
+        double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
+                                             mdarray<double, 2> &full_density,
+                                             mdarray<double, 3> &out_atom_pot);
+
+        //------------------------------------------------
+        //------------------------------------------------
         //Spheric_function<function_domain_t::spectral,double>
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(Periodic_function<double>* rho__, 
@@ -150,9 +150,9 @@ class Potential
 
         /// Compute MT part of the potential and MT multipole moments
         void poisson_atom_vmt(Spheric_function<function_domain_t::spectral,double> &rho_mt,
-						Spheric_function<function_domain_t::spectral,double> &vh_mt,
-						mdarray<double_complex, 1>& qmt_mt,
-						Atom &atom);
+                        Spheric_function<function_domain_t::spectral,double> &vh_mt,
+                        mdarray<double_complex, 1>& qmt_mt,
+                        Atom &atom);
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         void poisson_sum_G(int lmmax__, 
@@ -460,9 +460,9 @@ class Potential
         //--- PAW functions ------------------------------
         //------------------------------------------------
         void generate_PAW_effective_potential(std::vector< mdarray<double, 2> > *paw_ae_local_density,
-				std::vector< mdarray<double, 2> > *paw_ps_local_density,
-				std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
-				std::vector< mdarray<double, 3> > *paw_ps_local_magnetization);
+                std::vector< mdarray<double, 2> > *paw_ps_local_density,
+                std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
+                std::vector< mdarray<double, 3> > *paw_ps_local_magnetization);
 
         const std::vector< double >&  PAW_hartree_energies(){ return paw_hartree_energies_; }
 

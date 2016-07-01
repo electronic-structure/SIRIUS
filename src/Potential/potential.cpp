@@ -37,12 +37,12 @@ Potential::Potential(Simulation_context& ctx__)
     runtime::Timer t("sirius::Potential::Potential");
 
 //    if(ctx_.full_potential())
-//	{
-    	lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-//	}
+//  {
+        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+//  }
 //    else
 //    {
-//    	lmax_ =
+//      lmax_ =
 //    }
 
     if (ctx_.esm_type() == full_potential_lapwlo)
@@ -113,7 +113,7 @@ Potential::Potential(Simulation_context& ctx__)
     // if PAW calc
     if(ctx_.esm_type() == paw_pseudopotential)
     {
-    	init_PAW();
+        init_PAW();
     }
 
 

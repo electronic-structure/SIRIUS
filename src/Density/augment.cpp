@@ -77,17 +77,17 @@ void Density::augment(K_set& ks__)
     //////////////////////////////////////////////////////////////////
     if(ctx_.num_mag_dims()==1)
     {
-		std::cout<<" DM "<<std::endl;
-		for(int j = 0; j< density_matrix_.size(0); j++)
-		{
-			for(int i = 0; i< density_matrix_.size(1); i++)
-			{
-				std::cout<< density_matrix_(j,i,0,0) - density_matrix_(j,i,1,0)<<"    ";
-			}
-		}
-		std::cout<<std::endl;
+        std::cout<<" DM "<<std::endl;
+        for(int j = 0; j< density_matrix_.size(0); j++)
+        {
+            for(int i = 0; i< density_matrix_.size(1); i++)
+            {
+                std::cout<< density_matrix_(j,i,0,0) - density_matrix_(j,i,1,0)<<"    ";
+            }
+        }
+        std::cout<<std::endl;
     }
-	//////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {

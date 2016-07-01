@@ -648,7 +648,7 @@ class Atom_type
 
         inline const PAW_descriptor& get_PAW_descriptor() const
         {
-        	return paw_;
+            return paw_;
         }
 
         inline void set_symbol(const std::string symbol__)
