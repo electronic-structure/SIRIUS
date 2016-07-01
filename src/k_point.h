@@ -280,6 +280,9 @@ class K_point
                     return unit_cell_.mt_basis_size() + num_gkvec();
                     break;
                 }
+
+                //TODO case paw_pseudopotential think about
+                case paw_pseudopotential:
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
@@ -300,6 +303,7 @@ class K_point
                     return unit_cell_.mt_basis_size();
                     break;
                 }
+                case paw_pseudopotential:
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {

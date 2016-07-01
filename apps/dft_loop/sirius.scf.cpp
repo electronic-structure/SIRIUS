@@ -14,7 +14,7 @@ const double au2angs = 0.5291772108;
 
 void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida_output, int result)
 {
-    //double evalsum1 = gs.kset_->valence_eval_sum();
+    //double evalsum1 = gs.kset_->valence_eval_sum(); 
     //double evalsum2 = gs.core_eval_sum();
     //double ekin = gs.energy_kin();
     double evxc = gs.energy_vxc();
@@ -31,7 +31,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
     if (ctx.comm().rank() == 0) {
         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
         JSON_write jw(fname);
-        
+
         jw.single("git_hash", git_hash);
         jw.single("build_date", build_date);
         jw.single("num_ranks", ctx.comm().size());
@@ -58,7 +58,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         jw.single("evha", evha, 8);
         jw.single("enuc", enuc, 8);
         jw.end_set();
-        
+
         //** if (num_mag_dims())
         //** {
         //**     std::vector<double> v(3, 0);
@@ -71,7 +71,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         //**     jw.single("total_moment", v);
         //**     jw.single("total_moment_len", Utils::vector_length(&v[0]));
         //** }
-        
+
         //** jw.single("total_energy", total_energy());
         //** jw.single("kinetic_energy", kinetic_energy());
         //** jw.single("energy_veff", rti_.energy_veff);
@@ -84,7 +84,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs, bool aiida
         //** jw.single("valence_eval_sum", rti_.valence_eval_sum);
         //** jw.single("band_gap", rti_.band_gap);
         //** jw.single("energy_fermi", rti_.energy_fermi);
-        
+
         jw.single("timers", ts);
     }
 
@@ -110,7 +110,7 @@ void ground_state(cmd_args args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
 
     std::string fname = args.value<std::string>("input", "sirius.json");
-    
+
     Simulation_context ctx(fname, mpi_comm_world());
 
     std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
@@ -130,11 +130,13 @@ void ground_state(cmd_args args)
     ctx.set_pw_cutoff(inp.pw_cutoff_);
     ctx.set_aw_cutoff(inp.aw_cutoff_);
     ctx.set_gk_cutoff(inp.gk_cutoff_);
-    if (ctx.esm_type() == full_potential_lapwlo) {
+
+    //if (ctx.esm_type() == full_potential_lapwlo) {
         ctx.set_lmax_apw(inp.lmax_apw_);
         ctx.set_lmax_pot(inp.lmax_pot_);
         ctx.set_lmax_rho(inp.lmax_rho_);
-    }
+    //}
+
     ctx.set_num_mag_dims(inp.num_mag_dims_);
     ctx.set_auto_rmt(inp.auto_rmt_);
     ctx.set_core_relativity(inp.core_relativity_);
@@ -149,11 +151,11 @@ void ground_state(cmd_args args)
     ctx.set_gamma_point(inp.gamma_point_);
 
     ctx.initialize();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     Potential* potential = new Potential(ctx);
     potential->allocate();
 
@@ -165,18 +167,18 @@ void ground_state(cmd_args args)
              vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), inp.use_symmetry_);
 
     ks.initialize();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     Density* density = new Density(ctx);
     density->allocate();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     DFT_ground_state dft(ctx, potential, density, &ks, inp.use_symmetry_);
 
     if (task == task_t::ground_state_restart) {
@@ -192,7 +194,7 @@ void ground_state(cmd_args args)
             dft.initialize_subspace();
         }
     }
-    
+
     double potential_tol = parser["parameters"]["potential_tol"].get(1e-4);
     double energy_tol = parser["parameters"]["energy_tol"].get(1e-4);
 
@@ -243,6 +245,6 @@ int main(int argn, char** argv)
     sirius::initialize(1);
 
     ground_state(args);
-    
+
     sirius::finalize();
 }

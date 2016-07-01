@@ -194,6 +194,12 @@ class Simulation_parameters
             xc_functionals_.push_back(name__);
         }
 
+        inline void set_esm_type(electronic_structure_method_t esm_type)
+        {
+
+        	esm_type_ = esm_type;
+        }
+
         inline void set_esm_type(std::string name__)
         {
             std::map<std::string, electronic_structure_method_t> m;
@@ -202,6 +208,7 @@ class Simulation_parameters
             m["full_potential_pwlo"]             = full_potential_pwlo;
             m["ultrasoft_pseudopotential"]       = ultrasoft_pseudopotential;
             m["norm_conserving_pseudopotential"] = norm_conserving_pseudopotential;
+            m["paw_pseudopotential"] 			 = paw_pseudopotential;
 
             if (m.count(name__) == 0)
             {

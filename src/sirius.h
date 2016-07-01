@@ -58,6 +58,7 @@
 #include "simulation_context.h"
 #include "simulation_parameters.h"
 
+
 #endif // __SIRIUS_H__
 
 /** \mainpage Welcome to SIRIUS

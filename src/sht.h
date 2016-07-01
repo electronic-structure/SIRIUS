@@ -111,6 +111,48 @@ class SHT // TODO: better name
         /// Convert from Ylm to Rlm representation.
         static void convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__);
 
+//<<<<<<< HEAD
+//        template <typename T>
+//        Spheric_function<spectral, T> transform(Spheric_function<spatial, T>& f)
+//        {
+//            Spheric_function<spectral, T> g(lmmax(), f.radial_grid());
+//            
+//            forward_transform(&f(0, 0), f.radial_grid().num_points(), lmmax(), lmmax(), &g(0, 0));
+//
+//            return std::move(g);
+//        }
+//        
+//        template <typename T>
+//        Spheric_function<spatial, T> transform(Spheric_function<spectral, T>& f)
+//        {
+//            Spheric_function<spatial, T> g(num_points(), f.radial_grid());
+//            
+//            backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(), 
+//                               std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
+//
+//            return std::move(g);
+//        }
+//        
+//        template <typename T>
+//        void transform(Spheric_function<spatial, T>& f, Spheric_function<spectral, T>&g)
+//        {
+//            assert(f.radial_grid().hash() == g.radial_grid().hash());
+//
+//            forward_transform(&f(0, 0), f.radial_grid().num_points(), std::min(g.angular_domain_size(), lmmax()), 
+//                              g.angular_domain_size(), &g(0, 0));
+//        }
+//
+//        template <typename T>
+//        void transform(Spheric_function<spectral, T>& f, Spheric_function<spatial, T>&g)
+//        {
+//            assert(f.radial_grid().hash() == g.radial_grid().hash());
+//
+//            backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(),
+//                                           std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
+//        }
+    
+//=======
+//>>>>>>> 8c36e2a63f57546c9e96f15c424a77fb0ef1d523
         //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
         //{
         //    Timer t("sirius::SHT::rlm_forward_iterative_transform");

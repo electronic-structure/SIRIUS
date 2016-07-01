@@ -36,10 +36,17 @@ Potential::Potential(Simulation_context& ctx__)
 {
     runtime::Timer t("sirius::Potential::Potential");
 
+//    if(ctx_.full_potential())
+//	{
+    	lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+//	}
+//    else
+//    {
+//    	lmax_ =
+//    }
+
     if (ctx_.esm_type() == full_potential_lapwlo)
     {
-        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-        sht_ = new SHT(lmax_);
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */
@@ -52,6 +59,10 @@ Potential::Potential(Simulation_context& ctx__)
             for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
         }
     }
+
+    std::cout<<lmax_<<" !!!!" <<std::endl;
+
+    sht_ = new SHT(lmax_);
 
     effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
     
@@ -92,18 +103,33 @@ Potential::Potential(Simulation_context& ctx__)
             SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
     }
+
+    // create list of XC functionals
+    for (auto& xc_label: ctx_.xc_functionals())
+    {
+        xc_func_.push_back(new XC_functional(xc_label, ctx_.num_spins()));
+    }
+
+    // if PAW calc
+    if(ctx_.esm_type() == paw_pseudopotential)
+    {
+    	init_PAW();
+    }
+
+
 }
 
 Potential::~Potential()
 {
     delete effective_potential_; 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
-    if (ctx_.esm_type() == full_potential_lapwlo) delete sht_;
+    delete sht_;
     delete hartree_potential_;
     delete xc_potential_;
     delete xc_energy_density_;
     if (!ctx_.full_potential()) delete local_potential_;
     if (mixer_ != nullptr) delete mixer_;
+    for (auto& ixc: xc_func_) delete ixc;
 }
 
 }

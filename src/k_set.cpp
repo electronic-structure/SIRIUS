@@ -155,8 +155,8 @@ void K_set::find_band_occupancies()
 
     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
     
-    // TODO: safe way not to get stuck here
-    while (true)
+    // calc occupation
+    while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11)
     {
         ne = 0.0;
         for (int ik = 0; ik < num_kpoints(); ik++)
@@ -169,7 +169,7 @@ void K_set::find_band_occupancies()
             }
         }
 
-        if (std::abs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
+        //if (std::abs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
 
         sp = s;
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;

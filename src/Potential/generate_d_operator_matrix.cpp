@@ -21,6 +21,7 @@
  *   
  *  \brief Contains implementation of sirius::Potential::generate_D_operator_matrix method.
  */
+#include <fstream>
 
 #include "potential.h"
 
@@ -35,11 +36,16 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 double* veff_a__);
 #endif
 
+
+
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 void Potential::generate_D_operator_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
 
-    if (ctx_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
+    //if (ctx_.esm_type() != ultrasoft_pseudopotential) STOP(); // decide what to do in this case
     
     /* store effective potential and magnetic field in a vector */
     std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
@@ -193,6 +199,24 @@ void Potential::generate_D_operator_matrix()
         }
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////
+//	std::cout <<" DIJ"<<std::endl;
+//	for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+//	{
+//		auto& atom = unit_cell_.atom(ia);
+//		auto& atom_type = atom.type();
+//		for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
+//		{
+//			for(int ib1 = 0; ib1 <= ib2; ib1++)
+//			{
+//				std::cout << atom.d_mtrx(ib2,ib1,0) - atom.d_mtrx(ib2,ib1,1) << " ";
+//			}
+//		}
+//	}
+//	std::cout <<std::endl;
+	//////////////////////////////////////////////////////////////////////////////////////
+
+
     /* add d_ion to the effective potential component of D-operator */
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -209,7 +233,20 @@ void Potential::generate_D_operator_matrix()
                 int lm1 = atom_type.indexb(xi1).lm;
                 int idxrf1 = atom_type.indexb(xi1).idxrf;
                 
-                if (lm1 == lm2) unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
+                if (lm1 == lm2)
+				{
+                	unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
+//
+//                	if(ctx_.num_mag_dims()>=1)
+//                	{
+//                		unit_cell_.atom(ia).d_mtrx(xi1, xi2, 1) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
+//                	}
+//
+//                	if(ctx_.num_mag_dims()==3)
+//                	{
+//                		TERMINATE("NONCOLLINEAR IS NOT IMPLEMENTED");
+//                	}
+				}
             }
         }
     }
@@ -217,5 +254,10 @@ void Potential::generate_D_operator_matrix()
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
         ctx_.augmentation_op(iat).dismiss(1);
 }
+
+
+
+
+
 
 };

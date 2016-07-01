@@ -48,14 +48,14 @@ void Density::augment(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::augment");
 
-    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
-     * because density matrix is symmetric. */
-    int ndm = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
+    int ndm = this->ndm_;
     
     runtime::Timer t1("sirius::Density::augment|dm");
+
     /* complex density matrix */
-    mdarray<double_complex, 4> density_matrix(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
-                                              ndm, unit_cell_.num_atoms());
+    // small crutch, create reference to the class field
+    mdarray<double_complex, 4> &density_matrix = this->density_matrix_;
+
     density_matrix.zero();
     
     /* add k-point contribution */
@@ -71,7 +71,24 @@ void Density::augment(K_set& ks__)
             add_k_point_contribution<double_complex>(ks__[ik], density_matrix);
         }
     }
+
     ctx_.comm().allreduce(density_matrix.at<CPU>(), static_cast<int>(density_matrix.size()));
+
+    //////////////////////////////////////////////////////////////////
+    if(ctx_.num_mag_dims()==1)
+    {
+		std::cout<<" DM "<<std::endl;
+		for(int j = 0; j< density_matrix_.size(0); j++)
+		{
+			for(int i = 0; i< density_matrix_.size(1); i++)
+			{
+				std::cout<< density_matrix_(j,i,0,0) - density_matrix_(j,i,1,0)<<"    ";
+			}
+		}
+		std::cout<<std::endl;
+    }
+	//////////////////////////////////////////////////////////////////
+
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         auto cs = density_matrix.checksum();

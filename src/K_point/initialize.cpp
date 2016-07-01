@@ -52,6 +52,7 @@ void K_point::initialize()
     double gk_cutoff = 0;
     switch (ctx_.esm_type())
     {
+    	case paw_pseudopotential:
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {

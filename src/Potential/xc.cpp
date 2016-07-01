@@ -901,25 +901,25 @@ void Potential::xc(Periodic_function<double>* rho,
         return;
     }
 
-    /* create list of XC functionals */
-    std::vector<XC_functional*> xc_func;
-    for (auto& xc_label: ctx_.xc_functionals())
-    {
-        xc_func.push_back(new XC_functional(xc_label, ctx_.num_spins()));
-    }
+    /* list of XC functionals */
+//    std::vector<XC_functional*> &xc_func = xc_func_;
+//    for (auto& xc_label: ctx_.xc_functionals())
+//    {
+//        xc_func.push_back(new XC_functional(xc_label, ctx_.num_spins()));
+//    }
    
-    if (ctx_.full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
+    if (ctx_.full_potential()) xc_mt(rho, magnetization, xc_func_, vxc, bxc, exc);
     
     if (ctx_.num_spins() == 1)
     {
-        xc_it_nonmagnetic(rho, xc_func, vxc, exc);
+        xc_it_nonmagnetic(rho, xc_func_, vxc, exc);
     }
     else
     {
-        xc_it_magnetic(rho, magnetization, xc_func, vxc, bxc, exc);
+        xc_it_magnetic(rho, magnetization, xc_func_, vxc, bxc, exc);
     }
 
-    for (auto& ixc: xc_func) delete ixc;
+    //for (auto& ixc: xc_func) delete ixc;
 }
 
 };

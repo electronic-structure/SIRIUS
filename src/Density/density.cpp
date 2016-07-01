@@ -39,6 +39,8 @@ Density::Density(Simulation_context& ctx__)
                                                                   ctx_.lmax_pw(), SHT::gaunt_hybrid);
             break;
         }
+
+        case paw_pseudopotential:
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
@@ -147,6 +149,54 @@ Density::Density(Simulation_context& ctx__)
             TERMINATE("wrong mixer type");
         }
     }
+
+
+    //--- Allocate density matrix ---
+
+    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
+     * because density matrix is symmetric. */
+    ndm_ = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();
+
+    // density matrix is here
+    density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(),
+    		unit_cell_.max_mt_basis_size(), ndm_, unit_cell_.num_atoms());
+
+
+    //--- Allocate local PAW density arrays ---
+
+    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    {
+    	auto& atom = unit_cell_.atom(ia);
+
+    	auto& atype = atom.type();
+
+    	int n_mt_points = atype.num_mt_points();
+
+    	int rad_func_lmax = atype.indexr().lmax_lo();
+
+    	// TODO am I right?
+    	int n_rho_lm_comp = (2 * rad_func_lmax + 1) * (2 * rad_func_lmax + 1);
+
+    	// allocate
+    	mdarray<double, 2> ae_atom_density(n_rho_lm_comp, n_mt_points);
+    	mdarray<double, 2> ps_atom_density(n_rho_lm_comp, n_mt_points);
+
+    	// add
+    	paw_ae_local_density_.push_back(std::move(ae_atom_density));
+    	paw_ps_local_density_.push_back(std::move(ps_atom_density));
+
+    	// magnetization
+		mdarray<double, 3> ae_atom_magn(n_rho_lm_comp, n_mt_points, 3);
+		mdarray<double, 3> ps_atom_magn(n_rho_lm_comp, n_mt_points, 3);
+
+		ae_atom_magn.zero();
+		ps_atom_magn.zero();
+
+		paw_ae_local_magnetization_.push_back(std::move(ae_atom_magn));
+		paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
+
+    }
+
 }
 
 Density::~Density()

@@ -36,6 +36,8 @@
 #include "xc_functional.h"
 #include "simulation_parameters.h"
 
+#include "PAW/PAW_descriptor.h"
+
 namespace sirius {
 
 class radial_functions_index
@@ -342,6 +344,8 @@ class Atom_type
 
         uspp_descriptor uspp_;
 
+        PAW_descriptor paw_;
+
         /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
         /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
         matrix<double_complex> p_mtrx_;
@@ -362,6 +366,10 @@ class Atom_type
         void read_input_aw(JSON_tree& parser);
 
         void read_input_lo(JSON_tree& parser);
+
+        void read_pseudo_uspp(JSON_tree& parser);
+
+        void read_pseudo_paw(JSON_tree& parser);
 
         void read_input(const std::string& fname);
     
@@ -627,6 +635,7 @@ class Atom_type
             return -1;
         }
 
+        //TODO rename these two methods, unsafe method is needed?
         inline uspp_descriptor& uspp()
         {
             return uspp_;
@@ -635,6 +644,11 @@ class Atom_type
         inline uspp_descriptor const& uspp() const
         {
             return uspp_;
+        }
+
+        inline const PAW_descriptor& get_PAW_descriptor() const
+        {
+        	return paw_;
         }
 
         inline void set_symbol(const std::string symbol__)
