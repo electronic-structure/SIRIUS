@@ -108,8 +108,8 @@ endif
 
 OBJ_DBG = $(OBJ:%.o=%.o)
 	
-#.cpp.o:
-#	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
+.cpp.o:
+	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
 
 .cu.o:
 	$(NVCC) -DADD_ $(NVCC_OPT) -c -o $(*D)/$(*F).o $<
@@ -123,8 +123,8 @@ all: log $(OBJ) sirius_api.o sirius.o
 
 
 
-%.o: %.cpp
-	$(CXX) $(CXX_OPT_DBG) -c -o $(*D)/$(*F).o $<
+#%.o: %.cpp
+#	$(CXX) $(CXX_OPT_DBG) -c -o $(*D)/$(*F).o $<
 	
 debug: $(OBJ_DBG)
 	ar -r libsirius.dbg.a $(OBJ_DBG)

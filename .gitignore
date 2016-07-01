@@ -7,6 +7,8 @@ Makefile
 platform.json
 make.inc
 
+src/version.h
+
 .cproject
 .project
 .settings

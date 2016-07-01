@@ -48,21 +48,6 @@ def configure_package(package_name, platform):
 
     if (not os.path.exists("./libs/" + local_file_name)):
         try:
-<<<<<<< HEAD
-            print("Downloading %s"%file_url)
-            req = urllib.request.Request(file_url)
-            furl = urllib.request.urlopen(req)
-
-            local_file = open("./libs/" + local_file_name, "wb")
-            local_file.write(furl.read())
-            local_file.close()
-
-        except urllib2.HTTPError as err:
-            print("HTTP Error: %i %s"%(e.code, url))
-
-        except urllib2.URLError as err:
-            print("URL Error: %i %s"%(err.reason, url))
-=======
             if sys.version_info < (3, 0):
                 import urllib
                 print("Downloading %s"%file_url)
@@ -76,18 +61,11 @@ def configure_package(package_name, platform):
                 local_file = open("./libs/" + local_file_name, "wb")
                 local_file.write(furl.read())
                 local_file.close()
->>>>>>> 8c36e2a63f57546c9e96f15c424a77fb0ef1d523
 
         except Exception as e:
             print("{0}".format(e));
             sys.exit(1)
         
-#        except urllib2.HTTPError as err:
-#            print("HTTP Error: %i %s"%(e.code, url))
-#
-#        except urllib2.URLError as err:
-#            print("URL Error: %i %s"%(err.reason, url))
-#
     tf = tarfile.open("./libs/" + local_file_name)
     tf.extractall("./libs/")
 
@@ -201,22 +179,23 @@ def main():
     makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
     makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
 
-
-### TEST DEBUG CONF ####
+    dbg_conf = False
     if "MPI_CXX_OPT_DBG" in platform:
         makeinc.write("CXX_OPT_DBG = " + platform["MPI_CXX_OPT_DBG"] + "\n")
-    else:
+        dbg_conf = True
+    if "CXX_OPT_DBG" in platform:
         makeinc.write("CXX_OPT_DBG = " + platform["CXX_OPT_DBG"] + "\n")
+        dbg_conf = True
+    
+    if dbg_conf:
+        makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) -I" + os.getcwd() + "/src\n")
 
-    makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) -I" + os.getcwd() + "/src\n")
+        if "install" in platform:
+            for name in platform["install"]:
+                opts = configure_package(name, platform)
+                makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) " + opts[0] + "\n")
 
-    if "install" in platform:
-        for name in platform["install"]:
-            opts = configure_package(name, platform)
-            makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) " + opts[0] + "\n")
-
-    makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) -I" + os.getcwd() + "/libs/libjson\n")
-############
+        makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) -I" + os.getcwd() + "/libs/libjson\n")
 
     makeinc.close()
 
