@@ -72,10 +72,10 @@ class Atom
         int offset_aw_;
 
         /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
-        int offset_lo_;
+        int offset_lo_; // TODO: better name for this
 
         /// Offset in the wave-function array.
-        int offset_wf_;
+        int offset_wf_; // TODO: better name for this
 
         /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
         mdarray<double_complex, 4> occupation_matrix_;
@@ -233,30 +233,30 @@ class Atom
             {
                 switch (sblock)
                 {
-                    case nm:
+                    case spin_block_t::nm:
                     {
                         zsum += gnt[i].coef * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
                         break;
                     }
-                    case uu:
+                    case spin_block_t::uu:
                     {
                         zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
                                                b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
                         break;
                     }
-                    case dd:
+                    case spin_block_t::dd:
                     {
                         zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
                                                b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
                         break;
                     }
-                    case ud:
+                    case spin_block_t::ud:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
                                                             -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
-                    case du:
+                    case spin_block_t::du:
                     {
                         zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
                                                              b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));

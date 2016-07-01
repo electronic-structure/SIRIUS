@@ -111,7 +111,7 @@ double Potential::xc_mt_PAW_nonmagnetic(const Radial_grid& rgrid,
 		full_rho_lm_sf_new(0,ir) += invY00 * rho_core[ir];
 	}
 
-	Spheric_function<spatial,double> full_rho_tp_sf = sht_->transform(full_rho_lm_sf_new);
+	Spheric_function<spatial,double> full_rho_tp_sf = transform(sht_,full_rho_lm_sf_new);
 
 	// create potential in theta phi
 	Spheric_function<spatial,double> vxc_tp_sf(sht_->num_points(), rgrid);
@@ -121,12 +121,12 @@ double Potential::xc_mt_PAW_nonmagnetic(const Radial_grid& rgrid,
 
 	xc_mt_nonmagnetic(rgrid, xc_func_, full_rho_lm_sf_new, full_rho_tp_sf, vxc_tp_sf, exc_tp_sf);
 
-	out_atom_pot_sf += sht_->transform(vxc_tp_sf);
+	out_atom_pot_sf += transform(sht_,vxc_tp_sf);
 
 	//------------------------
 	//--- calculate energy ---
 	//------------------------
-	Spheric_function<spectral,double> exc_lm_sf = sht_->transform( exc_tp_sf );
+	Spheric_function<spectral,double> exc_lm_sf = transform( sht_, exc_tp_sf );
 
 	return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
@@ -171,8 +171,8 @@ double Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
 	Spheric_function<spectral,double> rho_d_lm_sf =  0.5 * (full_rho_lm_sf_new - magnetization_Z_lm);
 
 	// transform density to theta phi components
-	Spheric_function<spatial,double> rho_u_tp_sf = sht_->transform( rho_u_lm_sf );
-	Spheric_function<spatial,double> rho_d_tp_sf = sht_->transform( rho_d_lm_sf );
+	Spheric_function<spatial,double> rho_u_tp_sf = transform( sht_, rho_u_lm_sf );
+	Spheric_function<spatial,double> rho_d_tp_sf = transform( sht_, rho_d_lm_sf );
 
 	// create potential in theta phi
 	Spheric_function<spatial,double> vxc_u_tp_sf(sht_->num_points(), rgrid);
@@ -189,8 +189,8 @@ double Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
 				   exc_tp_sf);
 
 	// transform back in lm
-	out_atom_pot_up_sf += sht_->transform(vxc_u_tp_sf);
-	out_atom_pot_dn_sf += sht_->transform(vxc_d_tp_sf);
+	out_atom_pot_up_sf += transform( sht_, vxc_u_tp_sf);
+	out_atom_pot_dn_sf += transform( sht_, vxc_d_tp_sf);
 //////////////////////////////////////////////////////////////
 //	std::cout<<"\n UP "<<std::endl;
 //	for(int lm=0; lm<out_atom_pot_up_sf.angular_domain_size(); lm++)
@@ -215,7 +215,7 @@ double Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
 	//------------------------
 	//--- calculate energy ---
 	//------------------------
-	Spheric_function<spectral,double> exc_lm_sf = sht_->transform( exc_tp_sf );
+	Spheric_function<spectral,double> exc_lm_sf = transform( sht_, exc_tp_sf );
 
 	return inner(exc_lm_sf, full_rho_lm_sf_new);
 }

@@ -1,12 +1,35 @@
 {
-    "cyclic_block_size" : 16,
-    "processing_unit" : "cpu",
-    "std_evp_solver_type" : "lapack",
-    "gen_evp_solver_type" : "lapack",
-    "num_fv_states" : 40,
-    "electronic_structure_method" : "ultrasoft_pseudopotential",
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "gpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack"
+    },
 
-    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+    "parameters" : {
+        "electronic_structure_method" : "ultrasoft_pseudopotential",
+
+        "num_fv_states" : 40,
+
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "smearing_width" : 0.025,
+
+        "use_symmetry" : 1,
+
+        "num_mag_dims" : 0,
+
+        "gk_cutoff" : 6.0,
+        "pw_cutoff" : 20.00,
+
+        "energy_tol" : 1e-8,
+        "potential_tol" : 1e-8,
+
+        "num_dft_iter" : 100,
+
+        "ngridk" : [2,2,2]
+    },
+
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-2,
@@ -17,20 +40,6 @@
         "converge_by_energy" : 1
     },
 
-    "smearing_width" : 0.025,
-
-    "use_symmetry" : 1,
-
-    "num_mag_dims" : 0,
-
-    "gk_cutoff" : 6.0,
-    "pw_cutoff" : 20.00,
-
-    "energy_tol" : 1e-10,
-
-    "num_dft_iter" : 100,
-
-    "ngridk" : [2,2,2],
 
     "unit_cell" : {
 

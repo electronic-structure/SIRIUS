@@ -237,47 +237,20 @@ vector3d<int> Utils::find_translations(double radius__, matrix3d<double> const& 
 {
     runtime::Timer t("sirius::Utils::find_translations");
 
-    double theta = pi;
-    double phi = 0;
+    /* Volume = |(a0 x a1) * a2| = N1 * N2 * N3 * determinant of a lattice vectors matrix 
+       Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
 
-    auto minv = inverse(lattice_vectors__);
-    vector3d<int> limits(0, 0, 0);
-    double max_lim[] = {0, 0, 0};
-    double min_lim[] = {0, 0, 0};
+    vector3d<double> a0(lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0));
+    vector3d<double> a1(lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1));
+    vector3d<double> a2(lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2));
 
-    auto test_point = [&minv, radius__, &limits, &max_lim, &min_lim](double th, double ph)
-    {
-        vector3d<double> pos(radius__ * std::sin(th) * std::cos(ph),
-                             radius__ * std::sin(th) * std::sin(ph),
-                             radius__ * std::cos(th));
-        auto f = minv * pos;
-        for (int x: {0, 1, 2})
-        {
-            max_lim[x] = std::max(max_lim[x], std::floor(f[x]));
-            min_lim[x] = std::min(min_lim[x], std::ceil(f[x]));
-        }
-    };
+    double det = std::abs(lattice_vectors__.det());
 
-    int num_points = 5000;
+    vector3d<int> limits;
 
-    test_point(0, 0);
-    test_point(theta, phi);
-
-    test_point(0.5 * pi, 0);
-    test_point(0.5 * pi, 0.5 * pi);
-    test_point(0.5 * pi, pi);
-    test_point(0.5 * pi, 1.5 * pi);
-
-    for (int k = 1; k < num_points - 1; k++)
-    {
-        double hk = -1.0 + 2.0 * k / (num_points - 1);
-        theta = std::acos(hk);
-        double t = phi + 3.80925122745582 / std::sqrt(double(num_points)) / std::sqrt(1 - hk * hk);
-        phi = std::fmod(t, twopi);
-        test_point(theta, phi);
-    }
-    
-    for (int x: {0, 1, 2}) limits[x] = static_cast<int>(max_lim[x] - min_lim[x] + 0.001) + 1;
+    limits[0] = static_cast<int>(2 * radius__ * cross(a1, a2).length() / det) + 1;
+    limits[1] = static_cast<int>(2 * radius__ * cross(a0, a2).length() / det) + 1;
+    limits[2] = static_cast<int>(2 * radius__ * cross(a0, a1).length() / det) + 1;
 
     return limits;
 }

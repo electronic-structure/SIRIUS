@@ -163,7 +163,7 @@ void sirius_set_gk_cutoff(double* gk_cutoff__)
 void sirius_set_auto_rmt(int32_t* auto_rmt__)
 {
     PROFILE();
-    sim_ctx->unit_cell().set_auto_rmt(*auto_rmt__);
+    sim_ctx->set_auto_rmt(*auto_rmt__);
 }
 
 /// Add atom type to the unit cell.
@@ -249,13 +249,13 @@ void sirius_set_atom_type_radial_grid(char const* label__,
     type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
 
-void sirius_set_free_atom_potential(char const* label__,
-                                    int32_t const* num_points__,
-                                    double const* vs__)
-{
-    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.set_free_atom_potential(*num_points__, vs__);
-}
+//void sirius_set_free_atom_potential(char const* label__,
+//                                    int32_t const* num_points__,
+//                                    double const* vs__)
+//{
+//    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+//    type.set_free_atom_potential(*num_points__, vs__);
+//}
 
 /// Set the atomic level configuration of the atom type.
 /** With each call to the function new atomic level is added to the list of atomic levels of the atom type.
@@ -1719,23 +1719,24 @@ void sirius_scalar_radial_solver(int32_t* zn, int32_t* l, int32_t* dme, double* 
                                  double* v__, int32_t* nn, double* p0__, double* p1__, double* q0__, double* q1__)
 {
     PROFILE();
-    sirius::Radial_grid rgrid(*nr, r);
-    sirius::Radial_solver solver(false, *zn, rgrid);
+    STOP();
+    //sirius::Radial_grid rgrid(*nr, r);
+    //sirius::Radial_solver solver(false, *zn, rgrid);
 
-    std::vector<double> v(*nr);
-    std::vector<double> p0;
-    std::vector<double> p1;
-    std::vector<double> q0;
-    std::vector<double> q1;
+    //std::vector<double> v(*nr);
+    //std::vector<double> p0;
+    //std::vector<double> p1;
+    //std::vector<double> q0;
+    //std::vector<double> q1;
 
-    memcpy(&v[0], v__, (*nr) * sizeof(double));
+    //memcpy(&v[0], v__, (*nr) * sizeof(double));
 
-    *nn = solver.solve(*l, *enu, *dme, v, p0, p1, q0, q1);
+    //*nn = solver.solve(*l, *enu, *dme, v, p0, p1, q0, q1);
 
-    memcpy(p0__, &p0[0], (*nr) * sizeof(double));
-    memcpy(p1__, &p1[0], (*nr) * sizeof(double));
-    memcpy(q0__, &q0[0], (*nr) * sizeof(double));
-    memcpy(q1__, &q1[0], (*nr) * sizeof(double));
+    //memcpy(p0__, &p0[0], (*nr) * sizeof(double));
+    //memcpy(p1__, &p1[0], (*nr) * sizeof(double));
+    //memcpy(q0__, &q0[0], (*nr) * sizeof(double));
+    //memcpy(q1__, &q1[0], (*nr) * sizeof(double));
 }
 
 void sirius_get_aw_radial_function(int32_t const* ia__,
@@ -1995,7 +1996,7 @@ void sirius_potential_mixer_initialize(void)
 {
     if (sim_ctx->mixer_input_section().type_ == "linear")
     {
-        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().gamma_, sim_ctx->comm());
+        mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().beta_, sim_ctx->comm());
 
         /* initialize potential mixer */
         potential->pack(mixer_pot);
@@ -2126,7 +2127,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize_density();
+    dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
 }
 
 void sirius_get_rho_pw(ftn_int*            num_gvec__,
@@ -2743,10 +2744,10 @@ void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, in
     //}
 }
 
-void FORTRAN(sirius_scf_loop)()
-{
-    dft_ground_state->scf_loop(1e-6, 1e-6, 20);
-}
+//void FORTRAN(sirius_scf_loop)()
+//{
+//    dft_ground_state->find(1e-6, 1e-6, 20);
+//}
 
 //void FORTRAN(sirius_potential_checksum)()
 //{

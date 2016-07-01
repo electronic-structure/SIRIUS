@@ -153,9 +153,6 @@ class Unit_cell
         /// Maximum muffin-tin radius.
         double max_mt_radius_;
         
-        /// Scale muffin-tin radii automatically.
-        int auto_rmt_;
-
         /// Maximum orbital quantum number of radial functions between all atom types.
         int lmax_;
 
@@ -188,7 +185,6 @@ class Unit_cell
               num_core_electrons_(0),
               num_valence_electrons_(0),
               num_electrons_(0),
-              auto_rmt_(0), 
               lmax_(-1),
               symmetry_(nullptr),
               comm_(comm__)
@@ -435,16 +431,6 @@ class Unit_cell
             return max_mt_aw_basis_size_;
         }
 
-        inline void set_auto_rmt(int auto_rmt__)
-        {
-            auto_rmt_ = auto_rmt__;
-        }
-
-        inline int auto_rmt() const
-        {
-            return auto_rmt_;
-        }
-        
         void set_equivalent_atoms(int const* equivalent_atoms__)
         {
             equivalent_atoms_.resize(num_atoms());
@@ -525,7 +511,8 @@ class Unit_cell
         {
             return reciprocal_lattice_vectors_;
         }
-
+        
+        /// Return a single lattice vector.
         inline vector3d<double> lattice_vector(int idx__) const
         {
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));

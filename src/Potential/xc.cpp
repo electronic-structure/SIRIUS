@@ -49,7 +49,9 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
         auto grad_rho_lm = gradient(rho_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
-        for (int x = 0; x < 3; x++) grad_rho_tp[x] = sht_->transform(grad_rho_lm[x]);
+        for (int x = 0; x < 3; x++) {
+            grad_rho_tp[x] = transform(sht_, grad_rho_lm[x]);
+        }
 
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
@@ -58,7 +60,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
         auto lapl_rho_lm = laplacian(rho_lm);
 
         /* backward transform Laplacian from Rlm to (theta, phi) */
-        lapl_rho_tp = sht_->transform(lapl_rho_lm);
+        lapl_rho_tp = transform(sht_, lapl_rho_lm);
     }
 
     exc_tp.zero();
@@ -126,14 +128,16 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     if (is_gga)
     {
         /* forward transform vsigma to Rlm */
-        auto vsigma_lm = sht_->transform(vsigma_tp);
+        auto vsigma_lm = transform(sht_, vsigma_tp);
 
         /* compute gradient of vsgima in spherical harmonics */
         auto grad_vsigma_lm = gradient(vsigma_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
         Spheric_function_gradient<spatial, double> grad_vsigma_tp(sht_->num_points(), rgrid);
-        for (int x = 0; x < 3; x++) grad_vsigma_tp[x] = sht_->transform(grad_vsigma_lm[x]);
+        for (int x = 0; x < 3; x++) {
+            grad_vsigma_tp[x] = transform(sht_, grad_vsigma_lm[x]);
+        }
 
         /* compute scalar product of two gradients */
         auto grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
@@ -189,8 +193,8 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++)
         {
-            grad_rho_up_tp[x] = sht_->transform(grad_rho_up_lm[x]);
-            grad_rho_dn_tp[x] = sht_->transform(grad_rho_dn_lm[x]);
+            grad_rho_up_tp[x] = transform(sht_, grad_rho_up_lm[x]);
+            grad_rho_dn_tp[x] = transform(sht_, grad_rho_dn_lm[x]);
         }
 
         /* compute density gradient products */
@@ -203,8 +207,8 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         auto lapl_rho_dn_lm = laplacian(rho_dn_lm);
 
         /* backward transform Laplacians from Rlm to (theta, phi) */
-        lapl_rho_up_tp = sht_->transform(lapl_rho_up_lm);
-        lapl_rho_dn_tp = sht_->transform(lapl_rho_dn_lm);
+        lapl_rho_up_tp = transform(sht_, lapl_rho_up_lm);
+        lapl_rho_dn_tp = transform(sht_, lapl_rho_dn_lm);
     }
 
     Spheric_function<spatial, double> vsigma_uu_tp;
@@ -297,9 +301,9 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     if (is_gga)
     {
         /* forward transform vsigma to Rlm */
-        auto vsigma_uu_lm = sht_->transform(vsigma_uu_tp);
-        auto vsigma_ud_lm = sht_->transform(vsigma_ud_tp);
-        auto vsigma_dd_lm = sht_->transform(vsigma_dd_tp);
+        auto vsigma_uu_lm = transform(sht_, vsigma_uu_tp);
+        auto vsigma_ud_lm = transform(sht_, vsigma_ud_tp);
+        auto vsigma_dd_lm = transform(sht_, vsigma_dd_tp);
 
         /* compute gradient of vsgima in spherical harmonics */
         auto grad_vsigma_uu_lm = gradient(vsigma_uu_lm);
@@ -312,9 +316,9 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         Spheric_function_gradient<spatial, double> grad_vsigma_dd_tp(sht_->num_points(), rgrid);
         for (int x = 0; x < 3; x++)
         {
-            grad_vsigma_uu_tp[x] = sht_->transform(grad_vsigma_uu_lm[x]);
-            grad_vsigma_ud_tp[x] = sht_->transform(grad_vsigma_ud_lm[x]);
-            grad_vsigma_dd_tp[x] = sht_->transform(grad_vsigma_dd_lm[x]);
+            grad_vsigma_uu_tp[x] = transform(sht_, grad_vsigma_uu_lm[x]);
+            grad_vsigma_ud_tp[x] = transform(sht_, grad_vsigma_ud_lm[x]);
+            grad_vsigma_dd_tp[x] = transform(sht_, grad_vsigma_dd_lm[x]);
         }
 
         /* compute scalar product of two gradients */
@@ -351,12 +355,12 @@ void Potential::xc_mt(Periodic_function<double>* rho,
         int nmtp = unit_cell_.atom(ia).num_mt_points();
 
         /* backward transform density from Rlm to (theta, phi) */
-        auto rho_tp = sht_->transform(rho->f_mt(ialoc));
+        auto rho_tp = transform(sht_, rho->f_mt(ialoc));
 
         /* backward transform magnetization from Rlm to (theta, phi) */
         std::vector< Spheric_function<spatial, double> > vecmagtp(ctx_.num_mag_dims());
         for (int j = 0; j < ctx_.num_mag_dims(); j++)
-            vecmagtp[j] = sht_->transform(magnetization[j]->f_mt(ialoc));
+            vecmagtp[j] = transform(sht_, magnetization[j]->f_mt(ialoc));
        
         /* "up" component of the density */
         Spheric_function<spectral, double> rho_up_lm;
@@ -423,8 +427,8 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             }
 
             /* transform from (theta, phi) to Rlm */
-            rho_up_lm = sht_->transform(rho_up_tp);
-            rho_dn_lm = sht_->transform(rho_dn_tp);
+            rho_up_lm = transform(sht_, rho_up_tp);
+            rho_dn_lm = transform(sht_, rho_dn_tp);
         }
 
         Spheric_function<spatial, double> exc_tp(sht_->num_points(), rgrid);
@@ -464,12 +468,14 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                 }       
             }
             /* convert magnetic field back to Rlm */
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) sht_->transform(vecmagtp[j], bxc[j]->f_mt(ialoc));
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                bxc[j]->f_mt(ialoc) = transform(sht_, vecmagtp[j]);
+            }
         }
 
         /* forward transform from (theta, phi) to Rlm */
-        sht_->transform(vxc_tp, vxc->f_mt(ialoc));
-        sht_->transform(exc_tp, exc->f_mt(ialoc));
+        vxc->f_mt(ialoc) = transform(sht_, vxc_tp);
+        exc->f_mt(ialoc) = transform(sht_, exc_tp);
     }
 }
 
@@ -481,7 +487,11 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     PROFILE_WITH_TIMER("sirius::Potential::xc_it_nonmagnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func__) if (ixc->is_gga()) is_gga = true;
+    for (auto& ixc: xc_func__) {
+        if (ixc->is_gga()) {
+            is_gga = true;
+        }
+    }
 
     int num_points = fft_.local_size();
 
@@ -512,8 +522,8 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
     
-    if (is_gga) 
-    {
+    if (is_gga) {
+        /* use fft_transfrom of the base class (Smooth_periodic_function) */
         rho__->Smooth_periodic_function<double>::fft_transform(-1);
 
         /* generate pw coeffs of the gradient and laplacian */
@@ -521,7 +531,9 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
         lapl_rho = laplacian(*rho__);
 
         /* gradient in real space */
-        for (int x: {0, 1, 2}) grad_rho[x].fft_transform(1);
+        for (int x: {0, 1, 2}) {
+            grad_rho[x].fft_transform(1);
+        }
 
         /* product of gradients */
         grad_rho_grad_rho = grad_rho * grad_rho;
@@ -600,8 +612,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
         }
     }
 
-    if (is_gga)
-    {
+    if (is_gga) {
         Smooth_periodic_function<double> vsigma(ctx_.fft(), ctx_.gvec_fft_distr());
 
         /* gather vsigma */
@@ -614,14 +625,15 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
         auto grad_vsigma = gradient(vsigma);
 
         /* backward transform gradient from pw to real space */
-        for (int x: {0, 1, 2}) grad_vsigma[x].fft_transform(1);
+        for (int x: {0, 1, 2}) {
+            grad_vsigma[x].fft_transform(1);
+        }
 
         /* compute scalar product of two gradients */
         auto grad_vsigma_grad_rho = grad_vsigma * grad_rho;
 
         /* add remaining term to Vxc */
-        for (int irloc = 0; irloc < spl_np.local_size(); irloc++)
-        {
+        for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
             vxc_tmp(irloc) -= 2 * grad_vsigma_grad_rho.f_rg(spl_np[irloc]);
         }
     }
@@ -648,131 +660,127 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     runtime::Timer t("sirius::Potential::xc_it_magnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
+    for (auto& ixc: xc_func) {
+        if (ixc->is_gga()) {
+            is_gga = true;
+        }
+    }
 
-    int num_loc_points = fft_.local_size();
+    int num_points = fft_.local_size();
     
-    Smooth_periodic_function<double> rho_up_it(fft_, ctx_.gvec_fft_distr());
-    Smooth_periodic_function<double> rho_dn_it(fft_, ctx_.gvec_fft_distr());
+    Smooth_periodic_function<double> rho_up(fft_, ctx_.gvec_fft_distr());
+    Smooth_periodic_function<double> rho_dn(fft_, ctx_.gvec_fft_distr());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin = 0.0;
-    for (int ir = 0; ir < fft_.local_size(); ir++)
-    {
+    for (int ir = 0; ir < fft_.local_size(); ir++) {
         double mag = 0.0;
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) mag += std::pow(magnetization[j]->f_rg(ir), 2);
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            mag += std::pow(magnetization[j]->f_rg(ir), 2);
+        }
         mag = std::sqrt(mag);
 
         /* remove numerical noise at high values of magnetization */
         mag = std::min(mag, rho->f_rg(ir));
 
         rhomin = std::min(rhomin, rho->f_rg(ir));
-        if (rho->f_rg(ir) < 0.0)
-        {
+        if (rho->f_rg(ir) < 0.0) {
             rho->f_rg(ir) = 0.0;
             mag = 0.0;
         }
         
-        rho_up_it.f_rg(ir) = 0.5 * (rho->f_rg(ir) + mag);
-        rho_dn_it.f_rg(ir) = 0.5 * (rho->f_rg(ir) - mag);
+        rho_up.f_rg(ir) = 0.5 * (rho->f_rg(ir) + mag);
+        rho_dn.f_rg(ir) = 0.5 * (rho->f_rg(ir) - mag);
     }
 
-    if (rhomin < 0.0)
-    {
+    if (rhomin < 0.0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
         WARNING(s);
     }
 
-    Smooth_periodic_function_gradient<double> grad_rho_up_it;
-    Smooth_periodic_function_gradient<double> grad_rho_dn_it;
-    Smooth_periodic_function<double> lapl_rho_up_it;
-    Smooth_periodic_function<double> lapl_rho_dn_it;
-    Smooth_periodic_function<double> grad_rho_up_grad_rho_up_it;
-    Smooth_periodic_function<double> grad_rho_up_grad_rho_dn_it;
-    Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn_it;
+    Smooth_periodic_function_gradient<double> grad_rho_up;
+    Smooth_periodic_function_gradient<double> grad_rho_dn;
+    Smooth_periodic_function<double> lapl_rho_up;
+    Smooth_periodic_function<double> lapl_rho_dn;
+    Smooth_periodic_function<double> grad_rho_up_grad_rho_up;
+    Smooth_periodic_function<double> grad_rho_up_grad_rho_dn;
+    Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
     
-    if (is_gga) 
-    {
-        STOP();
-        ///* get plane-wave coefficients of the density */
-        //Smooth_periodic_function<spectral> rho_up_pw = transform(rho_up_it);
-        //Smooth_periodic_function<spectral> rho_dn_pw = transform(rho_dn_it);
+    if (is_gga) {
+        /* get plane-wave coefficients of densities */
+        rho_up.fft_transform(-1);
+        rho_dn.fft_transform(-1);
 
-        ///* generate pw coeffs of the gradient and laplacian */
-        //auto grad_rho_up_pw = gradient(rho_up_pw);
-        //auto grad_rho_dn_pw = gradient(rho_dn_pw);
-        //auto lapl_rho_up_pw = laplacian(rho_up_pw);
-        //auto lapl_rho_dn_pw = laplacian(rho_dn_pw);
+        /* generate pw coeffs of the gradient and laplacian */
+        auto grad_rho_up = gradient(rho_up);
+        auto grad_rho_dn = gradient(rho_dn);
+        auto lapl_rho_up = laplacian(rho_up);
+        auto lapl_rho_dn = laplacian(rho_dn);
 
-        ///* gradient in real space */
-        //for (int x = 0; x < 3; x++)
-        //{
-        //    grad_rho_up_it[x] = transform<double>(grad_rho_up_pw[x], spl_fft_size);
-        //    grad_rho_dn_it[x] = transform<double>(grad_rho_dn_pw[x], spl_fft_size);
-        //}
+        /* gradient in real space */
+        for (int x: {0, 1, 2}) {
+            grad_rho_up[x].fft_transform(1);
+            grad_rho_dn[x].fft_transform(1);
+        }
 
-        ///* product of gradients */
-        //grad_rho_up_grad_rho_up_it = grad_rho_up_it * grad_rho_up_it;
-        //grad_rho_up_grad_rho_dn_it = grad_rho_up_it * grad_rho_dn_it;
-        //grad_rho_dn_grad_rho_dn_it = grad_rho_dn_it * grad_rho_dn_it;
-        //
-        ///* Laplacian in real space */
-        //lapl_rho_up_it = transform<double>(lapl_rho_up_pw, spl_fft_size);
-        //lapl_rho_dn_it = transform<double>(lapl_rho_dn_pw, spl_fft_size);
+        /* product of gradients */
+        grad_rho_up_grad_rho_up = grad_rho_up * grad_rho_up;
+        grad_rho_up_grad_rho_dn = grad_rho_up * grad_rho_dn;
+        grad_rho_dn_grad_rho_dn = grad_rho_dn * grad_rho_dn;
+        
+        /* Laplacian in real space */
+        lapl_rho_up.fft_transform(1);
+        lapl_rho_dn.fft_transform(1);
     }
 
-    mdarray<double, 1> exc_tmp(num_loc_points);
+    mdarray<double, 1> exc_tmp(num_points);
     exc_tmp.zero();
 
-    mdarray<double, 1> vxc_up_tmp(num_loc_points);
+    mdarray<double, 1> vxc_up_tmp(num_points);
     vxc_up_tmp.zero();
 
-    mdarray<double, 1> vxc_dn_tmp(num_loc_points);
+    mdarray<double, 1> vxc_dn_tmp(num_points);
     vxc_dn_tmp.zero();
 
     mdarray<double, 1> vsigma_uu_tmp;
     mdarray<double, 1> vsigma_ud_tmp;
     mdarray<double, 1> vsigma_dd_tmp;
 
-    if (is_gga)
-    {
-        vsigma_uu_tmp = mdarray<double, 1>(num_loc_points);
+    if (is_gga) {
+        vsigma_uu_tmp = mdarray<double, 1>(num_points);
         vsigma_uu_tmp.zero();
         
-        vsigma_ud_tmp = mdarray<double, 1>(num_loc_points);
+        vsigma_ud_tmp = mdarray<double, 1>(num_points);
         vsigma_ud_tmp.zero();
         
-        vsigma_dd_tmp = mdarray<double, 1>(num_loc_points);
+        vsigma_dd_tmp = mdarray<double, 1>(num_points);
         vsigma_dd_tmp.zero();
     }
 
     /* loop over XC functionals */
-    for (auto& ixc: xc_func)
-    {
+    for (auto& ixc: xc_func) {
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_t(num_loc_points, omp_get_num_threads(), omp_get_thread_num());
+            splindex<block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
 
             std::vector<double> exc_t(spl_t.local_size());
 
             /* if this is an LDA functional */
-            if (ixc->is_lda())
-            {
+            if (ixc->is_lda()) {
                 std::vector<double> vxc_up_t(spl_t.local_size());
                 std::vector<double> vxc_dn_t(spl_t.local_size());
 
-                ixc->get_lda((int)spl_t.local_size(), 
-                             &rho_up_it.f_rg(spl_t.global_offset()), 
-                             &rho_dn_it.f_rg(spl_t.global_offset()), 
+                ixc->get_lda(spl_t.local_size(), 
+                             &rho_up.f_rg(spl_t.global_offset()), 
+                             &rho_dn.f_rg(spl_t.global_offset()), 
                              &vxc_up_t[0], 
                              &vxc_dn_t[0], 
                              &exc_t[0]);
 
-                for (int i = 0; i < spl_t.local_size(); i++)
-                {
+                for (int i = 0; i < spl_t.local_size(); i++) {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
 
@@ -781,112 +789,101 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                     vxc_dn_tmp(spl_t[i]) += vxc_dn_t[i];
                 }
             }
-            if (ixc->is_gga())
-            {
-                STOP();
-                //std::vector<double> vrho_up_t(spl_t.local_size());
-                //std::vector<double> vrho_dn_t(spl_t.local_size());
-                //std::vector<double> vsigma_uu_t(spl_t.local_size());
-                //std::vector<double> vsigma_ud_t(spl_t.local_size());
-                //std::vector<double> vsigma_dd_t(spl_t.local_size());
-                //
-                //ixc->get_gga((int)spl_t.local_size(), 
-                //             &rho_up_it(spl_fft_size.global_offset() + spl_t.global_offset()), 
-                //             &rho_dn_it(spl_fft_size.global_offset() + spl_t.global_offset()), 
-                //             &grad_rho_up_grad_rho_up_it(spl_t.global_offset()), 
-                //             &grad_rho_up_grad_rho_dn_it(spl_t.global_offset()), 
-                //             &grad_rho_dn_grad_rho_dn_it(spl_t.global_offset()), 
-                //             &vrho_up_t[0], 
-                //             &vrho_dn_t[0], 
-                //             &vsigma_uu_t[0], 
-                //             &vsigma_ud_t[0], 
-                //             &vsigma_dd_t[0], 
-                //             &exc_t[0]);
+            if (ixc->is_gga()) {
+                std::vector<double> vrho_up_t(spl_t.local_size());
+                std::vector<double> vrho_dn_t(spl_t.local_size());
+                std::vector<double> vsigma_uu_t(spl_t.local_size());
+                std::vector<double> vsigma_ud_t(spl_t.local_size());
+                std::vector<double> vsigma_dd_t(spl_t.local_size());
+                
+                ixc->get_gga(spl_t.local_size(), 
+                             &rho_up.f_rg(spl_t.global_offset()), 
+                             &rho_dn.f_rg(spl_t.global_offset()), 
+                             &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()), 
+                             &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()), 
+                             &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()), 
+                             &vrho_up_t[0], 
+                             &vrho_dn_t[0], 
+                             &vsigma_uu_t[0], 
+                             &vsigma_ud_t[0], 
+                             &vsigma_dd_t[0], 
+                             &exc_t[0]);
 
-                //for (int i = 0; i < (int)spl_t.local_size(); i++)
-                //{
-                //    /* add Exc contribution */
-                //    exc_tmp(spl_t[i]) += exc_t[i];
+                for (int i = 0; i < spl_t.local_size(); i++) {
+                    /* add Exc contribution */
+                    exc_tmp(spl_t[i]) += exc_t[i];
 
-                //    /* directly add to Vxc available contributions */
-                //    vxc_up_tmp(spl_t[i]) += (vrho_up_t[i] - 2 * vsigma_uu_t[i] * lapl_rho_up_it(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_dn_it(spl_t[i]));
-                //    vxc_dn_tmp(spl_t[i]) += (vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn_it(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_up_it(spl_t[i]));
+                    /* directly add to Vxc available contributions */
+                    vxc_up_tmp(spl_t[i]) += (vrho_up_t[i] - 2 * vsigma_uu_t[i] * lapl_rho_up.f_rg(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_dn.f_rg(spl_t[i]));
+                    vxc_dn_tmp(spl_t[i]) += (vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn.f_rg(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_up.f_rg(spl_t[i]));
 
-                //    /* save the sigma derivative */
-                //    vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i]; 
-                //    vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i]; 
-                //    vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i]; 
-                //}
+                    /* save the sigma derivative */
+                    vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i]; 
+                    vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i]; 
+                    vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i]; 
+                }
             }
         }
     }
 
-    if (is_gga)
-    {
-        STOP();
-        ///* gather vsigma */
-        //Smooth_periodic_function<spatial, double> vsigma_uu_it(fft_, &ctx_.gvec());
-        //Smooth_periodic_function<spatial, double> vsigma_ud_it(fft_, &ctx_.gvec());
-        //Smooth_periodic_function<spatial, double> vsigma_dd_it(fft_, &ctx_.gvec());
-        //int global_offset = (int)spl_fft_size.global_offset();
-        //ctx_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), global_offset, num_loc_points);
-        //ctx_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), global_offset, num_loc_points);
-        //ctx_.comm().allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), global_offset, num_loc_points);
+    if (is_gga) {
+        /* gather vsigma */
+        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_fft_distr());
+        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_fft_distr());
+        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec_fft_distr());
+        for (int ir = 0; ir < num_points; ir++) {
+            vsigma_uu.f_rg(ir) = vsigma_uu_tmp[ir];
+            vsigma_ud.f_rg(ir) = vsigma_ud_tmp[ir];
+            vsigma_dd.f_rg(ir) = vsigma_dd_tmp[ir];
+        }
 
-        ///* forward transform vsigma to plane-wave domain */
-        //Smooth_periodic_function<spectral> vsigma_uu_pw = transform(vsigma_uu_it);
-        //Smooth_periodic_function<spectral> vsigma_ud_pw = transform(vsigma_ud_it);
-        //Smooth_periodic_function<spectral> vsigma_dd_pw = transform(vsigma_dd_it);
-        //
-        ///* gradient of vsigma in plane-wave domain */
-        //auto grad_vsigma_uu_pw = gradient(vsigma_uu_pw);
-        //auto grad_vsigma_ud_pw = gradient(vsigma_ud_pw);
-        //auto grad_vsigma_dd_pw = gradient(vsigma_dd_pw);
+        /* forward transform vsigma to plane-wave domain */
+        vsigma_uu.fft_transform(-1);
+        vsigma_ud.fft_transform(-1);
+        vsigma_dd.fft_transform(-1);
+        
+        /* gradient of vsigma in plane-wave domain */
+        auto grad_vsigma_uu = gradient(vsigma_uu);
+        auto grad_vsigma_ud = gradient(vsigma_ud);
+        auto grad_vsigma_dd = gradient(vsigma_dd);
 
-        ///* backward transform gradient from pw to real space */
-        //Smooth_periodic_function_gradient<spatial, double> grad_vsigma_uu_it;
-        //Smooth_periodic_function_gradient<spatial, double> grad_vsigma_ud_it;
-        //Smooth_periodic_function_gradient<spatial, double> grad_vsigma_dd_it;
-        //for (int x = 0; x < 3; x++)
-        //{
-        //    grad_vsigma_uu_it[x] = transform<double>(grad_vsigma_uu_pw[x], spl_fft_size);
-        //    grad_vsigma_ud_it[x] = transform<double>(grad_vsigma_ud_pw[x], spl_fft_size);
-        //    grad_vsigma_dd_it[x] = transform<double>(grad_vsigma_dd_pw[x], spl_fft_size);
-        //}
+        /* backward transform gradient from pw to real space */
+        for (int x: {0, 1, 2}) {
+            grad_vsigma_uu[x].fft_transform(1);
+            grad_vsigma_ud[x].fft_transform(1);
+            grad_vsigma_dd[x].fft_transform(1);
+        }
 
-        ///* compute scalar product of two gradients */
-        //auto grad_vsigma_uu_grad_rho_up_it = grad_vsigma_uu_it * grad_rho_up_it;
-        //auto grad_vsigma_dd_grad_rho_dn_it = grad_vsigma_dd_it * grad_rho_dn_it;
-        //auto grad_vsigma_ud_grad_rho_up_it = grad_vsigma_ud_it * grad_rho_up_it;
-        //auto grad_vsigma_ud_grad_rho_dn_it = grad_vsigma_ud_it * grad_rho_dn_it;
+        /* compute scalar product of two gradients */
+        auto grad_vsigma_uu_grad_rho_up = grad_vsigma_uu * grad_rho_up;
+        auto grad_vsigma_dd_grad_rho_dn = grad_vsigma_dd * grad_rho_dn;
+        auto grad_vsigma_ud_grad_rho_up = grad_vsigma_ud * grad_rho_up;
+        auto grad_vsigma_ud_grad_rho_dn = grad_vsigma_ud * grad_rho_dn;
 
-        ///* add remaining term to Vxc */
-        //for (int ir = 0; ir < num_loc_points; ir++)
-        //{
-        //    vxc_up_tmp(ir) -= (2 * grad_vsigma_uu_grad_rho_up_it(ir) + grad_vsigma_ud_grad_rho_dn_it(ir)); 
-        //    vxc_dn_tmp(ir) -= (2 * grad_vsigma_dd_grad_rho_dn_it(ir) + grad_vsigma_ud_grad_rho_up_it(ir)); 
-        //}
+        /* add remaining term to Vxc */
+        for (int ir = 0; ir < num_points; ir++) {
+            vxc_up_tmp(ir) -= (2 * grad_vsigma_uu_grad_rho_up.f_rg(ir) + grad_vsigma_ud_grad_rho_dn.f_rg(ir)); 
+            vxc_dn_tmp(ir) -= (2 * grad_vsigma_dd_grad_rho_dn.f_rg(ir) + grad_vsigma_ud_grad_rho_up.f_rg(ir)); 
+        }
     }
 
-    for (int irloc = 0; irloc < num_loc_points; irloc++)
-    {
+    for (int irloc = 0; irloc < num_points; irloc++) {
         exc->f_rg(irloc) = exc_tmp(irloc);
         vxc->f_rg(irloc) = 0.5 * (vxc_up_tmp(irloc) + vxc_dn_tmp(irloc));
-        double m = rho_up_it.f_rg(irloc) - rho_dn_it.f_rg(irloc);
+        double m = rho_up.f_rg(irloc) - rho_dn.f_rg(irloc);
 
-        if (m > 1e-8)
-        {
+        if (m > 1e-8) {
             double b = 0.5 * (vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
-            for (int j = 0; j < ctx_.num_mag_dims(); j++)
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                bxc[j]->f_rg(irloc) = b * magnetization[j]->f_rg(irloc) / m;
-       }
-       else
-       {
-           for (int j = 0; j < ctx_.num_mag_dims(); j++) bxc[j]->f_rg(irloc) = 0.0;
-       }
+            }
+        } else {
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                bxc[j]->f_rg(irloc) = 0.0;
+            }
+        }
     }
 }
-
 
 void Potential::xc(Periodic_function<double>* rho, 
                    Periodic_function<double>* magnetization[3], 

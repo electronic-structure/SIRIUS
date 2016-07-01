@@ -8,7 +8,7 @@ void Simulation_context::init_fft()
 
     auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
 
-    if (!(fft_mode_ == "serial" || fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
+    if (!(control_input_section_.fft_mode_ == "serial" || control_input_section_.fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
 
     if (full_potential())
     {
@@ -21,7 +21,7 @@ void Simulation_context::init_fft()
         mpi_grid_fft_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
                                       mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
         
-        if (fft_mode_ == "serial")
+        if (control_input_section_.fft_mode_ == "serial")
         {
             /* serial FFT in Hloc */
             mpi_grid_fft_vloc_ = new MPI_grid({1, comm.size()}, comm);
@@ -38,7 +38,7 @@ void Simulation_context::init_fft()
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
-                 mpi_grid_fft_->dimension_size(0), true, reduce_gvec_);
+                 mpi_grid_fft_->dimension_size(0), true, control_input_section_.reduce_gvec_);
 
     gvec_fft_distr_ = new Gvec_FFT_distribution(gvec_, mpi_grid_fft_->communicator(1 << 0));
 
@@ -49,16 +49,32 @@ void Simulation_context::init_fft()
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            mpi_grid_fft_vloc_->dimension_size(0), true, reduce_gvec_);
+                            mpi_grid_fft_vloc_->dimension_size(0), true, control_input_section_.reduce_gvec_);
     }
 }
 
 void Simulation_context::initialize()
 {
     PROFILE();
-
+    
+    /* can't initialize twice */
     if (initialized_) TERMINATE("Simulation context is already initialized.");
     
+    /* get processing unit */
+    std::string pu = control_input_section_.processing_unit_;
+    if (pu == "cpu")
+    {
+        processing_unit_ = CPU;
+    }
+    else if (pu == "gpu")
+    {
+        processing_unit_ = GPU;
+    }
+    else
+    {
+        TERMINATE("wrong processing unit");
+    }
+
     /* check if we can use a GPU device */
     if (processing_unit() == GPU)
     {
@@ -66,14 +82,15 @@ void Simulation_context::initialize()
         TERMINATE_NO_GPU
         #endif
     }
-
+    
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!mpi_grid_dims_.size()) mpi_grid_dims_ = {comm_.size()};
-
-    if (full_potential()) reduce_gvec_ = false;
+    if (!control_input_section_.mpi_grid_dims_.size()) control_input_section_.mpi_grid_dims_ = {comm_.size()};
+    
+    /* can't use reduced G-vectors in LAPW code */
+    if (full_potential()) control_input_section_.reduce_gvec_ = false;
 
     /* setup MPI grid */
-    mpi_grid_ = new MPI_grid(mpi_grid_dims_, comm_);
+    mpi_grid_ = new MPI_grid(control_input_section_.mpi_grid_dims_, comm_);
 
     blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
                                  mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_));
@@ -142,7 +159,7 @@ void Simulation_context::initialize()
     if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
         TERMINATE("not enough first-variational states");
     
-    std::string evsn[] = {std_evp_solver_name_, gen_evp_solver_name_};
+    std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
     if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1)
     {
@@ -188,8 +205,9 @@ void Simulation_context::initialize()
     if (esm_type() == ultrasoft_pseudopotential || esm_type() == paw_pseudopotential)
     {
         /* create augmentation operator Q_{xi,xi'}(G) here */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
+        }
     }
     
     time_active_ = -runtime::wtime();

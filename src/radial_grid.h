@@ -144,7 +144,19 @@ class Radial_grid
         /// Number of grid points.
         inline int num_points() const
         {
-            return (int)x_.size();
+            return static_cast<int>(x_.size());
+        }
+
+        /// First point of the grid.
+        inline double first() const
+        {
+            return x_(0);
+        }
+
+        /// Last point of the grid.
+        inline double last() const
+        {
+            return x_(num_points() - 1);
         }
                
         /// Return name of the grid type.

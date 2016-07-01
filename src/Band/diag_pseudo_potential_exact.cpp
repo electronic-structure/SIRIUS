@@ -34,8 +34,8 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
 
     apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
-    Utils::check_hermitian("h", hphi.coeffs(), ngk);
-    Utils::check_hermitian("o", ophi.coeffs(), ngk);
+    //Utils::check_hermitian("h", hphi.coeffs(), ngk);
+    //Utils::check_hermitian("o", ophi.coeffs(), ngk);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = hphi.coeffs().checksum();

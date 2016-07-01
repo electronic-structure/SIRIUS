@@ -9,7 +9,7 @@ void Density::generate_core_charge_density()
     for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
-        unit_cell_.atom_symmetry_class(ic).generate_core_charge_density();
+        unit_cell_.atom_symmetry_class(ic).generate_core_charge_density(ctx_.core_relativity());
     }
 
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)

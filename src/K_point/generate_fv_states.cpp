@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -30,73 +30,85 @@ void K_point::generate_fv_states()
 {
     PROFILE_WITH_TIMER("sirius::K_point::generate_fv_states");
     
-    if (!ctx_.full_potential()) return;
+    if (!ctx_.full_potential()) {
+        return;
+    }
 
     fv_eigen_vectors_->swap_forward(0, ctx_.num_fv_states());
+    auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
+    /* local number of bands */
+    int nbnd_loc = fv_eigen_vectors_->spl_num_swapped().local_size();
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        fv_ev_swp.allocate_on_device();
+        fv_ev_swp.copy_to_device();
+    }
+    #endif
 
     fv_states<true>().set_num_swapped(ctx_.num_fv_states());
 
-    assert(fv_eigen_vectors_->spl_num_swapped().local_size() == fv_states<true>().spl_num_swapped().local_size());
+    assert(nbnd_loc == fv_states<true>().spl_num_swapped().local_size());
 
-    if (ctx_.processing_unit() == GPU)
-    {
-        #ifdef __GPU
-        STOP();
-        ///* copy eigen-vectors to GPU */
-        //fv_eigen_vectors_slice.allocate_on_device();
-        //fv_eigen_vectors_slice.copy_to_device();
-        ///* allocate GPU memory for fv_states */
-        //fv_states_slice_.allocate_on_device();
+    //if (ctx_.processing_unit() == GPU)
+    //{
+    //    #ifdef __GPU
+    //    STOP();
+    //    ///* copy eigen-vectors to GPU */
+    //    //fv_eigen_vectors_slice.allocate_on_device();
+    //    //fv_eigen_vectors_slice.copy_to_device();
+    //    ///* allocate GPU memory for fv_states */
+    //    //fv_states_slice_.allocate_on_device();
 
-        //double_complex alpha(1, 0);
-        //double_complex beta(0, 0);
-        //
-        //Timer t1("sirius::K_point::generate_fv_states|zgemm_eff");
-        //#pragma omp parallel
-        //{
-        //    int tid = Platform::thread_id();
-        //    mdarray<double_complex, 2> alm(nullptr, num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-        //    alm.allocate_page_locked();
-        //    alm.allocate_on_device();
-        //    
-        //    #pragma omp for
-        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        //    {
-        //        int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
-        //        int offset_wf = unit_cell_.atom(ia)->offset_wf();
-        //        alm_coeffs_->generate(ia, alm);
-        //        alm.async_copy_to_device();
-        //        linalg<GPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(), &alpha,
-        //                          alm.at<GPU>(), alm.ld(), fv_eigen_vectors_slice.at<GPU>(), fv_eigen_vectors_slice.ld(),
-        //                          &beta, fv_states_slice_.at<GPU>(offset_wf, 0), fv_states_slice_.ld(), tid);
+    //    //double_complex alpha(1, 0);
+    //    //double_complex beta(0, 0);
+    //    //
+    //    //Timer t1("sirius::K_point::generate_fv_states|zgemm_eff");
+    //    //#pragma omp parallel
+    //    //{
+    //    //    int tid = Platform::thread_id();
+    //    //    mdarray<double_complex, 2> alm(nullptr, num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+    //    //    alm.allocate_page_locked();
+    //    //    alm.allocate_on_device();
+    //    //    
+    //    //    #pragma omp for
+    //    //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    //    //    {
+    //    //        int mt_aw_size = unit_cell_.atom(ia)->mt_aw_basis_size();
+    //    //        int offset_wf = unit_cell_.atom(ia)->offset_wf();
+    //    //        alm_coeffs_->generate(ia, alm);
+    //    //        alm.async_copy_to_device();
+    //    //        linalg<GPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_slice.num_cols_local(), num_gkvec(), &alpha,
+    //    //                          alm.at<GPU>(), alm.ld(), fv_eigen_vectors_slice.at<GPU>(), fv_eigen_vectors_slice.ld(),
+    //    //                          &beta, fv_states_slice_.at<GPU>(offset_wf, 0), fv_states_slice_.ld(), tid);
 
-        //        /* copy block of local orbital coefficients */
-        //        cuda_memcpy2D_device_to_device_async(fv_states_slice_.at<GPU>(offset_wf + mt_aw_size, 0),
-        //                                             fv_states_slice_.ld(),
-        //                                             fv_eigen_vectors_slice.at<GPU>(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), 0),
-        //                                             fv_eigen_vectors_slice.ld(),
-        //                                             unit_cell_.atom(ia)->mt_lo_basis_size(), fv_states_slice_.num_cols_local(),
-        //                                             sizeof(double_complex), tid);
-        //        cuda_stream_synchronize(tid);
-        //    }
-        //}
-        //double tval = t1.stop();
-        //DUMP("effective zgemm performance: %f GFlops / rank",
-        //     8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * ctx_.num_fv_states() / tval / comm().size());
-        ///* copy block of pw coefficients */
-        //cuda_memcpy2D_device_to_device(fv_states_slice_.at<GPU>(unit_cell_.mt_basis_size(), 0),
-        //                               fv_states_slice_.ld(),
-        //                               fv_eigen_vectors_slice.at<GPU>(),
-        //                               fv_eigen_vectors_slice.ld(),
-        //                               num_gkvec(), fv_states_slice_.num_cols_local(), sizeof(double_complex));
+    //    //        /* copy block of local orbital coefficients */
+    //    //        cuda_memcpy2D_device_to_device_async(fv_states_slice_.at<GPU>(offset_wf + mt_aw_size, 0),
+    //    //                                             fv_states_slice_.ld(),
+    //    //                                             fv_eigen_vectors_slice.at<GPU>(num_gkvec() + unit_cell_.atom(ia)->offset_lo(), 0),
+    //    //                                             fv_eigen_vectors_slice.ld(),
+    //    //                                             unit_cell_.atom(ia)->mt_lo_basis_size(), fv_states_slice_.num_cols_local(),
+    //    //                                             sizeof(double_complex), tid);
+    //    //        cuda_stream_synchronize(tid);
+    //    //    }
+    //    //}
+    //    //double tval = t1.stop();
+    //    //DUMP("effective zgemm performance: %f GFlops / rank",
+    //    //     8e-9 * unit_cell_.mt_basis_size() * num_gkvec() * ctx_.num_fv_states() / tval / comm().size());
+    //    ///* copy block of pw coefficients */
+    //    //cuda_memcpy2D_device_to_device(fv_states_slice_.at<GPU>(unit_cell_.mt_basis_size(), 0),
+    //    //                               fv_states_slice_.ld(),
+    //    //                               fv_eigen_vectors_slice.at<GPU>(),
+    //    //                               fv_eigen_vectors_slice.ld(),
+    //    //                               num_gkvec(), fv_states_slice_.num_cols_local(), sizeof(double_complex));
 
-        //fv_eigen_vectors_slice.deallocate_on_device();
-        //fv_states_slice_.copy_to_host();
-        //fv_states_slice_.deallocate_on_device();
-        #else
-        TERMINATE_NO_GPU
-        #endif
-    }
+    //    //fv_eigen_vectors_slice.deallocate_on_device();
+    //    //fv_states_slice_.copy_to_host();
+    //    //fv_states_slice_.deallocate_on_device();
+    //    #else
+    //    TERMINATE_NO_GPU
+    //    #endif
+    //}
     //if (ctx_.processing_unit() == GPU && num_ranks() == 1)
     //{
         //#ifdef __GPU
@@ -206,41 +218,84 @@ void K_point::generate_fv_states()
         //TERMINATE_NO_GPU
         //#endif
     //}
-    else
+    //else
+    //{
+    #pragma omp parallel
     {
-        #pragma omp parallel
-        {
-            mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-            
-            #pragma omp for
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            {
-                int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
-                int offset_wf = unit_cell_.atom(ia).offset_wf();
-                alm_coeffs_->generate(ia, alm);
-                
-                /* multiply eigen-vectors and matching coefficients */
-                linalg<CPU>::gemm(1, 0, mt_aw_size, fv_eigen_vectors_->spl_num_swapped().local_size(), num_gkvec(),
-                                  alm.at<CPU>(), alm.ld(), (*fv_eigen_vectors_)[0], gklo_basis_size(),
-                                  &fv_states<true>()[0][offset_wf], wf_size());
+        /* get thread id */
+        int tid = omp_get_thread_num();
+        mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+        mdarray<double_complex, 2> tmp;
 
-                for (int i = 0; i < fv_states<true>().spl_num_swapped().local_size(); i++)
-                {
-                    /* lo block */
-                    std::memcpy(&fv_states<true>()[i][offset_wf + mt_aw_size],
-                                &(*fv_eigen_vectors_)[i][num_gkvec() + unit_cell_.atom(ia).offset_lo()],
-                                unit_cell_.atom(ia).mt_lo_basis_size() * sizeof(double_complex));
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            alm.pin_memory();
+            alm.allocate_on_device();
+            tmp = mdarray<double_complex, 2>(nullptr, unit_cell_.max_mt_aw_basis_size(), nbnd_loc);
+            tmp.allocate_on_device();
+
+            // TODO: pin memory for fv_states (output buffer), otherwise async copy won't work
+        }
+        #endif
+        
+        #pragma omp for
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            /* number of alm coefficients for atom */
+            int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
+            /* offset in wave-function */
+            int offset_wf = unit_cell_.atom(ia).offset_wf();
+            /* generate matching coefficients for all G-vectors */
+            alm_coeffs_->generate(ia, alm);
+            
+            /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
+            switch (ctx_.processing_unit()) {
+                case CPU: {
+                    /* multiply eigen-vectors and matching coefficients */
+                    linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                                      alm.at<CPU>(), alm.ld(),
+                                      (*fv_eigen_vectors_)[0], gklo_basis_size(),
+                                      &fv_states<true>()[0][offset_wf], wf_size());
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    alm.async_copy_to_device(tid);
+                    linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                                      alm.at<GPU>(), alm.ld(),
+                                      fv_ev_swp.at<GPU>(), gklo_basis_size(),
+                                      tmp.at<GPU>(), tmp.ld(), tid);
+                    acc::copyout(&fv_states<true>()[0][offset_wf], wf_size(), tmp.at<GPU>(), tmp.ld(), mt_aw_size, nbnd_loc, tid);
+                    #endif
+                    break;
                 }
             }
-            #pragma omp for
-            for (int i = 0; i < fv_states<true>().spl_num_swapped().local_size(); i++)
-            {
-                /* G+k block */
-                std::memcpy(&fv_states<true>()[i][wf_pw_offset()],
-                            (*fv_eigen_vectors_)[i], num_gkvec() * sizeof(double_complex));
+
+            for (int i = 0; i < nbnd_loc; i++) {
+                /* lo block */
+                std::memcpy(&fv_states<true>()[i][offset_wf + mt_aw_size],
+                            &(*fv_eigen_vectors_)[i][num_gkvec() + unit_cell_.atom(ia).offset_lo()],
+                            unit_cell_.atom(ia).mt_lo_basis_size() * sizeof(double_complex));
             }
         }
+        #pragma omp for
+        for (int i = 0; i < nbnd_loc; i++) {
+            /* G+k block */
+            std::memcpy(&fv_states<true>()[i][wf_pw_offset()],
+                        (*fv_eigen_vectors_)[i], num_gkvec() * sizeof(double_complex));
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            acc::sync_stream(tid);
+        }
+        #endif
     }
+    //}
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        fv_ev_swp.deallocate_on_device();
+    }
+    #endif
 
     fv_states<true>().swap_backward(0, ctx_.num_fv_states());
 }

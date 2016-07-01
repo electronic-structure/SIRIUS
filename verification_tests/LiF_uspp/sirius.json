@@ -1,36 +1,12 @@
 {
-  "control" : {
-      "cyclic_block_size" : 16,
-      "processing_unit" : "cpu",
-      "std_evp_solver_type" : "lapack",
-      "gen_evp_solver_type" : "lapack"
-  },
+    "cyclic_block_size" : 16,
+    "processing_unit" : "cpu",
+    "std_evp_solver_type" : "lapack",
+    "gen_evp_solver_type" : "lapack",
+    "!num_fv_states" : 40,
+    "electronic_structure_method" : "ultrasoft_pseudopotential",
 
-  "parameters" : {
-      "electronic_structure_method" : "paw_pseudopotential",
-
-      "num_fv_states" : 40,
-
-      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-      "smearing_width" : 0.025,
-
-      "use_symmetry" : 1,
-
-      "num_mag_dims" : 0,
-
-      "gk_cutoff" : 6.0,
-      "pw_cutoff" : 20.00,
-
-      "energy_tol" : 1e-8,
-      "potential_tol" : 1e-8,
-
-      "num_dft_iter" : 100,
-
-      "ngridk" : [8,8,8],
-
-      "reduce_gvec": 0,
-  },
+    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-12,
@@ -40,6 +16,23 @@
         "type" : "davidson",
         "converge_by_energy" : 1
     },
+
+    "smearing_width" : 0.02,
+
+    "use_symmetry" : 1,
+
+    "num_mag_dims" : 1,
+
+    "reduce_gvec": 0,
+
+    "gk_cutoff" : 5.0,
+    "pw_cutoff" : 20.00,
+
+    "energy_tol" : 1e-8,
+
+    "num_dft_iter" : 100,
+
+    "ngridk" : [8,8,8],
 
 
     "unit_cell" : {
@@ -52,8 +45,8 @@
             "atom_types" : ["Li", "F"],
 
             "atom_files" : {
-                "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
-                "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
+                "Li" : "Li.pz-s-rrkjus_psl.0.2.1.UPF.json",
+                "F"  : "F.pz-n-rrkjus_psl.0.1.UPF.json"
             },
 
             "atoms" : {

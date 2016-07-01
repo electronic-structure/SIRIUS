@@ -67,7 +67,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                         for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
                     }
                     kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
-                    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+                    apply_hmt_to_apw<spin_block_t::nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
 
                     /* setup apw-lo and lo-apw blocks */
                     set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
@@ -116,6 +116,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
 {
     runtime::Timer t("sirius::Band::set_fv_h_o");
     
+    runtime::Timer t2("sirius::Band::set_fv_h_o|alloc");
     h__.zero();
     h__.allocate_on_device();
     h__.zero_on_device();
@@ -145,6 +146,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     mdarray<double_complex, 3> halm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw, 2);
     halm_col.allocate(1);
     halm_col.allocate_on_device();
+    t2.stop();
 
     runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
@@ -194,7 +196,7 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                     kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
                     alm_col_tmp.async_copy_to_device(tid);
 
-                    apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
+                    apply_hmt_to_apw<spin_block_t::nm>(kp__->num_gkvec_col(), ia, alm_col_tmp, halm_col_tmp);
                     halm_col_tmp.async_copy_to_device(tid);
 
                     /* setup apw-lo and lo-apw blocks */

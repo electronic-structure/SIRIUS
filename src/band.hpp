@@ -249,30 +249,30 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
                               
             switch (sblock)
             {
-                case nm:
+                case spin_block_t::nm:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function().theta_pw(ig12));
                     break;
                 }
-                case uu:
+                case spin_block_t::uu:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + effective_magnetic_field[0]->f_pw(ig12) +  
                                             t1 * ctx_.step_function().theta_pw(ig12));
                     break;
                 }
-                case dd:
+                case spin_block_t::dd:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) - effective_magnetic_field[0]->f_pw(ig12) +  
                                             t1 * ctx_.step_function().theta_pw(ig12));
                     break;
                 }
-                case ud:
+                case spin_block_t::ud:
                 {
                     h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) - 
                                             double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
                     break;
                 }
-                case du:
+                case spin_block_t::du:
                 {
                     h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) + 
                                             double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));

@@ -72,9 +72,10 @@ void Density::generate_valence(K_set& ks__)
     }
     
     #if (__VERIFICATION > 0)
-    for (int ir = 0; ir < ctx_.fft(0)->local_size(); ir++)
-    {
-        if (rho_->f_it(ir) < 0) TERMINATE("density is wrong");
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        if (rho_->f_rg(ir) < 0) {
+            TERMINATE("density is wrong");
+        }
     }
     #endif
 
@@ -87,7 +88,8 @@ void Density::generate_valence(K_set& ks__)
     //== nel = nel * unit_cell_.omega() / ctx_.fft().size();
     //== printf("number of electrons: %f\n", nel);
     
-    /* get rho(G) and mag(G) */
+    /* get rho(G) and mag(G)
+     * they are required to symmetrize density and magnetization */
     rho_->fft_transform(-1);
     for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 

@@ -104,6 +104,8 @@ Density::Density(Simulation_context& ctx__)
             low_freq_mixer_ = new Broyden2<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
                                                            ctx_.mixer_input_section().max_history_,
                                                            ctx_.mixer_input_section().beta_,
+                                                           ctx_.mixer_input_section().beta0_,
+                                                           ctx_.mixer_input_section().linear_mix_rms_tol_,
                                                            weights,
                                                            ctx_.comm());
         } 
@@ -136,6 +138,8 @@ Density::Density(Simulation_context& ctx__)
             mixer_ = new Broyden2<double>(size(),
                                           ctx_.mixer_input_section().max_history_,
                                           ctx_.mixer_input_section().beta_,
+                                          ctx_.mixer_input_section().beta0_,
+                                          ctx_.mixer_input_section().linear_mix_rms_tol_,
                                           weights,
                                           ctx_.comm());
 

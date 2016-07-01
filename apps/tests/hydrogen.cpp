@@ -77,21 +77,26 @@ int main(int argn, char** argv)
         std::vector<double> v(radial_grid.num_points());
         for (int i = 0; i < radial_grid.num_points(); i++) v[i] = -z / radial_grid[i];
 
-        double enu_exact = -0.5 * pow(double(z) / n, 2);
+        double enu_exact = -0.5 * std::pow(double(z) / n, 2);
         
-        Radial_solver solver(false, -double(z), radial_grid);
-        Bound_state bound_state(z, n, l, radial_grid, v, enu_exact);
+        Bound_state bound_state(relativity_t::none, z, n, l, 0, radial_grid, v, enu_exact);
 
         double enu = bound_state.enu();
 
         double rel_err = std::abs(1 - enu / enu_exact);
-        if (rel_err > 1e-10) 
+
+        #pragma omp critical
         {
-            printf("Fail! z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e\n", z, n, l, enu, enu_exact, rel_err);
-        }
-        else
-        {
-            printf("OK! z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e\n", z, n, l, enu, enu_exact, rel_err);
+            if (rel_err > 1e-10) 
+            {
+                printf("Fail! ");
+            }
+            else
+            {
+                printf("OK! ");
+            }
+
+            printf("z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e\n", z, n, l, enu, enu_exact, rel_err);
         }
         err[j] = rel_err;
     }

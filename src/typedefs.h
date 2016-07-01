@@ -33,7 +33,7 @@
 
 typedef std::complex<double> double_complex;
 
-enum spin_block_t {nm, uu, ud, dd, du};
+enum class spin_block_t {nm, uu, ud, dd, du};
 
 //enum lattice_t {direct, reciprocal};
 
