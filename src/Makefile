@@ -8,19 +8,15 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        simulation_context.cpp wave_functions.cpp beta_projectors.cpp non_local_operator.cpp \
        Atom_type/add_aw_descriptor.cpp \
        Atom_type/add_lo_descriptor.cpp \
-       Atom_type/atom_type.cpp \
        Atom_type/init.cpp \
        Atom_type/init_aw_descriptors.cpp \
        Atom_type/init_free_atom.cpp \
        Atom_type/print_info.cpp \
        Atom_type/read_input.cpp \
-       Atom_type/set_radial_grid.cpp \
-       Atom/atom.cpp \
        Atom/init.cpp \
        Atom/generate_radial_integrals.cpp \
-       Unit_cell/atom_symmetry_class.cpp \
-       Unit_cell/unit_cell.cpp \
-       Unit_cell/make_periodic_function.cpp \
+       atom_symmetry_class.cpp \
+       unit_cell.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \

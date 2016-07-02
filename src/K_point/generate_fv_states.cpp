@@ -35,7 +35,9 @@ void K_point::generate_fv_states()
     }
 
     fv_eigen_vectors_->swap_forward(0, ctx_.num_fv_states());
+    #ifdef __GPU
     auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
+    #endif
     /* local number of bands */
     int nbnd_loc = fv_eigen_vectors_->spl_num_swapped().local_size();
 
@@ -223,7 +225,9 @@ void K_point::generate_fv_states()
     #pragma omp parallel
     {
         /* get thread id */
+        #ifdef __GPU
         int tid = omp_get_thread_num();
+        #endif
         mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
         mdarray<double_complex, 2> tmp;
 

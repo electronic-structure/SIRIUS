@@ -20,8 +20,7 @@ void create_supercell(cmd_args& args__)
         std::cout << std::endl;
     }
 
-    Simulation_parameters p("sirius.json");
-    Simulation_context ctx(p, mpi_comm_self());
+    Simulation_context ctx("sirius.json", mpi_comm_self());
 
     matrix3d<double> scell_lattice_vectors = ctx.unit_cell().lattice_vectors() * matrix3d<double>(scell);
 
@@ -44,12 +43,17 @@ void create_supercell(cmd_args& args__)
         a1[x] = scell_lattice_vectors(x, 1);
         a2[x] = scell_lattice_vectors(x, 2);
     }
-    ctx_sc.unit_cell().set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
-   
+    ctx_sc.unit_cell().set_lattice_vectors(a0, a1, a2);
+
     for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++)
     {
         auto label = ctx.unit_cell().atom_type(iat).label();
         ctx_sc.unit_cell().add_atom_type(label, "");
+    }
+   
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++)
+    {
+        auto label = ctx.unit_cell().atom_type(iat).label();
 
         for (int i = 0; i < ctx.unit_cell().atom_type(iat).num_atoms(); i++)
         {

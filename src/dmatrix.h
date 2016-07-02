@@ -128,7 +128,7 @@ class dmatrix
         /* forbid copy constructor */
         dmatrix(dmatrix<T> const& src) = delete;
         /* forbid move constructor */
-        dmatrix(dmatrix<T>&& src) = delete;
+        //dmatrix(dmatrix<T>&& src) = delete;
         /* forbid assigment operator */
         dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
 

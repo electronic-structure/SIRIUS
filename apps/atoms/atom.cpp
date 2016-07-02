@@ -39,11 +39,11 @@ class Free_atom : public sirius::Atom_type
                   int zn, 
                   double mass, 
                   std::vector<atomic_level_descriptor>& levels_nl) 
-            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::scaled_pow_grid), 
+            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::lin_exp_grid), 
               NIST_LDA_Etot(0),
               NIST_ScRLDA_Etot(0)
         {
-            radial_grid_ = sirius::Radial_grid(sirius::exponential_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
+            radial_grid_ = sirius::Radial_grid(sirius::scaled_pow_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
@@ -309,21 +309,13 @@ void generate_atom_file(Free_atom& a,
     /* solve a free atom */
     a.ground_state(1e-10, 1e-8, 1e-8, enu, rel);
    
-    /* find number of core states */
-    int ncore = 0;
-    for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
-        if (enu[ist] < core_cutoff_energy) {
-            ncore += int(a.atomic_level(ist).occupancy + 1e-12);
-        }
-    }
-
-    std::string fname = a.symbol() + std::string(".json");
-    JSON_write jw(fname);
-    jw.single("name", a.name());
-    jw.single("symbol", a.symbol());
-    jw.single("number", a.zn());
-    jw.single("mass", a.mass());
-    jw.single("rmin", a.radial_grid(0));
+    //JSON_write jw(fname);
+    json dict;
+    dict["name"] = a.name();
+    dict["symbol"] = a.symbol();
+    dict["number"] = a.zn();
+    dict["mass"] = a.mass();
+    dict["rmin"] = a.radial_grid(0);
 
     std::vector<atomic_level_descriptor> core;
     std::vector<atomic_level_descriptor> valence;
@@ -338,14 +330,18 @@ void generate_atom_file(Free_atom& a,
     std::memset(&nl_v[0][0], 0, 32 * sizeof(int));
     std::memset(&e_nl_c[0][0], 0, 32 * sizeof(double));
     std::memset(&e_nl_v[0][0], 0, 32 * sizeof(double));
+
+    double core_cutoff_radius{1.5};
     
     printf("\n");
     printf("Core / valence partitioning\n");
     printf("---------------------------\n");
     printf("core cutoff energy       : %f\n", core_cutoff_energy);
-    printf("number of core electrons : %i\n", ncore);
-    sirius::Spline <double> rho_c(a.radial_grid());
-    sirius::Spline <double> rho(a.radial_grid());
+    printf("core cutoff radius       : %f\n", core_cutoff_radius);
+    sirius::Spline<double> rho_c(a.radial_grid());
+    sirius::Spline<double> rho(a.radial_grid());
+    sirius::Spline<double> s(a.radial_grid());
+    int ncore{0};
     for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
         int n = a.atomic_level(ist).n;
         int l = a.atomic_level(ist).l;
@@ -355,13 +351,26 @@ void generate_atom_file(Free_atom& a,
         
         /* total density */
         for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
-            rho[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
+            s[ir] = a.free_atom_orbital_density(ir, ist);
+            rho[ir] += a.atomic_level(ist).occupancy * s[ir] / fourpi;
+        }
+
+        std::vector<double> g;
+        s.interpolate().integrate(g, 2);
+        double rc{100};
+
+        for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
+            if (1.0 - g[ir] < 1e-5) {
+                rc = a.radial_grid(ir);
+                break;
+            }
         }
 
         /* assign this state to core */
-        if (enu[ist] < core_cutoff_energy) {
+        //if (enu[ist] < core_cutoff_energy) {
+        if (rc < core_cutoff_radius) {
             core.push_back(a.atomic_level(ist));
-            printf("  => core \n");
+            printf("  => core (rc = %f)\n", rc);
 
             for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
                 rho_c[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
@@ -369,14 +378,16 @@ void generate_atom_file(Free_atom& a,
 
             nl_c[n][l]++;
             e_nl_c[n][l] += enu[ist];
+            ncore += static_cast<int>(a.atomic_level(ist).occupancy + 1e-12);
         } else { /* assign this state to valence */
             valence.push_back(a.atomic_level(ist));
-            printf("  => valence\n");
+            printf("  => valence (rc = %f)\n", rc);
 
             nl_v[n][l]++;
             e_nl_v[n][l] += enu[ist];
         }
     }
+    printf("number of core electrons : %i\n", ncore);
     
     /* average energies for {n,l} level */
     for (int n = 1; n <= 7; n++) {
@@ -401,7 +412,8 @@ void generate_atom_file(Free_atom& a,
             }
         }
     }
-
+    
+    printf("valence n for each l:\n");
     for (int l = 0; l < 4; l++) {
         printf("l: %i, n: ", l);
         for (int n: n_v[l]) {
@@ -421,40 +433,40 @@ void generate_atom_file(Free_atom& a,
     /* estimate effective infinity */
     std::vector<double> g;
     rho.interpolate().integrate(g, 2);
-    double rinf = 0;
+    double rinf{0};
     for (int ir = a.radial_grid().num_points() - 1; ir >= 0; ir--) {
         if (g[ir] / g.back() < 0.99999999) {
             rinf = a.radial_grid(ir);
             break;
         }
     }
-
-    ///* estimate effective infinity */
-    //double rinf = 0.0;
-    //for (int ir = 0; ir < a.radial_grid().num_points(); ir++)
-    //{
-    //    rinf = a.radial_grid(ir);
-    //    if (rinf > 5.0 && (rho[ir] * rinf * rinf) < 1e-7) break;
-    //}
     printf("Effective infinity : %f\n", rinf);
 
-    double core_radius = 2.0;
-    int nrmt = 1500;
+    /* estimate core radius */
+    double core_radius = core_cutoff_radius;
     if (ncore != 0) {
         std::vector<double> g;
         rho_c.interpolate().integrate(g, 2);
 
-        for (int ir = a.radial_grid().num_points() - 1; ir >= 0; ir--) {
-            if (std::abs(fourpi * g[ir] - ncore) / ncore > 1e-5) {
+        for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
+            if ((ncore - fourpi * g[ir]) / ncore < 1e-5) {
                 core_radius = a.radial_grid(ir);
                 break;
             }
         }
     }
 
+    /* good number of MT points */
+    int nrmt{1500};
+
     printf("minimum MT radius : %f\n", core_radius);
-    jw.single("rmt", core_radius);
-    jw.single("nrmt", nrmt);
+    if (ncore) {
+        dict["rmt"] = core_radius;
+    } else {
+        dict["rmt"] = 0.65;
+    }
+    dict["nrmt"] = nrmt;
+    dict["rinf"] = rinf;
     
     /* compact representation of core states */
     std::string core_str;
@@ -468,22 +480,15 @@ void generate_atom_file(Free_atom& a,
             nl_core[core[i].n][core[i].l] = 1;
         }
     }
-    jw.single("core", core_str);
+    dict["core"] = core_str;
 
-    jw.begin_array("valence");
-    jw.begin_set();
-    if (apw_order == 1) {
-        std::stringstream s;
-        s << "[{\"enu\" : " << apw_enu << ", \"dme\" : 0, \"auto\" : 0}]";
-        jw.string("basis", s.str());
-    }
+    dict["valence"] = json::array();
+    dict["valence"].push_back(json::object({{"basis", json::array({})}}));
+    dict["valence"][0]["basis"].push_back({{"enu", apw_enu},{"dme", 0}, {"auto", 0}});
     if (apw_order == 2) {
-        std::stringstream s;
-        s << "[{\"enu\" : " << apw_enu << ", \"dme\" : 0, \"auto\" : 0}, {\"enu\" : " << apw_enu << ", \"dme\" : 1, \"auto\" : 0}]";
-        jw.string("basis", s.str());
+        dict["valence"][0]["basis"].push_back({{"enu", apw_enu},{"dme", 1}, {"auto", 0}});
     }
-    jw.end_set();
-    
+
     if (auto_enu) {
         for (int l = 0; l <= lmax; l++) {
             /* default value for n */
@@ -500,20 +505,13 @@ void generate_atom_file(Free_atom& a,
                     n = std::max(n, valence[i].n);
                 }
             }
-                   
-            jw.begin_set();
-            jw.single("l", l);
-            jw.single("n", n);
-            if (apw_order == 1) {
-                jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
-            }
+            dict["valence"].push_back(json::object({{"n", n}, {"l", l}, {"basis", json::array({})}}));
+            dict["valence"].back()["basis"].push_back({{"enu", apw_enu},{"dme", 0}, {"auto", 1}});
             if (apw_order == 2) {
-                jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
+                dict["valence"].back()["basis"].push_back({{"enu", apw_enu},{"dme", 1}, {"auto", 1}});
             }
-            jw.end_set();
         }
     }
-    jw.end_array();
 
     int idxlo{0};
     for (int n = 1; n <= 7; n++) {
@@ -538,7 +536,7 @@ void generate_atom_file(Free_atom& a,
                     idxlo++;
                 }
 
-                if (lo_type.find("LO1") != std::string::npos) {
+                if (lo_type.find("LO2") != std::string::npos) {
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 0, 0);
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 1, 0);
                     a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v[n][l] + 1, 0, 1);
@@ -547,26 +545,131 @@ void generate_atom_file(Free_atom& a,
             }
         }
     }
-    
+     
     if (lo_type.find("lo3") != std::string::npos) {
         for (int l = lmax + 1; l < lmax + 3; l++) {
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
             idxlo++;
-
+ 
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 2, 0);
             idxlo++;
         }
     }
-
+ 
     std::vector<double> fa_rho(a.radial_grid().num_points());
     std::vector<double> fa_r(a.radial_grid().num_points());
-
+ 
     for (int i = 0; i < a.radial_grid().num_points(); i++) {
         fa_rho[i] = a.free_atom_density(i);
         fa_r[i] = a.radial_grid(i);
     }
+
+    auto rg = sirius::Radial_grid(sirius::lin_exp_grid, 1500, 1e-7, 2.0);
+    std::vector<double> x;
+    std::vector<double> veff;
+    for (int ir = 0; ir < rg.num_points(); ir++) {
+        x.push_back(rg[ir]);
+        veff.push_back(a.free_atom_potential(rg[ir]) - a.zn() * rg.x_inv(ir));
+    }
+    a.set_mt_radius(2.0);
+    a.set_num_mt_points(1500);
+    a.set_radial_grid(1500, &x[0]);
+ 
+    a.init(0);
+    sirius::Atom_symmetry_class atom_class(0, a);
+    atom_class.initialize();
+    atom_class.set_spherical_potential(veff);
+    atom_class.generate_radial_functions(relativity_t::none);
+    runtime::pstdout pout(mpi_comm_self());
+    atom_class.write_enu(pout);
+    pout.flush();
+    
+    auto lo_to_str = [](local_orbital_descriptor lod) {
+        std::stringstream s;
+        s << "[";
+        for (size_t o = 0; o < lod.rsd_set.size(); o++) {
+            s << "{" << "\"n\" : " <<  lod.rsd_set[o].n 
+                     << ", \"enu\" : " <<  lod.rsd_set[o].enu 
+                     << ", \"dme\" : " <<  lod.rsd_set[o].dme
+                     << ", \"auto\" : " <<  lod.rsd_set[o].auto_enu << "}";
+            if (o != lod.rsd_set.size() - 1) {
+                s << ", ";
+            }
+        }
+        s << "]";
+        return s.str();
+    };
+
+    //== std::vector<int> inc(a.num_lo_descriptors(), 1);
+
+    //== mdarray<double, 2> rad_func(rg.num_points(), a.num_lo_descriptors());
+
+    //== for (int i = 0; i < a.num_lo_descriptors(); i++) {
+    //==     int idxrf = a.indexr().index_by_idxlo(i);
+    //==     int l = a.lo_descriptor(i).l;
+
+    //==     sirius::Spline<double> f(rg);
+    //==     for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==         f[ir] = atom_class.radial_function(ir, idxrf);
+    //==     }
+
+    //==     sirius::Spline<double> s(rg);
+
+    //==     for (int j = 0; j < i; j++) {
+    //==         int l1 = a.lo_descriptor(j).l;
+
+    //==         if (l1 == l && inc[j]) {
+    //==             for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==                 s[ir] = f[ir] * rad_func(ir, j);
+    //==             }
+    //==             double ovlp = s.interpolate().integrate(2);
+    //==             for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==                 f[ir] -= ovlp * rad_func(ir, j);
+    //==             }
+    //==         }
+    //==     }
+    //==     for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==         s[ir] = std::pow(f[ir], 2);
+    //==     }
+    //==     double norm = std::sqrt(s.interpolate().integrate(2));
+    //==     printf("orbital: %i, norm: %f\n", i, norm);
+    //==     if (norm < 0.05) {
+    //==         auto s = lo_to_str(a.lo_descriptor(i));
+    //==         printf("local orbital %i is linearly dependent\n", i);
+    //==         printf("  l: %i, basis: %s\n", l, s.str().c_str());
+    //==         inc[i] = 0;
+    //==     } else {
+    //==         norm = 1 / norm;
+    //==         for (int ir = 0; ir < a.num_mt_points(); ir++) {
+    //==             rad_func(ir, i) = f[ir] * norm;
+    //==             //atom_class.radial_function(ir, idxrf) = rad_func(ir, i);
+    //==         }
+    //==     }
+    //== }
+    
+    auto inc = atom_class.check_lo_linear_independence(0.0001);
+    dict["lo"] = json::array();
+
+    for (int j = 0; j < a.num_lo_descriptors(); j++) {
+        auto s = lo_to_str(a.lo_descriptor(j));
+        if (!inc[j]) {
+            printf("X ");
+        } else {
+            printf("  ");
+            dict["lo"].push_back({{"l", a.lo_descriptor(j).l}, {"basis", json::parse(s)}});
+        }
+        printf("l: %i, basis: %s\n", a.lo_descriptor(j).l, s.c_str());
+    }
+
+    dict["free_atom"] = json::object();
+    dict["free_atom"]["density"] = fa_rho;
+    dict["free_atom"]["radial_grid"] = fa_r;
+    
+    std::ofstream ofs( a.symbol() + std::string(".json"), std::ofstream::out | std::ofstream::trunc);
+    ofs << dict.dump(4);
+    ofs.close();
 
     if (write_to_xml)
     {
@@ -704,146 +807,7 @@ void generate_atom_file(Free_atom& a,
 
         fclose(fout);
     }
-
-    auto rg = sirius::Radial_grid(sirius::exponential_grid, 1500, 1e-7, 2.3);
-    std::vector<double> x;
-    std::vector<double> veff;
-    for (int ir = 0; ir < rg.num_points(); ir++) {
-        x.push_back(rg[ir]);
-        veff.push_back(a.free_atom_potential(rg[ir]) - a.zn() * rg.x_inv(ir));
-    }
-    a.set_mt_radius(2.0);
-    a.set_num_mt_points(1500);
-    a.set_radial_grid(1500, &x[0]);
-
-    a.init(0);
-    printf("num_points: %i\n", a.radial_grid().num_points());
-    printf("num_mt_points: %i\n", a.num_mt_points());
-    printf("num_lo_descriptors: %i\n", a.num_lo_descriptors());
-    printf("mt_radius: %f\n", a.mt_radius());
-    printf("effective potential: %f %f\n", a.free_atom_potential(rg.first()), a.free_atom_potential(rg.last()));
-
-    sirius::Atom_symmetry_class atom_class(0, a);
-    atom_class.initialize();
-    atom_class.set_spherical_potential(veff);
-    atom_class.generate_radial_functions(relativity_t::none);
-    runtime::pstdout pout(mpi_comm_self());
-    atom_class.write_enu(pout);
-    pout.flush();
-    
-    auto lo_to_str = [](local_orbital_descriptor lod) {
-        std::stringstream s;
-        s << "[";
-        for (size_t o = 0; o < lod.rsd_set.size(); o++) {
-            s << "{" << "\"n\" : " <<  lod.rsd_set[o].n 
-                     << ", \"enu\" : " <<  lod.rsd_set[o].enu 
-                     << ", \"dme\" : " <<  lod.rsd_set[o].dme
-                     << ", \"auto\" : " <<  lod.rsd_set[o].auto_enu << "}";
-            if (o != lod.rsd_set.size() - 1) {
-                s << ", ";
-            }
-        }
-        s << "]";
-        return s.str();
-    };
-
-    //== std::vector<int> inc(a.num_lo_descriptors(), 1);
-
-    //== mdarray<double, 2> rad_func(rg.num_points(), a.num_lo_descriptors());
-
-    //== for (int i = 0; i < a.num_lo_descriptors(); i++) {
-    //==     int idxrf = a.indexr().index_by_idxlo(i);
-    //==     int l = a.lo_descriptor(i).l;
-
-    //==     sirius::Spline<double> f(rg);
-    //==     for (int ir = 0; ir < a.num_mt_points(); ir++) {
-    //==         f[ir] = atom_class.radial_function(ir, idxrf);
-    //==     }
-
-    //==     sirius::Spline<double> s(rg);
-
-    //==     for (int j = 0; j < i; j++) {
-    //==         int l1 = a.lo_descriptor(j).l;
-
-    //==         if (l1 == l && inc[j]) {
-    //==             for (int ir = 0; ir < a.num_mt_points(); ir++) {
-    //==                 s[ir] = f[ir] * rad_func(ir, j);
-    //==             }
-    //==             double ovlp = s.interpolate().integrate(2);
-    //==             for (int ir = 0; ir < a.num_mt_points(); ir++) {
-    //==                 f[ir] -= ovlp * rad_func(ir, j);
-    //==             }
-    //==         }
-    //==     }
-    //==     for (int ir = 0; ir < a.num_mt_points(); ir++) {
-    //==         s[ir] = std::pow(f[ir], 2);
-    //==     }
-    //==     double norm = std::sqrt(s.interpolate().integrate(2));
-    //==     printf("orbital: %i, norm: %f\n", i, norm);
-    //==     if (norm < 0.05) {
-    //==         auto s = lo_to_str(a.lo_descriptor(i));
-    //==         printf("local orbital %i is linearly dependent\n", i);
-    //==         printf("  l: %i, basis: %s\n", l, s.str().c_str());
-    //==         inc[i] = 0;
-    //==     } else {
-    //==         norm = 1 / norm;
-    //==         for (int ir = 0; ir < a.num_mt_points(); ir++) {
-    //==             rad_func(ir, i) = f[ir] * norm;
-    //==             //atom_class.radial_function(ir, idxrf) = rad_func(ir, i);
-    //==         }
-    //==     }
-    //== }
-    
-    auto inc = atom_class.check_lo_linear_independence(0.0001);
-
-    for (int j = 0; j < a.num_lo_descriptors(); j++) {
-        auto s = lo_to_str(a.lo_descriptor(j));
-        if (!inc[j]) {
-            printf("X ");
-        } else {
-            printf("  ");
-        }
-        printf("l: %i, basis: %s\n", a.lo_descriptor(j).l, s.c_str());
-    }
-
-    jw.begin_array("lo");
-    for (int j = 0; j < a.num_lo_descriptors(); j++) {
-        if (inc[j]) {
-            auto s = lo_to_str(a.lo_descriptor(j));
-            jw.begin_set();
-            jw.single("l",  a.lo_descriptor(j).l);
-            jw.string("basis", s);
-            jw.end_set();
-        }
-    }
-    jw.end_array();
-
-    jw.begin_set("free_atom");
-    jw.single("density", fa_rho);
-    jw.single("radial_grid", fa_r);
-    jw.end_set();
-    
-    //== std::vector<atomic_level_descriptor> levels;
-
-    //== sirius::Atom_type a2(a.parameters(), a.symbol(), a.name(), a.zn(), a.mass(), levels, sirius::radial_grid_t::exponential_grid);
-    //== a2.set_mt_radius(2.0);
-    //== a2.set_num_mt_points(1500);
-    //== a2.set_radial_grid(1500, &x[0]);
-
-    //== for (int j = 0; j < a.num_lo_descriptors(); j++) {
-    //==     if (inc[j]) {
-    //==         a2.add_lo_descriptor(a.lo_descriptor(j));
-    //==     }
-    //== }
-
-    //== a2.init(0);
-
-    //== sirius::Atom_symmetry_class c2(0, a2);
-    //== c2.initialize();
-    //== c2.set_spherical_potential(veff);
-    //== c2.generate_radial_functions(relativity_t::none);
-    //== c2.check_lo_linear_independence();
-    //== c2.dump_lo();
+ 
 }
 
 int main(int argn, char **argv)
@@ -862,12 +826,11 @@ int main(int argn, char **argv)
     args.register_key("--rel", "use scalar-relativistic solver");
     args.parse_args(argn, argv);
     
-    if (argn == 1 || args.exist("help"))
-    {
+    if (argn == 1 || args.exist("help")) {
         printf("\n");
         printf("Atom (L)APW+lo basis generation.\n");
         printf("\n");
-        printf("Usage: ./plot [options] \n");
+        printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         printf("\n");
         printf("Definition of the local orbital types:\n");

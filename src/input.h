@@ -67,7 +67,9 @@ namespace sirius {
  */
 struct Unit_cell_input_section
 {
-    double lattice_vectors_[3][3];
+    vector3d<double> a0_;
+    vector3d<double> a1_;
+    vector3d<double> a2_;
 
     std::vector<std::string> labels_;
     std::map<std::string, std::string> atom_files_;
@@ -77,8 +79,7 @@ struct Unit_cell_input_section
 
     void read(JSON_tree const& parser)
     {
-        if (parser.exist("unit_cell"))
-        {
+        if (parser.exist("unit_cell")) {
             exist_ = true;
 
             auto section = parser["unit_cell"];
@@ -87,49 +88,50 @@ struct Unit_cell_input_section
             section["lattice_vectors"][1] >> a1;
             section["lattice_vectors"][2] >> a2;
 
-            if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3)
+            if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3) {
                 TERMINATE("wrong lattice vectors");
+            }
 
             double scale = section["lattice_vectors_scale"].get(1.0);
 
-            for (int x = 0; x < 3; x++)
-            {
-                lattice_vectors_[0][x] = a0[x] * scale;
-                lattice_vectors_[1][x] = a1[x] * scale;
-                lattice_vectors_[2][x] = a2[x] * scale;
+            for (int x: {0, 1, 2}) {
+                a0_[x] = a0[x] * scale;
+                a1_[x] = a1[x] * scale;
+                a2_[x] = a2[x] * scale;
             }
 
             labels_.clear();
             coordinates_.clear();
             
-            for (int iat = 0; iat < (int)section["atom_types"].size(); iat++)
-            {
+            for (int iat = 0; iat < (int)section["atom_types"].size(); iat++) {
                 std::string label;
                 section["atom_types"][iat] >> label;
-                for (int i = 0; i < (int)labels_.size(); i++)
-                {
-                    if (labels_[i] == label) 
+                for (int i = 0; i < (int)labels_.size(); i++) {
+                    if (labels_[i] == label) {
                         TERMINATE("atom type with such label is already in list");
+                    }
                 }
                 labels_.push_back(label);
             }
             
-            if (section.exist("atom_files"))
-            {
-                for (int iat = 0; iat < (int)labels_.size(); iat++)
+            if (section.exist("atom_files")) {
+                for (int iat = 0; iat < (int)labels_.size(); iat++) {
                     atom_files_[labels_[iat]] = section["atom_files"][labels_[iat]].get(std::string(""));
+                }
             }
             
-            for (int iat = 0; iat < (int)labels_.size(); iat++)
-            {
+            for (int iat = 0; iat < (int)labels_.size(); iat++) {
                 coordinates_.push_back(std::vector< std::vector<double> >());
-                for (int ia = 0; ia < section["atoms"][labels_[iat]].size(); ia++)
-                {
+                for (int ia = 0; ia < section["atoms"][labels_[iat]].size(); ia++) {
                     std::vector<double> v;
                     section["atoms"][labels_[iat]][ia] >> v;
 
-                    if (!(v.size() == 3 || v.size() == 6)) TERMINATE("wrong coordinates size");
-                    if (v.size() == 3) v.resize(6, 0.0);
+                    if (!(v.size() == 3 || v.size() == 6)) {
+                        TERMINATE("wrong coordinates size");
+                    }
+                    if (v.size() == 3) {
+                        v.resize(6, 0.0);
+                    }
 
                     coordinates_[iat].push_back(v);
                 }
@@ -256,6 +258,11 @@ struct Parameters_input_section
     int auto_rmt_{1};
     int use_symmetry_{1};
     int gamma_point_{0};
+    vector3d<int> ngridk_{1, 1, 1};
+    vector3d<int> shiftk_{0, 0, 0};
+    int num_dft_iter_{100};
+    double energy_tol_{1e-5};
+    double potential_tol_{1e-5};
 
     void read(JSON_tree const& parser)
     {
@@ -290,6 +297,11 @@ struct Parameters_input_section
         auto_rmt_       = parser["parameters"]["auto_rmt"].get(auto_rmt_);
         use_symmetry_   = parser["parameters"]["use_symmetry"].get(use_symmetry_);
         gamma_point_    = parser["parameters"]["gamma_point"].get(gamma_point_);
+        ngridk_         = parser["parameters"]["ngridk"].get(ngridk_);
+        shiftk_         = parser["parameters"]["shiftk"].get(shiftk_);
+        num_dft_iter_   = parser["parameters"]["num_dft_iter"].get(num_dft_iter_);
+        energy_tol_     = parser["parameters"]["energy_tol"].get(energy_tol_);
+        potential_tol_  = parser["parameters"]["potential_tol"].get(potential_tol_);
     }
 };
 

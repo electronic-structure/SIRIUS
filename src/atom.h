@@ -42,7 +42,7 @@ class Atom
         Atom_type const& type_;
 
         /// Symmetry class of the given atom.
-        Atom_symmetry_class* symmetry_class_;
+        Atom_symmetry_class* symmetry_class_{nullptr};
         
         /// Position in fractional coordinates.
         vector3d<double> position_;
@@ -66,16 +66,16 @@ class Atom
         int num_mag_dims_;
         
         /// Maximum l for potential and magnetic field.
-        int lmax_pot_;
+        int lmax_pot_{-1};
 
         /// Offset in the array of matching coefficients.
-        int offset_aw_;
+        int offset_aw_{-1};
 
         /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
-        int offset_lo_; // TODO: better name for this
+        int offset_lo_{-1}; // TODO: better name for this
 
         /// Offset in the wave-function array.
-        int offset_wf_; // TODO: better name for this
+        int offset_wf_{-1}; // TODO: better name for this
 
         /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
         mdarray<double_complex, 4> occupation_matrix_;
@@ -84,10 +84,10 @@ class Atom
         mdarray<double_complex, 4> uj_correction_matrix_;
 
         /// True if UJ correction is applied for the current atom.
-        bool apply_uj_correction_;
+        bool apply_uj_correction_{false};
 
         /// Orbital quantum number for UJ correction.
-        int uj_correction_l_;
+        int uj_correction_l_{-1};
 
         /// D_{ij} matrix of the pseudo-potential method.
         mdarray<double_complex, 3> d_mtrx_;
@@ -95,8 +95,20 @@ class Atom
     public:
     
         /// Constructor.
-        Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__);
-        
+        Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__)
+            : type_(type__),
+              position_(position__),
+              vector_field_(vector_field__)
+        {
+            for (int x: {0, 1, 2}) {
+                if (position_[x] < 0 || position_[x] >= 1) {
+                    std::stringstream s;
+                    s << "Wrong atomic position for atom " << type__.label() << ": " << position_[0] << " " << position_[1] << " " << position_[2];
+                    TERMINATE(s);
+                }
+            }
+        }
+
         /// Initialize atom.
         void init(int offset_aw__, int offset_lo__, int offset_wf__);
 

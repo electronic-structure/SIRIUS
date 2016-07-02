@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file simulation.h
+/** \file simulation_context.h
  *   
  *  \brief Contains definition and implementation of Simulation_parameters and Simulation_context classes.
  */
@@ -47,40 +47,42 @@ class Simulation_context: public Simulation_parameters
         /// Communicator for this simulation.
         Communicator const& comm_;
 
-        /// MPI grid for this simulation.
-        MPI_grid* mpi_grid_{nullptr};
-        
-        /// 2D MPI grid for the FFT driver.
-        MPI_grid* mpi_grid_fft_{nullptr};
-
-        MPI_grid* mpi_grid_fft_vloc_{nullptr};
-
-        /// 2D BLACS grid for distributed linear algebra operations.
-        BLACS_grid* blacs_grid_{nullptr};
-
-        /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
-        /** This grid is used to distribute band index and keep a whole wave-function */
-        BLACS_grid* blacs_grid_slice_{nullptr};
-
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
-        FFT3D* fft_{nullptr};
+        /// MPI grid for this simulation.
+        std::unique_ptr<MPI_grid> mpi_grid_;
+        
+        /// 2D MPI grid for the FFT driver.
+        std::unique_ptr<MPI_grid> mpi_grid_fft_;
 
-        FFT3D* fft_coarse_{nullptr};
+        std::unique_ptr<MPI_grid> mpi_grid_fft_vloc_;
+
+        /// 2D BLACS grid for distributed linear algebra operations.
+        std::unique_ptr<BLACS_grid> blacs_grid_;
+
+        /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
+        /** This grid is used to distribute band index and keep a whole wave-function */
+        std::unique_ptr<BLACS_grid> blacs_grid_slice_;
+
+        std::unique_ptr<FFT3D> fft_;
+
+        std::unique_ptr<FFT3D> fft_coarse_;
 
         /// Step function is used in full-potential methods.
-        Step_function* step_function_{nullptr};
+        std::unique_ptr<Step_function> step_function_;
 
         Gvec gvec_;
 
         Gvec gvec_coarse_;
 
-        Gvec_FFT_distribution* gvec_fft_distr_{nullptr};
+        std::unique_ptr<Gvec_FFT_distribution> gvec_fft_distr_;
 
-        std::vector<Augmentation_operator*> augmentation_op_;
+        std::unique_ptr<Gvec_FFT_distribution> gvec_coarse_fft_distr_;
 
-        Real_space_prj* real_space_prj_{nullptr};
+        std::vector<Augmentation_operator> augmentation_op_;
+
+        std::unique_ptr<Real_space_prj> real_space_prj_;
 
         /// Creation time of the context.
         timeval start_time_;
@@ -131,29 +133,16 @@ class Simulation_context: public Simulation_parameters
             PROFILE();
             init();
         }
-
+        
         ~Simulation_context()
         {
             PROFILE();
 
             time_active_ += runtime::wtime();
 
-            if (mpi_comm_world().rank() == 0 && initialized_)
-            {
+            if (mpi_comm_world().rank() == 0 && initialized_) {
                 printf("Simulation_context active time: %.4f sec.\n", time_active_);
             }
-
-            for (auto e: augmentation_op_) delete e;
-            if (step_function_ != nullptr) delete step_function_;
-            if (real_space_prj_ != nullptr) delete real_space_prj_;
-            if (gvec_fft_distr_ != nullptr) delete gvec_fft_distr_;
-            if (fft_ != nullptr) delete fft_;
-            if (fft_coarse_ != nullptr) delete fft_coarse_;
-            if (blacs_grid_slice_ != nullptr) delete blacs_grid_slice_;
-            if (blacs_grid_ != nullptr) delete blacs_grid_;
-            if (mpi_grid_ != nullptr) delete mpi_grid_;
-            if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
-            if (mpi_grid_fft_vloc_ != nullptr) delete mpi_grid_fft_vloc_;
         }
 
         /// Initialize the similation (can only be called once).
@@ -162,6 +151,11 @@ class Simulation_context: public Simulation_parameters
         void print_info();
 
         Unit_cell& unit_cell()
+        {
+            return unit_cell_;
+        }
+
+        Unit_cell const& unit_cell() const
         {
             return unit_cell_;
         }
@@ -189,6 +183,11 @@ class Simulation_context: public Simulation_parameters
         Gvec_FFT_distribution const& gvec_fft_distr() const
         {
             return *gvec_fft_distr_;
+        }
+
+        Gvec_FFT_distribution const& gvec_coarse_fft_distr() const
+        {
+            return *gvec_coarse_fft_distr_;
         }
 
         Gvec const& gvec_coarse() const
@@ -262,9 +261,9 @@ class Simulation_context: public Simulation_parameters
             comm_.barrier();
         }
 
-        Real_space_prj const* real_space_prj() const
+        Real_space_prj& real_space_prj() const
         {
-            return real_space_prj_;
+            return *real_space_prj_;
         }
 
         inline std::string const& start_time_tag() const
@@ -294,7 +293,7 @@ class Simulation_context: public Simulation_parameters
 
         Augmentation_operator const& augmentation_op(int iat__) const
         {
-            return (*augmentation_op_[iat__]);
+            return augmentation_op_[iat__];
         }
 
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$

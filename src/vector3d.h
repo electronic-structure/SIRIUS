@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <cmath>
+#include <array>
 #include <ostream>
 
 /// Simple implementation of 3d vector.
@@ -35,7 +36,7 @@ class vector3d
 {
     private:
 
-        T vec_[3];
+        std::array<T, 3> vec_;
 
     public:
         
@@ -53,6 +54,14 @@ class vector3d
             vec_[2] = z;
         }
 
+        vector3d(std::initializer_list<T> v__)
+        {
+            assert(v__.size() == 3);
+            for (int x: {0, 1, 2}) {
+                vec_[x] = v__.begin()[x];
+            }
+        }
+
         /// Access vector elements
         inline T& operator[](const int i)
         {
@@ -66,6 +75,11 @@ class vector3d
             return vec_[i];
         }
 
+        inline T l1norm() const
+        {
+            return std::abs(vec_[0]) + std::abs(vec_[1]) + std::abs(vec_[2]);
+        }
+
         /// Return vector length
         inline double length() const
         {
@@ -75,14 +89,18 @@ class vector3d
         inline vector3d<T> operator+(vector3d<T> const& b) const
         {
             vector3d<T> a = *this;
-            for (int x = 0; x < 3; x++) a[x] += b.vec_[x];
+            for (int x: {0, 1, 2}) {
+                a[x] += b.vec_[x];
+            }
             return a;
         }
 
         inline vector3d<T> operator-(vector3d<T> const& b) const
         {
             vector3d<T> a = *this;
-            for (int x = 0; x < 3; x++) a[x] -= b.vec_[x];
+            for (int x: {0, 1, 2}) {
+                a[x] -= b.vec_[x];
+            }
             return a;
         }
         
@@ -90,7 +108,9 @@ class vector3d
         inline vector3d<T> operator*(U p)
         {
             vector3d<T> a = *this;
-            for (int x = 0; x < 3; x++) a[x] *= p;
+            for (int x: {0, 1, 2}) {
+                a[x] *= p;
+            }
             return a;
         }
 };

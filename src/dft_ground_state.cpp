@@ -106,32 +106,6 @@ double DFT_ground_state::ewald_energy()
     return (ewald_g + ewald_r);
 }
 
-double DFT_ground_state::energy_enuc()
-{
-    double enuc = 0.0;
-    if (ctx_.full_potential())
-    {
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-        {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            int zn = unit_cell_.atom(ia).zn();
-            enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
-        }
-        ctx_.comm().allreduce(&enuc, 1);
-    }
-    
-    return enuc;
-}
-
-double DFT_ground_state::core_eval_sum()
-{
-    double sum = 0.0;
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-        sum += unit_cell_.atom_symmetry_class(ic).core_eval_sum() * 
-               unit_cell_.atom_symmetry_class(ic).num_atoms();
-    }
-    return sum;
-}
 
 void DFT_ground_state::move_atoms(int istep)
 {
@@ -166,7 +140,9 @@ void DFT_ground_state::move_atoms(int istep)
 
 void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {
-    Force::total_force(ctx_, potential_, density_, kset_, forces__);
+    STOP();
+
+    //Force::total_force(ctx_, potential_, density_, kset_, forces__);
 }
 
 int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
@@ -176,9 +152,9 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
     double eold{0}, rms{0};
 
     if (ctx_.full_potential()) {
-        potential_->mixer_init();
+        potential_.mixer_init();
     } else {
-        density_->mixer_init();
+        density_.mixer_init();
     }
 
     int result{-1};
@@ -187,24 +163,24 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
-        kset_->find_eigen_states(potential_, band_, true);
+        kset_.find_eigen_states(&potential_, band_, true);
         /* find band occupancies */
-        kset_->find_band_occupancies();
+        kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
-        density_->generate(*kset_);
+        density_.generate(kset_);
         /* compute new total energy for a new density */
         double etot = total_energy();
         /* symmetrize density and magnetization */
         if (use_symmetry_) {
-            symmetrize(density_->rho(), density_->magnetization(0), density_->magnetization(1),
-                       density_->magnetization(2));
+            symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
+                       density_.magnetization(2));
         }
         /* set new tolerance of iterative solver */
         if (!ctx_.full_potential()) {
-            rms = density_->mix();
-            double tol = std::max(1e-12, 0.1 * density_->dr2() / ctx_.unit_cell().num_valence_electrons());
+            rms = density_.mix();
+            double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
             if (ctx_.comm().rank() == 0) {
-                printf("dr2: %18.10f, tol: %18.10f\n",  density_->dr2(), tol);
+                printf("dr2: %18.10f, tol: %18.10f\n",  density_.dr2(), tol);
             }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
@@ -240,7 +216,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
         //==                                 if (a <= 2.0)
         //==                                 {
-        //==                                     mag[2] += density_->magnetization(0)->f_rg(ir);
+        //==                                     mag[2] += density_.magnetization(0)->f_rg(ir);
         //==                                 }
         //==                             }
         //==                         }
@@ -258,12 +234,12 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
         /* symmetrize potential and effective magnetic field */
         if (use_symmetry_) {
-            symmetrize(potential_->effective_potential(), potential_->effective_magnetic_field(0),
-                       potential_->effective_magnetic_field(1), potential_->effective_magnetic_field(2));
+            symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
+                       potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
 
         if (ctx_.full_potential()) {
-            rms = potential_->mix();
+            rms = potential_.mix();
         }
 
         /* write some information */
@@ -282,8 +258,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
     }
     
     ctx_.create_storage_file();
-    potential_->save();
-    density_->save();
+    potential_.save();
+    density_.save();
 
     return result;
 }
@@ -303,7 +279,7 @@ void DFT_ground_state::relax_atom_positions()
 
 void DFT_ground_state::print_info()
 {
-    double evalsum1 = kset_->valence_eval_sum();
+    double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum();
     double ekin = energy_kin();
     double evxc = energy_vxc();
@@ -311,20 +287,20 @@ void DFT_ground_state::print_info()
     double ebxc = energy_bxc();
     double evha = energy_vha();
     double etot = total_energy();
-    double gap = kset_->band_gap() * ha2ev;
-    double ef = kset_->energy_fermi();
-    double core_leak = density_->core_leakage();
+    double gap = kset_.band_gap() * ha2ev;
+    double ef = kset_.energy_fermi();
+    double core_leak = density_.core_leakage();
     double enuc = energy_enuc();
 
     std::vector<double> mt_charge;
     double it_charge;
-    double total_charge = density_->rho()->integrate(mt_charge, it_charge); 
+    double total_charge = density_.rho()->integrate(mt_charge, it_charge); 
     
     double total_mag[3];
     std::vector<double> mt_mag[3];
     double it_mag[3];
     for (int j = 0; j < ctx_.num_mag_dims(); j++) 
-        total_mag[j] = density_->magnetization(j)->integrate(mt_mag[j], it_mag[j]);
+        total_mag[j] = density_.magnetization(j)->integrate(mt_mag[j], it_mag[j]);
     
     if (ctx_.comm().rank() == 0)
     {
@@ -414,9 +390,9 @@ void DFT_ground_state::print_info()
             printf("xc contribution           : %18.8f\n", eexc);
             printf("ewald contribution        : %18.8f\n", ewald_energy_);
 
-			std::cout<<"PAW contribution:      "<< potential_->PAW_xc_total_energy() +
-			potential_->PAW_hartree_total_energy() << ", core_en" <<
-			potential_->PAW_total_core_energy() << std::endl;
+            std::cout<<"PAW contribution:      "<< potential_.PAW_xc_total_energy() +
+            potential_.PAW_hartree_total_energy() << ", core_en " <<
+            potential_.PAW_total_core_energy() << std::endl;
         }
         printf("Total energy              : %18.8f\n", etot);
 
@@ -443,65 +419,69 @@ void DFT_ground_state::initialize_subspace()
     /* spherical Bessel functions jl(qx) for atom types */
     mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         /* create jl(qx) */
         #pragma omp parallel for
-        for (int iq = 0; iq < nq; iq++)
+        for (int iq = 0; iq < nq; iq++) {
             jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
+        }
 
         rad_int[iat].resize(atom_type.uspp().atomic_pseudo_wfs_.size());
         /* loop over all pseudo wave-functions */
-        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++)
-        {
+        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++) {
             rad_int[iat][i] = Spline<double>(qgrid);
             
             /* interpolate atomic_pseudo_wfs(r) */
             Spline<double> wf(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++)
+            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
                 wf[ir] = atom_type.uspp().atomic_pseudo_wfs_[i].second[ir];
+            }
             wf.interpolate();
             
             int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
             #pragma omp parallel for
-            for (int iq = 0; iq < nq; iq++)
+            for (int iq = 0; iq < nq; iq++) {
                 rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
+            }
 
             rad_int[iat][i].interpolate();
         }
     }
 
     /* get the total number of atomic-centered orbitals */
-    int N = 0;
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    int N{0};
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        int n = 0;
-        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_)
-        {
+        int n{0};
+        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_) {
             n += (2 * wf.first + 1);
         }
         N += atom_type.num_atoms() * n;
     }
     printf("number of atomic orbitals: %i\n", N);
 
-    for (int ikloc = 0; ikloc < kset_->spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = kset_->spl_num_kpoints(ikloc);
-        auto kp = (*kset_)[ik];
+    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+        int ik = kset_.spl_num_kpoints(ikloc);
+        auto kp = kset_[ik];
         
-        if (ctx_.gamma_point())
-        {
-            band_.initialize_subspace<double>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
-        }
-        else
-        {
-            band_.initialize_subspace<double_complex>(kp, potential_->effective_potential(), potential_->effective_magnetic_field(), N, lmax, rad_int);
+        if (ctx_.gamma_point()) {
+            band_.initialize_subspace<double>(kp, potential_.effective_potential(),
+                                              potential_.effective_magnetic_field(), N, lmax, rad_int);
+        } else {
+            band_.initialize_subspace<double_complex>(kp, potential_.effective_potential(),
+                                                      potential_.effective_magnetic_field(), N, lmax, rad_int);
         }
     }
 
-    //kset_->find_band_occupancies();
+    kset_.find_band_occupancies();
+
+    /* reset the energies for the iterative solver to do at least two steps */
+    for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
+        for (int i = 0; i < ctx_.num_bands(); i++) {
+            kset_[ik]->band_energy(i) = 0;
+        }
+    }
 }
 
 }

@@ -81,48 +81,43 @@ struct local_orbital_descriptor
     int p2;
 };
 
-
-
-
-
-class uspp_descriptor
+struct uspp_descriptor
 {
-public:
-	uspp_descriptor(): is_initialized(false) {}
+    /// Radial mesh.
+    std::vector<double> r;
 
-	/// Radial mesh.
-	std::vector<double> r;
+    /// Local part of potential.
+    std::vector<double> vloc;
 
-	/// Local part of potential.
-	std::vector<double> vloc;
+    /// Maximum angular momentum for |beta> projectors.
+    int lmax_beta_;
 
-	/// Maximum angular momentum for |beta> projectors.
-	int lmax_beta_;
+    /// Number of radial functions for |beta> projectors.
+    int num_beta_radial_functions;
 
-	/// Number of radial functions for |beta> projectors.
-	int num_beta_radial_functions;
+    /// Orbital quantum numbers of each beta radial function.
+    std::vector<int> beta_l;
 
-	/// Orbital quantum numbers of each beta radial function.
-	std::vector<int> beta_l;
+    /// Number of radial grid points for each beta radial function.
+    std::vector<int> num_beta_radial_points;
 
-	/// Number of radial grid points for each beta radial function.
-	std::vector<int> num_beta_radial_points;
+    /// Radial functions of beta-projectors.
+    mdarray<double, 2> beta_radial_functions;
 
-	/// Radial functions of beta-projectors.
-	mdarray<double, 2> beta_radial_functions;
+    /// Radial functions of Q-operator.
+    mdarray<double, 3> q_radial_functions_l;
 
-	/// Radial functions of Q-operator.
-	mdarray<double, 3> q_radial_functions_l;
+    bool augmentation_{false};
 
-	std::vector<double> core_charge_density;
+    std::vector<double> core_charge_density;
 
-	std::vector<double> total_charge_density;
+    std::vector<double> total_charge_density;
 
-	mdarray<double, 2> d_mtrx_ion;
+    mdarray<double, 2> d_mtrx_ion;
 
-	mdarray<double, 2> wf_pseudo_;
+    mdarray<double, 2> wf_pseudo_;
 
-	std::vector<int> l_wf_pseudo_;
+    std::vector<int> l_wf_pseudo_;
 
     /// Atomic wave-functions used to setup the initial subspace.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
@@ -131,8 +126,7 @@ public:
     /// occupation of starting wave functions
     std::vector< double > atomic_pseudo_wfs_occ_;
 
-    bool is_initialized;
-    
+    bool is_initialized{false};
 };
 
 struct nearest_neighbour_descriptor

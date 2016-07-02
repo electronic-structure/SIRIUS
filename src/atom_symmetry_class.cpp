@@ -860,7 +860,7 @@ double Atom_symmetry_class::aw_surface_dm(int l, int order, int dm) const
 void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
 {
     runtime::Timer t("sirius::Atom_symmetry_class::generate_core_charge_density");
-    
+
     /* nothing to do */
     if (atom_type_.num_core_electrons() == 0.0) return;
 
@@ -868,7 +868,7 @@ void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
 
     std::vector<double> free_atom_grid(nmtp);
     for (int i = 0; i < nmtp; i++) free_atom_grid[i] = atom_type_.radial_grid(i);
-    
+
     /* extend radial grid */
     double x = atom_type_.radial_grid(nmtp - 1);
     double dx = atom_type_.radial_grid().dx(nmtp - 2);
@@ -895,7 +895,7 @@ void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
     for (int ir = 0; ir < nmtp; ir++) veff[ir] = spherical_potential_[ir];
     /* simple tail alpha/r + beta */
     for (int ir = nmtp; ir < rgrid.num_points(); ir++) veff[ir] = alpha * rgrid.x_inv(ir) + beta;
-    
+
     //== /* write spherical potential */
     //== std::stringstream sstr;
     //== sstr << "spheric_potential_" << id_ << ".dat";
@@ -910,18 +910,18 @@ void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
 
     /* charge density */
     Spline<double> rho(rgrid);
-    
+
     /* atomic level energies */
     std::vector<double> level_energy(atom_type_.num_atomic_levels());
 
     for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++)
         level_energy[ist] = -1.0 * atom_type_.zn() / 2 / std::pow(double(atom_type_.atomic_level(ist).n), 2);
-    
+
     #pragma omp parallel default(shared)
     {
         std::vector<double> rho_t(rho.num_points());
         std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
-        
+
         #pragma omp for
         for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++)
         {
@@ -943,13 +943,13 @@ void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
     }
 
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) core_charge_density_[ir] = rho[ir];
-    
+
     /* interpolate muffin-tin part of core density */
     Spline<double> rho_mt(atom_type_.radial_grid(), core_charge_density_);
-    
+
     /* compute core leakage */
     core_leakage_ = fourpi * (rho.interpolate().integrate(2) - rho_mt.integrate(2));
-    
+
     /* compute eigen-value sum of core states */
     core_eval_sum_ = 0.0;
     for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++)

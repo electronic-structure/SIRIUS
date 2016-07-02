@@ -15,6 +15,9 @@
 #include <cstdarg>
 #include "config.h"
 #include "communicator.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 namespace runtime {
 
@@ -335,27 +338,54 @@ class Timer
             std::map<std::string, timer_stats> tstats;
 
             /* collect local timers */
-            for (auto& it: timers())
-            {
+            for (auto& it: timers()) {
                 timer_stats ts;
 
-                ts.count = (int)it.second.size();
+                ts.count = static_cast<int>(it.second.size());
                 ts.total_value = 0.0;
                 ts.min_value = 1e100;
                 ts.max_value = 0.0;
-                for (int i = 0; i < ts.count; i++)
-                {
+                for (int i = 0; i < ts.count; i++) {
                     ts.total_value += it.second[i];
                     ts.min_value = std::min(ts.min_value, it.second[i]);
                     ts.max_value = std::max(ts.max_value, it.second[i]);
                 }
                 ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
-                if (ts.count == 0) ts.min_value = 0.0;
+                if (ts.count == 0) {
+                    ts.min_value = 0.0;
+                }
 
                 tstats[it.first] = ts;
             }
 
             return tstats;
+        }
+
+        static json serialize()
+        {
+            json dict;
+
+            /* collect local timers */
+            for (auto& it: timers()) {
+                timer_stats ts;
+
+                ts.count = static_cast<int>(it.second.size());
+                ts.total_value = 0.0;
+                ts.min_value = 1e100;
+                ts.max_value = 0.0;
+                for (int i = 0; i < ts.count; i++) {
+                    ts.total_value += it.second[i];
+                    ts.min_value = std::min(ts.min_value, it.second[i]);
+                    ts.max_value = std::max(ts.max_value, it.second[i]);
+                }
+                ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
+                if (ts.count == 0) {
+                    ts.min_value = 0.0;
+                }
+
+                dict[it.first] = {ts.total_value, ts.average_value, ts.min_value, ts.max_value};
+            }
+            return std::move(dict);
         }
 
         static double value(std::string const& label__)

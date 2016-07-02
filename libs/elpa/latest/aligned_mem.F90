@@ -39,13 +39,25 @@
 !    any derivatives of ELPA under the same license that we chose for
 !    the original distribution, the GNU Lesser General Public License.
 !
-! Author: Andreas Marek, MPCDF
-module precision
-  use iso_c_binding, only : C_FLOAT, C_DOUBLE, C_INT32_T, C_INT64_T
+! Author: Lorenz Huedepohl, MPCDF
 
-  implicit none
-  integer, parameter :: rk  = C_DOUBLE
-  integer, parameter :: ck  = C_DOUBLE
-  integer, parameter :: ik  = C_INT32_T
-  integer, parameter :: lik = C_INT64_T
-end module precision
+module aligned_mem
+  use, intrinsic :: iso_c_binding
+
+  interface
+    function posix_memalign(memptr, alignment, size) result(error) bind(C, name="posix_memalign")
+      import c_int, c_size_t, c_ptr
+      integer(kind=c_int) :: error
+      type(c_ptr), intent(inout) :: memptr
+      integer(kind=c_size_t), intent(in), value :: alignment, size
+    end function
+  end interface
+
+  interface
+    subroutine free(ptr) bind(C, name="free")
+      import c_ptr
+      type(c_ptr), value :: ptr
+    end subroutine
+  end interface
+
+end module

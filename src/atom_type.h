@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -286,7 +286,7 @@ class Atom_type
         Simulation_parameters const& parameters_;
 
         /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
-        int id_;
+        int id_{-1};
 
         /// Unique string label for the atom type.
         std::string label_;
@@ -298,28 +298,28 @@ class Atom_type
         std::string name_;
         
         /// Nucleus charge, treated as positive(!) integer.
-        int zn_;
+        int zn_{0};
 
         /// Atom mass.
-        double mass_;
+        double mass_{0};
 
         /// Muffin-tin radius.
-        double mt_radius_;
+        double mt_radius_{0};
 
         /// Number of muffin-tin points.
-        int num_mt_points_;
+        int num_mt_points_{0};
         
         /// Beginning of the radial grid.
-        double radial_grid_origin_;
+        double radial_grid_origin_{0};
         
         /// List of atomic levels.
         std::vector<atomic_level_descriptor> atomic_levels_;
 
         /// Number of core electrons.
-        double num_core_electrons_;
+        double num_core_electrons_{0};
 
         /// Number of valence electrons.
-        double num_valence_electrons_;
+        double num_valence_electrons_{0};
         
         /// Default augmented wave configuration.
         radial_solution_descriptor_set aw_default_l_;
@@ -334,9 +334,9 @@ class Atom_type
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// maximum number of aw radial functions across angular momentums
-        int max_aw_order_;
+        int max_aw_order_{0};
 
-        int offset_lo_;
+        int offset_lo_{-1};
 
         radial_functions_index indexr_;
         
@@ -359,7 +359,7 @@ class Atom_type
         mutable mdarray<double, 3> rf_coef_;
         mutable mdarray<double, 3> vrf_coef_;
 
-        bool initialized_;
+        bool initialized_{false};
        
         void read_input_core(JSON_tree& parser);
 
@@ -389,38 +389,71 @@ class Atom_type
         /// Density of a free atom.
         Spline<double> free_atom_density_;
         
-        /// Potential of a free atom.
-        //Spline<double> free_atom_potential_;
-
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
 
     public:
         
-        Atom_type(Simulation_parameters const& parameters__,
-                  const std::string symbol__, 
-                  const std::string name__, 
-                  int zn__, 
-                  double mass__, 
+        Atom_type(Simulation_parameters const&          parameters__,
+                  std::string                           symbol__, 
+                  std::string                           name__, 
+                  int                                   zn__, 
+                  double                                mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
-                  radial_grid_t grid_type__);
+                  radial_grid_t                         grid_type__)
+            : parameters_(parameters__),
+              symbol_(symbol__), 
+              name_(name__), 
+              zn_(zn__), 
+              mass_(mass__), 
+              mt_radius_(2.0), 
+              num_mt_points_(2000 + zn__ * 50), 
+              atomic_levels_(levels__)
+        {
+            radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
+        }
  
         Atom_type(Simulation_parameters const& parameters__,
-                  const int id__, 
-                  const std::string label__, 
-                  const std::string file_name__);
+                  int                          id__, 
+                  std::string                  label__, 
+                  std::string                  file_name__)
+            : parameters_(parameters__),
+              id_(id__), 
+              label_(label__),
+              file_name_(file_name__)
+        {
+        }
 
         Atom_type(Atom_type&& src) = default;
+        //Atom_type(Atom_type&& src) : parameters_(src.parameters_)
+        //{
+        //    std::cout << "Im in move constructor" << std::endl;
+        //}
 
-        ~Atom_type();
-        
         void init(int offset_lo__);
 
-        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
+        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr)
+        {
+            if (num_mt_points_ == 0) {
+                TERMINATE("number of muffin-tin points is zero");
+            }
+            if (num_points__ < 0 && points__ == nullptr) {
+                /* create default exponential grid */
+                radial_grid_ = Radial_grid(lin_exp_grid, num_mt_points_, radial_grid_origin_, mt_radius_); 
+            } else {
+                assert(num_points__ == num_mt_points_);
+                radial_grid_ = Radial_grid(num_points__, points__);
+            }
+            if (parameters_.processing_unit() == GPU) {
+                #ifdef __GPU
+                radial_grid_.copy_to_device();
+                #endif
+            }
+        }
 
         /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
-        
+
         /// Add local orbital descriptor
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
@@ -432,18 +465,18 @@ class Atom_type
         void init_free_atom(bool smooth);
 
         void print_info() const;
-        
+
         inline int id() const
         {
             return id_;
         }
-        
+
         inline int zn() const
         {
             assert(zn_ > 0);
             return zn_;
         }
-        
+
         std::string const& symbol() const
         { 
             return symbol_;
@@ -453,23 +486,23 @@ class Atom_type
         { 
             return name_;
         }
-        
+
         inline double mass() const
         {
             return mass_;
         }
-        
+
         inline double mt_radius() const
         {
             return mt_radius_;
         }
-        
+
         inline int num_mt_points() const
         {
             assert(num_mt_points_ > 0);
             return num_mt_points_;
         }
-        
+
         inline Radial_grid const& radial_grid() const
         {
             assert(num_mt_points_ > 0);
@@ -481,7 +514,7 @@ class Atom_type
         {
             return free_atom_radial_grid_;
         }
-        
+
         inline double radial_grid(int ir) const
         {
             return radial_grid_[ir];
@@ -491,27 +524,27 @@ class Atom_type
         {
             return free_atom_radial_grid_[ir];
         }
-        
+
         inline int num_atomic_levels() const
         {
             return static_cast<int>(atomic_levels_.size());
-        }    
-        
+        }
+
         inline atomic_level_descriptor const& atomic_level(int idx) const
         {
             return atomic_levels_[idx];
         }
-        
+
         inline double num_core_electrons() const
         {
             return num_core_electrons_;
         }
-        
+
         inline double num_valence_electrons() const
         {
             return num_valence_electrons_;
         }
-        
+
         inline double free_atom_density(const int idx) const
         {
             return free_atom_density_[idx];
@@ -521,7 +554,7 @@ class Atom_type
         {
             return free_atom_density_(x);
         }
-        
+
         //inline double free_atom_potential(const int idx) const
         //{
         //    return free_atom_potential_[idx];
@@ -547,7 +580,7 @@ class Atom_type
             assert(l < (int)aw_descriptors_.size());
             return aw_descriptors_[l];
         }
-        
+
         inline int num_lo_descriptors() const
         {
             return (int)lo_descriptors_.size();
@@ -666,7 +699,8 @@ class Atom_type
             mass_ = mass__;
         }
         
-        inline void set_mt_radius(double mt_radius__)
+        inline void set_mt_radius(double mt_radius__) // TODO: this can cause iconsistency with radial_grid; remove this method
+                                                      // mt_radius should always be a last point of radial_grid
         {
             mt_radius_ = mt_radius__;
         }

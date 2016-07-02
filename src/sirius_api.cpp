@@ -122,7 +122,9 @@ void sirius_set_lattice_vectors(double* a1__,
                                 double* a3__)
 {
     PROFILE();
-    sim_ctx->unit_cell().set_lattice_vectors(a1__, a2__, a3__);
+    sim_ctx->unit_cell().set_lattice_vectors(vector3d<double>(a1__[0], a1__[1], a1__[2]),
+                                             vector3d<double>(a2__[0], a2__[1], a2__[2]),
+                                             vector3d<double>(a3__[0], a3__[1], a3__[2]));
 }
 
 /// Set plane-wave cutoff for FFT grid.
@@ -1023,12 +1025,14 @@ void sirius_write_json_output(void)
 {
     PROFILE();
 
+    STOP();
+
 #ifdef __TIMER
     auto ts = runtime::Timer::collect_timer_stats();
     if (mpi_comm_world().rank() == 0)
     {
-        std::string fname = std::string("output_") + sim_ctx->start_time_tag() + std::string(".json");
-        JSON_write jw(fname);
+        //std::string fname = std::string("output_") + sim_ctx->start_time_tag() + std::string(".json");
+        //JSON_write jw(fname);
 
         //== jw.single("git_hash", git_hash);
         //== jw.single("build_date", build_date);
@@ -1081,7 +1085,7 @@ void sirius_write_json_output(void)
         //== //** jw.single("band_gap", rti_.band_gap);
         //== //** jw.single("energy_fermi", rti_.energy_fermi);
 
-        jw.single("timers", ts);
+        //jw.single("timers", ts);
     }
 #endif
 }
@@ -1911,7 +1915,7 @@ void sirius_ground_state_initialize(int32_t* kset_id__)
     PROFILE();
     if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
 
-    dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, potential, density, kset_list[*kset_id__], 1);
+    dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
 }
 
 void sirius_ground_state_clear()

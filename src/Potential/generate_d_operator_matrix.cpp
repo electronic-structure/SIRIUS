@@ -88,6 +88,20 @@ void Potential::generate_D_operator_matrix()
         {
             auto& atom_type = unit_cell_.atom_type(iat);
             int nbf = atom_type.mt_basis_size();
+
+            if (!atom_type.uspp().augmentation_) {
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
+                    int ia = atom_type.atom_id(i);
+                    auto& atom = unit_cell_.atom(ia);
+
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                            atom.d_mtrx(xi1, xi2, iv) = 0;
+                        }
+                    }
+                }
+                continue;
+            }
             matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms()); 
 
             if (ctx_.processing_unit() == CPU)
