@@ -29,12 +29,12 @@
 
       "ngridk" : [8,8,8],
 
-      "reduce_gvec": 0,
+      "reduce_gvec": 0
   },
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-12,
-        "residual_tolerance" : 1e-6,
+        "residual_tolerance" : 1e-10,
         "num_steps" : 20,
         "subspace_size" : 4,
         "type" : "davidson",

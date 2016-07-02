@@ -145,6 +145,8 @@ void ground_state(cmd_args args)
     auto ngridk = parser["parameters"]["ngridk"].get(std::vector<int>(3, 1));
     auto shiftk = parser["parameters"]["shiftk"].get(std::vector<int>(3, 0));
 
+    std::cout<<ngridk[0]<<" "<<ngridk[1]<<" "<<ngridk[2]<<std::endl;
+
     if (inp.gamma_point_ && !(ngridk[0] * ngridk[1] * ngridk[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }

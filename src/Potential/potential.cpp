@@ -60,8 +60,6 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    std::cout<<lmax_<<" !!!!" <<std::endl;
-
     sht_ = new SHT(lmax_);
 
     effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
@@ -115,8 +113,6 @@ Potential::Potential(Simulation_context& ctx__)
     {
         init_PAW();
     }
-
-
 }
 
 Potential::~Potential()

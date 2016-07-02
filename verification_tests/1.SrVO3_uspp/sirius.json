@@ -1,7 +1,7 @@
 {
     "control" : {
         "cyclic_block_size" : 16,
-        "processing_unit" : "gpu",
+        "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack"
     },
@@ -52,9 +52,9 @@
         "atom_types" : ["Sr", "V", "O"],
 
         "atom_files" : {
-            "Sr" : "Sr.pz-spn-rrkjus_psl.0.2.3.UPF.json",
-            "V"  : "V.pz-spn-rrkjus_psl.0.2.3.UPF.json",
-            "O"  : "O.pz-n-rrkjus_psl.0.1.UPF.json"
+            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
+            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
+            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
         },
 
         "atoms" : {

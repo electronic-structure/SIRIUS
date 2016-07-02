@@ -264,24 +264,24 @@ void Density::initial_density_full_pot()
     /* compute contribution from free atoms to the interstitial density */
     auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
     
-#ifdef __PRINT_OBJECT_CHECKSUM
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
     DUMP("checksum(rho_pw): %18.10f %18.10f", z.real(), z.imag());
-#endif
+    #endif
     
     /* set plane-wave coefficients of the charge density */
     std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
     /* convert charge deisnty to real space mesh */
     rho_->fft_transform(1);
     
-#ifdef __PRINT_OBJECT_CHECKSUM
+    #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
-#endif
+    #endif
     
-#ifdef __PRINT_OBJECT_HASH
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(rhopw): %16llX", rho_->f_pw().hash());
     DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
-#endif
+    #endif
     
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
@@ -338,7 +338,7 @@ void Density::initial_density_full_pot()
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         int iat = unit_cell_.atom(ia).type_id();
@@ -373,10 +373,10 @@ void Density::initial_density_full_pot()
     ctx_.comm().allreduce(znulm.at<CPU>(), (int)znulm.size());
     t3.stop();
     
-#ifdef __PRINT_OBJECT_CHECKSUM
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z3 = znulm.checksum();
     DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
-#endif
+    #endif
     
     runtime::Timer t4("sirius::Density::initial_density|rholm");
     
@@ -389,7 +389,8 @@ void Density::initial_density_full_pot()
         
         Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia).radial_grid());
         rhoylm.zero();
-#pragma omp parallel for
+
+        #pragma omp parallel for
         for (int lm = 0; lm < lmmax; lm++)
         {
             int l = l_by_lm[lm];
