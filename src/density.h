@@ -116,7 +116,7 @@ class Density
         
         Unit_cell& unit_cell_;
 
-        /// density matrix of the system
+        /// Density matrix of the system.
         mdarray<double_complex, 4> density_matrix_;
 
         /// ae and ps local densities used for PAW
@@ -125,9 +125,6 @@ class Density
 
         std::vector< mdarray<double, 3> > paw_ae_local_magnetization_; //vector iterates atoms
         std::vector< mdarray<double, 3> > paw_ps_local_magnetization_;
-
-        /// number of spin components for density matrix (can differ from total number of spin components due to symmetry)
-        int ndm_;
 
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
@@ -366,23 +363,23 @@ class Density
 
         std::vector< mdarray<double, 2> >* get_paw_ae_local_density()
         {
-        	return &paw_ae_local_density_;
+            return &paw_ae_local_density_;
         }
 
         std::vector< mdarray<double, 2> >* get_paw_ps_local_density()
-		{
-			return &paw_ps_local_density_;
-		}
+        {
+            return &paw_ps_local_density_;
+        }
 
         std::vector< mdarray<double, 3> >* get_paw_ae_local_magnetization()
         {
-        	return &paw_ae_local_magnetization_;
+            return &paw_ae_local_magnetization_;
         }
 
         std::vector< mdarray<double, 3> >* get_paw_ps_local_magnetization()
-		{
-			return &paw_ps_local_magnetization_;
-		}
+        {
+            return &paw_ps_local_magnetization_;
+        }
 
         void allocate()
         {
@@ -498,15 +495,10 @@ class Density
             return low_freq_mixer_->rss();
         }
 
-        const mdarray<double_complex, 4>& get_density_matrix() const
-		{
-        	return density_matrix_;
-		}
-
-//        mdarray<double_complex, 4>& get_density_matrix_unsafe()
-//		{
-//			return density_matrix_;
-//		}
+        mdarray<double_complex, 4> const& density_matrix() const
+        {
+            return density_matrix_;
+        }
 };
 
 }

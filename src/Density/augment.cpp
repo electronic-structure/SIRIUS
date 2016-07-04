@@ -48,50 +48,45 @@ void Density::augment(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::augment");
 
-    int ndm = this->ndm_;
+    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
     
     runtime::Timer t1("sirius::Density::augment|dm");
 
     /* complex density matrix */
-    // small crutch, create reference to the class field
-    mdarray<double_complex, 4> &density_matrix = this->density_matrix_;
+    //mdarray<double_complex, 4> &density_matrix = this->density_matrix_;
 
-    density_matrix.zero();
+    density_matrix_.zero();
     
     /* add k-point contribution */
-    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++)
-    {
+    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
         int ik = ks__.spl_num_kpoints(ikloc);
-        if (ctx_.gamma_point())
-        {
-            add_k_point_contribution<double>(ks__[ik], density_matrix);
-        }
-        else
-        {
-            add_k_point_contribution<double_complex>(ks__[ik], density_matrix);
+        if (ctx_.gamma_point()) {
+            add_k_point_contribution<double>(ks__[ik], density_matrix_);
+        } else {
+            add_k_point_contribution<double_complex>(ks__[ik], density_matrix_);
         }
     }
 
-    ctx_.comm().allreduce(density_matrix.at<CPU>(), static_cast<int>(density_matrix.size()));
+    ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
 
     //////////////////////////////////////////////////////////////////
-    if(ctx_.num_mag_dims()==1)
+    if (ctx_.num_mag_dims() == 1)
     {
-		std::cout<<" DM "<<std::endl;
-		for(int j = 0; j< density_matrix_.size(0); j++)
-		{
-			for(int i = 0; i< density_matrix_.size(1); i++)
-			{
-				std::cout<< density_matrix_(j,i,0,0) - density_matrix_(j,i,1,0)<<"    ";
-			}
-		}
-		std::cout<<std::endl;
+        std::cout<<" DM "<<std::endl;
+        for(int j = 0; j< density_matrix_.size(0); j++)
+        {
+            for(int i = 0; i< density_matrix_.size(1); i++)
+            {
+                std::cout<< density_matrix_(j,i,0,0) - density_matrix_(j,i,1,0)<<"    ";
+            }
+        }
+        std::cout<<std::endl;
     }
-	//////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
-        auto cs = density_matrix.checksum();
+        auto cs = density_matrix_.checksum();
         DUMP("checksum(density_matrix): %20.14f %20.14f", cs.real(), cs.imag());
     }
     #endif
@@ -160,13 +155,13 @@ void Density::augment(K_set& ks__)
                     {
                         case 0:
                         {
-                            dm(idx12, i, 0) = density_matrix(xi2, xi1, 0, ia).real();
+                            dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
                             break;
                         }
                         case 1:
                         {
-                            dm(idx12, i, 0) = std::real(density_matrix(xi2, xi1, 0, ia) + density_matrix(xi2, xi1, 1, ia));
-                            dm(idx12, i, 1) = std::real(density_matrix(xi2, xi1, 0, ia) - density_matrix(xi2, xi1, 1, ia));
+                            dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
+                            dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
                             break;
                         }
                     }
