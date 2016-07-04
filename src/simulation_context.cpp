@@ -99,6 +99,11 @@ void Simulation_context::initialize()
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
 
+    if (esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        lmax_rho_ = unit_cell_.lmax() * 2;
+        lmax_pot_ = unit_cell_.lmax() * 2;
+    }
+
     /* initialize FFT interface */
     init_fft();
 
