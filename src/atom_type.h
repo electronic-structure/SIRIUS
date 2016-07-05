@@ -373,7 +373,30 @@ class Atom_type
 
         void read_input(const std::string& fname);
     
-        void init_aw_descriptors(int lmax);
+        void init_aw_descriptors(int lmax)
+        {
+            assert(lmax >= -1);
+
+            if (lmax >= 0 && aw_default_l_.size() == 0) {
+                TERMINATE("default AW descriptor is empty"); 
+            }
+
+            aw_descriptors_.clear();
+            for (int l = 0; l <= lmax; l++) {
+                aw_descriptors_.push_back(aw_default_l_);
+                for (size_t ord = 0; ord < aw_descriptors_[l].size(); ord++) {
+                    aw_descriptors_[l][ord].n = l + 1;
+                    aw_descriptors_[l][ord].l = l;
+                }
+            }
+
+            for (size_t i = 0; i < aw_specific_l_.size(); i++) {
+                int l = aw_specific_l_[i][0].l;
+                if (l < lmax) {
+                    aw_descriptors_[l] = aw_specific_l_[i];
+                }
+            }
+        }
     
         /* forbid copy constructor */
         Atom_type(const Atom_type& src) = delete;
@@ -425,10 +448,6 @@ class Atom_type
         }
 
         Atom_type(Atom_type&& src) = default;
-        //Atom_type(Atom_type&& src) : parameters_(src.parameters_)
-        //{
-        //    std::cout << "Im in move constructor" << std::endl;
-        //}
 
         void init(int offset_lo__);
 
@@ -452,10 +471,72 @@ class Atom_type
         }
 
         /// Add augmented-wave descriptor.
-        void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
+        void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
+        {
+            if ((int)aw_descriptors_.size() < (l + 1)) {
+                aw_descriptors_.resize(l + 1, radial_solution_descriptor_set());
+            }
+            
+            radial_solution_descriptor rsd;
+            
+            rsd.n = n;
+            if (n == -1) {
+                /* default principal quantum number value for any l */
+                rsd.n = l + 1;
+                for (int ist = 0; ist < num_atomic_levels(); ist++) {
+                    /* take next level after the core */
+                    if (atomic_level(ist).core && atomic_level(ist).l == l) {
+                        rsd.n = atomic_level(ist).n + 1;
+                    }
+                }
+            }
+            
+            rsd.l = l;
+            rsd.dme = dme;
+            rsd.enu = enu;
+            rsd.auto_enu = auto_enu;
+            aw_descriptors_[l].push_back(rsd);
+        }
 
         /// Add local orbital descriptor
-        void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
+        void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
+        {
+            if ((int)lo_descriptors_.size() == ilo) {
+                lo_descriptors_.push_back(local_orbital_descriptor());
+                lo_descriptors_[ilo].l = l;
+            } else {
+                if (l != lo_descriptors_[ilo].l) {
+                    std::stringstream s;
+                    s << "wrong angular quantum number" << std::endl
+                      << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
+                      << "idxlo: " << ilo << std::endl
+                      << "n: " << l << std::endl
+                      << "l: " << n << std::endl
+                      << "expected l: " <<  lo_descriptors_[ilo].l << std::endl;
+                    TERMINATE(s);
+                }
+            }
+            
+            radial_solution_descriptor rsd;
+            
+            rsd.n = n;
+            if (n == -1) {
+                /* default value for any l */
+                rsd.n = l + 1;
+                for (int ist = 0; ist < num_atomic_levels(); ist++) {
+                    if (atomic_level(ist).core && atomic_level(ist).l == l) {   
+                        /* take next level after the core */
+                        rsd.n = atomic_level(ist).n + 1;
+                    }
+                }
+            }
+            
+            rsd.l = l;
+            rsd.dme = dme;
+            rsd.enu = enu;
+            rsd.auto_enu = auto_enu;
+            lo_descriptors_[ilo].rsd_set.push_back(rsd);
+        }
 
         void add_lo_descriptor(local_orbital_descriptor const& lod__)
         {
@@ -681,7 +762,7 @@ class Atom_type
 
         inline const PAW_descriptor& get_PAW_descriptor() const
         {
-        	return paw_;
+            return paw_;
         }
 
         inline void set_symbol(const std::string symbol__)
@@ -699,8 +780,8 @@ class Atom_type
             mass_ = mass__;
         }
         
-        inline void set_mt_radius(double mt_radius__) // TODO: this can cause iconsistency with radial_grid; remove this method
-                                                      // mt_radius should always be a last point of radial_grid
+        inline void set_mt_radius(double mt_radius__) // TODO: this can cause inconsistency with radial_grid; remove this method
+                                                      // mt_radius should always be the last point of radial_grid
         {
             mt_radius_ = mt_radius__;
         }
