@@ -43,54 +43,11 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
 #endif
 
 // TODO: looks like only real part of Q(G) is sufficient; x2 factor in copying to GPU
+//       check if this also holds for the non-collinear case
 
 void Density::augment(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::augment");
-
-    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
-    
-    runtime::Timer t1("sirius::Density::augment|dm");
-
-    /* complex density matrix */
-    //mdarray<double_complex, 4> &density_matrix = this->density_matrix_;
-
-    density_matrix_.zero();
-    
-    /* add k-point contribution */
-    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
-        int ik = ks__.spl_num_kpoints(ikloc);
-        if (ctx_.gamma_point()) {
-            add_k_point_contribution<double>(ks__[ik], density_matrix_);
-        } else {
-            add_k_point_contribution<double_complex>(ks__[ik], density_matrix_);
-        }
-    }
-
-    ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
-
-    //////////////////////////////////////////////////////////////////
-    if (ctx_.num_mag_dims() == 1)
-    {
-        std::cout<<" DM "<<std::endl;
-        for(int j = 0; j< density_matrix_.size(0); j++)
-        {
-            for(int i = 0; i< density_matrix_.size(1); i++)
-            {
-                std::cout<< density_matrix_(j,i,0,0) - density_matrix_(j,i,1,0)<<"    ";
-            }
-        }
-        std::cout<<std::endl;
-    }
-    //////////////////////////////////////////////////////////////////
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
-        auto cs = density_matrix_.checksum();
-        DUMP("checksum(density_matrix): %20.14f %20.14f", cs.real(), cs.imag());
-    }
-    #endif
-    t1.stop();
 
     /* split G-vectors between ranks */
     splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
@@ -98,7 +55,9 @@ void Density::augment(K_set& ks__)
     /* collect density and magnetization into single array */
     std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
     rho_vec[0] = rho_;
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) rho_vec[1 + j] = magnetization_[j];
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        rho_vec[1 + j] = magnetization_[j];
+    }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     for (auto e: rho_vec)
@@ -140,7 +99,7 @@ void Density::augment(K_set& ks__)
         int nbf = atom_type.mt_basis_size();
         
         /* convert to real matrix */
-        mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ndm);
+        mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
         #pragma omp parallel for
         for (int i = 0; i < atom_type.num_atoms(); i++)
         {

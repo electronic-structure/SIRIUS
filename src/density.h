@@ -117,6 +117,8 @@ class Density
         Unit_cell& unit_cell_;
 
         /// Density matrix of the system.
+        /** In case of full-potential, matrix is stored for local fraction of atoms.
+         *  In case of pseudo-potential, full matrix for all atoms is stored. */
         mdarray<double_complex, 4> density_matrix_;
 
         /// ae and ps local densities used for PAW
@@ -152,6 +154,18 @@ class Density
 
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
+
+        /// Generate complex density matrix (canonical form).
+        /** In the full-potential case complex density matrix is defined as
+         *  \f[
+         *      D_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} \equiv 
+         *      D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} 
+         *      S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
+         *  \f]
+         *  where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of the
+         *  spinor wave functions inside muffin-tin spheres.
+         */
+        void generate_density_matrix(K_set& ks__);
 
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:

@@ -150,15 +150,17 @@ Density::Density(Simulation_context& ctx__)
         }
     }
 
-
-    //--- Allocate density matrix ---
-
     /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
      * because density matrix is symmetric. */
     int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
 
-    density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
-                                                 ndm, unit_cell_.num_atoms());
+    if (ctx_.full_potential()) {
+        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                     ndm, unit_cell_.spl_num_atoms().local_size());
+    } else {
+        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                     ndm, unit_cell_.num_atoms());
+    }
 
     //--- Allocate local PAW density arrays ---
 
