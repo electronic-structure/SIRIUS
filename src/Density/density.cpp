@@ -172,21 +172,17 @@ Density::Density(Simulation_context& ctx__)
 
         int n_mt_points = atype.num_mt_points();
 
-        int rad_func_lmax = atype.indexr().lmax_lo();
-
-        int n_rho_lm_comp = Utils::lmmax(rad_func_lmax);
-
         // allocate
-        mdarray<double, 2> ae_atom_density(n_rho_lm_comp, n_mt_points);
-        mdarray<double, 2> ps_atom_density(n_rho_lm_comp, n_mt_points);
+        mdarray<double, 2> ae_atom_density(ctx_.lmmax_rho(), n_mt_points);
+        mdarray<double, 2> ps_atom_density(ctx_.lmmax_rho(), n_mt_points);
 
         // add
         paw_ae_local_density_.push_back(std::move(ae_atom_density));
         paw_ps_local_density_.push_back(std::move(ps_atom_density));
 
         // magnetization
-        mdarray<double, 3> ae_atom_magn(n_rho_lm_comp, n_mt_points, 3);
-        mdarray<double, 3> ps_atom_magn(n_rho_lm_comp, n_mt_points, 3);
+        mdarray<double, 3> ae_atom_magn(ctx_.lmmax_rho(), n_mt_points, 3);
+        mdarray<double, 3> ps_atom_magn(ctx_.lmmax_rho(), n_mt_points, 3);
 
         ae_atom_magn.zero();
         ps_atom_magn.zero();
