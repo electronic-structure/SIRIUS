@@ -33,7 +33,7 @@
   },
 
     "iterative_solver" : {
-        "energy_tolerance" : 1e-12,
+        "energy_tolerance" : 1e-2,
         "residual_tolerance" : 1e-6,
         "num_steps" : 20,
         "subspace_size" : 4,

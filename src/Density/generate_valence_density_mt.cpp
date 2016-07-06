@@ -263,6 +263,8 @@ void Density::generate_paw_loc_density()
                     // get num of non-zero GC
                     int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
 
+                    double diag_coef = ib1 == ib2 ? 1. : 2. ;
+
                     // add nonzero coefficients
                     for(int inz = 0; inz < num_non_zero_gk; inz++)
                     {
@@ -289,8 +291,8 @@ void Density::generate_paw_loc_density()
                                     ( paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
 
                             // calculate UP density (or total in case of nonmagnetic)
-                            double ae_dens_u = density_matrix_(ib1,ib2,0,ia).real() * ae_part;
-                            double ps_dens_u = density_matrix_(ib1,ib2,0,ia).real() * ps_part;
+                            double ae_dens_u = diag_coef * density_matrix_(ib1,ib2,0,ia).real() * ae_part;
+                            double ps_dens_u = diag_coef * density_matrix_(ib1,ib2,0,ia).real() * ps_part;
 
                             // add density UP to the total density
                             ae_atom_density(lm3coef.lm3,irad) += ae_dens_u;
@@ -300,8 +302,8 @@ void Density::generate_paw_loc_density()
                             {
                                 case 2:
                                 {
-                                    double ae_dens_d = density_matrix_(ib1,ib2,1,ia).real() * ae_part;
-                                    double ps_dens_d = density_matrix_(ib1,ib2,1,ia).real() * ps_part;
+                                    double ae_dens_d = diag_coef * density_matrix_(ib1,ib2,1,ia).real() * ae_part;
+                                    double ps_dens_d = diag_coef * density_matrix_(ib1,ib2,1,ia).real() * ps_part;
 
                                     // add density DOWN to the total density
                                     ae_atom_density(lm3coef.lm3,irad) += ae_dens_d;
