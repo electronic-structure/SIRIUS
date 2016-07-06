@@ -256,6 +256,8 @@ void Density::generate_paw_loc_density()
                     int irb2 = atom_type.indexb(ib2).idxrf;
                     int irb1 = atom_type.indexb(ib1).idxrf;
 
+                    double diag_coef = ib1 == ib2 ? 1. : 2. ;
+
                     // index to iterate Qij,
                     // TODO check indices
                     int iqij = irb2 * (irb2 + 1) / 2 + irb1;
@@ -279,7 +281,7 @@ void Density::generate_paw_loc_density()
                         for(int irad = 0; irad < (int)grid.num_points(); irad++)
                         {
                             // we need to divide density over r^2 since wave functions are stored multiplied by r
-                            double inv_r2 = 1./(grid[irad] * grid[irad]);
+                            double inv_r2 = 1. / (grid[irad] * grid[irad]);
 
                             // TODO for 3 spin dimensions 3th density spin component must be complex
                             // replace order of indices for density from {irad,lm} to {lm,irad}
@@ -289,8 +291,8 @@ void Density::generate_paw_loc_density()
                                     ( paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
 
                             // calculate UP density (or total in case of nonmagnetic)
-                            double ae_dens_u = density_matrix_(ib1,ib2,0,ia).real() * ae_part;
-                            double ps_dens_u = density_matrix_(ib1,ib2,0,ia).real() * ps_part;
+                            double ae_dens_u = diag_coef * density_matrix_(ib1,ib2,0,ia).real() * ae_part;
+                            double ps_dens_u = diag_coef * density_matrix_(ib1,ib2,0,ia).real() * ps_part;
 
                             // add density UP to the total density
                             ae_atom_density(lm3coef.lm3,irad) += ae_dens_u;
@@ -300,8 +302,8 @@ void Density::generate_paw_loc_density()
                             {
                                 case 2:
                                 {
-                                    double ae_dens_d = density_matrix_(ib1,ib2,1,ia).real() * ae_part;
-                                    double ps_dens_d = density_matrix_(ib1,ib2,1,ia).real() * ps_part;
+                                    double ae_dens_d = diag_coef * density_matrix_(ib1,ib2,1,ia).real() * ae_part;
+                                    double ps_dens_d = diag_coef * density_matrix_(ib1,ib2,1,ia).real() * ps_part;
 
                                     // add density DOWN to the total density
                                     ae_atom_density(lm3coef.lm3,irad) += ae_dens_d;
