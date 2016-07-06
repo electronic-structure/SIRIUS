@@ -87,11 +87,10 @@ class SHT // TODO: better name
          *  \param [out] ftp Raw pointer to \f$ f(\theta, \phi, r) \f$.
          */
         template <typename T>
-        void backward_transform(int ld, T* flm, int nr, int lmmax, T* ftp);
+        void backward_transform(int ld, T const* flm, int nr, int lmmax, T* ftp);
         
         /// Perform a forward transformation from spherical coordinates to spherical harmonics.
-        /** 
-         *  \f[
+        /** \f[
          *      f_{\ell m}(r) = \iint  f(\theta, \phi, r) Y_{\ell m}^{*}(\theta, \phi) \sin \theta d\phi d\theta = 
          *        \sum_{i} f(\theta_i, \phi_i, r) Y_{\ell m}^{*}(\theta_i, \phi_i) w_i
          *  \f]
@@ -103,7 +102,7 @@ class SHT // TODO: better name
          *  \param [out] flm Raw pointer to \f$ f_{\ell m}(r) \f$.
          */
         template <typename T>
-        void forward_transform(T* ftp, int nr, int lmmax, int ld, T* flm);
+        void forward_transform(T const* ftp, int nr, int lmmax, int ld, T* flm);
         
         /// Convert form Rlm to Ylm representation.
         static void convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__);
@@ -111,48 +110,6 @@ class SHT // TODO: better name
         /// Convert from Ylm to Rlm representation.
         static void convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__);
 
-//<<<<<<< HEAD
-//        template <typename T>
-//        Spheric_function<spectral, T> transform(Spheric_function<spatial, T>& f)
-//        {
-//            Spheric_function<spectral, T> g(lmmax(), f.radial_grid());
-//            
-//            forward_transform(&f(0, 0), f.radial_grid().num_points(), lmmax(), lmmax(), &g(0, 0));
-//
-//            return std::move(g);
-//        }
-//        
-//        template <typename T>
-//        Spheric_function<spatial, T> transform(Spheric_function<spectral, T>& f)
-//        {
-//            Spheric_function<spatial, T> g(num_points(), f.radial_grid());
-//            
-//            backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(), 
-//                               std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
-//
-//            return std::move(g);
-//        }
-//        
-//        template <typename T>
-//        void transform(Spheric_function<spatial, T>& f, Spheric_function<spectral, T>&g)
-//        {
-//            assert(f.radial_grid().hash() == g.radial_grid().hash());
-//
-//            forward_transform(&f(0, 0), f.radial_grid().num_points(), std::min(g.angular_domain_size(), lmmax()), 
-//                              g.angular_domain_size(), &g(0, 0));
-//        }
-//
-//        template <typename T>
-//        void transform(Spheric_function<spectral, T>& f, Spheric_function<spatial, T>&g)
-//        {
-//            assert(f.radial_grid().hash() == g.radial_grid().hash());
-//
-//            backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(),
-//                                           std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
-//        }
-    
-//=======
-//>>>>>>> 8c36e2a63f57546c9e96f15c424a77fb0ef1d523
         //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
         //{
         //    Timer t("sirius::SHT::rlm_forward_iterative_transform");

@@ -299,13 +299,12 @@ void DFT_ground_state::print_info()
     double total_mag[3];
     std::vector<double> mt_mag[3];
     double it_mag[3];
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) 
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         total_mag[j] = density_.magnetization(j)->integrate(mt_mag[j], it_mag[j]);
+    }
     
-    if (ctx_.comm().rank() == 0)
-    {
-        if (ctx_.full_potential())
-        {
+    if (ctx_.comm().rank() == 0) {
+        if (ctx_.full_potential()) {
             double total_core_leakage = 0.0;
             printf("\n");
             printf("Charges and magnetic moments\n");
@@ -317,17 +316,14 @@ void DFT_ground_state::print_info()
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
 
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
                 total_core_leakage += core_leakage;
                 printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
-                if (ctx_.num_mag_dims())
-                {
+                if (ctx_.num_mag_dims()) {
                     vector3d<double> v;
                     v[2] = mt_mag[0][ia];
-                    if (ctx_.num_mag_dims() == 3)
-                    {
+                    if (ctx_.num_mag_dims() == 3) {
                         v[0] = mt_mag[1][ia];
                         v[1] = mt_mag[2][ia];
                     }
@@ -338,12 +334,10 @@ void DFT_ground_state::print_info()
             
             printf("\n");
             printf("interstitial charge   : %10.6f\n", it_charge);
-            if (ctx_.num_mag_dims())
-            {
+            if (ctx_.num_mag_dims()) {
                 vector3d<double> v;
                 v[2] = it_mag[0];
-                if (ctx_.num_mag_dims() == 3)
-                {
+                if (ctx_.num_mag_dims() == 3) {
                     v[0] = it_mag[1];
                     v[1] = it_mag[2];
                 }
@@ -354,12 +348,10 @@ void DFT_ground_state::print_info()
             printf("\n");
             printf("total charge          : %10.6f\n", total_charge);
             printf("total core leakage    : %10.8e\n", total_core_leakage);
-            if (ctx_.num_mag_dims())
-            {
+            if (ctx_.num_mag_dims()) {
                 vector3d<double> v;
                 v[2] = total_mag[0];
-                if (ctx_.num_mag_dims() == 3)
-                {
+                if (ctx_.num_mag_dims() == 3) {
                     v[0] = total_mag[1];
                     v[1] = total_mag[2];
                 }
@@ -373,8 +365,7 @@ void DFT_ground_state::print_info()
         printf("\n"); 
 
         printf("valence_eval_sum          : %18.8f\n", evalsum1);
-        if (ctx_.full_potential())
-        {
+        if (ctx_.full_potential()) {
             printf("core_eval_sum             : %18.8f\n", evalsum2);
             printf("kinetic energy            : %18.8f\n", ekin);
             printf("enuc                      : %18.8f\n", enuc);
@@ -383,8 +374,7 @@ void DFT_ground_state::print_info()
         printf("<rho|E^{XC}>              : %18.8f\n", eexc);
         printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
         printf("<rho|V^{H}>               : %18.8f\n", evha);
-        if (!ctx_.full_potential())
-        {
+        if (!ctx_.full_potential()) {
             printf("one-electron contribution : %18.8f\n", evalsum1 - (evxc + evha)); // eband + deband in QE
             printf("hartree contribution      : %18.8f\n", 0.5 * evha);
             printf("xc contribution           : %18.8f\n", eexc);
@@ -400,7 +390,9 @@ void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
-        if (ctx_.full_potential()) printf("core leakage : %18.8f\n", core_leak);
+        if (ctx_.full_potential()) {
+            printf("core leakage : %18.8f\n", core_leak);
+        }
     }
 }
 

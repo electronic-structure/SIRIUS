@@ -287,7 +287,7 @@ class DFT_ground_state
             unit_cell_.symmetry().symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    unit_cell_.symmetry().symmetrize_vector_z_component(&gz__->f_pw(0), ctx_.gvec(), comm);
+                    unit_cell_.symmetry().symmetrize_vector(&gz__->f_pw(0), ctx_.gvec(), comm);
                     break;
                 }
                 case 3: {
@@ -302,7 +302,7 @@ class DFT_ground_state
                 unit_cell_.symmetry().symmetrize_function(f__->f_mt(), comm);
                 switch (ctx_.num_mag_dims()) {
                     case 1: {
-                        unit_cell_.symmetry().symmetrize_vector_z_component(gz__->f_mt(), comm);
+                        unit_cell_.symmetry().symmetrize_vector(gz__->f_mt(), comm);
                         break;
                     }
                     case 3: {

@@ -91,7 +91,7 @@ Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<sp
     return g;
 }
 
-Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double>& f)
+Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double> const& f)
 {
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
     SHT sht(lmax);
@@ -104,8 +104,8 @@ Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, 
     return g;
 }
 
-Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double>& f, 
-                                            Spheric_function_gradient<spatial, double>& g)
+Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double> const& f, 
+                                            Spheric_function_gradient<spatial, double> const& g)
 {
     for (int x: {0, 1, 2}) {
         if (f[x].radial_grid().hash() != g[x].radial_grid().hash()) {

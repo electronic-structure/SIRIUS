@@ -350,7 +350,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    Gvec const& gvec__,
                                    Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_function", comm__);
+    runtime::Timer t("sirius::Symmetry::symmetrize_function_pw", comm__);
 
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
@@ -413,11 +413,11 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
     for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) * nrm;
 }
 
-void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
-                                             Gvec const& gvec__,
-                                             Communicator const& comm__) const
+void Symmetry::symmetrize_vector(double_complex* fz_pw__,
+                                 Gvec const& gvec__,
+                                 Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector_z_component");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector_pw");
     
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
@@ -444,7 +444,7 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
 
             assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
-            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t))) * S(2, 2);
+            double_complex z = fz_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t))) * S(2, 2);
             
             #pragma omp atomic update
             ptr[2 * ig_rot] += real(z);
@@ -455,7 +455,7 @@ void Symmetry::symmetrize_vector_z_component(double_complex* f_pw__,
     }
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 
-    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) fz_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
 
 }
 
@@ -465,7 +465,7 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
                                  Gvec const& gvec__,
                                  Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector_pw");
     
     splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
     mdarray<double_complex, 1> sym_fx_pw(gvec__.num_gvec());
@@ -582,10 +582,10 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                      lmmax * nrmax * spl_atoms.local_size());
 }
 
-void Symmetry::symmetrize_vector_z_component(mdarray<double, 3>& vz_rlm__,
-                                             Communicator const& comm__) const
+void Symmetry::symmetrize_vector(mdarray<double, 3>& vz_rlm__,
+                                 Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector_z_component_mt");
+    runtime::Timer t("sirius::Symmetry::symmetrize_vector_mt");
 
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);

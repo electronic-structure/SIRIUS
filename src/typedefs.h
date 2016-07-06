@@ -58,7 +58,7 @@ enum electronic_structure_method_t
     norm_conserving_pseudopotential
 };
 
-enum index_domain_t {global, local};
+enum class index_domain_t {global, local};
 
 enum function_domain_t {spatial, spectral};
 

@@ -5,8 +5,6 @@ using namespace std;
 
 namespace sirius {
 
-
-
 void Density::initial_density()
 {
     PROFILE_WITH_TIMER("sirius::Density::initial_density");
@@ -15,236 +13,225 @@ void Density::initial_density()
 
     ctx_.fft().prepare();
 
-    if (ctx_.full_potential())
-    {
-    	initial_density_full_pot();
-    }
-
-    if (!ctx_.full_potential())
-    {
-    	initial_density_pseudo();
-
-    	if(ctx_.esm_type() == paw_pseudopotential)
-    	{
-    		initialize_beta_density_matrix();
-    		generate_paw_loc_density();
-    	}
+    if (ctx_.full_potential()) {
+        initial_density_full_pot();
+    } else {
+        initial_density_pseudo();
+        if(ctx_.esm_type() == paw_pseudopotential) {
+            initialize_beta_density_matrix();
+            generate_paw_loc_density();
+        }
     }
 
     ctx_.fft().dismiss();
 }
 
-
-
-
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
 void Density::initial_density_pseudo()
 {
-	auto rho_radial_integrals = generate_rho_radial_integrals(1);
-	#ifdef __PRINT_OBJECT_HASH
-	DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
-	#endif
+    auto rho_radial_integrals = generate_rho_radial_integrals(1);
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
+    #endif
 
-	std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
-	#ifdef __PRINT_OBJECT_HASH
-	DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
-	#endif
-	#ifdef __PRINT_OBJECT_CHECKSUM
-	auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-	DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
-	#endif
+    std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
+    #endif
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
+    DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+    #endif
 
-	std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
+    std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
-	double charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
-	if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
-	{
-		std::stringstream s;
-		s << "wrong initial charge density" << std::endl
-		  << "  integral of the density : " << std::real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
-		  << "  target number of electrons : " << unit_cell_.num_valence_electrons();
-		if (ctx_.comm().rank() == 0) WARNING(s);
-	}
-	rho_->fft_transform(1);
+    double charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
+    if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
+    {
+        std::stringstream s;
+        s << "wrong initial charge density" << std::endl
+          << "  integral of the density : " << std::real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
+          << "  target number of electrons : " << unit_cell_.num_valence_electrons();
+        if (ctx_.comm().rank() == 0) WARNING(s);
+    }
+    rho_->fft_transform(1);
 
-	#ifdef __PRINT_OBJECT_HASH
-	DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
-	#endif
-	#ifdef __PRINT_OBJECT_CHECKSUM
-	DUMP("checksum(rho_rg) : %18.10f", rho_->checksum_rg());
-	#endif
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
+    #endif
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    DUMP("checksum(rho_rg) : %18.10f", rho_->checksum_rg());
+    #endif
 
-	/* remove possible negative noise */
-	for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
-	{
-		rho_->f_rg(ir) = rho_->f_rg(ir) * unit_cell_.num_valence_electrons() / charge;
-		if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
-	}
+    /* remove possible negative noise */
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
+    {
+        rho_->f_rg(ir) = rho_->f_rg(ir) * unit_cell_.num_valence_electrons() / charge;
+        if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
+    }
 
-	#ifdef __PRINT_OBJECT_HASH
-	DUMP("hash(rho) : %16llX", rho_->hash());
-	#endif
+    #ifdef __PRINT_OBJECT_HASH
+    DUMP("hash(rho) : %16llX", rho_->hash());
+    #endif
 
-	//== FILE* fout = fopen("unit_cell.xsf", "w");
-	//== fprintf(fout, "CRYSTAL\n");
-	//== fprintf(fout, "PRIMVEC\n");
-	//== auto& lv = unit_cell_.lattice_vectors();
-	//== for (int i = 0; i < 3; i++)
-	//== {
-	//==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-	//== }
-	//== fprintf(fout, "CONVVEC\n");
-	//== for (int i = 0; i < 3; i++)
-	//== {
-	//==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-	//== }
-	//== fprintf(fout, "PRIMCOORD\n");
-	//== fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
-	//== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-	//== {
-	//==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
-	//==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
-	//== }
-	//== fclose(fout);
-
-
-	/* initialize the magnetization */
-	if (ctx_.num_mag_dims())
-	{
-		for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-		{
-			vector3d<double> v = unit_cell_.atom(ia).vector_field();
-			//double len = v.length();
-
-			for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++)
-			{
-				for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++)
-				{
-					for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++)
-					{
-						/* get real space fractional coordinate */
-						auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0),
-												   double(j1) / ctx_.fft().grid().size(1),
-												   double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
-						/* index of real space point */
-						int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
-
-						for (int t0 = -1; t0 <= 1; t0++)
-						{
-							for (int t1 = -1; t1 <= 1; t1++)
-							{
-								for (int t2 = -1; t2 <= 1; t2++)
-								{
-									vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
-									auto r = unit_cell_.get_cartesian_coordinates(v1);
-									auto a = r.length();
-
-									const double R = 2.0;
-									const double norm = pi * std::pow(R, 3) / 3.0;
-
-									if (a <= R)
-									{
-										magnetization_[0]->f_rg(ir) += v[2] * (1.0 - a / R) / norm;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+    //== FILE* fout = fopen("unit_cell.xsf", "w");
+    //== fprintf(fout, "CRYSTAL\n");
+    //== fprintf(fout, "PRIMVEC\n");
+    //== auto& lv = unit_cell_.lattice_vectors();
+    //== for (int i = 0; i < 3; i++)
+    //== {
+    //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
+    //== }
+    //== fprintf(fout, "CONVVEC\n");
+    //== for (int i = 0; i < 3; i++)
+    //== {
+    //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
+    //== }
+    //== fprintf(fout, "PRIMCOORD\n");
+    //== fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
+    //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    //== {
+    //==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
+    //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
+    //== }
+    //== fclose(fout);
 
 
-	//== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
-	//== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+    /* initialize the magnetization */
+    if (ctx_.num_mag_dims())
+    {
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            vector3d<double> v = unit_cell_.atom(ia).vector_field();
+            //double len = v.length();
 
-	//== mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
-	//== mag_grid.zero();
+            for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++)
+            {
+                for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++)
+                {
+                    for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++)
+                    {
+                        /* get real space fractional coordinate */
+                        auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0),
+                                                   double(j1) / ctx_.fft().grid().size(1),
+                                                   double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
+                        /* index of real space point */
+                        int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
 
-	//== // loop over 3D array (real space)
-	//== for (int j0 = 0; j0 < fft_->size(0); j0++)
-	//== {
-	//==     for (int j1 = 0; j1 < fft_->size(1); j1++)
-	//==     {
-	//==         for (int j2 = 0; j2 < fft_->size(2); j2++)
-	//==         {
-	//==             int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
-	//==             // get real space fractional coordinate
-	//==             double frv[] = {double(j0) / fft_->size(0),
-	//==                             double(j1) / fft_->size(1),
-	//==                             double(j2) / fft_->size(2)};
-	//==             vector3d<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
-	//==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
-	//==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
-	//==             if (ctx_.num_mag_dims() == 3)
-	//==             {
-	//==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
-	//==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
-	//==             }
-	//==         }
-	//==     }
-	//== }
+                        for (int t0 = -1; t0 <= 1; t0++)
+                        {
+                            for (int t1 = -1; t1 <= 1; t1++)
+                            {
+                                for (int t2 = -1; t2 <= 1; t2++)
+                                {
+                                    vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
+                                    auto r = unit_cell_.get_cartesian_coordinates(v1);
+                                    auto a = r.length();
 
-	//== HDF5_tree h5_rho("rho.hdf5", true);
-	//== h5_rho.write("rho", rho_grid);
-	//== h5_rho.write("pos", pos_grid);
-	//== h5_rho.write("mag", mag_grid);
+                                    const double R = 2.0;
+                                    const double norm = pi * std::pow(R, 3) / 3.0;
 
-	//== FILE* fout = fopen("rho.xdmf", "w");
-	//== //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-	//== //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-	//== //==               "<Xdmf>\n"
-	//== //==               "  <Domain Name=\"name1\">\n"
-	//== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-	//== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-	//== //==               "      <Geometry GeometryType=\"XYZ\">\n"
-	//== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-	//== //==               "      </Geometry>\n"
-	//== //==               "      <Attribute\n"
-	//== //==               "           AttributeType=\"Scalar\"\n"
-	//== //==               "           Center=\"Node\"\n"
-	//== //==               "           Name=\"rho\">\n"
-	//== //==               "          <DataItem\n"
-	//== //==               "             NumberType=\"Float\"\n"
-	//== //==               "             Precision=\"8\"\n"
-	//== //==               "             Dimensions=\"%i %i %i\"\n"
-	//== //==               "             Format=\"HDF\">\n"
-	//== //==               "             rho.hdf5:/rho\n"
-	//== //==               "          </DataItem>\n"
-	//== //==               "        </Attribute>\n"
-	//== //==               "    </Grid>\n"
-	//== //==               "  </Domain>\n"
-	//== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-	//== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-	//==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-	//==               "<Xdmf>\n"
-	//==               "  <Domain Name=\"name1\">\n"
-	//==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-	//==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-	//==               "      <Geometry GeometryType=\"XYZ\">\n"
-	//==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-	//==               "      </Geometry>\n"
-	//==               "      <Attribute\n"
-	//==               "           AttributeType=\"Vector\"\n"
-	//==               "           Center=\"Node\"\n"
-	//==               "           Name=\"mag\">\n"
-	//==               "          <DataItem\n"
-	//==               "             NumberType=\"Float\"\n"
-	//==               "             Precision=\"8\"\n"
-	//==               "             Dimensions=\"%i %i %i 3\"\n"
-	//==               "             Format=\"HDF\">\n"
-	//==               "             rho.hdf5:/mag\n"
-	//==               "          </DataItem>\n"
-	//==               "        </Attribute>\n"
-	//==               "    </Grid>\n"
-	//==               "  </Domain>\n"
-	//==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-	//== fclose(fout);
+                                    if (a <= R)
+                                    {
+                                        magnetization_[0]->f_rg(ir) += v[2] * (1.0 - a / R) / norm;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-	rho_->fft_transform(-1);
-	for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
+
+    //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
+    //== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+
+    //== mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+    //== mag_grid.zero();
+
+    //== // loop over 3D array (real space)
+    //== for (int j0 = 0; j0 < fft_->size(0); j0++)
+    //== {
+    //==     for (int j1 = 0; j1 < fft_->size(1); j1++)
+    //==     {
+    //==         for (int j2 = 0; j2 < fft_->size(2); j2++)
+    //==         {
+    //==             int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+    //==             // get real space fractional coordinate
+    //==             double frv[] = {double(j0) / fft_->size(0),
+    //==                             double(j1) / fft_->size(1),
+    //==                             double(j2) / fft_->size(2)};
+    //==             vector3d<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
+    //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
+    //==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
+    //==             if (ctx_.num_mag_dims() == 3)
+    //==             {
+    //==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
+    //==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
+    //==             }
+    //==         }
+    //==     }
+    //== }
+
+    //== HDF5_tree h5_rho("rho.hdf5", true);
+    //== h5_rho.write("rho", rho_grid);
+    //== h5_rho.write("pos", pos_grid);
+    //== h5_rho.write("mag", mag_grid);
+
+    //== FILE* fout = fopen("rho.xdmf", "w");
+    //== //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
+    //== //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
+    //== //==               "<Xdmf>\n"
+    //== //==               "  <Domain Name=\"name1\">\n"
+    //== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
+    //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
+    //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
+    //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+    //== //==               "      </Geometry>\n"
+    //== //==               "      <Attribute\n"
+    //== //==               "           AttributeType=\"Scalar\"\n"
+    //== //==               "           Center=\"Node\"\n"
+    //== //==               "           Name=\"rho\">\n"
+    //== //==               "          <DataItem\n"
+    //== //==               "             NumberType=\"Float\"\n"
+    //== //==               "             Precision=\"8\"\n"
+    //== //==               "             Dimensions=\"%i %i %i\"\n"
+    //== //==               "             Format=\"HDF\">\n"
+    //== //==               "             rho.hdf5:/rho\n"
+    //== //==               "          </DataItem>\n"
+    //== //==               "        </Attribute>\n"
+    //== //==               "    </Grid>\n"
+    //== //==               "  </Domain>\n"
+    //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+    //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
+    //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
+    //==               "<Xdmf>\n"
+    //==               "  <Domain Name=\"name1\">\n"
+    //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
+    //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
+    //==               "      <Geometry GeometryType=\"XYZ\">\n"
+    //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+    //==               "      </Geometry>\n"
+    //==               "      <Attribute\n"
+    //==               "           AttributeType=\"Vector\"\n"
+    //==               "           Center=\"Node\"\n"
+    //==               "           Name=\"mag\">\n"
+    //==               "          <DataItem\n"
+    //==               "             NumberType=\"Float\"\n"
+    //==               "             Precision=\"8\"\n"
+    //==               "             Dimensions=\"%i %i %i 3\"\n"
+    //==               "             Format=\"HDF\">\n"
+    //==               "             rho.hdf5:/mag\n"
+    //==               "          </DataItem>\n"
+    //==               "        </Attribute>\n"
+    //==               "    </Grid>\n"
+    //==               "  </Domain>\n"
+    //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+    //== fclose(fout);
+
+    rho_->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
 }
 
 
@@ -264,24 +251,24 @@ void Density::initial_density_full_pot()
     /* compute contribution from free atoms to the interstitial density */
     auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
     
-#ifdef __PRINT_OBJECT_CHECKSUM
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
     DUMP("checksum(rho_pw): %18.10f %18.10f", z.real(), z.imag());
-#endif
+    #endif
     
     /* set plane-wave coefficients of the charge density */
     std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
     /* convert charge deisnty to real space mesh */
     rho_->fft_transform(1);
     
-#ifdef __PRINT_OBJECT_CHECKSUM
+    #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
-#endif
+    #endif
     
-#ifdef __PRINT_OBJECT_HASH
+    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(rhopw): %16llX", rho_->f_pw().hash());
     DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
-#endif
+    #endif
     
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
@@ -309,7 +296,7 @@ void Density::initial_density_full_pot()
     for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
     
     int lmax = ctx_.lmax_rho();
-    int lmmax = Utils::lmmax(lmax);
+    int lmmax = ctx_.lmmax_rho();
     
     sbessel_approx sba(unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
     
@@ -338,7 +325,7 @@ void Density::initial_density_full_pot()
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         int iat = unit_cell_.atom(ia).type_id();
@@ -373,10 +360,10 @@ void Density::initial_density_full_pot()
     ctx_.comm().allreduce(znulm.at<CPU>(), (int)znulm.size());
     t3.stop();
     
-#ifdef __PRINT_OBJECT_CHECKSUM
+    #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z3 = znulm.checksum();
     DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
-#endif
+    #endif
     
     runtime::Timer t4("sirius::Density::initial_density|rholm");
     
@@ -389,7 +376,7 @@ void Density::initial_density_full_pot()
         
         Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia).radial_grid());
         rhoylm.zero();
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int lm = 0; lm < lmmax; lm++)
         {
             int l = l_by_lm[lm];
@@ -409,7 +396,12 @@ void Density::initial_density_full_pot()
             double x = unit_cell_.atom(ia).radial_grid(ir);
             rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
         }
-        rho_->f_mt(ialoc) = convert(rhoylm);
+        auto rhorlm = convert(rhoylm);
+        for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+            for (int lm = 0; lm < lmmax; lm++) {
+                rho_->f_mt<index_domain_t::local>(lm, ir, ialoc) = rhorlm(lm, ir);
+            }
+        }
     }
     
     t4.stop();
@@ -427,7 +419,7 @@ void Density::initial_density_full_pot()
             for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
             {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho_->f_mt<local>(0, ir, p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
+                rho_->f_mt<index_domain_t::local>(0, ir, p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
             }
         }
     }
@@ -447,7 +439,7 @@ void Density::initial_density_full_pot()
             for (int ir = 0; ir < nmtp; ir++)
             {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho[ir] = rho_->f_mt<local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
+                rho[ir] = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
             }
             
             /* maximum magnetization which can be achieved if we smooth density towards MT boundary */
@@ -465,83 +457,74 @@ void Density::initial_density_full_pot()
             if (len > 1e-8)
             {
                 for (int ir = 0; ir < nmtp; ir++)
-                    magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
                 
                 if (ctx_.num_mag_dims() == 3)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
-                        magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
+                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
+                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
                     }
                 }
             }
         }
     }
-
 }
 
-
-
-
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
 void Density::initialize_beta_density_matrix()
 {
-	density_matrix_.zero();
+    density_matrix_.zero();
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    {
+        auto& atom_type = unit_cell_.atom_type(iat);
+
+        int nbf = atom_type.mt_basis_size();
+
+        const std::vector<double> &occupations = atom_type.get_PAW_descriptor().occupations;
+
+        #pragma omp parallel for
+        for (int i = 0; i < atom_type.num_atoms(); i++)
+        {
+            int ia = atom_type.atom_id(i);
+
+            // magnetization vector
+            vector3d<double> magn = unit_cell_.atom(ia).vector_field();
+            double norm = magn.length();
 
 
-	for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-	{
-		auto& atom_type = unit_cell_.atom_type(iat);
+            for (int xi = 0; xi < nbf; xi++)
+            {
+                basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
 
-		int nbf = atom_type.mt_basis_size();
+                int rad_func_index = basis_func_index_dsc.idxrf;
 
-		const std::vector<double> &occupations = atom_type.get_PAW_descriptor().occupations;
+                double occ = occupations[rad_func_index];
 
-		#pragma omp parallel for
-		for (int i = 0; i < atom_type.num_atoms(); i++)
-		{
-			int ia = atom_type.atom_id(i);
+                int l = basis_func_index_dsc.l;
 
-			// magnetization vector
-			vector3d<double> magn = unit_cell_.atom(ia).vector_field();
-			double norm = magn.length();
+                switch (ctx_.num_mag_dims())
+                {
+                    case 0:
+                    {
+                        density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
+                        break;
+                    }
 
+                    case 1:
+                    {
+                        double nm = (norm !=0 ) ? magn[2] / norm : 0;
 
-			for (int xi = 0; xi < nbf; xi++)
-			{
-				basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
+                        density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
+                        density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
+                        break;
+                    }
+                }
 
-				int rad_func_index = basis_func_index_dsc.idxrf;
-
-				double occ = occupations[rad_func_index];
-
-				int l = basis_func_index_dsc.l;
-
-				switch (ctx_.num_mag_dims())
-				{
-					case 0:
-					{
-						density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
-						break;
-					}
-
-					case 1:
-					{
-						double nm = (norm !=0 ) ? magn[2] / norm : 0;
-
-						density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
-						density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
-						break;
-					}
-				}
-
-			}
-		}
-	}
-
-	//TERMINATE("finished");
+            }
+        }
+    }
 }
 
 };

@@ -29,7 +29,7 @@ namespace sirius {
 
 void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                   std::vector<XC_functional*>& xc_func,
-                                  Spheric_function<spectral, double>& rho_lm, 
+                                  Spheric_function<spectral, double> const& rho_lm, 
                                   Spheric_function<spatial, double>& rho_tp, 
                                   Spheric_function<spatial, double>& vxc_tp, 
                                   Spheric_function<spatial, double>& exc_tp)
@@ -469,13 +469,24 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             }
             /* convert magnetic field back to Rlm */
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                bxc[j]->f_mt(ialoc) = transform(sht_.get(), vecmagtp[j]);
+                auto bxcrlm = transform(sht_.get(), vecmagtp[j]);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
+                        bxc[j]->f_mt<index_domain_t::local>(lm, ir, ialoc) = bxcrlm(lm, ir);
+                    }
+                }
             }
         }
 
         /* forward transform from (theta, phi) to Rlm */
-        vxc->f_mt(ialoc) = transform(sht_.get(), vxc_tp);
-        exc->f_mt(ialoc) = transform(sht_.get(), exc_tp);
+        auto vxcrlm = transform(sht_.get(), vxc_tp);
+        auto excrlm = transform(sht_.get(), exc_tp);
+        for (int ir = 0; ir < nmtp; ir++) {
+            for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
+                vxc->f_mt<index_domain_t::local>(lm, ir, ialoc) = vxcrlm(lm, ir);
+                exc->f_mt<index_domain_t::local>(lm, ir, ialoc) = excrlm(lm, ir);
+            }
+        }
     }
 }
 

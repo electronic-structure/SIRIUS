@@ -414,7 +414,7 @@ class Density
             return magnetization_[i];
         }
 
-        Spheric_function<spectral, double>& density_mt(int ialoc)
+        Spheric_function<spectral, double> const& density_mt(int ialoc) const
         {
             return rho_->f_mt(ialoc);
         }
@@ -442,7 +442,9 @@ class Density
         void allocate()
         {
             rho_->allocate_mt(true);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->allocate_mt(true);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->allocate_mt(true);
+            }
         }
 
         void mixer_input()
