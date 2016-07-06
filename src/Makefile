@@ -22,6 +22,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Density/reduce_density_matrix.cpp \
        Density/generate.cpp \
        Density/generate_density_matrix.cpp \
+       Density/symmetrize_density_matrix.cpp \
        Density/generate_valence.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \

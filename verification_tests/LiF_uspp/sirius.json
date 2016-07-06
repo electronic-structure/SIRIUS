@@ -27,9 +27,9 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [8,8,8],
+      "ngridk" : [4,4,4],
 
-      "reduce_gvec": 0,
+      "reduce_gvec": 0
   },
 
     "iterative_solver" : {

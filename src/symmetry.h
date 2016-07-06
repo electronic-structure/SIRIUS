@@ -192,6 +192,11 @@ class Symmetry
             return magnetic_group_symmetry_[isym__];
         }
 
+        inline int sym_table(int ia__, int isym__) const
+        {
+            return sym_table_(ia__, isym__);
+        }
+
         void check_gvec_symmetry(Gvec const& gvec__) const;
 
         /// Symmetrize scalar function.
@@ -235,7 +240,7 @@ class Symmetry
                                mdarray<double, 3>& vy_rlm__,
                                mdarray<double, 3>& vz_rlm__,
                                Communicator const& comm__) const;
-
+        
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
                                             mdarray<double, 2>& kp__,

@@ -118,7 +118,7 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
                 }
             }
 
-            if (ja == -1) TERMINATE("equivalent atom not found");
+            if (ja == -1) TERMINATE("equivalent atom was not found");
             sym_table_(ia, isym) = ja;
         }
     }
@@ -258,7 +258,8 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     int nknr = spg_get_ir_reciprocal_mesh((int(*)[3])&grid_address(0, 0),
                                           &ikmap[0],
                                           &k_mesh__[0],
-                                          &is_shift__[0], 1, 
+                                          &is_shift__[0],
+                                          1, 
                                           lattice,
                                           (double(*)[3])&positions_(0, 0),
                                           &types_[0],

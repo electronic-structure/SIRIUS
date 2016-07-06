@@ -54,7 +54,7 @@ namespace sirius
  *            [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2}, 
  *              m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
  *  
- *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_it()).
+ *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_rg()).
  *  The muffin-tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the
  *  expansion of spinor wave-functions inside the muffin-tin \f$ \alpha \f$
  *  \f[
@@ -155,17 +155,61 @@ class Density
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
 
-        /// Generate complex density matrix (canonical form).
+        /// Generate complex density matrix.
         /** In the full-potential case complex density matrix is defined as
          *  \f[
-         *      D_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} \equiv 
-         *      D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} 
-         *      S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} \equiv 
+         *      n_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j} \sum_{{\bf k}} w_{\bf k} n_{j{\bf k}} 
+         *      S_{\xi \sigma}^{\alpha, j {\bf k}*} S_{\xi' \sigma'}^{\alpha, j {\bf k}}
          *  \f]
-         *  where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of the
-         *  spinor wave functions inside muffin-tin spheres.
+         *  where \f$ S_{\xi \sigma}^{\alpha, j {\bf k}} \f$ are the expansion coefficients of the
+         *  spinor wave functions inside muffin-tin sphere \f$ \alpha \f$.
          */
         void generate_density_matrix(K_set& ks__);
+        
+        /// Symmetrize density matrix.
+        /** Initially, density matrix is obtained with summation over irreducible BZ:
+         *  \f[
+         *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  = 
+         *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+         *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+         *  \f]
+         *  In order to symmetrize it, the following operation is performed:
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} 
+         *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+         *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+         *  \f]
+         *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
+         *  local orbital is transformed as:
+         *  \f[
+         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
+         *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
+         *  \f]
+         *  Under rotation the spherical harmonic is transformed as:
+         *  \f[
+         *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = 
+         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+         *  \f]
+         *  The inner-product integral is then rewritten as:
+         *  \f[
+         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  = 
+         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle 
+         *  \f]
+         *  and the final expression for density matrix gets the following form:
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
+         *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})  
+         *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| 
+         *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | 
+         *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
+         *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) 
+         *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} 
+         *  \f]
+         */
+        void symmetrize_density_matrix();
 
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
