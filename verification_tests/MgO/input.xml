@@ -1,0 +1,42 @@
+<input>
+ 
+  <title>fake MgO</title>
+ 
+  <structure speciespath=".">
+ 
+    <crystal scale="5">
+      <basevect> 1 0 0 </basevect>
+      <basevect> 0 1 0 </basevect>
+      <basevect> 0 0 1 </basevect>
+    </crystal>
+ 
+    <species speciesfile="Mg.xml">
+      <atom coord="0.00 0.00 0.00" />
+    </species>
+    <species speciesfile="O.xml">
+      <atom coord="0.5 0.5 0.5" />
+    </species>
+ 
+  </structure>
+ 
+  <groundstate ngridk="2 2 2"
+               swidth="0.0001"
+               maxscl="200"
+               lmaxmat="10"
+               lmaxapw="10"
+               lmaxvr="10"
+               mixer="msec"
+               radialgridtype="cubic"
+               ValenceRelativity="none"
+               CoreRelativity="none"
+               gmaxvr="30"
+               rgkmax="7"
+               epspot="1d-6"
+               lradstep="1"
+               fracinr="1d-12">
+               
+   <libxc correlation="XC_LDA_C_VWN" exchange="XC_LDA_X"/>
+ </groundstate>
+ 
+</input>
+

@@ -1,0 +1,73 @@
+{
+  "control" : {
+      "cyclic_block_size" : 16,
+      "processing_unit" : "cpu",
+      "std_evp_solver_type" : "lapack",
+      "gen_evp_solver_type" : "lapack"
+  },
+
+  "parameters" : {
+      "electronic_structure_method" : "full_potential_lapwlo",
+
+      "!num_fv_states" : 40,
+
+      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_VWN"],
+
+      "smearing_width" : 0.0001,
+
+      "use_symmetry" : 1,
+
+      "num_mag_dims" : 0,
+
+      "lmax_apw" : 10,
+      "lmax_rho" : 10,
+      "lmax_pot" : 10,
+      "auto_rmt" : 0,
+
+      "core_relativity" : "none",
+      "valence_relativity" : "none",
+
+      "gk_cutoff" : 7.0,
+      "pw_cutoff" : 30.00,
+
+      "energy_tol" : 1e-8,
+      "potential_tol" : 1e-8,
+
+      "num_dft_iter" : 100,
+      
+      "ngridk" : [2,2,2],
+
+      "reduce_gvec": 0
+  },
+
+    "unit_cell" : {
+
+            "lattice_vectors" : [ [5,0,0],
+                                  [0,5,0],
+                                  [0,0,5]
+                                ],
+
+            "atom_types" : ["Mg", "O"],
+
+            "atom_files" : {
+                "Mg" : "Mg.json",
+                "O"  : "O.json"
+            },
+
+            "atoms" : {
+                "O" : [
+                    [0.5, 0.5, 0.5]
+                ],
+                "Mg" : [
+                    [0, 0, 0]
+                ]
+            }
+    },
+
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "broyden2",
+        "max_history" : 8
+    }
+
+}
