@@ -227,10 +227,7 @@ class DFT_ground_state
                 case paw_pseudopotential:
                 {
                     tot_en = kset_.valence_eval_sum() - energy_veff() + 0.5 * energy_vha() +
-                             energy_exc() + ewald_energy_;/*+
-                                    potential_->PAW_xc_total_energy() +
-                                    potential_->PAW_hartree_total_energy() +
-                                    potential_->PAW_total_core_energy();*/
+                             energy_exc() + ewald_energy_ + potential_.PAW_total_energy();
                 }
                 break;
 

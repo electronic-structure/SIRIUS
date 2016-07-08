@@ -475,6 +475,8 @@ class Potential
         double PAW_xc_total_energy(){ return paw_xc_total_energy_; }
 
         double PAW_total_core_energy(){ return paw_total_core_energy_; }
+
+        double PAW_total_energy(){ return paw_hartree_total_energy_ + paw_xc_total_energy_ ; }
         //------------------------------------------------
         //------------------------------------------------
 
