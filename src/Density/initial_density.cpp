@@ -13,11 +13,15 @@ void Density::initial_density()
 
     ctx_.fft().prepare();
 
-    if (ctx_.full_potential()) {
+    if (ctx_.full_potential())
+    {
         initial_density_full_pot();
-    } else {
+    } else
+    {
         initial_density_pseudo();
-        if(ctx_.esm_type() == paw_pseudopotential) {
+
+        if(ctx_.esm_type() == paw_pseudopotential)
+        {
             initialize_beta_density_matrix();
             generate_paw_loc_density();
         }

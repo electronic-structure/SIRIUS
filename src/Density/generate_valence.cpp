@@ -116,7 +116,8 @@ void Density::generate_valence(K_set& ks__)
     /* get rho(G) and mag(G)
      * they are required to symmetrize density and magnetization */
     rho_->fft_transform(-1);
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+    for (int j = 0; j < ctx_.num_mag_dims(); j++)
+    {
         magnetization_[j]->fft_transform(-1);
     }
 
@@ -125,11 +126,15 @@ void Density::generate_valence(K_set& ks__)
 
     ctx_.fft().dismiss();
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == ultrasoft_pseudopotential)
+    {
         augment(ks__);
     }
 
-    if (ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == paw_pseudopotential)
+    {
+        augment(ks__);
+        symmetrize_density_matrix();
         generate_paw_loc_density();
     }
 }
