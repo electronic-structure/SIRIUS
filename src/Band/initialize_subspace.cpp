@@ -10,6 +10,8 @@ void Band::initialize_subspace(K_point* kp__,
                                int lmax__,
                                std::vector< std::vector< Spline<double> > >& rad_int__) const
 {
+    PROFILE();
+
     auto pu = ctx_.processing_unit();
 
     /* number of basis functions */
@@ -22,8 +24,7 @@ void Band::initialize_subspace(K_point* kp__,
         std::vector<double> gkvec_rlm(Utils::lmmax(lmax__));
         /* fill first N functions with atomic orbitals */
         #pragma omp for
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-        {
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
             /* vs = {r, theta, phi} */
@@ -31,18 +32,15 @@ void Band::initialize_subspace(K_point* kp__,
             /* compute real spherical harmonics for G+k vector */
             SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_rlm[0]);
 
-            int n = 0;
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-            {
+            int n{0};
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 double phase = twopi * (kp__->gkvec().gvec_shifted(igk) * unit_cell_.atom(ia).position());
-                double_complex phase_factor =  std::exp(double_complex(0.0, -phase));
+                double_complex phase_factor = std::exp(double_complex(0.0, -phase));
 
                 auto& atom_type = unit_cell_.atom(ia).type();
-                for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++)
-                {
+                for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++) {
                     int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
-                    for (int m = -l; m <= l; m++)
-                    {
+                    for (int m = -l; m <= l; m++) {
                         int lm = Utils::lm_by_l_m(l, m);
                         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                         phi(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
@@ -51,17 +49,46 @@ void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
-
-    /* fill the remaining basis functions with single PW harmonics */
     #pragma omp parallel for
-    for (int i = num_ao__; i < num_phi; i++)
-    {
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++)
-        {
+    for (int i = num_ao__; i < num_phi; i++) {
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             phi(igk_loc, i) = 0;
+        }
+    }
+
+    std::vector< vector3d<int> > gkv;
+    for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
+        gkv.push_back(kp__->gkvec()[igk]);
+    }
+    std::sort(gkv.begin(), gkv.end(), [](vector3d<int>& a, vector3d<int>& b) {
+        int la = a.l1norm();
+        int lb = b.l1norm();
+        if (la < lb) {
+            return true;
+        }
+        if (la > lb) {
+            return false;
+        }
+        for (int x: {0, 1, 2}) {
+            if (a[x] < b[x]) {
+                return true;
+            }
+            if (a[x] > b[x]) {
+                return false;
+            }
+        }
+        return false;
+    });
+    
+    for (int i = 0; i < num_phi - num_ao__; i++) {
+        auto v1 = gkv[i];
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
-            if (igk == i) phi(igk_loc, i) = 1;
+            auto v2 = kp__->gkvec()[igk];
+            if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
+                phi(igk_loc, num_ao__ + i) = 1.0;
+            }
         }
     }
 
@@ -157,9 +184,10 @@ void Band::initialize_subspace(K_point* kp__,
         diag_h_o<T>(kp__, num_phi, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
 
         #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0)
-        {
-            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f", i, eval[i]);
+        if (kp__->comm().rank() == 0) {
+            for (int i = 0; i < num_bands; i++) {
+                DUMP("eval[%i]=%20.16f", i, eval[i]);
+            }
         }
         #endif
         
@@ -179,9 +207,19 @@ void Band::initialize_subspace(K_point* kp__,
         }
         #endif
 
-        //for (int j = 0; j < ctx_.num_fv_states(); j++)
-        //    //kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
-        //    kp__->band_energy(j + ispn * ctx_.num_fv_states()) = j;
+        for (int j = 0; j < ctx_.num_fv_states(); j++) {
+            kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
+        }
+
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        {
+            double cs{0};
+            for (int i = 0; i < num_bands; i++) {
+                cs += eval[i];
+            }
+            DUMP("checksum(eval): %18.10f", cs);
+        }
+        #endif
     }
 
     kp__->beta_projectors().dismiss();

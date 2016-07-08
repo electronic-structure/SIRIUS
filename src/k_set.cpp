@@ -144,44 +144,40 @@ void K_set::find_band_occupancies()
 {
     runtime::Timer t("sirius::K_set::find_band_occupancies");
 
-    double ef = 0.15;
+    double ef{0};
+    double de{0.1};
 
-    double de = 0.1;
-
-    int s = 1;
+    int s{1};
     int sp;
 
-    double ne = 0.0;
+    double ne{0};
 
     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
     
-    // calc occupation
-    while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11)
-    {
+    /* calculate occupations */
+    while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
+        /* update Efermi */
+        ef += de;
+        /* compute total number of electrons */
         ne = 0.0;
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            for (int j = 0; j < ctx_.num_bands(); j++)
-            {
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
                 bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef, ctx_.smearing_width()) * 
                                  ctx_.max_occupancy();
                 ne += bnd_occ(j, ik) * kpoints_[ik]->weight();
             }
         }
 
-        //if (std::abs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
-
         sp = s;
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
-
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25); 
-        /* update Efermi */
-        ef += de;
     } 
     energy_fermi_ = ef;
 
-    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+    }
 
     band_gap_ = 0.0;
     

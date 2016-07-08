@@ -192,6 +192,11 @@ class Symmetry
             return magnetic_group_symmetry_[isym__];
         }
 
+        inline int sym_table(int ia__, int isym__) const
+        {
+            return sym_table_(ia__, isym__);
+        }
+
         void check_gvec_symmetry(Gvec const& gvec__) const;
 
         /// Symmetrize scalar function.
@@ -215,15 +220,9 @@ class Symmetry
                                  Gvec const& gvec__,
                                  Communicator const& comm__) const;
         
-        void symmetrize_function(mdarray<double, 3>& frlm__,
-                                 Communicator const& comm__) const;
-        
-        void symmetrize_vector_z_component(double_complex* f_pw__,
-                                           Gvec const& gvec__,
-                                           Communicator const& comm__) const;
-
-        void symmetrize_vector_z_component(mdarray<double, 3>& vz_rlm__,
-                                           Communicator const& comm__) const;
+        void symmetrize_vector(double_complex* fz_pw__,
+                               Gvec const& gvec__,
+                               Communicator const& comm__) const;
 
         void symmetrize_vector(double_complex* fx_pw__,
                                double_complex* fy_pw__,
@@ -231,11 +230,17 @@ class Symmetry
                                Gvec const& gvec__,
                                Communicator const& comm__) const;
 
-        void symmetrize_vector(mdarray<double, 3>& vx_rlm__,
-                               mdarray<double, 3>& vy_rlm__,
-                               mdarray<double, 3>& vz_rlm__,
+        void symmetrize_function(mdarray<double, 3>& frlm__,
+                                 Communicator const& comm__) const;
+        
+        void symmetrize_vector(mdarray<double, 3>& fz_rlm__,
                                Communicator const& comm__) const;
 
+        void symmetrize_vector(mdarray<double, 3>& fx_rlm__,
+                               mdarray<double, 3>& fy_rlm__,
+                               mdarray<double, 3>& fz_rlm__,
+                               Communicator const& comm__) const;
+        
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
                                             mdarray<double, 2>& kp__,

@@ -131,25 +131,25 @@ class cmd_args
             }
         }
 
-        bool exist(const std::string key__)
+        bool exist(const std::string key__) const
         {
             return keys_.count(key__);
         }
 
         template <typename T> 
-        inline T value(const std::string key__);
+        inline T value(const std::string key__) const;
 
         template <typename T> 
-        inline T value(const std::string key__, T default_val__);
+        inline T value(const std::string key__, T default_val__) const;
 
-        std::string operator[](const std::string key__)
+        std::string operator[](const std::string key__) const
         {
-            return keys_[key__];
+            return keys_.at(key__);
         }
 };
 
 template <>
-inline int cmd_args::value<int>(const std::string key__)
+inline int cmd_args::value<int>(const std::string key__) const
 {
     int v;
 
@@ -160,22 +160,22 @@ inline int cmd_args::value<int>(const std::string key__)
         TERMINATE(s);
     }
 
-    std::istringstream(keys_[key__]) >> v;
+    std::istringstream(keys_.at(key__)) >> v;
     return v;
 }
 
 template <>
-inline int cmd_args::value<int>(const std::string key__, int default_val__)
+inline int cmd_args::value<int>(const std::string key__, int default_val__) const
 {
     if (!exist(key__)) return default_val__;
 
     int v;
-    std::istringstream(keys_[key__]) >> v;
+    std::istringstream(keys_.at(key__)) >> v;
     return v;
 }
 
 template <>
-inline double cmd_args::value<double>(const std::string key__)
+inline double cmd_args::value<double>(const std::string key__) const
 {
     double v;
 
@@ -186,35 +186,35 @@ inline double cmd_args::value<double>(const std::string key__)
         TERMINATE(s);
     }
 
-    std::istringstream(keys_[key__]) >> v;
+    std::istringstream(keys_.at(key__)) >> v;
     return v;
 }
 
 template <>
-inline double cmd_args::value<double>(const std::string key__, double default_val__)
+inline double cmd_args::value<double>(const std::string key__, double default_val__) const
 {
     if (!exist(key__)) return default_val__;
 
     double v;
-    std::istringstream(keys_[key__]) >> v;
+    std::istringstream(keys_.at(key__)) >> v;
     return v;
 }
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__)
+inline std::string cmd_args::value<std::string>(const std::string key__) const
 {
-    return keys_[key__];
+    return keys_.at(key__);
 }
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__, const std::string default_val__)
+inline std::string cmd_args::value<std::string>(const std::string key__, const std::string default_val__) const
 {
     if (!exist(key__)) return default_val__;
-    return keys_[key__];
+    return keys_.at(key__);
 }
 
 template <>
-inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__)
+inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__) const
 {
     vector3d<double> v;
 
@@ -225,13 +225,15 @@ inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string ke
         TERMINATE(s);
     }
 
-    std::istringstream iss(keys_[key__]);
-    for (int x = 0; x < 3; x++) iss >> v[x];
+    std::istringstream iss(keys_.at(key__));
+    for (int x: {0, 1, 2}) {
+        iss >> v[x];
+    }
     return v;
 }
 
 template <>
-inline vector3d<int> cmd_args::value< vector3d<int> >(const std::string key__)
+inline vector3d<int> cmd_args::value< vector3d<int> >(const std::string key__) const
 {
     vector3d<int> v;
 
@@ -242,17 +244,19 @@ inline vector3d<int> cmd_args::value< vector3d<int> >(const std::string key__)
         TERMINATE(s);
     }
 
-    std::istringstream iss(keys_[key__]);
-    for (int x = 0; x < 3; x++) iss >> v[x];
+    std::istringstream iss(keys_.at(key__));
+    for (int x: {0, 1, 2}) {
+        iss >> v[x];
+    }
     return v;
 }
 
 template<>
-inline std::vector<int> cmd_args::value< std::vector<int> >(std::string const key__, std::vector<int> const default_val__)
+inline std::vector<int> cmd_args::value< std::vector<int> >(std::string const key__, std::vector<int> const default_val__) const
 {
     if (!exist(key__)) return default_val__;
 
-    std::istringstream iss(keys_[key__]);
+    std::istringstream iss(keys_.at(key__));
     std::vector<int> v;
     while (!iss.eof())
     {

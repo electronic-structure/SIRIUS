@@ -2,10 +2,6 @@
 
 namespace sirius {
 
-
-
-//--------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------
 void Atom_type::read_input_core(JSON_tree& parser)
 {
     std::string core_str;
@@ -81,16 +77,12 @@ void Atom_type::read_input_core(JSON_tree& parser)
     }
 }
 
-
-
-//--------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------
 void Atom_type::read_input_aw(JSON_tree& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
     
-    // default augmented wave basis
+    /* default augmented wave basis */
     rsd.n = -1;
     rsd.l = -1;
     for (int order = 0; order < parser["valence"][0]["basis"].size(); order++)
@@ -117,10 +109,6 @@ void Atom_type::read_input_aw(JSON_tree& parser)
     }
 }
     
-
-
-//--------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------
 void Atom_type::read_input_lo(JSON_tree& parser)
 {
     radial_solution_descriptor rsd;
@@ -150,11 +138,7 @@ void Atom_type::read_input_lo(JSON_tree& parser)
         }
     }
 }
-    
 
-
-//--------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------
 void Atom_type::read_pseudo_uspp(JSON_tree& parser)
 {
     parser["pseudo_potential"]["header"]["element"] >> symbol_;
@@ -233,6 +217,7 @@ void Atom_type::read_pseudo_uspp(JSON_tree& parser)
 
     if (parser["pseudo_potential"].exist("augmentation"))
     {
+        uspp_.augmentation_ = true;
         uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * lmax_beta + 1);
         uspp_.q_radial_functions_l.zero();
 
@@ -251,7 +236,7 @@ void Atom_type::read_pseudo_uspp(JSON_tree& parser)
         }
     }
 
-    //---- read starting wave functions ( UPF CHI ) ----
+    /* read starting wave functions ( UPF CHI ) */
     if (parser["pseudo_potential"].exist("atomic_wave_functions"))
     {
         int nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
@@ -271,7 +256,7 @@ void Atom_type::read_pseudo_uspp(JSON_tree& parser)
             parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"] >> wf.first;
             uspp_.atomic_pseudo_wfs_.push_back(wf);
 
-            // read occupation of the function
+            /* read occupation of the function */
             double occ;
             parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"] >> occ;
             uspp_.atomic_pseudo_wfs_occ_.push_back(occ);
@@ -281,38 +266,32 @@ void Atom_type::read_pseudo_uspp(JSON_tree& parser)
     uspp_.is_initialized = true;
 }
 
-
-
-//--------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------
 void Atom_type::read_pseudo_paw(JSON_tree& parser)
 {
-    if( ! uspp_.is_initialized )
+    if (!uspp_.is_initialized) {
         TERMINATE("Ultrasoft or base part of PAW is not initialized");
+    }
 
-    //---- read core energy ----
+    /* read core energy */
     parser["pseudo_potential"]["header"]["paw_core_energy"] >> paw_.core_energy;
 
-    //--- cutoff index ---
+    /* cutoff index */
     parser["pseudo_potential"]["header"]["cutoff_radius_index"] >> paw_.cutoff_radius_index;
 
-    //---- read augmentation multipoles and integrals ---
+    /* read augmentation multipoles and integrals */
     parser["pseudo_potential"]["paw_data"]["aug_integrals"] >> paw_.aug_integrals;
 
     parser["pseudo_potential"]["paw_data"]["aug_multipoles"] >> paw_.aug_multopoles;
 
-
-    //---- read core density and potential ----
+    /* read core density and potential */
     parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"] >> paw_.all_elec_core_charge;
 
     parser["pseudo_potential"]["paw_data"]["ae_local_potential"] >> paw_.all_elec_loc_potential;
 
-
-    //---- read occupations ----
+    /* read occupations */
     parser["pseudo_potential"]["paw_data"]["occupations"] >> paw_.occupations;
 
-
-    // setups for reading AE and PS basis wave functions
+    /* setups for reading AE and PS basis wave functions */
     int num_wfc = uspp_.num_beta_radial_functions;
 
     paw_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
@@ -321,10 +300,10 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
     paw_.all_elec_wfc.zero();
     paw_.pseudo_wfc.zero();
 
-    //---- read ae and ps wave functions ---
+    /* read ae and ps wave functions */
     for(int i=0;i<num_wfc;i++)
     {
-        // --- read ae wave func ---
+        /* read ae wave func */
         std::vector<double> wfc;
 
         parser["pseudo_potential"]["paw_data"]["ae_wfc"][i]["radial_function"] >> wfc;
@@ -340,7 +319,7 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
 
         std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), paw_.cutoff_radius_index * sizeof(double));
 
-        // --- read ps wave func ---
+        /* read ps wave func */
         wfc.clear();
 
         parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"] >> wfc;
@@ -358,26 +337,19 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
     }
 }
 
-
-
-//--------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------
 void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
 
-    if (!parameters_.full_potential())
-    {
+    if (!parameters_.full_potential()) {
         read_pseudo_uspp(parser);
 
-        if( this->parameters_.esm_type() == electronic_structure_method_t::paw_pseudopotential)
-        {
+        if (parameters_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
             read_pseudo_paw(parser);
         }
     }
 
-    if (parameters_.full_potential())
-    {
+    if (parameters_.full_potential()) {
         parser["name"] >> name_;
         parser["symbol"] >> symbol_;
         parser["mass"] >> mass_;

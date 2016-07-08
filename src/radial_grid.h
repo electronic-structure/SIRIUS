@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -32,19 +32,21 @@ namespace sirius {
 /// Types of radial grid.
 enum radial_grid_t
 {
-    linear_grid,
+    linear_grid = 0,
 
-    exponential_grid,
+    exponential_grid = 1,
 
-    pow2_grid,
+    pow2_grid = 2,
 
-    pow3_grid,
+    pow3_grid = 3,
 
-    scaled_pow_grid,
+    scaled_pow_grid = 4,
 
-    hyperbolic_grid,
+    lin_exp_grid = 5
 
-    incremental_grid
+    //hyperbolic_grid,
+
+    //incremental_grid
 };
 
 /// Radial grid for a muffin-tin or an isolated atom.

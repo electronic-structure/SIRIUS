@@ -149,7 +149,7 @@ class MPI_grid
             communicator_root_[0] = true;
 
             /* expicitly set the "self" communicator */
-            communicators_[0] = Communicator(MPI_COMM_SELF);
+            communicators_[0].mpi_comm() = MPI_COMM_SELF;
 
             /* double check the size of communicators */
             for (int i = 1; i < num_comm; i++)

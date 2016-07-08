@@ -94,21 +94,27 @@ struct alltoall_descriptor
     std::vector<int> rdispls;
 };
 
+// TODO: proper way of controlling who owns comm and who needs to free it
+
 /// MPI communicator wrapper.
 class Communicator
 {
     private:
 
-        MPI_Comm mpi_comm_;
+        MPI_Comm mpi_comm_{MPI_COMM_NULL};
         bool need_to_free_;
-
+        /* copy is not allowed */
         Communicator(Communicator const& src__) = delete;
+        /* assigment is not allowed */
+        Communicator operator=(Communicator const& src__) = delete;
+        /* move is not allowed */
+        Communicator(Communicator&& src__) = delete;
+        /* move assigment is not allowed */
+        Communicator& operator=(Communicator&& src__) = delete;
 
     public:
 
-        // TODO: assigment operator?
-    
-        Communicator() : mpi_comm_(MPI_COMM_NULL), need_to_free_(true)
+        Communicator() : need_to_free_(true)
         {
         }
 

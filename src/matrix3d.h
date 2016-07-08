@@ -93,11 +93,11 @@ class matrix3d
         inline matrix3d<T> operator*(matrix3d<T> b) const
         {
             matrix3d<T> c;
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    for (int k = 0; k < 3; k++) c(i, j) += (*this)(i, k) * b(k, j);
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    for (int k = 0; k < 3; k++) {
+                        c(i, j) += (*this)(i, k) * b(k, j);
+                    }
                 }
             }
             return c;
@@ -108,9 +108,10 @@ class matrix3d
         inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b) const
         {
             vector3d<decltype(T{} * U{})> a;
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++) a[i] += (*this)(i, j) * b[j];
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    a[i] += (*this)(i, j) * b[j];
+                }
             }
             return a;
         }
@@ -120,9 +121,10 @@ class matrix3d
         inline matrix3d<T> operator*(U p) const
         {
             matrix3d<T> c;
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++) c(i, j) = (*this)(i, j) * p;
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    c(i, j) = (*this)(i, j) * p;
+                }
             }
             return c;
         }

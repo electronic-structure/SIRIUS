@@ -110,7 +110,6 @@ void Density::add_k_point_contribution(K_point* kp__,
         {
             kp__->beta_projectors().generate(chunk);
 
-
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
                 /* total number of occupied bands for this spin */

@@ -4,32 +4,30 @@ namespace sirius {
 
 void Atom_type::init(int offset_lo__)
 {
+    PROFILE();
+
     /* check if the class instance was already initialized */
-    if (initialized_) TERMINATE("can't initialize twice");
+    if (initialized_) {
+        TERMINATE("can't initialize twice");
+    }
 
     offset_lo_ = offset_lo__;
-   
+
     /* read data from file if it exists */
-    if (file_name_.length() > 0)
-    {
-        if (!Utils::file_exists(file_name_))
-        {
+    if (file_name_.length() > 0) {
+        if (!Utils::file_exists(file_name_)) {
             std::stringstream s;
             s << "file " + file_name_ + " doesn't exist";
             TERMINATE(s);
-        }
-        else
-        {
+        } else {
             read_input(file_name_);
         }
     }
 
     /* add valence levels to the list of core levels */
-    if (parameters_.full_potential())
-    {
+    if (parameters_.full_potential()) {
         atomic_level_descriptor level;
-        for (int ist = 0; ist < 28; ist++)
-        {
+        for (int ist = 0; ist < 28; ist++) {
             bool found = false;
             level.n = atomic_conf[zn_ - 1][ist][0];
             level.l = atomic_conf[zn_ - 1][ist][1];
@@ -37,47 +35,57 @@ void Atom_type::init(int offset_lo__)
             level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
             level.core = false;
 
-            if (level.n != -1)
-            {
-                for (size_t jst = 0; jst < atomic_levels_.size(); jst++)
-                {
-                    if ((atomic_levels_[jst].n == level.n) &&
-                        (atomic_levels_[jst].l == level.l) &&
-                        (atomic_levels_[jst].k == level.k)) found = true;
+            if (level.n != -1) {
+                for (size_t jst = 0; jst < atomic_levels_.size(); jst++) {
+                    if (atomic_levels_[jst].n == level.n &&
+                        atomic_levels_[jst].l == level.l &&
+                        atomic_levels_[jst].k == level.k) {
+                        found = true;
+                    }
                 }
-                if (!found) atomic_levels_.push_back(level);
+                if (!found) {
+                    atomic_levels_.push_back(level);
+                }
             }
         }
     }
     
     /* check the nuclear charge */
-    if (zn_ == 0) TERMINATE("zero atom charge");
+    if (zn_ == 0) {
+        TERMINATE("zero atom charge");
+    }
 
     /* set default radial grid if it was not done by user */
-    if (radial_grid_.num_points() == 0) set_radial_grid();
+    if (radial_grid_.num_points() == 0) {
+        set_radial_grid();
+    }
     
-    if (parameters_.esm_type() == full_potential_lapwlo)
-    {
+    if (parameters_.esm_type() == full_potential_lapwlo) {
         /* initialize free atom density and potential */
         init_free_atom(false);
 
         /* initialize aw descriptors if they were not set manually */
-        if (aw_descriptors_.size() == 0) init_aw_descriptors(parameters_.lmax_apw());
+        if (aw_descriptors_.size() == 0) {
+            init_aw_descriptors(parameters_.lmax_apw());
+        }
 
-        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) 
+        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) {
             TERMINATE("wrong size of augmented wave descriptors");
+        }
 
         max_aw_order_ = 0;
-        for (int l = 0; l <= parameters_.lmax_apw(); l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+        for (int l = 0; l <= parameters_.lmax_apw(); l++) {
+            max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+        }
 
-        if (max_aw_order_ > 3) TERMINATE("maximum aw order > 3");
+        if (max_aw_order_ > 3) {
+            TERMINATE("maximum aw order > 3");
+        }
     }
 
-    if (!parameters_.full_potential())
-    {
+    if (!parameters_.full_potential()) {
         local_orbital_descriptor lod;
-        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
-        {
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++) {
             /* think of |beta> functions as of local orbitals */
             lod.l = uspp_.beta_l[i];
             lo_descriptors_.push_back(lod);
@@ -92,11 +100,11 @@ void Atom_type::init(int offset_lo__)
     
     /* get the number of core electrons */
     num_core_electrons_ = 0;
-    if (parameters_.full_potential())
-    {
-        for (size_t i = 0; i < atomic_levels_.size(); i++) 
-        {
-            if (atomic_levels_[i].core) num_core_electrons_ += atomic_levels_[i].occupancy;
+    if (parameters_.full_potential()) {
+        for (size_t i = 0; i < atomic_levels_.size(); i++) {
+            if (atomic_levels_[i].core) {
+                num_core_electrons_ += atomic_levels_[i].occupancy;
+            }
         }
     }
 

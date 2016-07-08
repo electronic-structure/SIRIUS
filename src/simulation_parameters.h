@@ -107,6 +107,8 @@ class Simulation_parameters
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
+            PROFILE();
+
             JSON_tree parser(fname__);
             /* read unit cell */
             unit_cell_input_section_.read(parser);

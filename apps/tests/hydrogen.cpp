@@ -110,8 +110,7 @@ int main(int argn, char** argv)
     }
     fclose(fout);
 
-    
-    JSON_write jw("out.json");
+    json dict;
     std::vector<int> xaxis;
     
     int j = 0;
@@ -123,7 +122,7 @@ int main(int argn, char** argv)
             j++;
         }
     }
-    jw.single("xaxis", xaxis);
+    dict["xaxis"] = xaxis;
 
     std::vector<int> xaxis_ticks;
     std::vector<std::string> xaxis_tick_labels;
@@ -138,9 +137,9 @@ int main(int argn, char** argv)
         j += n;
     }
 
-    jw.single("xaxis_ticks", xaxis_ticks);
-    jw.single("xaxis_tick_labels", xaxis_tick_labels);
-    jw.begin_array("plot");
+    dict["xaxis_ticks"] = xaxis_ticks;
+    dict["xaxis_tick_labels"] = xaxis_tick_labels;
+    dict["plot"] = json::array();
 
     int i = 0;
     for (int k = 0; k < 10; k++)
@@ -148,10 +147,7 @@ int main(int argn, char** argv)
         int z = 1 + k * 10;
         std::stringstream s;
         s << "z=" << z;
-        
-        jw.begin_set();
-        jw.single("label", s.str());
-        
+
         j = 0;
         xaxis.clear();
         for (int n = 1; n <= 5 + k; n++)
@@ -162,7 +158,6 @@ int main(int argn, char** argv)
                 j++;
             }
         }
-        jw.single("xaxis", xaxis);
         
         std::vector<double> yvalues;
 
@@ -175,10 +170,11 @@ int main(int argn, char** argv)
             }
         }
         
-        jw.single("yvalues", yvalues);
-        jw.end_set();
+        dict["plot"].push_back(json::object({{"label", s.str()}, {"xaxis", xaxis}, {"yvalues", yvalues}}));
     }
-    jw.end_array();
+    
+    std::ofstream ofs("out.json", std::ofstream::out | std::ofstream::trunc);
+    ofs << dict.dump(4);
 
     printf("\n");
     printf("Run 'python hydrogen_plot.py out.json' to produce a PDF plot with relative errors.\n");

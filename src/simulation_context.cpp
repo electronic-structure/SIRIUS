@@ -8,97 +8,101 @@ void Simulation_context::init_fft()
 
     auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
 
-    if (!(control_input_section_.fft_mode_ == "serial" || control_input_section_.fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
-
-    if (full_potential())
-    {
-        /* split bands between all ranks, use serial FFT */
-        mpi_grid_fft_ = new MPI_grid({1, comm.size()}, comm);
+    if (!(control_input_section_.fft_mode_ == "serial" || control_input_section_.fft_mode_ == "parallel")) {
+        TERMINATE("wrong FFT mode");
     }
-    else
-    {
+
+    if (full_potential()) {
+        /* split bands between all ranks, use serial FFT */
+        mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
+    } else {
         /* use parallel FFT for density and potential */
-        mpi_grid_fft_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                      mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
+        mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                                                mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
         
-        if (control_input_section_.fft_mode_ == "serial")
-        {
+        if (control_input_section_.fft_mode_ == "serial") {
             /* serial FFT in Hloc */
-            mpi_grid_fft_vloc_ = new MPI_grid({1, comm.size()}, comm);
-        }
-        else
-        {
-            mpi_grid_fft_vloc_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                               mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
+            mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
+        } else {
+            mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                                                         mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
         }
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9));
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
                  mpi_grid_fft_->dimension_size(0), true, control_input_section_.reduce_gvec_);
 
-    gvec_fft_distr_ = new Gvec_FFT_distribution(gvec_, mpi_grid_fft_->communicator(1 << 0));
+    gvec_fft_distr_ = std::unique_ptr<Gvec_FFT_distribution>(new Gvec_FFT_distribution(gvec_, mpi_grid_fft_->communicator(1 << 0)));
 
-    if (!full_potential())
-    {
+    if (!full_potential()) {
         /* create FFT driver for coarse mesh */
-        fft_coarse_ = new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_vloc_->communicator(1 << 0), processing_unit(), 0.9);
+        fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_vloc_->communicator(1 << 0), processing_unit(), 0.9));
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
                             mpi_grid_fft_vloc_->dimension_size(0), true, control_input_section_.reduce_gvec_);
+        
+        gvec_coarse_fft_distr_ = std::unique_ptr<Gvec_FFT_distribution>(new Gvec_FFT_distribution(gvec_coarse_, mpi_grid_fft_vloc_->communicator(1 << 0)));
     }
 }
 
 void Simulation_context::initialize()
 {
     PROFILE();
-    
+
     /* can't initialize twice */
-    if (initialized_) TERMINATE("Simulation context is already initialized.");
+    if (initialized_) {
+        TERMINATE("Simulation context is already initialized.");
+    }
     
     /* get processing unit */
     std::string pu = control_input_section_.processing_unit_;
-    if (pu == "cpu")
-    {
+    if (pu == "cpu") {
         processing_unit_ = CPU;
-    }
-    else if (pu == "gpu")
-    {
-        processing_unit_ = GPU;
-    }
-    else
-    {
-        TERMINATE("wrong processing unit");
+    } else {
+        if (pu == "gpu") {
+            processing_unit_ = GPU;
+        } else {
+            TERMINATE("wrong processing unit");
+        }
     }
 
     /* check if we can use a GPU device */
-    if (processing_unit() == GPU)
-    {
+    if (processing_unit() == GPU) {
         #ifndef __GPU
         TERMINATE_NO_GPU
         #endif
     }
     
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!control_input_section_.mpi_grid_dims_.size()) control_input_section_.mpi_grid_dims_ = {comm_.size()};
+    if (!control_input_section_.mpi_grid_dims_.size()) {
+        control_input_section_.mpi_grid_dims_ = {comm_.size()};
+    }
     
     /* can't use reduced G-vectors in LAPW code */
-    if (full_potential()) control_input_section_.reduce_gvec_ = false;
+    if (full_potential()) {
+        control_input_section_.reduce_gvec_ = false;
+    }
 
     /* setup MPI grid */
-    mpi_grid_ = new MPI_grid(control_input_section_.mpi_grid_dims_, comm_);
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid(control_input_section_.mpi_grid_dims_, comm_));
 
-    blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
-                                 mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_));
+    blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
+                                                             mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_)));
     
-    blacs_grid_slice_ = new BLACS_grid(blacs_grid_->comm(), 1, blacs_grid_->comm().size());
+    blacs_grid_slice_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(blacs_grid_->comm(), 1, blacs_grid_->comm().size()));
 
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
+
+    if (esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        lmax_rho_ = unit_cell_.lmax() * 2;
+        lmax_pot_ = unit_cell_.lmax() * 2;
+    }
 
     /* initialize FFT interface */
     init_fft();
@@ -113,16 +117,16 @@ void Simulation_context::initialize()
     //    unit_cell_.write_json();
     //}
 
-    if (unit_cell_.num_atoms() != 0)
-    {
-        unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
-        if (!full_potential()) unit_cell_.symmetry()->check_gvec_symmetry(gvec_coarse_);
+    if (unit_cell_.num_atoms() != 0) {
+        unit_cell_.symmetry().check_gvec_symmetry(gvec_);
+        if (!full_potential()) {
+            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_);
+        }
     }
 
     auto& fft_grid = fft().grid();
     std::pair<int, int> limits(0, 0);
-    for (int x: {0, 1, 2})
-    {
+    for (int x: {0, 1, 2}) {
         limits.first = std::min(limits.first, fft_grid.limits(x).first); 
         limits.second = std::max(limits.second, fft_grid.limits(x).second); 
     }
@@ -139,7 +143,9 @@ void Simulation_context::initialize()
         }
     }
     
-    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, *gvec_fft_distr_, comm_);
+    if (full_potential()) {
+        step_function_ = std::unique_ptr<Step_function>(new Step_function(unit_cell_, fft_.get(), *gvec_fft_distr_, comm_));
+    }
 
     if (iterative_solver_input_section().real_space_prj_) 
     {
@@ -206,7 +212,7 @@ void Simulation_context::initialize()
     {
         /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
+            augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega())));
         }
     }
     

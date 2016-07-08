@@ -162,7 +162,7 @@ class Atom_symmetry_class
         /// Return number of atoms belonging to the current symmetry class.
         inline int num_atoms() const
         {
-            return (int)atom_id_.size();
+            return static_cast<int>(atom_id_.size());
         }
 
         inline int atom_id(int idx) const

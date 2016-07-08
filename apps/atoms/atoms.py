@@ -1,5 +1,6 @@
 import json
 import os, stat, re
+import sys
 
 fin = open("atoms.in", "r")
 
@@ -23,8 +24,9 @@ while True:
         line = fin.readline()
         s1 = line.split()
         mass = float(s1[0]) # mass
-
-        fout.write("./atom --type=lo1 --symbol=" + symbol + "\n");
+        
+        t = sys.argv[1] if len(sys.argv) >= 2 else " --type=lo1"
+        fout.write("./atom --symbol=" + symbol + t + "\n");
         
         atoms[symbol] = {}
         atoms[symbol]["name"] = name

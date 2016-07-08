@@ -329,7 +329,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                         double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
                                       (g2[nmtp - 1] - g2[ir]) * std::pow(r, l) - (g1[nmtp - 1] - g1[ir]) * std::pow(r, l) * d1;
 
-                        vh__->f_mt(ialoc)(lm, ir) = fourpi * vlm * d2;
+                        vh__->f_mt<index_domain_t::local>(lm, ir, ialoc) = fourpi * vlm * d2;
                     }
                 }
             }
@@ -338,8 +338,9 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
         SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
 
         /* constant part of nuclear potential -z*(1/r - 1/R) */
-        for (int ir = 0; ir < nmtp; ir++)
-            vh__->f_mt(ialoc)(0, ir) += unit_cell_.atom(ia).zn() / R / y00;
+        for (int ir = 0; ir < nmtp; ir++) {
+            vh__->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).zn() / R / y00;
+        }
 
         /* nuclear multipole moment */
         qmt__(0, ia) -= unit_cell_.atom(ia).zn() * y00;
@@ -458,10 +459,12 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             {
                 int l = l_by_lm_[lm];
 
-                for (int ir = 0; ir < nmtp; ir++) vh->f_mt(ialoc)(lm, ir) += vlm[lm] * rRl(ir, l);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    vh->f_mt<index_domain_t::local>(lm, ir, ialoc) += vlm[lm] * rRl(ir, l);
+                }
             }
             /* save electronic part of potential at point of origin */
-            vh_el_(ia) = vh->f_mt<local>(0, 0, ialoc);
+            vh_el_(ia) = vh->f_mt<index_domain_t::local>(0, 0, ialoc);
         }
         ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
                               unit_cell_.spl_num_atoms().local_size());
@@ -493,8 +496,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             for (int ir = 0; ir < atom.num_mt_points(); ir++)
             {
                 double r = atom.radial_grid(ir);
-                hartree_potential_->f_mt<local>(0, ir, ialoc) -= atom.zn() / r / y00;
-                srho[ir] = rho->f_mt<local>(0, ir, ialoc);
+                hartree_potential_->f_mt<index_domain_t::local>(0, ir, ialoc) -= atom.zn() / r / y00;
+                srho[ir] = rho->f_mt<index_domain_t::local>(0, ir, ialoc);
             }
             evha_nuc_ -= atom.zn() * srho.interpolate().integrate(1) / y00;
         }

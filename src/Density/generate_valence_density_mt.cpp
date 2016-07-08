@@ -10,38 +10,38 @@ void Density::generate_valence_density_mt(K_set& ks)
 {
     PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_mt");
 
-    /* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
-       because density matrix is symmetric */
-    int num_zdmat = (ctx_.num_mag_dims() == 3) ? 3 : (ctx_.num_mag_dims() + 1);
+    ///* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
+    //   because density matrix is symmetric */
+    //int num_zdmat = (ctx_.num_mag_dims() == 3) ? 3 : (ctx_.num_mag_dims() + 1);
 
-    /* complex density matrix */
-    mdarray<double_complex, 4> mt_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
-                                                         unit_cell_.max_mt_basis_size(),
-                                                         num_zdmat, unit_cell_.num_atoms());
-    mt_complex_density_matrix.zero();
-    
-    /* add k-point contribution */
-    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = ks.spl_num_kpoints(ikloc);
-        add_k_point_contribution_mt(ks[ik], mt_complex_density_matrix);
-    }
-    
-    mdarray<double_complex, 4> mt_complex_density_matrix_loc(unit_cell_.max_mt_basis_size(), 
-                                                             unit_cell_.max_mt_basis_size(),
-                                                             num_zdmat, unit_cell_.spl_num_atoms().local_size(0));
+    ///* complex density matrix */
+    //mdarray<double_complex, 4> mt_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
+    //                                                     unit_cell_.max_mt_basis_size(),
+    //                                                     num_zdmat, unit_cell_.num_atoms());
+    //mt_complex_density_matrix.zero();
+    //
+    ///* add k-point contribution */
+    //for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    //{
+    //    int ik = ks.spl_num_kpoints(ikloc);
+    //    add_k_point_contribution_mt(ks[ik], mt_complex_density_matrix);
+    //}
+    //
+    //mdarray<double_complex, 4> mt_complex_density_matrix_loc(unit_cell_.max_mt_basis_size(), 
+    //                                                         unit_cell_.max_mt_basis_size(),
+    //                                                         num_zdmat, unit_cell_.spl_num_atoms().local_size(0));
    
-    for (int j = 0; j < num_zdmat; j++)
-    {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
-            int ialoc = unit_cell_.spl_num_atoms().local_index(ia);
-            int rank = unit_cell_.spl_num_atoms().local_rank(ia);
+    //for (int j = 0; j < num_zdmat; j++)
+    //{
+    //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    //    {
+    //        int ialoc = unit_cell_.spl_num_atoms().local_index(ia);
+    //        int rank = unit_cell_.spl_num_atoms().local_rank(ia);
 
-            ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
-                               unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
-        }
-    }
+    //        ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
+    //                           unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
+    //    }
+    //}
    
     /* compute occupation matrix */
     if (ctx_.uj_correction())
@@ -111,7 +111,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     mdarray<double, 2> rf_pairs(unit_cell_.max_num_mt_points(), max_num_rf_pairs);
     mdarray<double, 3> dlm(ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
                            ctx_.num_mag_dims() + 1);
-    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = (int)unit_cell_.spl_num_atoms(ialoc);
         auto& atom_type = unit_cell_.atom(ia).type();
@@ -124,17 +124,17 @@ void Density::generate_valence_density_mt(K_set& ks)
         {
             case 3:
             {
-                reduce_density_matrix<3>(atom_type, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
+                reduce_density_matrix<3>(atom_type, ialoc, density_matrix_, mt_density_matrix);
                 break;
             }
             case 1:
             {
-                reduce_density_matrix<1>(atom_type, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
+                reduce_density_matrix<1>(atom_type, ialoc, density_matrix_, mt_density_matrix);
                 break;
             }
             case 0:
             {
-                reduce_density_matrix<0>(atom_type, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
+                reduce_density_matrix<0>(atom_type, ialoc, density_matrix_, mt_density_matrix);
                 break;
             }
         }
@@ -168,8 +168,8 @@ void Density::generate_valence_density_mt(K_set& ks)
         {
             case 3:
             {
-                std::memcpy(&magnetization_[1]->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 2), sz); 
-                std::memcpy(&magnetization_[2]->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
+                std::memcpy(&magnetization_[1]->f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 2), sz); 
+                std::memcpy(&magnetization_[2]->f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
             }
             case 1:
             {
@@ -177,15 +177,15 @@ void Density::generate_valence_density_mt(K_set& ks)
                 {
                     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
                     {
-                        rho_->f_mt<local>(lm, ir, ialoc) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
-                        magnetization_[0]->f_mt<local>(lm, ir, ialoc) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
+                        rho_->f_mt<index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
+                        magnetization_[0]->f_mt<index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
                     }
                 }
                 break;
             }
             case 0:
             {
-                std::memcpy(&rho_->f_mt<local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
+                std::memcpy(&rho_->f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
             }
         }
     }
@@ -244,7 +244,7 @@ void Density::generate_paw_loc_density()
 //          if(ispin>1) spin_sgn = 0.0;
 
             // iterate over local basis functions (or over lm1 and lm2)
-            for(int ib2 = 0; ib2 < (int)atom_type.indexb().size(); ib2++)
+            for (int ib2 = 0; ib2 < atom_type.indexb().size(); ib2++)
             {
                 for(int ib1 = 0; ib1 <= ib2; ib1++)
                 {
@@ -256,14 +256,14 @@ void Density::generate_paw_loc_density()
                     int irb2 = atom_type.indexb(ib2).idxrf;
                     int irb1 = atom_type.indexb(ib1).idxrf;
 
-                    double diag_coef = ib1 == ib2 ? 1. : 2. ;
-
                     // index to iterate Qij,
                     // TODO check indices
                     int iqij = irb2 * (irb2 + 1) / 2 + irb1;
 
                     // get num of non-zero GC
                     int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
+
+                    double diag_coef = ib1 == ib2 ? 1. : 2. ;
 
                     // add nonzero coefficients
                     for(int inz = 0; inz < num_non_zero_gk; inz++)
@@ -281,7 +281,7 @@ void Density::generate_paw_loc_density()
                         for(int irad = 0; irad < (int)grid.num_points(); irad++)
                         {
                             // we need to divide density over r^2 since wave functions are stored multiplied by r
-                            double inv_r2 = 1. / (grid[irad] * grid[irad]);
+                            double inv_r2 = diag_coef /(grid[irad] * grid[irad]);
 
                             // TODO for 3 spin dimensions 3th density spin component must be complex
                             // replace order of indices for density from {irad,lm} to {lm,irad}
@@ -291,8 +291,8 @@ void Density::generate_paw_loc_density()
                                     ( paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
 
                             // calculate UP density (or total in case of nonmagnetic)
-                            double ae_dens_u = diag_coef * density_matrix_(ib1,ib2,0,ia).real() * ae_part;
-                            double ps_dens_u = diag_coef * density_matrix_(ib1,ib2,0,ia).real() * ps_part;
+                            double ae_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ae_part;
+                            double ps_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ps_part;
 
                             // add density UP to the total density
                             ae_atom_density(lm3coef.lm3,irad) += ae_dens_u;
@@ -302,8 +302,8 @@ void Density::generate_paw_loc_density()
                             {
                                 case 2:
                                 {
-                                    double ae_dens_d = diag_coef * density_matrix_(ib1,ib2,1,ia).real() * ae_part;
-                                    double ps_dens_d = diag_coef * density_matrix_(ib1,ib2,1,ia).real() * ps_part;
+                                    double ae_dens_d =  density_matrix_(ib1,ib2,1,ia).real() * ae_part;
+                                    double ps_dens_d =  density_matrix_(ib1,ib2,1,ia).real() * ps_part;
 
                                     // add density DOWN to the total density
                                     ae_atom_density(lm3coef.lm3,irad) += ae_dens_d;

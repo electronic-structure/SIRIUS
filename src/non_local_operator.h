@@ -48,14 +48,14 @@ class Non_local_operator
 
         mdarray<T, 1> work_;
 
-        bool is_null_;
+        bool is_null_{false};
 
         Non_local_operator& operator=(Non_local_operator const& src) = delete;
         Non_local_operator(Non_local_operator const& src) = delete;
 
     public:
 
-        Non_local_operator(Beta_projectors& beta__, processing_unit_t pu__) : beta_(beta__), pu_(pu__), is_null_(false)
+        Non_local_operator(Beta_projectors& beta__, processing_unit_t pu__) : beta_(beta__), pu_(pu__)
         {
             PROFILE();
 
@@ -167,13 +167,18 @@ class Q_operator: public Non_local_operator<T>
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
                     int iat = uc.atom(ia).type().id();
+                    if (!uc.atom_type(iat).uspp().augmentation_) {
+                        continue;
+                    }
                     int nbf = uc.atom(ia).mt_basis_size();
                     for (int xi2 = 0; xi2 < nbf; xi2++)
                     {
                         for (int xi1 = 0; xi1 < nbf; xi1++)
                         {
-                            assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
+                            if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
+                                assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
+                                this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
+                            }
                         }
                     }
                 }

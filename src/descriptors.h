@@ -81,15 +81,8 @@ struct local_orbital_descriptor
     int p2;
 };
 
-
-
-
-
-class uspp_descriptor
+struct uspp_descriptor
 {
-public:
-    uspp_descriptor(): is_initialized(false) {}
-
     /// Radial mesh.
     std::vector<double> r;
 
@@ -114,6 +107,8 @@ public:
     /// Radial functions of Q-operator.
     mdarray<double, 3> q_radial_functions_l;
 
+    bool augmentation_{false};
+
     std::vector<double> core_charge_density;
 
     std::vector<double> total_charge_density;
@@ -131,8 +126,7 @@ public:
     /// occupation of starting wave functions
     std::vector< double > atomic_pseudo_wfs_occ_;
 
-    bool is_initialized;
-    
+    bool is_initialized{false};
 };
 
 struct nearest_neighbour_descriptor

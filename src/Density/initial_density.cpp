@@ -5,8 +5,6 @@ using namespace std;
 
 namespace sirius {
 
-
-
 void Density::initial_density()
 {
     PROFILE_WITH_TIMER("sirius::Density::initial_density");
@@ -18,9 +16,7 @@ void Density::initial_density()
     if (ctx_.full_potential())
     {
         initial_density_full_pot();
-    }
-
-    if (!ctx_.full_potential())
+    } else
     {
         initial_density_pseudo();
 
@@ -34,11 +30,6 @@ void Density::initial_density()
     ctx_.fft().dismiss();
 }
 
-
-
-
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
 void Density::initial_density_pseudo()
 {
     auto rho_radial_integrals = generate_rho_radial_integrals(1);
@@ -309,7 +300,7 @@ void Density::initial_density_full_pot()
     for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
     
     int lmax = ctx_.lmax_rho();
-    int lmmax = Utils::lmmax(lmax);
+    int lmmax = ctx_.lmmax_rho();
     
     sbessel_approx sba(unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
     
@@ -389,7 +380,6 @@ void Density::initial_density_full_pot()
         
         Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia).radial_grid());
         rhoylm.zero();
-
         #pragma omp parallel for
         for (int lm = 0; lm < lmmax; lm++)
         {
@@ -410,7 +400,12 @@ void Density::initial_density_full_pot()
             double x = unit_cell_.atom(ia).radial_grid(ir);
             rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
         }
-        rho_->f_mt(ialoc) = convert(rhoylm);
+        auto rhorlm = convert(rhoylm);
+        for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+            for (int lm = 0; lm < lmmax; lm++) {
+                rho_->f_mt<index_domain_t::local>(lm, ir, ialoc) = rhorlm(lm, ir);
+            }
+        }
     }
     
     t4.stop();
@@ -428,7 +423,7 @@ void Density::initial_density_full_pot()
             for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
             {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho_->f_mt<local>(0, ir, p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
+                rho_->f_mt<index_domain_t::local>(0, ir, p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
             }
         }
     }
@@ -448,7 +443,7 @@ void Density::initial_density_full_pot()
             for (int ir = 0; ir < nmtp; ir++)
             {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho[ir] = rho_->f_mt<local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
+                rho[ir] = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
             }
             
             /* maximum magnetization which can be achieved if we smooth density towards MT boundary */
@@ -466,31 +461,24 @@ void Density::initial_density_full_pot()
             if (len > 1e-8)
             {
                 for (int ir = 0; ir < nmtp; ir++)
-                    magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
                 
                 if (ctx_.num_mag_dims() == 3)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
-                        magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
+                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
+                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
                     }
                 }
             }
         }
     }
-
 }
 
-
-
-
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
 void Density::initialize_beta_density_matrix()
 {
     density_matrix_.zero();
-
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     {
@@ -541,8 +529,6 @@ void Density::initialize_beta_density_matrix()
             }
         }
     }
-
-    //TERMINATE("finished");
 }
 
 };

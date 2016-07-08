@@ -3,7 +3,8 @@
 !    The ELPA library was originally created by the ELPA consortium,
 !    consisting of the following organizations:
 !
-!    - Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
 !    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
 !      Informatik,
 !    - Technische Universität München, Lehrstuhl für Informatik mit
@@ -16,7 +17,7 @@
 !
 !
 !    More information can be found here:
-!    http://elpa.rzg.mpg.de/
+!    http://elpa.mpcdf.mpg.de/
 !
 !    ELPA is free software: you can redistribute it and/or modify
 !    it under the terms of the version 3 of the license of the
@@ -55,76 +56,77 @@
 ! with their original authors, but shall adhere to the licensing terms
 ! distributed along with the original code in the file "COPYING".
 
-
 #include "config-f90.h"
 
-module ELPA_utilities
+!> \file print_available_elpa2_kernels.F90
+!> \par
+!> \brief Provide information which ELPA2 kernels are available on this system
+!>
+!> \details
+!> It is possible to configure ELPA2 such, that different compute intensive
+!> "ELPA2 kernels" can be choosen at runtime.
+!> The service binary print_available_elpa2_kernels will query the library and tell
+!> whether ELPA2 has been configured in this way, and if this is the case which kernels can be
+!> choosen at runtime.
+!> It will furthermore detail whether ELPA has been configured with OpenMP support
+!>
+!> Synopsis: print_available_elpa2_kernels
+!>
+!> \author A. Marek (MPCDF)
+program print_available_elpa2_kernels
 
-#ifdef HAVE_ISO_FORTRAN_ENV
-  use iso_fortran_env, only : error_unit
+   use precision
+   use ELPA1
+   use ELPA2
+
+   use elpa2_utilities
+
+   implicit none
+
+   integer(kind=ik) :: i
+
+   print *, "This program will give information on the ELPA2 kernels, "
+   print *, "which are available with this library and it will give "
+   print *, "information if (and how) the kernels can be choosen at "
+   print *, "runtime"
+   print *
+   print *
+#ifdef WITH_OPENMP
+   print *, " ELPA supports threads: yes"
+#else
+   print *, " ELPA supports threads: no"
 #endif
 
-  implicit none
-
-  private ! By default, all routines contained are private
-
-  public :: debug_messages_via_environment_variable, pcol, prow, error_unit
-#ifndef HAVE_ISO_FORTRAN_ENV
-  integer, parameter :: error_unit = 0
+   print *, "Information on ELPA2 real case: "
+   print *, "=============================== "
+#ifdef HAVE_ENVIRONMENT_CHECKING
+   print *, " choice via environment variable: yes"
+   print *, " environment variable name      : REAL_ELPA_KERNEL"
+#else
+   print *, " choice via environment variable: no"
 #endif
-
-
-  !******
-  contains
-
-   function debug_messages_via_environment_variable() result(isSet)
-#ifdef HAVE_DETAILED_TIMINGS
-     use timings
+   print *
+   print *, " Available real kernels are: "
+#ifdef HAVE_AVX2
+   print *, " AVX kernels are optimized for FMA (AVX2)"
 #endif
-     implicit none
-     logical              :: isSet
-     CHARACTER(len=255)   :: ELPA_DEBUG_MESSAGES
+   call print_available_real_kernels()
 
-#ifdef HAVE_DETAILED_TIMINGS
-     call timer%start("debug_messages_via_environment_variable")
+   print *
+   print *
+   print *, "Information on ELPA2 complex case: "
+   print *, "=============================== "
+#ifdef HAVE_ENVIRONMENT_CHECKING
+   print *, " choice via environment variable: yes"
+   print *, " environment variable name      : COMPLEX_ELPA_KERNEL"
+#else
+   print *,  " choice via environment variable: no"
 #endif
-
-     isSet = .false.
-
-#if defined(HAVE_ENVIRONMENT_CHECKING)
-     call get_environment_variable("ELPA_DEBUG_MESSAGES",ELPA_DEBUG_MESSAGES)
+   print *
+   print *, " Available complex kernels are: "
+#ifdef HAVE_AVX2
+   print *, " AVX kernels are optimized for FMA (AVX2)"
 #endif
-     if (trim(ELPA_DEBUG_MESSAGES) .eq. "yes") then
-       isSet = .true.
-     endif
-     if (trim(ELPA_DEBUG_MESSAGES) .eq. "no") then
-       isSet = .true.
-     endif
+   call print_available_complex_kernels()
 
-#ifdef HAVE_DETAILED_TIMINGS
-     call timer%stop("debug_messages_via_environment_variable")
-#endif
-
-   end function debug_messages_via_environment_variable
-
-!-------------------------------------------------------------------------------
-
-  !Processor col for global col number
-  pure function pcol(i, nblk, np_cols) result(col)
-    integer, intent(in) :: i, nblk, np_cols
-    integer :: col
-    col = MOD((i-1)/nblk,np_cols)
-  end function
-
-!-------------------------------------------------------------------------------
-
-  !Processor row for global row number
-  pure function prow(i, nblk, np_rows) result(row)
-    integer, intent(in) :: i, nblk, np_rows
-    integer :: row
-    row = MOD((i-1)/nblk,np_rows)
-  end function
-
-!-------------------------------------------------------------------------------
-
-end module ELPA_utilities
+end program print_available_elpa2_kernels

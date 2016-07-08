@@ -27,7 +27,7 @@ namespace sirius
 {
 
 template <>
-void SHT::backward_transform<double>(int ld, double* flm, int nr, int lmmax, double* ftp)
+void SHT::backward_transform<double>(int ld, double const* flm, int nr, int lmmax, double* ftp)
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
@@ -35,7 +35,7 @@ void SHT::backward_transform<double>(int ld, double* flm, int nr, int lmmax, dou
 }
 
 template <>
-void SHT::backward_transform<double_complex>(int ld, double_complex* flm, int nr, int lmmax, double_complex* ftp)
+void SHT::backward_transform<double_complex>(int ld, double_complex const* flm, int nr, int lmmax, double_complex* ftp)
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
@@ -43,7 +43,7 @@ void SHT::backward_transform<double_complex>(int ld, double_complex* flm, int nr
 }
 
 template <>
-void SHT::forward_transform<double>(double* ftp, int nr, int lmmax, int ld, double* flm)
+void SHT::forward_transform<double>(double const* ftp, int nr, int lmmax, int ld, double* flm)
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
@@ -51,7 +51,7 @@ void SHT::forward_transform<double>(double* ftp, int nr, int lmmax, int ld, doub
 }
 
 template <>
-void SHT::forward_transform<double_complex>(double_complex* ftp, int nr, int lmmax, int ld, double_complex* flm)
+void SHT::forward_transform<double_complex>(double_complex const* ftp, int nr, int lmmax, int ld, double_complex* flm)
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);

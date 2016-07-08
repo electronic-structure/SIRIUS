@@ -69,7 +69,7 @@ class Potential
 
         int lmax_;
         
-        SHT* sht_;
+        std::unique_ptr<SHT> sht_;
 
         int pseudo_density_order;
 
@@ -113,16 +113,16 @@ class Potential
         void init_PAW();
 
         double xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
-                                      mdarray<double, 3> &out_atom_pot,
-                                      mdarray<double, 2> &full_rho_lm,
-                                      const std::vector<double> &rho_core);
+                                     mdarray<double, 3> &out_atom_pot,
+                                     mdarray<double, 2> &full_rho_lm,
+                                     const std::vector<double> &rho_core);
 
 
         double xc_mt_PAW_collinear(Radial_grid const& rgrid,
-                                    mdarray<double,3> &out_atom_pot,
-                                    mdarray<double,2> &full_rho_lm,
-                                    mdarray<double,3> &magnetization_lm,
-                                    const std::vector<double> &rho_core);
+                                   mdarray<double,3> &out_atom_pot,
+                                   mdarray<double,2> &full_rho_lm,
+                                   mdarray<double,3> &magnetization_lm,
+                                   const std::vector<double> &rho_core);
 
         // TODO DO
         void xc_mt_PAW_noncollinear(    )   {     };
@@ -167,7 +167,7 @@ class Potential
         
         void xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                std::vector<XC_functional*>& xc_func,
-                               Spheric_function<spectral, double>& rho_lm,
+                               Spheric_function<spectral, double> const& rho_lm,
                                Spheric_function<spatial, double>& rho_tp,
                                Spheric_function<spatial, double>& vxc_tp, 
                                Spheric_function<spatial, double>& exc_tp);
@@ -512,7 +512,7 @@ class Potential
             return effective_potential_;
         }
 
-        Spheric_function<spectral, double>& effective_potential_mt(int ialoc)
+        Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
         {
             return effective_potential_->f_mt(ialoc);
         }
@@ -532,7 +532,7 @@ class Potential
             return hartree_potential_;
         }
         
-        Spheric_function<spectral, double>& hartree_potential_mt(int ialoc)
+        Spheric_function<spectral, double> const& hartree_potential_mt(int ialoc) const
         {
             return hartree_potential_->f_mt(ialoc);
         }

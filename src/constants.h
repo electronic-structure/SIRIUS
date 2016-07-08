@@ -30,7 +30,7 @@
 #include "atomic_symb.h"
 
 const int major_version = 3;
-const int minor_version = 7;
+const int minor_version = 8;
 
 /// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999139; 

@@ -18,7 +18,7 @@
         "use_symmetry" : 1,
 
         "num_mag_dims" : 0,
-
+        
         "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
 

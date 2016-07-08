@@ -233,8 +233,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             T total = it_val;
             
             if (parameters_.full_potential()) {
-                mt_val.resize(unit_cell_.num_atoms());
-                std::memset(&mt_val[0], 0, unit_cell_.num_atoms() * sizeof(T));
+                mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
 
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia = unit_cell_.spl_num_atoms(ialoc);
@@ -255,11 +254,11 @@ class Periodic_function: public Smooth_periodic_function<T>
         {
             switch (index_domain)
             {
-                case local:
+                case index_domain_t::local:
                 {
                     return f_mt_local_(ia)(idx0, ir);
                 }
-                case global:
+                case index_domain_t::global:
                 {
                     return f_mt_(idx0, ir, ia);
                 }
@@ -354,11 +353,6 @@ class Periodic_function: public Smooth_periodic_function<T>
         void set_rg_ptr(T* rg_ptr__)
         {
             this->f_rg_ = mdarray<T, 1>(rg_ptr__, this->fft_->local_size());
-        }
-
-        inline Spheric_function<spectral, T>& f_mt(int ialoc__)
-        {
-            return f_mt_local_(ialoc__);
         }
 
         inline Spheric_function<spectral, T> const& f_mt(int ialoc__) const
