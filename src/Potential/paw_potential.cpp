@@ -479,19 +479,23 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 
             for(int ispin = 0; ispin < ctx_.num_spins(); ispin++)
             {
+                double_complex dij = 0.0;
+
                 // add nonzero coefficients
                 for(int inz = 0; inz < num_non_zero_gk; inz++)
                 {
                     auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
                     // add to atom Dij an integral of dij array
-                    atom.d_mtrx(ib1,ib2,ispin) += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
+                    dij += lm3coef.coef * integrals(lm3coef.lm3, iqij, ispin);
 
                 }
 
+                atom.d_mtrx(ib1,ib2,ispin) += dij;
+
                 if(ib1 != ib2)
                 {
-                    atom.d_mtrx(ib2,ib1,ispin) += atom.d_mtrx(ib1,ib2,ispin);
+                    atom.d_mtrx(ib2,ib1,ispin) += dij;
                 }
             }
         }
