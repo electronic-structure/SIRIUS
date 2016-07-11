@@ -185,6 +185,10 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
+        if (ctx_.esm_type() == paw_pseudopotential) {
+            density_.generate_paw_loc_density();
+        }
+
         //== if (ctx_.num_mag_dims())
         //== {
         //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)

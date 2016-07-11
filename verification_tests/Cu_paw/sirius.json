@@ -18,12 +18,12 @@
 
     "num_mag_dims" : 0,
 
-    "gk_cutoff" : 7.0,
-    "pw_cutoff" : 30.00,
+    "gk_cutoff" : 6.0,
+    "pw_cutoff" : 25.00,
 
     "energy_tol" : 1e-8,
 
-    "num_dft_iter" : 1,
+    "num_dft_iter" : 100,
 
     "ngridk" : [8,8,8],
 
@@ -61,7 +61,7 @@
     },
 
     "mixer" : {
-        "beta" : 0.1,
+        "beta" : 0.2,
         "type" : "broyden1",
         "max_history" : 8
     }

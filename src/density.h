@@ -271,8 +271,7 @@ class Density
         /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
         void initialize_beta_density_matrix();
 
-        /// generate n_1 and \tilda{n}_1 in lm components
-        void generate_paw_loc_density();
+
 
     public:
 
@@ -354,6 +353,9 @@ class Density
          */
         void augment(K_set& ks__);
         
+        /// generate n_1 and \tilda{n}_1 in lm components
+        void generate_paw_loc_density();
+
         /// Integrtae charge density to get total and partial charges
         //** void integrate();
 
