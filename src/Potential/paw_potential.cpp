@@ -7,6 +7,8 @@
 
 #include "Potential.h"
 
+using namespace std;
+
 namespace sirius
 {
 
@@ -266,6 +268,7 @@ double Potential::calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid
         atom_pot_sfs[1] += atom_pot_sf;
     }
 
+
     //---------------------
     //--- calc energy ---
     //---------------------
@@ -328,6 +331,25 @@ void Potential::calc_PAW_local_potential(int atom_index,
                                                           ps_paw_local_potential_[atom_index]);
 
     paw_hartree_energies_[atom_index] = ae_hartree_energy - ps_hartree_energy;
+
+    ////////////////////////////////////////////////////////////////////
+    stringstream s,sd;
+    s<<"vh_"<<atom_index<<".dat";
+    sd<<"rho_"<<atom_index<<".dat";
+
+    ofstream ofs(s.str());
+    ofstream ofsd(sd.str());
+
+    for(int i=0; i<ae_paw_local_potential_[atom_index].size(0); i++)
+        for(int j=0; j<ae_paw_local_potential_[atom_index].size(1); j++)
+        {
+            ofs<<ae_paw_local_potential_[atom_index](i,j,0)<<" "<<ps_paw_local_potential_[atom_index](i,j,0)<<endl;
+            ofsd<<ae_full_density(i,j)<<" "<<ps_full_density(i,j)<<endl;
+        }
+
+    ofs.close();
+    ofsd.close();
+    ////////////////////////////////////////////////////////////////////
 
     //-----------------------------------------
     //---- Calculation of XC potential ---

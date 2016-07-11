@@ -23,7 +23,7 @@
 
     "energy_tol" : 1e-8,
 
-    "num_dft_iter" : 100,
+    "num_dft_iter" : 1,
 
     "ngridk" : [8,8,8],
 
@@ -62,7 +62,7 @@
 
     "mixer" : {
         "beta" : 0.1,
-        "type" : "broyden1",
+        "type" : "linear",
         "max_history" : 8
     }
 
