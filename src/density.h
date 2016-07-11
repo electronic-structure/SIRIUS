@@ -464,6 +464,9 @@ class Density
                     for (int ig: lf_gvec_)
                         low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
                 }
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                     low_freq_mixer_->input(k++, density_matrix_[i]);
+                }
 
                 k = 0;
                 for (int ig: hf_gvec_)
@@ -493,6 +496,9 @@ class Density
                 {
                     for (int ig: lf_gvec_)
                         magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
+                }
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                    density_matrix_[i] = low_freq_mixer_->output_buffer(k++);
                 }
 
                 k = 0;
