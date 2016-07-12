@@ -25,10 +25,8 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Density/generate_valence.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/generate_valence_density_it.cpp \
-       Density/generate_pseudo_core_charge_density.cpp \
        Density/augment.cpp \
        Density/set_magnetization_ptr.cpp \
-       Density/generate_core_charge_density.cpp \
        Density/check_density_continuity_at_mt.cpp \
        Band/set_fv_h_o.cpp \
        Band/set_h_o.cpp \
