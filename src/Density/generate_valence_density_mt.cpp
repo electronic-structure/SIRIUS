@@ -124,17 +124,17 @@ void Density::generate_valence_density_mt(K_set& ks)
         {
             case 3:
             {
-                reduce_density_matrix<3>(atom_type, ialoc, density_matrix_, mt_density_matrix);
+                reduce_density_matrix<3>(atom_type, ialoc, density_matrix_, *gaunt_coefs_, mt_density_matrix);
                 break;
             }
             case 1:
             {
-                reduce_density_matrix<1>(atom_type, ialoc, density_matrix_, mt_density_matrix);
+                reduce_density_matrix<1>(atom_type, ialoc, density_matrix_, *gaunt_coefs_, mt_density_matrix);
                 break;
             }
             case 0:
             {
-                reduce_density_matrix<0>(atom_type, ialoc, density_matrix_, mt_density_matrix);
+                reduce_density_matrix<0>(atom_type, ialoc, density_matrix_, *gaunt_coefs_, mt_density_matrix);
                 break;
             }
         }
