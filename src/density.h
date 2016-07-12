@@ -327,7 +327,18 @@ class Density
             }
         }
 
-        void generate_pseudo_core_charge_density();
+        void generate_pseudo_core_charge_density()
+        {
+            PROFILE_WITH_TIMER("sirius::Density::generate_pseudo_core_charge_density");
+
+            auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
+
+            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
+            ctx_.fft().prepare();
+            ctx_.fft().transform<1>(ctx_.gvec_fft_distr(), &v[ctx_.gvec_fft_distr().offset_gvec_fft()]);
+            ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
+            ctx_.fft().dismiss();
+        }
 
         /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
         void initialize_beta_density_matrix();
