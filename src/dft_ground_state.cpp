@@ -297,6 +297,13 @@ void DFT_ground_state::print_info()
     double core_leak = density_.core_leakage();
     double enuc = energy_enuc();
 
+    double one_elec_en = evalsum1 - (evxc + evha);
+
+    if(ctx_.esm_type() == paw_pseudopotential)
+    {
+        one_elec_en -= potential_.PAW_one_elec_energy();
+    }
+
     std::vector<double> mt_charge;
     double it_charge;
     double total_charge = density_.rho()->integrate(mt_charge, it_charge); 
@@ -380,7 +387,7 @@ void DFT_ground_state::print_info()
         printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
         printf("<rho|V^{H}>               : %18.8f\n", evha);
         if (!ctx_.full_potential()) {
-            printf("one-electron contribution : %18.8f\n", evalsum1 - (evxc + evha)); // eband + deband in QE
+            printf("one-electron contribution : %18.8f\n", one_elec_en); // eband + deband in QE
             printf("hartree contribution      : %18.8f\n", 0.5 * evha);
             printf("xc contribution           : %18.8f\n", eexc);
             printf("ewald contribution        : %18.8f\n", ewald_energy_);

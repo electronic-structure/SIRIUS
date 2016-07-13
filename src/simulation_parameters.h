@@ -327,6 +327,11 @@ class Simulation_parameters
             return num_mag_dims_;
         }
     
+        inline int num_mag_comp() const
+        {
+            return num_mag_dims_ == 3 ? num_mag_dims_ : num_spins_;
+        }
+
         inline int max_occupancy() const
         {
             return (2 / num_spins());

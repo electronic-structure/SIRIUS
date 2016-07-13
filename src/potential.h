@@ -104,7 +104,7 @@ class Potential
         //------------------------------------------------
         std::vector< mdarray<double,3> > ae_paw_local_potential_;
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
-        std::vector< mdarray<double,3> > paw_dij_;
+        std::vector< mdarray<double_complex,3> > paw_dij_;
 
         std::vector< double > paw_hartree_energies_;
         std::vector< double > paw_xc_energies_;
@@ -147,7 +147,12 @@ class Potential
                                              mdarray<double, 2> &full_density,
                                              mdarray<double, 3> &out_atom_pot);
 
-        double calc_PAW_one_elec_energy(int atom_index, mdarray<double_complex,4> &density_matrix, mdarray<double_complex,3> paw_dij);
+        double calc_PAW_one_elec_energy(int atom_index,
+                                        const mdarray<double_complex,4>& density_matrix,
+                                        const mdarray<double_complex,3>& atom_paw_dij);
+
+
+
         //------------------------------------------------
         //------------------------------------------------
         //Spheric_function<function_domain_t::spectral,double>
