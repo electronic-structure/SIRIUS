@@ -143,7 +143,7 @@ class Density
         Periodic_function<double>* magnetization_[3];
         
         /// Non-zero Gaunt coefficients.
-        Gaunt_coefficients<double_complex>* gaunt_coefs_;
+        std::unique_ptr< Gaunt_coefficients<double_complex> > gaunt_coefs_;
         
         /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
@@ -219,8 +219,56 @@ class Density
          *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
          *  \f] 
          */
-        template <int num_mag_dims> 
-        void reduce_density_matrix(Atom_type const& atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
+        template <int num_mag_dims, typename T>
+        void reduce_density_matrix(Atom_type const& atom_type,
+                                   int ialoc,
+                                   mdarray<double_complex, 4> const& zdens,
+                                   Gaunt_coefficients<T> const& gaunt_coeffs__,
+                                   mdarray<double, 3>& mt_density_matrix)
+        {
+            mt_density_matrix.zero();
+            
+            #pragma omp parallel for default(shared)
+            for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++)
+            {
+                int l2 = atom_type.indexr(idxrf2).l;
+                for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                {
+                    int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                    int l1 = atom_type.indexr(idxrf1).l;
+
+                    int xi2 = atom_type.indexb().index_by_idxrf(idxrf2);
+                    for (int lm2 = Utils::lm_by_l_m(l2, -l2); lm2 <= Utils::lm_by_l_m(l2, l2); lm2++, xi2++)
+                    {
+                        int xi1 = atom_type.indexb().index_by_idxrf(idxrf1);
+                        for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, xi1++)
+                        {
+                            for (int k = 0; k < gaunt_coeffs__.num_gaunt(lm1, lm2); k++)
+                            {
+                                int lm3 = gaunt_coeffs__.gaunt(lm1, lm2, k).lm3;
+                                T gc = gaunt_coeffs__.gaunt(lm1, lm2, k).coef;
+                                switch (num_mag_dims)
+                                {
+                                    case 3:
+                                    {
+                                        mt_density_matrix(lm3, offs, 2) += 2.0 * std::real(zdens(xi1, xi2, 2, ialoc) * gc); 
+                                        mt_density_matrix(lm3, offs, 3) -= 2.0 * std::imag(zdens(xi1, xi2, 2, ialoc) * gc);
+                                    }
+                                    case 1:
+                                    {
+                                        mt_density_matrix(lm3, offs, 1) += std::real(zdens(xi1, xi2, 1, ialoc) * gc);
+                                    }
+                                    case 0:
+                                    {
+                                        mt_density_matrix(lm3, offs, 0) += std::real(zdens(xi1, xi2, 0, ialoc) * gc);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         /// Add k-point contribution to the auxiliary density matrix.
         /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -264,9 +312,33 @@ class Density
         void generate_valence_density_it(K_set& ks);
        
         /// Generate charge density of core states
-        void generate_core_charge_density();
+        void generate_core_charge_density()
+        {
+            PROFILE_WITH_TIMER("sirius::Density::generate_core_charge_density");
 
-        void generate_pseudo_core_charge_density();
+            for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++) {
+                int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
+                unit_cell_.atom_symmetry_class(ic).generate_core_charge_density(ctx_.core_relativity());
+            }
+
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
+                unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
+            }
+        }
+
+        void generate_pseudo_core_charge_density()
+        {
+            PROFILE_WITH_TIMER("sirius::Density::generate_pseudo_core_charge_density");
+
+            auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
+
+            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
+            ctx_.fft().prepare();
+            ctx_.fft().transform<1>(ctx_.gvec_fft_distr(), &v[ctx_.gvec_fft_distr().offset_gvec_fft()]);
+            ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
+            ctx_.fft().dismiss();
+        }
 
         /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
         void initialize_beta_density_matrix();

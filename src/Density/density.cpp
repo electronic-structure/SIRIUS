@@ -25,18 +25,18 @@ Density::Density(Simulation_context& ctx__)
     for (int i = 0; i < ctx_.num_mag_dims(); i++)
         magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
     
+    using gc_z = Gaunt_coefficients<double_complex>;
+
     switch (ctx_.esm_type())
     {
         case full_potential_lapwlo:
         {
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), ctx_.lmax_rho(), 
-                                                                  ctx_.lmax_apw(), SHT::gaunt_hybrid);
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
             break;
         }
         case full_potential_pwlo:
         {
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_pw(), ctx_.lmax_rho(), 
-                                                                  ctx_.lmax_pw(), SHT::gaunt_hybrid);
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_pw(), ctx_.lmax_rho(), ctx_.lmax_pw(), SHT::gaunt_hybrid));
             break;
         }
 
@@ -201,7 +201,6 @@ Density::~Density()
     for (int j = 0; j < ctx_.num_mag_dims(); j++) delete magnetization_[j];
 
     if (rho_pseudo_core_ != nullptr) delete rho_pseudo_core_;
-    if (gaunt_coefs_ != nullptr) delete gaunt_coefs_;
     if (low_freq_mixer_ != nullptr) delete low_freq_mixer_;
     if (high_freq_mixer_ != nullptr) delete high_freq_mixer_;
     if (mixer_ != nullptr) delete mixer_;
