@@ -398,17 +398,34 @@ class Band
         /// Setup the Hamiltonian and overlap matrices in APW+lo basis
         /** The Hamiltonian matrix has the following expression:
          *  \f[
-         *      H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
-         *  \f]
-         *
-         *  \f[
          *      H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
          *      \left( \begin{array}{cc} 
          *         H_{\bf G'G} & H_{{\bf G'}j} \\
          *         H_{j'{\bf G}} & H_{j'j}
          *      \end{array} \right)
          *  \f]
-         *  
+         *  APW-APW block:
+         *  \f[
+         *      H_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L'\nu', L\nu} a_{L'\nu'}^{\alpha *}({\bf G'+k}) 
+         *      \langle  u_{\ell' \nu'}^{\alpha}Y_{\ell' m'}|\hat h^{\alpha} | u_{\ell \nu}^{\alpha}Y_{\ell m}  \rangle 
+         *       a_{L\nu}^{\alpha}({\bf G+k})
+         *  \f]
+         *  APW-lo block:
+         *  \f[
+         *      H_{{\bf G'} j}^{\bf k} = \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'+k}) 
+         *      \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} |  \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j}  \rangle 
+         *  \f]
+         *  lo-APW block:
+         *  \f[
+         *      H_{j' {\bf G}}^{\bf k} = \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} 
+         *          |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G+k}) 
+         *  \f]
+         *  lo-lo block:
+         *  \f[
+         *      H_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} 
+         *          |\hat h^{\alpha_{j}} |  \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j}   \rangle 
+         *  \f]
+
          *  The overlap matrix has the following expression:
          *  \f[
          *      O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle

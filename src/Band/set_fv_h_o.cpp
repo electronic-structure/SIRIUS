@@ -351,7 +351,7 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 {
     runtime::Timer t("sirius::Band::set_fv_h_o_lo_lo");
 
-    // lo-lo block
+    /* lo-lo block */
     #pragma omp parallel for default(shared)
     for (int icol = kp->num_gkvec_col(); icol < kp->gklo_basis_size_col(); icol++)
     {
@@ -361,8 +361,8 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 
         for (int irow = kp->num_gkvec_row(); irow < kp->gklo_basis_size_row(); irow++)
         {
-            if (ia == kp->gklo_basis_descriptor_row(irow).ia)
-            {
+            /* lo-lo block is diagonal in atom index */ 
+            if (ia == kp->gklo_basis_descriptor_row(irow).ia) {
                 auto& atom = unit_cell_.atom(ia);
                 int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
                 int idxrf1 = kp->gklo_basis_descriptor_row(irow).idxrf; 
