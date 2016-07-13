@@ -262,10 +262,7 @@ class DFT_ground_state
                 case paw_pseudopotential:
                 {
                     potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
-                    potential_.generate_PAW_effective_potential(density_.get_paw_ae_local_density(),
-                                                                density_.get_paw_ps_local_density(),
-                                                                density_.get_paw_ae_local_magnetization(),
-                                                                density_.get_paw_ps_local_magnetization());
+                    potential_.generate_PAW_effective_potential(density_);
                 }break;
 
             }

@@ -35,6 +35,7 @@ void Potential::init_PAW()
         // allocate potential
         mdarray<double, 3> ae_atom_potential(n_rho_lm_comp, n_mt_points, ctx_.num_spins());
         mdarray<double, 3> ps_atom_potential(n_rho_lm_comp, n_mt_points, ctx_.num_spins());
+        mdarray<double, 3> dij(atom.mt_lo_basis_size(), atom.mt_lo_basis_size(), ctx_.num_spins());
 
         ae_paw_local_potential_.push_back(std::move(ae_atom_potential));
         ps_paw_local_potential_.push_back(std::move(ps_atom_potential));
@@ -61,11 +62,13 @@ void Potential::init_PAW()
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
-void Potential::generate_PAW_effective_potential(std::vector< mdarray<double, 2> > *paw_ae_local_density,
-                                                 std::vector< mdarray<double, 2> > *paw_ps_local_density,
-                                                 std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
-                                                 std::vector< mdarray<double, 3> > *paw_ps_local_magnetization)
+void Potential::generate_PAW_effective_potential(Density& density)
 {
+    std::vector< mdarray<double, 2> > *paw_ae_local_density = density.get_paw_ae_local_density();
+    std::vector< mdarray<double, 2> > *paw_ps_local_density = density.get_paw_ps_local_density();
+    std::vector< mdarray<double, 3> > *paw_ae_local_magnetization = density.get_paw_ae_local_magnetization();
+    std::vector< mdarray<double, 3> > *paw_ps_local_magnetization = density.get_paw_ps_local_magnetization();
+
     for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         calc_PAW_local_potential(ia, paw_ae_local_density->at(ia),
@@ -551,4 +554,9 @@ void Potential::calc_PAW_local_Dij(int atom_index)
     //  TERMINATE("ololo");
 }
 
+
+double Potential::calc_PAW_one_elec_energy(int atom_index, mdarray<double_complex,4> &density_matrix, mdarray<double_complex,3> paw_dij)
+{
+
+}
 }
