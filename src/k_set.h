@@ -25,11 +25,12 @@
 #ifndef __K_SET_H__
 #define __K_SET_H__
 
-#include "band.h"
-#include "potential.h"
+//#include "band.h"
+//#include "potential.h"
 #include "k_point.h"
 #include "blacs_grid.h"
 #include "vector3d.h"
+
 
 namespace sirius 
 {
@@ -184,7 +185,7 @@ class K_set
         void initialize();
 
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
-        void find_eigen_states(Potential* potential, Band const& band__, bool precompute);
+        //void find_eigen_states(Potential* potential, Band const& band__, bool precompute);
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();
@@ -294,6 +295,8 @@ class K_set
                 kpq[ik].K = vkqr.second;
             }
         }
+
+        inline K_point* k_point(int ik) {return kpoints_[ik];}
 };
 
 };

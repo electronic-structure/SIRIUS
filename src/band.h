@@ -29,6 +29,8 @@
 #include "k_point.h"
 #include "non_local_operator.h"
 #include "hloc_operator.h"
+#include "potential.h"
+#include "k_set.h"
 
 namespace sirius
 {
@@ -454,6 +456,8 @@ class Band
         void solve_fd(K_point* kp,
                       Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3]) const;
+
+        void solve_for_kset(K_set& kset, Potential& potential, bool precompute);
 
         inline Eigenproblem* std_evp_solver() const
         {

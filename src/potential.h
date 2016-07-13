@@ -29,7 +29,7 @@
 #include "spheric_function.h"
 #include "simulation_context.h"
 
-//#include "density.h"
+#include "density.h"
 
 namespace sirius {
 
@@ -38,7 +38,6 @@ namespace sirius {
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.
           This is also simple, but requires some time. It is also easier to mix the global functions.  */
 
-class Density;
 
 class Potential 
 {

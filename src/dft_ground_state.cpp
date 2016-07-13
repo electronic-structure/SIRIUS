@@ -163,7 +163,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
-        kset_.find_eigen_states(&potential_, band_, true);
+        band_.solve_for_kset(kset_,potential_,true);
+        //kset_.find_eigen_states(&potential_, band_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */

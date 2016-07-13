@@ -26,7 +26,7 @@
 #define __DENSITY_H__
 
 #include "periodic_function.h"
-#include "band.h"
+//#include "band.h"
 #include "k_set.h"
 #include "simulation_context.h"
 
