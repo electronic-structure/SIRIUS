@@ -720,7 +720,7 @@ void sirius_find_eigen_states(int32_t* kset_id__,
 {
     PROFILE();
     bool precompute = (*precompute__) ? true : false;
-    kset_list[*kset_id__]->find_eigen_states(potential, dft_ground_state->band(), precompute);
+    dft_ground_state->band().solve_for_kset(*kset_list[*kset_id__], *potential, precompute);
 }
 
 void sirius_find_band_occupancies(int32_t* kset_id__)

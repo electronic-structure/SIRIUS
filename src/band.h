@@ -474,7 +474,7 @@ class Band
                       Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_for_kset(K_set& kset, Potential& potential, bool precompute);
+        void solve_for_kset(K_set& kset, Potential& potential, bool precompute) const;
 
         inline Eigenproblem* std_evp_solver() const
         {
