@@ -1122,7 +1122,7 @@ void Band::solve_fd(K_point* kp__,
     //== kp->set_band_energies(&eval[0]);
 }
 
-void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute)
+void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) const
 {
     runtime::Timer t("sirius::Band::solve_for_kset", ctx_.comm());
 
