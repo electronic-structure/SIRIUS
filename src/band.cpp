@@ -1122,5 +1122,78 @@ void Band::solve_fd(K_point* kp__,
     //== kp->set_band_energies(&eval[0]);
 }
 
+void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute)
+{
+    runtime::Timer t("sirius::Band::solve_for_kset", ctx_.comm());
+
+    if (precompute && ctx_.full_potential())
+    {
+        potential.generate_pw_coefs();
+        potential.update_atomic_potential();
+        unit_cell_.generate_radial_functions();
+        unit_cell_.generate_radial_integrals();
+    }
+
+    // TODO: mapping to coarse effective potential is k-point independent
+
+    /* solve secular equation and generate wave functions */
+    for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = kset.spl_num_kpoints(ikloc);
+
+        if (use_second_variation && ctx_.full_potential())
+        {
+            solve_fv(kset.k_point(ik), potential.effective_potential());
+
+            kset.k_point(ik)->generate_fv_states();
+
+            solve_sv(kset.k_point(ik), potential.effective_magnetic_field());
+
+            kset.k_point(ik)->generate_spinor_wave_functions();
+        }
+        else
+        {
+            solve_fd(kset.k_point(ik), potential.effective_potential(), potential.effective_magnetic_field());
+        }
+    }
+
+    /* synchronize eigen-values */
+    kset.sync_band_energies();
+
+    #if (__VERBOSITY > 0)
+    if (ctx_.comm().rank() == 0)
+    {
+        printf("Lowest band energies\n");
+        for (int ik = 0; ik < kset.num_kpoints(); ik++)
+        {
+            printf("ik : %2i, ", ik);
+            if (ctx_.num_mag_dims() != 1)
+            {
+                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++)
+                    printf("%12.6f", kset.k_point(ik)->band_energy(j));
+            }
+            else
+            {
+                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
+                    printf("%12.6f", kset.k_point(ik)->band_energy(j));
+                printf("\n         ");
+                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
+                    printf("%12.6f", kset.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
+            }
+            printf("\n");
+        }
+
+        //== FILE* fout = fopen("eval.txt", "w");
+        //== for (int ik = 0; ik < num_kpoints(); ik++)
+        //== {
+        //==     fprintf(fout, "ik : %2i\n", ik);
+        //==     for (int j = 0; j < ctx_.num_bands(); j++)
+        //==         fprintf(fout, "%4i: %18.10f\n", j, kpoints_[ik]->band_energy(j));
+        //== }
+        //== fclose(fout);
+    }
+    #endif
+}
+
 }
 

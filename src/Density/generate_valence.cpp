@@ -62,21 +62,22 @@ void Density::generate_valence(K_set& ks__)
     //== }
 
     //== printf("\n");
-    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
-        symmetrize_density_matrix();
-    }
+    //==if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    //==    symmetrize_density_matrix();
+    //==}
 
-    //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-    //==     printf("ia=%i\n", ia);
-    //==     int nbf = unit_cell_.atom(ia).mt_basis_size();
+    //==printf("=== Density matrix ===\n");
+    //==for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+    //==    printf("ia=%i\n", ia);
+    //==    int nbf = unit_cell_.atom(ia).mt_basis_size();
 
-    //==     for (int xi1 = 0; xi1 < nbf; xi1++) {
-    //==         for (int xi2 = 0; xi2 < nbf; xi2++) {
-    //==             printf("%12.8f ", density_matrix_(xi1, xi2, 0, ia).real());
-    //==         }
-    //==         printf("\n");
-    //==     }
-    //== }
+    //==    for (int xi1 = 0; xi1 < nbf; xi1++) {
+    //==        for (int xi2 = 0; xi2 < nbf; xi2++) {
+    //==            printf("%12.8f ", density_matrix_(xi1, xi2, 0, ia).real());
+    //==        }
+    //==        printf("\n");
+    //==    }
+    //==}
 
     /* zero density and magnetization */
     zero();
@@ -135,7 +136,7 @@ void Density::generate_valence(K_set& ks__)
     {
         augment(ks__);
         symmetrize_density_matrix();
-        generate_paw_loc_density();
+        //generate_paw_loc_density();
     }
 }
 
