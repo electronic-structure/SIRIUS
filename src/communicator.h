@@ -94,28 +94,37 @@ struct alltoall_descriptor
     std::vector<int> rdispls;
 };
 
+// TODO: proper way of controlling who owns comm and who needs to free it
+
 /// MPI communicator wrapper.
 class Communicator
 {
     private:
 
-        MPI_Comm mpi_comm_;
-
+        MPI_Comm mpi_comm_{MPI_COMM_NULL};
+        bool need_to_free_;
+        /* copy is not allowed */
         Communicator(Communicator const& src__) = delete;
+        /* assigment is not allowed */
+        Communicator operator=(Communicator const& src__) = delete;
+        /* move is not allowed */
+        Communicator(Communicator&& src__) = delete;
+        /* move assigment is not allowed */
+        Communicator& operator=(Communicator&& src__) = delete;
 
     public:
-    
-        Communicator() : mpi_comm_(MPI_COMM_NULL)
+
+        Communicator() : need_to_free_(true)
         {
         }
 
-        Communicator(MPI_Comm mpi_comm__) : mpi_comm_(mpi_comm__)
+        Communicator(MPI_Comm mpi_comm__) : mpi_comm_(mpi_comm__), need_to_free_(false)
         {
         }
 
         ~Communicator()
         {
-            if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF))
+            if (need_to_free_ && !(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF))
             {
                 CALL_MPI(MPI_Comm_free, (&mpi_comm_));
                 mpi_comm_ = MPI_COMM_NULL;
@@ -206,9 +215,28 @@ class Communicator
         }
 
         template <typename T>
+        inline void reduce(T* buffer__, int count__, int root__, MPI_Request* req__) const
+        {
+            if (root__ == rank())
+            {
+                CALL_MPI(MPI_Ireduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_, req__));
+            }
+            else
+            {
+                CALL_MPI(MPI_Ireduce, (buffer__, NULL, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_, req__));
+            }
+        }
+
+        template <typename T>
         void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__) const
         {
             CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_));
+        }
+
+        template <typename T>
+        void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__, MPI_Request* req__) const
+        {
+            CALL_MPI(MPI_Ireduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(), MPI_SUM, root__, mpi_comm_, req__));
         }
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
@@ -244,7 +272,33 @@ class Communicator
         {
             allreduce<T, op__>(&buffer__[0], static_cast<int>(buffer__.size()));
         }
-        
+
+        template<typename T, mpi_op_t mpi_op__ = op_sum>
+        inline void iallreduce(T* buffer__, int count__, MPI_Request* req__) const
+        {
+            MPI_Op op;
+            switch (mpi_op__)
+            {
+                case op_sum:
+                {
+                    op = MPI_SUM;
+                    break;
+                }
+                case op_max:
+                {
+                    op = MPI_MAX;
+                    break;
+                }
+                default:
+                {
+                    printf("wrong operation\n");
+                    MPI_Abort(MPI_COMM_WORLD, -2);
+                }
+            }
+
+            CALL_MPI(MPI_Iallreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(), op, mpi_comm_, req__));
+        }
+
         /// Perform buffer broadcast.
         template <typename T>
         inline void bcast(T* buffer__, int count__, int root__) const
@@ -252,11 +306,30 @@ class Communicator
             CALL_MPI(MPI_Bcast, (buffer__, count__, mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
         }
 
+        inline void bcast(std::string& str__, int root__) const
+        {
+            int sz;
+            if (rank() == root__) sz = static_cast<int>(str__.size());
+            bcast(&sz, 1, root__);
+            char* buf = new char[sz + 1];
+            if (rank() == root__) std::copy(str__.c_str(), str__.c_str() + sz + 1, buf);
+            bcast(buf, sz + 1, root__);
+            str__ = std::string(buf);
+            delete[] buf;
+        }
+
         template<typename T>
         void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
         {
             CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, recvcounts__, displs__,
                      mpi_type_wrapper<T>::kind(), mpi_comm_));
+        }
+
+        template <typename T>
+        void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
+        {
+            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), 
+                                      recvbuf__, recvcounts__, displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template<typename T>
@@ -290,16 +363,12 @@ class Communicator
             std::vector<int> offsets(size());
             offsets[rank()] = offset__;
             CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
+
+            // Why in hell this doesn't work???
+            //allgather((T const*)sendbuf__, count__, (T*)recvbuf__, (int*)&counts[0], (int*)&offsets[0]);
         
             CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, &counts[0], &offsets[0],
-                           mpi_type_wrapper<T>::kind(), mpi_comm_));
-        }
-
-        template <typename T>
-        void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
-        {
-            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), 
-                                      recvbuf__, recvcounts__, displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+                                      mpi_type_wrapper<T>::kind(), mpi_comm_));
         }
 
         template <typename T>

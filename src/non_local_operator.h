@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,8 +25,12 @@
 #ifndef __NON_LOCAL_OPERATOR_H__
 #define __NON_LOCAL_OPERATOR_H__
 
+#include "beta_projectors.h"
+#include "simulation_context.h"
+
 namespace sirius {
 
+template <typename T>
 class Non_local_operator
 {
     protected:
@@ -38,9 +42,13 @@ class Non_local_operator
         int packed_mtrx_size_;
 
         mdarray<int, 1> packed_mtrx_offset_;
-        
-        mdarray<double_complex, 2> op_;
-        mdarray<double_complex, 1> work_;
+
+        /// Non-local operator matrix.
+        mdarray<T, 2> op_;
+
+        mdarray<T, 1> work_;
+
+        bool is_null_{false};
 
         Non_local_operator& operator=(Non_local_operator const& src) = delete;
         Non_local_operator(Non_local_operator const& src) = delete;
@@ -73,103 +81,34 @@ class Non_local_operator
         ~Non_local_operator()
         {
         }
+        
+        void apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__);
 
-        void apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__)
+        inline T operator()(int xi1__, int xi2__, int ia__)
         {
-            PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
-
-            assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
-
-            auto& beta_phi = beta_.beta_phi();
-            auto& beta_gk = beta_.beta_gk();
-            int num_gkvec_loc = beta_.num_gkvec_loc();
-            int nbeta = beta_.beta_chunk(chunk__).num_beta_;
-
-            if (static_cast<size_t>(nbeta * n__) > work_.size())
-            {
-                work_ = mdarray<double_complex, 1>(nbeta * n__);
-                #ifdef __GPU
-                if (pu_ == GPU) work_.allocate_on_device();
-                #endif
-            }
-
-            if (pu_ == CPU)
-            {
-                #pragma omp parallel for
-                for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
-                {
-                    /* number of beta functions for a given atom */
-                    int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-                    int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-                    int ia = beta_.beta_chunk(chunk__).desc_(3, i);
-
-                    /* compute O * <beta|phi> */
-                    linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
-                                      op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
-                                      beta_phi.at<CPU>(offs), nbeta,
-                                      work_.at<CPU>(offs), nbeta);
-                }
-                
-                /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-                linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, double_complex(1, 0),
-                                  beta_gk.at<CPU>(), num_gkvec_loc, work_.at<CPU>(), nbeta, double_complex(1, 0),
-                                  &op_phi__(0, idx0__), num_gkvec_loc);
-            }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                #pragma omp parallel for
-                for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
-                {
-                    /* number of beta functions for a given atom */
-                    int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-                    int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-                    int ia = beta_.beta_chunk(chunk__).desc_(3, i);
-
-                    /* compute O * <beta|phi> */
-                    linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
-                                      op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
-                                      beta_phi.at<GPU>(offs), nbeta,
-                                      work_.at<GPU>(offs), nbeta,
-                                      omp_get_thread_num());
-
-                }
-                cuda_device_synchronize();
-                double_complex alpha(1, 0);
-                
-                /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-                linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
-                                  beta_gk.at<GPU>(), beta_gk.ld(), work_.at<GPU>(), nbeta, &alpha, 
-                                  op_phi__.coeffs().at<GPU>(0, idx0__), op_phi__.coeffs().ld());
-                
-                cuda_device_synchronize();
-            }
-            #endif
+            return (*this)(xi1__, xi2__, 0, ia__);
         }
 
-        inline double_complex operator()(int xi1__, int xi2__, int ia__)
-        {
-            int nbf = beta_.unit_cell().atom(ia__).mt_basis_size();
-            return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, 0);
-        }
-
-        inline double_complex operator()(int xi1__, int xi2__, int ispn__, int ia__)
+        inline T operator()(int xi1__, int xi2__, int ispn__, int ia__)
         {
             int nbf = beta_.unit_cell().atom(ia__).mt_basis_size();
             return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
         }
 };
 
-class D_operator: public Non_local_operator
+template <typename T>
+class D_operator: public Non_local_operator<T>
 {
     public:
 
-        D_operator(Beta_projectors& beta__, int num_mag_dims__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
+        D_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-            op_ = mdarray<double_complex, 2>(packed_mtrx_size_, num_mag_dims__ + 1);
-            auto& uc = beta_.unit_cell();
+            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx__.num_mag_dims() + 1);
+            this->op_.zero();
 
-            for (int j = 0; j < num_mag_dims__ + 1; j++)
+            auto& uc = this->beta_.unit_cell();
+
+            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++)
             {
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
@@ -178,12 +117,13 @@ class D_operator: public Non_local_operator
                     {
                         for (int xi1 = 0; xi1 < nbf; xi1++)
                         {
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
+                            assert(uc.atom(ia).d_mtrx(xi1, xi2, j).imag() < 1e-10);
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j).real();
                         }
                     }
                 }
             }
-            if (num_mag_dims__)
+            if (ctx__.num_mag_dims())
             {
                 for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
@@ -192,52 +132,68 @@ class D_operator: public Non_local_operator
                     {
                         for (int xi1 = 0; xi1 < nbf; xi1++)
                         {
-                            auto v0 = op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0); 
-                            auto v1 = op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1); 
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = v0 + v1;
-                            op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1) = v0 - v1;
+                            auto v0 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0); 
+                            auto v1 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1); 
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = std::real(v0 + v1);
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1) = std::real(v0 - v1);
                         }
                     }
                 }
             }
             #ifdef __GPU
-            if (pu_ == GPU)
+            if (this->pu_ == GPU)
             {
-                op_.allocate_on_device();
-                op_.copy_to_device();
+                this->op_.allocate_on_device();
+                this->op_.copy_to_device();
             }
             #endif
         }
 };
 
-class Q_operator: public Non_local_operator
+template <typename T>
+class Q_operator: public Non_local_operator<T>
 {
     public:
         
-        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__, processing_unit_t pu__) : Non_local_operator(beta__, pu__)
+        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-            /* Q-operator is independent of spin */
-            op_ = mdarray<double_complex, 2>(packed_mtrx_size_, 1);
-            auto& uc = beta_.unit_cell();
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-            {
-                int iat = uc.atom(ia).type().id();
-                int nbf = uc.atom(ia).mt_basis_size();
-                for (int xi2 = 0; xi2 < nbf; xi2++)
+//            if (ctx__.esm_type() == ultrasoft_pseudopotential)
+//            {
+                /* Q-operator is independent of spin */
+                this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+                this->op_.zero();
+
+                auto& uc = this->beta_.unit_cell();
+                for (int ia = 0; ia < uc.num_atoms(); ia++)
                 {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
+                    int iat = uc.atom(ia).type().id();
+                    if (!uc.atom_type(iat).uspp().augmentation_) {
+                        continue;
+                    }
+                    int nbf = uc.atom(ia).mt_basis_size();
+                    for (int xi2 = 0; xi2 < nbf; xi2++)
                     {
-                        op_(packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
+                        for (int xi1 = 0; xi1 < nbf; xi1++)
+                        {
+                            if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
+                                assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
+                                this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
+                            }
+                        }
                     }
                 }
-            }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                op_.allocate_on_device();
-                op_.copy_to_device();
-            }
-            #endif
+                #ifdef __GPU
+                if (this->pu_ == GPU)
+                {
+                    this->op_.allocate_on_device();
+                    this->op_.copy_to_device();
+                }
+                #endif
+//            }
+//            else
+//            {
+//                this->is_null_ = true;
+//            }
         }
 };
 

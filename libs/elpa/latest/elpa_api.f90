@@ -1,73 +1,67 @@
-subroutine elpa_cholesky_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
-use elpa1_compute
-use elpa1
+subroutine elpa_cholesky_complex_wrapper(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_auxiliary
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
 complex*16 a(lda,matrixCols)
 logical success
     
-  call cholesky_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
+  call elpa_cholesky_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
 
 end subroutine
 
-subroutine elpa_cholesky_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
-use elpa1_compute
-use elpa1
+subroutine elpa_cholesky_real_wrapper(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_auxiliary
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
 real*8 a(lda,matrixCols)
 logical success
     
-  call cholesky_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
+  call elpa_cholesky_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
 
 end subroutine
 
 
-subroutine elpa_invert_trm_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
-use elpa1_compute
-use elpa1
+subroutine elpa_invert_trm_complex_wrapper(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_auxiliary
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
 complex*16 a(lda,matrixCols)
 logical success
 
-  call invert_trm_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
+  call elpa_invert_trm_complex(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
 
 end subroutine
 
-subroutine elpa_invert_trm_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
-use elpa1_compute
-use elpa1
+subroutine elpa_invert_trm_real_wrapper(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
+use elpa1_auxiliary
 implicit none
 integer na, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols
 real*8 a(lda,matrixCols)
 logical success
 
-  call invert_trm_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
+  call elpa_invert_trm_real(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, .false., success)
 
 end subroutine
 
-subroutine elpa_mult_ah_b_complex(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
-use elpa1_compute
-use elpa1
+subroutine elpa_mult_ah_b_complex_wrapper(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
+use elpa1_auxiliary
 implicit none
 character*1 uplo_a, uplo_c
 integer na, ncb, lda, ldb, nblk, mpi_comm_rows, mpi_comm_cols, ldc
 complex*16 a(lda,*), b(ldb,*), c(ldc,*)
 
-  call mult_ah_b_complex(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
+  call elpa_mult_ah_b_complex(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
 
 end subroutine
 
-subroutine elpa_mult_at_b_real(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
-use elpa1_compute
-use elpa1
+subroutine elpa_mult_at_b_real_wrapper(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
+use elpa1_auxiliary
 implicit none
 character*1 uplo_a, uplo_c
 integer na, ncb, lda, ldb, nblk, mpi_comm_rows, mpi_comm_cols, ldc
 real(8) a(lda,*), b(ldb,*), c(ldc,*)
 
-  call mult_at_b_real(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
+  call elpa_mult_at_b_real(uplo_a, uplo_c, na, ncb, a, lda, b, ldb, nblk, mpi_comm_rows, mpi_comm_cols, c, ldc)
 
 end subroutine
 

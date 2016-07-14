@@ -1,0 +1,62 @@
+{
+    "cyclic_block_size" : 16,
+    "processing_unit" : "cpu",
+    "std_evp_solver_type" : "lapack",
+    "gen_evp_solver_type" : "lapack",
+    "!num_fv_states" : 40,
+    "electronic_structure_method" : "paw_pseudopotential",
+
+    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-10,
+        "num_steps" : 20,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+
+    "smearing_width" : 0.1,
+
+    "use_symmetry" : 1,
+
+    "num_mag_dims" : 0,
+
+    "gk_cutoff" : 6.0,
+    "pw_cutoff" : 25.00,
+
+    "energy_tol" : 1e-8,
+
+    "num_dft_iter" : 100,
+
+    "ngridk" : [1,1,100],
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [4, 0.0, 0.0],
+                              [0.0, 4, 0.0],
+                              [0.0, 0.0, 1.0]
+                            ],
+        "lattice_vectors_scale" : 4.5,
+
+        "atom_types" : ["Cu"],
+
+        "atom_files" : {
+            "Cu" : "Cu.pz-dn-kjpaw_psl.0.2.UPF.json"
+        },
+
+        "atoms" : {
+            "Cu" : [
+                [0.0, 0.0, 0.0]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.7,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}

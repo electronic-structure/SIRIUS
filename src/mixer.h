@@ -377,6 +377,9 @@ template <typename T>
 class Broyden2: public Mixer<T>
 {
     private:
+        
+        double beta0_;
+        double linear_mix_rms_tol_;
 
         std::vector<double> weights_;
 
@@ -387,9 +390,13 @@ class Broyden2: public Mixer<T>
         Broyden2(size_t size__,
                  int max_history__,
                  double beta__,
+                 double beta0__,
+                 double linear_mix_rms_tol__,
                  std::vector<double>& weights__,
                  Communicator const& comm__) 
-            : Mixer<T>(size__, max_history__, beta__, comm__)
+            : Mixer<T>(size__, max_history__, beta__, comm__),
+              beta0_(beta0__),
+              linear_mix_rms_tol_(linear_mix_rms_tol__)
         {
             weights_ = weights__;
             residuals_ = mdarray<T, 2>(this->spl_size_.local_size(), max_history__);
@@ -429,28 +436,26 @@ class Broyden2: public Mixer<T>
             /* at this point we have min(count_, max_history_) residuals and vectors from the previous iterations */
             int N = std::min(this->count_, this->max_history_);
 
-            if (N > 1)
-            {
+            if ((linear_mix_rms_tol_ > 0 && rms < linear_mix_rms_tol_ && N > 1) || 
+                (linear_mix_rms_tol_ <= 0 && this->count_ > this->max_history_)) {
                 mdarray<long double, 2> S(N, N);
                 S.zero();
                 /* S = F^T * F, where F is the matrix of residual vectors */
-                for (int j1 = 0; j1 < N; j1++)
-                {
+                for (int j1 = 0; j1 < N; j1++) {
                     int i1 = this->idx_hist(this->count_ - N + j1);
-                    for (int j2 = 0; j2 <= j1; j2++)
-                    {
+                    for (int j2 = 0; j2 <= j1; j2++) {
                         int i2 = this->idx_hist(this->count_ - N + j2);
-                        for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
-                        {
+                        for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
                             S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, i1)) * residuals_(i, i2));
                         }
                         S(j2, j1) = S(j1, j2);
                     }
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
-                for (int j1 = 0; j1 < N; j1++)
-                { 
-                    for (int j2 = 0; j2 < N; j2++) S(j1, j2) /= this->size_;
+                for (int j1 = 0; j1 < N; j1++) { 
+                    for (int j2 = 0; j2 < N; j2++) {
+                        S(j1, j2) /= this->size_;
+                    }
                 }
                
                 mdarray<long double, 2> gamma_k(2 * N, N);
@@ -467,10 +472,10 @@ class Broyden2: public Mixer<T>
                     /* denominator df_k^{T} S df_k */
                     long double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
                     /* nominator */
-                    memset(&v1[0], 0, N * sizeof(long double));
+                    std::memset(&v1[0], 0, N * sizeof(long double));
                     for (int j = 0; j < N; j++) v1[j] = S(k + 1, j) - S(k, j);
 
-                    memset(&v2[0], 0, 2 * N * sizeof(long double));
+                    std::memset(&v2[0], 0, 2 * N * sizeof(long double));
                     for (int j = 0; j < 2 * N; j++) v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
                     v2[N + k] -= 1;
                     v2[N + k + 1] += 1;
@@ -500,7 +505,7 @@ class Broyden2: public Mixer<T>
             }
             else
             {
-                this->mix_linear(0.05);
+                this->mix_linear(beta0_);
             }
 
             return rms;

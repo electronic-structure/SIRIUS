@@ -1,24 +1,7 @@
-<<<<<<< HEAD
-{ 
-
-"control" : {
-    "cyclic_block_size" : 16,
-    "processing_unit" : "cpu",
-    "std_evp_solver_type" : "lapack",
-    "gen_evp_solver_type" : "lapack"
-},
-
-
-"parameters" : {
- 
-    "electronic_structure_method" : "ultrasoft_pseudopotential",
-    
-    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-=======
 {
     "control" : {
         "cyclic_block_size" : 16,
-        "processing_unit" : "gpu",
+        "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack"
     },
@@ -27,28 +10,27 @@
         "electronic_structure_method" : "ultrasoft_pseudopotential",
 
         "num_fv_states" : 40,
-        
+
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
         "smearing_width" : 0.025,
-        
+
         "use_symmetry" : 1,
-        
+
         "num_mag_dims" : 0,
         
         "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
-        
+
         "energy_tol" : 1e-8,
         "potential_tol" : 1e-8,
-        
+
         "num_dft_iter" : 100,
-        
+
         "ngridk" : [2,2,2]
     },
->>>>>>> upstream/develop
 
-    "!num_fv_states" : 40,
+
     "iterative_solver" : {
         "energy_tolerance" : 1e-2,
         "residual_tolerance" : 1e-6,
@@ -57,31 +39,12 @@
         "type" : "davidson",
         "converge_by_energy" : 1
     },
-<<<<<<< HEAD
-    
-    "smearing_width" : 0.025,
-    
-    "use_symmetry" : 1,
-    
-    "num_mag_dims" : 0,
-    
-    "gk_cutoff" : 6.0,
-    "pw_cutoff" : 20.00,
-    
-    "energy_tol" : 1e-10,
-    
-    "num_dft_iter" : 100,
-    
-    "ngridk" : [2,2,2] 
-},
 
-=======
-        
->>>>>>> upstream/develop
+
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1, 0, 0], 
-                              [0, 1, 0], 
+        "lattice_vectors" : [ [1, 0, 0],
+                              [0, 1, 0],
                               [0, 0, 1]
                             ],
         "lattice_vectors_scale" : 7.260327248,
@@ -101,14 +64,14 @@
             "V" : [
                 [0, 0, 0, 0, 0, 4]
             ],
-            "O" : [ 
+            "O" : [
                 [0.5, 0.0, 0.0],
                 [0.0, 0.5, 0.0],
                 [0.0, 0.0, 0.5]
             ]
         }
     },
-    
+
     "mixer" : {
         "beta" : 0.95,
         "type" : "broyden1",

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,11 +25,12 @@
 #ifndef __K_SET_H__
 #define __K_SET_H__
 
-#include "band.h"
-#include "potential.h"
+//#include "band.h"
+//#include "potential.h"
 #include "k_point.h"
 #include "blacs_grid.h"
 #include "vector3d.h"
+
 
 namespace sirius 
 {
@@ -50,8 +51,6 @@ class K_set
     
         Simulation_context& ctx_;
 
-        Band* band_;
-
         std::vector<K_point*> kpoints_;
 
         splindex<block> spl_num_kpoints_;
@@ -64,12 +63,6 @@ class K_set
 
         Communicator const& comm_k_;
 
-        void init()
-        {
-            PROFILE();
-            band_ = new Band(ctx_, ctx_.blacs_grid());
-        }
-
     public:
 
         K_set(Simulation_context& ctx__,
@@ -79,7 +72,6 @@ class K_set
               comm_k_(comm_k__)
         {
             PROFILE();
-            init();
         }
 
         K_set(Simulation_context& ctx__,
@@ -92,14 +84,13 @@ class K_set
               comm_k_(comm_k__)
         {
             PROFILE();
-            init();
 
             int nk;
             mdarray<double, 2> kp;
             std::vector<double> wk;
             if (use_symmetry__)
             {
-                nk = unit_cell_.symmetry()->get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
+                nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
             }
             else
             {
@@ -188,14 +179,13 @@ class K_set
         {
             PROFILE();
             clear();
-            delete band_;
         }
         
         /// Initialize the k-point set
         void initialize();
 
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
-        void find_eigen_states(Potential* potential, bool precompute);
+        //void find_eigen_states(Potential* potential, Band const& band__, bool precompute);
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();
@@ -260,22 +250,17 @@ class K_set
         {
             kpoints_[ik]->set_band_occupancies(band_occupancies);
         }
-        
-        void get_band_energies(int ik, double* band_energies)
-        {
-            kpoints_[ik]->get_band_energies(band_energies);
-        }
-        
+
         void get_band_occupancies(int ik, double* band_occupancies)
         {
             kpoints_[ik]->get_band_occupancies(band_occupancies);
         }
 
-        Band* band()
+        void get_band_energies(int ik, double* band_energies)
         {
-            return band_;
+            kpoints_[ik]->get_band_energies(band_energies);
         }
-
+        
         inline double energy_fermi()
         {
             return energy_fermi_;
@@ -310,6 +295,8 @@ class K_set
                 kpq[ik].K = vkqr.second;
             }
         }
+
+        inline K_point* k_point(int ik) {return kpoints_[ik];}
 };
 
 };

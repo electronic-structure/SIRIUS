@@ -109,12 +109,14 @@ void Density::add_k_point_contribution(K_point* kp__,
         for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++)
         {
             kp__->beta_projectors().generate(chunk);
+
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
                 /* total number of occupied bands for this spin */
                 int nbnd = kp__->num_occupied_bands(ispn);
                 /* compute <beta|psi> */
                 kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions<false>(ispn), 0, nbnd);
+
                 /* number of beta projectors */
                 int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
 

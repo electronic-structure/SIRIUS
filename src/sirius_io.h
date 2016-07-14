@@ -33,70 +33,6 @@
 namespace sirius
 {
 
-/// Parallel standard output.
-/** Proveides an ordered standard output from multiple MPI ranks. */
-class pstdout
-{
-    private:
-        
-        std::vector<char> buffer_;
-
-        int fill_;
-
-        Communicator const& comm_;
-
-    public:
-
-        pstdout(Communicator const& comm__) : fill_(0), comm_(comm__)
-        {
-            buffer_.resize(8129);
-        }
-
-        ~pstdout()
-        {
-            flush();
-        }
-
-        void printf(const char* fmt, ...)
-        {
-            std::vector<char> str(1024); // assume that one printf will not output more than this
-
-            std::va_list arg;
-            va_start(arg, fmt);
-            int n = vsnprintf(&str[0], str.size(), fmt, arg);
-            va_end(arg);
-
-            n = std::min(n, (int)str.size());
-            
-            if ((int)buffer_.size() - fill_ < n) buffer_.resize(buffer_.size() + str.size());
-            memcpy(&buffer_[fill_], &str[0], n);
-            fill_ += n;
-        }
-
-        void flush()
-        {
-            std::vector<int> local_fills(comm_.size());
-            comm_.allgather(&fill_, &local_fills[0], comm_.rank(), 1); 
-            
-            int offset = 0;
-            for (int i = 0; i < comm_.rank(); i++) offset += local_fills[i];
-            
-            /* total size of the output buffer */
-            int sz = fill_;
-            comm_.allreduce(&sz, 1);
-            
-            if (sz != 0)
-            {
-                std::vector<char> outb(sz + 1);
-                comm_.allgather(&buffer_[0], &outb[0], offset, fill_);
-                outb[sz] = 0;
-
-                if (comm_.rank() == 0) std::printf("%s", &outb[0]);
-            }
-            fill_ = 0;
-        }
-};
-
 /// Input / output interface.
 class sirius_io
 {
@@ -114,8 +50,8 @@ class sirius_io
             HDF5_tree fout(full_name, true);
             int size0 = (int)matrix.size(0);
             int size1 = (int)matrix.size(1);
-            fout.write("nrow", &size0); 
-            fout.write("ncol", &size1);
+            fout.write("nrow", size0); 
+            fout.write("ncol", size1);
             fout.write("matrix", matrix);
         }
 

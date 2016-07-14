@@ -1,3 +1,46 @@
+!    This file is part of ELPA.
+!
+!    The ELPA library was originally created by the ELPA consortium,
+!    consisting of the following organizations:
+!
+!    - Max Planck Computing and Data Facility (MPCDF), formerly known as
+!      Rechenzentrum Garching der Max-Planck-Gesellschaft (RZG),
+!    - Bergische Universität Wuppertal, Lehrstuhl für angewandte
+!      Informatik,
+!    - Technische Universität München, Lehrstuhl für Informatik mit
+!      Schwerpunkt Wissenschaftliches Rechnen ,
+!    - Fritz-Haber-Institut, Berlin, Abt. Theorie,
+!    - Max-Plack-Institut für Mathematik in den Naturwissenschaftrn,
+!      Leipzig, Abt. Komplexe Strukutren in Biologie und Kognition,
+!      and
+!    - IBM Deutschland GmbH
+!
+!
+!    More information can be found here:
+!    http://elpa.mpcdf.mpg.de/
+!
+!    ELPA is free software: you can redistribute it and/or modify
+!    it under the terms of the version 3 of the license of the
+!    GNU Lesser General Public License as published by the Free
+!    Software Foundation.
+!
+!    ELPA is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!    GNU Lesser General Public License for more details.
+!
+!    You should have received a copy of the GNU Lesser General Public License
+!    along with ELPA.  If not, see <http://www.gnu.org/licenses/>
+!
+!    ELPA reflects a substantial effort on the part of the original
+!    ELPA consortium, and we ask you to respect the spirit of the
+!    license that we chose: i.e., please contribute any changes you
+!    may have back to the original ELPA library distribution, and keep
+!    any derivatives of ELPA under the same license that we chose for
+!    the original distribution, the GNU Lesser General Public License.
+!
+! Author: Andreas Marek, MPCDF
+
 module compute_hh_trafo_real
 #include "config-f90.h"
   use elpa_mpi
@@ -44,6 +87,10 @@ module compute_hh_trafo_real
 #endif
 #ifdef HAVE_DETAILED_TIMINGS
          use timings
+#endif
+
+#if defined(HAVE_AVX) || defined(HAVE_SSE_INTRINSICS) || defined(HAVE_SSE_ASSEMBLY)
+         use kernel_interfaces
 #endif
          implicit none
          real(kind=rk), intent(inout) :: kernel_time
@@ -104,6 +151,8 @@ module compute_hh_trafo_real
 
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
          if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK2 .or. &
+             THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX2_BLOCK2 .or. &
+             THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_SSE_BLOCK2 .or. &
              THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_GENERIC    .or. &
              THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_GENERIC_SIMPLE .or. &
              THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_SSE .or.        &
@@ -188,7 +237,7 @@ module compute_hh_trafo_real
 #endif /* WITH_REAL_GENERIC_SIMPLE_KERNEL */
 
 
-#if defined(WITH_REAL_SSE_KERNEL)
+#if defined(WITH_REAL_SSE_ASSEMBLY_KERNEL)
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
            if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_SSE) then
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
@@ -206,28 +255,56 @@ module compute_hh_trafo_real
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
            endif
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
-#endif /* WITH_REAL_SSE_KERNEL */
+#endif /* WITH_REAL_SSE_ASSEMBLY_KERNEL */
 
-
-#if defined(WITH_REAL_AVX_BLOCK2_KERNEL)
+#if defined(WITH_REAL_SSE_BLOCK2_KERNEL)
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
-           if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK2) then
+           if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_SSE_BLOCK2) then
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_SSE_BLOCK6_KERNEL) && !defined(WITH_REAL_SSE_BLOCK4_KERNEL))
              do j = ncols, 2, -2
                w(:,1) = bcast_buffer(1:nbw,j+off)
                w(:,2) = bcast_buffer(1:nbw,j+off-1)
 #ifdef WITH_OPENMP
-               call double_hh_trafo_real_sse_avx_2hv(a(1,j+off+a_off-1,istripe,my_thread), &
+               call double_hh_trafo_real_sse_2hv(a(1,j+off+a_off-1,istripe,my_thread), &
                                                        w, nbw, nl, stripe_width, nbw)
 #else
-               call double_hh_trafo_real_sse_avx_2hv(a(1,j+off+a_off-1,istripe), &
+               call double_hh_trafo_real_sse_2hv(a(1,j+off+a_off-1,istripe), &
                                                        w, nbw, nl, stripe_width, nbw)
 #endif
              enddo
+#endif /* defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_SSE_BLOCK6_KERNEL) && !defined(WITH_REAL_SSE_BLOCK4_KERNEL)) */
+
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
            endif
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
-#endif /* WITH_REAL_AVX_BLOCK2_KERNEL */
+#endif /* WITH_REAL_SSE_BLOCK2_KERNEL */
+
+#if defined(WITH_REAL_AVX_BLOCK2_KERNEL) || defined(WITH_REAL_AVX2_BLOCK2_KERNEL)
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
+           if ((THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK2) .or. &
+               (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX2_BLOCK2))  then
+#endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_AVX_BLOCK6_KERNEL) && !defined(WITH_REAL_AVX_BLOCK4_KERNEL) && !defined(WITH_REAL_AVX2_BLOCK6_KERNEL) && !defined(WITH_REAL_AVX2_BLOCK4_KERNEL))
+             do j = ncols, 2, -2
+               w(:,1) = bcast_buffer(1:nbw,j+off)
+               w(:,2) = bcast_buffer(1:nbw,j+off-1)
+#ifdef WITH_OPENMP
+               call double_hh_trafo_real_avx_avx2_2hv(a(1,j+off+a_off-1,istripe,my_thread), &
+                                                       w, nbw, nl, stripe_width, nbw)
+#else
+               call double_hh_trafo_real_avx_avx2_2hv(a(1,j+off+a_off-1,istripe), &
+                                                       w, nbw, nl, stripe_width, nbw)
+#endif
+             enddo
+#endif /* defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) ... */
+
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
+           endif
+#endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+#endif /* WITH_REAL_AVX_BLOCK2_KERNEL || WITH_REAL_AVX2_BLOCK2_KERNEL */
 
 #if defined(WITH_REAL_BGP_KERNEL)
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
@@ -272,7 +349,7 @@ module compute_hh_trafo_real
 
 
 !#if defined(WITH_AVX_SANDYBRIDGE)
-!              call double_hh_trafo_real_sse_avx_2hv(a(1,j+off+a_off-1,istripe), w, nbw, nl, stripe_width, nbw)
+!              call double_hh_trafo_real_avx_avx2_2hv(a(1,j+off+a_off-1,istripe), w, nbw, nl, stripe_width, nbw)
 !#endif
 
 #ifdef WITH_OPENMP
@@ -292,10 +369,12 @@ module compute_hh_trafo_real
 
 
 
-#if defined(WITH_REAL_AVX_BLOCK4_KERNEL)
+#if defined(WITH_REAL_SSE_BLOCK4_KERNEL)
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
-         if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK4) then
+         if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_SSE_BLOCK4) then
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_SSE_BLOCK6_KERNEL))
            ! X86 INTRINSIC CODE, USING 4 HOUSEHOLDER VECTORS
            do j = ncols, 4, -4
              w(:,1) = bcast_buffer(1:nbw,j+off)
@@ -303,10 +382,10 @@ module compute_hh_trafo_real
              w(:,3) = bcast_buffer(1:nbw,j+off-2)
              w(:,4) = bcast_buffer(1:nbw,j+off-3)
 #ifdef WITH_OPENMP
-             call quad_hh_trafo_real_sse_avx_4hv(a(1,j+off+a_off-3,istripe,my_thread), w, &
+             call quad_hh_trafo_real_sse_4hv(a(1,j+off+a_off-3,istripe,my_thread), w, &
                                                   nbw, nl, stripe_width, nbw)
 #else
-             call quad_hh_trafo_real_sse_avx_4hv(a(1,j+off+a_off-3,istripe), w, &
+             call quad_hh_trafo_real_sse_4hv(a(1,j+off+a_off-3,istripe), w, &
                                                   nbw, nl, stripe_width, nbw)
 #endif
            enddo
@@ -314,10 +393,10 @@ module compute_hh_trafo_real
              w(:,1) = bcast_buffer(1:nbw,jj+off)
              w(:,2) = bcast_buffer(1:nbw,jj+off-1)
 #ifdef WITH_OPENMP
-             call double_hh_trafo_real_sse_avx_2hv(a(1,jj+off+a_off-1,istripe,my_thread), &
+             call double_hh_trafo_real_sse_2hv(a(1,jj+off+a_off-1,istripe,my_thread), &
                                                     w, nbw, nl, stripe_width, nbw)
 #else
-             call double_hh_trafo_real_sse_avx_2hv(a(1,jj+off+a_off-1,istripe), &
+             call double_hh_trafo_real_sse_2hv(a(1,jj+off+a_off-1,istripe), &
                                                     w, nbw, nl, stripe_width, nbw)
 #endif
            enddo
@@ -328,15 +407,64 @@ module compute_hh_trafo_real
            if (jj==1) call single_hh_trafo_real_cpu(a(1:stripe_width,1+off+a_off:1+off+a_off+nbw-1,istripe), &
                                           bcast_buffer(1:nbw,off+1), nbw, nl, stripe_width)
 #endif
+
+#endif /* defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_SSE_BLOCK6_KERNEL)) */
+
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
          endif
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
-#endif /* WITH_REAL_AVX_BLOCK4_KERNEL */
+#endif /* WITH_REAL_SSE_BLOCK4_KERNEL */
 
-
-#if defined(WITH_REAL_AVX_BLOCK6_KERNEL)
+#if defined(WITH_REAL_AVX_BLOCK4_KERNEL) || defined(WITH_REAL_AVX2_BLOCK4_KERNEL)
 #if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
-         if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK6) then
+         if ((THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK4) .or. &
+             (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX2_BLOCK4)) then
+#endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_AVX_BLOCK6_KERNEL) && !defined(WITH_REAL_AVX2_BLOCK6_KERNEL))
+           ! X86 INTRINSIC CODE, USING 4 HOUSEHOLDER VECTORS
+           do j = ncols, 4, -4
+             w(:,1) = bcast_buffer(1:nbw,j+off)
+             w(:,2) = bcast_buffer(1:nbw,j+off-1)
+             w(:,3) = bcast_buffer(1:nbw,j+off-2)
+             w(:,4) = bcast_buffer(1:nbw,j+off-3)
+#ifdef WITH_OPENMP
+             call quad_hh_trafo_real_avx_avx2_4hv(a(1,j+off+a_off-3,istripe,my_thread), w, &
+                                                  nbw, nl, stripe_width, nbw)
+#else
+             call quad_hh_trafo_real_avx_avx2_4hv(a(1,j+off+a_off-3,istripe), w, &
+                                                  nbw, nl, stripe_width, nbw)
+#endif
+           enddo
+           do jj = j, 2, -2
+             w(:,1) = bcast_buffer(1:nbw,jj+off)
+             w(:,2) = bcast_buffer(1:nbw,jj+off-1)
+#ifdef WITH_OPENMP
+             call double_hh_trafo_real_avx_avx2_2hv(a(1,jj+off+a_off-1,istripe,my_thread), &
+                                                    w, nbw, nl, stripe_width, nbw)
+#else
+             call double_hh_trafo_real_avx_avx2_2hv(a(1,jj+off+a_off-1,istripe), &
+                                                    w, nbw, nl, stripe_width, nbw)
+#endif
+           enddo
+#ifdef WITH_OPENMP
+           if (jj==1) call single_hh_trafo_real_cpu_openmp(a(1:stripe_width,1+off+a_off:1+off+a_off+nbw-1,istripe,my_thread), &
+                                          bcast_buffer(1:nbw,off+1), nbw, nl, stripe_width)
+#else
+           if (jj==1) call single_hh_trafo_real_cpu(a(1:stripe_width,1+off+a_off:1+off+a_off+nbw-1,istripe), &
+                                          bcast_buffer(1:nbw,off+1), nbw, nl, stripe_width)
+#endif
+
+#endif /* defined(WITH_NO_SPECIFIC_REAL_KERNEL) || (defined(WITH_ONE_SPECIFIC_REAL_KERNEL) && !defined(WITH_REAL_AVX_BLOCK6_KERNEL) && !defined(WITH_REAL_AVX2_BLOCK6_KERNEL)) */
+
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
+         endif
+#endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+#endif /* WITH_REAL_AVX_BLOCK4_KERNEL || WITH_REAL_AVX2_BLOCK4_KERNEL */
+
+#if defined(WITH_REAL_SSE_BLOCK6_KERNEL)
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
+         if (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_SSE_BLOCK6) then
 #endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
            ! X86 INTRINSIC CODE, USING 6 HOUSEHOLDER VECTORS
            do j = ncols, 6, -6
@@ -347,10 +475,10 @@ module compute_hh_trafo_real
              w(:,5) = bcast_buffer(1:nbw,j+off-4)
              w(:,6) = bcast_buffer(1:nbw,j+off-5)
 #ifdef WITH_OPENMP
-             call hexa_hh_trafo_real_sse_avx_6hv(a(1,j+off+a_off-5,istripe,my_thread), w, &
+             call hexa_hh_trafo_real_sse_6hv(a(1,j+off+a_off-5,istripe,my_thread), w, &
                                                   nbw, nl, stripe_width, nbw)
 #else
-             call hexa_hh_trafo_real_sse_avx_6hv(a(1,j+off+a_off-5,istripe), w, &
+             call hexa_hh_trafo_real_sse_6hv(a(1,j+off+a_off-5,istripe), w, &
                                                   nbw, nl, stripe_width, nbw)
 #endif
            enddo
@@ -360,10 +488,10 @@ module compute_hh_trafo_real
              w(:,3) = bcast_buffer(1:nbw,jj+off-2)
              w(:,4) = bcast_buffer(1:nbw,jj+off-3)
 #ifdef WITH_OPENMP
-             call quad_hh_trafo_real_sse_avx_4hv(a(1,jj+off+a_off-3,istripe,my_thread), w, &
+             call quad_hh_trafo_real_sse_4hv(a(1,jj+off+a_off-3,istripe,my_thread), w, &
                                                   nbw, nl, stripe_width, nbw)
 #else
-             call quad_hh_trafo_real_sse_avx_4hv(a(1,jj+off+a_off-3,istripe), w, &
+             call quad_hh_trafo_real_sse_4hv(a(1,jj+off+a_off-3,istripe), w, &
                                                   nbw, nl, stripe_width, nbw)
 #endif
            enddo
@@ -371,10 +499,67 @@ module compute_hh_trafo_real
              w(:,1) = bcast_buffer(1:nbw,jjj+off)
              w(:,2) = bcast_buffer(1:nbw,jjj+off-1)
 #ifdef WITH_OPENMP
-             call double_hh_trafo_real_sse_avx_2hv(a(1,jjj+off+a_off-1,istripe,my_thread), &
+             call double_hh_trafo_real_sse_2hv(a(1,jjj+off+a_off-1,istripe,my_thread), &
                                                     w, nbw, nl, stripe_width, nbw)
 #else
-             call double_hh_trafo_real_sse_avx_2hv(a(1,jjj+off+a_off-1,istripe), &
+             call double_hh_trafo_real_sse_2hv(a(1,jjj+off+a_off-1,istripe), &
+                                                    w, nbw, nl, stripe_width, nbw)
+#endif
+           enddo
+#ifdef WITH_OPENMP
+           if (jjj==1) call single_hh_trafo_real_cpu_openmp(a(1:stripe_width,1+off+a_off:1+off+a_off+nbw-1,istripe,my_thread), &
+                                           bcast_buffer(1:nbw,off+1), nbw, nl, stripe_width)
+#else
+           if (jjj==1) call single_hh_trafo_real_cpu(a(1:stripe_width,1+off+a_off:1+off+a_off+nbw-1,istripe), &
+                                           bcast_buffer(1:nbw,off+1), nbw, nl, stripe_width)
+#endif
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
+         endif
+#endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+#endif /* WITH_REAL_SSE_BLOCK4_KERNEL */
+
+#if defined(WITH_REAL_AVX_BLOCK6_KERNEL) || defined(WITH_REAL_AVX2_BLOCK6_KERNEL)
+#if defined(WITH_NO_SPECIFIC_REAL_KERNEL)
+         if ((THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX_BLOCK6) .or. &
+             (THIS_REAL_ELPA_KERNEL .eq. REAL_ELPA_KERNEL_AVX2_BLOCK6)) then
+#endif /* WITH_NO_SPECIFIC_REAL_KERNEL */
+           ! X86 INTRINSIC CODE, USING 6 HOUSEHOLDER VECTORS
+           do j = ncols, 6, -6
+             w(:,1) = bcast_buffer(1:nbw,j+off)
+             w(:,2) = bcast_buffer(1:nbw,j+off-1)
+             w(:,3) = bcast_buffer(1:nbw,j+off-2)
+             w(:,4) = bcast_buffer(1:nbw,j+off-3)
+             w(:,5) = bcast_buffer(1:nbw,j+off-4)
+             w(:,6) = bcast_buffer(1:nbw,j+off-5)
+#ifdef WITH_OPENMP
+             call hexa_hh_trafo_real_avx_avx2_6hv(a(1,j+off+a_off-5,istripe,my_thread), w, &
+                                                  nbw, nl, stripe_width, nbw)
+#else
+             call hexa_hh_trafo_real_avx_avx2_6hv(a(1,j+off+a_off-5,istripe), w, &
+                                                  nbw, nl, stripe_width, nbw)
+#endif
+           enddo
+           do jj = j, 4, -4
+             w(:,1) = bcast_buffer(1:nbw,jj+off)
+             w(:,2) = bcast_buffer(1:nbw,jj+off-1)
+             w(:,3) = bcast_buffer(1:nbw,jj+off-2)
+             w(:,4) = bcast_buffer(1:nbw,jj+off-3)
+#ifdef WITH_OPENMP
+             call quad_hh_trafo_real_avx_avx2_4hv(a(1,jj+off+a_off-3,istripe,my_thread), w, &
+                                                  nbw, nl, stripe_width, nbw)
+#else
+             call quad_hh_trafo_real_avx_avx2_4hv(a(1,jj+off+a_off-3,istripe), w, &
+                                                  nbw, nl, stripe_width, nbw)
+#endif
+           enddo
+           do jjj = jj, 2, -2
+             w(:,1) = bcast_buffer(1:nbw,jjj+off)
+             w(:,2) = bcast_buffer(1:nbw,jjj+off-1)
+#ifdef WITH_OPENMP
+             call double_hh_trafo_real_avx_avx2_2hv(a(1,jjj+off+a_off-1,istripe,my_thread), &
+                                                    w, nbw, nl, stripe_width, nbw)
+#else
+             call double_hh_trafo_real_avx_avx2_2hv(a(1,jjj+off+a_off-1,istripe), &
                                                     w, nbw, nl, stripe_width, nbw)
 #endif
            enddo

@@ -26,7 +26,7 @@
 #define __DENSITY_H__
 
 #include "periodic_function.h"
-#include "band.h"
+//#include "band.h"
 #include "k_set.h"
 #include "simulation_context.h"
 
@@ -54,7 +54,7 @@ namespace sirius
  *            [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2}, 
  *              m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
  *  
- *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_it()).
+ *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_rg()).
  *  The muffin-tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the
  *  expansion of spinor wave-functions inside the muffin-tin \f$ \alpha \f$
  *  \f[
@@ -116,6 +116,18 @@ class Density
         
         Unit_cell& unit_cell_;
 
+        /// Density matrix of the system.
+        /** In case of full-potential, matrix is stored for local fraction of atoms.
+         *  In case of pseudo-potential, full matrix for all atoms is stored. */
+        mdarray<double_complex, 4> density_matrix_;
+
+        /// ae and ps local densities used for PAW
+        std::vector< mdarray<double, 2> > paw_ae_local_density_; //vector iterates atoms
+        std::vector< mdarray<double, 2> > paw_ps_local_density_;
+
+        std::vector< mdarray<double, 3> > paw_ae_local_magnetization_; //vector iterates atoms
+        std::vector< mdarray<double, 3> > paw_ps_local_magnetization_;
+
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
@@ -131,7 +143,7 @@ class Density
         Periodic_function<double>* magnetization_[3];
         
         /// Non-zero Gaunt coefficients.
-        Gaunt_coefficients<double_complex>* gaunt_coefs_;
+        std::unique_ptr< Gaunt_coefficients<double_complex> > gaunt_coefs_;
         
         /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
@@ -143,6 +155,62 @@ class Density
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
 
+        /// Generate complex density matrix.
+        /** In the full-potential case complex density matrix is defined as
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} \equiv 
+         *      n_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j} \sum_{{\bf k}} w_{\bf k} n_{j{\bf k}} 
+         *      S_{\xi \sigma}^{\alpha, j {\bf k}*} S_{\xi' \sigma'}^{\alpha, j {\bf k}}
+         *  \f]
+         *  where \f$ S_{\xi \sigma}^{\alpha, j {\bf k}} \f$ are the expansion coefficients of the
+         *  spinor wave functions inside muffin-tin sphere \f$ \alpha \f$.
+         */
+        void generate_density_matrix(K_set& ks__);
+        
+        /// Symmetrize density matrix.
+        /** Initially, density matrix is obtained with summation over irreducible BZ:
+         *  \f[
+         *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  = 
+         *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+         *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+         *  \f]
+         *  In order to symmetrize it, the following operation is performed:
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} 
+         *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+         *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+         *  \f]
+         *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
+         *  local orbital is transformed as:
+         *  \f[
+         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
+         *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
+         *  \f]
+         *  Under rotation the spherical harmonic is transformed as:
+         *  \f[
+         *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = 
+         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+         *  \f]
+         *  The inner-product integral is then rewritten as:
+         *  \f[
+         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  = 
+         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle 
+         *  \f]
+         *  and the final expression for density matrix gets the following form:
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
+         *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})  
+         *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| 
+         *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | 
+         *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
+         *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) 
+         *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} 
+         *  \f]
+         */
+        void symmetrize_density_matrix();
+
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
          *  \f[
@@ -151,8 +219,56 @@ class Density
          *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
          *  \f] 
          */
-        template <int num_mag_dims> 
-        void reduce_density_matrix(Atom_type const& atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
+        template <int num_mag_dims, typename T>
+        void reduce_density_matrix(Atom_type const& atom_type,
+                                   int ialoc,
+                                   mdarray<double_complex, 4> const& zdens,
+                                   Gaunt_coefficients<T> const& gaunt_coeffs__,
+                                   mdarray<double, 3>& mt_density_matrix)
+        {
+            mt_density_matrix.zero();
+            
+            #pragma omp parallel for default(shared)
+            for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++)
+            {
+                int l2 = atom_type.indexr(idxrf2).l;
+                for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                {
+                    int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                    int l1 = atom_type.indexr(idxrf1).l;
+
+                    int xi2 = atom_type.indexb().index_by_idxrf(idxrf2);
+                    for (int lm2 = Utils::lm_by_l_m(l2, -l2); lm2 <= Utils::lm_by_l_m(l2, l2); lm2++, xi2++)
+                    {
+                        int xi1 = atom_type.indexb().index_by_idxrf(idxrf1);
+                        for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, xi1++)
+                        {
+                            for (int k = 0; k < gaunt_coeffs__.num_gaunt(lm1, lm2); k++)
+                            {
+                                int lm3 = gaunt_coeffs__.gaunt(lm1, lm2, k).lm3;
+                                T gc = gaunt_coeffs__.gaunt(lm1, lm2, k).coef;
+                                switch (num_mag_dims)
+                                {
+                                    case 3:
+                                    {
+                                        mt_density_matrix(lm3, offs, 2) += 2.0 * std::real(zdens(xi1, xi2, 2, ialoc) * gc); 
+                                        mt_density_matrix(lm3, offs, 3) -= 2.0 * std::imag(zdens(xi1, xi2, 2, ialoc) * gc);
+                                    }
+                                    case 1:
+                                    {
+                                        mt_density_matrix(lm3, offs, 1) += std::real(zdens(xi1, xi2, 1, ialoc) * gc);
+                                    }
+                                    case 0:
+                                    {
+                                        mt_density_matrix(lm3, offs, 0) += std::real(zdens(xi1, xi2, 0, ialoc) * gc);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         /// Add k-point contribution to the auxiliary density matrix.
         /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -178,7 +294,10 @@ class Density
          *  \f]
          *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
          *  the occupancy operator written in spectral representation. */
-        template <electronic_structure_method_t basis>
+        void add_k_point_contribution_mt(K_point* kp__,
+                                         mdarray<double_complex, 4>& density_matrix__);
+
+        template <typename T>
         void add_k_point_contribution(K_point* kp__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
@@ -192,14 +311,39 @@ class Density
         /// Generate valence density in the interstitial
         void generate_valence_density_it(K_set& ks);
        
-        /// Add band contribution to the muffin-tin density
-        void add_band_contribution_mt(Band* band, double weight, mdarray<double_complex, 3>& fylm, 
-                                      std::vector<Periodic_function<double>*>& dens);
-        
         /// Generate charge density of core states
-        void generate_core_charge_density();
+        void generate_core_charge_density()
+        {
+            PROFILE_WITH_TIMER("sirius::Density::generate_core_charge_density");
 
-        void generate_pseudo_core_charge_density();
+            for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++) {
+                int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
+                unit_cell_.atom_symmetry_class(ic).generate_core_charge_density(ctx_.core_relativity());
+            }
+
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
+                unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
+            }
+        }
+
+        void generate_pseudo_core_charge_density()
+        {
+            PROFILE_WITH_TIMER("sirius::Density::generate_pseudo_core_charge_density");
+
+            auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
+
+            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
+            ctx_.fft().prepare();
+            ctx_.fft().transform<1>(ctx_.gvec_fft_distr(), &v[ctx_.gvec_fft_distr().offset_gvec_fft()]);
+            ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
+            ctx_.fft().dismiss();
+        }
+
+        /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
+        void initialize_beta_density_matrix();
+
+
 
     public:
 
@@ -246,6 +390,10 @@ class Density
         /// Generate initial charge density and magnetization
         void initial_density();
 
+        void initial_density_pseudo();
+
+        void initial_density_full_pot();
+
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
         void generate(K_set& ks__);
 
@@ -277,6 +425,9 @@ class Density
          */
         void augment(K_set& ks__);
         
+        /// generate n_1 and \tilda{n}_1 in lm components
+        void generate_paw_loc_density();
+
         /// Integrtae charge density to get total and partial charges
         //** void integrate();
 
@@ -317,18 +468,6 @@ class Density
             return s;
         }
 
-        inline void pack(Mixer<double>* mixer__)
-        {
-            size_t n = rho_->pack(0, mixer__);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
-        }
-
-        inline void unpack(double const* buffer__)
-        {
-            size_t n = rho_->unpack(buffer__);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
-        }
-        
         Periodic_function<double>* rho()
         {
             return rho_;
@@ -349,22 +488,45 @@ class Density
             return magnetization_[i];
         }
 
-        Spheric_function<spectral, double>& density_mt(int ialoc)
+        Spheric_function<spectral, double> const& density_mt(int ialoc) const
         {
             return rho_->f_mt(ialoc);
+        }
+
+        std::vector< mdarray<double, 2> >* get_paw_ae_local_density()
+        {
+            return &paw_ae_local_density_;
+        }
+
+        std::vector< mdarray<double, 2> >* get_paw_ps_local_density()
+        {
+            return &paw_ps_local_density_;
+        }
+
+        std::vector< mdarray<double, 3> >* get_paw_ae_local_magnetization()
+        {
+            return &paw_ae_local_magnetization_;
+        }
+
+        std::vector< mdarray<double, 3> >* get_paw_ps_local_magnetization()
+        {
+            return &paw_ps_local_magnetization_;
         }
 
         void allocate()
         {
             rho_->allocate_mt(true);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->allocate_mt(true);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->allocate_mt(true);
+            }
         }
 
         void mixer_input()
         {
             if (mixer_ != nullptr)
             {
-                pack(mixer_);
+                size_t n = rho_->pack(0, mixer_);
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer_);
             }
             else
             {
@@ -375,6 +537,9 @@ class Density
                 {
                     for (int ig: lf_gvec_)
                         low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
+                }
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                     low_freq_mixer_->input(k++, density_matrix_[i]);
                 }
 
                 k = 0;
@@ -392,7 +557,8 @@ class Density
         {
             if (mixer_ != nullptr)
             {
-                unpack(mixer_->output_buffer());
+                size_t n = rho_->unpack(mixer_->output_buffer());
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&mixer_->output_buffer()[n]);
             }
             else
             {
@@ -404,6 +570,9 @@ class Density
                 {
                     for (int ig: lf_gvec_)
                         magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
+                }
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                    density_matrix_[i] = low_freq_mixer_->output_buffer(k++);
                 }
 
                 k = 0;
@@ -442,6 +611,7 @@ class Density
                 mixer_input();
                 rms = mixer_->mix();
                 mixer_output();
+                /* get rho(G) after mixing */
                 rho_->fft_transform(-1);
             }
             else
@@ -451,8 +621,10 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
+                ctx_.fft().prepare();
                 rho_->fft_transform(1);
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
+                ctx_.fft().dismiss();
             }
 
             return rms;
@@ -461,6 +633,11 @@ class Density
         inline double dr2()
         {
             return low_freq_mixer_->rss();
+        }
+
+        mdarray<double_complex, 4> const& density_matrix() const
+        {
+            return density_matrix_;
         }
 };
 

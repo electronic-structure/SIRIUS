@@ -53,14 +53,13 @@ class XC_functional
 
     public:
 
-        XC_functional(const std::string libxc_name__, int num_spins__) 
-            : libxc_name_(libxc_name__), num_spins_(num_spins__)
+        XC_functional(const std::string libxc_name__, int num_spins__)
+            : libxc_name_(libxc_name__),
+              num_spins_(num_spins__)
         {
             /* check if functional name is in list */
             if (libxc_functionals.count(libxc_name_) == 0)
-            {
                 TERMINATE("XC functional is unknown");
-            }
 
             /* init xc functional handler */
             if (xc_func_init(&handler_, libxc_functionals[libxc_name_], num_spins_) != 0) 
@@ -72,29 +71,76 @@ class XC_functional
             xc_func_end(&handler_);
         }
 
-        std::string name()
+        const std::string name() const
         {
             return std::string(handler_.info->name);
         }
         
-        std::string refs()
+        const std::string refs() const
         {
-            return std::string(handler_.info->refs);
+            std::stringstream s;
+            for (int i = 0; i < 5; i++)
+            {
+                if (handler_.info->refs[i] == NULL) break;
+                s << std::string(handler_.info->refs[i]->ref);
+                if (strlen(handler_.info->refs[i]->doi) > 0)
+                {
+                    s << " (" << std::string(handler_.info->refs[i]->doi) << ")";
+                }
+                s << std::endl;
+            }
+            
+            return s.str();
         }
 
-        int family()
+        int family() const
         {
             return handler_.info->family;
         }
 
-        bool lda()
+        bool is_lda() const
         {
             return family() == XC_FAMILY_LDA;
         }
 
-        bool gga()
+        bool is_gga() const
         {
             return family() == XC_FAMILY_GGA;
+        }
+
+        int kind() const
+        {
+            return handler_.info->kind;
+        }
+
+        bool is_exchange() const
+        {
+            return kind() == XC_EXCHANGE;
+        }
+
+        bool is_correlation() const
+        {
+            return kind() == XC_CORRELATION;
+        }
+
+        bool is_exchange_correlation() const
+        {
+            return kind() == XC_EXCHANGE_CORRELATION;
+        }
+
+        void set_relativistic(bool enabled__)
+        {
+            if (is_exchange())
+            {
+                if (enabled__)
+                {
+                    xc_lda_x_set_params(&handler_, 4.0/3.0, XC_RELATIVISTIC, 0.0);
+                }
+                else
+                {
+                    xc_lda_x_set_params(&handler_, 4.0/3.0, XC_NON_RELATIVISTIC, 0.0);
+                }
+            }
         }
 
         /// Get LDA contribution.

@@ -26,6 +26,8 @@
 #define __MATRIX3D_H__
 
 #include <cstring>
+#include <initializer_list>
+#include <stdexcept>
 #include "vector3d.h"
 
 /// Handling of a 3x3 matrix of numerical data types.
@@ -62,6 +64,13 @@ class matrix3d
                 for (int j = 0; j < 3; j++) mtrx_[i][j] = src.mtrx_[i][j];
             }
         }
+
+        matrix3d(std::initializer_list< std::initializer_list<T> > mtrx__)
+        {
+            for (int i: {0, 1, 2})
+                for (int j: {0, 1, 2})
+                    mtrx_[i][j] = mtrx__.begin()[i].begin()[j];
+        }
         
         /// Assigment operator.
         matrix3d<T>& operator=(const matrix3d<T>& rhs)
@@ -84,11 +93,11 @@ class matrix3d
         inline matrix3d<T> operator*(matrix3d<T> b) const
         {
             matrix3d<T> c;
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    for (int k = 0; k < 3; k++) c(i, j) += (*this)(i, k) * b(k, j);
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    for (int k = 0; k < 3; k++) {
+                        c(i, j) += (*this)(i, k) * b(k, j);
+                    }
                 }
             }
             return c;
@@ -99,9 +108,10 @@ class matrix3d
         inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b) const
         {
             vector3d<decltype(T{} * U{})> a;
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++) a[i] += (*this)(i, j) * b[j];
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    a[i] += (*this)(i, j) * b[j];
+                }
             }
             return a;
         }
@@ -111,9 +121,10 @@ class matrix3d
         inline matrix3d<T> operator*(U p) const
         {
             matrix3d<T> c;
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++) c(i, j) = (*this)(i, j) * p;
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    c(i, j) = (*this)(i, j) * p;
+                }
             }
             return c;
         }
@@ -149,8 +160,7 @@ matrix3d<T> inverse(matrix3d<T> src)
     
     if (std::abs(t1) < 1e-10)
     {
-        printf("matix is degenerate");
-        exit(-1);
+        throw std::runtime_error("matrix is degenerate");
     }
     
     t1 = 1.0 / t1;

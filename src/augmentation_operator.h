@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file augmentation_operator.h
+ *
+ *  \brief Contains implementation of sirius::Augmentation_operator class.
+ */
+
 #ifndef __AUGMENTATION_OPERATOR_H__
 #define __AUGMENTATION_OPERATOR_H__
 
@@ -16,36 +40,8 @@ class Augmentation_operator
         mdarray<double_complex, 2> q_mtrx_;
 
         mdarray<double_complex, 2> q_pw_;
-        
-        /// Get Q-operator radial functions.
-        mdarray<double, 3> get_radial_functions()
-        {
-            /* number of radial beta-functions */
-            int nbrf = atom_type_.mt_radial_basis_size();
-            /* maximum l of beta-projectors */
-            int lmax_beta = atom_type_.indexr().lmax();
 
-            mdarray<double, 3> qrf(atom_type_.num_mt_points(), 2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2);
-
-            for (int l3 = 0; l3 <= 2 * lmax_beta; l3++)
-            {
-                for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++)
-                {
-                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-                    {
-                        int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                        /* take initial radial function */
-                        std::memcpy(&qrf(0, l3, idx), &atom_type_.uspp().q_radial_functions_l(0, idx, l3), 
-                                    atom_type_.num_mt_points() * sizeof(double));
-
-                        /* apply polynomial approximation */ 
-                        if (atom_type_.uspp().num_q_coefs)
-                            atom_type_.fix_q_radial_function(l3, idxrf1, idxrf2, &qrf(0, l3, idx));
-                    }
-                }
-            }
-            return std::move(qrf);
-        }
+        mdarray<double, 2> q_pw_real_t_;
         
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
@@ -57,10 +53,6 @@ class Augmentation_operator
             int nbrf = atom_type_.mt_radial_basis_size();
             /* maximum l of beta-projectors */
             int lmax_beta = atom_type_.indexr().lmax();
-
-            /* get radial functions */
-            auto qrf = get_radial_functions();
-            
             /* interpolate Q-operator radial functions */
             mdarray<Spline<double>, 2> qrf_spline(2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2);
             
@@ -72,7 +64,8 @@ class Augmentation_operator
                     qrf_spline(l3, idx) = Spline<double>(atom_type_.radial_grid());
 
                     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++)
-                        qrf_spline(l3, idx)[ir] = qrf(ir, l3, idx);
+                        qrf_spline(l3, idx)[ir] = atom_type_.uspp().q_radial_functions_l(ir, idx, l3); //= qrf(ir, l3, idx);
+
                     qrf_spline(l3, idx).interpolate();
                 }
             }
@@ -102,7 +95,7 @@ class Augmentation_operator
                             
                             if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
                             {
-                                qri(idx, l3, igs) = inner(jl(l3), qrf_spline(l3, idx), 0, atom_type_.num_mt_points());
+                                qri(idx, l3, igs) = inner(jl[l3], qrf_spline(l3, idx), 0, atom_type_.num_mt_points());
                             }
                         }
                     }
@@ -158,6 +151,7 @@ class Augmentation_operator
 
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double_complex, 2>(nbf * (nbf + 1) / 2, spl_num_gvec.local_size());
+            q_pw_real_t_ = mdarray<double, 2>(2 * spl_num_gvec.local_size(), nbf * (nbf + 1) / 2);
             #pragma omp parallel for
             for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
             {
@@ -185,6 +179,8 @@ class Augmentation_operator
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
         
                         q_pw_(idx12, igloc) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                        q_pw_real_t_(2 * igloc,     idx12) = q_pw_(idx12, igloc).real();
+                        q_pw_real_t_(2 * igloc + 1, idx12) = q_pw_(idx12, igloc).imag();
                     }
                 }
             }
@@ -212,6 +208,8 @@ class Augmentation_operator
             #endif
         }
 
+        bool augmentation_{false};
+
     public:
        
         Augmentation_operator(Communicator const& comm__,
@@ -221,26 +219,54 @@ class Augmentation_operator
             : comm_(comm__),
               atom_type_(atom_type__)
         {
-            generate_pw_coeffs(omega__, gvec__);
+            augmentation_ = atom_type__.uspp().augmentation_;
+            if (augmentation_) {
+                generate_pw_coeffs(omega__, gvec__);
+            }
         }
 
-        void prepare() const
+        void prepare(int what__) const
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU)
             {
-                q_pw_.allocate_on_device();
-                q_pw_.copy_to_device();
+                switch (what__)
+                {
+                    case 0:
+                    {
+                        q_pw_.allocate_on_device();
+                        q_pw_.copy_to_device();
+                        break;
+                    }
+                    case 1:
+                    {
+                        q_pw_real_t_.allocate_on_device();
+                        q_pw_real_t_.copy_to_device();
+                        break;
+                    }
+                }
             }
             #endif
         }
 
-        void dismiss() const
+        void dismiss(int what__) const
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU)
             {
-                q_pw_.deallocate_on_device();
+                switch (what__)
+                {
+                    case 0:
+                    {
+                        q_pw_.deallocate_on_device();
+                        break;
+                    }
+                    case 1:
+                    {
+                        q_pw_real_t_.deallocate_on_device();
+                        break;
+                    }
+                }
             }
             #endif
         }
@@ -248,6 +274,11 @@ class Augmentation_operator
         mdarray<double_complex, 2> const& q_pw() const
         {
             return q_pw_;
+        }
+
+        mdarray<double, 2> const& q_pw_real_t() const
+        {
+            return q_pw_real_t_;
         }
 
         double_complex const& q_pw(int idx__, int ig__) const

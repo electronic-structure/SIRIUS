@@ -12,10 +12,6 @@ interface
        &bind(C, name="sirius_clear")
     end subroutine
 
-    !subroutine sirius_create_global_parameters()&
-    !   &bind(C, name="sirius_create_global_parameters")
-    !end subroutine
-
     subroutine sirius_create_simulation_context(config_file_name)&
        &bind(C, name="sirius_create_simulation_context")
         character, dimension(*), intent(in) :: config_file_name
@@ -87,6 +83,11 @@ interface
         character, dimension(*), intent(in) :: esm_name
     end subroutine
 
+    subroutine sirius_set_gamma_point(gamma_point)&
+       &bind(C, name="sirius_set_gamma_point")
+        logical,                 intent(in) :: gamma_point
+    end subroutine
+
     subroutine sirius_set_mpi_grid_dims(ndims, dims)&
        &bind(C, name="sirius_set_mpi_grid_dims")
         integer,                 intent(in) :: ndims
@@ -149,13 +150,9 @@ interface
         real(8),                 intent(in) :: dion
     end subroutine
 
-    subroutine sirius_set_atom_type_q_rf(label, num_q_coefs, lmax_q, q_coefs, rinner, q_rf, lmax)&
+    subroutine sirius_set_atom_type_q_rf(label, q_rf, lmax)&
        &bind(C, name="sirius_set_atom_type_q_rf")
         character, dimension(*), intent(in) :: label
-        integer,                 intent(in) :: num_q_coefs
-        integer,                 intent(in) :: lmax_q
-        real(8),                 intent(in) :: q_coefs
-        real(8),                 intent(in) :: rinner
         real(8),                 intent(in) :: q_rf
         integer,                 intent(in) :: lmax
     end subroutine
@@ -314,15 +311,18 @@ interface
         real(8),                 intent(in) :: band_occupancies
     end subroutine
 
-    subroutine sirius_set_rho_pw(num_gvec, rho_pw)&
+    subroutine sirius_set_rho_pw(num_gvec, gvec, rho_pw, comm)&
        &bind(C, name="sirius_set_rho_pw")
         integer,                 intent(in) :: num_gvec
+        integer,                 intent(in) :: gvec
         complex(8),              intent(in) :: rho_pw
+        integer,                 intent(in) :: comm
     end subroutine
 
-    subroutine sirius_get_rho_pw(num_gvec, rho_pw)&
+    subroutine sirius_get_rho_pw(num_gvec, gvec, rho_pw)&
        &bind(C, name="sirius_get_rho_pw")
         integer,                 intent(in)  :: num_gvec
+        integer,                 intent(in)  :: gvec
         complex(8),              intent(out) :: rho_pw
     end subroutine
 

@@ -128,7 +128,7 @@ class dmatrix
         /* forbid copy constructor */
         dmatrix(dmatrix<T> const& src) = delete;
         /* forbid move constructor */
-        dmatrix(dmatrix<T>&& src) = delete;
+        //dmatrix(dmatrix<T>&& src) = delete;
         /* forbid assigment operator */
         dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
 
@@ -199,6 +199,11 @@ class dmatrix
         inline int num_cols_local() const
         {
             return spl_col_.local_size();
+        }
+
+        inline int num_cols_local(int rank) const
+        {
+            return spl_col_.local_size(rank);
         }
         
         /// Inindex of column in global matrix.

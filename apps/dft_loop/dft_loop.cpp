@@ -10,7 +10,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
     double evxc = gs.energy_vxc();
     double eexc = gs.energy_exc();
     //double ebxc = gs.energy_bxc();
-    double evha = gs.energy_vha();
+    double evha = gs.energy_vha(); 
     double etot = gs.total_energy();
     //double gap = kset_->band_gap() * ha2ev;
     //double ef = kset_->energy_fermi();
@@ -22,7 +22,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
     {
         std::string fname = std::string("output_") + ctx.start_time_tag() + std::string(".json");
         JSON_write jw(fname);
-        
+
         jw.single("git_hash", git_hash);
         jw.single("build_date", build_date);
         jw.single("num_ranks", ctx.comm().size());
@@ -47,7 +47,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         jw.single("evha", evha, 8);
         jw.single("enuc", enuc, 8);
         jw.end_set();
-        
+
         //** if (num_mag_dims())
         //** {
         //**     std::vector<double> v(3, 0);
@@ -60,7 +60,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         //**     jw.single("total_moment", v);
         //**     jw.single("total_moment_len", Utils::vector_length(&v[0]));
         //** }
-        
+
         //** jw.single("total_energy", total_energy());
         //** jw.single("kinetic_energy", kinetic_energy());
         //** jw.single("energy_veff", rti_.energy_veff);
@@ -73,7 +73,7 @@ void write_json_output(Simulation_context& ctx, DFT_ground_state& gs)
         //** jw.single("valence_eval_sum", rti_.valence_eval_sum);
         //** jw.single("band_gap", rti_.band_gap);
         //** jw.single("energy_fermi", rti_.energy_fermi);
-        
+
         jw.single("timers", ts);
     }
 }
@@ -86,7 +86,7 @@ void dft_loop(cmd_args args)
         TERMINATE("wrong task name");
 
     std::string fname = args.value<std::string>("input", "sirius.json");
-    
+
     Simulation_context ctx(fname, mpi_comm_world());
 
     std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
@@ -94,6 +94,28 @@ void dft_loop(cmd_args args)
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     JSON_tree parser(fname);
+<<<<<<< HEAD
+
+    ctx.set_lmax_apw(parser["lmax_apw"].get(10));
+    ctx.set_lmax_pot(parser["lmax_pot"].get(10));
+    ctx.set_lmax_rho(parser["lmax_rho"].get(10));
+    ctx.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
+    ctx.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
+    ctx.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
+
+    ctx.set_num_mag_dims(parser["num_mag_dims"].get(0));
+
+    ctx.unit_cell().set_auto_rmt(parser["auto_rmt"].get(0));
+
+    auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
+    auto shiftk = parser["shiftk"].get(std::vector<int>(3, 0));
+
+    int use_symmetry = parser["use_symmetry"].get(1);
+
+    auto gamma_point = parser["gamma_point"].get(0);
+
+    if (gamma_point && !(ngridk[0] * ngridk[1] * ngridk[2] == 1))
+=======
     Parameters_input_section inp;
     inp.read(parser);
 
@@ -114,17 +136,18 @@ void dft_loop(cmd_args args)
     auto shiftk = parser["parameters"]["shiftk"].get(std::vector<int>(3, 0));
 
     if (inp.gamma_point_ && !(ngridk[0] * ngridk[1] * ngridk[2] == 1))
+>>>>>>> 8c36e2a63f57546c9e96f15c424a77fb0ef1d523
     {
         TERMINATE("this is not a Gamma-point calculation")
     }
     ctx.set_gamma_point(inp.gamma_point_);
 
     ctx.initialize();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     Potential* potential = new Potential(ctx);
     potential->allocate();
 
@@ -136,19 +159,24 @@ void dft_loop(cmd_args args)
              vector3d<int>(shiftk[0], shiftk[1], shiftk[2]), inp.use_symmetry_);
 
     ks.initialize();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+
     Density* density = new Density(ctx);
     density->allocate();
-    
+
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
-    
+<<<<<<< HEAD
+
+    DFT_ground_state dft(ctx, potential, density, &ks, use_symmetry);
+=======
+
     DFT_ground_state dft(ctx, potential, density, &ks, inp.use_symmetry_);
+>>>>>>> 8c36e2a63f57546c9e96f15c424a77fb0ef1d523
 
     if (task_name == "gs_restart")
     {
@@ -162,9 +190,15 @@ void dft_loop(cmd_args args)
         dft.generate_effective_potential();
         if (!ctx.full_potential()) dft.initialize_subspace();
     }
-    
+<<<<<<< HEAD
+
+    double potential_tol = parser["potential_tol"].get(1e-4);
+    double energy_tol = parser["energy_tol"].get(1e-4);
+=======
+
     double potential_tol = parser["parameters"]["potential_tol"].get(1e-4);
     double energy_tol = parser["parameters"]["energy_tol"].get(1e-4);
+>>>>>>> 8c36e2a63f57546c9e96f15c424a77fb0ef1d523
 
     if (task_name == "test_init")
     {
@@ -209,6 +243,6 @@ int main(int argn, char** argv)
     }
 
     dft_loop(args);
-    
+
     sirius::finalize();
 }

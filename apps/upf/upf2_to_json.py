@@ -22,20 +22,23 @@ import sys
 import re
 import xml.etree.ElementTree as ET
 
+def str2bool(v):
+  return v.lower() in ("yes", "true", "t", "1")
+
 def parse_header(upf_dict, root):
     # header
     node = root.findall("./PP_HEADER")[0]
     upf_dict['header'] = {}
     upf_dict['header']['number_of_proj'] = int(node.attrib['number_of_proj'])
-    upf_dict['header']['core_correction'] = bool(node.attrib['core_correction'])
+    upf_dict['header']['core_correction'] = str2bool(node.attrib['core_correction'])
     upf_dict['header']['element'] = node.attrib['element']
     upf_dict['header']['pseudo_type'] = node.attrib['pseudo_type']
     #upf_dict['header']['l_max'] = int(node.attrib['l_max'])
     upf_dict['header']['z_valence'] = float(node.attrib['z_valence'])
     upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
 
-    if upf_dict['header']['pseudo_type'] == 'NC':
-        upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
+    #if upf_dict['header']['pseudo_type'] == 'NC':
+    upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
 
 
 def parse_radial_grid(upf_dict, root):
@@ -89,10 +92,13 @@ def parse_non_local(upf_dict, root):
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
 
     if node.attrib['q_with_l'] != 'T':
-        print("Don't know how to parse this")
+        print("Don't know how to parse this 'q_with_l != T'")
         sys.exit(0)
 
+
     upf_dict['augmentation'] = []
+
+
 
     nb = upf_dict['header']['number_of_proj']
 
@@ -124,7 +130,12 @@ def parse_PAW(upf_dict, root):
 
     if upf_dict['header']['pseudo_type'] != "PAW": return
 
+    node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
+    upf_dict['header']['cutoff_radius_index'] = int(node.attrib['cutoff_r_index'])
+
+    
     upf_dict["paw_data"] = {}
+
 
     #-------------------------------------
     #---- Read PP_Q and PP_MULTIPOLES ----
@@ -178,20 +189,25 @@ def parse_PAW(upf_dict, root):
     for i in range(size):
         upf_dict['paw_data']['occupations'] = [float(e) for e in str.split(node.text)]
 
-    #---- Reaf AE core correction (density of core charge)
+    #---- Read AE core correction (density of core charge)
     node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
     size = int(node.attrib['size'])
 
     for i in range(size):
         upf_dict['paw_data']['ae_core_charge_density'] = [float(e) for e in str.split(node.text)]
 
-    #---- Reaf AE local potential
+    #---- Read AE local potential
     node = root.findall("./PP_PAW/PP_AE_VLOC")[0]
     size = int(node.attrib['size'])
 
     for i in range(size):
         upf_dict['paw_data']['ae_local_potential'] = [float(e) for e in str.split(node.text)]
 
+
+
+####################################################
+############# Read starting wave functions #########
+####################################################
 def parse_pswfc(upf_dict, root):
     #if upf_dict['header']['pseudo_type'] != 'NC': return
 
@@ -203,6 +219,7 @@ def parse_pswfc(upf_dict, root):
         wfc['radial_function'] = [float(e) for e in str.split(node.text)]
         wfc['angular_momentum'] = int(node.attrib['l'])
         wfc['label'] = node.attrib['label']
+        wfc['occupation'] = float(node.attrib['occupation'])
         upf_dict['atomic_wave_functions'].append(wfc)
 
 ######################################################
@@ -240,7 +257,7 @@ def main():
 
     # parse PAW data
     parse_PAW(upf_dict, root)
-    
+
     # parse pseudo wavefunctions
     parse_pswfc(upf_dict, root)
 

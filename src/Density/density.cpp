@@ -25,20 +25,22 @@ Density::Density(Simulation_context& ctx__)
     for (int i = 0; i < ctx_.num_mag_dims(); i++)
         magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
     
+    using gc_z = Gaunt_coefficients<double_complex>;
+
     switch (ctx_.esm_type())
     {
         case full_potential_lapwlo:
         {
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), ctx_.lmax_rho(), 
-                                                                  ctx_.lmax_apw(), SHT::gaunt_hybrid);
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
             break;
         }
         case full_potential_pwlo:
         {
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_pw(), ctx_.lmax_rho(), 
-                                                                  ctx_.lmax_pw(), SHT::gaunt_hybrid);
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_pw(), ctx_.lmax_rho(), ctx_.lmax_pw(), SHT::gaunt_hybrid));
             break;
         }
+
+        case paw_pseudopotential:
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
@@ -48,10 +50,23 @@ Density::Density(Simulation_context& ctx__)
 
     l_by_lm_ = Utils::l_by_lm(ctx_.lmax_rho());
 
+    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
+     * because density matrix is symmetric. */
+    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
+
+    if (ctx_.full_potential()) {
+        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                     ndm, unit_cell_.spl_num_atoms().local_size());
+    } else {
+        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                     ndm, unit_cell_.num_atoms());
+    }
+
+
     if (!ctx_.full_potential())
     {
         lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
-        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()), 1.0);
+        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(), 1.0);
 
         weights[0] = 0;
         lf_gvec_[0] = 0;
@@ -91,7 +106,7 @@ Density::Density(Simulation_context& ctx__)
         else if (ctx_.mixer_input_section().type_ == "broyden1")
         {
 
-            low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
+            low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
                                                            ctx_.mixer_input_section().max_history_,
                                                            ctx_.mixer_input_section().beta_,
                                                            weights,
@@ -147,6 +162,37 @@ Density::Density(Simulation_context& ctx__)
             TERMINATE("wrong mixer type");
         }
     }
+
+    //--- Allocate local PAW density arrays ---
+
+    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    {
+        auto& atom = unit_cell_.atom(ia);
+
+        auto& atype = atom.type();
+
+        int n_mt_points = atype.num_mt_points();
+
+        // allocate
+        mdarray<double, 2> ae_atom_density(ctx_.lmmax_rho(), n_mt_points);
+        mdarray<double, 2> ps_atom_density(ctx_.lmmax_rho(), n_mt_points);
+
+        // add
+        paw_ae_local_density_.push_back(std::move(ae_atom_density));
+        paw_ps_local_density_.push_back(std::move(ps_atom_density));
+
+        // magnetization
+        mdarray<double, 3> ae_atom_magn(ctx_.lmmax_rho(), n_mt_points, 3);
+        mdarray<double, 3> ps_atom_magn(ctx_.lmmax_rho(), n_mt_points, 3);
+
+        ae_atom_magn.zero();
+        ps_atom_magn.zero();
+
+        paw_ae_local_magnetization_.push_back(std::move(ae_atom_magn));
+        paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
+
+    }
+
 }
 
 Density::~Density()
@@ -155,7 +201,6 @@ Density::~Density()
     for (int j = 0; j < ctx_.num_mag_dims(); j++) delete magnetization_[j];
 
     if (rho_pseudo_core_ != nullptr) delete rho_pseudo_core_;
-    if (gaunt_coefs_ != nullptr) delete gaunt_coefs_;
     if (low_freq_mixer_ != nullptr) delete low_freq_mixer_;
     if (high_freq_mixer_ != nullptr) delete high_freq_mixer_;
     if (mixer_ != nullptr) delete mixer_;

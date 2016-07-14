@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -36,6 +36,8 @@
 #include "xc_functional.h"
 #include "simulation_parameters.h"
 
+#include "PAW/PAW_descriptor.h"
+
 namespace sirius {
 
 class radial_functions_index
@@ -65,6 +67,12 @@ class radial_functions_index
     
     public:
 
+        void init(const std::vector<local_orbital_descriptor>& lo_descriptors__)
+        {
+            std::vector<radial_solution_descriptor_set> aw_descriptors;
+            init(aw_descriptors, lo_descriptors__);
+        }
+
         void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<local_orbital_descriptor>& lo_descriptors)
         {
@@ -89,7 +97,7 @@ class radial_functions_index
             {
                 assert(aw_descriptors[l].size() <= 3);
 
-                for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
+                for (size_t order = 0; order < aw_descriptors[l].size(); order++)
                 {
                     radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
                     num_rf_[l]++;
@@ -236,7 +244,7 @@ class basis_functions_index
         /// Return total number of MT basis functions.
         inline int size() const
         {
-            return (int)basis_function_index_descriptors_.size();
+            return static_cast<int>(basis_function_index_descriptors_.size());
         }
 
         inline int size_aw() const
@@ -278,7 +286,7 @@ class Atom_type
         Simulation_parameters const& parameters_;
 
         /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
-        int id_;
+        int id_{-1};
 
         /// Unique string label for the atom type.
         std::string label_;
@@ -290,28 +298,28 @@ class Atom_type
         std::string name_;
         
         /// Nucleus charge, treated as positive(!) integer.
-        int zn_;
+        int zn_{0};
 
         /// Atom mass.
-        double mass_;
+        double mass_{0};
 
         /// Muffin-tin radius.
-        double mt_radius_;
+        double mt_radius_{0};
 
         /// Number of muffin-tin points.
-        int num_mt_points_;
+        int num_mt_points_{0};
         
         /// Beginning of the radial grid.
-        double radial_grid_origin_;
+        double radial_grid_origin_{0};
         
         /// List of atomic levels.
         std::vector<atomic_level_descriptor> atomic_levels_;
 
         /// Number of core electrons.
-        double num_core_electrons_;
+        double num_core_electrons_{0};
 
         /// Number of valence electrons.
-        double num_valence_electrons_;
+        double num_valence_electrons_{0};
         
         /// Default augmented wave configuration.
         radial_solution_descriptor_set aw_default_l_;
@@ -326,15 +334,17 @@ class Atom_type
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// maximum number of aw radial functions across angular momentums
-        int max_aw_order_;
+        int max_aw_order_{0};
 
-        int offset_lo_;
+        int offset_lo_{-1};
 
         radial_functions_index indexr_;
         
         basis_functions_index indexb_;
 
         uspp_descriptor uspp_;
+
+        PAW_descriptor paw_;
 
         /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
         /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -349,7 +359,7 @@ class Atom_type
         mutable mdarray<double, 3> rf_coef_;
         mutable mdarray<double, 3> vrf_coef_;
 
-        bool initialized_;
+        bool initialized_{false};
        
         void read_input_core(JSON_tree& parser);
 
@@ -357,9 +367,36 @@ class Atom_type
 
         void read_input_lo(JSON_tree& parser);
 
+        void read_pseudo_uspp(JSON_tree& parser);
+
+        void read_pseudo_paw(JSON_tree& parser);
+
         void read_input(const std::string& fname);
     
-        void init_aw_descriptors(int lmax);
+        void init_aw_descriptors(int lmax)
+        {
+            assert(lmax >= -1);
+
+            if (lmax >= 0 && aw_default_l_.size() == 0) {
+                TERMINATE("default AW descriptor is empty"); 
+            }
+
+            aw_descriptors_.clear();
+            for (int l = 0; l <= lmax; l++) {
+                aw_descriptors_.push_back(aw_default_l_);
+                for (size_t ord = 0; ord < aw_descriptors_[l].size(); ord++) {
+                    aw_descriptors_[l][ord].n = l + 1;
+                    aw_descriptors_[l][ord].l = l;
+                }
+            }
+
+            for (size_t i = 0; i < aw_specific_l_.size(); i++) {
+                int l = aw_specific_l_[i][0].l;
+                if (l < lmax) {
+                    aw_descriptors_[l] = aw_specific_l_[i];
+                }
+            }
+        }
     
         /* forbid copy constructor */
         Atom_type(const Atom_type& src) = delete;
@@ -375,54 +412,152 @@ class Atom_type
         /// Density of a free atom.
         Spline<double> free_atom_density_;
         
-        /// Potential of a free atom.
-        Spline<double> free_atom_potential_;
-
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
 
     public:
         
-        Atom_type(Simulation_parameters const& parameters__,
-                  const char* symbol__, 
-                  const char* name__, 
-                  int zn__, 
-                  double mass__, 
+        Atom_type(Simulation_parameters const&          parameters__,
+                  std::string                           symbol__, 
+                  std::string                           name__, 
+                  int                                   zn__, 
+                  double                                mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
-                  radial_grid_t grid_type__);
+                  radial_grid_t                         grid_type__)
+            : parameters_(parameters__),
+              symbol_(symbol__), 
+              name_(name__), 
+              zn_(zn__), 
+              mass_(mass__), 
+              mt_radius_(2.0), 
+              num_mt_points_(2000 + zn__ * 50), 
+              atomic_levels_(levels__)
+        {
+            radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
+        }
  
         Atom_type(Simulation_parameters const& parameters__,
-                  const int id__, 
-                  const std::string label, 
-                  const std::string file_name__);
+                  int                          id__, 
+                  std::string                  label__, 
+                  std::string                  file_name__)
+            : parameters_(parameters__),
+              id_(id__), 
+              label_(label__),
+              file_name_(file_name__)
+        {
+        }
 
-        ~Atom_type();
-        
+        Atom_type(Atom_type&& src) = default;
+
         void init(int offset_lo__);
 
-        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr);
+        void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr)
+        {
+            if (num_mt_points_ == 0) {
+                TERMINATE("number of muffin-tin points is zero");
+            }
+            if (num_points__ < 0 && points__ == nullptr) {
+                /* create default exponential grid */
+                radial_grid_ = Radial_grid(lin_exp_grid, num_mt_points_, radial_grid_origin_, mt_radius_); 
+            } else {
+                assert(num_points__ == num_mt_points_);
+                radial_grid_ = Radial_grid(num_points__, points__);
+            }
+            if (parameters_.processing_unit() == GPU) {
+                #ifdef __GPU
+                radial_grid_.copy_to_device();
+                #endif
+            }
+        }
 
         /// Add augmented-wave descriptor.
-        void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
-        
+        void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
+        {
+            if ((int)aw_descriptors_.size() < (l + 1)) {
+                aw_descriptors_.resize(l + 1, radial_solution_descriptor_set());
+            }
+            
+            radial_solution_descriptor rsd;
+            
+            rsd.n = n;
+            if (n == -1) {
+                /* default principal quantum number value for any l */
+                rsd.n = l + 1;
+                for (int ist = 0; ist < num_atomic_levels(); ist++) {
+                    /* take next level after the core */
+                    if (atomic_level(ist).core && atomic_level(ist).l == l) {
+                        rsd.n = atomic_level(ist).n + 1;
+                    }
+                }
+            }
+            
+            rsd.l = l;
+            rsd.dme = dme;
+            rsd.enu = enu;
+            rsd.auto_enu = auto_enu;
+            aw_descriptors_[l].push_back(rsd);
+        }
+
         /// Add local orbital descriptor
-        void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
+        void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
+        {
+            if ((int)lo_descriptors_.size() == ilo) {
+                lo_descriptors_.push_back(local_orbital_descriptor());
+                lo_descriptors_[ilo].l = l;
+            } else {
+                if (l != lo_descriptors_[ilo].l) {
+                    std::stringstream s;
+                    s << "wrong angular quantum number" << std::endl
+                      << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
+                      << "idxlo: " << ilo << std::endl
+                      << "n: " << l << std::endl
+                      << "l: " << n << std::endl
+                      << "expected l: " <<  lo_descriptors_[ilo].l << std::endl;
+                    TERMINATE(s);
+                }
+            }
+            
+            radial_solution_descriptor rsd;
+            
+            rsd.n = n;
+            if (n == -1) {
+                /* default value for any l */
+                rsd.n = l + 1;
+                for (int ist = 0; ist < num_atomic_levels(); ist++) {
+                    if (atomic_level(ist).core && atomic_level(ist).l == l) {   
+                        /* take next level after the core */
+                        rsd.n = atomic_level(ist).n + 1;
+                    }
+                }
+            }
+            
+            rsd.l = l;
+            rsd.dme = dme;
+            rsd.enu = enu;
+            rsd.auto_enu = auto_enu;
+            lo_descriptors_[ilo].rsd_set.push_back(rsd);
+        }
+
+        void add_lo_descriptor(local_orbital_descriptor const& lod__)
+        {
+            lo_descriptors_.push_back(lod__);
+        }
 
         void init_free_atom(bool smooth);
 
         void print_info() const;
-        
+
         inline int id() const
         {
             return id_;
         }
-        
+
         inline int zn() const
         {
             assert(zn_ > 0);
             return zn_;
         }
-        
+
         std::string const& symbol() const
         { 
             return symbol_;
@@ -432,23 +567,23 @@ class Atom_type
         { 
             return name_;
         }
-        
+
         inline double mass() const
         {
             return mass_;
         }
-        
+
         inline double mt_radius() const
         {
             return mt_radius_;
         }
-        
+
         inline int num_mt_points() const
         {
             assert(num_mt_points_ > 0);
             return num_mt_points_;
         }
-        
+
         inline Radial_grid const& radial_grid() const
         {
             assert(num_mt_points_ > 0);
@@ -460,7 +595,7 @@ class Atom_type
         {
             return free_atom_radial_grid_;
         }
-        
+
         inline double radial_grid(int ir) const
         {
             return radial_grid_[ir];
@@ -470,27 +605,27 @@ class Atom_type
         {
             return free_atom_radial_grid_[ir];
         }
-        
+
         inline int num_atomic_levels() const
         {
-            return (int)atomic_levels_.size();
-        }    
-        
+            return static_cast<int>(atomic_levels_.size());
+        }
+
         inline atomic_level_descriptor const& atomic_level(int idx) const
         {
             return atomic_levels_[idx];
         }
-        
+
         inline double num_core_electrons() const
         {
             return num_core_electrons_;
         }
-        
+
         inline double num_valence_electrons() const
         {
             return num_valence_electrons_;
         }
-        
+
         inline double free_atom_density(const int idx) const
         {
             return free_atom_density_[idx];
@@ -500,21 +635,21 @@ class Atom_type
         {
             return free_atom_density_(x);
         }
-        
-        inline double free_atom_potential(const int idx) const
-        {
-            return free_atom_potential_[idx];
-        }
 
-        inline double free_atom_potential(double x) const
-        {
-            return free_atom_potential_(x);
-        }
+        //inline double free_atom_potential(const int idx) const
+        //{
+        //    return free_atom_potential_[idx];
+        //}
 
-        Spline<double> const& free_atom_potential() const
-        {
-            return free_atom_potential_;
-        }
+        //inline double free_atom_potential(double x) const
+        //{
+        //    return free_atom_potential_(x);
+        //}
+
+        //Spline<double> const& free_atom_potential() const
+        //{
+        //    return free_atom_potential_;
+        //}
 
         inline int num_aw_descriptors() const
         {
@@ -526,7 +661,7 @@ class Atom_type
             assert(l < (int)aw_descriptors_.size());
             return aw_descriptors_[l];
         }
-        
+
         inline int num_lo_descriptors() const
         {
             return (int)lo_descriptors_.size();
@@ -614,6 +749,7 @@ class Atom_type
             return -1;
         }
 
+        //TODO rename these two methods, unsafe method is needed?
         inline uspp_descriptor& uspp()
         {
             return uspp_;
@@ -622,6 +758,11 @@ class Atom_type
         inline uspp_descriptor const& uspp() const
         {
             return uspp_;
+        }
+
+        inline const PAW_descriptor& get_PAW_descriptor() const
+        {
+            return paw_;
         }
 
         inline void set_symbol(const std::string symbol__)
@@ -639,7 +780,8 @@ class Atom_type
             mass_ = mass__;
         }
         
-        inline void set_mt_radius(double mt_radius__)
+        inline void set_mt_radius(double mt_radius__) // TODO: this can cause inconsistency with radial_grid; remove this method
+                                                      // mt_radius should always be the last point of radial_grid
         {
             mt_radius_ = mt_radius__;
         }
@@ -727,33 +869,18 @@ class Atom_type
             return parameters_;
         }
 
-        void fix_q_radial_function(int l, int i, int j, double* qrf) const
-        {
-            for (int ir = 0; ir < num_mt_points(); ir++)
-            {
-                double x = radial_grid(ir);
-                double x2 = x * x;
-                if (x < uspp_.q_functions_inner_radii[l])
-                {
-                    qrf[ir] = uspp_.q_coefs(0, l, i, j);
-                    for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * std::pow(x2, n);
-                    qrf[ir] *= std::pow(x, l + 2);
-                }
-            }
-        }
-
         void set_free_atom_radial_grid(int num_points__, double const* points__)
         {
-            if (num_mt_points_ <= 0) TERMINATE("wrong number of radial points");
+            if (num_points__ <= 0) TERMINATE("wrong number of radial points");
             free_atom_radial_grid_ = Radial_grid(num_points__, points__);
         }
 
-        void set_free_atom_potential(int num_points__, double const* vs__)
-        {
-            free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
-            for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
-            free_atom_potential_.interpolate();
-        }
+        //void set_free_atom_potential(int num_points__, double const* vs__)
+        //{
+        //    free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
+        //    for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
+        //    free_atom_potential_.interpolate();
+        //}
 };
 
 };

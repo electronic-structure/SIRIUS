@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -36,52 +36,59 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
     {
         case linear_grid:
         {
-            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * double(i) / (num_points - 1);
+            for (int i = 0; i < num_points; i++) {
+                grid_points[i] = rmin + (rmax - rmin) * double(i) / (num_points - 1);
+            }
             break;
         }
         case exponential_grid:
         {
-            double alpha = 6.0;
-            double beta = 1e-6 * num_points / (rmax - rmin);
-            for (int i = 0; i < num_points; i++)
-            {
-                double t = double(i) / (num_points - 1);
-                double f = (beta * t + std::exp(std::pow(t, alpha)) - 1) / (std::exp(1.0) - 1 + beta);
-                grid_points[i] = rmin + (rmax - rmin) * f;
+            /* x_i = x_min * (x_max/x_min) ^ (i / (N - 1)) */
+            for (int i = 0; i < num_points; i++) {
+                grid_points[i] = rmin * std::pow(rmax / rmin, double(i) / (num_points - 1));
             }
-            //for (int i = 0; i < num_points; i++) grid_points[i] = rmin * pow(rmax / rmin, double(i) / (num_points - 1));
+            break;
+        }
+        case lin_exp_grid:
+        {
+            /* x_i = x_min + (x_max - x_min) * A(t)
+             * A(t) ~ b * t + Exp[t^a] - 1 */
+            double alpha{6.0};
+            double beta = 1e-6 * num_points / (rmax - rmin);
+            double A = 1.0 / (std::exp(1) + beta - 1);
+
+            for (int i = 0; i < num_points; i++) {
+                double t = double(i) / (num_points - 1);
+                grid_points[i] = rmin + (rmax - rmin) * (beta * t + std::exp(std::pow(t, alpha)) - 1) * A;
+            }
             break;
         }
         case pow2_grid:
         {
-            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), 2);
+            /* x_i = x_min + (x_max - x_min) * (i / N - 1)^2 */
+            for (int i = 0; i < num_points; i++) {
+                grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), 2);
+            }
             break; 
         }
         case pow3_grid:
         {
-            //for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), 3);
-            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + std::pow(double(i) / double(num_points - 1), 3.0) * (rmax - rmin);
+            for (int i = 0; i < num_points; i++) {
+                grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), 3);
+            }
             break; 
         }
         case scaled_pow_grid:
-        {   
-            ///* ratio of last and first dx */
+        {
+            /* ratio of last and first dx */
             double S = rmax * 1000;
-            double alpha = pow(S, 1.0 / (num_points - 2));
+            double alpha = std::pow(S, 1.0 / (num_points - 2));
             double x = rmin;
             for (int i = 0; i < num_points; i++)
             {
                 grid_points[i] = x;
                 x += (rmax - rmin) * (alpha - 1) * std::pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
             }
-            break;
-            
-            //double dx0 = 1e-7;
-            //double alpha = -std::log(dx0 / (rmax - rmin)) / std::log(double(num_points - 1));
-            //for (int i = 0; i < num_points; i++)
-            //{
-            //    grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), alpha);
-            //}
             break;
         }
         default:
@@ -155,6 +162,11 @@ void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, d
             grid_type_name_ = "exponential";
             break;
         }
+        case lin_exp_grid:
+        {
+            grid_type_name_ = "linear_exponential";
+            break;
+        }
         case scaled_pow_grid:
         {
             grid_type_name_ = "scaled_power_grid";
@@ -170,16 +182,16 @@ void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, d
             grid_type_name_ = "power3";
             break;
         }
-        case hyperbolic_grid:
-        {
-            grid_type_name_ = "hyperbolic";
-            break;
-        }
-        case incremental_grid:
-        {
-            grid_type_name_ = "incremental";
-            break;
-        }
+        //case hyperbolic_grid:
+        //{
+        //    grid_type_name_ = "hyperbolic";
+        //    break;
+        //}
+        //case incremental_grid:
+        //{
+        //    grid_type_name_ = "incremental";
+        //    break;
+        //}
     }
 }
 

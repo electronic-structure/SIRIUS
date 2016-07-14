@@ -32,7 +32,9 @@ void K_set::initialize()
     spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    {
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
+    }
 
     #if (__VERBOSITY > 0)
     print_info();
@@ -55,74 +57,74 @@ void K_set::sync_band_energies()
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
 
-void K_set::find_eigen_states(Potential* potential, bool precompute)
-{
-    runtime::Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
-    
-    if (precompute && ctx_.full_potential())
-    {
-        potential->generate_pw_coefs();
-        potential->update_atomic_potential();
-        unit_cell_.generate_radial_functions();
-        unit_cell_.generate_radial_integrals();
-    }
-
-    // TODO: mapping to coarse effective potential is k-point independent
-
-    /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = spl_num_kpoints(ikloc);
-        if (use_second_variation && ctx_.full_potential())
-        {
-            band_->solve_fv(kpoints_[ik], potential->effective_potential());
-            kpoints_[ik]->generate_fv_states();
-            band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
-            kpoints_[ik]->generate_spinor_wave_functions();
-        }
-        else
-        {
-            band_->solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
-        }
-    }
-
-    /* synchronize eigen-values */
-    sync_band_energies();
-    
-    #if (__VERBOSITY > 0)
-    if (ctx_.comm().rank() == 0)
-    {
-        printf("Lowest band energies\n");
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            printf("ik : %2i, ", ik); 
-            if (ctx_.num_mag_dims() != 1)
-            {
-                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) 
-                    printf("%12.6f", kpoints_[ik]->band_energy(j));
-            }
-            else
-            {
-                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
-                    printf("%12.6f", kpoints_[ik]->band_energy(j));
-                printf("\n         ");
-                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
-                    printf("%12.6f", kpoints_[ik]->band_energy(ctx_.num_fv_states() + j));
-            }
-            printf("\n");
-        }
-
-        //== FILE* fout = fopen("eval.txt", "w");
-        //== for (int ik = 0; ik < num_kpoints(); ik++)
-        //== {
-        //==     fprintf(fout, "ik : %2i\n", ik); 
-        //==     for (int j = 0; j < ctx_.num_bands(); j++) 
-        //==         fprintf(fout, "%4i: %18.10f\n", j, kpoints_[ik]->band_energy(j));
-        //== }
-        //== fclose(fout);
-    }
-    #endif
-}
+//void K_set::find_eigen_states(Potential* potential, Band const& band__, bool precompute)
+//{
+//    runtime::Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
+//
+//    if (precompute && ctx_.full_potential())
+//    {
+//        potential->generate_pw_coefs();
+//        potential->update_atomic_potential();
+//        unit_cell_.generate_radial_functions();
+//        unit_cell_.generate_radial_integrals();
+//    }
+//
+//    // TODO: mapping to coarse effective potential is k-point independent
+//
+//    /* solve secular equation and generate wave functions */
+//    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
+//    {
+//        int ik = spl_num_kpoints(ikloc);
+//        if (use_second_variation && ctx_.full_potential())
+//        {
+//            band__.solve_fv(kpoints_[ik], potential->effective_potential());
+//            kpoints_[ik]->generate_fv_states();
+//            band__.solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+//            kpoints_[ik]->generate_spinor_wave_functions();
+//        }
+//        else
+//        {
+//            band__.solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
+//        }
+//    }
+//
+//    /* synchronize eigen-values */
+//    sync_band_energies();
+//
+//    #if (__VERBOSITY > 0)
+//    if (ctx_.comm().rank() == 0)
+//    {
+//        printf("Lowest band energies\n");
+//        for (int ik = 0; ik < num_kpoints(); ik++)
+//        {
+//            printf("ik : %2i, ", ik);
+//            if (ctx_.num_mag_dims() != 1)
+//            {
+//                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++)
+//                    printf("%12.6f", kpoints_[ik]->band_energy(j));
+//            }
+//            else
+//            {
+//                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
+//                    printf("%12.6f", kpoints_[ik]->band_energy(j));
+//                printf("\n         ");
+//                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
+//                    printf("%12.6f", kpoints_[ik]->band_energy(ctx_.num_fv_states() + j));
+//            }
+//            printf("\n");
+//        }
+//
+//        //== FILE* fout = fopen("eval.txt", "w");
+//        //== for (int ik = 0; ik < num_kpoints(); ik++)
+//        //== {
+//        //==     fprintf(fout, "ik : %2i\n", ik);
+//        //==     for (int j = 0; j < ctx_.num_bands(); j++)
+//        //==         fprintf(fout, "%4i: %18.10f\n", j, kpoints_[ik]->band_energy(j));
+//        //== }
+//        //== fclose(fout);
+//    }
+//    #endif
+//}
 
 double K_set::valence_eval_sum()
 {
@@ -142,44 +144,40 @@ void K_set::find_band_occupancies()
 {
     runtime::Timer t("sirius::K_set::find_band_occupancies");
 
-    double ef = 0.15;
+    double ef{0};
+    double de{0.1};
 
-    double de = 0.1;
-
-    int s = 1;
+    int s{1};
     int sp;
 
-    double ne = 0.0;
+    double ne{0};
 
     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
     
-    // TODO: safe way not to get stuck here
-    while (true)
-    {
+    /* calculate occupations */
+    while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
+        /* update Efermi */
+        ef += de;
+        /* compute total number of electrons */
         ne = 0.0;
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            for (int j = 0; j < ctx_.num_bands(); j++)
-            {
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
                 bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef, ctx_.smearing_width()) * 
                                  ctx_.max_occupancy();
                 ne += bnd_occ(j, ik) * kpoints_[ik]->weight();
             }
         }
 
-        if (std::abs(ne - unit_cell_.num_valence_electrons()) < 1e-11) break;
-
         sp = s;
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
-
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25); 
-        /* update Efermi */
-        ef += de;
     } 
     energy_fermi_ = ef;
 
-    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+    }
 
     band_gap_ = 0.0;
     
@@ -231,7 +229,7 @@ void K_set::print_info()
 
     if (ctx_.blacs_grid().comm().rank() == 0)
     {
-        pstdout pout(comm_k_);
+        runtime::pstdout pout(comm_k_);
         for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
         {
             int ik = spl_num_kpoints(ikloc);

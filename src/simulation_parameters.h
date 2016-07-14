@@ -37,95 +37,78 @@ class Simulation_parameters
     protected:
     
         /// Maximum l for APW functions.
-        int lmax_apw_;
+        int lmax_apw_{-1};
         
         /// Maximum l for plane waves.
-        int lmax_pw_;
+        int lmax_pw_{-1};
         
         /// Maximum l for density.
-        int lmax_rho_;
+        int lmax_rho_{-1};
         
         /// Maximum l for potential
-        int lmax_pot_;
+        int lmax_pot_{-1};
 
         /// Cutoff for augmented-wave functions.
-        double aw_cutoff_;
+        double aw_cutoff_{7};
     
         /// Cutoff for plane-waves (for density and potential expansion).
-        double pw_cutoff_;
+        double pw_cutoff_{20};
     
         /// Cutoff for |G+k| plane-waves.
-        double gk_cutoff_;
+        double gk_cutoff_{6};
         
-        /// number of first-variational states
-        int num_fv_states_;
+        /// Number of first-variational states.
+        int num_fv_states_{-1};
     
-        /// number of spin componensts (1 or 2)
-        int num_spins_;
+        /// Number of spin componensts (1 or 2).
+        int num_spins_{1};
     
-        /// number of dimensions of the magnetization and effective magnetic field (0, 1 or 3)
-        int num_mag_dims_;
+        /// Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).
+        int num_mag_dims_{0};
+
+        /// Scale muffin-tin radii automatically.
+        int auto_rmt_{1};
     
-        /// true if spin-orbit correction is applied
-        bool so_correction_;
+        /// True if spin-orbit correction is applied.
+        bool so_correction_{false};
        
-        /// true if UJ correction is applied
-        bool uj_correction_;
-    
-        /// MPI grid dimensions
-        std::vector<int> mpi_grid_dims_;
+        /// True if UJ correction is applied.
+        bool uj_correction_{false};
+        
+        /// True if gamma-point (real) version of the PW code is used.
+        bool gamma_point_{false};
 
-        int cyclic_block_size_;
-
-        std::string std_evp_solver_name_;
-
-        std::string gen_evp_solver_name_;
-    
         /// Type of the processing unit.
-        processing_unit_t processing_unit_;
+        processing_unit_t processing_unit_{CPU};
     
         /// Smearing function width.
-        double smearing_width_;
-
-        electronic_structure_method_t esm_type_;
+        double smearing_width_{0.001};
+        
+        /// List of XC functionals.
+        std::vector<std::string> xc_functionals_;
+        
+        /// Type of relativity for valence states.
+        relativity_t valence_relativity_{relativity_t::zora};
+        
+        /// Type of relativity for core states.
+        relativity_t core_relativity_{relativity_t::dirac};
+        
+        /// Type of electronic structure method.
+        electronic_structure_method_t esm_type_{full_potential_lapwlo};
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
         Mixer_input_section mixer_input_section_;
 
         Unit_cell_input_section unit_cell_input_section_;
-        
-        std::vector<std::string> xc_functionals_;
 
-        std::string fft_mode_;
-
-        void set_defaults()
-        {
-            lmax_apw_            = -1;
-            lmax_pw_             = -1;
-            lmax_rho_            = -1;
-            lmax_pot_            = -1;
-            aw_cutoff_           = 7.0;
-            pw_cutoff_           = 20.0;
-            gk_cutoff_           = 6.0;
-            num_fv_states_       = -1;
-            num_spins_           = 1;
-            num_mag_dims_        = 0;
-            so_correction_       = false;
-            uj_correction_       = false;
-            mpi_grid_dims_       = {1};
-            cyclic_block_size_   = 32;
-            processing_unit_     = CPU;
-            smearing_width_      = 0.001;
-            esm_type_            = full_potential_lapwlo;
-            std_evp_solver_name_ = "";
-            gen_evp_solver_name_ = "";
-            fft_mode_            = "serial";
-        }
+        Control_input_section control_input_section_;
         
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
+            PROFILE();
+
             JSON_tree parser(fname__);
             /* read unit cell */
             unit_cell_input_section_.read(parser);
@@ -133,53 +116,8 @@ class Simulation_parameters
             mixer_input_section_.read(parser);
             /* read parameters of iterative solver */
             iterative_solver_input_section_.read(parser);
-
-            /* read list of XC functionals */
-            /* The following part of the input file is parsed:
-             * \code{.json}
-             *     "xc_functionals" : ["name1", "name2", ...]
-             * \endcode
-             */
-            if (parser.exist("xc_functionals"))
-            {
-                xc_functionals_.clear();
-                for (int i = 0; i < parser["xc_functionals"].size(); i++)
-                {
-                    std::string s;
-                    parser["xc_functionals"][i] >> s;
-                    xc_functionals_.push_back(s);
-                }
-            }
-
-            mpi_grid_dims_       = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
-            cyclic_block_size_   = parser["cyclic_block_size"].get(cyclic_block_size_);
-            num_fv_states_       = parser["num_fv_states"].get(num_fv_states_);
-            smearing_width_      = parser["smearing_width"].get(smearing_width_);
-            std_evp_solver_name_ = parser["std_evp_solver_type"].get(std_evp_solver_name_);
-            gen_evp_solver_name_ = parser["gen_evp_solver_type"].get(gen_evp_solver_name_);
-
-            std::string pu = "cpu";
-            pu = parser["processing_unit"].get(pu);
-            std::transform(pu.begin(), pu.end(), pu.begin(), ::tolower);
-            if (pu == "cpu")
-            {
-                processing_unit_ = CPU;
-            }
-            else if (pu == "gpu")
-            {
-                processing_unit_ = GPU;
-            }
-            else
-            {
-                TERMINATE("wrong processing unit");
-            }
-
-            std::string esm = "full_potential_lapwlo";
-            esm = parser["electronic_structure_method"].get(esm);
-            std::transform(esm.begin(), esm.end(), esm.begin(), ::tolower);
-            set_esm_type(esm);
-
-            fft_mode_ = parser["fft_mode"].get(fft_mode_);
+            /* read controls */
+            control_input_section_.read(parser);
         }
 
     public:
@@ -243,9 +181,14 @@ class Simulation_parameters
             uj_correction_ = uj_correction__; 
         }
 
+        inline void set_gamma_point(bool gamma_point__)
+        {
+            gamma_point_ = gamma_point__;
+        }
+
         inline void set_mpi_grid_dims(std::vector<int> mpi_grid_dims__)
         {
-            mpi_grid_dims_ = mpi_grid_dims__;
+            control_input_section_.mpi_grid_dims_ = mpi_grid_dims__;
         }
 
         inline void add_xc_functional(std::string name__)
@@ -253,28 +196,60 @@ class Simulation_parameters
             xc_functionals_.push_back(name__);
         }
 
+        inline void set_esm_type(electronic_structure_method_t esm_type)
+        {
+
+            esm_type_ = esm_type;
+        }
+
         inline void set_esm_type(std::string name__)
         {
-            if (name__ == "full_potential_lapwlo")
+            std::map<std::string, electronic_structure_method_t> m;
+
+            m["full_potential_lapwlo"]           = full_potential_lapwlo;
+            m["full_potential_pwlo"]             = full_potential_pwlo;
+            m["ultrasoft_pseudopotential"]       = ultrasoft_pseudopotential;
+            m["norm_conserving_pseudopotential"] = norm_conserving_pseudopotential;
+            m["paw_pseudopotential"]             = paw_pseudopotential;
+
+            if (m.count(name__) == 0)
             {
-                esm_type_ = full_potential_lapwlo;
+                std::stringstream s;
+                s << "wrong type of electronic structure method: " << name__;
+                TERMINATE(s);
             }
-            else if (name__ == "full_potential_pwlo")
-            {
-                esm_type_ = full_potential_pwlo;
+            esm_type_ = m[name__];
+        }
+
+        inline void set_core_relativity(std::string name__)
+        {
+            std::map<std::string, relativity_t> m;
+
+            m["none"]  = relativity_t::none;
+            m["dirac"] = relativity_t::dirac;
+
+            if (m.count(name__) == 0) {
+                std::stringstream s;
+                s << "wrong type of core relativity: " << name__;
+                TERMINATE(s);
             }
-            else if (name__ == "ultrasoft_pseudopotential")
-            {
-                esm_type_ = ultrasoft_pseudopotential;
-            } 
-            else if (name__ == "norm_conserving_pseudopotential")
-            {
-                esm_type_ = norm_conserving_pseudopotential;
+            core_relativity_ = m[name__];
+        }
+
+        inline void set_valence_relativity(std::string name__)
+        {
+            std::map<std::string, relativity_t> m;
+
+            m["none"]            = relativity_t::none;
+            m["zora"]            = relativity_t::zora;
+            m["koelling_harmon"] = relativity_t::koelling_harmon;
+
+            if (m.count(name__) == 0) {
+                std::stringstream s;
+                s << "wrong type of valence relativity: " << name__;
+                TERMINATE(s);
             }
-            else
-            {
-                TERMINATE("wrong type of electronic structure method");
-            }
+            valence_relativity_ = m[name__];
         }
 
         inline void set_processing_unit(processing_unit_t pu__)
@@ -352,6 +327,11 @@ class Simulation_parameters
             return num_mag_dims_;
         }
     
+        inline int num_mag_comp() const
+        {
+            return num_mag_dims_ == 3 ? num_mag_dims_ : num_spins_;
+        }
+
         inline int max_occupancy() const
         {
             return (2 / num_spins());
@@ -366,6 +346,11 @@ class Simulation_parameters
         {
             return uj_correction_;
         }
+
+        inline bool gamma_point() const
+        {
+            return gamma_point_;
+        }
     
         inline processing_unit_t processing_unit() const
         {
@@ -376,6 +361,21 @@ class Simulation_parameters
         {
             return smearing_width_;
         }
+
+        inline double set_smearing_width(double smearing_width__)
+        {
+            return smearing_width_ = smearing_width__;
+        }
+
+        inline void set_auto_rmt(int auto_rmt__)
+        {
+            auto_rmt_ = auto_rmt__;
+        }
+
+        inline int auto_rmt() const
+        {
+            return auto_rmt_;
+        }
     
         bool need_sv() const
         {
@@ -385,12 +385,12 @@ class Simulation_parameters
         
         inline std::vector<int> const& mpi_grid_dims() const
         {
-            return mpi_grid_dims_;
+            return control_input_section_.mpi_grid_dims_;
         }
 
         inline int cyclic_block_size() const
         {
-            return cyclic_block_size_;
+            return control_input_section_.cyclic_block_size_;
         }
     
         inline electronic_structure_method_t esm_type() const
@@ -420,12 +420,32 @@ class Simulation_parameters
 
         inline std::string const& std_evp_solver_name() const
         {
-            return std_evp_solver_name_;
+            return control_input_section_.std_evp_solver_name_;
         }
 
         inline std::string const& gen_evp_solver_name() const
         {
-            return gen_evp_solver_name_;
+            return control_input_section_.gen_evp_solver_name_;
+        }
+
+        inline relativity_t valence_relativity() const
+        {
+            return valence_relativity_;
+        }
+
+        inline relativity_t core_relativity() const
+        {
+            return core_relativity_;
+        }
+
+        inline double rmt_max() const
+        {
+            return control_input_section_.rmt_max_;
+        }
+
+        inline double spglib_tolerance() const
+        {
+            return control_input_section_.spglib_tolerance_;
         }
 };
 

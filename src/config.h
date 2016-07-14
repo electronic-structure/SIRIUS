@@ -91,7 +91,9 @@ const bool check_pseudo_charge = false;
 /// Level of internal verification
 /** __VERIFICATION = 0 : nothing to do \n
  *  __VERIFICATION = 1 : basic checkes \n */
+#ifndef __VERIFICATION
 #define __VERIFICATION 0
+#endif
 
 /// Verbosity level.
 /** Controls the ammount of information printed to standard output. 
@@ -105,7 +107,7 @@ const bool check_pseudo_charge = false;
  *  verbosity_level >= 10 : log functions eneter and exit \n
  */
 #ifndef __VERBOSITY
-#define __VERBOSITY 0
+#define __VERBOSITY 2
 #endif
 
 const bool fix_apwlo_linear_dependence = false;

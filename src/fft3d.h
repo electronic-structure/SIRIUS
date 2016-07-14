@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -33,8 +33,6 @@
 #include "descriptors.h"
 #include "fft3d_grid.h"
 #include "gvec.h"
-
-// TODO: allocate and deallocate buffers manually
 
 namespace sirius {
 
@@ -76,9 +74,12 @@ class FFT3D
         mdarray<double_complex, 1> fft_buffer_;
         
         /// Auxiliary array to store z-sticks for all-to-all or GPU.
-        mdarray<double_complex, 1> fft_buffer_aux_;
+        mdarray<double_complex, 1> fft_buffer_aux1_;
         
-        /// Interbal buffer for independent z-transforms.
+        /// Auxiliary array in case of simultaneous transformation of two wave-functions.
+        mdarray<double_complex, 1> fft_buffer_aux2_;
+        
+        /// Internal buffer for independent z-transforms.
         std::vector<double_complex*> fftw_buffer_z_;
 
         /// Internal buffer for independent {xy}-transforms.
@@ -93,26 +94,24 @@ class FFT3D
         std::vector<fftw_plan> plan_forward_xy_;
 
         #ifdef __GPU
-        bool cufft3d_;
         cufftHandle cufft_plan_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_;
         #endif
+
+        bool prepared_;
         
-        /// Number of transfom calls.
-        size_t ncall_;
-
-        /// Timers for various parts of FFT.
-        double tcall_[5];
+        template <int direction, bool use_reduction>
+        void transform_z_serial(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction, bool use_reduction>
-        void transform_z_serial(Gvec const& gvec__, double_complex* data__);
+        void transform_z_parallel(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
         template <int direction, bool use_reduction>
-        void transform_z_parallel(Gvec const& gvec__, double_complex* data__);
+        void transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<double_complex, 1>& fft_buffer_aux__);
 
-        template <int direction, bool use_reduction>
-        void transform_xy(Gvec const& gvec__);
+        template <int direction>
+        void transform_xy(Gvec_FFT_distribution const& gvec_fft_distr__, mdarray<double_complex, 1>& fft_buffer_aux1__, mdarray<double_complex, 1>& fft_buffer_aux2__);
 
     public:
 
@@ -124,7 +123,10 @@ class FFT3D
         ~FFT3D();
 
         template <int direction>
-        void transform(Gvec const& gvec__, double_complex* data__);
+        void transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data__);
+
+        template <int direction>
+        void transform(Gvec_FFT_distribution const& gvec_fft_distr__, double_complex* data1__, double_complex* data2__);
 
         //template<typename T>
         //inline void input(int n__, int const* map__, T const* data__)
@@ -237,10 +239,12 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                fft_buffer_aux_.allocate_on_device();
+                fft_buffer_aux1_.allocate_on_device();
+                fft_buffer_aux2_.allocate_on_device();
                 allocate_on_device();
             }
             #endif
+            prepared_ = true;
         }
 
         void dismiss()
@@ -248,10 +252,12 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                fft_buffer_aux_.deallocate_on_device();
+                fft_buffer_aux1_.deallocate_on_device();
+                fft_buffer_aux2_.deallocate_on_device();
                 deallocate_on_device();
             }
             #endif
+            prepared_ = false;
         }
 
         #ifdef __GPU
@@ -261,15 +267,8 @@ class FFT3D
             fft_buffer_.pin_memory();
             fft_buffer_.allocate_on_device();
             
-            size_t work_size;
-            if (comm_.size() == 1 && cufft3d_)
-            {
-                work_size = cufft_get_size_3d(grid_.size(0), grid_.size(1), grid_.size(2), 1);
-            }
-            else
-            {
-                work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
-            }
+            size_t work_size = cufft_get_size_2d(grid_.size(0), grid_.size(1), cufft_nbatch_);
+
             cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "cufft_work_buf_");
             cufft_work_buf_.allocate_on_device();
             cufft_set_work_area(cufft_plan_, cufft_work_buf_.at<GPU>());
@@ -282,28 +281,11 @@ class FFT3D
             cufft_work_buf_.deallocate_on_device();
         }
 
-        template<typename T>
-        inline void input_on_device(int n__, int const* map__, T* data__)
+        void copy_to_device()
         {
-            cufft_batch_load_gpu(local_size(), n__, 1, map__, data__, fft_buffer_.at<GPU>());
-        }
-
-        template<typename T>
-        inline void output_on_device(int n__, int const* map__, T* data__, double alpha__)
-        {
-            cufft_batch_unload_gpu(local_size(), n__, 1, map__, fft_buffer_.at<GPU>(), data__, alpha__);
+            fft_buffer_.copy_to_device();
         }
         #endif
-
-        inline size_t ncall() const
-        {
-            return ncall_;
-        }
-
-        inline double tcall(int i__) const
-        {
-            return tcall_[i__];
-        }
 };
 
 };

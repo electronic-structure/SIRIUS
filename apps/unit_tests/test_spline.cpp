@@ -24,7 +24,7 @@ void test_spline_1a()
     double x0 = 1e-7;
     double x1 = 2.0;
     
-    Radial_grid rgrid(exponential_grid, 2000, 1e-7, 2);
+    Radial_grid rgrid(lin_exp_grid, 2000, 1e-7, 2);
     Spline<double> s(rgrid, f);
 
     check_spline(s, f, x0, x1);
@@ -44,7 +44,7 @@ void test_spline_1b()
     double x0 = 1e-7;
     double x1 = 2.0;
     
-    Radial_grid rgrid(exponential_grid, 2000, 1e-7, 2);
+    Radial_grid rgrid(lin_exp_grid, 2000, 1e-7, 2);
     Spline<double> s(rgrid, f);
 
     check_spline(s, f, x0, x1);
@@ -80,7 +80,7 @@ void test_spline_2()
 // Test product of splines.
 void test_spline_4()
 {
-    Radial_grid rgrid(exponential_grid, 2000, 1e-7, 4);
+    Radial_grid rgrid(lin_exp_grid, 2000, 1e-7, 4);
     Spline<double> s1(rgrid);
     Spline<double> s2(rgrid);
     Spline<double> s3(rgrid);

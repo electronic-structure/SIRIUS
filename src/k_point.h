@@ -55,6 +55,10 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
+        std::unique_ptr<Gvec_FFT_distribution> gkvec_fft_distr_;
+
+        std::unique_ptr<Gvec_FFT_distribution> gkvec_fft_distr_vloc_;
+
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
@@ -98,15 +102,15 @@ class K_point
         /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
 
-        /// Basis descriptors distributed along rows of the 2D MPI grid.
-        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
+        /// Basis descriptors distributed between rows of the 2D MPI grid.
+        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
         
-        /// basis descriptors distributed along columns of the 2D MPI grid
-        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
+        /// Basis descriptors distributed between columns of the 2D MPI grid.
+        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
+        /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
         std::vector< std::vector<int> > atom_lo_cols_;
 
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
@@ -272,6 +276,9 @@ class K_point
                     return unit_cell_.mt_basis_size() + num_gkvec();
                     break;
                 }
+
+                //TODO case paw_pseudopotential think about
+                case paw_pseudopotential:
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
@@ -292,6 +299,7 @@ class K_point
                     return unit_cell_.mt_basis_size();
                     break;
                 }
+                case paw_pseudopotential:
                 case ultrasoft_pseudopotential:
                 case norm_conserving_pseudopotential:
                 {
@@ -525,6 +533,16 @@ class K_point
         inline Gvec const& gkvec() const
         {
             return gkvec_;
+        }
+
+        inline Gvec_FFT_distribution const& gkvec_fft_distr() const
+        {
+            return *gkvec_fft_distr_;
+        }
+
+        inline Gvec_FFT_distribution const& gkvec_fft_distr_vloc() const
+        {
+            return *gkvec_fft_distr_vloc_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()

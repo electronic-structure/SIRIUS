@@ -2,6 +2,8 @@ include ../../make.inc
 
 LIB_SIRIUS = ../../src/libsirius.a
 
+LIB_SIRIUS_DBG = ../../src/libsirius.dbg.a
+
 INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp

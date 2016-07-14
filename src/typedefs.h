@@ -33,38 +33,11 @@
 
 typedef std::complex<double> double_complex;
 
-enum spin_block_t {nm, uu, ud, dd, du};
+enum class spin_block_t {nm, uu, ud, dd, du};
 
 //enum lattice_t {direct, reciprocal};
 
 //enum coordinates_t {cartesian, fractional};
-
-/// Type of the solver to use for the standard or generalized eigen-value problem
-enum ev_solver_t 
-{
-    /// use LAPACK
-    ev_lapack, 
-
-    /// use ScaLAPACK
-    ev_scalapack,
-
-    /// use ELPA1 solver
-    ev_elpa1,
-
-    /// use ELPA2 (2-stage) solver
-    ev_elpa2,
-
-    /// use MAGMA
-    ev_magma,
-
-    /// use PLASMA
-    ev_plasma,
-
-    /// 
-    ev_rs_gpu,
-
-    ev_rs_cpu
-};
 
 /// Type of electronic structure methods.
 enum electronic_structure_method_t 
@@ -78,31 +51,16 @@ enum electronic_structure_method_t
     /// Ultrasoft pseudopotential with plane wave basis (experimental).
     ultrasoft_pseudopotential,
 
+    /// PAW pseudopotential with plane wave basis (experimental).
+    paw_pseudopotential,
+
     /// Norm-conserving pseudopotential with plane wave basis (experimental).
     norm_conserving_pseudopotential
 };
 
-enum index_domain_t {global, local};
+enum class index_domain_t {global, local};
 
 enum function_domain_t {spatial, spectral};
-
-/// Types of radial grid.
-enum radial_grid_t 
-{
-    linear_grid, 
-    
-    exponential_grid, 
-    
-    pow2_grid, 
-    
-    pow3_grid,
-
-    scaled_pow_grid,
-    
-    hyperbolic_grid, 
-    
-    incremental_grid
-};
 
 /// Wrapper for data types
 template <typename T> 
@@ -230,5 +188,19 @@ class type_wrapper<char>
             return static_cast<char>(255 * (double(rand()) / RAND_MAX));
         }
 };
+
+enum class relativity_t
+{
+    none,
+
+    koelling_harmon,
+
+    zora,
+
+    iora,
+
+    dirac
+};
+
 
 #endif // __TYPEDEFS_H__

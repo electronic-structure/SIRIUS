@@ -81,49 +81,52 @@ struct local_orbital_descriptor
     int p2;
 };
 
-
-class uspp_descriptor
+struct uspp_descriptor
 {
-    public:
+    /// Radial mesh.
+    std::vector<double> r;
 
-        /// Radial mesh.
-        std::vector<double> r;
+    /// Local part of potential.
+    std::vector<double> vloc;
 
-        /// Local part of potential.
-        std::vector<double> vloc;
+    /// Maximum angular momentum for |beta> projectors.
+    int lmax_beta_;
 
-        /// Maximum angular momentum for |beta> projectors.
-        int lmax;
+    /// Number of radial functions for |beta> projectors.
+    int num_beta_radial_functions;
 
-        /// Number of radial functions for |beta> projectors.
-        int num_beta_radial_functions;
-        
-        /// Orbital quantum numbers of each beta radial function.
-        std::vector<int> beta_l;
-        
-        /// Number of radial grid points for each beta radial function.
-        std::vector<int> num_beta_radial_points;
+    /// Orbital quantum numbers of each beta radial function.
+    std::vector<int> beta_l;
 
-        /// Radial functions of beta-projectors.
-        mdarray<double, 2> beta_radial_functions;
-        
-        /// Number of Q coefficients
-        int num_q_coefs; 
-        
-        /// Q coefficients
-        mdarray<double, 4> q_coefs;
-        
-        /// Inner radius where Q-radial functions are interpolated by polynomials.
-        std::vector<double> q_functions_inner_radii;
-        
-        /// Radial functions of Q-operator.
-        mdarray<double, 3> q_radial_functions_l;
+    /// Number of radial grid points for each beta radial function.
+    std::vector<int> num_beta_radial_points;
 
-        std::vector<double> core_charge_density;
+    /// Radial functions of beta-projectors.
+    mdarray<double, 2> beta_radial_functions;
 
-        std::vector<double> total_charge_density;
+    /// Radial functions of Q-operator.
+    mdarray<double, 3> q_radial_functions_l;
 
-        mdarray<double, 2> d_mtrx_ion;
+    bool augmentation_{false};
+
+    std::vector<double> core_charge_density;
+
+    std::vector<double> total_charge_density;
+
+    mdarray<double, 2> d_mtrx_ion;
+
+    mdarray<double, 2> wf_pseudo_;
+
+    std::vector<int> l_wf_pseudo_;
+
+    /// Atomic wave-functions used to setup the initial subspace.
+    /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
+    std::vector< std::pair<int, std::vector<double> > > atomic_pseudo_wfs_;
+    
+    /// occupation of starting wave functions
+    std::vector< double > atomic_pseudo_wfs_occ_;
+
+    bool is_initialized{false};
 };
 
 struct nearest_neighbour_descriptor
@@ -241,7 +244,7 @@ struct block_data_descriptor
     std::vector<int> counts;
     std::vector<int> offsets;
 
-    block_data_descriptor()
+    block_data_descriptor() : num_ranks(-1)
     {
     }
 
@@ -261,7 +264,6 @@ struct z_column_descriptor
 {
     int x;
     int y;
-    int offset;
     std::vector<int> z;
 
     z_column_descriptor()

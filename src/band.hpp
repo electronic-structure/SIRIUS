@@ -94,7 +94,7 @@ template <spin_block_t sblock>
 void Band::apply_hmt_to_apw(int num_gkvec__,
                             int ia__,
                             mdarray<double_complex, 2>& alm__,
-                            mdarray<double_complex, 2>& halm__)
+                            mdarray<double_complex, 2>& halm__) const
 {
     auto& atom = unit_cell_.atom(ia__);
     auto& type = atom.type();
@@ -230,7 +230,7 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
 
 template <spin_block_t sblock>
 void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                    Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
+                    Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h) const
 {
     runtime::Timer t("sirius::Band::set_h_it");
 
@@ -249,30 +249,30 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
                               
             switch (sblock)
             {
-                case nm:
+                case spin_block_t::nm:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function().theta_pw(ig12));
                     break;
                 }
-                case uu:
+                case spin_block_t::uu:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + effective_magnetic_field[0]->f_pw(ig12) +  
                                             t1 * ctx_.step_function().theta_pw(ig12));
                     break;
                 }
-                case dd:
+                case spin_block_t::dd:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) - effective_magnetic_field[0]->f_pw(ig12) +  
                                             t1 * ctx_.step_function().theta_pw(ig12));
                     break;
                 }
-                case ud:
+                case spin_block_t::ud:
                 {
                     h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) - 
                                             double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
                     break;
                 }
-                case du:
+                case spin_block_t::du:
                 {
                     h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) + 
                                             double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
@@ -284,7 +284,7 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
 }
 
 template <spin_block_t sblock>
-void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
+void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 {
     runtime::Timer t("sirius::Band::set_h_lo_lo");
 
