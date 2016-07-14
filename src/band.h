@@ -113,6 +113,10 @@ class Band
         void diag_fv_full_potential(K_point* kp__,
                                     Periodic_function<double>* effective_potential__) const;
 
+        /// Diagonalize a full-potential Hamiltonian with Davidson iterative solver.
+        void diag_fv_full_potential_davidson(K_point* kp__,
+                                    Periodic_function<double>* effective_potential__) const;
+
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
         void diag_pseudo_potential(K_point* kp__, 

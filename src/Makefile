@@ -46,6 +46,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Band/solve_sv.cpp \
        Band/residuals.cpp \
        Band/diag_fv_full_potential.cpp \
+       Band/diag_fv_full_potential_davidson.cpp \
        Band/orthogonalize.cpp \
        Band/initialize_subspace.cpp \
        Potential/potential.cpp \

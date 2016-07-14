@@ -1037,7 +1037,8 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
         case full_potential_pwlo:
         case full_potential_lapwlo:
         {
-            diag_fv_full_potential(kp__, effective_potential__);
+//            diag_fv_full_potential(kp__, effective_potential__);
+            diag_fv_full_potential_davidson(kp__, effective_potential__);
             break;
         }
         default:
