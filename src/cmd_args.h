@@ -207,13 +207,6 @@ inline std::string cmd_args::value<std::string>(const std::string key__)
 }
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__, const std::string default_val__)
-{
-    if (!exist(key__)) return default_val__;
-    return keys_[key__];
-}
-
-template <>
 inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__)
 {
     vector3d<double> v;

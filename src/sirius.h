@@ -61,93 +61,46 @@
 #endif // __SIRIUS_H__
 
 /** \mainpage Welcome to SIRIUS
- *  \section intro Introduction
- *  SIRIUS is ...
- *  \section install Installation
- *   ...
- */
+    \section intro Introduction
+    SIRIUS is ...
+    \section install Installation
+    ...
+*/
 
 /** \page coding Coding style
- *      
- *  Below are some basic style rules we try to follow:
- *      - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an 
- *        obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
- *      - Identation: 4 spaces (no tabs)
- *      - Spaces between most operators:
- *        \code{.cpp}
- *            if (i < 5) j = 5;  
- *
- *            for (int k = 0; k < 3; k++)
- *
- *            int lm = l * l + l + m;
- *
- *            double d = std::abs(e);
- *
- *            int k = idx[3];
- *        \endcode
- *      - Spaces between function arguments:
- *        \code{.cpp}
- *            double d = some_func(a, b, c);
- *        \endcode
- *      - Curly braces start at the new line:
- *        \code{.cpp}
- *            for (int i = 0; i < 10; i++)
- *            {
- *                ...
- *            }
- * 
- *            inline int num_points()
- *            {
- *                return num_points_;
- *            }
- *        \endcode
- *      - Single line 'if' statements and 'for' loops don't have curly braces:
- *        \code{.cpp}  
- *            if (i == 4) some_variable = 5;
- *
- *            for (int k = 0; k < 10; k++) do_something(k);
- *        \endcode
- *        or if it doesn't fit into 120 characters:
- *        \code{.cpp}
- *            if (i == 4) 
- *                some_variable = 5;
- *
- *            for (int k = 0; k < 10; k++) 
- *                do_something(k);
- *        \endcode
- *        but
- *        \code{.cpp}
- *            if (i == 4)
- *            {
- *                some_variable = 5;
- *            }
- *            else
- *            {
- *                some_variable = 6;
- *            }
- *        \endcode
- * 
- * 
- *  Class naming convention.
- *       
- *  Problem: all 'standard' naming conventions are not satisfactory. For example, we have a class 
- *  which does a DFT ground state. Following the common naming conventions it could be named like this:
- *  DFTGroundState, DftGroundState, dft_ground_state. Last two are bad, because DFT (and not Dft or dft)
- *  is a well recognized abbreviation. First one is band because capital G adds to DFT and we automaticaly
- *  read DFTG round state.
- *  
- *  Solution: we can propose the following: DFTgroundState or DFT_ground_state. The first variant still 
- *  doens't look very good because one of the words is captalized (State) and one (ground) - is not. So we pick 
- *  the second variant: DFT_ground_state (by the way, this is close to the Bjarne Stroustrup's naiming convention,
- *  where he uses first capital letter and underscores, for example class Io_obj).
- *
- *  Some other examples:
- *      - class Ground_state (composed of two words) 
- *      - class FFT_interface (composed of an abbreviation and a word)
- *      - class Interface_XC (composed of a word and abbreviation)
- *      - class Spline (single word)
- *      
- *  Exceptions are allowed if it makes sense. For example, low level utility classes like 'mdarray' (multi-dimentional
- *  array) or 'pstdout' (parallel standard output) are named with small letters. 
- *
+       
+    Below are some basic style rules we try to follow:
+        - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an 
+          obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
+        - Identation: 4 spaces (no tabs)
+        - Spaces between most operators:
+          \code{.cpp}
+              if (i < 5) j = 5;  
+ 
+              for (int k = 0; k < 3; k++)
+ 
+              int lm = l * l + l + m;
+ 
+              double d = fabs(e);
+ 
+              int k = idx[3];
+          \endcode
+        - Spaces between function arguments:
+          \code{.cpp}
+              double d = some_func(a, b, c);
+          \endcode
+        - Curly braces start at the new line:
+          \code{.cpp}
+              for (int i = 0; i < 10; i++)
+              {
+                  ...
+              }
+  
+              inline int num_points()
+              {
+                  return num_points_;
+              }
+          \endcode
+  
+  
  */

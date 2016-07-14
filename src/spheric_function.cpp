@@ -95,36 +95,33 @@ Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, 
 {
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
     SHT sht(lmax);
-    auto zf = convert(f);
+    auto zf = sht.convert(f);
     auto zg = gradient(zf);
     Spheric_function_gradient<spectral, double> g(f.angular_domain_size(), f.radial_grid());
-    for (int x: {0, 1, 2}) {
-        g[x] = convert(zg[x]);
-    }
+    for (int i = 0; i < 3; i++) g[i] = sht.convert(zg[i]);
     return g;
 }
 
 Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double>& f, 
                                             Spheric_function_gradient<spatial, double>& g)
 {
-    for (int x: {0, 1, 2}) {
-        if (f[x].radial_grid().hash() != g[x].radial_grid().hash()) {
+    for (int x = 0; x < 3; x++)
+    {
+        if (f[x].radial_grid().hash() != g[x].radial_grid().hash())
             TERMINATE("wrong radial grids");
-        }
         
-        if (f[x].angular_domain_size() != g[x].angular_domain_size()) {
+        if (f[x].angular_domain_size() != g[x].angular_domain_size())
             TERMINATE("wrong number of angular points");
-        }
     }
 
     Spheric_function<spatial, double> result(f.angular_domain_size(), f.radial_grid());
     result.zero();
 
-    for (int x: {0, 1, 2}) {
-        for (int ir = 0; ir < f[x].radial_grid().num_points(); ir++) {
-            for (int tp = 0; tp < f[x].angular_domain_size(); tp++) {
-                result(tp, ir) += f[x](tp, ir) * g[x](tp, ir);
-            }
+    for (int x = 0; x < 3; x++)
+    {
+        for (int ir = 0; ir < f[x].radial_grid().num_points(); ir++)
+        {
+            for (int tp = 0; tp < f[x].angular_domain_size(); tp++) result(tp, ir) += f[x](tp, ir) * g[x](tp, ir);
         }
     }
 

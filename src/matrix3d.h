@@ -26,8 +26,6 @@
 #define __MATRIX3D_H__
 
 #include <cstring>
-#include <initializer_list>
-#include <stdexcept>
 #include "vector3d.h"
 
 /// Handling of a 3x3 matrix of numerical data types.
@@ -63,13 +61,6 @@ class matrix3d
             {
                 for (int j = 0; j < 3; j++) mtrx_[i][j] = src.mtrx_[i][j];
             }
-        }
-
-        matrix3d(std::initializer_list< std::initializer_list<T> > mtrx__)
-        {
-            for (int i: {0, 1, 2})
-                for (int j: {0, 1, 2})
-                    mtrx_[i][j] = mtrx__.begin()[i].begin()[j];
         }
         
         /// Assigment operator.
@@ -158,7 +149,8 @@ matrix3d<T> inverse(matrix3d<T> src)
     
     if (std::abs(t1) < 1e-10)
     {
-        throw std::runtime_error("matrix is degenerate");
+        printf("matix is degenerate");
+        exit(-1);
     }
     
     t1 = 1.0 / t1;

@@ -178,10 +178,7 @@ class Density
          *  \f]
          *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
          *  the occupancy operator written in spectral representation. */
-        void add_k_point_contribution_mt(K_point* kp__,
-                                         mdarray<double_complex, 4>& density_matrix__);
-
-        template <typename T>
+        template <electronic_structure_method_t basis>
         void add_k_point_contribution(K_point* kp__,
                                       mdarray<double_complex, 4>& density_matrix__);
 
@@ -195,6 +192,10 @@ class Density
         /// Generate valence density in the interstitial
         void generate_valence_density_it(K_set& ks);
        
+        /// Add band contribution to the muffin-tin density
+        void add_band_contribution_mt(Band* band, double weight, mdarray<double_complex, 3>& fylm, 
+                                      std::vector<Periodic_function<double>*>& dens);
+        
         /// Generate charge density of core states
         void generate_core_charge_density();
 
@@ -316,6 +317,18 @@ class Density
             return s;
         }
 
+        inline void pack(Mixer<double>* mixer__)
+        {
+            size_t n = rho_->pack(0, mixer__);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer__);
+        }
+
+        inline void unpack(double const* buffer__)
+        {
+            size_t n = rho_->unpack(buffer__);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer__[n]);
+        }
+        
         Periodic_function<double>* rho()
         {
             return rho_;
@@ -351,8 +364,7 @@ class Density
         {
             if (mixer_ != nullptr)
             {
-                size_t n = rho_->pack(0, mixer_);
-                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer_);
+                pack(mixer_);
             }
             else
             {
@@ -380,8 +392,7 @@ class Density
         {
             if (mixer_ != nullptr)
             {
-                size_t n = rho_->unpack(mixer_->output_buffer());
-                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&mixer_->output_buffer()[n]);
+                unpack(mixer_->output_buffer());
             }
             else
             {
@@ -431,7 +442,6 @@ class Density
                 mixer_input();
                 rms = mixer_->mix();
                 mixer_output();
-                /* get rho(G) after mixing */
                 rho_->fft_transform(-1);
             }
             else
@@ -441,10 +451,8 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                ctx_.fft().prepare();
                 rho_->fft_transform(1);
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
-                ctx_.fft().dismiss();
             }
 
             return rms;

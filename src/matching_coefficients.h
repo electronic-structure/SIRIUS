@@ -89,11 +89,13 @@ class Matching_coefficients
                 case 1:
                 {
                     #if (__VERIFICATION > 0)
-                    if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega())) {   
+                    if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega()))
+                    {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
-                          << "  radial function value at the MT boundary : " << A(0, 0); 
-                        WARNING(s.str());
+                            << "  radial function value at the MT boundary : " << A(0, 0); 
+
+                        warning_local(__FILE__, __LINE__, s);
                     }
                     #endif
                                     
@@ -105,11 +107,13 @@ class Matching_coefficients
                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
                     
                     #if (__VERIFICATION > 0)
-                    if (std::abs(det) < 1.0 / std::sqrt(unit_cell_.omega())) {   
+                    if (std::abs(det) < 1.0 / std::sqrt(unit_cell_.omega()))
+                    {   
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
-                          << "  radial function value at the MT boundary : " << A(0 ,0); 
-                        WARNING(s.str());
+                            << "  radial function value at the MT boundary : " << A(0 ,0); 
+
+                        warning_local(__FILE__, __LINE__, s);
                     }
                     #endif
 

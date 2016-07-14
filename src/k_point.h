@@ -55,10 +55,6 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
-        Gvec_FFT_distribution* gkvec_fft_distr_;
-
-        Gvec_FFT_distribution* gkvec_fft_distr_vloc_;
-
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
@@ -102,15 +98,15 @@ class K_point
         /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
 
-        /// Basis descriptors distributed between rows of the 2D MPI grid.
-        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
+        /// Basis descriptors distributed along rows of the 2D MPI grid.
+        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
         
-        /// Basis descriptors distributed between columns of the 2D MPI grid.
-        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
+        /// basis descriptors distributed along columns of the 2D MPI grid
+        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
 
-        /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
+        /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector< std::vector<int> > atom_lo_cols_;
 
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
@@ -195,10 +191,6 @@ class K_point
                     }
                 }
             }
-
-            if (gkvec_fft_distr_ != nullptr) delete gkvec_fft_distr_;
-
-            if (gkvec_fft_distr_vloc_ != nullptr) delete gkvec_fft_distr_vloc_;
         }
 
         /// Initialize the k-point related arrays and data
@@ -533,16 +525,6 @@ class K_point
         inline Gvec const& gkvec() const
         {
             return gkvec_;
-        }
-
-        inline Gvec_FFT_distribution const& gkvec_fft_distr() const
-        {
-            return *gkvec_fft_distr_;
-        }
-
-        inline Gvec_FFT_distribution const& gkvec_fft_distr_vloc() const
-        {
-            return *gkvec_fft_distr_vloc_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()

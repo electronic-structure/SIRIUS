@@ -65,12 +65,6 @@ class radial_functions_index
     
     public:
 
-        void init(const std::vector<local_orbital_descriptor>& lo_descriptors__)
-        {
-            std::vector<radial_solution_descriptor_set> aw_descriptors;
-            init(aw_descriptors, lo_descriptors__);
-        }
-
         void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<local_orbital_descriptor>& lo_descriptors)
         {
@@ -95,7 +89,7 @@ class radial_functions_index
             {
                 assert(aw_descriptors[l].size() <= 3);
 
-                for (size_t order = 0; order < aw_descriptors[l].size(); order++)
+                for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
                 {
                     radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
                     num_rf_[l]++;
@@ -242,7 +236,7 @@ class basis_functions_index
         /// Return total number of MT basis functions.
         inline int size() const
         {
-            return static_cast<int>(basis_function_index_descriptors_.size());
+            return (int)basis_function_index_descriptors_.size();
         }
 
         inline int size_aw() const
@@ -382,7 +376,7 @@ class Atom_type
         Spline<double> free_atom_density_;
         
         /// Potential of a free atom.
-        //Spline<double> free_atom_potential_;
+        Spline<double> free_atom_potential_;
 
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
@@ -390,8 +384,8 @@ class Atom_type
     public:
         
         Atom_type(Simulation_parameters const& parameters__,
-                  const std::string symbol__, 
-                  const std::string name__, 
+                  const char* symbol__, 
+                  const char* name__, 
                   int zn__, 
                   double mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
@@ -399,10 +393,8 @@ class Atom_type
  
         Atom_type(Simulation_parameters const& parameters__,
                   const int id__, 
-                  const std::string label__, 
+                  const std::string label, 
                   const std::string file_name__);
-
-        Atom_type(Atom_type&& src) = default;
 
         ~Atom_type();
         
@@ -415,11 +407,6 @@ class Atom_type
         
         /// Add local orbital descriptor
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
-
-        void add_lo_descriptor(local_orbital_descriptor const& lod__)
-        {
-            lo_descriptors_.push_back(lod__);
-        }
 
         void init_free_atom(bool smooth);
 
@@ -486,7 +473,7 @@ class Atom_type
         
         inline int num_atomic_levels() const
         {
-            return static_cast<int>(atomic_levels_.size());
+            return (int)atomic_levels_.size();
         }    
         
         inline atomic_level_descriptor const& atomic_level(int idx) const
@@ -514,20 +501,20 @@ class Atom_type
             return free_atom_density_(x);
         }
         
-        //inline double free_atom_potential(const int idx) const
-        //{
-        //    return free_atom_potential_[idx];
-        //}
+        inline double free_atom_potential(const int idx) const
+        {
+            return free_atom_potential_[idx];
+        }
 
-        //inline double free_atom_potential(double x) const
-        //{
-        //    return free_atom_potential_(x);
-        //}
+        inline double free_atom_potential(double x) const
+        {
+            return free_atom_potential_(x);
+        }
 
-        //Spline<double> const& free_atom_potential() const
-        //{
-        //    return free_atom_potential_;
-        //}
+        Spline<double> const& free_atom_potential() const
+        {
+            return free_atom_potential_;
+        }
 
         inline int num_aw_descriptors() const
         {
@@ -740,18 +727,33 @@ class Atom_type
             return parameters_;
         }
 
+        void fix_q_radial_function(int l, int i, int j, double* qrf) const
+        {
+            for (int ir = 0; ir < num_mt_points(); ir++)
+            {
+                double x = radial_grid(ir);
+                double x2 = x * x;
+                if (x < uspp_.q_functions_inner_radii[l])
+                {
+                    qrf[ir] = uspp_.q_coefs(0, l, i, j);
+                    for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * std::pow(x2, n);
+                    qrf[ir] *= std::pow(x, l + 2);
+                }
+            }
+        }
+
         void set_free_atom_radial_grid(int num_points__, double const* points__)
         {
-            if (num_points__ <= 0) TERMINATE("wrong number of radial points");
+            if (num_mt_points_ <= 0) TERMINATE("wrong number of radial points");
             free_atom_radial_grid_ = Radial_grid(num_points__, points__);
         }
 
-        //void set_free_atom_potential(int num_points__, double const* vs__)
-        //{
-        //    free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
-        //    for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
-        //    free_atom_potential_.interpolate();
-        //}
+        void set_free_atom_potential(int num_points__, double const* vs__)
+        {
+            free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
+            for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
+            free_atom_potential_.interpolate();
+        }
 };
 
 };

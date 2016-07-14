@@ -157,7 +157,7 @@ class Utils
         static void write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,
                                  bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f");
         
-        static void write_matrix(std::string const& fname, bool write_all, mdarray<double, 2>& matrix);
+        static void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& matrix);
 
         static void write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx);
 
@@ -191,6 +191,13 @@ class Utils
             double a0 = std::floor(a__);
             double b = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
             return a0 + b;
+        }
+
+        inline static double current_time()
+        {
+            timeval t;
+            gettimeofday(&t, NULL);
+            return double(t.tv_sec) + double(t.tv_usec) / 1e6;
         }
 };
 

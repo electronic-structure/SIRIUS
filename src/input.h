@@ -1,27 +1,3 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
-// the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-/** \file input.h
- *   
- *  \brief Contains declarations and implementations of input parameters structures.
- */
-
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
@@ -73,7 +49,11 @@ struct Unit_cell_input_section
     std::map<std::string, std::string> atom_files_;
     std::vector< std::vector< std::vector<double> > > coordinates_;
 
-    bool exist_{false};
+    bool exist_;
+
+    Unit_cell_input_section() : exist_(false)
+    {
+    }
 
     void read(JSON_tree const& parser)
     {
@@ -140,12 +120,21 @@ struct Unit_cell_input_section
 
 struct Mixer_input_section
 {
-    double beta_{0.9};
-    double beta0_{0.15};
-    double linear_mix_rms_tol_{1e6};
-    std::string type_{"broyden2"};
-    int max_history_{8};
-    bool exist_{false};
+    double beta_;
+    double gamma_;
+    std::string type_;
+    int max_history_;
+
+    bool exist_;
+
+    Mixer_input_section() 
+        : beta_(0.9),
+          gamma_(1.0),
+          type_("broyden2"),
+          max_history_(8),
+          exist_(false)
+    {
+    }
 
     void read(JSON_tree const& parser)
     {
@@ -153,143 +142,87 @@ struct Mixer_input_section
         {
             exist_ = true;
             auto section = parser["mixer"];
-            beta_               = section["beta"].get(beta_);
-            beta0_              = section["beta0"].get(beta0_);
-            linear_mix_rms_tol_ = section["linear_mix_rms_tol"].get(linear_mix_rms_tol_);
-            max_history_        = section["max_history"].get(max_history_);
-            type_               = section["type"].get(type_);
+            beta_        = section["beta"].get(beta_);
+            gamma_       = section["gamma"].get(gamma_);
+            max_history_ = section["max_history"].get(max_history_);
+            type_        = section["type"].get(type_);
         }
     }
 };
 
+//== /// Parse XC functionals input section.
+//== /** The following part of the input file is parsed:
+//==  *  \code{.json}
+//==  *      "xc_functionals" : ["name1", "name2", ...]
+//==  *  \endcode
+//==  */
+//== struct XC_functionals_input_section
+//== {
+//==     /// List of XC functionals.
+//==     std::vector<std::string> xc_functional_names_;
+//== 
+//==     /// Set default variables.
+//==     XC_functionals_input_section()
+//==     {
+//==         //== xc_functional_names_.push_back("XC_LDA_X");
+//==         //== xc_functional_names_.push_back("XC_LDA_C_VWN");
+//==     }
+//== 
+//==     void read(JSON_tree const& parser)
+//==     {
+//==         if (parser.exist("xc_functionals"))
+//==         {
+//==             xc_functional_names_.clear();
+//==             for (int i = 0; i < parser["xc_functionals"].size(); i++)
+//==             {
+//==                 std::string s;
+//==                 parser["xc_functionals"][i] >> s;
+//==                 xc_functional_names_.push_back(s);
+//==             }
+//==         }
+//==     }
+//== };
+
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
-    std::string type_{"davidson"};
-    int num_steps_{20};
-    int subspace_size_{4};
-    double energy_tolerance_{1e-6};
-    double residual_tolerance_{1e-6};
-    int converge_by_energy_{1}; // TODO: rename, this is meaningless
-    int converge_occupied_{1};
-    int min_num_res_{0};
-    int real_space_prj_{0}; // TODO: move it from here to parameters
-    double R_mask_scale_{1.5};
-    double mask_alpha_{3};
+    int num_steps_;
+    int subspace_size_;
+    double tolerance_;
+    std::string type_;
+    int converge_by_energy_;
+    int converge_occupied_;
+    int min_num_res_;
+    int real_space_prj_;
+    double R_mask_scale_;
+    double mask_alpha_;
+
+    Iterative_solver_input_section() 
+        : num_steps_(20),
+          subspace_size_(4),
+          tolerance_(1e-6),
+          type_("davidson"),
+          converge_by_energy_(1),
+          converge_occupied_(1),
+          min_num_res_(0),
+          real_space_prj_(0),
+          R_mask_scale_(1.5),
+          mask_alpha_(3)
+    {
+    }
 
     void read(JSON_tree const& parser)
     {
-        type_               = parser["iterative_solver"]["type"].get(type_);
         num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
         subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
-        energy_tolerance_   = parser["iterative_solver"]["energy_tolerance"].get(energy_tolerance_);
-        residual_tolerance_ = parser["iterative_solver"]["residual_tolerance"].get(residual_tolerance_);
+        tolerance_          = parser["iterative_solver"]["tolerance"].get(tolerance_);
+        type_               = parser["iterative_solver"]["type"].get(type_);
         converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
         converge_occupied_  = parser["iterative_solver"]["converge_occupied"].get(converge_occupied_);
         min_num_res_        = parser["iterative_solver"]["min_num_res"].get(min_num_res_);
         real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
         R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
         mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);
-    }
-};
-
-/// Parse control input section.
-/** The following part of the input file is parsed:
- *  \code{.json}
- *    "control" : {
- *      "mpi_grid_dims" : (1- 2- or 3-dimensional vector<int>) MPI grid layout
- *      "cyclic_block_size" : (int) PBLAS / ScaLAPACK block size
- *      "reduce_gvec" : (int) use reduced G-vector set (reduce_gvec = 1) or full set (reduce_gvec = 0)
- *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
- *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
- *      "electronic_structure_method" : (string) electronic structure method
- *      "processing_unit" : (string) primary processing unit
- *      "fft_mode" : (string) serial or parallel FFT
- *    }
- *  \endcode
- */
-struct Control_input_section
-{
-    std::vector<int> mpi_grid_dims_;
-    int cyclic_block_size_{32};
-    bool reduce_gvec_{true};
-    std::string std_evp_solver_name_{"lapack"};
-    std::string gen_evp_solver_name_{"lapack"};
-    std::string fft_mode_{"serial"};
-    std::string processing_unit_{"cpu"};
-    double rmt_max_{2.2};
-    double spglib_tolerance_{1e-4};
-
-    void read(JSON_tree const& parser)
-    {
-        mpi_grid_dims_       = parser["control"]["mpi_grid_dims"].get(mpi_grid_dims_); 
-        cyclic_block_size_   = parser["control"]["cyclic_block_size"].get(cyclic_block_size_);
-        std_evp_solver_name_ = parser["control"]["std_evp_solver_type"].get(std_evp_solver_name_);
-        gen_evp_solver_name_ = parser["control"]["gen_evp_solver_type"].get(gen_evp_solver_name_);
-
-        processing_unit_ = parser["control"]["processing_unit"].get(processing_unit_);
-        std::transform(processing_unit_.begin(), processing_unit_.end(), processing_unit_.begin(), ::tolower);
-
-        fft_mode_ = parser["control"]["fft_mode"].get(fft_mode_);
-        reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
-
-        rmt_max_ = parser["control"]["rmt_max"].get(rmt_max_);
-        spglib_tolerance_ = parser["control"]["spglib_tolerance"].get(spglib_tolerance_);
-    }
-};
-
-struct Parameters_input_section
-{
-    std::string esm_{"none"};
-    std::vector<std::string> xc_functionals_;
-    std::string core_relativity_{"dirac"};
-    std::string valence_relativity_{"zora"};
-    int num_fv_states_{-1};
-    double smearing_width_{0.01}; // in Ha
-    double pw_cutoff_{20.0}; // in a.u.^-1
-    double aw_cutoff_{7.0}; // this is R_{MT} * |G+k|_{max}
-    double gk_cutoff_{6.0}; // in a.u.^-1
-    int lmax_apw_{10};
-    int lmax_rho_{10};
-    int lmax_pot_{10};
-    int num_mag_dims_{0};
-    int auto_rmt_{1};
-    int use_symmetry_{1};
-    int gamma_point_{0};
-
-    void read(JSON_tree const& parser)
-    {
-        esm_ = parser["parameters"]["electronic_structure_method"].get(esm_);
-        std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
-
-        /* read list of XC functionals */
-        if (parser["parameters"].exist("xc_functionals")) {
-            xc_functionals_.clear();
-            for (int i = 0; i < parser["parameters"]["xc_functionals"].size(); i++) {
-                std::string s;
-                parser["parameters"]["xc_functionals"][i] >> s;
-                xc_functionals_.push_back(s);
-            }
-        }
-
-        core_relativity_ = parser["parameters"]["core_relativity"].get(core_relativity_);
-        std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
-
-        valence_relativity_ = parser["parameters"]["valence_relativity"].get(valence_relativity_);
-        std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(), ::tolower);
-
-        num_fv_states_  = parser["parameters"]["num_fv_states"].get(num_fv_states_);
-        smearing_width_ = parser["parameters"]["smearing_width"].get(smearing_width_);
-        pw_cutoff_      = parser["parameters"]["pw_cutoff"].get(pw_cutoff_);
-        aw_cutoff_      = parser["parameters"]["aw_cutoff"].get(aw_cutoff_);
-        gk_cutoff_      = parser["parameters"]["gk_cutoff"].get(gk_cutoff_);
-        lmax_apw_       = parser["parameters"]["lmax_apw"].get(lmax_apw_);
-        lmax_rho_       = parser["parameters"]["lmax_rho"].get(lmax_rho_);
-        lmax_pot_       = parser["parameters"]["lmax_pot"].get(lmax_pot_);
-        num_mag_dims_   = parser["parameters"]["num_mag_dims"].get(num_mag_dims_);
-        auto_rmt_       = parser["parameters"]["auto_rmt"].get(auto_rmt_);
-        use_symmetry_   = parser["parameters"]["use_symmetry"].get(use_symmetry_);
-        gamma_point_    = parser["parameters"]["gamma_point"].get(gamma_point_);
     }
 };
 

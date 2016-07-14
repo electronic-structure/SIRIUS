@@ -25,27 +25,10 @@
 #ifndef __RADIAL_GRID_H__
 #define __RADIAL_GRID_H__
 
+#include "typedefs.h"
 #include "utils.h"
 
 namespace sirius {
-
-/// Types of radial grid.
-enum radial_grid_t
-{
-    linear_grid,
-
-    exponential_grid,
-
-    pow2_grid,
-
-    pow3_grid,
-
-    scaled_pow_grid,
-
-    hyperbolic_grid,
-
-    incremental_grid
-};
 
 /// Radial grid for a muffin-tin or an isolated atom.
 class Radial_grid
@@ -144,19 +127,7 @@ class Radial_grid
         /// Number of grid points.
         inline int num_points() const
         {
-            return static_cast<int>(x_.size());
-        }
-
-        /// First point of the grid.
-        inline double first() const
-        {
-            return x_(0);
-        }
-
-        /// Last point of the grid.
-        inline double last() const
-        {
-            return x_(num_points() - 1);
+            return (int)x_.size();
         }
                
         /// Return name of the grid type.

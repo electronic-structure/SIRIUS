@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -50,6 +50,8 @@ class K_set
     
         Simulation_context& ctx_;
 
+        Band* band_;
+
         std::vector<K_point*> kpoints_;
 
         splindex<block> spl_num_kpoints_;
@@ -62,6 +64,12 @@ class K_set
 
         Communicator const& comm_k_;
 
+        void init()
+        {
+            PROFILE();
+            band_ = new Band(ctx_, ctx_.blacs_grid());
+        }
+
     public:
 
         K_set(Simulation_context& ctx__,
@@ -71,6 +79,7 @@ class K_set
               comm_k_(comm_k__)
         {
             PROFILE();
+            init();
         }
 
         K_set(Simulation_context& ctx__,
@@ -83,6 +92,7 @@ class K_set
               comm_k_(comm_k__)
         {
             PROFILE();
+            init();
 
             int nk;
             mdarray<double, 2> kp;
@@ -178,13 +188,14 @@ class K_set
         {
             PROFILE();
             clear();
+            delete band_;
         }
         
         /// Initialize the k-point set
         void initialize();
 
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
-        void find_eigen_states(Potential* potential, Band const& band__, bool precompute);
+        void find_eigen_states(Potential* potential, bool precompute);
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();
@@ -258,6 +269,11 @@ class K_set
         void get_band_occupancies(int ik, double* band_occupancies)
         {
             kpoints_[ik]->get_band_occupancies(band_occupancies);
+        }
+
+        Band* band()
+        {
+            return band_;
         }
 
         inline double energy_fermi()

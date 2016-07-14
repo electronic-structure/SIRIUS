@@ -132,7 +132,7 @@ void Force::ibs_force(Simulation_context& ctx__,
         band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h.panel(), o.panel());
 
         /* apply MT Hamiltonian to column coefficients */
-        band__->apply_hmt_to_apw<spin_block_t::nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
+        band__->apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
 
         /* conjugate row (<bra|) matching coefficients */
         for (int i = 0; i < type.mt_aw_basis_size(); i++)
@@ -247,16 +247,15 @@ void Force::total_force(Simulation_context& ctx__,
 
     auto& uc = ctx__.unit_cell();
 
-    auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells(), ctx__.unit_cell(), ctx__.gvec(), ctx__.comm());
+    auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells());
 
     force__.zero();
 
     mdarray<double, 2> forcek(3, uc.num_atoms());
     for (int ikloc = 0; ikloc < ks__->spl_num_kpoints().local_size(); ikloc++)
     {
-        //int ik = ks__->spl_num_kpoints(ikloc);
-        //ibs_force(ctx__, band_, (*ks__)[ik], ffac, forcek);
-        STOP();
+        int ik = ks__->spl_num_kpoints(ikloc);
+        ibs_force(ctx__, ks__->band(), (*ks__)[ik], ffac, forcek);
         for (int ia = 0; ia < uc.num_atoms(); ia++)
         {
             for (int x: {0, 1, 2}) force__(x, ia) += forcek(x, ia);

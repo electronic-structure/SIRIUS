@@ -3,9 +3,9 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
-       sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
+       radial_solver.cpp sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
        xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp fft3d.cpp \
-       simulation_context.cpp wave_functions.cpp beta_projectors.cpp non_local_operator.cpp \
+       simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
        Atom_type/add_aw_descriptor.cpp \
        Atom_type/add_lo_descriptor.cpp \
        Atom_type/atom_type.cpp \
@@ -47,23 +47,18 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Band/diag_pseudo_potential.cpp \
        Band/diag_pseudo_potential_exact.cpp \
        Band/diag_pseudo_potential_davidson.cpp \
-       Band/diag_pseudo_potential_rmm_diis.cpp \
        Band/diag_h_o.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_aux.cpp \
        Band/solve_sv.cpp \
        Band/residuals.cpp \
-       Band/diag_fv_full_potential.cpp \
-       Band/orthogonalize.cpp \
-       Band/initialize_subspace.cpp \
-       Potential/potential.cpp \
+       Band/diag_fv_full_potential_davidson.cpp \
        Potential/init.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
        Potential/generate_d_operator_matrix.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
-       Potential/generate_pw_coefs.cpp \
        K_point/distribute_basis_index.cpp \
        K_point/build_gklo_basis_descriptors.cpp \
        K_point/generate_fv_states.cpp \
@@ -88,8 +83,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/pack_unpack_z_columns.o \
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \
-	Kernels/sum_q_pw_dm_pw.o \
-	Kernels/generate_phase_factors.o
+	Kernels/sum_q_pw_dm_pw.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

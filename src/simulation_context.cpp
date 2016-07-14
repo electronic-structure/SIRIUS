@@ -8,29 +8,18 @@ void Simulation_context::init_fft()
 
     auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
 
-    if (!(control_input_section_.fft_mode_ == "serial" || control_input_section_.fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
+    if (!(fft_mode_ == "serial" || fft_mode_ == "parallel")) TERMINATE("wrong FFT mode");
 
-    if (full_potential())
+    /* for now, use parallel fft only in pseudopotential part of the code */
+    if (full_potential() || fft_mode_ == "serial")
     {
         /* split bands between all ranks, use serial FFT */
         mpi_grid_fft_ = new MPI_grid({1, comm.size()}, comm);
     }
     else
     {
-        /* use parallel FFT for density and potential */
         mpi_grid_fft_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
                                       mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
-        
-        if (control_input_section_.fft_mode_ == "serial")
-        {
-            /* serial FFT in Hloc */
-            mpi_grid_fft_vloc_ = new MPI_grid({1, comm.size()}, comm);
-        }
-        else
-        {
-            mpi_grid_fft_vloc_ = new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                               mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm);
-        }
     }
 
     /* create FFT driver for dense mesh (density and potential) */
@@ -38,43 +27,25 @@ void Simulation_context::init_fft()
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
-                 mpi_grid_fft_->dimension_size(0), true, control_input_section_.reduce_gvec_);
-
-    gvec_fft_distr_ = new Gvec_FFT_distribution(gvec_, mpi_grid_fft_->communicator(1 << 0));
+                 fft_->comm(), mpi_grid_fft_->dimension_size(1), true, false);
 
     if (!full_potential())
     {
         /* create FFT driver for coarse mesh */
-        fft_coarse_ = new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_vloc_->communicator(1 << 0), processing_unit(), 0.9);
+        fft_coarse_ = new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9);
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            mpi_grid_fft_vloc_->dimension_size(0), true, control_input_section_.reduce_gvec_);
+                            fft_coarse_->comm(), mpi_grid_fft_->dimension_size(1), false, false);
     }
 }
 
 void Simulation_context::initialize()
 {
     PROFILE();
-    
-    /* can't initialize twice */
+
     if (initialized_) TERMINATE("Simulation context is already initialized.");
     
-    /* get processing unit */
-    std::string pu = control_input_section_.processing_unit_;
-    if (pu == "cpu")
-    {
-        processing_unit_ = CPU;
-    }
-    else if (pu == "gpu")
-    {
-        processing_unit_ = GPU;
-    }
-    else
-    {
-        TERMINATE("wrong processing unit");
-    }
-
     /* check if we can use a GPU device */
     if (processing_unit() == GPU)
     {
@@ -82,15 +53,12 @@ void Simulation_context::initialize()
         TERMINATE_NO_GPU
         #endif
     }
-    
+
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!control_input_section_.mpi_grid_dims_.size()) control_input_section_.mpi_grid_dims_ = {comm_.size()};
-    
-    /* can't use reduced G-vectors in LAPW code */
-    if (full_potential()) control_input_section_.reduce_gvec_ = false;
+    if (!mpi_grid_dims_.size()) mpi_grid_dims_ = {comm_.size()};
 
     /* setup MPI grid */
-    mpi_grid_ = new MPI_grid(control_input_section_.mpi_grid_dims_, comm_);
+    mpi_grid_ = new MPI_grid(mpi_grid_dims_, comm_);
 
     blacs_grid_ = new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
                                  mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_));
@@ -107,39 +75,23 @@ void Simulation_context::initialize()
     MEMORY_USAGE_INFO();
     #endif
 
-    //if (comm_.rank() == 0)
-    //{
-    //    unit_cell_.write_cif();
-    //    unit_cell_.write_json();
-    //}
-
-    if (unit_cell_.num_atoms() != 0)
+    if (comm_.rank() == 0)
     {
-        unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
-        if (!full_potential()) unit_cell_.symmetry()->check_gvec_symmetry(gvec_coarse_);
+        unit_cell_.write_cif();
+        unit_cell_.write_json();
     }
 
-    auto& fft_grid = fft().grid();
-    std::pair<int, int> limits(0, 0);
-    for (int x: {0, 1, 2})
-    {
-        limits.first = std::min(limits.first, fft_grid.limits(x).first); 
-        limits.second = std::max(limits.second, fft_grid.limits(x).second); 
-    }
+    #ifdef __PRINT_MEMORY_USAGE
+    MEMORY_USAGE_INFO();
+    #endif
 
-    phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms());
-
-    #pragma omp parallel for
-    for (int i = limits.first; i <= limits.second; i++)
-    {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
-            auto pos = unit_cell_.atom(ia).position();
-            for (int x: {0, 1, 2}) phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
-        }
-    }
+    if (unit_cell_.num_atoms() != 0) unit_cell_.symmetry()->check_gvec_symmetry(gvec_);
     
-    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, *gvec_fft_distr_, comm_);
+    #ifdef __PRINT_MEMORY_USAGE
+    MEMORY_USAGE_INFO();
+    #endif
+
+    if (full_potential()) step_function_ = new Step_function(unit_cell_, fft_, gvec_, comm_);
 
     if (iterative_solver_input_section().real_space_prj_) 
     {
@@ -159,7 +111,7 @@ void Simulation_context::initialize()
     if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
         TERMINATE("not enough first-variational states");
     
-    std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
+    std::string evsn[] = {std_evp_solver_name_, gen_evp_solver_name_};
 
     if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1)
     {
@@ -202,14 +154,14 @@ void Simulation_context::initialize()
     if (comm_.rank() == 0) print_info();
     #endif
 
-    if (esm_type() == ultrasoft_pseudopotential) {
+    if (!full_potential())
+    {
         /* create augmentation operator Q_{xi,xi'}(G) here */
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             augmentation_op_.push_back(new Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega()));
-        }
     }
     
-    time_active_ = -runtime::wtime();
+    time_active_ = -Utils::current_time();
 
     initialized_ = true;
 }

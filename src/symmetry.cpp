@@ -111,7 +111,7 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             for (int k = 0; k < num_atoms_; k++)
             {
                 vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-                if ((v.first - pos1).length() < tolerance_)
+                if ((v.first - pos1).length() < 1e-6)
                 {
                     ja = k;
                     break;
@@ -299,31 +299,24 @@ void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
             auto gv = gvec__[ig];
             /* apply symmetry operation to the G-vector */
             auto gv_rot = transpose(sm) * gv;
-            /* check limits */
-            for (int x = 0; x < 3; x++)
-            {
-                auto limits = gvec__.fft_box().limits(x);
-                /* check boundaries */
-                if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
-                {
-                    std::stringstream s;
-                    s << "rotated G-vector is outside of grid limits" << std::endl
-                      << "original G-vector: " << gv << std::endl
-                      << "rotation matrix: " << std::endl
-                      << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
-                      << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
-                      << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
-                      << "rotated G-vector: " << gv_rot;
-                      TERMINATE(s);
-                }
-            }
+            //for (int x = 0; x < 3; x++)
+            //{
+            //    auto limits = gvec__.grid_limits(x);
+            //    /* check boundaries */
+            //    if (gv_rot[x] < limits.first || gv_rot[x] > limits.second)
+            //    {
+            //        std::stringstream s;
+            //        s << "rotated G-vector is outside of grid limits" << std::endl
+            //          << "original G-vector: " << gv << std::endl
+            //          << "rotation matrix: " << std::endl
+            //          << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
+            //          << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
+            //          << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
+            //          << "rotated G-vector: " << gv_rot;
+            //          TERMINATE(s);
+            //    }
+            //}
             int ig_rot = gvec__.index_by_gvec(gv_rot);
-            /* special case where -G is equal to G */
-            if (ig_rot == -1 && gvec__.reduced())
-            {
-                gv_rot = gv_rot * (-1);
-                ig_rot = gvec__.index_by_gvec(gv_rot);
-            }
             if (ig_rot < 0 || ig_rot >= gvec__.num_gvec())
             {
                 std::stringstream s;
@@ -364,9 +357,6 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
         for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
         {
             int ig = spl_gvec[igloc];
-            
-            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
-
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
              * GR is a vector-matrix multiplication [G][.....]
@@ -379,27 +369,15 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            if (gvec__.reduced() && ig_rot == -1)
-            {
-                gv_rot = gv_rot * (-1);
-                int ig_rot = gvec__.index_by_gvec(gv_rot);
-              
-                #pragma omp atomic update
-                ptr[2 * ig_rot] += z.real();
+            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
-                #pragma omp atomic update
-                ptr[2 * ig_rot + 1] -= z.imag();
-            }
-            else
-            {
-                assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
-              
-                #pragma omp atomic update
-                ptr[2 * ig_rot] += z.real();
+            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
+            
+            #pragma omp atomic update
+            ptr[2 * ig_rot] += z.real();
 
-                #pragma omp atomic update
-                ptr[2 * ig_rot + 1] += z.imag();
-            }
+            #pragma omp atomic update
+            ptr[2 * ig_rot + 1] += z.imag();
         }
     }
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());

@@ -48,61 +48,69 @@ class Simulation_context: public Simulation_parameters
         Communicator const& comm_;
 
         /// MPI grid for this simulation.
-        MPI_grid* mpi_grid_{nullptr};
+        MPI_grid* mpi_grid_;
         
         /// 2D MPI grid for the FFT driver.
-        MPI_grid* mpi_grid_fft_{nullptr};
-
-        MPI_grid* mpi_grid_fft_vloc_{nullptr};
+        MPI_grid* mpi_grid_fft_;
 
         /// 2D BLACS grid for distributed linear algebra operations.
-        BLACS_grid* blacs_grid_{nullptr};
+        BLACS_grid* blacs_grid_;
 
         /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
         /** This grid is used to distribute band index and keep a whole wave-function */
-        BLACS_grid* blacs_grid_slice_{nullptr};
+        BLACS_grid* blacs_grid_slice_;
 
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
-        FFT3D* fft_{nullptr};
+        FFT3D* fft_;
 
-        FFT3D* fft_coarse_{nullptr};
+        FFT3D* fft_coarse_;
 
         /// Step function is used in full-potential methods.
-        Step_function* step_function_{nullptr};
+        Step_function* step_function_;
 
         Gvec gvec_;
 
         Gvec gvec_coarse_;
 
-        Gvec_FFT_distribution* gvec_fft_distr_{nullptr};
-
         std::vector<Augmentation_operator*> augmentation_op_;
 
-        Real_space_prj* real_space_prj_{nullptr};
+        Real_space_prj* real_space_prj_;
 
         /// Creation time of the context.
         timeval start_time_;
 
         std::string start_time_tag_;
 
-        ev_solver_t std_evp_solver_type_{ev_lapack};
+        ev_solver_t std_evp_solver_type_;
 
-        ev_solver_t gen_evp_solver_type_{ev_lapack};
-
-        mdarray<double_complex, 3> phase_factors_;
+        ev_solver_t gen_evp_solver_type_;
 
         double time_active_;
         
-        bool initialized_{false};
+        bool initialized_;
 
         void init_fft();
 
         Simulation_context(Simulation_context const&) = delete;
 
-        void init()
+        void set_defaults()
         {
+            Simulation_parameters::set_defaults();
+
+            mpi_grid_ = nullptr;
+            mpi_grid_fft_ = nullptr;
+            blacs_grid_ = nullptr;
+            blacs_grid_slice_ = nullptr;
+            fft_ = nullptr;
+            fft_coarse_ = nullptr;
+            step_function_ = nullptr;
+            real_space_prj_ = nullptr;
+            std_evp_solver_type_ = ev_lapack;
+            gen_evp_solver_type_ = ev_lapack;
+            initialized_ = false;
+            
             gettimeofday(&start_time_, NULL);
             
             tm const* ptm = localtime(&start_time_.tv_sec); 
@@ -119,7 +127,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE();
-            init();
+            set_defaults();
             import(fname__);
             unit_cell_.import(unit_cell_input_section_);
         }
@@ -129,14 +137,14 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE();
-            init();
+            set_defaults();
         }
 
         ~Simulation_context()
         {
             PROFILE();
 
-            time_active_ += runtime::wtime();
+            time_active_ += Utils::current_time();
 
             if (mpi_comm_world().rank() == 0 && initialized_)
             {
@@ -146,14 +154,12 @@ class Simulation_context: public Simulation_parameters
             for (auto e: augmentation_op_) delete e;
             if (step_function_ != nullptr) delete step_function_;
             if (real_space_prj_ != nullptr) delete real_space_prj_;
-            if (gvec_fft_distr_ != nullptr) delete gvec_fft_distr_;
             if (fft_ != nullptr) delete fft_;
             if (fft_coarse_ != nullptr) delete fft_coarse_;
             if (blacs_grid_slice_ != nullptr) delete blacs_grid_slice_;
             if (blacs_grid_ != nullptr) delete blacs_grid_;
             if (mpi_grid_ != nullptr) delete mpi_grid_;
             if (mpi_grid_fft_ != nullptr) delete mpi_grid_fft_;
-            if (mpi_grid_fft_vloc_ != nullptr) delete mpi_grid_fft_vloc_;
         }
 
         /// Initialize the similation (can only be called once).
@@ -186,11 +192,6 @@ class Simulation_context: public Simulation_parameters
             return gvec_;
         }
 
-        Gvec_FFT_distribution const& gvec_fft_distr() const
-        {
-            return *gvec_fft_distr_;
-        }
-
         Gvec const& gvec_coarse() const
         {
             return gvec_coarse_;
@@ -209,11 +210,6 @@ class Simulation_context: public Simulation_parameters
         MPI_grid const& mpi_grid_fft() const
         {
             return *mpi_grid_fft_;
-        }
-
-        MPI_grid const& mpi_grid_fft_vloc() const
-        {
-            return *mpi_grid_fft_vloc_;
         }
 
         BLACS_grid const& blacs_grid() const
@@ -238,7 +234,8 @@ class Simulation_context: public Simulation_parameters
         
         void create_storage_file() const
         {
-            if (comm_.rank() == 0) {
+            if (comm_.rank() == 0)
+            {
                 /* create new hdf5 file */
                 HDF5_tree fout(storage_file_name, true);
                 fout.create_node("parameters");
@@ -250,14 +247,6 @@ class Simulation_context: public Simulation_parameters
                 fout["parameters"].write("num_spins", num_spins());
                 fout["parameters"].write("num_mag_dims", num_mag_dims());
                 fout["parameters"].write("num_bands", num_bands());
-
-                mdarray<int, 2> gv(3, gvec_.num_gvec());
-                for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                    auto G = gvec_[ig];
-                    for (int x: {0, 1, 2}) gv(x, ig) = G[x];
-                }
-                fout["parameters"].write("num_gvec", gvec_.num_gvec());
-                fout["parameters"].write("gvec", gv);
             }
             comm_.barrier();
         }
@@ -274,12 +263,12 @@ class Simulation_context: public Simulation_parameters
 
         inline void set_iterative_solver_tolerance(double tolerance__)
         {
-            iterative_solver_input_section_.energy_tolerance_ = tolerance__;
+            iterative_solver_input_section_.tolerance_ = tolerance__;
         }
 
         inline double iterative_solver_tolerance() const
         {
-            return iterative_solver_input_section_.energy_tolerance_;
+            return iterative_solver_input_section_.tolerance_;
         }
 
         inline ev_solver_t std_evp_solver_type() const
@@ -301,10 +290,7 @@ class Simulation_context: public Simulation_parameters
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
             auto G = gvec_[ig__];
-            //return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
-            return phase_factors_(0, G[0], ia__) *
-                   phase_factors_(1, G[1], ia__) *
-                   phase_factors_(2, G[2], ia__);
+            return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
         }
 
         //== void write_json_output()

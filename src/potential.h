@@ -503,8 +503,6 @@ class Potential
                 mixer_ = new Broyden2<double>(size(),
                                               ctx_.mixer_input_section().max_history_,
                                               ctx_.mixer_input_section().beta_,
-                                              ctx_.mixer_input_section().beta0_,
-                                              ctx_.mixer_input_section().linear_mix_rms_tol_,
                                               weights,
                                               comm_);
             }

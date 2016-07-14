@@ -49,7 +49,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
                 double f = (beta * t + std::exp(std::pow(t, alpha)) - 1) / (std::exp(1.0) - 1 + beta);
                 grid_points[i] = rmin + (rmax - rmin) * f;
             }
-            //for (int i = 0; i < num_points; i++) grid_points[i] = rmin * std::pow(rmax / rmin, double(i) / (num_points - 1));
+            //for (int i = 0; i < num_points; i++) grid_points[i] = rmin * pow(rmax / rmin, double(i) / (num_points - 1));
             break;
         }
         case pow2_grid:

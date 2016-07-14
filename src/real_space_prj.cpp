@@ -103,9 +103,8 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
 
     fft_ = new FFT3D(Utils::find_translations(pw_cutoff__, unit_cell_.reciprocal_lattice_vectors()),
                      MPI_COMM_SELF, CPU);
-    
-    STOP();
-    //gvec_ = Gvec(vector3d<double>(0, 0, 0), unit_cell_.reciprocal_lattice_vectors(), pw_cutoff__, fft_->grid(), fft_->comm(), 1, false, false);
+
+    gvec_ = Gvec(vector3d<double>(0, 0, 0), unit_cell_.reciprocal_lattice_vectors(), pw_cutoff__, fft_->grid(), fft_->comm(), 1, false, false);
 
     //double rmin = 15 / fft_->gvec_shell_len(fft_->num_gvec_shells_inner() - 1) / R_mask_scale_;
 

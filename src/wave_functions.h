@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -37,59 +37,107 @@ class Wave_functions
 };
 
 template<>
-class Wave_functions<false>
+class Wave_functions<false> // TODO: don't allocate buffers in the case of 1 rank
 {
     private:
         
-        /// Type of processing unit used.
-        processing_unit_t pu_;
-        
-        /// Local number of G-vectors.
-        int num_gvec_loc_;
-
         /// Number of wave-functions.
         int num_wfs_;
 
-        /// Primary storage of PW wave functions.
+        /// Wave function G-vectors.
+        Gvec const& gvec_;
+        
+        /// MPI grid for wave-function storage.
+        /** Assume that the 1st dimension is used to distribute G-vectors and 2nd dimenstion is used to distribute 
+         *  wave-functions */
+        MPI_grid const& mpi_grid_;
+
+        processing_unit_t pu_;
+
+        /// Communicator between columns of MPI grid.
+        Communicator const& comm_col_;
+
         mdarray<double_complex, 2> wf_coeffs_;
 
-        /// Swapped wave-functions.
-        /** This wave-function distribution is used by the FFT driver */
         mdarray<double_complex, 2> wf_coeffs_swapped_;
-        
-        /// Raw buffer for the swapperd wave-functions.
-        mdarray<double_complex, 1> wf_coeffs_swapped_buf_;
 
-        /// Raw send-recieve buffer.
         mdarray<double_complex, 1> send_recv_buf_;
         
-        /// Distribution of swapped wave-functions.
         splindex<block> spl_n_;
+
+        int num_gvec_loc_;
         
-        /// Raw buffer for the inner product.
-        mdarray<double, 1> inner_prod_buf_;
+        /// Slabs of G-vectors received from column ranks.
+        block_data_descriptor gvec_slab_pile_;
+
+        mdarray<double_complex, 1> inner_prod_buf_;
 
     public:
 
-        Wave_functions(int num_gvec_loc__, int num_wfs__, processing_unit_t pu__)
-            : pu_(pu__),
-              num_gvec_loc_(num_gvec_loc__),
-              num_wfs_(num_wfs__)
+        Wave_functions(int num_wfs__, Gvec const& gvec__, MPI_grid const& mpi_grid__, processing_unit_t pu__)
+            : num_wfs_(num_wfs__),
+              gvec_(gvec__),
+              mpi_grid_(mpi_grid__),
+              pu_(pu__),
+              comm_col_(mpi_grid_.communicator(1 << 1))
         {
             PROFILE();
+
+            /* local number of G-vectors */
+            num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
+
             /* primary storage of PW wave functions: slabs */ 
             wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
+        }
+
+        Wave_functions(int num_wfs__, int max_num_wfs_swapped__, Gvec const& gvec__, MPI_grid const& mpi_grid__, processing_unit_t pu__)
+            : num_wfs_(num_wfs__),
+              gvec_(gvec__),
+              mpi_grid_(mpi_grid__),
+              pu_(pu__),
+              comm_col_(mpi_grid_.communicator(1 << 1))
+        {
+            PROFILE();
+
+            /* number of column ranks */
+            int num_ranks_col = comm_col_.size();
+
+            /* row rank */
+            int rank_row = mpi_grid_.communicator(1 << 0).rank();
+
+            assert(rank_row * num_ranks_col + comm_col_.rank() == mpi_grid_.communicator().rank());
+            
+            /* local number of G-vectors */
+            num_gvec_loc_ = gvec_.num_gvec(mpi_grid_.communicator().rank());
+
+            /* primary storage of PW wave functions: slabs */ 
+            wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
+
+            splindex<block> spl_wf(max_num_wfs_swapped__, comm_col_.size(), comm_col_.rank());
+
+            if (comm_col_.size() > 1)
+            {
+                wf_coeffs_swapped_ = mdarray<double_complex, 2>(gvec_.num_gvec_fft(), spl_wf.local_size(0), "wf_coeffs_swapped_");
+                send_recv_buf_ = mdarray<double_complex, 1>(wf_coeffs_swapped_.size(), "send_recv_buf_");
+            }
+
+            /* store the number of G-vectors to be received by this rank */
+            gvec_slab_pile_ = block_data_descriptor(num_ranks_col);
+            for (int i = 0; i < num_ranks_col; i++)
+                gvec_slab_pile_.counts[i] = gvec_.num_gvec(rank_row * num_ranks_col + i);
+
+            gvec_slab_pile_.calc_offsets();
+
+            assert(gvec_slab_pile_.offsets[num_ranks_col - 1] + gvec_slab_pile_.counts[num_ranks_col - 1] == gvec__.num_gvec_fft());
         }
 
         ~Wave_functions()
         {
         }
 
-        //void swap_forward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__);
-        void swap_forward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__);
+        void swap_forward(int idx0__, int n__);
 
-        //void swap_backward(int idx0__, int n__, Gvec const& gvec__, MPI_grid const& mpi_grid__);
-        void swap_backward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__);
+        void swap_backward(int idx0__, int n__);
 
         inline double_complex& operator()(int igloc__, int i__)
         {
@@ -104,6 +152,11 @@ class Wave_functions<false>
         inline int num_gvec_loc() const
         {
             return num_gvec_loc_;
+        }
+
+        inline Gvec const& gvec() const
+        {
+            return gvec_;
         }
 
         inline splindex<block> const& spl_num_swapped() const
@@ -129,13 +182,27 @@ class Wave_functions<false>
         {
             copy_from(src__, i0__, n__, i0__);
         }
-        
-        template <typename T>
-        void transform_from(Wave_functions& wf__, int nwf__, matrix<T>& mtrx__, int n__);
 
-        template <typename T>
+        inline void transform_from(Wave_functions& wf__, int nwf__, matrix<double_complex>& mtrx__, int n__)
+        {
+            assert(num_gvec_loc() == wf__.num_gvec_loc());
+
+            if (pu_ == CPU)
+            {
+                linalg<CPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, &wf__(0, 0), num_gvec_loc(),
+                                  &mtrx__(0, 0), mtrx__.ld(), &wf_coeffs_(0, 0), num_gvec_loc());
+            }
+            #ifdef __GPU
+            if (pu_ == GPU)
+            {
+                linalg<GPU>::gemm(0, 0, num_gvec_loc(), n__, nwf__, wf__.coeffs().at<GPU>(), num_gvec_loc(),
+                                  mtrx__.at<GPU>(), mtrx__.ld(), wf_coeffs_.at<GPU>(), num_gvec_loc());
+            }
+            #endif
+        }
+
         void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-                   mdarray<T, 2>& result__, int irow__, int icol__, Communicator const& comm);
+                   mdarray<double_complex, 2>& result__, int irow__, int icol__);
 
         mdarray<double_complex, 2>& coeffs()
         {
@@ -253,11 +320,6 @@ class Wave_functions<true>
         dmatrix<double_complex>& coeffs()
         {
             return wf_coeffs_;
-        }
-
-        dmatrix<double_complex>& coeffs_swapped()
-        {
-            return wf_coeffs_swapped_;
         }
 
         inline int wf_size() const

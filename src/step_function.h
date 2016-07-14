@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -70,18 +70,28 @@ class Step_function
 {
     private:
 
+        Unit_cell const& unit_cell_;
+        
         /// Plane wave expansion coefficients of the step function.
         std::vector<double_complex> step_function_pw_;
         
         /// Step function on the real-space grid.
         std::vector<double> step_function_;
 
+        Communicator const& comm_;
+
+        FFT3D* fft_;
+
+        Gvec const& gvec_;
+       
+        void init();
+
     public:
         
         /// Constructor
         Step_function(Unit_cell const& unit_cell_, 
                       FFT3D* fft__,
-                      Gvec_FFT_distribution const& gvec_fft_distr__,
+                      Gvec const& gvec__,
                       Communicator const& comm__);
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
@@ -92,10 +102,7 @@ class Step_function
          *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
          *  \f]
          */
-        mdarray<double, 2> get_step_function_form_factors(int num_gsh,
-                                                          Unit_cell const& unit_cell__,
-                                                          Gvec const& gvec__,
-                                                          Communicator const& comm__) const;
+        mdarray<double, 2> get_step_function_form_factors(int num_gsh) const;
        
         /// Return plane-wave coefficient of the step function.
         inline double_complex theta_pw(int ig__) const

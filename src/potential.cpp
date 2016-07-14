@@ -29,6 +29,86 @@ namespace sirius {
 // TODO: everything here must be documented
 // TODO: better naming convention: q is meaningless
 
+Potential::Potential(Simulation_context& ctx__)
+    : ctx_(ctx__),
+      unit_cell_(ctx__.unit_cell()),
+      comm_(ctx__.comm()),
+      fft_(ctx__.fft()),
+      pseudo_density_order(9),
+      mixer_(nullptr)
+{
+    runtime::Timer t("sirius::Potential::Potential");
+
+    if (ctx_.esm_type() == full_potential_lapwlo)
+    {
+        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+        sht_ = new SHT(lmax_);
+        l_by_lm_ = Utils::l_by_lm(lmax_);
+
+        /* precompute i^l */
+        zil_.resize(lmax_ + 1);
+        for (int l = 0; l <= lmax_; l++) zil_[l] = std::pow(double_complex(0, 1), l);
+        
+        zilm_.resize(Utils::lmmax(lmax_));
+        for (int l = 0, lm = 0; l <= lmax_; l++)
+        {
+            for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
+        }
+    }
+
+    effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), &ctx_.gvec());
+    
+    Gvec const* gvec_ptr = (ctx_.full_potential()) ? nullptr : &ctx_.gvec();
+    for (int j = 0; j < ctx_.num_mag_dims(); j++)
+        effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), gvec_ptr);
+    
+    hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), &ctx_.gvec());
+    hartree_potential_->allocate_mt(false);
+    
+    xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), nullptr);
+    xc_potential_->allocate_mt(false);
+    
+    xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), nullptr);
+    xc_energy_density_->allocate_mt(false);
+
+    if (!ctx_.full_potential())
+    {
+        local_potential_ = new Periodic_function<double>(ctx_, 0, nullptr);
+        local_potential_->zero();
+
+        generate_local_potential();
+    }
+
+    vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
+
+    init();
+
+    spl_num_gvec_ = splindex<block>(ctx_.gvec().num_gvec(), comm_.size(), comm_.rank());
+    
+    if (ctx_.full_potential())
+    {
+        gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), spl_num_gvec_.local_size());
+        for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+        {
+            int ig = spl_num_gvec_[igloc];
+            auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
+            SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+        }
+    }
+}
+
+Potential::~Potential()
+{
+    delete effective_potential_; 
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
+    if (ctx_.esm_type() == full_potential_lapwlo) delete sht_;
+    delete hartree_potential_;
+    delete xc_potential_;
+    delete xc_energy_density_;
+    if (!ctx_.full_potential()) delete local_potential_;
+    if (mixer_ != nullptr) delete mixer_;
+}
+
 //template<> void Potential::add_mt_contribution_to_pw<CPU>()
 //{
 //    Timer t("sirius::Potential::add_mt_contribution_to_pw");
@@ -257,6 +337,63 @@ namespace sirius {
 //==     l_by_lm_.deallocate_on_device();
 //== }
 //== #endif
+
+void Potential::generate_pw_coefs()
+{
+    for (int ir = 0; ir < fft_.local_size(); ir++)
+        fft_.buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    double_complex z2 = mdarray<double_complex, 1>(&fft_.buffer(0), fft_.local_size()).checksum();
+    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_rg(0) , fft_.local_size()).checksum());
+    DUMP("checksum(fft_buffer): %18.10f %18.10f", z2.real(), z2.imag());
+    #endif
+    
+    fft_.transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().offset_gvec_fft()));
+    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().offset_gvec_fft(), ctx_.gvec().num_gvec_fft());
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+    DUMP("checksum(veff_pw): %18.10f %18.10f", z1.real(), z1.imag());
+    #endif
+
+    if (!use_second_variation) // for full diagonalization we also need Beff(G)
+    {
+        for (int i = 0; i < ctx_.num_mag_dims(); i++)
+        {
+            for (int ir = 0; ir < fft_.size(); ir++)
+                fft_.buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function().theta_r(ir);
+            
+            STOP();
+            //fft_.transform(-1, ctx_.gvec().z_sticks_coord());
+            //fft_.output(ctx_.gvec().num_gvec(), ctx_.gvec().index_map(), &effective_magnetic_field(i)->f_pw(0));
+        }
+    }
+
+    if (ctx_.esm_type() == full_potential_pwlo) 
+    {
+        switch (ctx_.processing_unit())
+        {
+            case CPU:
+            {
+                STOP();
+                //add_mt_contribution_to_pw<CPU>();
+                break;
+            }
+            #ifdef __GPU
+            //== case GPU:
+            //== {
+            //==     add_mt_contribution_to_pw<GPU>();
+            //==     break;
+            //== }
+            #endif
+            default:
+            {
+                TERMINATE("wrong processing unit");
+            }
+        }
+    }
+}
 
 //void Potential::check_potential_continuity_at_mt()
 //{
