@@ -65,9 +65,9 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
-       K_point/num_occupied_bands.cpp 
+       K_point/num_occupied_bands.cpp
 
-OBJ = $(SRC:.cpp=.o) 
+OBJ = $(SRC:.cpp=.o)
 
 
 
@@ -99,7 +99,7 @@ endif
 
 
 OBJ_DBG = $(OBJ:%.o=%.o)
-	
+
 .cpp.o:
 	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
 
@@ -117,18 +117,18 @@ all: log $(OBJ) sirius_api.o sirius.o
 
 #%.o: %.cpp
 #	$(CXX) $(CXX_OPT_DBG) -c -o $(*D)/$(*F).o $<
-	
+
 debug: $(OBJ_DBG)
 	ar -r libsirius.dbg.a $(OBJ_DBG)
 
 
-	
+
 # TODO: platform-independent python script
 log:
 	@echo "#ifndef __VERSION_H__" > version.h
 	@echo "#define __VERSION_H__" >> version.h
-	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h 
-	@echo "const char* const build_date = \"$(shell date)\";" >> version.h 
+	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h
+	@echo "const char* const build_date = \"$(shell date)\";" >> version.h
 	@echo "#endif" >> version.h
 
 clean:
@@ -142,7 +142,7 @@ showlibs:
 	@echo
 	@echo List of libraries for linking with the Fortran code:
 	@echo
-	@echo $(shell pwd)/libsirius_f.a $(LIBS) 
+	@echo $(shell pwd)/libsirius_f.a $(LIBS)
 
 ifneq ($(wildcard .depend),)
 include .depend

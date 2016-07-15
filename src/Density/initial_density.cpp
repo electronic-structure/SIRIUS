@@ -23,27 +23,6 @@ void Density::initial_density()
         if(ctx_.esm_type() == paw_pseudopotential)
         {
             initialize_beta_density_matrix();
-            /////////////////////////////////////////////////////////
-                    ofstream of("dm.dat",std::ofstream::out | std::ofstream::app);
-
-                        for(int i=0;i<density_matrix_.size(1);i++)
-                            for(int j=0;j<density_matrix_.size(0);j++)
-                                of<<density_matrix_(j,i,0,0).real()<<" ";
-
-
-                    of.close();
-                    /////////////////////////////////////////////////////////
-                    symmetrize_density_matrix();
-                    /////////////////////////////////////////////////////////
-                    of.open("dm_unsym.dat",std::ofstream::out | std::ofstream::app);
-
-                        for(int i=0;i<density_matrix_.size(1);i++)
-                            for(int j=0;j<density_matrix_.size(0);j++)
-                                of<<density_matrix_(j,i,0,0).real()<<" ";
-
-
-                    of.close();
-                    /////////////////////////////////////////////////////////
 
             generate_paw_loc_density();
         }
