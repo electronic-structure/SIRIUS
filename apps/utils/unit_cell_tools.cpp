@@ -88,8 +88,13 @@ void create_supercell(cmd_args& args__)
     
     ctx_sc.unit_cell().get_symmetry();
     ctx_sc.unit_cell().print_info();
-    ctx_sc.unit_cell().write_json();
     ctx_sc.unit_cell().write_cif();
+    json dict;
+    dict["unit_cell"] = ctx_sc.unit_cell().serialize();
+    if (mpi_comm_world().rank() == 0) {
+        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
+    }
 }
 
 int main(int argn, char** argv)
