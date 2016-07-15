@@ -2006,6 +2006,7 @@ void sirius_set_atom_type_beta_rf(char* label__,
     }
     type.uspp().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
     beta_rf >> type.uspp().beta_radial_functions;
+    type.uspp().augmentation_ = true;
 }
 
 void sirius_set_atom_type_q_rf(char* label__,
