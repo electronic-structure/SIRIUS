@@ -55,14 +55,13 @@ void Density::initial_density()
 void Density::initial_density_pseudo()
 {
     auto rho_radial_integrals = generate_rho_radial_integrals(1);
+    auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
+
     #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
-    #endif
-
-    std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
-    #ifdef __PRINT_OBJECT_HASH
     DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
     #endif
+
     #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
     DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
@@ -71,13 +70,15 @@ void Density::initial_density_pseudo()
     std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
     double charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
-    if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6)
-    {
+    if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
         std::stringstream s;
         s << "wrong initial charge density" << std::endl
           << "  integral of the density : " << std::real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
           << "  target number of electrons : " << unit_cell_.num_valence_electrons();
-        if (ctx_.comm().rank() == 0) WARNING(s);
+        if (ctx_.comm().rank() == 0) {
+            WARNING(s);
+        }
+        rho_->f_pw(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
     }
     rho_->fft_transform(1);
 
@@ -89,10 +90,8 @@ void Density::initial_density_pseudo()
     #endif
 
     /* remove possible negative noise */
-    for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
-    {
-        rho_->f_rg(ir) = rho_->f_rg(ir) * unit_cell_.num_valence_electrons() / charge;
-        if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
     }
 
     #ifdef __PRINT_OBJECT_HASH
@@ -257,7 +256,14 @@ void Density::initial_density_pseudo()
     //== fclose(fout);
 
     rho_->fft_transform(-1);
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        magnetization_[j]->fft_transform(-1);
+    }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+    DUMP("checksum(rho_pw): %20.14f %20.14f", std::real(cs), std::imag(cs));
+    #endif
 }
 
 

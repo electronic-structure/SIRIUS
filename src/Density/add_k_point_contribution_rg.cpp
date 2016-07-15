@@ -37,6 +37,10 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
         {
+            if (!kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().global_index_size()) {
+                continue;
+            }
+
             #pragma omp for schedule(dynamic, 1)
             for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().local_size(); i++)
             {

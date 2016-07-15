@@ -49,6 +49,10 @@ void Band::apply_h_o(K_point* kp__,
     /* set intial ophi */
     ophi__.copy_from(phi__, N__, n__);
 
+    if (!ctx_.unit_cell().mt_lo_basis_size()) {
+        return;
+    }
+
     for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++)
     {
         kp__->beta_projectors().generate(i);
