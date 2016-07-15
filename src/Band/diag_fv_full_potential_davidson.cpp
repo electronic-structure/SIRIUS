@@ -25,6 +25,10 @@ void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double
     {
         case CPU:
         {
+
+        /* initialize the start Hamiltonian and oberlap matrix in a subspace */
+
+////            initialize_fv_h_o_davidson<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
             set_fv_h_o<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
@@ -78,6 +82,33 @@ void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double
     
         runtime::Timer t("sirius::Band::diag_fv_full_potential_davidson|genevp");
     
+
+        /* Davidson loop here*/
+
+        /* trial basis */
+
+        /* number of newly added basis */
+
+        /* start iterative */
+
+             /* apply Hamiltonian and overlap with new basis */
+
+             /* setup eigen-value problem */
+
+             /* increase size of subspace */
+
+             /* solve generalized eigen-value problem with new larger size */
+
+             /* check convergecy of occupied bands */
+
+             /* get new residuals, hpsi and opsi */
+
+             /* check if we run out of variational space */
+
+             /* check convergecy of eigen-vectors */
+
+             
+
         if (gen_evp_solver()->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
                                     &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld(),
                                     kp->gklo_basis_size_row(), kp->gklo_basis_size_col()))
