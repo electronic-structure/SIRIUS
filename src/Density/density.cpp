@@ -50,10 +50,23 @@ Density::Density(Simulation_context& ctx__)
 
     l_by_lm_ = Utils::l_by_lm(ctx_.lmax_rho());
 
+    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
+     * because density matrix is symmetric. */
+    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
+
+    if (ctx_.full_potential()) {
+        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                     ndm, unit_cell_.spl_num_atoms().local_size());
+    } else {
+        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                     ndm, unit_cell_.num_atoms());
+    }
+
+
     if (!ctx_.full_potential())
     {
         lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
-        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()), 1.0);
+        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(), 1.0);
 
         weights[0] = 0;
         lf_gvec_[0] = 0;
@@ -93,7 +106,7 @@ Density::Density(Simulation_context& ctx__)
         else if (ctx_.mixer_input_section().type_ == "broyden1")
         {
 
-            low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
+            low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
                                                            ctx_.mixer_input_section().max_history_,
                                                            ctx_.mixer_input_section().beta_,
                                                            weights,
@@ -148,18 +161,6 @@ Density::Density(Simulation_context& ctx__)
         {
             TERMINATE("wrong mixer type");
         }
-    }
-
-    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
-     * because density matrix is symmetric. */
-    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
-
-    if (ctx_.full_potential()) {
-        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
-                                                     ndm, unit_cell_.spl_num_atoms().local_size());
-    } else {
-        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
-                                                     ndm, unit_cell_.num_atoms());
     }
 
     //--- Allocate local PAW density arrays ---

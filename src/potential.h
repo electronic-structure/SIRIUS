@@ -29,12 +29,16 @@
 #include "spheric_function.h"
 #include "simulation_context.h"
 
+#include "density.h"
+
 namespace sirius {
 
 /// Generate effective potential from charge density and magnetization.
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the 
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.
           This is also simple, but requires some time. It is also easier to mix the global functions.  */
+
+
 class Potential 
 {
     private:
@@ -100,14 +104,17 @@ class Potential
         //------------------------------------------------
         std::vector< mdarray<double,3> > ae_paw_local_potential_;
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
+        std::vector< mdarray<double_complex,3> > paw_dij_;
 
         std::vector< double > paw_hartree_energies_;
         std::vector< double > paw_xc_energies_;
         std::vector< double > paw_core_energies_;
+        std::vector< double > paw_one_elec_energies_;
 
         double paw_hartree_total_energy_;
         double paw_xc_total_energy_;
         double paw_total_core_energy_;
+        double paw_one_elec_energy_;
 
         //--- PAW  functions ---
         void init_PAW();
@@ -139,6 +146,12 @@ class Potential
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
                                              mdarray<double, 2> &full_density,
                                              mdarray<double, 3> &out_atom_pot);
+
+        double calc_PAW_one_elec_energy(int atom_index,
+                                        const mdarray<double_complex,4>& density_matrix,
+                                        const mdarray<double_complex,3>& atom_paw_dij);
+
+
 
         //------------------------------------------------
         //------------------------------------------------
@@ -459,16 +472,15 @@ class Potential
         //------------------------------------------------
         //--- PAW functions ------------------------------
         //------------------------------------------------
-        void generate_PAW_effective_potential(std::vector< mdarray<double, 2> > *paw_ae_local_density,
-                std::vector< mdarray<double, 2> > *paw_ps_local_density,
-                std::vector< mdarray<double, 3> > *paw_ae_local_magnetization,
-                std::vector< mdarray<double, 3> > *paw_ps_local_magnetization);
+        void generate_PAW_effective_potential(Density& density);
 
         const std::vector< double >&  PAW_hartree_energies(){ return paw_hartree_energies_; }
 
         const std::vector< double >&  PAW_xc_energies(){ return paw_xc_energies_; }
 
         const std::vector< double >&  PAW_core_energies(){ return paw_core_energies_; }
+
+        const std::vector< double >&  PAW_one_elec_energies(){ return paw_one_elec_energies_; }
 
         double PAW_hartree_total_energy(){ return paw_hartree_total_energy_; }
 
@@ -477,6 +489,9 @@ class Potential
         double PAW_total_core_energy(){ return paw_total_core_energy_; }
 
         double PAW_total_energy(){ return paw_hartree_total_energy_ + paw_xc_total_energy_ ; }
+
+        double PAW_one_elec_energy(){ return paw_one_elec_energy_; }
+
         //------------------------------------------------
         //------------------------------------------------
 

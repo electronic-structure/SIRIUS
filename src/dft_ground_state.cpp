@@ -163,7 +163,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
-        kset_.find_eigen_states(&potential_, band_, true);
+        band_.solve_for_kset(kset_,potential_,true);
+        //kset_.find_eigen_states(&potential_, band_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -183,6 +184,10 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
                 printf("dr2: %18.10f, tol: %18.10f\n",  density_.dr2(), tol);
             }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
+        }
+
+        if (ctx_.esm_type() == paw_pseudopotential) {
+            density_.generate_paw_loc_density();
         }
 
         //== if (ctx_.num_mag_dims())
@@ -292,6 +297,13 @@ void DFT_ground_state::print_info()
     double core_leak = density_.core_leakage();
     double enuc = energy_enuc();
 
+    double one_elec_en = evalsum1 - (evxc + evha);
+
+    if(ctx_.esm_type() == paw_pseudopotential)
+    {
+        one_elec_en -= potential_.PAW_one_elec_energy();
+    }
+
     std::vector<double> mt_charge;
     double it_charge;
     double total_charge = density_.rho()->integrate(mt_charge, it_charge); 
@@ -375,7 +387,7 @@ void DFT_ground_state::print_info()
         printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
         printf("<rho|V^{H}>               : %18.8f\n", evha);
         if (!ctx_.full_potential()) {
-            printf("one-electron contribution : %18.8f\n", evalsum1 - (evxc + evha)); // eband + deband in QE
+            printf("one-electron contribution : %18.8f\n", one_elec_en); // eband + deband in QE
             printf("hartree contribution      : %18.8f\n", 0.5 * evha);
             printf("xc contribution           : %18.8f\n", eexc);
             printf("ewald contribution        : %18.8f\n", ewald_energy_);

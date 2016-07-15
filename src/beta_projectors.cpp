@@ -86,6 +86,10 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
 
 void Beta_projectors::generate_beta_gk_t()
 {
+    if (!num_beta_t_) {
+        return;
+    }
+
     /* find shells of G+k vectors */
     std::map<size_t, std::vector<int> > gksh;
     for (int igk_loc = 0; igk_loc < gkvec_.num_gvec(comm_.rank()); igk_loc++)

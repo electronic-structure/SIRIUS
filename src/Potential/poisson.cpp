@@ -208,7 +208,7 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
                             mdarray<double_complex, 1>& qmt_ext,
                             Atom &atom)
 {
-    double R = atom.mt_radius();
+    //double R = atom.mt_radius();
     int nmtp = atom.num_mt_points();
 
     // passed size of qmt_mt must be equal to
@@ -239,30 +239,23 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
             /* save multipole moment */
             qmt[lm] = rholm.integrate(g1, l + 2);
 
-            if (lm < lmsize)
+            rholm.integrate(g2, 1 - l);
+
+            double pref = fourpi / double(2 * l + 1);
+            for (int ir = 0; ir < nmtp; ir++)
             {
-                rholm.integrate(g2, 1 - l);
+                double r = atom.radial_grid(ir);
 
-                double d1 = 1.0 / std::pow(R, 2 * l + 1);
-                double d2 = 1.0 / double(2 * l + 1);
-                for (int ir = 0; ir < nmtp; ir++)
-                {
+                double vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
 
+                vh_mt(lm, ir) = pref * vlm;
 
-                    double r = atom.radial_grid(ir);
-
-                    double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                  (g2[nmtp - 1] - g2[ir]) * std::pow(r, l) - (g1[nmtp - 1] - g1[ir]) * std::pow(r, l) * d1;
-
-                    vh_mt(lm, ir) = fourpi * vlm * d2;
-
-                    ////////////////////////////////////////////////////////////////////
-//                  if(lm==0 && ir> 930)
-//                  {
-//                      std::cout<<"g2 " << g2[ir]<<" vh "<<vh_mt(lm, ir)<<std::endl;
-//                  }
-                    //////////////////////////////////////////////////////////////////////
-                }
+                ////////////////////////////////////////////////////////////////////
+//              if(lm==0 && ir> 930)
+//              {
+//                  std::cout<<"g2 " << g2[ir]<<" vh "<<vh_mt(lm, ir)<<std::endl;
+//              }
+                //////////////////////////////////////////////////////////////////////
             }
         }
     }
@@ -270,10 +263,6 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
 //  std::cout<<"pvmt done"<<std::endl;
 
     SHT::convert(lmax_rho, &qmt[0], &qmt_ext(0));
-
-    /* constant part of nuclear potential -z*(1/r - 1/R) */
-    for (int ir = 0; ir < nmtp; ir++)
-        vh_mt(0, ir) += atom.zn() / R / y00;
 
     /* nuclear multipole moment */
     qmt_ext(0) -= atom.zn() * y00;
@@ -409,8 +398,9 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
     #pragma omp parallel for
-    for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++)
+    for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++) {
         vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
+    }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z4 = mdarray<double_complex, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();

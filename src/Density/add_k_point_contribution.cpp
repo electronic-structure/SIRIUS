@@ -90,6 +90,10 @@ void Density::add_k_point_contribution(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution");
 
+    if (!ctx_.unit_cell().mt_lo_basis_size()) {
+        return;
+    }
+
     kp__->beta_projectors().prepare();
 
     #ifdef __GPU

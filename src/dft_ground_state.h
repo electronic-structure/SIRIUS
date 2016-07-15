@@ -226,8 +226,9 @@ class DFT_ground_state
 
                 case paw_pseudopotential:
                 {
-                    tot_en = kset_.valence_eval_sum() - energy_veff() + 0.5 * energy_vha() +
-                             energy_exc() + ewald_energy_ + potential_.PAW_total_energy();
+                    tot_en = ( kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy() )    // Ekin
+                             + 0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() +              // Epot
+                             ewald_energy_ ;                                                                    // Ewald
                 }
                 break;
 
@@ -262,10 +263,7 @@ class DFT_ground_state
                 case paw_pseudopotential:
                 {
                     potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
-                    potential_.generate_PAW_effective_potential(density_.get_paw_ae_local_density(),
-                                                                density_.get_paw_ps_local_density(),
-                                                                density_.get_paw_ae_local_magnetization(),
-                                                                density_.get_paw_ps_local_magnetization());
+                    potential_.generate_PAW_effective_potential(density_);
                 }break;
 
             }

@@ -1,0 +1,33 @@
+&control
+    calculation='scf',
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix = 'H_',
+    verbosity = 'high',
+    disk_io = 'none' 
+/
+ &system
+    ibrav=0, celldm(1)=5, nat=1, ntyp=1,
+    ecutwfc=36.0, ecutrho = 400,
+    occupations = 'smearing', smearing = 'gauss', degauss = 0.05
+ /
+ &electrons
+    conv_thr =  1.0d-11,
+    diago_thr_init = 1d-12,
+    mixing_beta = 0.8,
+    mixing_ndim = 8,
+    electron_maxstep = 100,
+    diago_david_ndim = 4
+ /
+ATOMIC_SPECIES
+ Li 0 Li.pz-hgh.UPF
+CELL_PARAMETERS (alat= 7.260327248)
+   1.000000000   0.000000000   0.000000000
+   0.000000000   1.000000000   0.000000000
+   0.000000000   0.000000000   1.000000000
+ATOMIC_POSITIONS (alat)
+Li        0.0           0.0           0.0
+K_POINTS (automatic)
+2 2 2 0 0 0
+

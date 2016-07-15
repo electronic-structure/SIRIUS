@@ -317,7 +317,7 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
             TERMINATE(s);
         }
 
-        std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), paw_.cutoff_radius_index * sizeof(double));
+        std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index+100) * sizeof(double));
 
         /* read ps wave func */
         wfc.clear();
@@ -333,7 +333,7 @@ void Atom_type::read_pseudo_paw(JSON_tree& parser)
             TERMINATE(s);
         }
 
-        std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), paw_.cutoff_radius_index * sizeof(double));
+        std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index+100) * sizeof(double));
     }
 }
 

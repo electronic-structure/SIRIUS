@@ -26,7 +26,7 @@
 #define __DENSITY_H__
 
 #include "periodic_function.h"
-#include "band.h"
+//#include "band.h"
 #include "k_set.h"
 #include "simulation_context.h"
 
@@ -343,8 +343,7 @@ class Density
         /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
         void initialize_beta_density_matrix();
 
-        /// generate n_1 and \tilda{n}_1 in lm components
-        void generate_paw_loc_density();
+
 
     public:
 
@@ -426,6 +425,9 @@ class Density
          */
         void augment(K_set& ks__);
         
+        /// generate n_1 and \tilda{n}_1 in lm components
+        void generate_paw_loc_density();
+
         /// Integrtae charge density to get total and partial charges
         //** void integrate();
 
@@ -536,6 +538,9 @@ class Density
                     for (int ig: lf_gvec_)
                         low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
                 }
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                     low_freq_mixer_->input(k++, density_matrix_[i]);
+                }
 
                 k = 0;
                 for (int ig: hf_gvec_)
@@ -565,6 +570,9 @@ class Density
                 {
                     for (int ig: lf_gvec_)
                         magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
+                }
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                    density_matrix_[i] = low_freq_mixer_->output_buffer(k++);
                 }
 
                 k = 0;
