@@ -357,24 +357,38 @@ class Band
             delete gen_evp_solver_;
         }
 
-        /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
-        /** The following vector is computed:
+        /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
+        /** The following matrix is computed:
          *  \f[
          *    b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3} 
-         *      a_{L_1\nu_1}^{\alpha*}({\bf G'}) 
+         *      a_{L_1\nu_1}^{\alpha}({\bf G'}) 
          *      \langle u_{\ell_1\nu_1}^{\alpha} | h_{L3}^{\alpha} |  u_{\ell_2\nu_2}^{\alpha}  
-         *      \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle +  
-         *      \frac{1}{2} \sum_{\nu_1} a_{L_2\nu_1}^{\alpha *}({\bf G'})
-         *      u_{\ell_2\nu_1}^{\alpha}(R_{\alpha})
-         *      u_{\ell_2\nu_2}^{'\alpha}(R_{\alpha})R_{\alpha}^{2}
+         *      \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
          *  \f] 
          */
         template <spin_block_t sblock>
-        void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm) const;
- 
-        //== template <spin_block_t sblock>
-        //== void apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
+        void apply_hmt_to_apw(Atom const&                 atom__,
+                              int                         num_gkvec__,
+                              mdarray<double_complex, 2>& alm__,
+                              mdarray<double_complex, 2>& halm__) const
+        {
+            auto& type = atom__.type();
 
+            // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is available
+            mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+            /* compute the muffin-tin Hamiltonian */
+            for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
+                int lm2 = type.indexb(j2).lm;
+                int idxrf2 = type.indexb(j2).idxrf;
+                for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
+                    int lm1 = type.indexb(j1).lm;
+                    int idxrf1 = type.indexb(j1).idxrf;
+                    hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+                }
+            }
+            linalg<CPU>::gemm(0, 1, num_gkvec__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
+        }
+ 
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
         void set_fv_h_o_apw_lo(K_point* kp,
                                Atom_type const& type,
@@ -403,11 +417,13 @@ class Band
          *      \end{array} \right)
          *  \f]
          *  APW-APW block:
-         *  \f[
-         *      H_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L'\nu', L\nu} a_{L'\nu'}^{\alpha *}({\bf G'+k}) 
+         *  \f{eqnarray*}{
+         *      H_{{\bf G'} {\bf G}}^{\bf k} &=& \sum_{\alpha} \sum_{L'\nu', L\nu} a_{L'\nu'}^{\alpha *}({\bf G'+k}) 
          *      \langle  u_{\ell' \nu'}^{\alpha}Y_{\ell' m'}|\hat h^{\alpha} | u_{\ell \nu}^{\alpha}Y_{\ell m}  \rangle 
-         *       a_{L\nu}^{\alpha}({\bf G+k})
-         *  \f]
+         *       a_{L\nu}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde V_{eff}({\bf G - G'}) \\
+         *          &=& \sum_{\alpha} \sum_{\xi' \xi} a_{\xi'}^{\alpha *}({\bf G'+k}) 
+         *              b_{\xi}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde V_{eff}({\bf G - G'})  
+         *  \f}
          *  APW-lo block:
          *  \f[
          *      H_{{\bf G'} j}^{\bf k} = \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'+k}) 
@@ -431,7 +447,7 @@ class Band
          *  APW-APW block:
          *  \f[
          *      O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
-         *      a_{L\nu}^{\alpha}({\bf G+k})
+         *      a_{L\nu}^{\alpha}({\bf G+k}) + \Theta({\bf G-G'})
          *  \f]
          *  
          *  APW-lo block:
@@ -453,11 +469,45 @@ class Band
          *      \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
          *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
          *  \f]
-         *
          */
         template <processing_unit_t pu, electronic_structure_method_t basis>
         void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, dmatrix<double_complex>& h, 
                         dmatrix<double_complex>& o) const;
+        
+        /// Apply LAPW Hamiltonain and overlap to the trial wave-functions.
+        /** For the set of wave-functions expanded in LAPW basis (k-point index is dropped for simplicity)
+         *  \f[
+         *      \psi_{i} = \sum_{\mu} \phi_{\mu} C_{\mu i}
+         *  \f]
+         *  we want to contrusct a subscpace Hamiltonian and overlap matrices:
+         *  \f[
+         *      H_{i' i} = \langle \psi_{i'} | \hat H | \psi_i \rangle =
+         *          \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i} = 
+         *          \sum_{mu'} C_{mu' i'}^{*} h_{\mu' i}(\psi)
+         *  \f]
+         *  where
+         *  \f[
+         *      h_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i}
+         *  \f]
+         *  For the APW block of \f$  h_{\mu' i}(\psi)  \f$ we have:
+         *  \f[
+         *       h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} + 
+         *          \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i}
+         *  \f]
+         *  and for the lo block:
+         *  \f[
+         *       h_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} + 
+         *          \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i}
+         *  \f]
+         *
+         *  APW-APW contribution, muffin-tin part:
+         *  \f[
+         *      \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} = 
+         *          \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi' \xi} a_{\xi'}^{\alpha *}({\bf G'}) b_{\xi}^{\alpha}({\bf G}) 
+         *           C_{{\bf G} i} 
+         *  \f]
+         */
+        void apply_fv_h_o();
 
         /// Solve first-variational (non-magnetic) problem
         void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const;
