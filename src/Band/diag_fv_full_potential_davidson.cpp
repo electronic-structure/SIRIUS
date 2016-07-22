@@ -17,6 +17,57 @@ void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double
     printf("gklo_basis_size = %10i\n", ngklo);
     printf("cyclic_block_size = %10i\n", bs);
 
+    int nsingular = 0;
+
+    printf("number of atom types = %10i\n", unit_cell_.num_atom_types());
+    printf("number of atoms = %10i\n", unit_cell_.num_atoms());
+  
+    double gk_cutoff = ctx_.gk_cutoff();
+    double gk_cutoff0 = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
+    double gk_cutoff1 = ctx_.gk_cutoff() / unit_cell_.max_mt_radius();
+    printf("gkmax = %16.8f\n", gk_cutoff);
+    printf("gkmax0 = %16.8f\n", gk_cutoff0);
+    printf("gkmax1 = %16.8f\n", gk_cutoff1);
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+    { 
+        auto& atom_type = unit_cell_.atom_type(iat);
+        printf("iat = %10i, RMT = %16.8f\n", iat, atom_type.mt_radius());
+        nsingular += atom_type.num_atoms() * int( 0.0028 * pow(atom_type.mt_radius() * gk_cutoff0, 4));
+        printf("iat = %10i, nsigular= %10i\n", iat, nsingular);
+    }
+    
+
+    if ( nsingular == 0 )
+    {   nsingular = 1 ; } 
+
+    int nblock = 4;
+
+    int num_gkvec = kp->num_gkvec();
+    printf("num_gkvec = %10i\n", kp->num_gkvec());
+
+
+    std::vector<double_complex> sdiag(num_gkvec);
+    std::fill (sdiag.begin(), sdiag.end(), ctx_.step_function().theta_pw(0));
+
+    for (int i = 0; i < num_gkvec; i++)
+    {
+        printf("i = %10i\n", i);
+//        std::cout << "sdiag = " <<  sdiag[i] << '\n';
+
+        printf("sdiag: %18.10f %18.10f\n", std::real(sdiag[i]), std::imag(sdiag[i]));
+    }   
+
+    std::cout << "ctx_.step_function().theta_pw(0) = " << ctx_.step_function().theta_pw(0) << '\n';
+
+    for (int igk = 0; igk < kp->num_gkvec(); igk++)
+    {   for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
+        {   
+        }      
+    }
+
+
+
     h.allocate(alloc_mode);
     o.allocate(alloc_mode);
     
@@ -45,26 +96,32 @@ void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double
         }
     }
 
-    // TODO: move debug code to a separate function
-    #if (__VERIFICATION > 0)
-    if (!gen_evp_solver()->parallel())
-    {
-        Utils::check_hermitian("h", h.panel());
-        Utils::check_hermitian("o", o.panel());
-    }
-    #endif
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = h.panel().checksum();
-    auto z2 = o.panel().checksum();
-    DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
-    DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
-    #endif
+    /* get diagonal elements for preconditioning */
+    // auto h_diag = get_h_diag()
+    // auto o_diag = get_o_diag()   
 
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(h): %16llX", h.panel().hash());
-    DUMP("hash(o): %16llX", o.panel().hash());
-    #endif
+
+//    // TODO: move debug code to a separate function
+//    #if (__VERIFICATION > 0)
+//    if (!gen_evp_solver()->parallel())
+//    {
+//        Utils::check_hermitian("h", h.panel());
+//        Utils::check_hermitian("o", o.panel());
+//    }
+//    #endif
+//
+//    #ifdef __PRINT_OBJECT_CHECKSUM
+//    auto z1 = h.panel().checksum();
+//    auto z2 = o.panel().checksum();
+//    DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
+//    DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
+//    #endif
+//
+//    #ifdef __PRINT_OBJECT_HASH
+//    DUMP("hash(h): %16llX", h.panel().hash());
+//    DUMP("hash(o): %16llX", o.panel().hash());
+//    #endif
 
     assert(kp->gklo_basis_size() > ctx_.num_fv_states());
     
