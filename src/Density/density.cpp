@@ -68,6 +68,11 @@ Density::Density(Simulation_context& ctx__)
         lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
         std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(), 1.0);
 
+        for(int i= weights.size() - 1; i >= weights.size() - density_matrix_.size() ; i--)
+        {
+            weights[i] = 0.0;
+        }
+
         weights[0] = 0;
         lf_gvec_[0] = 0;
 
