@@ -200,6 +200,8 @@ void Density::generate_paw_loc_density()
 //  ofstream of("loc_density.txt");
     //of<<"========================================"<<endl;
 
+    PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
+
     for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         auto& atom = unit_cell_.atom(ia);

@@ -66,6 +66,8 @@ void Potential::init_PAW()
 //----------------------------------------------------------------------------
 void Potential::generate_PAW_effective_potential(Density& density)
 {
+    PROFILE_WITH_TIMER("sirius::Potential::generate_PAW_effective_potential");
+
     std::vector< mdarray<double, 2> > *paw_ae_local_density = density.get_paw_ae_local_density();
     std::vector< mdarray<double, 2> > *paw_ps_local_density = density.get_paw_ps_local_density();
     std::vector< mdarray<double, 3> > *paw_ae_local_magnetization = density.get_paw_ae_local_magnetization();
@@ -316,6 +318,8 @@ void Potential::calc_PAW_local_potential(int atom_index,
                                          mdarray<double, 3> &ae_local_magnetization,
                                          mdarray<double, 3> &ps_local_magnetization)
 {
+    PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_potential");
+
     auto& atom = unit_cell_.atom(atom_index);
 
     auto& atom_type = atom.type();
@@ -417,6 +421,8 @@ void Potential::calc_PAW_local_potential(int atom_index,
 //----------------------------------------------------------------------------
 void Potential::calc_PAW_local_Dij(int atom_index)
 {
+    PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_Dij");
+
     auto& atom = unit_cell_.atom(atom_index);
 
     auto& atom_type = atom.type();
