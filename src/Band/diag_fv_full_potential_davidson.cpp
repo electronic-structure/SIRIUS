@@ -21,7 +21,8 @@ void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double
 
     printf("number of atom types = %10i\n", unit_cell_.num_atom_types());
     printf("number of atoms = %10i\n", unit_cell_.num_atoms());
-  
+    printf("total number of aw basis functions : %i\n",unit_cell_.mt_aw_basis_size());
+
     double gk_cutoff = ctx_.gk_cutoff();
     double gk_cutoff0 = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
     double gk_cutoff1 = ctx_.gk_cutoff() / unit_cell_.max_mt_radius();
@@ -178,6 +179,43 @@ void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double
 
     h.deallocate();
     o.deallocate();
+}
+
+template <spin_block_t sblock>
+void Band::apply_fv_h_o(int num_gkvec, int ia, mdarray<double_complex, 2>& alm,
+                        mdarray<double_complex, 2>& halm) const
+{
+    PROFILE_WITH_TIMER("sirius::Band::apply_fv_h_o");
+    
+    auto& atom = unit_cell_.atom(ia);
+    auto& type = atom.type();
+    
+    printf("type.mt_aw_basis_size() = %10i\n", type.mt_aw_basis_size());
+    
+    mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+    
+    for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++)
+    
+    {   
+        
+        printf("j2 = %10i\n", j2);
+        int lm2 = type.indexb(j2).lm;
+        printf("lm2 = %10i\n", lm2);
+        int idxrf2 = type.indexb(j2).idxrf;
+        printf("idxrf2 = %10i\n", idxrf2);
+        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++)
+        {   
+            printf("j1 = %10i\n", j1);
+            int lm1 = type.indexb(j1).lm;
+            printf("lm1 = %10i\n", lm1);
+            int idxrf1 = type.indexb(j1).idxrf;
+            printf("idxrf1 = %10i\n", idxrf1);
+            hmt(j1, j2) = atom.hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+            printf("hmt = %18.10f %18.10f\n", std::real(hmt(j1, j2)), std::imag(hmt(j1, j2)));
+        
+        }
+    }
+    linalg<CPU>::gemm(0, 1, num_gkvec, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm, hmt, halm);
 }
 
 };
