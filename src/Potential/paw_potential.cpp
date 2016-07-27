@@ -20,8 +20,10 @@ void Potential::init_PAW()
     paw_core_energies_.resize(unit_cell_.num_atoms());
     paw_one_elec_energies_.resize(unit_cell_.num_atoms());
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
+        int ia = unit_cell_.spl_num_atoms(i);
+
         auto& atom = unit_cell_.atom(ia);
 
         auto& atype = atom.type();
@@ -46,8 +48,6 @@ void Potential::init_PAW()
         //      mdarray<double, 2> atom_Dij( (atype.indexb().size() * (atype.indexb().size()+1)) / 2, ctx_.num_spins());
 
         //      paw_local_Dij_matrix_.push_back(std::move(atom_Dij)); valence_eval_sum
-
-        paw_core_energies_[ia] = atype.get_PAW_descriptor().core_energy;
     }
 
     // separate because I can
@@ -55,8 +55,13 @@ void Potential::init_PAW()
 
     for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
+        auto& atype = unit_cell_.atom(ia).type();
+
+        paw_core_energies_[ia] = atype.get_PAW_descriptor().core_energy;
+
         paw_total_core_energy_ += paw_core_energies_[ia];
     }
+
     paw_total_core_energy_ *=0.5;
 }
 
@@ -73,18 +78,28 @@ void Potential::generate_PAW_effective_potential(Density& density)
     std::vector< mdarray<double, 3> > *paw_ae_local_magnetization = density.get_paw_ae_local_magnetization();
     std::vector< mdarray<double, 3> > *paw_ps_local_magnetization = density.get_paw_ps_local_magnetization();
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    {
-        calc_PAW_local_potential(ia, paw_ae_local_density->at(ia),
-                                 paw_ps_local_density->at(ia),
-                                 paw_ae_local_magnetization->at(ia),
-                                 paw_ps_local_magnetization->at(ia));
+    std::fill(paw_one_elec_energies_.begin(), paw_one_elec_energies_.end(), 0.0);
+    std::fill(paw_hartree_energies_.begin(), paw_hartree_energies_.end(), 0.0);
+    std::fill(paw_xc_energies_.begin(), paw_xc_energies_.end(), 0.0);
 
-        calc_PAW_local_Dij(ia);
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
+    {
+        int ia = unit_cell_.spl_num_atoms(i);
+
+        calc_PAW_local_potential(i, paw_ae_local_density->at(i),
+                                 paw_ps_local_density->at(i),
+                                 paw_ae_local_magnetization->at(i),
+                                 paw_ps_local_magnetization->at(i));
+
+        calc_PAW_local_Dij(i);
 
 
         paw_one_elec_energies_[ia] = calc_PAW_one_elec_energy(ia, density.density_matrix(), paw_dij_[ia]);
     }
+
+    comm_.allreduce(paw_one_elec_energies_.data(), (int)paw_one_elec_energies_.size());
+    comm_.allreduce(paw_hartree_energies_.data(), (int)paw_hartree_energies_.size());
+    comm_.allreduce(paw_xc_energies_.data(), (int)paw_xc_energies_.size());
 
     // separate because I can
     paw_hartree_total_energy_ = 0.0;
@@ -312,13 +327,15 @@ double Potential::calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
-void Potential::calc_PAW_local_potential(int atom_index,
+void Potential::calc_PAW_local_potential(int spl_atom_index,
                                          mdarray<double, 2> &ae_full_density,
                                          mdarray<double, 2> &ps_full_density,
                                          mdarray<double, 3> &ae_local_magnetization,
                                          mdarray<double, 3> &ps_local_magnetization)
 {
     PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_potential");
+
+    int atom_index = unit_cell_.spl_num_atoms(spl_atom_index);
 
     auto& atom = unit_cell_.atom(atom_index);
 
@@ -331,18 +348,18 @@ void Potential::calc_PAW_local_potential(int atom_index,
     //---- Calculation of Hartree potential ---
     //-----------------------------------------
 
-    ae_paw_local_potential_[atom_index].zero();
-    ps_paw_local_potential_[atom_index].zero();
+    ae_paw_local_potential_[spl_atom_index].zero();
+    ps_paw_local_potential_[spl_atom_index].zero();
 
     double ae_hartree_energy = calc_PAW_hartree_potential(atom,
                                                           atom.radial_grid(),
                                                           ae_full_density,
-                                                          ae_paw_local_potential_[atom_index]);
+                                                          ae_paw_local_potential_[spl_atom_index]);
 
     double ps_hartree_energy = calc_PAW_hartree_potential(atom,
                                                           atom.radial_grid(),
                                                           ps_full_density,
-                                                          ps_paw_local_potential_[atom_index]);
+                                                          ps_paw_local_potential_[spl_atom_index]);
 
     paw_hartree_energies_[atom_index] = ae_hartree_energy - ps_hartree_energy;
 
@@ -375,19 +392,19 @@ void Potential::calc_PAW_local_potential(int atom_index,
     {
         case 1:
         {
-            ae_xc_energy = xc_mt_PAW_nonmagnetic(atom.radial_grid(), ae_paw_local_potential_[atom_index],
+            ae_xc_energy = xc_mt_PAW_nonmagnetic(atom.radial_grid(), ae_paw_local_potential_[spl_atom_index],
                                                         ae_full_density ,paw.all_elec_core_charge);
 
-            ps_xc_energy = xc_mt_PAW_nonmagnetic(atom.radial_grid(), ps_paw_local_potential_[atom_index],
+            ps_xc_energy = xc_mt_PAW_nonmagnetic(atom.radial_grid(), ps_paw_local_potential_[spl_atom_index],
                                                         ps_full_density,uspp.core_charge_density);
         }break;
 
         case 2:
         {
-            ae_xc_energy = xc_mt_PAW_collinear(atom.radial_grid(), ae_paw_local_potential_[atom_index], ae_full_density,
+            ae_xc_energy = xc_mt_PAW_collinear(atom.radial_grid(), ae_paw_local_potential_[spl_atom_index], ae_full_density,
                                 ae_local_magnetization, paw.all_elec_core_charge);
 
-            ps_xc_energy = xc_mt_PAW_collinear(atom.radial_grid(), ps_paw_local_potential_[atom_index], ps_full_density,
+            ps_xc_energy = xc_mt_PAW_collinear(atom.radial_grid(), ps_paw_local_potential_[spl_atom_index], ps_full_density,
                                 ps_local_magnetization, uspp.core_charge_density);
         }break;
 
@@ -419,9 +436,11 @@ void Potential::calc_PAW_local_potential(int atom_index,
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
-void Potential::calc_PAW_local_Dij(int atom_index)
+void Potential::calc_PAW_local_Dij(int spl_atom_index)
 {
     PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_Dij");
+
+    int atom_index = unit_cell_.spl_num_atoms(spl_atom_index);
 
     auto& atom = unit_cell_.atom(atom_index);
 
@@ -440,8 +459,8 @@ void Potential::calc_PAW_local_Dij(int atom_index)
     //TODO calculate not for every atom but for every atom type
     Gaunt_coefficients<double> GC(lmax, 2*lmax, lmax, SHT::gaunt_rlm);
 
-    auto &ae_atom_pot = ae_paw_local_potential_[atom_index];
-    auto &ps_atom_pot = ps_paw_local_potential_[atom_index];
+    auto &ae_atom_pot = ae_paw_local_potential_[spl_atom_index];
+    auto &ps_atom_pot = ps_paw_local_potential_[spl_atom_index];
 
     //---- precalc integrals ----
     mdarray<double,3> integrals( lmsize_rho , uspp.num_beta_radial_functions * (uspp.num_beta_radial_functions + 1) / 2, ctx_.num_mag_comp() );
@@ -494,7 +513,7 @@ void Potential::calc_PAW_local_Dij(int atom_index)
 //  std::cout<<std::endl;
     ///////////////////////////////////////////////////////////////////////
 
-    mdarray<double_complex,3> &dij = paw_dij_[atom_index];
+    mdarray<double_complex,3> &dij = paw_dij_[spl_atom_index];
 
     dij.zero();
 

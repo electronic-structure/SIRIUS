@@ -170,8 +170,10 @@ Density::Density(Simulation_context& ctx__)
 
     //--- Allocate local PAW density arrays ---
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
+        int ia = unit_cell_.spl_num_atoms(i);
+
         auto& atom = unit_cell_.atom(ia);
 
         auto& atype = atom.type();

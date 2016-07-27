@@ -141,6 +141,7 @@ class Potential
                                       mdarray<double, 3> &ps_local_magnetization);
 
 
+
         void calc_PAW_local_Dij(int atom_index);
 
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
