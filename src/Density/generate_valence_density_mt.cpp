@@ -202,6 +202,7 @@ void Density::generate_paw_loc_density()
 
     PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
 
+#pragma omp parallel for
     for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
         int ia = unit_cell_.spl_num_atoms(i);
@@ -323,13 +324,6 @@ void Density::generate_paw_loc_density()
                 }
             }
         }
-
-
-//      }
-
-
-
-
 
     }
 

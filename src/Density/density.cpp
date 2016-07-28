@@ -168,6 +168,9 @@ Density::Density(Simulation_context& ctx__)
         }
     }
 
+
+    std::cout<<"SPL ATOMS "<< unit_cell_.spl_num_atoms().local_size()<< std::endl;
+
     //--- Allocate local PAW density arrays ---
 
     for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
@@ -199,7 +202,7 @@ Density::Density(Simulation_context& ctx__)
         paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
 
     }
-
+    std::cout<<"paw density init done"<< std::endl;
 }
 
 Density::~Density()
