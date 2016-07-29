@@ -105,7 +105,7 @@ void Potential::generate_D_operator_matrix()
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) {
                         int ig = spl_num_gvec_[igloc];
                         /* conjugate V(G) * exp(i * G * r_{alpha}) */
-                        double_complex z  = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
+                        auto z = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
                         veff_a(2 * igloc,     i) = z.real();
                         veff_a(2 * igloc + 1, i) = z.imag();
                     }
