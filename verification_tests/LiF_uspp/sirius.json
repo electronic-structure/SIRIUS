@@ -9,11 +9,11 @@
   "parameters" : {
       "electronic_structure_method" : "ultrasoft_pseudopotential",
 
-      "num_fv_states" : 40,
+      "!num_fv_states" : 40,
 
       "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
-      "smearing_width" : 0.025,
+      "smearing_width" : 0.005,
 
       "use_symmetry" : 1,
 
@@ -27,13 +27,12 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [4,4,4],
+      "ngridk" : [4,4,4]
 
-      "reduce_gvec": 0
   },
 
     "iterative_solver" : {
-        "energy_tolerance" : 1e-12,
+        "energy_tolerance" : 1e-2,
         "residual_tolerance" : 1e-6,
         "num_steps" : 20,
         "subspace_size" : 4,
@@ -67,7 +66,7 @@
         },
 
     "mixer" : {
-        "beta" : 0.7,
+        "beta" : 0.95,
         "type" : "broyden1",
         "max_history" : 8
     }
