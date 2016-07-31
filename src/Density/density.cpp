@@ -62,11 +62,13 @@ Density::Density(Simulation_context& ctx__)
                                                      ndm, unit_cell_.num_atoms());
     }
 
-
     if (!ctx_.full_potential())
     {
         lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
-        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(), 1.0);
+        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()), 1.0);
+        for (size_t i = 0; i < density_matrix_.size(); i++) {
+            weights.push_back(0);
+        }
 
         weights[0] = 0;
         lf_gvec_[0] = 0;
