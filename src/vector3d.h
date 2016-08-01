@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <cmath>
 #include <array>
+#include <vector>
 #include <ostream>
 
 /// Simple implementation of 3d vector.
@@ -59,6 +60,14 @@ class vector3d
             assert(v__.size() == 3);
             for (int x: {0, 1, 2}) {
                 vec_[x] = v__.begin()[x];
+            }
+        }
+
+        vector3d(std::vector<T> v__)
+        {
+            assert(v__.size() == 3);
+            for (int x: {0, 1, 2}) {
+                vec_[x] = v__[x];
             }
         }
 

@@ -5,34 +5,25 @@ namespace sirius {
 void Atom_type::init_free_atom(bool smooth)
 {
     /* check if atomic file exists */
-    if (!Utils::file_exists(file_name_))
-    {
-        //== std::stringstream s;
-        //== s << "file " + file_name_ + " doesn't exist";
-        //== error_global(__FILE__, __LINE__, s);
-        //std::stringstream s;
-        //s << "Free atom density and potential for atom " << label_ << " are not initialized";
-        //warning_global(__FILE__, __LINE__, s);
+    if (!Utils::file_exists(file_name_)) {
+        std::stringstream s;
+        //s << "file " + file_name_ + " doesn't exist";
+        s << "Free atom density and potential for atom " << label_ << " are not initialized";
+        WARNING(s);
         return;
     }
-
-    JSON_tree parser(file_name_);
+    
+    json parser;
+    std::ifstream(file_name_) >> parser;
 
     /* create free atom radial grid */
-    std::vector<double> fa_r;
-    parser["free_atom"]["radial_grid"] >> fa_r;
+    auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
     free_atom_radial_grid_ = Radial_grid(fa_r);
-    
     /* read density and potential */
-    std::vector<double> v;
-    parser["free_atom"]["density"] >> v;
+    auto v = parser["free_atom"]["density"].get<std::vector<double>>();
     free_atom_density_ = Spline<double>(free_atom_radial_grid_, v);
-    //parser["free_atom"]["potential"] >> v;
-    //free_atom_potential_ = Spline<double>(free_atom_radial_grid_, v);
-
     /* smooth free atom density inside the muffin-tin sphere */
-    if (smooth)
-    {
+    if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
         int irmt = idx_rmt_free_atom();
     
@@ -61,8 +52,7 @@ void Atom_type::init_free_atom(bool smooth)
         //== fclose(fout);
         
         /* make smooth free atom density inside muffin-tin */
-        for (int i = 0; i <= irmt; i++)
-        {
+        for (int i = 0; i <= irmt; i++) {
             free_atom_density_[i] = b(0) * std::pow(free_atom_radial_grid(i), 2) + 
                                     b(1) * std::pow(free_atom_radial_grid(i), 3);
         }

@@ -300,43 +300,8 @@ class Simulation_context: public Simulation_parameters
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
             auto G = gvec_[ig__];
-            //return std::exp(double_complex(0.0, twopi * (G * unit_cell_.atom(ia__).position())));
-            return phase_factors_(0, G[0], ia__) *
-                   phase_factors_(1, G[1], ia__) *
-                   phase_factors_(2, G[2], ia__);
+            return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
-
-        //== void write_json_output()
-        //== {
-        //==     auto ts = Timer::collect_timer_stats();
-        //==     if (comm_.rank() == 0)
-        //==     {
-        //==         char buf[100];
-        //==         tm* ptm = localtime(&start_time_.tv_sec); 
-        //==         strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
-        //==         std::string fname = std::string("output_") + std::string(buf) + std::string(".json");
-        //==         JSON_write jw(fname);
-        //==         
-        //==         jw.single("git_hash", git_hash);
-        //==         jw.single("build_date", build_date);
-        //==         jw.single("num_ranks", comm_.size());
-        //==         jw.single("max_num_threads", Platform::max_num_threads());
-        //==         jw.single("cyclic_block_size", parameters_.cyclic_block_size());
-        //==         jw.single("mpi_grid", parameters_.mpi_grid_dims());
-        //==         std::vector<int> fftgrid(3);
-        //==         for (int i = 0; i < 3; i++) fftgrid[i] = fft_->size(i);
-        //==         jw.single("fft_grid", fftgrid);
-        //==         jw.single("chemical_formula", unit_cell_.chemical_formula());
-        //==         jw.single("num_atoms", unit_cell_.num_atoms());
-        //==         jw.single("num_fv_states", parameters_.num_fv_states());
-        //==         jw.single("num_bands", parameters_.num_bands());
-        //==         jw.single("aw_cutoff", parameters_.aw_cutoff());
-        //==         jw.single("pw_cutoff", parameters_.pw_cutoff());
-        //==         jw.single("omega", unit_cell_.omega());
-        //==         
-        //==         jw.single("timers", ts);
-        //==     }
-        //== }
 };
 
 };

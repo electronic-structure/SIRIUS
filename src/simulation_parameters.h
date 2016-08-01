@@ -25,6 +25,9 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
+#include "mdarray.h"
+#include "typedefs.h"
+#include "utils.h"
 #include "sirius_internal.h"
 #include "input.h"
 
@@ -109,15 +112,17 @@ class Simulation_parameters
         {
             PROFILE();
 
-            JSON_tree parser(fname__);
+            json dict;
+            std::ifstream(fname__) >> dict;
+
             /* read unit cell */
-            unit_cell_input_section_.read(parser);
+            unit_cell_input_section_.read(dict);
             /* read parameters of mixer */
-            mixer_input_section_.read(parser);
+            mixer_input_section_.read(dict);
             /* read parameters of iterative solver */
-            iterative_solver_input_section_.read(parser);
+            iterative_solver_input_section_.read(dict);
             /* read controls */
-            control_input_section_.read(parser);
+            control_input_section_.read(dict);
         }
 
     public:

@@ -260,30 +260,30 @@ class Free_atom : public sirius::Atom_type
 
 Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_parameters param__)
 {
-    JSON_tree jin("atoms.json");
+    json jin;
+    std::ifstream("atoms.json") >> jin;
     
     atomic_level_descriptor nlk;
     std::vector<atomic_level_descriptor> levels_nlk;
     
-    for (int i = 0; i < jin[label]["levels"].size(); i++)
-    {
-        jin[label]["levels"][i][0] >> nlk.n;
-        jin[label]["levels"][i][1] >> nlk.l;
-        jin[label]["levels"][i][2] >> nlk.k;
-        jin[label]["levels"][i][3] >> nlk.occupancy;
+    for (size_t i = 0; i < jin[label]["levels"].size(); i++) {
+        nlk.n = jin[label]["levels"][i][0];
+        nlk.l = jin[label]["levels"][i][1];
+        nlk.k = jin[label]["levels"][i][2];
+        nlk.occupancy = jin[label]["levels"][i][3];
         levels_nlk.push_back(nlk);
     }
 
     int zn;
-    jin[label]["zn"] >> zn;
+    zn = jin[label]["zn"];
     double mass;
-    jin[label]["mass"] >> mass;
+    mass = jin[label]["mass"];
     std::string name;
-    jin[label]["name"] >> name;
+    name = jin[label]["name"];
     double NIST_LDA_Etot = 0.0;
-    NIST_LDA_Etot = jin[label]["NIST_LDA_Etot"].get(NIST_LDA_Etot);
+    NIST_LDA_Etot = jin[label].value("NIST_LDA_Etot", NIST_LDA_Etot);
     double NIST_ScRLDA_Etot = 0.0;
-    NIST_ScRLDA_Etot = jin[label]["NIST_ScRLDA_Etot"].get(NIST_ScRLDA_Etot);
+    NIST_ScRLDA_Etot = jin[label].value("NIST_ScRLDA_Etot", NIST_ScRLDA_Etot);
     
     Free_atom a(param__, label, name, zn, mass, levels_nlk);
     a.NIST_LDA_Etot = NIST_LDA_Etot;
