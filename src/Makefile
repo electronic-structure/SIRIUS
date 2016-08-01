@@ -10,7 +10,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        Atom_type/init_free_atom.cpp \
        Atom_type/print_info.cpp \
        Atom_type/read_input.cpp \
-       Atom/init.cpp \
        Atom/generate_radial_integrals.cpp \
        atom_symmetry_class.cpp \
        unit_cell.cpp \
