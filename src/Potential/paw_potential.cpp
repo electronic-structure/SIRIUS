@@ -88,7 +88,7 @@ void Potential::generate_PAW_effective_potential(Density& density)
     paw_dij_.zero();
 
     // calc for atoms
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
         int ia = unit_cell_.spl_num_atoms(i);
@@ -99,13 +99,6 @@ void Potential::generate_PAW_effective_potential(Density& density)
                                  paw_ae_local_magnetization->at(i),
                                  paw_ps_local_magnetization->at(i));
 
-        std::cout<<"tot pot hash " << ia <<" : "<< Utils::hash((void*)(&ae_paw_local_potential_[i](0,0,0)),  ae_paw_local_potential_[i].size() * sizeof(double) )<< " "
-                << Utils::hash((void*)(&ps_paw_local_potential_[i](0,0,0)),  ps_paw_local_potential_[i].size() * sizeof(double) ) << std::endl;
-
-
-        int dim  = ctx_.num_mag_comp() * unit_cell_.atom(ia).mt_lo_basis_size() * unit_cell_.atom(ia).mt_lo_basis_size();
-        std::cout<<"atom dmtrx uspp hash " << ia <<" : "<< Utils::hash((void*)(&unit_cell_.atom(ia).d_mtrx(0,0,0)),   dim * sizeof(double_complex) )<< std::endl;
-
 
         calc_PAW_local_Dij(i, paw_dij_);
 
@@ -115,8 +108,6 @@ void Potential::generate_PAW_effective_potential(Density& density)
 
     // collect Dij and add to atom d_mtrx
     comm_.allreduce(&paw_dij_(0,0,0,0), (int)paw_dij_.size());
-
-    std::cout<<"PAW Dij hash " <<" : "<< Utils::hash((void*)(&paw_dij_(0,0,0,0)),  paw_dij_.size() * sizeof(double_complex) )<<  std::endl;
 
 
     add_paw_Dij_to_atom_Dmtrx();
