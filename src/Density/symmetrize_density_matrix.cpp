@@ -57,8 +57,19 @@ void Density::symmetrize_density_matrix()
         }
     }
     
-    ctx_.comm().allreduce(dm.at<CPU>(), static_cast<int>(dm.size()));
+    //ctx_.comm().allreduce(dm.at<CPU>(), static_cast<int>(dm.size()));
     dm >> density_matrix_;
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs = dm.checksum();
+        DUMP("checksum(density_matrix): %20.14f %20.14f", cs.real(), cs.imag());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto cs = mdarray<double_complex, 1>(&dm(0, 0, 0, ia), dm.size(0) * dm.size(1) * dm.size(2)).checksum();
+            DUMP("checksum(density_matrix(%i)): %20.14f %20.14f", ia, cs.real(), cs.imag());
+        }
+    }
+    #endif
 }
 
 };

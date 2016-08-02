@@ -31,7 +31,7 @@ def parse_header(upf_dict, root):
     upf_dict['header'] = {}
     upf_dict['header']['number_of_proj'] = int(node.attrib['number_of_proj'])
     upf_dict['header']['core_correction'] = str2bool(node.attrib['core_correction'])
-    upf_dict['header']['element'] = node.attrib['element']
+    upf_dict['header']['element'] = node.attrib['element'].strip()
     upf_dict['header']['pseudo_type'] = node.attrib['pseudo_type']
     #upf_dict['header']['l_max'] = int(node.attrib['l_max'])
     upf_dict['header']['z_valence'] = float(node.attrib['z_valence'])
