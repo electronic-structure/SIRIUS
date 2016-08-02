@@ -51,7 +51,7 @@ def parse_header(upf_dict):
     #upf_dict["header"]["version"] = int(s[0]);
     
     s = upf.readline().split()
-    upf_dict['header']['element'] = s[0]
+    upf_dict['header']['element'] = s[0].strip()
     
     s = upf.readline().split()
     upf_dict['header']['pseudo_type'] = s[0]
