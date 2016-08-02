@@ -62,9 +62,6 @@ class Atom
         /// Radial integrals of the effective magnetic field.
         mdarray<double, 4> b_radial_integrals_;
 
-        /// Number of magnetic dimensions.
-        int num_mag_dims_;
-        
         /// Maximum l for potential and magnetic field.
         int lmax_pot_{-1};
 
@@ -90,7 +87,7 @@ class Atom
         int uj_correction_l_{-1};
 
         /// D_{ij} matrix of the pseudo-potential method.
-        mdarray<double_complex, 3> d_mtrx_;
+        mdarray<double_complex, 3> d_mtrx_; //TODO: this should be real and stored in auxiliary form.
 
     public:
     
@@ -118,15 +115,14 @@ class Atom
             offset_lo_ = offset_lo__;
             offset_wf_ = offset_wf__;
 
-            lmax_pot_     = type().parameters().lmax_pot();
-            num_mag_dims_ = type().parameters().num_mag_dims();
+            lmax_pot_ = type().parameters().lmax_pot();
 
             if (type().parameters().full_potential()) {
                 int lmmax = Utils::lmmax(lmax_pot_);
 
                 h_radial_integrals_ = mdarray<double, 3>(lmmax, type().indexr().size(), type().indexr().size());
 
-                b_radial_integrals_ = mdarray<double, 4>(lmmax, type().indexr().size(), type().indexr().size(), num_mag_dims_);
+                b_radial_integrals_ = mdarray<double, 4>(lmmax, type().indexr().size(), type().indexr().size(), type().parameters().num_mag_dims());
 
                 occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
 
@@ -135,7 +131,7 @@ class Atom
 
             if (!type().parameters().full_potential()) {
                 int nbf = type().mt_lo_basis_size();
-                d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, num_mag_dims_ + 1);
+                d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims());
                 d_mtrx_.zero();
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -240,7 +236,9 @@ class Atom
         void sync_radial_integrals(Communicator const& comm__, int const rank__)
         {
             comm__.bcast(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), rank__);
-            if (num_mag_dims_) comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
+            if (type().parameters().num_mag_dims()) {
+                comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
+            }
         }
 
         void sync_occupation_matrix(Communicator const& comm__, int const rank__)

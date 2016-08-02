@@ -6,13 +6,7 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
        xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp fft3d.cpp \
        simulation_context.cpp wave_functions.cpp beta_projectors.cpp non_local_operator.cpp \
-       Atom_type/init.cpp \
-       Atom_type/init_free_atom.cpp \
-       Atom_type/print_info.cpp \
-       Atom_type/read_input.cpp \
-       Atom/generate_radial_integrals.cpp \
-       atom_symmetry_class.cpp \
-       unit_cell.cpp \
+       atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
        Density/add_k_point_contribution.cpp \

@@ -19,4 +19,4 @@ debug: sirius.scf.cpp $(LIB_SIRIUS_DBG)
 
 
 clean:
-	rm -f *.o dft_loop sirius.scf *.h5 timers.json
+	rm -rf *.o sirius.scf *.h5 *dSYM
