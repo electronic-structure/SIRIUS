@@ -110,7 +110,47 @@ class Atom
         }
 
         /// Initialize atom.
-        void init(int offset_aw__, int offset_lo__, int offset_wf__);
+        void init(int offset_aw__, int offset_lo__, int offset_wf__)
+        {
+            assert(offset_aw__ >= 0);
+
+            offset_aw_ = offset_aw__;
+            offset_lo_ = offset_lo__;
+            offset_wf_ = offset_wf__;
+
+            lmax_pot_     = type().parameters().lmax_pot();
+            num_mag_dims_ = type().parameters().num_mag_dims();
+
+            if (type().parameters().full_potential()) {
+                int lmmax = Utils::lmmax(lmax_pot_);
+
+                h_radial_integrals_ = mdarray<double, 3>(lmmax, type().indexr().size(), type().indexr().size());
+
+                b_radial_integrals_ = mdarray<double, 4>(lmmax, type().indexr().size(), type().indexr().size(), num_mag_dims_);
+
+                occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
+
+                uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
+            }
+
+            if (!type().parameters().full_potential()) {
+                int nbf = type().mt_lo_basis_size();
+                d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, num_mag_dims_ + 1);
+                d_mtrx_.zero();
+
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    int lm2    = type().indexb(xi2).lm;
+                    int idxrf2 = type().indexb(xi2).idxrf;
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int lm1    = type().indexb(xi1).lm;
+                        int idxrf1 = type().indexb(xi1).idxrf;
+                        if (lm1 == lm2) {
+                            d_mtrx_(xi1, xi2, 0) = type().uspp().d_mtrx_ion(idxrf1, idxrf2);
+                        }
+                    }
+                }
+            }
+        }
 
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
@@ -235,47 +275,53 @@ class Atom
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
-        
+
+        /** Compute the following kinds of sums for different spin-blocks of the Hamiltonian:
+         *  \f[
+         *      \sum_{L_3} \langle Y_{L_1} u_{\ell_1 \nu_1} | R_{L_3} h_{L_3} | Y_{L_2} u_{\ell_2 \nu_2} \rangle = 
+         *      \sum_{L_3} \langle u_{\ell_1 \nu_1} | h_{L_3} | u_{\ell_2 \nu_2} \rangle
+         *                 \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle 
+         *  \f]
+         */
         template <spin_block_t sblock>
-        inline double_complex hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<double_complex> > const& gnt) const
+        inline double_complex radial_integrals_sum_L3(int idxrf1__,
+                                                      int idxrf2__,
+                                                      std::vector<gaunt_L3<double_complex> > const& gnt__) const
         {
             double_complex zsum(0, 0);
 
-            for (int i = 0; i < (int)gnt.size(); i++)
-            {
-                switch (sblock)
-                {
-                    case spin_block_t::nm:
-                    {
-                        zsum += gnt[i].coef * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
+            for (size_t i = 0; i < gnt__.size(); i++) {
+                switch (sblock) {
+                    case spin_block_t::nm: {
+                        /* just the Hamiltonian */
+                        zsum += gnt__[i].coef * h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__);
                         break;
                     }
-                    case spin_block_t::uu:
-                    {
-                        zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
-                                               b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                    case spin_block_t::uu: {
+                        /* h + Bz */
+                        zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) + 
+                                                 b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
                         break;
                     }
-                    case spin_block_t::dd:
-                    {
-                        zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
-                                               b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                    case spin_block_t::dd: {
+                        /* h - Bz */
+                        zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) -
+                                                 b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
                         break;
                     }
-                    case spin_block_t::ud:
-                    {
-                        zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                            -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                    case spin_block_t::ud: {
+                        /* Bx - i By */
+                        zsum += gnt__[i].coef * double_complex(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1), 
+                                                              -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                         break;
                     }
-                    case spin_block_t::du:
-                    {
-                        zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                    case spin_block_t::du: {
+                        /* Bx + i By */
+                        zsum += gnt__[i].coef * double_complex(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1), 
+                                                               b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                         break;
                     }
                 }
-
             }
             return zsum;
         }

@@ -62,11 +62,13 @@ Density::Density(Simulation_context& ctx__)
                                                      ndm, unit_cell_.num_atoms());
     }
 
-
     if (!ctx_.full_potential())
     {
         lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
-        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(), 1.0);
+        std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()), 1.0);
+        for (size_t i = 0; i < density_matrix_.size(); i++) {
+            weights.push_back(0);
+        }
 
         for(int i= weights.size() - 1; i >= weights.size() - density_matrix_.size() ; i--)
         {
@@ -168,10 +170,15 @@ Density::Density(Simulation_context& ctx__)
         }
     }
 
+
+    std::cout<<"SPL ATOMS "<< unit_cell_.spl_num_atoms().local_size()<< std::endl;
+
     //--- Allocate local PAW density arrays ---
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
+        int ia = unit_cell_.spl_num_atoms(i);
+
         auto& atom = unit_cell_.atom(ia);
 
         auto& atype = atom.type();
@@ -197,7 +204,7 @@ Density::Density(Simulation_context& ctx__)
         paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
 
     }
-
+    std::cout<<"paw density init done"<< std::endl;
 }
 
 Density::~Density()

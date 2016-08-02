@@ -155,7 +155,9 @@ class dmatrix
                 spl_row_       = src.spl_row_;
                 spl_col_       = src.spl_col_;
                 matrix_local_  = std::move(src.matrix_local_);
-                for (int i = 0; i < 9; i++) descriptor_[i] = src.descriptor_[i];
+                for (int i = 0; i < 9; i++) {
+                    descriptor_[i] = src.descriptor_[i];
+                }
             }
             return *this;
         }

@@ -202,8 +202,11 @@ void Density::generate_paw_loc_density()
 
     PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+#pragma omp parallel for
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
+        int ia = unit_cell_.spl_num_atoms(i);
+
         auto& atom = unit_cell_.atom(ia);
 
         auto& atom_type = atom.type();
@@ -221,15 +224,15 @@ void Density::generate_paw_loc_density()
                 SHT::gaunt_rlm);
 
         // get density for current atom
-        mdarray<double,2> &ae_atom_density = paw_ae_local_density_[ia];
-        mdarray<double,2> &ps_atom_density = paw_ps_local_density_[ia];
+        mdarray<double,2> &ae_atom_density = paw_ae_local_density_[i];
+        mdarray<double,2> &ps_atom_density = paw_ps_local_density_[i];
 
         ae_atom_density.zero();
         ps_atom_density.zero();
 
         // and magnetization
-        auto &ae_atom_magnetization = paw_ae_local_magnetization_[ia];
-        auto &ps_atom_magnetization = paw_ps_local_magnetization_[ia];
+        auto &ae_atom_magnetization = paw_ae_local_magnetization_[i];
+        auto &ps_atom_magnetization = paw_ps_local_magnetization_[i];
 
         ae_atom_magnetization.zero();
         ps_atom_magnetization.zero();
@@ -251,7 +254,6 @@ void Density::generate_paw_loc_density()
                 int irb1 = atom_type.indexb(ib1).idxrf;
 
                 // index to iterate Qij,
-                // TODO check indices
                 int iqij = irb2 * (irb2 + 1) / 2 + irb1;
 
                 // get num of non-zero GC
@@ -270,7 +272,6 @@ void Density::generate_paw_loc_density()
                     //                      }
 
                     // iterate over radial points
-                    // size of ps and ae must be equal TODO: if not?
                     // this part in fortran looks better, is there the same for c++?
                     for(int irad = 0; irad < (int)grid.num_points(); irad++)
                     {
@@ -322,12 +323,8 @@ void Density::generate_paw_loc_density()
             }
         }
 
-
-//      }
-
-
-
-
+//        std::cout<<"density hash " << ia <<" : "<< Utils::hash((void*)(&paw_ae_local_density_[i](0,0)),  paw_ae_local_density_[i].size() * sizeof(double) )<< " "
+//                << Utils::hash((void*)(&paw_ps_local_density_[i](0,0)),  paw_ps_local_density_[i].size() * sizeof(double) ) << std::endl;
 
     }
 
