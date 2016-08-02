@@ -461,15 +461,35 @@ class Potential
         void generate_pw_coefs();
         
         /// Calculate D operator from potential and augmentation charge.
-        /** The following matrix is computed:
+        /** The following real symmetric matrix is computed:
          *  \f[
-         *      D_{ij}^{\alpha} = \int Q_{ij}^{\alpha}({\bf r}) V({\bf r}) d{\bf r}
+         *      D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}
          *  \f]
-         *  In the plane-wave domain this integrals transforms to a sum:
+         *  In the plane-wave domain this integrals transform into sum over Fourier components:
          *  \f[
-         *      D_{ij}^{\alpha} = \sum_{\bf G} \langle Q_{ij}^{\alpha}|{\bf G}\rangle \langle{\bf G}|V \rangle = 
-         *        \sum_{\bf G} e^{i{\bf r}_{\alpha}{\bf G}} Q_{ij}^{A *}({\bf G}) V({\bf G})
+         *      D_{\xi \xi'}^{\alpha} = \sum_{\bf G} \langle V |{\bf G}\rangle \langle{\bf G}|Q_{\xi \xi'}^{\alpha} \rangle = 
+         *        \sum_{\bf G} V^{*}({\bf G}) e^{-i{\bf r}_{\alpha}{\bf G}} Q_{\xi \xi'}^{A}({\bf G}) = 
+         *        \sum_{\bf G} Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G})
          *  \f]
+         *  where \f$ \alpha \f$ is the atom, \f$ A \f$ is the atom type and 
+         *  \f[
+         *      \tilde V_{\alpha}({\bf G}) = e^{i{\bf r}_{\alpha}{\bf G}} V({\bf G})  
+         *  \f]
+         *  Both \f$ V({\bf r}) \f$ and \f$ Q({\bf r}) \f$ functions are real and the following condition is fulfilled:
+         *  \f[
+         *      \tilde V_{\alpha}({\bf G}) = \tilde V_{\alpha}^{*}(-{\bf G})
+         *  \f]
+         *  \f[
+         *      Q_{\xi \xi'}({\bf G}) = Q_{\xi \xi'}^{*}(-{\bf G})
+         *  \f]
+         *  In the sum over plane-wave coefficients the \f$ {\bf G} \f$ and \f$ -{\bf G} \f$ contributions will give:
+         *  \f[
+         *       Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) + Q_{\xi \xi'}^{A}(-{\bf G}) \tilde V_{\alpha}^{*}(-{\bf G}) =
+         *          2 \Re \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Re \Big( \tilde V_{\alpha}^{*}({\bf G}) \Big) + 
+         *          2 \Im \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Im \Big( \tilde V_{\alpha}^{*}({\bf G}) \Big) 
+         *  \f]
+         *  This allows the use of a <b>dgemm</b> instead of a <b>zgemm</b> when \f$  D_{\xi \xi'}^{\alpha} \f$ matrix
+         *  is calculated for all atoms of the same type.
          */
         void generate_D_operator_matrix();
 

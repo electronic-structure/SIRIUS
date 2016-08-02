@@ -1,0 +1,35 @@
+---
+Language:        Cpp
+Standard:        Cpp11
+BreakBeforeBraces: 'Custom'
+# Control of individual brace wrapping cases
+BraceWrapping: {
+    AfterClass: 'true'
+    AfterControlStatement: 'false'
+    AfterEnum : 'true'
+    AfterFunction : 'true'
+    AfterNamespace : 'false'
+    AfterStruct : 'true'
+    AfterUnion : 'true'
+    BeforeCatch : 'false'
+    BeforeElse : 'false'
+    IndentBraces : 'false'
+}
+IndentCaseLabels: 'true'
+AccessModifierOffset: -2
+IndentWidth: 4
+UseTab: Never
+AllowShortFunctionsOnASingleLine: 'false'
+AllowShortLoopsOnASingleLine: 'false'
+AllowShortIfStatementsOnASingleLine: 'false'
+KeepEmptyLinesAtTheStartOfBlocks: 'true'
+AlwaysBreakTemplateDeclarations: 'true'
+ColumnLimit: 0
+PointerAlignment: Left
+AllowAllParametersOfDeclarationOnNextLine: 'true'
+AlignConsecutiveAssignments: 'true'
+SortIncludes: 'false'
+BinPackParameters: 'true'
+BinPackArguments: 'true'
+MaxEmptyLinesToKeep: 1
+...

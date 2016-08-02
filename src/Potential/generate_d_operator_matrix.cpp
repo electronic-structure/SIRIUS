@@ -43,7 +43,9 @@ void Potential::generate_D_operator_matrix()
     /* store effective potential and magnetic field in a vector */
     std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
     veff_vec[0] = effective_potential_;
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) veff_vec[1 + j] = effective_magnetic_field_[j];
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        veff_vec[1 + j] = effective_magnetic_field_[j];
+    }
    
     /* allocate on device if necessary */ 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -105,7 +107,7 @@ void Potential::generate_D_operator_matrix()
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) {
                         int ig = spl_num_gvec_[igloc];
                         /* conjugate V(G) * exp(i * G * r_{alpha}) */
-                        double_complex z  = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
+                        auto z = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
                         veff_a(2 * igloc,     i) = z.real();
                         veff_a(2 * igloc + 1, i) = z.imag();
                     }
@@ -181,33 +183,13 @@ void Potential::generate_D_operator_matrix()
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                        
                         /* D-matix is symmetric */
-                        atom.d_mtrx(xi1, xi2, iv) = d_tmp(idx12, i) * unit_cell_.omega();
-                        atom.d_mtrx(xi2, xi1, iv) = d_tmp(idx12, i) * unit_cell_.omega();
+                        atom.d_mtrx(xi1, xi2, iv) = atom.d_mtrx(xi2, xi1, iv) = d_tmp(idx12, i) * unit_cell_.omega();
                     }
                 }
             }
         }
     }
-
-    //////////////////////////////////////////////////////////////////////////////////////
-//  std::cout <<" DIJ"<<std::endl;
-//  for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-//  {
-//      auto& atom = unit_cell_.atom(ia);
-//      auto& atom_type = atom.type();
-//      for(int ib2 = 0; ib2 < (int)atom_type.mt_lo_basis_size(); ib2++)
-//      {
-//          for(int ib1 = 0; ib1 <= ib2; ib1++)
-//          {
-//              std::cout << atom.d_mtrx(ib2,ib1,0) - atom.d_mtrx(ib2,ib1,1) << " ";
-//          }
-//      }
-//  }
-//  std::cout <<std::endl;
-    //////////////////////////////////////////////////////////////////////////////////////
-
 
     /* add d_ion to the effective potential component of D-operator */
     #pragma omp parallel for schedule(static)
