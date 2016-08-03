@@ -1124,10 +1124,9 @@ void Band::solve_fd(K_point* kp__,
 
 void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) const
 {
-    runtime::Timer t("sirius::Band::solve_for_kset", ctx_.comm());
+    PROFILE_WITH_TIMER("sirius::Band::solve_for_kset");
 
-    if (precompute && ctx_.full_potential())
-    {
+    if (precompute && ctx_.full_potential()) {
         potential.generate_pw_coefs();
         potential.update_atomic_potential();
         unit_cell_.generate_radial_functions();
@@ -1137,22 +1136,19 @@ void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) co
     // TODO: mapping to coarse effective potential is k-point independent
 
     /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++)
-    {
+    for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset.spl_num_kpoints(ikloc);
 
-        if (use_second_variation && ctx_.full_potential())
-        {
+        if (use_second_variation && ctx_.full_potential()) {
+            /* solve non-magnetic Hamiltonian (so-called first variation) */
             solve_fv(kset.k_point(ik), potential.effective_potential());
-
+            /* generate first-variational states */
             kset.k_point(ik)->generate_fv_states();
-
+            /* solve magnetic Hamiltonian */
             solve_sv(kset.k_point(ik), potential.effective_magnetic_field());
-
+            /* generate spinor wave-functions */
             kset.k_point(ik)->generate_spinor_wave_functions();
-        }
-        else
-        {
+        } else {
             solve_fd(kset.k_point(ik), potential.effective_potential(), potential.effective_magnetic_field());
         }
     }
@@ -1161,24 +1157,22 @@ void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) co
     kset.sync_band_energies();
 
     #if (__VERBOSITY > 0)
-    if (ctx_.comm().rank() == 0)
-    {
+    if (ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
-        for (int ik = 0; ik < kset.num_kpoints(); ik++)
-        {
+        for (int ik = 0; ik < kset.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
-            if (ctx_.num_mag_dims() != 1)
-            {
-                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++)
+            if (ctx_.num_mag_dims() != 1) {
+                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(j));
-            }
-            else
-            {
-                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
+                }
+            } else {
+                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(j));
+                }
                 printf("\n         ");
-                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
+                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
+                }
             }
             printf("\n");
         }
