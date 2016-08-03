@@ -5,7 +5,7 @@
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
         "fft_mode" : "serial",
-        "reduce_gvec" : 1
+        "reduce_gvec" : true
     },
 
     "parameters" : {
@@ -67,8 +67,8 @@
             "Ge"
         ], 
         "atom_files": {
-            "Si": "Si.pz-n-nc.UPF.json",
-            "Ge": "Ge.pz-n-nc.UPF.json"
+            "Si": "Si.pz-hgh.UPF.json",
+            "Ge": "Ge.pz-hgh.UPF.json"
         }, 
         "atoms": {
             "Ge": [
