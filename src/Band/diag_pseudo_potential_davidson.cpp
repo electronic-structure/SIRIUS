@@ -35,6 +35,10 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_davidson");
 
+    #ifdef __PRINT_MEMORY_USAGE
+    MEMORY_USAGE_INFO();
+    #endif
+
     /* get diagonal elements for preconditioning */
     auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
