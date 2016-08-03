@@ -12,6 +12,7 @@
 #include <chrono>
 #include <omp.h>
 #include <unistd.h>
+#include <cstring>
 #include <cstdarg>
 #include "config.h"
 #include "communicator.h"
@@ -57,7 +58,7 @@ class pstdout
             n = std::min(n, (int)str.size());
             
             if ((int)buffer_.size() - fill_ < n) buffer_.resize(buffer_.size() + str.size());
-            memcpy(&buffer_[fill_], &str[0], n);
+            std::memcpy(&buffer_[fill_], &str[0], n);
             fill_ += n;
         }
 

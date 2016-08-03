@@ -5,7 +5,7 @@
  *      Author: isivkov
  */
 
-#include "Potential.h"
+#include "potential.h"
 
 using namespace std;
 
