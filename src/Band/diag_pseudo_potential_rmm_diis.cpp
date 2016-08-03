@@ -10,8 +10,10 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                                           Q_operator<T>& q_op__) const
 
 {
-    if (ctx_.iterative_solver_tolerance() > 1e-5)
-    {
+    auto& itso = ctx_.iterative_solver_input_section();
+    double tol = ctx_.iterative_solver_tolerance();
+
+    if (tol > 1e-4) {
         diag_pseudo_potential_davidson(kp__, ispn__, h_op__, d_op__, q_op__);
         return;
     }
@@ -25,14 +27,12 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
-    ///auto& itso = ctx_.iterative_solver_input_section();
-
     auto pu = ctx_.processing_unit();
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions<false>(ispn__);
 
-    int niter = 4; //itso.num_steps_;
+    int niter = itso.num_steps_;
 
     Eigenproblem_lapack evp_solver(2 * linalg_base::dlamch('S'));
 
@@ -41,8 +41,7 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     std::vector< Wave_functions<false>* > ophi(niter);
     std::vector< Wave_functions<false>* > hphi(niter);
 
-    for (int i = 0; i < niter; i++)
-    {
+    for (int i = 0; i < niter; i++) {
         phi[i]  = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
         res[i]  = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
         hphi[i] = new Wave_functions<false>(kp__->num_gkvec_loc(), num_bands, pu);
@@ -56,12 +55,11 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     /* allocate Hamiltonian and overlap */
     matrix<T> hmlt(num_bands, num_bands);
     matrix<T> ovlp(num_bands, num_bands);
-    matrix<T> hmlt_old(num_bands, num_bands);
-    matrix<T> ovlp_old(num_bands, num_bands);
+    matrix<T> hmlt_old;
+    matrix<T> ovlp_old;
 
     #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma)
-    {
+    if (gen_evp_solver_->type() == ev_magma) {
         hmlt.pin_memory();
         ovlp.pin_memory();
     }
@@ -74,21 +72,20 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     dmatrix<T> hmlt_dist;
     dmatrix<T> ovlp_dist;
     dmatrix<T> evec_dist;
-    if (kp__->comm().size() == 1)
-    {
+    if (kp__->comm().size() == 1) {
         hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_bands, num_bands, ctx_.blacs_grid(), bs, bs);
         ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_bands, num_bands, ctx_.blacs_grid(), bs, bs);
         evec_dist = dmatrix<T>(&evec(0, 0), num_bands, num_bands, ctx_.blacs_grid(), bs, bs);
-    }
-    else
-    {
+    } else {
         hmlt_dist = dmatrix<T>(num_bands, num_bands, ctx_.blacs_grid(), bs, bs);
         ovlp_dist = dmatrix<T>(num_bands, num_bands, ctx_.blacs_grid(), bs, bs);
         evec_dist = dmatrix<T>(num_bands, num_bands, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);
-    for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
+    for (int i = 0; i < num_bands; i++) {
+        eval[i] = kp__->band_energy(i);
+    }
     std::vector<double> eval_old(num_bands);
 
     /* trial basis functions */
@@ -152,31 +149,27 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                       (std::vector<double>& res_norm__, std::vector<double>& eval__) -> void
     {
         runtime::Timer t("sirius::Band::diag_pseudo_potential_rmm_diis|res");
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
+        #pragma omp parallel for
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
                 double e = 0;
                 double d = 0;
-                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-                {
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                     e += std::real(std::conj((*phi[last[i]])(igk, i)) * (*hphi[last[i]])(igk, i));
                     d += std::real(std::conj((*phi[last[i]])(igk, i)) * (*ophi[last[i]])(igk, i));
                 }
                 eval__[i] = e / d;
 
                 /* compute residual r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-                {
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                     (*res[last[i]])(igk, i) = (*hphi[last[i]])(igk, i) - eval__[i] * (*ophi[last[i]])(igk, i);
                 }
 
                 double r = 0;
-                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-                {
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                     r += std::real(std::conj((*res[last[i]])(igk, i)) * (*res[last[i]])(igk, i));
                 }
-                res_norm__[i] = r; //std::sqrt(r);
+                res_norm__[i] = std::sqrt(r);
             }
         }
     };
@@ -186,26 +179,23 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     {
         runtime::Timer t("sirius::Band::diag_pseudo_potential_rmm_diis|h_o");
         int n = 0;
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
                 std::memcpy(&phi_tmp(0, n), &(*phi[last[i]])(0, i), kp__->num_gkvec() * sizeof(double_complex));
                 n++;
             }
         }
 
-        if (n == 0) return 0;
+        if (n == 0) {
+            return 0;
+        }
         
         /* apply Hamiltonian and overlap operators to the initial basis functions */
         this->apply_h_o<T>(kp__, ispn__, 0, n, phi_tmp, hphi_tmp, ophi_tmp, h_op__, d_op__, q_op__);
 
-
         n = 0;
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
                 std::memcpy(&(*hphi[last[i]])(0, i), &hphi_tmp(0, n), kp__->num_gkvec() * sizeof(double_complex));
                 std::memcpy(&(*ophi[last[i]])(0, i), &ophi_tmp(0, n), kp__->num_gkvec() * sizeof(double_complex));
                 n++;
@@ -222,12 +212,9 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     {
         runtime::Timer t("sirius::Band::diag_pseudo_potential_rmm_diis|pre");
         #pragma omp parallel for
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
-                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-                {
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                     double p = h_diag[igk] - eval[i] * o_diag[igk];
 
                     p *= 2; // QE formula is in Ry; here we convert to Ha
@@ -260,16 +247,15 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     update_res(res_norm_start, eval);
 
     bool conv = true;
-    for (int i = 0; i < num_bands; i++)
-    {
-        if (kp__->band_occupancy(i) > 1e-2 && res_norm_start[i] > 1e-12) conv = false;
-        //if (res_norm_start[i] < 1e-12 || kp__->band_occupancy(i) <= 1e-2)
-        //{
-        //    conv_band[i] = true;
-        //}
+    for (int i = 0; i < num_bands; i++) {
+        if (kp__->band_occupancy(i) > 1e-2 && res_norm_start[i] > itso.residual_tolerance_) {
+            conv = false;
+        }
     }
-    if (conv) DUMP("all bands are converged at stage#0");
-    if (conv) return;
+    if (conv) {
+        DUMP("all bands are converged at stage#0");
+        return;
+    }
 
     last = std::vector<int>(num_bands, 1);
     
@@ -280,13 +266,11 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     apply_h_o();
 
     /* estimate lambda */
-    for (int i = 0; i < num_bands; i++)
-    {
-        if (!conv_band[i])
-        {
-            double f1(0), f2(0), f3(0), f4(0);
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-            {
+    #pragma omp parallel for
+    for (int i = 0; i < num_bands; i++) {
+        if (!conv_band[i]) {
+            double f1{0}, f2{0}, f3{0}, f4{0};
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                 f1 += std::real(std::conj((*phi[1])(igk, i)) * (*ophi[1])(igk, i));      //  <KR_i | OKR_i>
                 f2 += std::real(std::conj((*phi[0])(igk, i)) * (*ophi[1])(igk, i)) * 2;  // <phi_i | OKR_i> 
                 f3 += std::real(std::conj((*phi[1])(igk, i)) * (*hphi[1])(igk, i));      //  <KR_i | HKR_i>
@@ -298,12 +282,15 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
             double c = eval[i] * f2 - f4;
 
             lambda[i] = (b - std::sqrt(b * b - 4.0 * a * c)) / 2.0 / a;
-            if (std::abs(lambda[i]) > 2.0) lambda[i] = 2.0 * lambda[i] / std::abs(lambda[i]);
-            if (std::abs(lambda[i]) < 0.5) lambda[i] = 0.5 * lambda[i] / std::abs(lambda[i]);
+            if (std::abs(lambda[i]) > 2.0) {
+                lambda[i] = 2.0 * lambda[i] / std::abs(lambda[i]);
+            }
+            if (std::abs(lambda[i]) < 0.5) {
+                lambda[i] = 0.5 * lambda[i] / std::abs(lambda[i]);
+            }
             
             /* construct new basis functions */
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-            {
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                  (*phi[1])(igk, i) =  (*phi[0])(igk, i) + lambda[i] *  (*phi[1])(igk, i);
                 (*hphi[1])(igk, i) = (*hphi[0])(igk, i) + lambda[i] * (*hphi[1])(igk, i);
                 (*ophi[1])(igk, i) = (*ophi[0])(igk, i) + lambda[i] * (*ophi[1])(igk, i);
@@ -313,10 +300,8 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     /* compute new residuals */
     update_res(res_norm, eval);
     /* check which bands have converged */
-    for (int i = 0; i < num_bands; i++)
-    {
-        if (kp__->band_occupancy(i) <= 1e-2 || res_norm[i] < 1e-12)
-        {
+    for (int i = 0; i < num_bands; i++) {
+        if (kp__->band_occupancy(i) <= 1e-2 || res_norm[i] < itso.residual_tolerance_) {
             conv_band[i] = true;
         }
     }
@@ -326,21 +311,15 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     mdarray<double_complex, 2> V(niter, num_bands);
     std::vector<double> ev(niter);
 
-    for (int iter = 2; iter < niter; iter++)
-    {
+    for (int iter = 2; iter < niter; iter++) {
         runtime::Timer t1("sirius::Band::diag_pseudo_potential_rmm_diis|AB");
         A.zero();
         B.zero();
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
-                for (int i1 = 0; i1 < iter; i1++)
-                {
-                    for (int i2 = 0; i2 < iter; i2++)
-                    {
-                        for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-                        {
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
+                for (int i1 = 0; i1 < iter; i1++) {
+                    for (int i2 = 0; i2 < iter; i2++) {
+                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                             A(i1, i2, i) += std::conj((*res[i1])(igk, i)) * (*res[i2])(igk, i);
                             B(i1, i2, i) += std::conj((*phi[i1])(igk, i)) * (*ophi[i2])(igk, i);
                         }
@@ -351,26 +330,19 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         t1.stop();
 
         runtime::Timer t2("sirius::Band::diag_pseudo_potential_rmm_diis|phi");
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
-                if (evp_solver.solve(iter, 1, &A(0, 0, i), A.ld(), &B(0, 0, i), B.ld(), &ev[0], &V(0, i), V.ld()) == 0)
-                {
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
+                if (evp_solver.solve(iter, 1, &A(0, 0, i), A.ld(), &B(0, 0, i), B.ld(), &ev[0], &V(0, i), V.ld()) == 0) {
                     std::memset(&(*phi[iter])(0, i), 0, kp__->num_gkvec() * sizeof(double_complex));
                     std::memset(&(*res[iter])(0, i), 0, kp__->num_gkvec() * sizeof(double_complex));
-                    for (int i1 = 0; i1 < iter; i1++)
-                    {
-                        for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-                        {
+                    for (int i1 = 0; i1 < iter; i1++) {
+                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
                             (*phi[iter])(igk, i) += (*phi[i1])(igk, i) * V(i1, i);
                             (*res[iter])(igk, i) += (*res[i1])(igk, i) * V(i1, i);
                         }
                     }
                     last[i] = iter;
-                }
-                else
-                {
+                } else {
                     conv_band[i] = true;
                 }
             }
@@ -380,34 +352,32 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         apply_preconditioner(lambda, *res[iter], 1.0, *phi[iter]);
 
         int n = apply_h_o();
-        if (n == 0) break;
+        if (n == 0) {
+            break;
+        }
 
         eval_old = eval;
 
         update_res(res_norm, eval);
 
-        double tol = ctx_.iterative_solver_tolerance();
-        
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (!conv_band[i])
-            {
+        for (int i = 0; i < num_bands; i++) {
+            if (!conv_band[i]) {
                 if (kp__->band_occupancy(i) <= 1e-2 ||
                     res_norm[i] / res_norm_start[i] < 0.7 ||
-                    (kp__->band_occupancy(i) > 1e-2 && std::abs(eval[i] - eval_old[i]) < tol))
-                {
+                    (kp__->band_occupancy(i) > 1e-2 && std::abs(eval[i] - eval_old[i]) < tol)) {
                     conv_band[i] = true;
                 }
             }
         }
     }
 
-    for (int i = 0; i < num_bands; i++)
-    {
+    #pragma omp parallel for
+    for (int i = 0; i < num_bands; i++) {
         std::memcpy(&phi_tmp(0, i),  &(*phi[last[i]])(0, i),  kp__->num_gkvec() * sizeof(double_complex));
         std::memcpy(&hphi_tmp(0, i), &(*hphi[last[i]])(0, i), kp__->num_gkvec() * sizeof(double_complex));
         std::memcpy(&ophi_tmp(0, i), &(*ophi[last[i]])(0, i), kp__->num_gkvec() * sizeof(double_complex));
     }
+
 
     set_h_o<T>(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old);
     
@@ -417,11 +387,11 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
     psi.transform_from<T>(phi_tmp, num_bands, evec, num_bands);
     
-    for (int j = 0; j < ctx_.num_fv_states(); j++)
+    for (int j = 0; j < ctx_.num_fv_states(); j++) {
         kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
+    }
 
-    for (int i = 0; i < niter; i++)
-    {
+    for (int i = 0; i < niter; i++) {
         delete phi[i];
         delete res[i];
         delete hphi[i];
