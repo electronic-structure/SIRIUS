@@ -259,7 +259,7 @@ void Atom_type::print_info() const
         for (int i = 0; i < (int)atomic_levels_.size(); i++)
         {
             printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
-                                              atomic_levels_[i].occupancy, atomic_levels_[i].core);
+                                             atomic_levels_[i].occupancy, atomic_levels_[i].core);
         }
         printf("\n");
         printf("local orbitals\n");
@@ -277,10 +277,7 @@ void Atom_type::print_info() const
             }
             printf("]\n");
         }
-    }
 
-    if (parameters_.esm_type() == full_potential_lapwlo)
-    {
         printf("\n");
         printf("augmented wave basis\n");
         for (int j = 0; j < (int)aw_descriptors_.size(); j++)
@@ -494,7 +491,7 @@ void Atom_type::read_pseudo_uspp(json const& parser)
         }
     }
 
-    if (!parser["pseudo_potential"]["augmentation"].empty()) {
+    if (parser["pseudo_potential"].count("augmentation")) {
         uspp_.augmentation_        = true;
         uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * lmax_beta + 1);
         uspp_.q_radial_functions_l.zero();
@@ -514,7 +511,7 @@ void Atom_type::read_pseudo_uspp(json const& parser)
     }
 
     /* read starting wave functions ( UPF CHI ) */
-    if (!parser["pseudo_potential"]["atomic_wave_functions"].empty()) {
+    if (parser["pseudo_potential"].count("atomic_wave_functions")) {
         size_t nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
         for (size_t k = 0; k < nwf; k++) {
             std::pair<int, std::vector<double>> wf;

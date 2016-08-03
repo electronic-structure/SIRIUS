@@ -157,43 +157,70 @@ class Q_operator: public Non_local_operator<T>
         
         Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-//            if (ctx__.esm_type() == ultrasoft_pseudopotential)
-//            {
-                /* Q-operator is independent of spin */
-                this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
-                this->op_.zero();
+            /* Q-operator is independent of spin */
+            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+            this->op_.zero();
 
-                auto& uc = this->beta_.unit_cell();
-                for (int ia = 0; ia < uc.num_atoms(); ia++)
+            auto& uc = this->beta_.unit_cell();
+            for (int ia = 0; ia < uc.num_atoms(); ia++)
+            {
+                int iat = uc.atom(ia).type().id();
+                if (!uc.atom_type(iat).uspp().augmentation_) {
+                    continue;
+                }
+                int nbf = uc.atom(ia).mt_basis_size();
+                for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
-                    int iat = uc.atom(ia).type().id();
-                    if (!uc.atom_type(iat).uspp().augmentation_) {
-                        continue;
-                    }
-                    int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++)
+                    for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        for (int xi1 = 0; xi1 < nbf; xi1++)
-                        {
-                            if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
-                                assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
-                                this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
-                            }
+                        if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
+                            assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
                         }
                     }
                 }
-                #ifdef __GPU
-                if (this->pu_ == GPU)
-                {
-                    this->op_.allocate_on_device();
-                    this->op_.copy_to_device();
+            }
+            #ifdef __GPU
+            if (this->pu_ == GPU)
+            {
+                this->op_.allocate_on_device();
+                this->op_.copy_to_device();
+            }
+            #endif
+        }
+};
+
+template <typename T>
+class P_operator: public Non_local_operator<T>
+{
+    public:
+        
+        P_operator(Simulation_context const& ctx__, Beta_projectors& beta__, mdarray<double_complex, 3>& p_mtrx__) 
+            : Non_local_operator<T>(beta__, ctx__.processing_unit())
+        {
+            /* Q-operator is independent of spin */
+            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+            this->op_.zero();
+
+            auto& uc = this->beta_.unit_cell();
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                int iat = uc.atom(ia).type().id();
+                if (!uc.atom_type(iat).uspp().augmentation_) {
+                    continue;
                 }
-                #endif
-//            }
-//            else
-//            {
-//                this->is_null_ = true;
-//            }
+                int nbf = uc.atom(ia).mt_basis_size();
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = -p_mtrx__(xi1, xi2, iat).real();
+                    }
+                }
+            }
+            #ifdef __GPU
+            if (this->pu_ == GPU) {
+                this->op_.allocate_on_device();
+                this->op_.copy_to_device();
+            }
+            #endif
         }
 };
 

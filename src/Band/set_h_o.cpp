@@ -51,18 +51,18 @@ void Band::set_h_o<double_complex>(K_point* kp__,
 
     for (int i = 0; i < N__ + n__; i++)
     {
-        if (h__(i, i).imag() > 1e-12)
-        {
-            std::stringstream s;
-            s << "wrong diagonal of H: " << h__(i, i);
-            TERMINATE(s);
-        }
-        if (o__(i, i).imag() > 1e-12)
-        {
-            std::stringstream s;
-            s << "wrong diagonal of O: " << o__(i, i);
-            TERMINATE(s);
-        }
+        //= if (h__(i, i).imag() > 1e-12)
+        //= {
+        //=     std::stringstream s;
+        //=     s << "wrong diagonal of H: " << h__(i, i);
+        //=     TERMINATE(s);
+        //= }
+        //= if (o__(i, i).imag() > 1e-12)
+        //= {
+        //=     std::stringstream s;
+        //=     s << "wrong diagonal of O: " << o__(i, i);
+        //=     TERMINATE(s);
+        //= }
         h__(i, i) = h__(i, i).real();
         o__(i, i) = o__(i, i).real();
     }
@@ -110,25 +110,16 @@ void Band::set_h_o<double_complex>(K_point* kp__,
         i0 = 0;
     }
 
-    //// --== DEBUG ==--
-    //for (int i = 0; i < N__ + n__; i++)
-    //{
-    //    for (int j = 0; j < N__ + n__; j++)
-    //    {
-    //        if (std::abs(h__(i, j).imag()) > 1e-12) printf("h(%i,%i) = %20.16f %20.16f\n", i, j, h__(i, j).real(), h__(i, j).imag());
-    //        if (std::abs(o__(i, j).imag()) > 1e-12) printf("o(%i,%i) = %20.16f %20.16f\n", i, j, o__(i, j).real(), o__(i, j).imag());
-
-    //        h__(i, j) = h__(i, j).real();
-    //        o__(i, j) = o__(i, j).real();
-    //    }
-    //}
-
     /* save Hamiltonian and overlap */
     #pragma omp parallel for
     for (int i = i0; i < N__ + n__; i++)
     {
-        std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double_complex));
-        std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));
+        if (h_old__.size()) {
+            std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double_complex));
+        }
+        if (o_old__.size()) {
+            std::memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));
+        }
     }
 }
 
@@ -149,29 +140,32 @@ void Band::set_h_o<double>(K_point* kp__,
     assert(n__ != 0);
 
     /* copy old Hamiltonian */
-    for (int i = 0; i < N__; i++)
+    for (int i = 0; i < N__; i++) {
         std::memcpy(&h__(0, i), &h_old__(0, i), N__ * sizeof(double));
+    }
 
     /* <{phi,res}|H|res> */
     phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
 
     int i0 = N__;
-    if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2)
-    {
+    if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2) {
         /* restore the lower part */
         #pragma omp parallel for
-        for (int i = 0; i < N__; i++)
-        {
-            for (int j = N__; j < N__ + n__; j++)
+        for (int i = 0; i < N__; i++) {
+            for (int j = N__; j < N__ + n__; j++) {
                 h__(j, i) = h__(i, j);
+            }
         }
         i0 = 0;
     }
 
     /* save Hamiltonian */
-    #pragma omp parallel for
-    for (int i = i0; i < N__ + n__; i++)
-        std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double));
+    if (h_old__.size()) {
+        #pragma omp parallel for
+        for (int i = i0; i < N__ + n__; i++) {
+            std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double));
+        }
+    }
 }
 
 

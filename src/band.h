@@ -143,19 +143,13 @@ class Band
                                             D_operator<T>& d_op__,
                                             Q_operator<T>& q_op__) const;
 
-        //void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
-        //                                               std::vector<double> const& veff_it_coarse__);
-
-        void apply_h_serial(K_point* kp__, 
-                            std::vector<double> const& effective_potential__, 
-                            std::vector<double> const& pw_ekin__, 
-                            int N__,
-                            int n__,
-                            matrix<double_complex>& phi__,
-                            matrix<double_complex>& hphi__,
-                            mdarray<double_complex, 1>& kappa__,
-                            mdarray<int, 1>& packed_mtrx_offset__,
-                            mdarray<double_complex, 1>& d_mtrx_packed__) const;
+        template <typename T>
+        void diag_pseudo_potential_chebyshev(K_point* kp__,
+                                             int ispn__,
+                                             Hloc_operator& h_op__,
+                                             D_operator<T>& d_op__,
+                                             Q_operator<T>& q_op__,
+                                             P_operator<T>& p_op__) const;
 
         template <typename T>
         void diag_h_o(K_point* kp__,
@@ -168,6 +162,16 @@ class Band
                       dmatrix<T>& ovlp_dist__,
                       dmatrix<T>& evec_dist__,
                       std::vector<double>& eval__) const;
+
+        template <typename T>
+        void apply_h(K_point* kp__,
+                     int ispn__, 
+                     int N__,
+                     int n__,
+                     Wave_functions<false>& phi__,
+                     Wave_functions<false>& hphi__,
+                     Hloc_operator &h_op,
+                     D_operator<T>& d_op) const;
 
         template <typename T>
         void apply_h_o(K_point* kp__,

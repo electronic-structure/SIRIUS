@@ -79,7 +79,7 @@ struct Unit_cell_input_section
 
     void read(json const& parser)
     {
-        if (!parser["unit_cell"].empty()) {
+        if (parser.count("unit_cell")) {
             exist_ = true;
 
             auto section = parser["unit_cell"];
@@ -109,7 +109,7 @@ struct Unit_cell_input_section
                 labels_.push_back(label);
             }
             
-            if (!section["atom_files"].empty()) {
+            if (section.count("atom_files")) {
                 for (auto& label: labels_) {
                     atom_files_[label] = section["atom_files"].value(label, "");
                 }
@@ -145,7 +145,7 @@ struct Mixer_input_section
 
     void read(json const& parser)
     {
-        if (!parser["mixer"].empty()) {
+        if (parser.count("mixer")) {
             exist_ = true;
             auto section = parser["mixer"];
             beta_               = section.value("beta", beta_);
@@ -261,7 +261,7 @@ struct Parameters_input_section
         std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
 
         /* read list of XC functionals */
-        if (!parser["parameters"]["xc_functionals"].empty()) {
+        if (parser["parameters"].count("xc_functionals")) {
             xc_functionals_.clear();
             for (auto& label: parser["parameters"]["xc_functionals"]) {
                 xc_functionals_.push_back(label);

@@ -131,7 +131,7 @@ class Atom
 
             if (!type().parameters().full_potential()) {
                 int nbf = type().mt_lo_basis_size();
-                d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims());
+                d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
                 d_mtrx_.zero();
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {

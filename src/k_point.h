@@ -133,7 +133,8 @@ class K_point
         int num_ranks_row_;
 
         Beta_projectors* beta_projectors_;
-        
+       
+        /// Preconditioner matrix for Chebyshev solver.  
         mdarray<double_complex, 3> p_mtrx_;
 
         mdarray<double, 2> gkvec_row_;
@@ -573,6 +574,11 @@ class K_point
         inline double_complex p_mtrx(int xi1, int xi2, int iat) const
         {
             return p_mtrx_(xi1, xi2, iat);
+        }
+
+        inline mdarray<double_complex, 3>& p_mtrx()
+        {
+            return p_mtrx_;
         }
 
         inline int num_gkvec_loc() const

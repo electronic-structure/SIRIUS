@@ -125,37 +125,48 @@ void K_point::initialize()
     {
         beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit());
         
-        if (false)
+        if (true)
         {
-            //p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
-            //p_mtrx_.zero();
+            p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
+            p_mtrx_.zero();
 
-            //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            //{
-            //    auto atom_type = unit_cell_.atom_type(iat);
-            //    int nbf = atom_type->mt_basis_size();
-            //    int ofs = atom_type->offset_lo();
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                auto& atom_type = unit_cell_.atom_type(iat);
+                
+                if (!atom_type.uspp().augmentation_) {
+                    continue;
+                }
+                int nbf = atom_type.mt_basis_size();
+                int ofs = atom_type.offset_lo();
 
-            //    matrix<double_complex> qinv(nbf, nbf);
-            //    atom_type->uspp().q_mtrx >> qinv;
-            //    linalg<CPU>::geinv(nbf, qinv);
-            //    
-            //    /* compute P^{+}*P */
-            //    linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
-            //                      &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
-            //    comm_row().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
+                matrix<double_complex> qinv(nbf, nbf);
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        qinv(xi2, xi1) = ctx_.augmentation_op(iat).q_mtrx(xi2, xi1);
+                    }
+                }
+                linalg<CPU>::geinv(nbf, qinv);
+                
+                /* compute P^{+}*P */
+                linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
+                                  beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(), 
+                                  beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(), 
+                                  &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+                comm().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
 
-            //    for (int xi1 = 0; xi1 < nbf; xi1++)
-            //    {
-            //        for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
-            //    }
-            //    /* compute (Q^{-1} + P^{+}*P)^{-1} */
-            //    linalg<CPU>::geinv(nbf, qinv);
-            //    for (int xi1 = 0; xi1 < nbf; xi1++)
-            //    {
-            //        for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
-            //    }
-            //}
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+                    }
+                }
+                /* compute (Q^{-1} + P^{+}*P)^{-1} */
+                linalg<CPU>::geinv(nbf, qinv);
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+                    }
+                }
+            }
         }
     }
 
