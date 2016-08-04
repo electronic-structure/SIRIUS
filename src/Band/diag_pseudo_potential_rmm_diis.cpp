@@ -1,6 +1,39 @@
+#include <algorithm>
 #include "band.h"
 
 namespace sirius {
+
+template <typename T>
+inline T inner_local(K_point* kp__, Wave_functions<false>& a, int ia, Wave_functions<false>& b, int ib);
+
+template<>
+inline double inner_local<double>(K_point* kp__, Wave_functions<false>& a, int ia, Wave_functions<false>& b, int ib)
+{
+    double result{0};
+    double* a_tmp = reinterpret_cast<double*>(&a(0, ia));
+    double* b_tmp = reinterpret_cast<double*>(&b(0, ib));
+    for (int igk = 0; igk < 2 * kp__->num_gkvec_loc(); igk++) {
+        result += a_tmp[igk] * b_tmp[igk];
+    }
+
+    if (kp__->comm().rank() == 0) {
+        result = 2 * result - a_tmp[0] * b_tmp[0];
+    } else {
+        result *= 2;
+    }
+
+    return result;
+}
+
+template<>
+inline double_complex inner_local<double_complex>(K_point* kp__, Wave_functions<false>& a, int ia, Wave_functions<false>& b, int ib)
+{
+    double_complex result{0, 0};
+    for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) {
+        result += std::conj(a(igk, ia)) * b(igk, ib);
+    }
+    return result;
+}
 
 template <typename T>
 void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
@@ -91,54 +124,6 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     /* trial basis functions */
     phi[0]->copy_from(psi, 0, num_bands);
 
-    //== if (parameters_.processing_unit() == GPU)
-    //== {
-    //==     #ifdef __GPU
-    //==     if (!economize_gpu_memory)
-    //==     {
-    //==         phi.allocate_on_device();
-    //==         psi.allocate_on_device();
-    //==         res.allocate_on_device();
-    //==         hphi.allocate_on_device();
-    //==         hpsi.allocate_on_device();
-    //==         kp__->beta_gk().allocate_on_device();
-    //==         kp__->beta_gk().copy_to_device();
-    //==         /* initial phi on GPU */
-    //==         cuda_copy_to_device(phi.at<GPU>(), psi.at<CPU>(), kp__->num_gkvec_row() * num_bands * sizeof(double_complex));
-    //==         if (with_overlap)
-    //==         {
-    //==             ophi.allocate_on_device();
-    //==             opsi.allocate_on_device();
-    //==         }
-    //==     }
-    //==     else
-    //==     {
-    //==         kappa.allocate_on_device();
-    //==     }
-    //==     d_mtrx_packed.allocate_on_device();
-    //==     d_mtrx_packed.copy_to_device();
-    //==     if (with_overlap)
-    //==     {
-    //==         q_mtrx_packed.allocate_on_device();
-    //==         q_mtrx_packed.copy_to_device();
-    //==     }
-    //==     hmlt.allocate_on_device();
-    //==     ovlp.allocate_on_device();
-    //==     evec.allocate_on_device();
-    //==     evec_tmp.allocate_on_device();
-    //==     if (converge_by_energy) evec_tmp.allocate_on_device();
-    //==     #else
-    //==     TERMINATE_NO_GPU
-    //==     #endif
-    //== }
-
-    //== #ifdef __PRINT_OBJECT_HASH
-    //== std::cout << "hash(beta_pw)       : " << kp__->beta_gk_panel().panel().hash() << std::endl;
-    //== std::cout << "hash(d_mtrx_packed) : " << d_mtrx_packed.hash() << std::endl;
-    //== std::cout << "hash(q_mtrx_packed) : " << q_mtrx_packed.hash() << std::endl;
-    //== std::cout << "hash(v_eff_coarse)  : " << Utils::hash(&veff_it_coarse__[0], parameters_.fft_coarse()->size() * sizeof(double)) << std::endl;
-    //== #endif
-
     std::vector<int> last(num_bands, 0);
     std::vector<bool> conv_band(num_bands, false);
     std::vector<double> res_norm(num_bands);
@@ -154,10 +139,8 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         #pragma omp parallel for
         for (int i = 0; i < num_bands; i++) {
             if (!conv_band[i]) {
-                for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) {
-                    e_tmp[i] += std::real(std::conj((*phi[last[i]])(igk, i)) * (*hphi[last[i]])(igk, i));
-                    d_tmp[i] += std::real(std::conj((*phi[last[i]])(igk, i)) * (*ophi[last[i]])(igk, i));
-                }
+                e_tmp[i] = std::real(inner_local<T>(kp__, *phi[last[i]], i, *hphi[last[i]], i));
+                d_tmp[i] = std::real(inner_local<T>(kp__, *phi[last[i]], i, *ophi[last[i]], i));
             }
         }
         kp__->comm().allreduce(e_tmp);
@@ -173,10 +156,7 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                 for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) {
                     (*res[last[i]])(igk, i) = (*hphi[last[i]])(igk, i) - eval__[i] * (*ophi[last[i]])(igk, i);
                 }
-
-                for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) {
-                    res_norm__[i] += std::real(std::conj((*res[last[i]])(igk, i)) * (*res[last[i]])(igk, i));
-                }
+                res_norm__[i] = std::real(inner_local<T>(kp__, *res[last[i]], i, *res[last[i]], i));
             }
         }
         kp__->comm().allreduce(res_norm__);
@@ -287,12 +267,10 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     #pragma omp parallel for
     for (int i = 0; i < num_bands; i++) {
         if (!conv_band[i]) {
-            for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) {
-                f1[i] += std::real(std::conj((*phi[1])(igk, i)) * (*ophi[1])(igk, i));      //  <KR_i | OKR_i>
-                f2[i] += std::real(std::conj((*phi[0])(igk, i)) * (*ophi[1])(igk, i)) * 2;  // <phi_i | OKR_i> 
-                f3[i] += std::real(std::conj((*phi[1])(igk, i)) * (*hphi[1])(igk, i));      //  <KR_i | HKR_i>
-                f4[i] += std::real(std::conj((*phi[0])(igk, i)) * (*hphi[1])(igk, i)) * 2;  // <phi_i | HKR_i>
-            }
+            f1[i] = std::real(inner_local<T>(kp__, *phi[1], i, *ophi[1], i));     //  <KR_i | OKR_i>
+            f2[i] = std::real(inner_local<T>(kp__, *phi[0], i, *ophi[1], i)) * 2; // <phi_i | OKR_i>
+            f3[i] = std::real(inner_local<T>(kp__, *phi[1], i, *hphi[1], i));     //  <KR_i | HKR_i>
+            f4[i] = std::real(inner_local<T>(kp__, *phi[0], i, *hphi[1], i)) * 2; // <phi_i | HKR_i>
         }
     }
     kp__->comm().allreduce(f1);
@@ -332,9 +310,9 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         }
     }
 
-    mdarray<double_complex, 3> A(niter, niter, num_bands);
-    mdarray<double_complex, 3> B(niter, niter, num_bands);
-    mdarray<double_complex, 2> V(niter, num_bands);
+    mdarray<T, 3> A(niter, niter, num_bands);
+    mdarray<T, 3> B(niter, niter, num_bands);
+    mdarray<T, 2> V(niter, num_bands);
     std::vector<double> ev(niter);
 
     for (int iter = 2; iter < niter; iter++) {
@@ -345,16 +323,14 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
             if (!conv_band[i]) {
                 for (int i1 = 0; i1 < iter; i1++) {
                     for (int i2 = 0; i2 < iter; i2++) {
-                        for (int igk = 0; igk < kp__->num_gkvec_loc(); igk++) {
-                            A(i1, i2, i) += std::conj((*res[i1])(igk, i)) * (*res[i2])(igk, i);
-                            B(i1, i2, i) += std::conj((*phi[i1])(igk, i)) * (*ophi[i2])(igk, i);
-                        }
+                        A(i1, i2, i) = inner_local<T>(kp__, *res[i1], i, *res[i2], i);
+                        B(i1, i2, i) = inner_local<T>(kp__, *phi[i1], i, *ophi[i2], i);
                     }
                 }
             }
         }
-        kp__->comm().allreduce(A.at<CPU>(), (int)A.size());
-        kp__->comm().allreduce(B.at<CPU>(), (int)B.size());
+        kp__->comm().allreduce(A.template at<CPU>(), (int)A.size());
+        kp__->comm().allreduce(B.template at<CPU>(), (int)B.size());
         t1.stop();
 
         runtime::Timer t2("sirius::Band::diag_pseudo_potential_rmm_diis|phi");
@@ -379,23 +355,33 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         
         apply_preconditioner(lambda, *res[iter], 1.0, *phi[iter]);
 
-        int n = apply_h_o();
-        if (n == 0) {
-            break;
-        }
+        apply_h_o();
 
         eval_old = eval;
 
         update_res(res_norm, eval);
-
+        
         for (int i = 0; i < num_bands; i++) {
             if (!conv_band[i]) {
-                if (kp__->band_occupancy(i) <= 1e-2 ||
-                    res_norm[i] / res_norm_start[i] < 0.7 ||
-                    (kp__->band_occupancy(i) > 1e-2 && std::abs(eval[i] - eval_old[i]) < tol)) {
+                if (kp__->band_occupancy(i) <= 1e-2) {
                     conv_band[i] = true;
                 }
+                if (kp__->band_occupancy(i) > 1e-2 && std::abs(eval[i] - eval_old[i]) < tol) {
+                    conv_band[i] = true;
+                }
+                if (kp__->band_occupancy(i) > 1e-2 && res_norm[i] < itso.residual_tolerance_) {
+                    conv_band[i] = true;
+                }
+                //if (kp__->band_occupancy(i) <= 1e-2 ||
+                //    res_norm[i] / res_norm_start[i] < 0.7 ||
+                //    (kp__->band_occupancy(i) > 1e-2 && std::abs(eval[i] - eval_old[i]) < tol)) {
+                //    conv_band[i] = true;
+                //}
             }
+        }
+        if (std::all_of(conv_band.begin(), conv_band.end(), [](bool e){return e;})) {
+            std::cout << "early exit from the diis loop" << std::endl;
+            break;
         }
     }
 
@@ -406,6 +392,8 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         std::memcpy(&ophi_tmp(0, i), &(*ophi[last[i]])(0, i), kp__->num_gkvec_loc() * sizeof(double_complex));
     }
 
+
+    orthogonalize<T>(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, ovlp);
 
     set_h_o<T>(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old);
     
