@@ -93,7 +93,7 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
     double tval = t1.stop();
     if (kp__->comm().rank() == 0)
     {
-        DUMP("effective zgemm performance: %12.6f GFlops/rank",
+        DUMP("effective zgemm performance: %12.6f GFlops",
              2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
     }
 
@@ -135,29 +135,25 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
     DUMP("max_mt_aw: %i", max_mt_aw);
 
-    mdarray<double_complex, 3> alm_row(nullptr, kp__->num_gkvec_row(), max_mt_aw, 2);
-    alm_row.allocate(1);
+    experimental::mdarray<double_complex, 3, 1> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2);
     alm_row.allocate_on_device();
 
-    mdarray<double_complex, 3> alm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw, 2);
-    alm_col.allocate(1);
+    experimental::mdarray<double_complex, 3, 1> alm_col(kp__->num_gkvec_col(), max_mt_aw, 2);
     alm_col.allocate_on_device();
 
-    mdarray<double_complex, 3> halm_col(nullptr, kp__->num_gkvec_col(), max_mt_aw, 2);
-    halm_col.allocate(1);
+    experimental::mdarray<double_complex, 3, 1> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2);
     halm_col.allocate_on_device();
     t2.stop();
 
     runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
-    for (int iblk = 0; iblk < nblk; iblk++)
-    {
+    for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);
-        for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
-        {
+        for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++) {
+            int ialoc = ia - iblk * num_atoms_in_block;
             auto& atom = unit_cell_.atom(ia);
             auto& type = atom.type();
-            offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
+            offsets[ialoc] = num_mt_aw;
             num_mt_aw += type.mt_aw_basis_size();
         }
 
@@ -166,10 +162,8 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
-            for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
-            {
-                if (ia % omp_get_num_threads() == tid)
-                {
+            for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++) {
+                if (ia % omp_get_num_threads() == tid) {
                     int ialoc = ia - iblk * num_atoms_in_block;
                     auto& atom = unit_cell_.atom(ia);
                     auto& type = atom.type();
@@ -187,9 +181,10 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                             kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
                     kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
-                    {
-                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
+                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
+                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
+                            alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
+                        }
                     }
                     alm_row_tmp.async_copy_to_device(tid);
 
@@ -203,9 +198,9 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                     set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
                 }
             }
-            cuda_stream_synchronize(tid);
+            acc::sync_stream(tid);
         }
-        cuda_stream_synchronize(omp_get_max_threads());
+        acc::sync_stream(omp_get_max_threads());
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
                           alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone, 
                           o__.at<GPU>(), o__.ld(), omp_get_max_threads());
@@ -219,9 +214,8 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
     acc::copyout(o__.at<CPU>(), o__.ld(), o__.at<GPU>(), o__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
     
     double tval = t1.stop();
-    if (kp__->comm().rank() == 0)
-    {
-        DUMP("effective zgemm performance: %12.6f GFlops/rank",
+    if (kp__->comm().rank() == 0) {
+        DUMP("effective zgemm performance: %12.6f GFlops",
              2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
     }
 
