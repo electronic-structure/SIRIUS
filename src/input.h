@@ -174,17 +174,19 @@ struct Iterative_solver_input_section
 
     void read(json const& parser)
     {
-        type_               = parser["iterative_solver"].value("type", type_);
-        num_steps_          = parser["iterative_solver"].value("num_steps", num_steps_);
-        subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
-        energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
-        residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
-        converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
-        converge_occupied_  = parser["iterative_solver"].value("converge_occupied", converge_occupied_);
-        min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
-        real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
-        R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
-        mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+        if (parser.count("iterative_solver")) {
+            type_               = parser["iterative_solver"].value("type", type_);
+            num_steps_          = parser["iterative_solver"].value("num_steps", num_steps_);
+            subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
+            energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
+            residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
+            converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
+            converge_occupied_  = parser["iterative_solver"].value("converge_occupied", converge_occupied_);
+            min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
+            real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
+            R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
+            mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+        }
     }
 };
 

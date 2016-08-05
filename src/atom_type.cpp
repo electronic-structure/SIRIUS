@@ -62,7 +62,7 @@ void Atom_type::init(int offset_lo__)
     
     if (parameters_.esm_type() == full_potential_lapwlo) {
         /* initialize free atom density and potential */
-        init_free_atom(false);
+        //== init_free_atom(false);
 
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
