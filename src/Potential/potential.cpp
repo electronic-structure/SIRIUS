@@ -60,7 +60,8 @@ Potential::Potential(Simulation_context& ctx__)
 
     effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
     
-    int need_gvec = (ctx_.full_potential()) ? 0 : 1;
+    //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
+    int need_gvec{1};
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
     }
