@@ -14,7 +14,7 @@ all: sirius.scf
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 debug: sirius.scf.cpp $(LIB_SIRIUS_DBG)
-	$(CXX) $(CXX_OPT_DBG) $(INCLUDE) sirius.scf.cpp $(LIB_SIRIUS_DBG) $(LIBS) -o debug/sirius.scf
+	$(CXX) $(CXX_OPT_DBG) $(INCLUDE) sirius.scf.cpp $(LIB_SIRIUS_DBG) $(LIBS) -o sirius.scf
 
 
 

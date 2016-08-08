@@ -4,7 +4,10 @@
     
     "MPI_CXX_OPT" : "-O3 -fopenmp -std=c++11 -DNDEBUG -D__SCALAPACK -D__ELPA -D__GPU -I$(MKLROOT)/include/fftw/",
     "comment"     : "compiler options for the SIRIUS library",
-    
+   
+    "MPI_CXX_OPT_DBG" : "-std=c++11 -g -O0 -Wall -Wconversion -fopenmp  -D__SCALAPACK -D__ELPA -D__GPU  -I$(MKLROOT)/include/fftw/",
+    "comment"     : "debug compiler options for the SIRIUS library",
+ 
     "MPI_FC"      : "ftn",
     "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
 
