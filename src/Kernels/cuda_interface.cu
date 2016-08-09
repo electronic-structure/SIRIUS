@@ -62,6 +62,7 @@ cudaStream_t cuda_stream_by_id(int stream_id__)
 
 extern "C" {
 
+// Free memory in bytes
 size_t cuda_get_free_mem()
 {
     size_t free, total;

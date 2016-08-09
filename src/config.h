@@ -85,9 +85,6 @@ const bool hdf5_trace_errors = false;
 
 const bool check_pseudo_charge = false;
 
-//** const bool full_relativistic_core = false;
-
-
 /// Level of internal verification
 /** __VERIFICATION = 0 : nothing to do \n
  *  __VERIFICATION = 1 : basic checkes \n */
@@ -109,8 +106,6 @@ const bool check_pseudo_charge = false;
 #ifndef __VERBOSITY
 #define __VERBOSITY 2
 #endif
-
-const bool fix_apwlo_linear_dependence = false;
 
 const bool use_second_variation = true;
 

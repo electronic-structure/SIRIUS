@@ -37,6 +37,10 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
+    #ifdef __GPU
+    size_t gpu_mem = cuda_get_free_mem() >> 20;
+    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb", mpi_comm_world().rank, __LINE__, __FILE__, gpu_mem);
+    #endif
     #endif
 
     /* get diagonal elements for preconditioning */
@@ -140,10 +144,17 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int n = num_bands;
 
     #if (__VERBOSITY > 2)
-    if (kp__->comm().rank() == 0)
-    {
+    if (kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
+    #endif
+
+    #ifdef __PRINT_MEMORY_USAGE
+    MEMORY_USAGE_INFO();
+    #ifdef __GPU
+    size_t gpu_mem = cuda_get_free_mem() >> 20;
+    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb", mpi_comm_world().rank, __LINE__, __FILE__, gpu_mem);
+    #endif
     #endif
     
     /* start iterative diagonalization */

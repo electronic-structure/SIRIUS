@@ -61,25 +61,18 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
 
     assert(kp->gklo_basis_size() > ctx_.num_fv_states());
     
-    if (fix_apwlo_linear_dependence)
-    {
-        //solve_fv_evp_2stage(kp, h, o);
-    }
-    else
-    {
-        std::vector<double> eval(ctx_.num_fv_states());
+    std::vector<double> eval(ctx_.num_fv_states());
     
-        runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
+    runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
-        if (gen_evp_solver()->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                    &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld(),
-                                    kp->gklo_basis_size_row(), kp->gklo_basis_size_col()))
+    if (gen_evp_solver()->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
+                                &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld(),
+                                kp->gklo_basis_size_row(), kp->gklo_basis_size_col()))
 
-        {
-            TERMINATE("error in generalized eigen-value problem");
-        }
-        kp->set_fv_eigen_values(&eval[0]);
+    {
+        TERMINATE("error in generalized eigen-value problem");
     }
+    kp->set_fv_eigen_values(&eval[0]);
 
     h.deallocate();
     o.deallocate();

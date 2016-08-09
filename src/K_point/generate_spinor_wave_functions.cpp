@@ -36,7 +36,7 @@ void K_point::generate_spinor_wave_functions()
                 s = 0;
                 o = ispn * nfv; // offset for spin up is 0, for spin dn is nfv
             } else { 
-                /* sv_eigen_vectors_ is composed of two NxN matrices */
+                /* sv_eigen_vectors is composed of two NxN matrices */
                 s = ispn;
                 o = 0;
             }
