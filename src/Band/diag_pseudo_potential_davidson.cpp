@@ -39,7 +39,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     MEMORY_USAGE_INFO();
     #ifdef __GPU
     size_t gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb", mpi_comm_world().rank, __LINE__, __FILE__, gpu_mem);
+    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
     #endif
     #endif
 
@@ -80,8 +80,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     matrix<T> ovlp_old(num_phi, num_phi);
 
     #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma)
-    {
+    if (gen_evp_solver_->type() == ev_magma) {
         hmlt.pin_memory();
         ovlp.pin_memory();
     }
@@ -94,28 +93,26 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     dmatrix<T> hmlt_dist;
     dmatrix<T> ovlp_dist;
     dmatrix<T> evec_dist;
-    if (kp__->comm().size() == 1)
-    {
+    if (kp__->comm().size() == 1) {
         hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
         ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
         evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
-    else
-    {
+    } else {
         hmlt_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
         ovlp_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
         evec_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     }
 
     std::vector<double> eval(num_bands);
-    for (int i = 0; i < num_bands; i++) eval[i] = kp__->band_energy(i);
+    for (int i = 0; i < num_bands; i++) {
+        eval[i] = kp__->band_energy(i);
+    }
     std::vector<double> eval_old(num_bands);
     
     kp__->beta_projectors().prepare();
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
+    if (ctx_.processing_unit() == GPU) {
         psi.allocate_on_device();
         psi.copy_to_device(0, num_bands);
 
@@ -152,14 +149,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #ifdef __GPU
-    size_t gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb", mpi_comm_world().rank, __LINE__, __FILE__, gpu_mem);
+    gpu_mem = cuda_get_free_mem() >> 20;
+    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
     #endif
     #endif
     
     /* start iterative diagonalization */
-    for (int k = 0; k < itso.num_steps_; k++)
-    {
+    for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
@@ -179,8 +175,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         diag_h_o<T>(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
         
         #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0)
-        {
+        if (kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
