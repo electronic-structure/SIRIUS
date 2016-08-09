@@ -84,21 +84,26 @@ void Potential::generate_PAW_effective_potential(Density& density)
     std::fill(paw_hartree_energies_.begin(), paw_hartree_energies_.end(), 0.0);
     std::fill(paw_xc_energies_.begin(), paw_xc_energies_.end(), 0.0);
 
-    // zero Dij
-    paw_dij_.zero();
 
-    // calc for atoms
-    #pragma omp parallel for
+
+    // calc xc and hartree for atoms
+    // dont need here omp parallel for because it is done in hartree and xc calculation
     for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
-        int ia = unit_cell_.spl_num_atoms(i);
-
-
         calc_PAW_local_potential(i, paw_ae_local_density->at(i),
                                  paw_ps_local_density->at(i),
                                  paw_ae_local_magnetization->at(i),
                                  paw_ps_local_magnetization->at(i));
+    }
 
+    // zero Dij
+    paw_dij_.zero();
+
+    // calc paw Dij
+    #pragma omp parallel for
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
+    {
+        int ia = unit_cell_.spl_num_atoms(i);
 
         calc_PAW_local_Dij(i, paw_dij_);
 
@@ -109,7 +114,7 @@ void Potential::generate_PAW_effective_potential(Density& density)
     // collect Dij and add to atom d_mtrx
     comm_.allreduce(&paw_dij_(0,0,0,0), (int)paw_dij_.size());
 
-
+    // add paw Dij to uspp Dij
     add_paw_Dij_to_atom_Dmtrx();
 
     // collect energy arrays
@@ -350,7 +355,7 @@ void Potential::calc_PAW_local_potential(int spl_atom_index,
                                          mdarray<double, 3> &ae_local_magnetization,
                                          mdarray<double, 3> &ps_local_magnetization)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_potential");
+    //PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_potential");
 
     int atom_index = unit_cell_.spl_num_atoms(spl_atom_index);
 
@@ -455,7 +460,7 @@ void Potential::calc_PAW_local_potential(int spl_atom_index,
 //----------------------------------------------------------------------------
 void Potential::calc_PAW_local_Dij(int spl_atom_index, mdarray<double_complex,4>& paw_dij)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_Dij");
+    //PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_Dij");
 
     int atom_index = unit_cell_.spl_num_atoms(spl_atom_index);
 
