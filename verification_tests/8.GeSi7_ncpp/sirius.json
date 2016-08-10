@@ -14,7 +14,7 @@
         
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
-        "num_fv_states" : 37,
+        "num_fv_states" : 32,
         
         "smearing_width" : 0.025,
         
@@ -67,7 +67,7 @@
             "Ge"
         ], 
         "atom_files": {
-            "Si": "Si.pz-hgh.UPF.json",
+            "Si": "Si.pz-vbc.UPF.json",
             "Ge": "Ge.pz-hgh.UPF.json"
         }, 
         "atoms": {
