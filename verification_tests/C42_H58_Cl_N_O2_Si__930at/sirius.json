@@ -27,7 +27,7 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [2,2,2],
+      "ngridk" : [1,1,1],
 
       "reduce_gvec": 0
   },
