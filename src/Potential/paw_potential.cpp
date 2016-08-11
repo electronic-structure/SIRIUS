@@ -30,9 +30,8 @@ void Potential::init_PAW()
 
         int n_mt_points = atype.num_mt_points();
 
+        // number of lm components in rho
         int rad_func_lmax = atype.indexr().lmax_lo();
-
-        // TODO am I right?
         int n_rho_lm_comp = (2 * rad_func_lmax + 1) * (2 * rad_func_lmax + 1);
 
         // allocate potential
@@ -284,7 +283,7 @@ double Potential::calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid
     //---------------------
     //-- calc potential --
     //---------------------
-    int lmsize_rho = full_density.size(0);
+    int lmsize_rho = out_atom_pot.size(0);
 
     Spheric_function<function_domain_t::spectral,double> dens_sf(&full_density(0,0), lmsize_rho, grid);
 
