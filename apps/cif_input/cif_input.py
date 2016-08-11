@@ -50,8 +50,8 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
             for i in range(3): 
                 # apply all permutations of coordinates, such as +z-y
                 for coord_trans in sym[i][0]: x[i] += coord_trans[0] * atom[coord_trans[1]]
-                if x[i] < 0: x[i] += 1
-                if x[i] >= 1: x[i] -= 1
+                x[i] = x[i]-int(x[i])
+                if x[i] < 0 : x[i] += 1
                 # roundoff
                 x[i] = float("%.8f"%x[i])
             # search for existing atoms
