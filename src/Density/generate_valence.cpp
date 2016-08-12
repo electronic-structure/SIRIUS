@@ -82,8 +82,6 @@ void Density::generate_valence(K_set& ks__)
     /* zero density and magnetization */
     zero();
 
-    ctx_.fft().prepare(ctx_.gvec_fft_distr());
-
     /* interstitial part is independent of basis type */
     generate_valence_density_it(ks__);
 
@@ -113,6 +111,8 @@ void Density::generate_valence(K_set& ks__)
     //== ctx_.mpi_grid().communicator(1 << _dim_row_).allreduce(&nel, 1);
     //== nel = nel * unit_cell_.omega() / ctx_.fft().size();
     //== printf("number of electrons: %f\n", nel);
+
+    ctx_.fft().prepare(ctx_.gvec_fft_distr());
     
     /* get rho(G) and mag(G)
      * they are required to symmetrize density and magnetization */

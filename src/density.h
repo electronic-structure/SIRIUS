@@ -524,65 +524,66 @@ class Density
 
         void mixer_input()
         {
-            if (mixer_ != nullptr)
-            {
+            if (mixer_ != nullptr) {
                 size_t n = rho_->pack(0, mixer_);
-                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->pack(n, mixer_);
-            }
-            else
-            {
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                    n += magnetization_[i]->pack(n, mixer_);
+                }
+            } else {
                 int k = 0;
-                for (int ig: lf_gvec_)
+                for (int ig: lf_gvec_) {
                     low_freq_mixer_->input(k++, rho_->f_pw(ig));
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                {
-                    for (int ig: lf_gvec_)
+                }
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    for (int ig: lf_gvec_) {
                         low_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
+                    }
                 }
                 for (size_t i = 0; i < density_matrix_.size(); i++) {
                      low_freq_mixer_->input(k++, density_matrix_[i]);
                 }
 
                 k = 0;
-                for (int ig: hf_gvec_)
+                for (int ig: hf_gvec_) {
                     high_freq_mixer_->input(k++, rho_->f_pw(ig));
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                {
-                    for (int ig: hf_gvec_)
+                }
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    for (int ig: hf_gvec_) {
                         high_freq_mixer_->input(k++, magnetization_[j]->f_pw(ig));
+                    }
                 }
             }
         }
 
         void mixer_output()
         {
-            if (mixer_ != nullptr)
-            {
+            if (mixer_ != nullptr) {
                 size_t n = rho_->unpack(mixer_->output_buffer());
-                for (int i = 0; i < ctx_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&mixer_->output_buffer()[n]);
-            }
-            else
-            {
-
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                    n += magnetization_[i]->unpack(&mixer_->output_buffer()[n]);
+                }
+            } else {
                 int k = 0;
-                for (int ig: lf_gvec_)
+                for (int ig: lf_gvec_) {
                     rho_->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                {
-                    for (int ig: lf_gvec_)
+                }
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    for (int ig: lf_gvec_) {
                         magnetization_[j]->f_pw(ig) = low_freq_mixer_->output_buffer(k++);
+                    }
                 }
                 for (size_t i = 0; i < density_matrix_.size(); i++) {
                     density_matrix_[i] = low_freq_mixer_->output_buffer(k++);
                 }
 
                 k = 0;
-                for (int ig: hf_gvec_)
+                for (int ig: hf_gvec_) {
                     rho_->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                {
-                    for (int ig: hf_gvec_)
+                }
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    for (int ig: hf_gvec_) {
                         magnetization_[j]->f_pw(ig) = high_freq_mixer_->output_buffer(k++);
+                    }
                 }
             }
         }
@@ -591,12 +592,9 @@ class Density
         {
             mixer_input();
 
-            if (mixer_ != nullptr)
-            {
+            if (mixer_ != nullptr) {
                 mixer_->initialize();
-            }
-            else
-            {
+            } else {
                 low_freq_mixer_->initialize();
                 high_freq_mixer_->initialize();
             }
@@ -606,8 +604,7 @@ class Density
         {
             double rms;
 
-            if (mixer_ != nullptr)
-            {
+            if (mixer_ != nullptr) {
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
                 rms = mixer_->mix();

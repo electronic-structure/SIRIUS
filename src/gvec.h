@@ -66,9 +66,6 @@ class Gvec
         /// Index of the shell to which the given G-vector belongs.
         mdarray<int, 1> gvec_shell_;
         
-        /// List of {x,y} positions of z-columns. 
-        //mdarray<int, 2> z_columns_pos_;
-
         int num_gvec_shells_;
 
         mdarray<double, 1> gvec_shell_len_;
@@ -200,18 +197,6 @@ class Gvec
                 z_columns_.insert(z_columns_.end(), zcols_local[rank].begin(), zcols_local[rank].end());
             }
             
-            ///* build simple array of {x,y} coordinates for GPU kernel */
-            //#ifdef __GPU
-            //z_columns_pos_ = mdarray<int, 2>(2, z_columns_.size());
-            //for (size_t i = 0; i < z_columns_.size(); i++)
-            //{
-            //    z_columns_pos_(0, i) = z_columns_[i].x;
-            //    z_columns_pos_(1, i) = z_columns_[i].y;
-            //}
-            //z_columns_pos_.allocate_on_device();
-            //z_columns_pos_.copy_to_device();
-            //#endif
-
             /* build the full G-vector index */
             gvec_full_index_ = mdarray<int, 1>(num_gvec_);
             int ig = 0;

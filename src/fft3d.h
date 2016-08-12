@@ -736,6 +736,8 @@ class FFT3D
         /// Prepare FFT driver to transfrom functions with gvec_fft_distr.
         void prepare(Gvec_FFT_distribution const& gvec_fft_distr__)
         {
+            TIMER("sirius::FFT3D::prepare");
+
             /* alias for G-vectors */
             auto& gvec = gvec_fft_distr__.gvec();
 
@@ -760,6 +762,7 @@ class FFT3D
                 size_t work_size;
                 if (full_gpu_impl_) {
                     z_col_map_ = mdarray<int, 1>(gvec.num_gvec(), "FFT3D.z_col_map_");
+                    #pragma omp parallel for
                     for (int i = 0; i < gvec.num_z_cols(); i++) {
                         for (size_t j = 0; j < gvec.z_column(i).z.size(); j++) {
                             /* global index of the G-vector */
@@ -784,10 +787,11 @@ class FFT3D
                     int dims_xy[] = {grid_.size(0), grid_.size(1)};
                     work_size = cufft_get_work_size(2, dims_xy, cufft_nbatch_xy_);
                 }
-                
+               
+                /* allocate cufft work buffer */
                 cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "FFT3D.cufft_work_buf_");
                 cufft_work_buf_.allocate_on_device();
-                
+                /* set work area for cufft */ 
                 cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
                 if (full_gpu_impl_) {
                     cufft_set_work_area(cufft_plan_z_, cufft_work_buf_.at<GPU>());

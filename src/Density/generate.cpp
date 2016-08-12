@@ -12,8 +12,7 @@ void Density::generate(K_set& ks__)
         /* find the core states */
         generate_core_charge_density();
         /* add core contribution */
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
-        {
+        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
                 rho_->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;

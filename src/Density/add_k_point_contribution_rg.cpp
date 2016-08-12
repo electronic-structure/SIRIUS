@@ -30,6 +30,8 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     }
     #endif
 
+    ctx_.fft().prepare(kp__->gkvec_fft_distr());
+
     int wf_pw_offset = kp__->wf_pw_offset();
         
     /* non-magnetic or collinear case */
@@ -152,6 +154,8 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) rho_->f_rg(ir) += density_rg(ir, 0);
         }
     }
+
+    ctx_.fft().dismiss();
 }
 
 template void Density::add_k_point_contribution_rg<true>(K_point* kp__);
