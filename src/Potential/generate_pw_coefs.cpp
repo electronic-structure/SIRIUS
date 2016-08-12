@@ -6,7 +6,7 @@ void Potential::generate_pw_coefs()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_pw_coefs");
 
-    fft_.prepare();
+    fft_.prepare(ctx_.gvec_fft_distr());
 
     for (int ir = 0; ir < fft_.local_size(); ir++) {
         fft_.buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);

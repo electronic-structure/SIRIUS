@@ -50,7 +50,7 @@ Step_function::Step_function(Unit_cell             const& unit_cell__,
     }
     step_function_pw_[0] += 1.0;
     
-    fft__->prepare();
+    fft__->prepare(gvec_fft_distr__);
     fft__->transform<1>(gvec_fft_distr__, &step_function_pw_[gvec_fft_distr__.offset_gvec_fft()]);
     fft__->output(&step_function_[0]);
     fft__->dismiss();

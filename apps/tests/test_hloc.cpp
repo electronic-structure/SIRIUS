@@ -32,7 +32,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         if (use_gpu__) printf("GPU workload: %f\n", gpu_workload__);
     }
 
-    fft.prepare();
+    fft.prepare(gvec_fft_distr);
     
     Hloc_operator hloc(fft, gvec_fft_distr, veff);
 

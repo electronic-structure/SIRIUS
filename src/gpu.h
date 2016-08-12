@@ -46,7 +46,6 @@ void cuda_free_host(void* ptr);
 
 void cuda_free(void* ptr);
 
-
 void cuda_memset(void *ptr, int value, size_t size);
 
 void cuda_host_register(void* ptr, size_t size);
@@ -115,30 +114,13 @@ void cufft_create_plan_handle(cufftHandle* plan);
 
 void cufft_destroy_plan_handle(cufftHandle plan);
 
-size_t cufft_get_size_3d(int nx, int ny, int nz, int nfft);
-
-size_t cufft_get_size_2d(int nx, int ny, int nfft);
+size_t cufft_get_work_size(int ndim, int* dims, int nfft);
 
 size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int* embed, int stride, int dist, int nfft, int auto_alloc);
 
 void cufft_set_work_area(cufftHandle plan, void* work_area);
 
 void cufft_set_stream(cufftHandle plan__, int stream_id__);
-
-void cufft_batch_load_gpu(int fft_size,
-                          int num_pw_components, 
-                          int num_fft,
-                          int const* map, 
-                          cuDoubleComplex* data, 
-                          cuDoubleComplex* fft_buffer);
-
-void cufft_batch_unload_gpu(int fft_size,
-                            int num_pw_components,
-                            int num_fft,
-                            int const* map, 
-                            cuDoubleComplex* fft_buffer, 
-                            cuDoubleComplex* data,
-                            double beta);
 
 void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
@@ -219,6 +201,12 @@ inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nr
 inline void sync_stream(int stream_id__)
 {
     cuda_stream_synchronize(stream_id__);
+}
+
+template <typename T>
+inline void zero(T* target__, size_t n__)
+{
+    cuda_memset(target__, 0, n__ * sizeof(T));
 }
 
 };

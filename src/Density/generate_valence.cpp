@@ -82,7 +82,7 @@ void Density::generate_valence(K_set& ks__)
     /* zero density and magnetization */
     zero();
 
-    ctx_.fft().prepare();
+    ctx_.fft().prepare(ctx_.gvec_fft_distr());
 
     /* interstitial part is independent of basis type */
     generate_valence_density_it(ks__);

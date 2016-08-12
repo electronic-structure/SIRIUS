@@ -381,7 +381,8 @@ class mdarray_base
 
         /// Move constructor
         mdarray_base(mdarray_base<T, N>&& src) 
-            : unique_ptr_(std::move(src.unique_ptr_)),
+            : label_(src.label_),
+              unique_ptr_(std::move(src.unique_ptr_)),
               ptr_(src.ptr_),
               #ifdef __GPU
               unique_ptr_device_(std::move(src.unique_ptr_device_)),
@@ -402,6 +403,7 @@ class mdarray_base
         {
             if (this != &src)
             {
+                label_ = src.label_;
                 unique_ptr_ = std::move(src.unique_ptr_);
                 ptr_ = src.ptr_;
                 #ifdef __GPU
@@ -719,20 +721,22 @@ class mdarray_base
 
         void pin_memory()
         {
-            if (pinned_)
-            {
-                printf("error at line %i of file %s: array is already pinned\n", __LINE__, __FILE__);
-                raise(SIGTERM);                                                                                            \
-                exit(-1);
+            //if (pinned_) {
+            //    printf("error at line %i of file %s: array is already pinned\n", __LINE__, __FILE__);
+            //    raise(SIGTERM);
+            //    exit(-1);
+            //}
+            //cuda_host_register(ptr_, size() * sizeof(T));
+            //pinned_ = true;
+            if (!pinned_) {
+                cuda_host_register(ptr_, size() * sizeof(T));
+                pinned_ = true;
             }
-            cuda_host_register(ptr_, size() * sizeof(T));
-            pinned_ = true;
         }
         
         void unpin_memory()
         {
-            if (pinned_)
-            {
+            if (pinned_) {
                 cuda_host_unregister(ptr_);
                 pinned_ = false;
             }
@@ -740,6 +744,7 @@ class mdarray_base
         #endif
 };
 
+/// Multidimensional array.
 template <typename T, int N> 
 class mdarray: public mdarray_base<T, N>
 {

@@ -13,12 +13,10 @@ void test1(vector3d<int> const& dims__, double cutoff__)
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
 
-    fft.prepare();
-
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, false);
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, true);
 
-    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_comm_world());
+    //Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_comm_world());
     Gvec_FFT_distribution gvec_r_fft_distr(gvec_r, mpi_comm_world());
 
     if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1)
@@ -26,6 +24,8 @@ void test1(vector3d<int> const& dims__, double cutoff__)
         printf("wrong number of reduced G-vectors");
         exit(1);
     }
+
+    fft.prepare(gvec_r_fft_distr);
 
     printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
     printf("num_gvec_loc: %i %i\n", gvec.num_gvec(mpi_comm_world().rank()), gvec_r.num_gvec(mpi_comm_world().rank()));
@@ -69,11 +69,11 @@ void test2(vector3d<int> const& dims__, double cutoff__)
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
 
-    fft.prepare();
-
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, true);
 
     Gvec_FFT_distribution gvec_r_fft_distr(gvec_r, mpi_comm_world());
+
+    fft.prepare(gvec_r_fft_distr);
 
     mdarray<double_complex, 1> phi1(gvec_r_fft_distr.num_gvec_fft());
     mdarray<double_complex, 1> phi2(gvec_r_fft_distr.num_gvec_fft());

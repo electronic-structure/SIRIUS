@@ -10,7 +10,6 @@ void test_fft(double cutoff__)
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
 
-    fft.prepare();
     
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), false, false);
 
@@ -23,6 +22,8 @@ void test_fft(double cutoff__)
     Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
     printf("num_gvec_fft: %i\n", gvec_fft_distr.num_gvec_fft());
     printf("offset_gvec_fft: %i\n", gvec_fft_distr.offset_gvec_fft());
+
+    fft.prepare(gvec_fft_distr);
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     for (int ig = 0; ig < gvec.num_gvec(); ig++)

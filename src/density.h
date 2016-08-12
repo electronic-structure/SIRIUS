@@ -334,7 +334,7 @@ class Density
             auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
             std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
-            ctx_.fft().prepare();
+            ctx_.fft().prepare(ctx_.gvec_fft_distr());
             ctx_.fft().transform<1>(ctx_.gvec_fft_distr(), &v[ctx_.gvec_fft_distr().offset_gvec_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
             ctx_.fft().dismiss();
@@ -342,8 +342,6 @@ class Density
 
         /// initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW)
         void initialize_beta_density_matrix();
-
-
 
     public:
 
@@ -356,7 +354,9 @@ class Density
         /// Set pointers to muffin-tin and interstitial charge density arrays
         void set_charge_density_ptr(double* rhomt, double* rhoir)
         {
-            if (ctx_.full_potential()) rho_->set_mt_ptr(rhomt);
+            if (ctx_.full_potential()) {
+                rho_->set_mt_ptr(rhomt);
+            }
             rho_->set_rg_ptr(rhoir);
         }
         
@@ -367,15 +367,16 @@ class Density
         void zero()
         {
             rho_->zero();
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) magnetization_[i]->zero();
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                magnetization_[i]->zero();
+            }
         }
         
         /// Find the total leakage of the core states out of the muffin-tins
         double core_leakage()
         {
             double sum = 0.0;
-            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++)
-            {
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
                 sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
             }
             return sum;
@@ -613,17 +614,17 @@ class Density
                 mixer_output();
                 /* get rho(G) after mixing */
                 rho_->fft_transform(-1);
-            }
-            else
-            {
+            } else {
                 /* mix in G-space in case of PP */
                 mixer_input();
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                ctx_.fft().prepare();
+                ctx_.fft().prepare(ctx_.gvec_fft_distr());
                 rho_->fft_transform(1);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) magnetization_[j]->fft_transform(1);
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    magnetization_[j]->fft_transform(1);
+                }
                 ctx_.fft().dismiss();
             }
 

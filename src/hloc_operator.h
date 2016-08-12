@@ -113,14 +113,15 @@ class Hloc_operator
             }
 
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), num_mag_dims__ + 1);
-
+        
+            fft_.prepare(gvec_coarse_fft_distr__);
             /* map components of effective potential to a corase grid */
-            for (int j = 0; j < num_mag_dims__ + 1; j++)
-            {
+            for (int j = 0; j < num_mag_dims__ + 1; j++) {
+                /* storage for low-frequency part of PW coefficients */
                 std::vector<double_complex> v_pw_coarse(gvec_coarse_fft_distr__.num_gvec_fft());
-
-                for (int ig = 0; ig < gvec_coarse_fft_distr__.num_gvec_fft(); ig++)
-                {
+                /* loop over low-frequency G-vectors */
+                for (int ig = 0; ig < gvec_coarse_fft_distr__.num_gvec_fft(); ig++) {
+                    /* G-vector in fractional coordinates */
                     auto G = gvec_coarse_fft_distr__.gvec()[ig + gvec_coarse_fft_distr__.offset_gvec_fft()];
                     v_pw_coarse[ig] = veff_vec[j]->f_pw(G);
                 }
@@ -128,19 +129,16 @@ class Hloc_operator
                 fft_.output(&veff_vec_(0, j));
                 #ifdef __PRINT_OBJECT_CHECKSUM
                 {
-                    //auto cs1 = mdarray<double_complex, 1>(&v_pw_coarse[0], gvec__.num_gvec_fft()).checksum();
                     auto cs2 = mdarray<double, 1>(&veff_vec_(0, j), fft_.local_size()).checksum();
                     fft_.comm().allreduce(&cs2, 1);
-                    //DUMP("checksum(v_pw_coarse): %18.10f %18.10f", cs1.real(), cs1.imag());
                     DUMP("checksum(v_rg_coarse): %18.10f", cs2);
                 }
                 #endif
             }
+            fft_.dismiss();
 
-            if (num_mag_dims__)
-            {
-                for (int ir = 0; ir < fft_.local_size(); ir++)
-                {
+            if (num_mag_dims__) {
+                for (int ir = 0; ir < fft_.local_size(); ir++) {
                     double v0 = veff_vec_(ir, 0);
                     double v1 = veff_vec_(ir, 1);
                     veff_vec_(ir, 0) = v0 + v1; // v + Bz
@@ -148,22 +146,20 @@ class Hloc_operator
                 }
             }
 
-            if (num_mag_dims__ == 0)
-            {
+            if (num_mag_dims__ == 0) {
                 v0_[0] = veff_vec[0]->f_pw(0).real();
-            }
-            else
-            {
+            } else {
                 v0_[0] = veff_vec[0]->f_pw(0).real() + veff_vec[1]->f_pw(0).real();
                 v0_[1] = veff_vec[0]->f_pw(0).real() - veff_vec[1]->f_pw(0).real();
             }
 
             vphi1_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
-            if (gkvec_fft_distr_.gvec().reduced()) vphi2_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
+            if (gkvec_fft_distr_.gvec().reduced()) {
+                vphi2_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
+            }
 
             #ifdef __GPU
-            if (fft_.hybrid())
-            {
+            if (fft_.hybrid()) {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
             }

@@ -11,7 +11,7 @@ void Density::initial_density()
 
     zero();
 
-    ctx_.fft().prepare();
+    ctx_.fft().prepare(ctx_.gvec_fft_distr());
 
     if (ctx_.full_potential()) {
         initial_density_full_pot();
