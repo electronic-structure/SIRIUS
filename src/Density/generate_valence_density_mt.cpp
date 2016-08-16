@@ -1,6 +1,9 @@
 #include "density.h"
 #include <fstream>
 
+//#include <tbb/tbb.h>
+//#include <tbb/parallel_for.h>
+
 using namespace std;
 
 namespace sirius
@@ -201,9 +204,10 @@ void Density::generate_paw_loc_density()
     //of<<"========================================"<<endl;
 
     PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
-
+    
 #pragma omp parallel for
     for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
+//    tbb::parallel_for( size_t(0), (size_t)unit_cell_.spl_num_atoms().local_size(), [&]( size_t i )
     {
         int ia = unit_cell_.spl_num_atoms(i);
 
@@ -322,11 +326,13 @@ void Density::generate_paw_loc_density()
                 }
             }
         }
+    
 
 //        std::cout<<"density hash " << ia <<" : "<< Utils::hash((void*)(&paw_ae_local_density_[i](0,0)),  paw_ae_local_density_[i].size() * sizeof(double) )<< " "
 //                << Utils::hash((void*)(&paw_ps_local_density_[i](0,0)),  paw_ps_local_density_[i].size() * sizeof(double) ) << std::endl;
 
-    }
+    } 
+//    );
 
 //
 //

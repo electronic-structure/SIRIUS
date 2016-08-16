@@ -24,6 +24,9 @@
 
 #include "dft_ground_state.h"
 
+//#include <tbb/task_scheduler_init.h>
+//#include <omp.h>
+
 namespace sirius {
 
 double DFT_ground_state::ewald_energy()
@@ -159,6 +162,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
     int result{-1};
 
+//    tbb::task_scheduler_init tbb_init(omp_get_num_threads());
+
     for (int iter = 0; iter < num_dft_iter; iter++) {
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
@@ -265,6 +270,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
     ctx_.create_storage_file();
     potential_.save();
     density_.save();
+
+//    tbb_init.terminate();
 
     return result;
 }
