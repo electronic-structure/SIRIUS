@@ -300,8 +300,8 @@ void Density::generate_paw_loc_density()
                                 ps_atom_density(lm3coef.lm3,irad) += ps_dens_d;
 
                                 // add magnetization to 2nd components (0th and 1st are always zero )
-                                ae_atom_magnetization(lm3coef.lm3,irad,2)= ae_dens_u - ae_dens_d;
-                                ps_atom_magnetization(lm3coef.lm3,irad,2)= ps_dens_u - ps_dens_d;
+                                ae_atom_magnetization(lm3coef.lm3,irad,0)= ae_dens_u - ae_dens_d;
+                                ps_atom_magnetization(lm3coef.lm3,irad,0)= ps_dens_u - ps_dens_d;
                             }break;
 
                             case 3:

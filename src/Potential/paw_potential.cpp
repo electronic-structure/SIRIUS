@@ -215,7 +215,7 @@ double Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
     Spheric_function<spectral,double> out_atom_effective_field_sf(&out_atom_pot(0,0,1),lmsize_rho,rgrid);
 
     // make magnetization from z component in lm components
-    Spheric_function<spectral,double> magnetization_Z_lm(&magnetization_lm(0,0,2), lmsize_rho, rgrid );
+    Spheric_function<spectral,double> magnetization_Z_lm(&magnetization_lm(0,0,0), lmsize_rho, rgrid );
 
     // calculate spin up spin down density components in lm components
     // up = 1/2 ( rho + magn );  down = 1/2 ( rho - magn )

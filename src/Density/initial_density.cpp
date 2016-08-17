@@ -527,7 +527,7 @@ void Density::initialize_beta_density_matrix()
 
                     case 1:
                     {
-                        double nm = (norm !=0 ) ? magn[2] : 0;
+                        double nm = (norm < 1. ) ? magn[0] : 1.;
 
                         density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
                         density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
