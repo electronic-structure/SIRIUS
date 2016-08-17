@@ -40,7 +40,7 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
     for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
     {
         int ig = kp__->gklo_basis_descriptor_row(ig_loc).ig;
-        auto vgk = kp__->gkvec().cart_shifted(ig);
+        auto vgk = kp__->gkvec().gkvec_cart(ig);
         h_diag[ig_loc] = 0.5 * (vgk * vgk) + v0__;
     }
 

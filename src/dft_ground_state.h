@@ -308,7 +308,7 @@ class DFT_ground_state
             }
 
             if (ctx_.full_potential()) {
-                ctx_.fft().prepare(ctx_.gvec_fft_distr());
+                ctx_.fft().prepare(ctx_.gvec());
                 f__->fft_transform(1);
                 switch (ctx_.num_mag_dims()) {
                     case 3: {

@@ -297,39 +297,38 @@ void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
 
         for (int ig = 0; ig < gvec__.num_gvec(); ig++)
         {
-            auto gv = gvec__[ig];
+            auto gv = gvec__.gvec(ig);
             /* apply symmetry operation to the G-vector */
             auto gv_rot = transpose(sm) * gv;
-            /* check limits */
-            for (int x: {0, 1, 2}) {
-                auto limits = gvec__.fft_box().limits(x);
-                /* check boundaries */
-                if (gv_rot[x] < limits.first || gv_rot[x] > limits.second) {
-                    std::stringstream s;
-                    s << "rotated G-vector is outside of grid limits" << std::endl
-                      << "original G-vector: " << gv << ", length: " << gvec__.cart(ig).length() << std::endl
-                      << "rotation matrix: " << std::endl
-                      << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
-                      << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
-                      << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
-                      << "rotated G-vector: " << gv_rot << std::endl
-                      << "limits: " 
-                      << gvec__.fft_box().limits(0).first << " " <<  gvec__.fft_box().limits(0).second << " "
-                      << gvec__.fft_box().limits(1).first << " " <<  gvec__.fft_box().limits(1).second << " "
-                      << gvec__.fft_box().limits(2).first << " " <<  gvec__.fft_box().limits(2).second;
 
-                      TERMINATE(s);
-                }
-            }
+            //== /* check limits */
+            //== for (int x: {0, 1, 2}) {
+            //==     auto limits = gvec__.fft_box().limits(x);
+            //==     /* check boundaries */
+            //==     if (gv_rot[x] < limits.first || gv_rot[x] > limits.second) {
+            //==         std::stringstream s;
+            //==         s << "rotated G-vector is outside of grid limits" << std::endl
+            //==           << "original G-vector: " << gv << ", length: " << gvec__.cart(ig).length() << std::endl
+            //==           << "rotation matrix: " << std::endl
+            //==           << sm(0, 0) << " " << sm(0, 1) << " " << sm(0, 2) << std::endl
+            //==           << sm(1, 0) << " " << sm(1, 1) << " " << sm(1, 2) << std::endl
+            //==           << sm(2, 0) << " " << sm(2, 1) << " " << sm(2, 2) << std::endl
+            //==           << "rotated G-vector: " << gv_rot << std::endl
+            //==           << "limits: " 
+            //==           << gvec__.fft_box().limits(0).first << " " <<  gvec__.fft_box().limits(0).second << " "
+            //==           << gvec__.fft_box().limits(1).first << " " <<  gvec__.fft_box().limits(1).second << " "
+            //==           << gvec__.fft_box().limits(2).first << " " <<  gvec__.fft_box().limits(2).second;
+
+            //==           TERMINATE(s);
+            //==     }
+            //== }
             int ig_rot = gvec__.index_by_gvec(gv_rot);
             /* special case where -G is equal to G */
-            if (ig_rot == -1 && gvec__.reduced())
-            {
+            if (gvec__.reduced() && ig_rot < 0) {
                 gv_rot = gv_rot * (-1);
                 ig_rot = gvec__.index_by_gvec(gv_rot);
             }
-            if (ig_rot < 0 || ig_rot >= gvec__.num_gvec())
-            {
+            if (ig_rot < 0 || ig_rot >= gvec__.num_gvec()) {
                 std::stringstream s;
                 s << "rotated G-vector index is wrong" << std::endl
                   << "original G-vector: " << gv << std::endl
@@ -369,7 +368,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
         {
             int ig = spl_gvec[igloc];
             
-            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
+            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t)));
 
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
@@ -378,7 +377,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
              *                                         [.....]
              * which can also be written as matrix^{T}-vector operation
              */
-            auto gv_rot = transpose(R) * gvec__[ig];
+            auto gv_rot = transpose(R) * gvec__.gvec(ig);
 
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
@@ -437,14 +436,14 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
         {
             int ig = spl_gvec[igloc];
 
-            auto gv_rot = transpose(R) * gvec__[ig];
+            auto gv_rot = transpose(R) * gvec__.gvec(ig);
 
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
             assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
-            double_complex z = fz_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__[ig] * t))) * S(2, 2);
+            double_complex z = fz_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t))) * S(2, 2);
             
             #pragma omp atomic update
             ptr[2 * ig_rot] += real(z);
@@ -493,14 +492,14 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
         {
             int ig = spl_gvec[igloc];
 
-            auto gv_rot = transpose(R) * gvec__[ig];
+            auto gv_rot = transpose(R) * gvec__.gvec(ig);
 
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
             assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
-            double_complex phase = std::exp(double_complex(0, twopi * (gvec__[ig] * t)));
+            double_complex phase = std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t)));
             double_complex vz[] = {double_complex(0, 0), double_complex(0, 0), double_complex(0, 0)};
             for (int j: {0, 1, 2})
                 for (int k: {0, 1, 2})

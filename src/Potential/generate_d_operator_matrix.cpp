@@ -59,7 +59,7 @@ void Potential::generate_D_operator_matrix()
         gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
         for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) {
             for (int x: {0, 1, 2}) {
-                gvec(x, igloc) = ctx_.gvec()[spl_num_gvec_[igloc]][x];
+                gvec(x, igloc) = ctx_.gvec().gvec(spl_num_gvec_[igloc])[x];
             }
         }
         gvec.allocate_on_device();

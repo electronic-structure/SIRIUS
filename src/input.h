@@ -196,7 +196,7 @@ struct Iterative_solver_input_section
  *    "control" : {
  *      "mpi_grid_dims" : (1- 2- or 3-dimensional vector<int>) MPI grid layout
  *      "cyclic_block_size" : (int) PBLAS / ScaLAPACK block size
- *      "reduce_gvec" : (int) use reduced G-vector set (reduce_gvec = 1) or full set (reduce_gvec = 0)
+ *      "reduce_gvec" : (bool) use reduced G-vector set (reduce_gvec = true) or full set (reduce_gvec = false)
  *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
  *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
  *      "electronic_structure_method" : (string) electronic structure method

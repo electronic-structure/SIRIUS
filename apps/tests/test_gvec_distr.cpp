@@ -7,22 +7,19 @@ void test_gvec_distr(double cutoff__)
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), false);
 
     MPI_grid mpi_grid(mpi_comm_world());
-    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
-
-    Gvec_FFT_distribution gvec_fft_distr1(gvec, mpi_comm_world());
 
     runtime::pstdout pout(mpi_comm_world());
     pout.printf("-----------------------\n");
     pout.printf("rank: %i\n", mpi_comm_world().rank());
     pout.printf("num_gvec : %i\n", gvec.num_gvec());
-    pout.printf("num_gvec_loc : %i\n", gvec.num_gvec(mpi_comm_world().rank()));
-    //pout.printf("num_zcols : %i\n", static_cast<int>(gvec.z_columns().size()));
-    pout.printf("num_gvec_fft: %i\n", gvec_fft_distr.num_gvec_fft());
-    pout.printf("offset_gvec_fft: %i\n", gvec_fft_distr.offset_gvec_fft());
-    pout.printf("num_zcols_local : %i\n", gvec_fft_distr.zcol_fft_distr().counts[mpi_comm_world().rank()]);
+    pout.printf("num_gvec_loc : %i\n", gvec.gvec_count(mpi_comm_world().rank()));
+    pout.printf("num_zcols : %i\n", gvec.num_zcol());
+    pout.printf("num_gvec_fft: %i\n", gvec.gvec_count_fft());
+    pout.printf("offset_gvec_fft: %i\n", gvec.gvec_offset_fft());
+    pout.printf("num_zcols_local : %i\n", gvec.zcol_distr_fft().counts[mpi_comm_world().rank()]);
 }
 
 void test_gvec(double cutoff__, bool reduce__)
@@ -30,7 +27,7 @@ void test_gvec(double cutoff__, bool reduce__)
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    experimental::Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), reduce__);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), reduce__);
 
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto G = gvec.gvec(ig);

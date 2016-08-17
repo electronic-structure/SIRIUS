@@ -30,23 +30,23 @@ void Simulation_context::init_fft()
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0), processing_unit(), 0.9));
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0),
+                                            processing_unit(), 0.9));
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
-                 mpi_grid_fft_->dimension_size(0), true, control_input_section_.reduce_gvec_);
-
-    gvec_fft_distr_ = std::unique_ptr<Gvec_FFT_distribution>(new Gvec_FFT_distribution(gvec_, mpi_grid_fft_->communicator(1 << 0)));
+                 mpi_grid_fft_->size(), mpi_grid_fft_->communicator(1 << 0), control_input_section_.reduce_gvec_);
 
     if (!full_potential()) {
         /* create FFT driver for coarse mesh */
-        fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv), mpi_grid_fft_vloc_->communicator(1 << 0), processing_unit(), 0.9));
+        fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
+                                                       mpi_grid_fft_vloc_->communicator(1 << 0),
+                                                       processing_unit(), 0.9));
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            mpi_grid_fft_vloc_->dimension_size(0), true, control_input_section_.reduce_gvec_);
-        
-        gvec_coarse_fft_distr_ = std::unique_ptr<Gvec_FFT_distribution>(new Gvec_FFT_distribution(gvec_coarse_, mpi_grid_fft_vloc_->communicator(1 << 0)));
+                            mpi_grid_fft_vloc_->size(), mpi_grid_fft_vloc_->communicator(1 << 0),
+                            control_input_section_.reduce_gvec_);
     }
 }
 
@@ -144,7 +144,7 @@ void Simulation_context::initialize()
     }
     
     if (full_potential()) {
-        step_function_ = std::unique_ptr<Step_function>(new Step_function(unit_cell_, fft_.get(), *gvec_fft_distr_, comm_));
+        step_function_ = std::unique_ptr<Step_function>(new Step_function(unit_cell_, fft_.get(), gvec_, comm_));
     }
 
     if (iterative_solver_input_section().real_space_prj_) 

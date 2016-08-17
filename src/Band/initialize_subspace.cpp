@@ -26,15 +26,15 @@ void Band::initialize_subspace(K_point* kp__,
         #pragma omp for
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
-            int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
+            int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
             /* vs = {r, theta, phi} */
-            auto vs = SHT::spherical_coordinates(kp__->gkvec().cart_shifted(igk));
+            auto vs = SHT::spherical_coordinates(kp__->gkvec().gkvec_cart(igk));
             /* compute real spherical harmonics for G+k vector */
             SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_rlm[0]);
 
             int n{0};
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                double phase = twopi * (kp__->gkvec().gvec_shifted(igk) * unit_cell_.atom(ia).position());
+                double phase = twopi * (kp__->gkvec().gkvec(igk) * unit_cell_.atom(ia).position());
                 double_complex phase_factor = std::exp(double_complex(0.0, -phase));
 
                 auto& atom_type = unit_cell_.atom(ia).type();
@@ -58,7 +58,7 @@ void Band::initialize_subspace(K_point* kp__,
 
     std::vector< vector3d<int> > gkv;
     for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
-        gkv.push_back(kp__->gkvec()[igk]);
+        gkv.push_back(kp__->gkvec().gvec(igk));
     }
     std::sort(gkv.begin(), gkv.end(), [](vector3d<int>& a, vector3d<int>& b) {
         int la = a.l1norm();
@@ -84,8 +84,8 @@ void Band::initialize_subspace(K_point* kp__,
         auto v1 = gkv[i];
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
-            int igk = kp__->gkvec().offset_gvec(kp__->comm().rank()) + igk_loc;
-            auto v2 = kp__->gkvec()[igk];
+            int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
+            auto v2 = kp__->gkvec().gvec(igk);
             if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
                 phi(igk_loc, num_ao__ + i) = 1.0;
             }
@@ -98,10 +98,10 @@ void Band::initialize_subspace(K_point* kp__,
 
     //Gvec_FFT_distribution gvec_coarse_fft_distr(ctx_.gvec_coarse(), ctx_.mpi_grid_fft_vloc().communicator(1 << 0));
 
-    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse_fft_distr(), kp__->gkvec_fft_distr_vloc(), ctx_.num_mag_dims(),
+    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
 
-    ctx_.fft_coarse().prepare(kp__->gkvec_fft_distr_vloc());
+    ctx_.fft_coarse().prepare(kp__->gkvec());
     
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());

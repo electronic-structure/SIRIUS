@@ -11,7 +11,7 @@ void Density::initial_density()
 
     zero();
 
-    ctx_.fft().prepare(ctx_.gvec_fft_distr());
+    ctx_.fft().prepare(ctx_.gvec());
 
     if (ctx_.full_potential()) {
         initial_density_full_pot();
@@ -329,7 +329,7 @@ void Density::initial_density_full_pot()
     for (int igloc = 0; igloc < ngv_loc; igloc++)
     {
         int ig = spl_num_gvec[igloc];
-        auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
+        auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     

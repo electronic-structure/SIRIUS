@@ -36,7 +36,7 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
       lmax_beta_(unit_cell_.lmax()),
       pu_(pu__)
 {
-    num_gkvec_loc_ = gkvec_.num_gvec(comm_.rank());
+    num_gkvec_loc_ = gkvec_.gvec_count(comm_.rank());
 
     split_in_chunks();
 
@@ -49,9 +49,11 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
         {
-            int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-            auto gc = gkvec_.gvec_shifted(igk);
-            for (auto x: {0, 1, 2}) gkvec_coord_(x, igk_loc) = gc[x];
+            int igk  = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
+            auto vgk = gkvec_.gkvec(igk);
+            for (auto x: {0, 1, 2}) {
+                gkvec_coord_(x, igk_loc) = vgk[x];
+            }
         }
         gkvec_coord_.allocate_on_device();
         gkvec_coord_.copy_to_device();
@@ -74,8 +76,8 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
         {
             for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
             {
-                int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-                double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
+                int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
+                double phase = twopi * (gkvec_.gkvec(igk) * unit_cell_.atom(ia).position());
 
                 beta_gk_a_(igk_loc, unit_cell_.atom(ia).offset_lo() + xi) =
                     beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * std::exp(double_complex(0.0, -phase));
@@ -92,10 +94,10 @@ void Beta_projectors::generate_beta_gk_t()
 
     /* find shells of G+k vectors */
     std::map<size_t, std::vector<int> > gksh;
-    for (int igk_loc = 0; igk_loc < gkvec_.num_gvec(comm_.rank()); igk_loc++)
+    for (int igk_loc = 0; igk_loc < gkvec_.gvec_count(comm_.rank()); igk_loc++)
     {
-        int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
-        size_t gk_len = static_cast<size_t>(gkvec_.cart_shifted(igk).length() * 1e10);
+        int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
+        size_t gk_len = static_cast<size_t>(gkvec_.gkvec_cart(igk).length() * 1e10);
         if (!gksh.count(gk_len)) gksh[gk_len] = std::vector<int>();
         gksh[gk_len].push_back(igk_loc);
     }
@@ -108,7 +110,7 @@ void Beta_projectors::generate_beta_gk_t()
     }
 
     /* allocate array */
-    beta_gk_t_ = matrix<double_complex>(gkvec_.num_gvec(comm_.rank()), num_beta_t_);
+    beta_gk_t_ = matrix<double_complex>(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
 
     /* interpolate beta radial functions */
     mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
@@ -146,9 +148,9 @@ void Beta_projectors::generate_beta_gk_t()
             for (size_t i = 0; i < gkvec_shells[ish].second.size(); i++)
             {
                 int igk_loc = gkvec_shells[ish].second[i];
-                int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
+                int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
                 /* vs = {r, theta, phi} */
-                auto vs = SHT::spherical_coordinates(gkvec_.cart_shifted(igk));
+                auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
                 /* compute real spherical harmonics for G+k vector */
                 SHT::spherical_harmonics(lmax_beta_, vs[1], vs[2], &gkvec_rlm[0]);
 

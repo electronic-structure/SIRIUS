@@ -37,7 +37,7 @@ void Density::generate_valence(K_set& ks__)
             if (ctx_.full_potential()) {
                 kp->spinor_wave_functions<true>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
             } else {
-                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn), kp->gkvec_fft_distr());
+                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn), kp->gkvec(), ctx_.mpi_grid_fft().communicator(1 << 1));
             }
         }
     }
@@ -112,13 +112,12 @@ void Density::generate_valence(K_set& ks__)
     //== nel = nel * unit_cell_.omega() / ctx_.fft().size();
     //== printf("number of electrons: %f\n", nel);
 
-    ctx_.fft().prepare(ctx_.gvec_fft_distr());
+    ctx_.fft().prepare(ctx_.gvec());
     
     /* get rho(G) and mag(G)
      * they are required to symmetrize density and magnetization */
     rho_->fft_transform(-1);
-    for (int j = 0; j < ctx_.num_mag_dims(); j++)
-    {
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         magnetization_[j]->fft_transform(-1);
     }
 
@@ -127,16 +126,13 @@ void Density::generate_valence(K_set& ks__)
 
     ctx_.fft().dismiss();
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential)
-    {
+    if (ctx_.esm_type() == ultrasoft_pseudopotential) {
         augment(ks__);
     }
 
-    if (ctx_.esm_type() == paw_pseudopotential)
-    {
+    if (ctx_.esm_type() == paw_pseudopotential) {
         augment(ks__);
         symmetrize_density_matrix();
-        //generate_paw_loc_density();
     }
 }
 

@@ -6,7 +6,7 @@ void Potential::generate_pw_coefs()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_pw_coefs");
 
-    fft_.prepare(ctx_.gvec_fft_distr());
+    fft_.prepare(ctx_.gvec());
 
     for (int ir = 0; ir < fft_.local_size(); ir++) {
         fft_.buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
@@ -24,8 +24,8 @@ void Potential::generate_pw_coefs()
     DUMP("checksum(fft_buffer): %18.10f %18.10f", z2.real(), z2.imag());
     #endif
     
-    fft_.transform<-1>(ctx_.gvec_fft_distr(), &effective_potential()->f_pw(ctx_.gvec_fft_distr().offset_gvec_fft()));
-    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec_fft_distr().offset_gvec_fft(), ctx_.gvec_fft_distr().num_gvec_fft());
+    fft_.transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().gvec_offset_fft()));
+    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().gvec_offset_fft(), ctx_.gvec().gvec_count_fft());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), ctx_.gvec().num_gvec()).checksum();

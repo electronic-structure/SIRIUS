@@ -36,7 +36,7 @@ class Hloc_operator
 
         FFT3D& fft_;
 
-        Gvec_FFT_distribution const& gkvec_fft_distr_;
+        Gvec const& gkvec_;
 
         std::vector<double> pw_ekin_;
 
@@ -53,20 +53,21 @@ class Hloc_operator
         
         /** This is used internally to benchmark and profile the Hloc kernel */
         Hloc_operator(FFT3D& fft__,
-                      Gvec_FFT_distribution const& gkvec_fft_distr__,
+                      Gvec const& gkvec__,
                       std::vector<double> veff__)
             : fft_(fft__),
-              gkvec_fft_distr_(gkvec_fft_distr__)
+              gkvec_(gkvec__)
         {
-            pw_ekin_ = std::vector<double>(gkvec_fft_distr_.num_gvec_fft(), 0);
+            pw_ekin_ = std::vector<double>(gkvec_.gvec_count_fft(), 0);
             
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), 1);
             std::memcpy(&veff_vec_[0], &veff__[0], fft_.local_size() * sizeof(double));
-            vphi1_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
-            if (gkvec_fft_distr_.gvec().reduced()) vphi2_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
+            vphi1_ = mdarray<double_complex, 1>(gkvec_.gvec_count_fft());
+            if (gkvec_.reduced()) {
+                vphi2_ = mdarray<double_complex, 1>(gkvec_.gvec_count_fft());
+            }
             #ifdef __GPU
-            if (fft_.hybrid())
-            {
+            if (fft_.hybrid()) {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
             }
@@ -78,23 +79,23 @@ class Hloc_operator
          *  \param [in] gkvec G-vectors of the wave-functions.
          */
         Hloc_operator(FFT3D& fft__,
-                      Gvec_FFT_distribution const& gvec_coarse_fft_distr__,
-                      Gvec_FFT_distribution const& gkvec_fft_distr__,
+                      Gvec const& gvec_coarse__,
+                      Gvec const& gkvec__,
                       int num_mag_dims__,
                       Periodic_function<double>* effective_potential__,
                       Periodic_function<double>* effective_magnetic_field__[3]) 
             : fft_(fft__),
-              gkvec_fft_distr_(gkvec_fft_distr__)
+              gkvec_(gkvec__)
         {
             PROFILE();
 
             /* cache kinteic energy of plane-waves */
-            pw_ekin_ = std::vector<double>(gkvec_fft_distr_.num_gvec_fft());
-            for (int ig_loc = 0; ig_loc < gkvec_fft_distr_.num_gvec_fft(); ig_loc++) {
+            pw_ekin_ = std::vector<double>(gkvec_.gvec_count_fft());
+            for (int ig_loc = 0; ig_loc < gkvec_.gvec_count_fft(); ig_loc++) {
                 /* global index of G-vector */
-                int ig = gkvec_fft_distr_.offset_gvec_fft() + ig_loc;
+                int ig = gkvec_.gvec_offset_fft() + ig_loc;
                 /* get G+k in Cartesian coordinates */
-                auto gv = gkvec_fft_distr_.gvec().cart_shifted(ig);
+                auto gv = gkvec_.gkvec_cart(ig);
                 pw_ekin_[ig_loc] = 0.5 * (gv * gv);
             }
             #ifdef __PRINT_OBJECT_CHECKSUM
@@ -114,18 +115,18 @@ class Hloc_operator
 
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), num_mag_dims__ + 1);
         
-            fft_.prepare(gvec_coarse_fft_distr__);
+            fft_.prepare(gvec_coarse__);
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
                 /* storage for low-frequency part of PW coefficients */
-                std::vector<double_complex> v_pw_coarse(gvec_coarse_fft_distr__.num_gvec_fft());
+                std::vector<double_complex> v_pw_coarse(gvec_coarse__.gvec_count_fft());
                 /* loop over low-frequency G-vectors */
-                for (int ig = 0; ig < gvec_coarse_fft_distr__.num_gvec_fft(); ig++) {
+                for (int ig = 0; ig < gvec_coarse__.gvec_count_fft(); ig++) {
                     /* G-vector in fractional coordinates */
-                    auto G = gvec_coarse_fft_distr__.gvec()[ig + gvec_coarse_fft_distr__.offset_gvec_fft()];
+                    auto G = gvec_coarse__.gvec(ig + gvec_coarse__.gvec_offset_fft());
                     v_pw_coarse[ig] = veff_vec[j]->f_pw(G);
                 }
-                fft_.transform<1>(gvec_coarse_fft_distr__, &v_pw_coarse[0]);
+                fft_.transform<1>(gvec_coarse__, &v_pw_coarse[0]);
                 fft_.output(&veff_vec_(0, j));
                 #ifdef __PRINT_OBJECT_CHECKSUM
                 {
@@ -153,9 +154,9 @@ class Hloc_operator
                 v0_[1] = veff_vec[0]->f_pw(0).real() - veff_vec[1]->f_pw(0).real();
             }
 
-            vphi1_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
-            if (gkvec_fft_distr_.gvec().reduced()) {
-                vphi2_ = mdarray<double_complex, 1>(gkvec_fft_distr_.num_gvec_fft());
+            vphi1_ = mdarray<double_complex, 1>(gkvec_.gvec_count_fft());
+            if (gkvec_.reduced()) {
+                vphi2_ = mdarray<double_complex, 1>(gkvec_.gvec_count_fft());
             }
 
             #ifdef __GPU
@@ -166,23 +167,23 @@ class Hloc_operator
             #endif
         }
         
-        void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__)
+        void apply(int ispn__, Wave_functions<false>& hphi__, int idx0__, int n__, Communicator const& comm_col__)
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
-            hphi__.swap_forward(idx0__, n__, gkvec_fft_distr_);
+            hphi__.swap_forward(idx0__, n__, gkvec_, comm_col__);
 
             int first = 0;
             /* if G-vectors are reduced, wave-functions are real and 
              * we can transform two of them at once */
-            if (gkvec_fft_distr_.gvec().reduced())
+            if (gkvec_.reduced())
             {
                 int npairs = hphi__.spl_num_swapped().local_size() / 2;
 
                 for (int i = 0; i < npairs; i++)
                 {
                     /* phi(G) -> phi(r) */
-                    fft_.transform<1>(gkvec_fft_distr_, hphi__[2 * i], hphi__[2 * i + 1]);
+                    fft_.transform<1>(gkvec_, hphi__[2 * i], hphi__[2 * i + 1]);
                     /* multiply by effective potential */
                     if (fft_.hybrid())
                     {
@@ -199,11 +200,11 @@ class Hloc_operator
 
                     }
                     /* V(r)phi(r) -> [V*phi](G) */
-                    fft_.transform<-1>(gkvec_fft_distr_, &vphi1_[0], &vphi2_[0]);
+                    fft_.transform<-1>(gkvec_, &vphi1_[0], &vphi2_[0]);
 
                     /* add kinetic energy */
                     #pragma omp parallel for
-                    for (int ig = 0; ig < gkvec_fft_distr_.num_gvec_fft(); ig++)
+                    for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++)
                     {
                         hphi__[2 * i    ][ig] = hphi__[2 * i    ][ig] * pw_ekin_[ig] + vphi1_[ig];
                         hphi__[2 * i + 1][ig] = hphi__[2 * i + 1][ig] * pw_ekin_[ig] + vphi2_[ig];
@@ -218,7 +219,7 @@ class Hloc_operator
             /* if we don't have G-vector reductions, first = 0 and we start a normal loop */
             for (int i = first; i < hphi__.spl_num_swapped().local_size(); i++) {
                 /* phi(G) -> phi(r) */
-                fft_.transform<1>(gkvec_fft_distr_, hphi__[i]);
+                fft_.transform<1>(gkvec_, hphi__[i]);
                 /* multiply by effective potential */
                 if (fft_.hybrid()) {
                     #ifdef __GPU
@@ -233,15 +234,15 @@ class Hloc_operator
                     }
                 }
                 /* V(r)phi(r) -> [V*phi](G) */
-                fft_.transform<-1>(gkvec_fft_distr_, &vphi1_[0]);
+                fft_.transform<-1>(gkvec_, &vphi1_[0]);
                 /* add kinetic energy */
                 #pragma omp parallel for
-                for (int ig = 0; ig < gkvec_fft_distr_.num_gvec_fft(); ig++) {
+                for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
                     hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
                 }
             }
 
-            hphi__.swap_backward(idx0__, n__, gkvec_fft_distr_);
+            hphi__.swap_backward(idx0__, n__, gkvec_, comm_col__);
         }
 
         inline double v0(int ispn__)

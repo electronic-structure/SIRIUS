@@ -65,7 +65,7 @@ class Band
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(Wave_functions<true>& fv_states__,
-                                  Gvec_FFT_distribution const& gkvec_fft_distr__,
+                                  Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
                                   std::vector<Wave_functions<true>*>& hpsi__) const;
 

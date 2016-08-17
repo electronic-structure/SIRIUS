@@ -139,7 +139,7 @@ class Augmentation_operator
             for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
             {
                 int ig = spl_num_gvec[igloc];
-                auto rtp = SHT::spherical_coordinates(gvec__.cart(ig));
+                auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
                 SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
             }
         

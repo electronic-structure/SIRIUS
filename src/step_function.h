@@ -81,7 +81,7 @@ class Step_function
         /// Constructor
         Step_function(Unit_cell const& unit_cell_, 
                       FFT3D* fft__,
-                      Gvec_FFT_distribution const& gvec_fft_distr__,
+                      Gvec const& gvec__,
                       Communicator const& comm__);
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.

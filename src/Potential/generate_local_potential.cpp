@@ -56,8 +56,8 @@ void Potential::generate_local_potential()
     comm_.allgather(vloc_radial_integrals.at<CPU>(), ld * spl_gshells.global_offset(), ld * spl_gshells.local_size());
 
     auto v = unit_cell_.make_periodic_function(vloc_radial_integrals, ctx_.gvec());
-    fft_.prepare(ctx_.gvec_fft_distr());
-    fft_.transform<1>(ctx_.gvec_fft_distr(), &v[ctx_.gvec_fft_distr().offset_gvec_fft()]);
+    fft_.prepare(ctx_.gvec());
+    fft_.transform<1>(ctx_.gvec(), &v[ctx_.gvec().gvec_offset_fft()]);
     fft_.output(&local_potential_->f_rg(0));
     fft_.dismiss();
 }

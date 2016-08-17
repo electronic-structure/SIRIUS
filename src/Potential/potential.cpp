@@ -95,7 +95,7 @@ Potential::Potential(Simulation_context& ctx__)
         for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
         {
             int ig = spl_num_gvec_[igloc];
-            auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
+            auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
             SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
     }

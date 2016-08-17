@@ -68,7 +68,7 @@ void Potential::poisson_sum_G(int lmmax__,
         auto gvec = mdarray<int, 2>(3, ngv_loc);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[spl_num_gvec_[igloc]][x];
+            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec().gvec(spl_num_gvec_[igloc])[x];
         }
         gvec.allocate_on_device();
         gvec.copy_to_device();

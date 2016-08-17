@@ -55,9 +55,7 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
-        std::unique_ptr<Gvec_FFT_distribution> gkvec_fft_distr_;
-
-        std::unique_ptr<Gvec_FFT_distribution> gkvec_fft_distr_vloc_;
+        Gvec gkvec_vloc_;
 
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -520,30 +518,19 @@ class K_point
             std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(double));
         }
 
-        std::vector<double> get_pw_ekin() const
-        {
-            std::vector<double> pw_ekin(num_gkvec());
-            for (int igk = 0; igk < num_gkvec(); igk++)
-            {
-                auto gv = unit_cell_.reciprocal_lattice_vectors() * gkvec_.gvec_shifted(igk);
-                pw_ekin[igk] = 0.5 * (gv * gv);
-            }
-            return pw_ekin; 
-        }
+        //== std::vector<double> get_pw_ekin() const
+        //== {
+        //==     std::vector<double> pw_ekin(num_gkvec());
+        //==     for (int igk = 0; igk < num_gkvec(); igk++) {
+        //==         auto gv = gkvec_.gkvec_cart(igk);
+        //==         pw_ekin[igk] = 0.5 * (gv * gv);
+        //==     }
+        //==     return pw_ekin; 
+        //== }
 
         inline Gvec const& gkvec() const
         {
             return gkvec_;
-        }
-
-        inline Gvec_FFT_distribution const& gkvec_fft_distr() const
-        {
-            return *gkvec_fft_distr_;
-        }
-
-        inline Gvec_FFT_distribution const& gkvec_fft_distr_vloc() const
-        {
-            return *gkvec_fft_distr_vloc_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()
@@ -583,7 +570,7 @@ class K_point
 
         inline int num_gkvec_loc() const
         {
-            return gkvec_.num_gvec(comm_.rank());
+            return gkvec_.gvec_count(comm_.rank());
         }
 
         Beta_projectors& beta_projectors()

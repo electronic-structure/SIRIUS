@@ -30,7 +30,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     }
     #endif
 
-    ctx_.fft().prepare(kp__->gkvec_fft_distr());
+    ctx_.fft().prepare(kp__->gkvec());
 
     int wf_pw_offset = kp__->wf_pw_offset();
         
@@ -50,7 +50,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                 double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
 
                 /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                ctx_.fft().transform<1>(kp__->gkvec_fft_distr(), kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
+                ctx_.fft().transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
 
                 if (ctx_.fft().hybrid())
                 {
@@ -86,11 +86,11 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
             double w = kp__->band_occupancy(j) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
-            ctx_.fft().transform<1>(kp__->gkvec_fft_distr(), kp__->spinor_wave_functions<mt_spheres>(0)[i] + wf_pw_offset);
+            ctx_.fft().transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(0)[i] + wf_pw_offset);
             /* save in auxiliary buffer */
             ctx_.fft().output(&psi_r[0]);
             /* transform dn- component of spinor wave function */
-            ctx_.fft().transform<1>(kp__->gkvec_fft_distr(), kp__->spinor_wave_functions<mt_spheres>(1)[i] + wf_pw_offset);
+            ctx_.fft().transform<1>(kp__->gkvec(), kp__->spinor_wave_functions<mt_spheres>(1)[i] + wf_pw_offset);
 
             if (ctx_.fft().hybrid())
             {

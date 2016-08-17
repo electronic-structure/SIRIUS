@@ -814,7 +814,7 @@ std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>
         for (int ia = 0; ia < num_atoms(); ia++)
         {
             int iat = atom(ia).type_id();
-            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__[ig] * atom(ia).position())));
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
             f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
         }
     }

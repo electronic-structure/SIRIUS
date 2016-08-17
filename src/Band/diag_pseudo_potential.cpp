@@ -9,10 +9,10 @@ void Band::diag_pseudo_potential(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
 
-    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse_fft_distr(), kp__->gkvec_fft_distr_vloc(), ctx_.num_mag_dims(),
+    Hloc_operator hloc(ctx_.fft_coarse(), ctx_.gvec_coarse(), kp__->gkvec(), ctx_.num_mag_dims(),
                        effective_potential__, effective_magnetic_field__);
     
-    ctx_.fft_coarse().prepare(kp__->gkvec_fft_distr_vloc());
+    ctx_.fft_coarse().prepare(kp__->gkvec());
 
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());

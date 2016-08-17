@@ -624,7 +624,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     }
 
     if (is_gga) {
-        Smooth_periodic_function<double> vsigma(ctx_.fft(), ctx_.gvec_fft_distr());
+        Smooth_periodic_function<double> vsigma(ctx_.fft(), ctx_.gvec());
 
         /* gather vsigma */
         comm.allgather(&vsigma_tmp[0], &vsigma.f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
@@ -679,8 +679,8 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
 
     int num_points = fft_.local_size();
     
-    Smooth_periodic_function<double> rho_up(fft_, ctx_.gvec_fft_distr());
-    Smooth_periodic_function<double> rho_dn(fft_, ctx_.gvec_fft_distr());
+    Smooth_periodic_function<double> rho_up(fft_, ctx_.gvec());
+    Smooth_periodic_function<double> rho_dn(fft_, ctx_.gvec());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin = 0.0;
@@ -839,9 +839,9 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
 
     if (is_gga) {
         /* gather vsigma */
-        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_fft_distr());
-        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_fft_distr());
-        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec_fft_distr());
+        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec());
+        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec());
+        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec());
         for (int ir = 0; ir < num_points; ir++) {
             vsigma_uu.f_rg(ir) = vsigma_uu_tmp[ir];
             vsigma_ud.f_rg(ir) = vsigma_ud_tmp[ir];

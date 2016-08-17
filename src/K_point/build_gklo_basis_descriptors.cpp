@@ -13,8 +13,8 @@ void K_point::build_gklo_basis_descriptors()
     /* G+k basis functions */
     for (int igk = 0; igk < num_gkvec(); igk++)
     {
-        gklo.gvec       = gkvec_[igk];
-        gklo.gkvec      = gkvec_.gvec_shifted(igk);
+        gklo.gvec       = gkvec_.gvec(igk);
+        gklo.gkvec      = gkvec_.gkvec(igk);
         gklo.ig         = igk;
         gklo.ia         = -1;
         gklo.l          = -1;

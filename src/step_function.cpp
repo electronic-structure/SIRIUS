@@ -26,10 +26,10 @@
 
 namespace sirius {
 
-Step_function::Step_function(Unit_cell             const& unit_cell__,
-                             FFT3D*                       fft__,
-                             Gvec_FFT_distribution const& gvec_fft_distr__,
-                             Communicator          const& comm__)
+Step_function::Step_function(Unit_cell    const& unit_cell__,
+                             FFT3D*              fft__,
+                             Gvec         const& gvec__,
+                             Communicator const& comm__)
 {
     PROFILE();
 
@@ -37,21 +37,19 @@ Step_function::Step_function(Unit_cell             const& unit_cell__,
         return;
     }
 
-    auto& gvec = gvec_fft_distr__.gvec();
-    
-    auto ffac = get_step_function_form_factors(gvec.num_shells(), unit_cell__, gvec, comm__);
+    auto ffac = get_step_function_form_factors(gvec__.num_shells(), unit_cell__, gvec__, comm__);
 
-    step_function_pw_.resize(gvec.num_gvec());
+    step_function_pw_.resize(gvec__.num_gvec());
     step_function_.resize(fft__->local_size());
     
-    std::vector<double_complex> f_pw = unit_cell__.make_periodic_function(ffac, gvec);
-    for (int ig = 0; ig < gvec.num_gvec(); ig++) {
+    std::vector<double_complex> f_pw = unit_cell__.make_periodic_function(ffac, gvec__);
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) {
         step_function_pw_[ig] = -f_pw[ig];
     }
     step_function_pw_[0] += 1.0;
     
-    fft__->prepare(gvec_fft_distr__);
-    fft__->transform<1>(gvec_fft_distr__, &step_function_pw_[gvec_fft_distr__.offset_gvec_fft()]);
+    fft__->prepare(gvec__);
+    fft__->transform<1>(gvec__, &step_function_pw_[gvec__.gvec_offset_fft()]);
     fft__->output(&step_function_[0]);
     fft__->dismiss();
     

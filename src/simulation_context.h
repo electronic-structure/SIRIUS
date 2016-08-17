@@ -56,6 +56,7 @@ class Simulation_context: public Simulation_parameters
         /// 2D MPI grid for the FFT driver.
         std::unique_ptr<MPI_grid> mpi_grid_fft_;
 
+        /// 2D MPI grid for the FFT driver of the Hloc operation.
         std::unique_ptr<MPI_grid> mpi_grid_fft_vloc_;
 
         /// 2D BLACS grid for distributed linear algebra operations.
@@ -75,10 +76,6 @@ class Simulation_context: public Simulation_parameters
         Gvec gvec_;
 
         Gvec gvec_coarse_;
-
-        std::unique_ptr<Gvec_FFT_distribution> gvec_fft_distr_;
-
-        std::unique_ptr<Gvec_FFT_distribution> gvec_coarse_fft_distr_;
 
         std::vector<Augmentation_operator> augmentation_op_;
 
@@ -180,16 +177,6 @@ class Simulation_context: public Simulation_parameters
             return gvec_;
         }
 
-        Gvec_FFT_distribution const& gvec_fft_distr() const
-        {
-            return *gvec_fft_distr_;
-        }
-
-        Gvec_FFT_distribution const& gvec_coarse_fft_distr() const
-        {
-            return *gvec_coarse_fft_distr_;
-        }
-
         Gvec const& gvec_coarse() const
         {
             return gvec_coarse_;
@@ -252,7 +239,7 @@ class Simulation_context: public Simulation_parameters
 
                 mdarray<int, 2> gv(3, gvec_.num_gvec());
                 for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                    auto G = gvec_[ig];
+                    auto G = gvec_.gvec(ig);
                     for (int x: {0, 1, 2}) gv(x, ig) = G[x];
                 }
                 fout["parameters"].write("num_gvec", gvec_.num_gvec());
@@ -299,7 +286,7 @@ class Simulation_context: public Simulation_parameters
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            auto G = gvec_[ig__];
+            auto G = gvec_.gvec(ig__);
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 };

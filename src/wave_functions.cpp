@@ -2,104 +2,93 @@
 
 namespace sirius {
 
-void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__)
+void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__, Communicator const& comm_col__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
 
-    /* comminicator for data exchange */
-    auto& comm_col = gvec_fft_distr__.mpi_grid_fft().communicator(1 << 1);
-
     /* this is how n wave-functions will be distributed between columns of the MPI grid */
-    spl_n_ = splindex<block>(n__, comm_col.size(), comm_col.rank());
+    spl_n_ = splindex<block>(n__, comm_col__.size(), comm_col__.rank());
 
     /* trivial case */
-    if (comm_col.size() == 1)
-    {
+    if (comm_col__.size() == 1) {
         wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_(0, idx0__), num_gvec_loc_, n__);
         return;
-    }
-    else
-    {
+    } else {
         /* maximum local number of wave-functions */
-        int max_nwf_loc = splindex_base<int>::block_size(n__, comm_col.size());
+        int max_nwf_loc = splindex_base<int>::block_size(n__, comm_col__.size());
         /* upper limit for the size of swapped wfs */
-        size_t sz = gvec_fft_distr__.num_gvec_fft() * max_nwf_loc;
+        size_t sz = gvec__.gvec_count_fft() * max_nwf_loc;
         /* reallocate buffers if necessary */
-        if (wf_coeffs_swapped_buf_.size() < sz)
-        {
+        if (wf_coeffs_swapped_buf_.size() < sz) {
             wf_coeffs_swapped_buf_ = mdarray<double_complex, 1>(sz);
             send_recv_buf_ = mdarray<double_complex, 1>(sz, "send_recv_buf_");
         }
-        wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_swapped_buf_[0], gvec_fft_distr__.num_gvec_fft(), max_nwf_loc);
+        wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_swapped_buf_[0], gvec__.gvec_count_fft(), max_nwf_loc);
     }
     
     /* local number of columns */
     int n_loc = spl_n_.local_size();
     
     /* send and recieve dimensions */
-    block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
-    for (int j = 0; j < comm_col.size(); j++)
+    block_data_descriptor sd(comm_col__.size()), rd(comm_col__.size());
+    for (int j = 0; j < comm_col__.size(); j++)
     {
-        sd.counts[j] = spl_n_.local_size(j)               * gvec_fft_distr__.gvec_slab_pile().counts[comm_col.rank()];
-        rd.counts[j] = spl_n_.local_size(comm_col.rank()) * gvec_fft_distr__.gvec_slab_pile().counts[j];
+        sd.counts[j] = spl_n_.local_size(j)                 * gvec__.gvec_fft_slab().counts[comm_col__.rank()];
+        rd.counts[j] = spl_n_.local_size(comm_col__.rank()) * gvec__.gvec_fft_slab().counts[j];
     }
     sd.calc_offsets();
     rd.calc_offsets();
 
-    comm_col.alltoall(&wf_coeffs_(0, idx0__), &sd.counts[0], &sd.offsets[0],
-                      &send_recv_buf_[0], &rd.counts[0], &rd.offsets[0]);
+    comm_col__.alltoall(&wf_coeffs_(0, idx0__), &sd.counts[0], &sd.offsets[0],
+                        &send_recv_buf_[0], &rd.counts[0], &rd.offsets[0]);
                       
     /* reorder recieved blocks */
     #pragma omp parallel for
     for (int i = 0; i < n_loc; i++)
     {
-        for (int j = 0; j < comm_col.size(); j++)
+        for (int j = 0; j < comm_col__.size(); j++)
         {
-            int offset = gvec_fft_distr__.gvec_slab_pile().offsets[j];
-            int count = gvec_fft_distr__.gvec_slab_pile().counts[j];
+            int offset = gvec__.gvec_fft_slab().offsets[j];
+            int count  = gvec__.gvec_fft_slab().counts[j];
             std::memcpy(&wf_coeffs_swapped_(offset, i), &send_recv_buf_[offset * n_loc + count * i], count * sizeof(double_complex));
         }
     }
 }
 
-void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec_FFT_distribution const& gvec_fft_distr__)
+void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec const& gvec__, Communicator const& comm_col__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
 
-    /* comminicator for data exchange */
-    auto& comm_col = gvec_fft_distr__.mpi_grid_fft().communicator(1 << 1);
-
-    if (comm_col.size() == 1) return;
+    if (comm_col__.size() == 1) {
+        return;
+    }
 
     /* this is how n wave-functions are distributed between column ranks */
-    splindex<block> spl_n(n__, comm_col.size(), comm_col.rank());
+    splindex<block> spl_n(n__, comm_col__.size(), comm_col__.rank());
     /* local number of columns */
     int n_loc = spl_n.local_size();
 
     /* reorder sending blocks */
     #pragma omp parallel for
-    for (int i = 0; i < n_loc; i++)
-    {
-        for (int j = 0; j < comm_col.size(); j++)
-        {
-            int offset = gvec_fft_distr__.gvec_slab_pile().offsets[j];
-            int count = gvec_fft_distr__.gvec_slab_pile().counts[j];
+    for (int i = 0; i < n_loc; i++) {
+        for (int j = 0; j < comm_col__.size(); j++) {
+            int offset = gvec__.gvec_fft_slab().offsets[j];
+            int count  = gvec__.gvec_fft_slab().counts[j];
             std::memcpy(&send_recv_buf_[offset * n_loc + count * i], &wf_coeffs_swapped_(offset, i), count * sizeof(double_complex));
         }
     }
 
     /* send and recieve dimensions */
-    block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
-    for (int j = 0; j < comm_col.size(); j++)
-    {
-        sd.counts[j] = spl_n.local_size(comm_col.rank()) * gvec_fft_distr__.gvec_slab_pile().counts[j];
-        rd.counts[j] = spl_n.local_size(j)               * gvec_fft_distr__.gvec_slab_pile().counts[comm_col.rank()];
+    block_data_descriptor sd(comm_col__.size()), rd(comm_col__.size());
+    for (int j = 0; j < comm_col__.size(); j++) {
+        sd.counts[j] = spl_n.local_size(comm_col__.rank()) * gvec__.gvec_fft_slab().counts[j];
+        rd.counts[j] = spl_n.local_size(j)                 * gvec__.gvec_fft_slab().counts[comm_col__.rank()];
     }
     sd.calc_offsets();
     rd.calc_offsets();
 
-    comm_col.alltoall(&send_recv_buf_[0], &sd.counts[0], &sd.offsets[0],
-                      &wf_coeffs_(0, idx0__), &rd.counts[0], &rd.offsets[0]);
+    comm_col__.alltoall(&send_recv_buf_[0], &sd.counts[0], &sd.offsets[0],
+                        &wf_coeffs_(0, idx0__), &rd.counts[0], &rd.offsets[0]);
 }
 
 template<>

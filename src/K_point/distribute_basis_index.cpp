@@ -43,8 +43,9 @@ void K_point::distribute_basis_index()
         /* split G+k vectors between all available ranks and keep the split index */
         gklo_basis_descriptors_row_.resize(num_gkvec_loc());
         
-        for (int i = 0; i < num_gkvec_loc(); i++)
-            gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[gkvec_.offset_gvec(comm_.rank()) + i];
+        for (int i = 0; i < num_gkvec_loc(); i++) {
+            gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[gkvec_.gvec_offset(comm_.rank()) + i];
+        }
     }
 
     /* get the number of row G+k-vectors */

@@ -185,7 +185,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
             for (int ig_loc = 0; ig_loc < (int)spl_num_gvec_.local_size(); ig_loc++)
             {
                 int ig = (int)spl_num_gvec_[ig_loc];
-                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (gvec_[ig] * unit_cell_.atom(ia).position())));
+                double_complex phase_factor = std::exp(double_complex(0.0, twopi * (gvec_.gvec(ig) * unit_cell_.atom(ia).position())));
 
                 beta_pw[ig] = beta_pw_t(ig_loc, atom_type.offset_lo() + xi) * std::conj(phase_factor);
             }
@@ -194,7 +194,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
             memset(&fft_->buffer(0), 0, fft_->size() * sizeof(double_complex));
             for (int ig = 0; ig < fft_->size(); ig++)
             {
-                auto gv = gvec_[ig];
+                auto gv = gvec_.gvec(ig);
                 double_complex z = beta_pw[ig];
                 //auto gvec_cart = fft_->gvec_cart(ig);
                 //if (gvec_cart.length() > pw_cutoff__) z *= std::exp(-mask_alpha_ * std::pow(gvec_cart.length() / pw_cutoff__ - 1, 2));
@@ -258,7 +258,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
                 for (int ig_loc = 0; ig_loc < spl_num_gvec_.local_size(); ig_loc++)
                 {
                     int ig = spl_num_gvec_[ig_loc];
-                    double_complex phase_factor = std::exp(double_complex(0.0, twopi * (gvec_[ig] * unit_cell_.atom(ia).position())));
+                    double_complex phase_factor = std::exp(double_complex(0.0, twopi * (gvec_.gvec(ig) * unit_cell_.atom(ia).position())));
 
                     beta_pw[ig] = beta_pw_t(ig_loc, atom_type.offset_lo() + xi) * std::conj(phase_factor);
                 }
@@ -269,7 +269,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
                     double_complex z(0, 0);
                     for (int i = 0; i < beta_projectors_[ia].num_points_; i++)
                     {
-                        double phase = twopi * (beta_projectors_[ia].r_[i] * gvec_[ig]);
+                        double phase = twopi * (beta_projectors_[ia].r_[i] * gvec_.gvec(ig));
                         z += std::exp(double_complex(0, -phase)) * beta_projectors_[ia].beta_(i, xi);
                     }
                     err += std::abs(beta_pw[ig] - z / std::sqrt(unit_cell_.omega()));

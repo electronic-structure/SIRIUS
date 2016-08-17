@@ -3,7 +3,8 @@
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack"
+        "gen_evp_solver_type" : "lapack",
+        "reduce_gvec" : true
     },
 
     "parameters" : {

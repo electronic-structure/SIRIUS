@@ -25,12 +25,20 @@ void K_point::generate_gkvec(double gk_cutoff)
     }
     
     /* create G+k vectors */
-    gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(), num_ranks(), false, ctx_.gamma_point());
-
-    gkvec_fft_distr_ = std::unique_ptr<Gvec_FFT_distribution>(new Gvec_FFT_distribution(gkvec_, ctx_.mpi_grid_fft()));
-
+    gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(), num_ranks(),
+                  ctx_.mpi_grid_fft().communicator(1 << 1), ctx_.gamma_point());
+    
     if (!ctx_.full_potential()) {
-        gkvec_fft_distr_vloc_ = std::unique_ptr<Gvec_FFT_distribution>(new Gvec_FFT_distribution(gkvec_, ctx_.mpi_grid_fft_vloc()));
+        gkvec_vloc_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(), num_ranks(),
+                           ctx_.mpi_grid_fft_vloc().communicator(1 << 1), ctx_.gamma_point());
+        #pragma omp parallel for
+        for (int ig = 0; ig < gkvec_.num_gvec(); ig++) {
+            auto v1 = gkvec_.gvec(ig);
+            auto v2 = gkvec_vloc_.gvec(ig);
+            if (!(v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2])) {
+                TERMINATE("wrong order of G+k vectors");
+            }
+        }
     }
 }
 

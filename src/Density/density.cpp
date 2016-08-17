@@ -75,7 +75,7 @@ Density::Density(Simulation_context& ctx__)
 
         for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++)
         {
-            auto G = ctx_.gvec_coarse()[ig];
+            auto G = ctx_.gvec_coarse().gvec(ig);
             /* save index of low-frequency G-vector */
             lf_gvec_[ig] = ctx_.gvec().index_by_gvec(G);
             weights[ig] = fourpi * unit_cell_.omega() / std::pow(ctx_.gvec_coarse().gvec_len(ig), 2);
