@@ -266,11 +266,6 @@ void Density::generate_paw_loc_density()
                 {
                     auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
-                    //                      if(lm3coef.lm3 >= (int)ae_atom_density.size(1))
-                    //                      {
-                    //                          TERMINATE("PAW: lm3 index out of range of lm part of density array");;
-                    //                      }
-
                     // iterate over radial points
                     // this part in fortran looks better, is there the same for c++?
                     for(int irad = 0; irad < (int)grid.num_points(); irad++)
