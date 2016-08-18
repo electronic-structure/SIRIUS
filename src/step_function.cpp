@@ -48,8 +48,8 @@ Step_function::Step_function(Unit_cell    const& unit_cell__,
     }
     step_function_pw_[0] += 1.0;
     
-    fft__->prepare(gvec__);
-    fft__->transform<1>(gvec__, &step_function_pw_[gvec__.gvec_offset_fft()]);
+    fft__->prepare(gvec__.partition());
+    fft__->transform<1>(gvec__.partition(), &step_function_pw_[gvec__.partition().gvec_offset_fft()]);
     fft__->output(&step_function_[0]);
     fft__->dismiss();
     

@@ -6,26 +6,26 @@ void Potential::generate_pw_coefs()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_pw_coefs");
 
-    fft_.prepare(ctx_.gvec());
+    ctx_.fft().prepare(ctx_.gvec().partition());
 
-    for (int ir = 0; ir < fft_.local_size(); ir++) {
-        fft_.buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        ctx_.fft().buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
     }
 
     #ifdef __GPU
     if (ctx_.processing_unit()) {
-        fft_.copy_to_device();
+        ctx_.fft().copy_to_device();
     }
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z2 = mdarray<double_complex, 1>(&fft_.buffer(0), fft_.local_size()).checksum();
-    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_rg(0) , fft_.local_size()).checksum());
+    double_complex z2 = mdarray<double_complex, 1>(&ctx_.fft().buffer(0), ctx_.fft().local_size()).checksum();
+    DUMP("checksum(veff_it): %18.10f", mdarray<double, 1>(&effective_potential()->f_rg(0) , ctx_.fft().local_size()).checksum());
     DUMP("checksum(fft_buffer): %18.10f %18.10f", z2.real(), z2.imag());
     #endif
     
-    fft_.transform<-1>(ctx_.gvec(), &effective_potential()->f_pw(ctx_.gvec().gvec_offset_fft()));
-    fft_.comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().gvec_offset_fft(), ctx_.gvec().gvec_count_fft());
+    ctx_.fft().transform<-1>(ctx_.gvec().partition(), &effective_potential()->f_pw(ctx_.gvec().partition().gvec_offset_fft()));
+    ctx_.fft().comm().allgather(&effective_potential()->f_pw(0), ctx_.gvec().partition().gvec_offset_fft(), ctx_.gvec().partition().gvec_count_fft());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential()->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -35,8 +35,8 @@ void Potential::generate_pw_coefs()
     /* for full diagonalization we also need Beff(G) */
     if (!use_second_variation) {
         for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            for (int ir = 0; ir < fft_.size(); ir++) {
-                fft_.buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function().theta_r(ir);
+            for (int ir = 0; ir < ctx_.fft().size(); ir++) {
+                ctx_.fft().buffer(ir) = effective_magnetic_field(i)->f_rg(ir) * ctx_.step_function().theta_r(ir);
             }
             STOP();
             //fft_.transform(-1, ctx_.gvec().z_sticks_coord());
@@ -62,7 +62,7 @@ void Potential::generate_pw_coefs()
         }
     }
 
-    fft_.dismiss();
+    ctx_.fft().dismiss();
 }
 
 };

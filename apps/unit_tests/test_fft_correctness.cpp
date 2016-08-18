@@ -18,19 +18,20 @@ void test_fft(double cutoff__)
     }
     MPI_grid mpi_grid(mpi_comm_world());
 
-    printf("num_gvec_fft: %i\n", gvec.gvec_count_fft());
-    printf("offset_gvec_fft: %i\n", gvec.gvec_offset_fft());
+    printf("num_gvec_fft: %i\n", gvec.partition().gvec_count_fft());
+    printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
 
-    fft.prepare(gvec);
+    fft.prepare(gvec.partition());
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
-    for (int ig = 0; ig < gvec.num_gvec(); ig++)
-    {
+    for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec(ig);
-        if (mpi_comm_world().rank() == 0) printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+        if (mpi_comm_world().rank() == 0) {
+            printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+        }
         f.zero();
         f[ig] = 1.0;
-        fft.transform<1>(gvec, &f[gvec.gvec_offset_fft()]);
+        fft.transform<1>(gvec.partition(), &f[gvec.partition().gvec_offset_fft()]);
 
         double diff = 0;
         /* loop over 3D array (real space) */

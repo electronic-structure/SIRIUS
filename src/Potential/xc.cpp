@@ -504,7 +504,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
         }
     }
 
-    int num_points = fft_.local_size();
+    int num_points = ctx_.fft().local_size();
 
     /* we can use this comm for parallelization */
     auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _mpi_dim_k_ | 1 << _mpi_dim_k_col_)
@@ -677,14 +677,14 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         }
     }
 
-    int num_points = fft_.local_size();
+    int num_points = ctx_.fft().local_size();
     
-    Smooth_periodic_function<double> rho_up(fft_, ctx_.gvec());
-    Smooth_periodic_function<double> rho_dn(fft_, ctx_.gvec());
+    Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.gvec());
+    Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin = 0.0;
-    for (int ir = 0; ir < fft_.local_size(); ir++) {
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
         double mag = 0.0;
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             mag += std::pow(magnetization[j]->f_rg(ir), 2);

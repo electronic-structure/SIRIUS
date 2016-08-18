@@ -37,7 +37,7 @@ void Density::generate_valence(K_set& ks__)
             if (ctx_.full_potential()) {
                 kp->spinor_wave_functions<true>(ispn).swap_forward(0, kp->num_occupied_bands(ispn));
             } else {
-                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn), kp->gkvec(), ctx_.mpi_grid_fft().communicator(1 << 1));
+                kp->spinor_wave_functions<false>(ispn).swap_forward(0, kp->num_occupied_bands(ispn), kp->gkvec().partition(), ctx_.mpi_grid_fft().communicator(1 << 1));
             }
         }
     }
@@ -112,7 +112,7 @@ void Density::generate_valence(K_set& ks__)
     //== nel = nel * unit_cell_.omega() / ctx_.fft().size();
     //== printf("number of electrons: %f\n", nel);
 
-    ctx_.fft().prepare(ctx_.gvec());
+    ctx_.fft().prepare(ctx_.gvec().partition());
     
     /* get rho(G) and mag(G)
      * they are required to symmetrize density and magnetization */

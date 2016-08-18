@@ -7,7 +7,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
 
-    ctx_.fft().prepare(ctx_.gvec());
+    ctx_.fft().prepare(ctx_.gvec().partition());
 
     /* zero effective potential and magnetic field */
     zero();
@@ -45,7 +45,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
 
-    ctx_.fft().prepare(ctx_.gvec());
+    ctx_.fft().prepare(ctx_.gvec().partition());
 
     /* zero effective potential and magnetic field */
     zero();

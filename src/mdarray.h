@@ -572,7 +572,7 @@ class mdarray_base
                 }
                 catch (...)
                 {
-                    printf("Error allocating memory for mdarray with dimensions:");
+                    printf("Error allocating memory for mdarray (label=%s) with dimensions:", label_.c_str());
                     for (int i = 0; i < N; i++) printf(" %i", (int)dims_[i].size());
                     printf("\n");
                     printf("Total array size: %i MB\n", int((sizeof(T) * sz) >> 20));

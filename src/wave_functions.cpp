@@ -2,7 +2,7 @@
 
 namespace sirius {
 
-void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__, Communicator const& comm_col__)
+void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_partition const& gvec__, Communicator const& comm_col__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_forward");
 
@@ -55,7 +55,7 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec const& gvec__
     }
 }
 
-void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec const& gvec__, Communicator const& comm_col__)
+void Wave_functions<false>::swap_backward(int idx0__, int n__, Gvec_partition const& gvec__, Communicator const& comm_col__)
 {
     PROFILE_WITH_TIMER("sirius::Wave_functions::swap_backward");
 

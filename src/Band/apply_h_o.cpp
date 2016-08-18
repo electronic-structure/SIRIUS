@@ -27,7 +27,7 @@ void Band::apply_h_o(K_point* kp__,
     if (ctx_.processing_unit() == GPU) hphi__.copy_to_host(N__, n__);
     #endif
     /* apply local part of Hamiltonian */
-    h_op.apply(ispn__, hphi__, N__, n__, ctx_.mpi_grid_fft_vloc().communicator(1 << 1));
+    h_op.apply(ispn__, hphi__, N__, n__);
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) hphi__.copy_to_device(N__, n__);
     #endif

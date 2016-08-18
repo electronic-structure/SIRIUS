@@ -30,7 +30,6 @@ Potential::Potential(Simulation_context& ctx__)
     : ctx_(ctx__),
       unit_cell_(ctx__.unit_cell()),
       comm_(ctx__.comm()),
-      fft_(ctx__.fft()),
       pseudo_density_order(9),
       mixer_(nullptr)
 {

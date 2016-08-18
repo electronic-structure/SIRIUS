@@ -85,9 +85,9 @@ class Wave_functions<false>
         {
         }
 
-        void swap_forward(int idx0__, int n__, Gvec const& gvec__, Communicator const& comm_col__);
+        void swap_forward(int idx0__, int n__, Gvec_partition const& gvec__, Communicator const& comm_col__);
 
-        void swap_backward(int idx0__, int n__, Gvec const& gvec__, Communicator const& comm_col__);
+        void swap_backward(int idx0__, int n__, Gvec_partition const& gvec__, Communicator const& comm_col__);
 
         inline double_complex& operator()(int igloc__, int i__)
         {

@@ -112,7 +112,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
     for (int i = 0; i < fv_states__.spl_num_swapped().local_size(); i++)
     {
         /* transform first-variational state to real space */
-        ctx_.fft().transform<1>(gkvec__, &fv_states__[i][wf_pw_offset]);
+        ctx_.fft().transform<1>(gkvec__.partition(), &fv_states__[i][wf_pw_offset]);
         /* save for a reuse */
         if (hpsi__.size() == 3) ctx_.fft().output(&psi_r[0]);
 
@@ -121,7 +121,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
             /* hpsi(r) = psi(r) * B_z(r) * Theta(r) */
             ctx_.fft().buffer(ir) *= (effective_magnetic_field__[0]->f_rg(ir) * ctx_.step_function().theta_r(ir));
         }
-        ctx_.fft().transform<-1>(gkvec__, &(*hpsi__[0])[i][wf_pw_offset]);
+        ctx_.fft().transform<-1>(gkvec__.partition(), &(*hpsi__[0])[i][wf_pw_offset]);
 
         if (hpsi__.size() >= 3)
         {
@@ -132,7 +132,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
                                          (effective_magnetic_field__[1]->f_rg(ir) - 
                                           complex_i * effective_magnetic_field__[2]->f_rg(ir));
             }
-            ctx_.fft().transform<-1>(gkvec__, &(*hpsi__[2])[i][wf_pw_offset]);
+            ctx_.fft().transform<-1>(gkvec__.partition(), &(*hpsi__[2])[i][wf_pw_offset]);
         }
     }
 

@@ -55,7 +55,7 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
-        Gvec gkvec_vloc_;
+        std::unique_ptr<Gvec_partition> gkvec_vloc_;
 
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
@@ -518,19 +518,14 @@ class K_point
             std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(double));
         }
 
-        //== std::vector<double> get_pw_ekin() const
-        //== {
-        //==     std::vector<double> pw_ekin(num_gkvec());
-        //==     for (int igk = 0; igk < num_gkvec(); igk++) {
-        //==         auto gv = gkvec_.gkvec_cart(igk);
-        //==         pw_ekin[igk] = 0.5 * (gv * gv);
-        //==     }
-        //==     return pw_ekin; 
-        //== }
-
         inline Gvec const& gkvec() const
         {
             return gkvec_;
+        }
+
+        inline Gvec_partition const& gkvec_vloc() const
+        {
+            return *gkvec_vloc_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()

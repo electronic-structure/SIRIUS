@@ -174,7 +174,7 @@ class FFT3D
         #ifdef __GPU
         /// Whole FFT transformation on a GPU.
         template <int direction, bool use_reduction>
-        void transform_3d_serial_gpu(Gvec const& gvec__, double_complex* data__)
+        void transform_3d_serial_gpu(Gvec_partition const& gvec__, double_complex* data__)
         {
             switch (direction) {
                 case 1: {
@@ -218,7 +218,7 @@ class FFT3D
         
         /// Transform z-columns.
         template <int direction, bool use_reduction>
-        void transform_z_serial(Gvec const& gvec__,
+        void transform_z_serial(Gvec_partition const& gvec__,
                                 double_complex* data__,
                                 mdarray<double_complex, 1>& fft_buffer_aux__)
         {
@@ -230,7 +230,7 @@ class FFT3D
                 int tid = omp_get_thread_num();
                 #pragma omp for schedule(dynamic, 1)
                 for (int i = 0; i < gvec__.num_zcol(); i++) {
-                    int data_offset = gvec__.zcol(i).offset;
+                    int data_offset = gvec__.zcol_offs(i);
 
                     switch (direction) {
                         case 1: {
@@ -239,14 +239,15 @@ class FFT3D
                             /* load column into local FFT buffer */
                             for (size_t j = 0; j < gvec__.zcol(i).z.size(); j++) {
                                 /* coordinate inside FFT grid */
-                                int z = (gvec__.zcol(i).z[j] + grid_.size(2)) % grid_.size(2);
+                                int z = grid().coord_by_gvec(gvec__.zcol(i).z[j], 2);
+
                                 fftw_buffer_z_[tid][z] = data__[data_offset + j];
                             }
                             /* column with {x,y} = {0,0} has only non-negative z components */
                             if (use_reduction && !i) {
                                 /* load remaining part of {0,0,z} column */
                                 for (size_t j = 0; j < gvec__.zcol(0).z.size(); j++) {
-                                    int z = (-gvec__.zcol(0).z[j] + grid_.size(2)) % grid_.size(2);
+                                    int z = grid().coord_by_gvec(-gvec__.zcol(i).z[j], 2);
                                     fftw_buffer_z_[tid][z] = std::conj(data__[data_offset + j]);
                                 }
                             }
@@ -268,7 +269,7 @@ class FFT3D
 
                             /* store PW coefficients */
                             for (size_t j = 0; j < gvec__.zcol(i).z.size(); j++) {
-                                int z = (gvec__.zcol(i).z[j] + grid_.size(2)) % grid_.size(2);
+                                int z = grid().coord_by_gvec(gvec__.zcol(i).z[j], 2);
                                 data__[data_offset + j] = fftw_buffer_z_[tid][z] * norm;
                             }
                             break;
@@ -283,7 +284,7 @@ class FFT3D
 
         /// Parallel transform of z-columns.
         template <int direction, bool use_reduction>
-        void transform_z_parallel(Gvec const& gvec__,
+        void transform_z_parallel(Gvec_partition const& gvec__,
                                   double_complex* data__,
                                   mdarray<double_complex, 1>& fft_buffer_aux__)
         {
@@ -318,7 +319,7 @@ class FFT3D
                 for (int i = 0; i < num_zcol_local; i++) {
                     /* global index of column */
                     int icol = gvec__.zcol_distr_fft().offsets[rank] + i;
-                    int data_offset = gvec__.zcol(icol).offset;
+                    int data_offset = gvec__.zcol_offs(icol);
 
                     switch (direction) {
                         case 1: {
@@ -326,7 +327,7 @@ class FFT3D
                             std::fill(fftw_buffer_z_[tid], fftw_buffer_z_[tid] + grid_.size(2), 0);
                             /* load z column  of PW coefficients into buffer */
                             for (size_t j = 0; j < gvec__.zcol(icol).z.size(); j++) {
-                                int z = (gvec__.zcol(icol).z[j] + grid_.size(2)) % grid_.size(2);
+                                int z = grid().coord_by_gvec(gvec__.zcol(icol).z[j], 2);
                                 fftw_buffer_z_[tid][z] = data__[data_offset + j];
                             }
 
@@ -334,7 +335,7 @@ class FFT3D
                             if (use_reduction && !icol) {
                                 /* load remaining part of {0,0,z} column */
                                 for (size_t j = 0; j < gvec__.zcol(icol).z.size(); j++) {
-                                    int z = (-gvec__.zcol(icol).z[j] + grid_.size(2)) % grid_.size(2);
+                                    int z = grid().coord_by_gvec(-gvec__.zcol(icol).z[j], 2);
                                     fftw_buffer_z_[tid][z] = std::conj(data__[data_offset + j]);
                                 }
                             }
@@ -369,7 +370,7 @@ class FFT3D
 
                             /* save z column of PW coefficients*/
                             for (size_t j = 0; j < gvec__.zcol(icol).z.size(); j++) {
-                                int z = (gvec__.zcol(icol).z[j] + grid_.size(2)) % grid_.size(2);
+                                int z = grid().coord_by_gvec(gvec__.zcol(icol).z[j], 2);
                                 data__[data_offset + j] = fftw_buffer_z_[tid][z] * norm;
                             }
                             break;
@@ -406,7 +407,7 @@ class FFT3D
         
         /// Apply 2D FFT transformation to z-columns of one complex function.
         template <int direction, bool use_reduction>
-        void transform_xy(Gvec const& gvec__,
+        void transform_xy(Gvec_partition const& gvec__,
                           mdarray<double_complex, 1>& fft_buffer_aux__)
         {
             TIMER("sirius::FFT3D::transform_xy");
@@ -514,7 +515,7 @@ class FFT3D
 
         /// Apply 2D FFT transformation to z-columns of two real functions.
         template <int direction>
-        void transform_xy(Gvec const& gvec__,
+        void transform_xy(Gvec_partition const& gvec__,
                           mdarray<double_complex, 1>& fft_buffer_aux1__, 
                           mdarray<double_complex, 1>& fft_buffer_aux2__)
         {
@@ -844,21 +845,21 @@ class FFT3D
         }
 
         /// Prepare FFT driver to transfrom functions with gvec_fft_distr.
-        void prepare(Gvec const& gvec__)
+        void prepare(Gvec_partition const& gvec__)
         {
-            TIMER("sirius::FFT3D::prepare");
+            PROFILE_WITH_TIMER("sirius::FFT3D::prepare");
 
             int nc = gvec__.reduced() ? 2 : 1;
 
             z_col_pos_ = mdarray<int, 2>(gvec__.num_zcol(), nc, "FFT3D.z_col_pos_");
             #pragma omp parallel for
             for (int i = 0; i < gvec__.num_zcol(); i++) {
-                int x = (gvec__.zcol(i).x + grid_.size(0)) % grid_.size(0);
-                int y = (gvec__.zcol(i).y + grid_.size(1)) % grid_.size(1);
+                int x = grid().coord_by_gvec(gvec__.zcol(i).x, 0);
+                int y = grid().coord_by_gvec(gvec__.zcol(i).y, 1);
                 z_col_pos_(i, 0) = x + y * grid_.size(0);
                 if (gvec__.reduced()) {
-                    x = (-gvec__.zcol(i).x + grid_.size(0)) % grid_.size(0);
-                    y = (-gvec__.zcol(i).y + grid_.size(1)) % grid_.size(1);
+                    x = grid().coord_by_gvec(-gvec__.zcol(i).x, 0);
+                    y = grid().coord_by_gvec(-gvec__.zcol(i).y, 1);
                     z_col_pos_(i, 1) = x + y * grid_.size(0);
                 }
             }
@@ -873,9 +874,9 @@ class FFT3D
                     for (int i = 0; i < gvec__.num_zcol(); i++) {
                         for (size_t j = 0; j < gvec__.zcol(i).z.size(); j++) {
                             /* global index of the G-vector */
-                            size_t ig = gvec__.zcol(i).offset + j;
+                            size_t ig = gvec__.zcol_offs(i) + j;
                             /* coordinate inside FFT 1D bufer */
-                            int z = (gvec__.zcol(i).z[j] + grid_.size(2)) % grid_.size(2);
+                            int z = grid().coord_by_gvec(gvec__.zcol(i).z[j], 2);
                             z_col_map_[ig] = i * grid_.size(2) + z;
                         }
                     }
@@ -909,7 +910,7 @@ class FFT3D
                 
                 /* we will do async transfers between cpu and gpu */
                 if (!full_gpu_impl_) {
-                    //fft_buffer_.pin_memory();
+                    fft_buffer_.pin_memory();
                 }
                 fft_buffer_.allocate_on_device();
 
@@ -937,7 +938,7 @@ class FFT3D
         }
 
         template <int direction>
-        void transform(Gvec const& gvec__, double_complex* data__)
+        void transform(Gvec_partition const& gvec__, double_complex* data__)
         {
             TIMER("sirius::FFT3D::transform");
 
@@ -959,7 +960,7 @@ class FFT3D
                 fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux1_");
                 #ifdef __GPU
                 if (pu_ == GPU) {
-                    //fft_buffer_aux1_.pin_memory();
+                    fft_buffer_aux1_.pin_memory();
                     fft_buffer_aux1_.allocate_on_device();
                 }
                 #endif
@@ -1025,7 +1026,7 @@ class FFT3D
         }
 
         template <int direction>
-        void transform(Gvec const& gvec__, double_complex* data1__, double_complex* data2__)
+        void transform(Gvec_partition const& gvec__, double_complex* data1__, double_complex* data2__)
         {
             TIMER("sirius::FFT3D::transform");
 
@@ -1052,7 +1053,7 @@ class FFT3D
                 fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux1_");
                 #ifdef __GPU
                 if (pu_ == GPU) {
-                    //fft_buffer_aux1_.pin_memory();
+                    fft_buffer_aux1_.pin_memory();
                     fft_buffer_aux1_.allocate_on_device();
                 }
                 #endif
@@ -1061,8 +1062,8 @@ class FFT3D
                 fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux2_");
                 #ifdef __GPU
                 if (pu_ == GPU) {
-                    //fft_buffer_aux2_.pin_memory();
-                    //fft_buffer_aux2_.allocate_on_device();
+                    fft_buffer_aux2_.pin_memory();
+                    fft_buffer_aux2_.allocate_on_device();
                 }
                 #endif
             }

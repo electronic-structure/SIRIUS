@@ -2140,7 +2140,7 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
     Communicator comm(MPI_Comm_f2c(*fcomm__));
     comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
     
-    sim_ctx->fft().prepare(sim_ctx->gvec());
+    sim_ctx->fft().prepare(sim_ctx->gvec().partition());
     density->rho()->fft_transform(1);
     sim_ctx->fft().dismiss();
 }

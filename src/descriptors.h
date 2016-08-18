@@ -250,7 +250,7 @@ struct block_data_descriptor
 
     block_data_descriptor(int num_ranks__) : num_ranks(num_ranks__)
     {
-        counts = std::vector<int>(num_ranks, 0);
+        counts  = std::vector<int>(num_ranks, 0);
         offsets = std::vector<int>(num_ranks, 0);
     }
 
@@ -269,9 +269,6 @@ struct z_column_descriptor
 
     /// Z-coordinates of the column.
     std::vector<int> z;
-
-    /// Offset of this column in local data buffer.
-    int offset{-1};
 
     z_column_descriptor()
     {

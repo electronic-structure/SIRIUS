@@ -24,16 +24,16 @@ void test1(vector3d<int> const& dims__, double cutoff__)
         exit(1);
     }
 
-    fft.prepare(gvec_r);
+    fft.prepare(gvec_r.partition());
 
     printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
     printf("num_gvec_loc: %i %i\n", gvec.gvec_count(mpi_comm_world().rank()), gvec_r.gvec_count(mpi_comm_world().rank()));
     printf("num_z_col: %i, num_z_col_reduced: %i\n", gvec.num_zcol(), gvec_r.num_zcol());
 
-    mdarray<double_complex, 1> phi(gvec_r.gvec_count_fft());
-    for (int i = 0; i < gvec_r.gvec_count_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
+    mdarray<double_complex, 1> phi(gvec_r.partition().gvec_count_fft());
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
     phi(0) = 1.0;
-    fft.transform<1>(gvec_r, &phi[0]);
+    fft.transform<1>(gvec_r.partition(), &phi[0]);
 
     for (int i = 0; i < fft.local_size(); i++)
     {
@@ -43,12 +43,12 @@ void test1(vector3d<int> const& dims__, double cutoff__)
             exit(1);
         }
     }
-    mdarray<double_complex, 1> phi1(gvec_r.gvec_count_fft());
-    fft.transform<-1>(gvec_r, &phi1[0]);
+    mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft());
+    fft.transform<-1>(gvec_r.partition(), &phi1[0]);
 
     double rms = 0;
-    for (int i = 0; i < gvec_r.gvec_count_fft(); i++) rms += std::pow(std::abs(phi(i) - phi1(i)), 2);
-    rms = std::sqrt(rms / gvec_r.gvec_count_fft());
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) rms += std::pow(std::abs(phi(i) - phi1(i)), 2);
+    rms = std::sqrt(rms / gvec_r.partition().gvec_count_fft());
     printf("rms: %18.12f\n", rms);
     if (rms > 1e-13)
     {
@@ -70,14 +70,14 @@ void test2(vector3d<int> const& dims__, double cutoff__)
 
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
 
-    fft.prepare(gvec_r);
+    fft.prepare(gvec_r.partition());
 
-    mdarray<double_complex, 1> phi1(gvec_r.gvec_count_fft());
-    mdarray<double_complex, 1> phi2(gvec_r.gvec_count_fft());
+    mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft());
+    mdarray<double_complex, 1> phi2(gvec_r.partition().gvec_count_fft());
     mdarray<double, 1> phi1_rg(fft.local_size());
     mdarray<double, 1> phi2_rg(fft.local_size());
 
-    for (int i = 0; i < gvec_r.gvec_count_fft(); i++)
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++)
     {
         phi1(i) = type_wrapper<double_complex>::random();
         phi2(i) = type_wrapper<double_complex>::random();
@@ -85,13 +85,13 @@ void test2(vector3d<int> const& dims__, double cutoff__)
     phi1(0) = 1.0;
     phi2(0) = 1.0;
 
-    fft.transform<1>(gvec_r, &phi1(0));
+    fft.transform<1>(gvec_r.partition(), &phi1(0));
     fft.output(&phi1_rg(0));
 
-    fft.transform<1>(gvec_r, &phi2(0));
+    fft.transform<1>(gvec_r.partition(), &phi2(0));
     fft.output(&phi2_rg(0));
 
-    fft.transform<1>(gvec_r, &phi1(0), &phi2(0));
+    fft.transform<1>(gvec_r.partition(), &phi1(0), &phi2(0));
 
     for (int i = 0; i < fft.local_size(); i++)
     {
@@ -105,12 +105,12 @@ void test2(vector3d<int> const& dims__, double cutoff__)
         }
     }
 
-    mdarray<double_complex, 1> phi1_bt(gvec_r.gvec_count_fft());
-    mdarray<double_complex, 1> phi2_bt(gvec_r.gvec_count_fft());
-    fft.transform<-1>(gvec_r, &phi1_bt(0), &phi2_bt(0));
+    mdarray<double_complex, 1> phi1_bt(gvec_r.partition().gvec_count_fft());
+    mdarray<double_complex, 1> phi2_bt(gvec_r.partition().gvec_count_fft());
+    fft.transform<-1>(gvec_r.partition(), &phi1_bt(0), &phi2_bt(0));
 
     double diff = 0;
-    for (int i = 0; i < gvec_r.gvec_count_fft(); i++)
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++)
     {
         diff += std::abs(phi1(i) - phi1_bt(i));
         diff += std::abs(phi2(i) - phi2_bt(i));

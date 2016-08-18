@@ -381,7 +381,7 @@ void Potential::set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
     // set temporary array wrapper
     mdarray<double,4> beffmt_tmp(beffmt, ctx_.lmmax_pot(), unit_cell_.max_num_mt_points(), 
                                  unit_cell_.num_atoms(), ctx_.num_mag_dims());
-    mdarray<double,2> beffit_tmp(beffit, fft_.size(), ctx_.num_mag_dims());
+    mdarray<double,2> beffit_tmp(beffit, ctx_.fft().size(), ctx_.num_mag_dims());
     
     if (ctx_.num_mag_dims() == 1)
     {

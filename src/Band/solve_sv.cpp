@@ -15,7 +15,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         TERMINATE("eigen-value solver is not parallel");
     }
 
-    ctx_.fft().prepare(ctx_.gvec());
+    ctx_.fft().prepare(ctx_.gvec().partition());
 
     /* number of h|\psi> components */
     int nhpsi = (ctx_.num_mag_dims() == 3) ? 3 : ctx_.num_spins();

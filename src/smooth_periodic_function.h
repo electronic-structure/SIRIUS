@@ -66,7 +66,7 @@ class Smooth_periodic_function
               gvec_(&gvec__)
         {
             f_rg_ = mdarray<T, 1>(fft_->local_size());
-            f_pw_local_ = mdarray<double_complex, 1>(gvec_->gvec_count_fft());
+            f_pw_local_ = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft());
         }
 
         inline T& f_rg(int ir__)
@@ -112,14 +112,14 @@ class Smooth_periodic_function
             {
                 case 1:
                 {
-                    fft_->transform<1>(*gvec_, &f_pw_local_(0));
+                    fft_->transform<1>(gvec_->partition(), &f_pw_local_(0));
                     fft_->output(&f_rg_(0));
                     break;
                 }
                 case -1:
                 {
                     fft_->input(&f_rg_(0));
-                    fft_->transform<-1>(*gvec_, &f_pw_local_(0));
+                    fft_->transform<-1>(gvec_->partition(), &f_pw_local_(0));
                     break;
                 }
                 default:
@@ -170,9 +170,9 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
     Smooth_periodic_function_gradient<double> g(f__);
 
     #pragma omp parallel for
-    for (int igloc = 0; igloc < f__.gvec().gvec_count_fft(); igloc++)
+    for (int igloc = 0; igloc < f__.gvec().partition().gvec_count_fft(); igloc++)
     {
-        int ig = f__.gvec().gvec_offset_fft() + igloc;
+        int ig = f__.gvec().partition().gvec_offset_fft() + igloc;
 
         auto G = f__.gvec().gvec_cart(ig);
         for (int x: {0, 1, 2}) g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
@@ -186,9 +186,9 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
     Smooth_periodic_function<double> g(f__.fft(), f__.gvec());
     
     #pragma omp parallel for
-    for (int igloc = 0; igloc < f__.gvec().gvec_count_fft(); igloc++)
+    for (int igloc = 0; igloc < f__.gvec().partition().gvec_count_fft(); igloc++)
     {
-        int ig = f__.gvec().gvec_offset_fft() + igloc;
+        int ig = f__.gvec().partition().gvec_offset_fft() + igloc;
 
         auto G = f__.gvec().gvec_cart(ig);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);

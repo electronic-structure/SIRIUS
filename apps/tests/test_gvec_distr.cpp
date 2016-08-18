@@ -7,7 +7,9 @@ void test_gvec_distr(double cutoff__)
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), false);
+    Gvec gvec;
+
+    gvec = Gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), false);
 
     MPI_grid mpi_grid(mpi_comm_world());
 
@@ -17,9 +19,17 @@ void test_gvec_distr(double cutoff__)
     pout.printf("num_gvec : %i\n", gvec.num_gvec());
     pout.printf("num_gvec_loc : %i\n", gvec.gvec_count(mpi_comm_world().rank()));
     pout.printf("num_zcols : %i\n", gvec.num_zcol());
-    pout.printf("num_gvec_fft: %i\n", gvec.gvec_count_fft());
-    pout.printf("offset_gvec_fft: %i\n", gvec.gvec_offset_fft());
-    pout.printf("num_zcols_local : %i\n", gvec.zcol_distr_fft().counts[mpi_comm_world().rank()]);
+    pout.printf("num_gvec_fft: %i\n", gvec.partition().gvec_count_fft());
+    pout.printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
+    pout.printf("num_zcols_local : %i\n", gvec.partition().zcol_distr_fft().counts[mpi_comm_world().rank()]);
+
+    auto& gvp = gvec.partition();
+
+    for (int i = 0; i < gvp.num_zcol(); i++) {
+        for (size_t j = 0; j < gvp.zcol(i).z.size(); j++) {
+            printf("icol: %i idx: %li z: %i\n", i, j, gvp.zcol(i).z[j]);
+        }
+    }
 }
 
 void test_gvec(double cutoff__, bool reduce__)

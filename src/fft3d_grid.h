@@ -85,6 +85,12 @@ class FFT3D_grid
             return vector3d<int>(i0__, i1__, i2__);
         }
 
+        inline int coord_by_gvec(int i__, int idim__) const
+        {
+            if (i__ < 0) i__ += grid_size_[idim__];
+            return i__;
+        }
+
         inline vector3d<int> gvec_by_coord(int x__, int y__, int z__) const
         {
             if (x__ > grid_limits_[0].second) x__ -= grid_size_[0];

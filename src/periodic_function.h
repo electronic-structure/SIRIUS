@@ -118,7 +118,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
             if (allocate_pw__) {
                 f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
-                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().gvec_offset_fft()],
+                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
                                                                this->fft_->local_size());
             }
 
@@ -423,7 +423,8 @@ class Periodic_function: public Smooth_periodic_function<T>
             /* collect all PW coefficients */
             if (direction__ == -1) {
                 runtime::Timer t("sirius::Periodic_function::fft_transform|comm");
-                this->fft_->comm().allgather(&f_pw_(0), this->gvec().gvec_offset_fft(), this->gvec().gvec_count_fft());
+                this->fft_->comm().allgather(&f_pw_(0), this->gvec().partition().gvec_offset_fft(),
+                                             this->gvec().partition().gvec_count_fft());
             }
         }
         

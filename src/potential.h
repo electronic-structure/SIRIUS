@@ -51,9 +51,6 @@ class Potential
 
         Communicator const& comm_;
 
-        /// Alias for FFT driver.
-        FFT3D& fft_;
-
         Periodic_function<double>* effective_potential_;
 
         Periodic_function<double>* effective_magnetic_field_[3];

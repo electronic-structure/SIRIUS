@@ -24,6 +24,7 @@ void Simulation_context::init_fft()
             /* serial FFT in Hloc */
             mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
         } else {
+            /* parallel FFT in Hloc */
             mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
                                                                          mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
         }

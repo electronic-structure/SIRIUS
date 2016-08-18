@@ -13,30 +13,27 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu__), gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), mpi_grid.communicator(1 << 0), false);
 
-    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
-
-    std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft.local_size(), 2.0);
 
     if (mpi_comm_world().rank() == 0)
     {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
-        printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
+        printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
         printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
-        printf("number of z-columns: %i\n", gvec.num_z_cols());
+        printf("number of z-columns: %i\n", gvec.num_zcol());
         if (use_gpu__) printf("GPU workload: %f\n", gpu_workload__);
     }
 
-    fft.prepare(gvec_fft_distr);
+    fft.prepare(gvec.partition());
     
-    Hloc_operator hloc(fft, gvec_fft_distr, veff);
+    Hloc_operator hloc(fft, gvec.partition(), mpi_grid.communicator(1 << 1), veff);
 
-    int num_gvec_loc = gvec.num_gvec(mpi_grid.communicator().rank());
+    int num_gvec_loc = gvec.gvec_count(mpi_grid.communicator().rank());
 
     Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, CPU);
     for (int i = 0; i < 4 * num_bands__; i++)

@@ -334,8 +334,8 @@ class Density
             auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
             std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
-            ctx_.fft().prepare(ctx_.gvec());
-            ctx_.fft().transform<1>(ctx_.gvec(), &v[ctx_.gvec().gvec_offset_fft()]);
+            ctx_.fft().prepare(ctx_.gvec().partition());
+            ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
             ctx_.fft().dismiss();
         }
@@ -617,7 +617,7 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                ctx_.fft().prepare(ctx_.gvec());
+                ctx_.fft().prepare(ctx_.gvec().partition());
                 rho_->fft_transform(1);
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                     magnetization_[j]->fft_transform(1);
