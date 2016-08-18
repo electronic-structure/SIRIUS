@@ -202,7 +202,7 @@ class Eigenproblem_lapack: public Eigenproblem
             assert(nevec <= matrix_size);
 
             int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size, 0, 0, 0);
-            int lwork = (nb + 3) * matrix_size;
+            int lwork = (nb + 3) * matrix_size + 1024;
             int liwork = 5 * matrix_size;
             
             std::vector<double> work(lwork);
@@ -221,11 +221,11 @@ class Eigenproblem_lapack: public Eigenproblem
 
             if (m != nevec)
             {
-                std::stringstream s;
-                s << "not all eigen-values are found" << std::endl
-                  << "target number of eign-values: " << nevec << std::endl
-                  << "number of eign-values found: " << m;
-                WARNING(s);
+                //== std::stringstream s;
+                //== s << "not all eigen-values are found" << std::endl
+                //==   << "target number of eign-values: " << nevec << std::endl
+                //==   << "number of eign-values found: " << m;
+                //== WARNING(s);
                 return 1;
             }
 

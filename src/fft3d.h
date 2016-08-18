@@ -966,39 +966,37 @@ class FFT3D
                 #endif
             }
 
+            #ifdef __GPU
+            if (comm_.size() == 1 && full_gpu_impl_) {
+                if (gvec__.reduced()) {
+                    TERMINATE_NOT_IMPLEMENTED
+                } else {
+                    transform_3d_serial_gpu<direction, false>(gvec__, data__);
+                }
+                return;
+            }
+            #endif
+
             /* single node FFT */
             if (comm_.size() == 1) {
-                /* special case when FFT is fully on GPU */
-                if (full_gpu_impl_) {
-                    #ifdef __GPU
-                    if (gvec__.reduced()) {
-                        TERMINATE_NOT_IMPLEMENTED
-                    } else {
-                       transform_3d_serial_gpu<direction, false>(gvec__, data__);
+                switch (direction) {
+                    case 1: {
+                        if (gvec__.reduced()) {
+                            transform_z_serial<1, true>(gvec__, data__, fft_buffer_aux1_);
+                            transform_xy<1, true>(gvec__, fft_buffer_aux1_);
+                        } else {
+                            transform_z_serial<1, false>(gvec__, data__, fft_buffer_aux1_);
+                            transform_xy<1, false>(gvec__, fft_buffer_aux1_);
+                        }
+                        break;
                     }
-                    #else
-                    TERMINATE_NO_GPU
-                    #endif
-                } else {
-                    switch (direction) {
-                        case 1: {
-                            if (gvec__.reduced()) {
-                                transform_z_serial<1, true>(gvec__, data__, fft_buffer_aux1_);
-                                transform_xy<1, true>(gvec__, fft_buffer_aux1_);
-                            } else {
-                                transform_z_serial<1, false>(gvec__, data__, fft_buffer_aux1_);
-                                transform_xy<1, false>(gvec__, fft_buffer_aux1_);
-                            }
-                            break;
-                        }
-                        case -1: {
-                            transform_xy<-1, false>(gvec__, fft_buffer_aux1_);
-                            transform_z_serial<-1, false>(gvec__, data__, fft_buffer_aux1_);
-                            break;
-                        }
-                        default: {
-                            TERMINATE("wrong direction");
-                        }
+                    case -1: {
+                        transform_xy<-1, false>(gvec__, fft_buffer_aux1_);
+                        transform_z_serial<-1, false>(gvec__, data__, fft_buffer_aux1_);
+                        break;
+                    }
+                    default: {
+                        TERMINATE("wrong direction");
                     }
                 }
             } else { /* parallel transform */
