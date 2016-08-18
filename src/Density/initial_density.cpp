@@ -11,8 +11,6 @@ void Density::initial_density()
 
     zero();
 
-    std::cout << "num_zcol " << ctx_.gvec().num_zcol() << " " << ctx_.gvec().partition().num_zcol() << std::endl;
-
     ctx_.fft().prepare(ctx_.gvec().partition());
 
     if (ctx_.full_potential()) {
