@@ -155,7 +155,7 @@ class FFT3D
         std::vector<fftw_plan> plan_forward_xy_;
 
         #ifdef __GPU
-        bool full_gpu_impl_{false};
+        bool gpu_only_impl_{false};
         cufftHandle cufft_plan_xy_;
         cufftHandle cufft_plan_z_;
         mdarray<char, 1> cufft_work_buf_;
@@ -431,9 +431,11 @@ class FFT3D
                         break;
                     }
                     case -1: {
-                        /* stream #1 copies part of FFT buffer to CPU */
-                        acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_xy_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_xy_ * size_xy),
-                                     size_xy * (local_size_z_ - cufft_nbatch_xy_), 1);
+                        if (!gpu_only_impl_) {
+                            /* stream #1 copies part of FFT buffer to CPU */
+                            acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_xy_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_xy_ * size_xy),
+                                         size_xy * (local_size_z_ - cufft_nbatch_xy_), 1);
+                        }
                         /* stream #0 executes FFT */
                         cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
@@ -500,7 +502,7 @@ class FFT3D
                 
             #ifdef __GPU
             if (pu_ == GPU) {
-                if (direction == 1) {
+                if (direction == 1 && !gpu_only_impl_) {
                     /* stream #1 copies data to GPU */
                     acc::copyin(fft_buffer_.at<GPU>(cufft_nbatch_xy_ * size_xy), fft_buffer_.at<CPU>(cufft_nbatch_xy_ * size_xy),
                                 size_xy * (local_size_z_ - cufft_nbatch_xy_), 1);
@@ -703,7 +705,7 @@ class FFT3D
                 cufft_set_stream(cufft_plan_xy_, 0);
 
                 if (comm_.size() == 1 && cufft_nbatch_xy_ == grid_.size(2)) {
-                    full_gpu_impl_ = true;
+                    gpu_only_impl_ = true;
                     cufft_create_plan_handle(&cufft_plan_z_);
                     cufft_set_stream(cufft_plan_z_, 0);
                 }
@@ -726,7 +728,7 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU) {
                 cufft_destroy_plan_handle(cufft_plan_xy_);
-                if (full_gpu_impl_) {
+                if (gpu_only_impl_) {
                     cufft_destroy_plan_handle(cufft_plan_z_);
                 }
             }
@@ -838,10 +840,21 @@ class FFT3D
         {
             return (comm_.size() != 1);
         }
-
+        
+        /// True if GPU device is used.
         inline bool hybrid() const
         {
             return (pu_ == GPU);
+        }
+
+        /// True if fully executed on a GPU device.
+        inline bool gpu_only() const
+        {
+            #ifdef __GPU
+            return gpu_only_impl_;
+            #else
+            return false;
+            #endif
         }
 
         /// Prepare FFT driver to transfrom functions with gvec_fft_distr.
@@ -868,7 +881,7 @@ class FFT3D
             if (pu_ == GPU) {
                 /* for the full GPU transform */
                 size_t work_size;
-                if (full_gpu_impl_) {
+                if (gpu_only_impl_) {
                     z_col_map_ = mdarray<int, 1>(gvec__.num_gvec(), "FFT3D.z_col_map_");
                     #pragma omp parallel for
                     for (int i = 0; i < gvec__.num_zcol(); i++) {
@@ -901,7 +914,7 @@ class FFT3D
                 cufft_work_buf_.allocate_on_device();
                 /* set work area for cufft */ 
                 cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
-                if (full_gpu_impl_) {
+                if (gpu_only_impl_) {
                     cufft_set_work_area(cufft_plan_z_, cufft_work_buf_.at<GPU>());
                 }
 
@@ -909,7 +922,7 @@ class FFT3D
                 fft_buffer_aux2_.allocate_on_device();
                 
                 /* we will do async transfers between cpu and gpu */
-                if (!full_gpu_impl_) {
+                if (!gpu_only_impl_) {
                     fft_buffer_.pin_memory();
                 }
                 fft_buffer_.allocate_on_device();
@@ -967,7 +980,7 @@ class FFT3D
             }
 
             #ifdef __GPU
-            if (comm_.size() == 1 && full_gpu_impl_) {
+            if (comm_.size() == 1 && gpu_only_impl_ && cuda_check_device_ptr(data__)) {
                 if (gvec__.reduced()) {
                     TERMINATE_NOT_IMPLEMENTED
                 } else {

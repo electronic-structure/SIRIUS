@@ -3,7 +3,7 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
-       sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
+       sht.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
        xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
        simulation_context.cpp wave_functions.cpp beta_projectors.cpp non_local_operator.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
@@ -80,7 +80,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \
 	Kernels/sum_q_pw_dm_pw.o \
-	Kernels/generate_phase_factors.o
+	Kernels/generate_phase_factors.o \
+    Kernels/add_pw_ekin.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))

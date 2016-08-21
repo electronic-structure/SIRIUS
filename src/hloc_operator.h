@@ -28,6 +28,13 @@
 #include "wave_functions.h"
 #include "periodic_function.h"
 
+#ifdef __GPU
+extern "C" void add_pw_ekin_gpu(int num_gvec__,
+                                double const* pw_ekin__,
+                                cuDoubleComplex const* vphi__,
+                                cuDoubleComplex* hphi__);
+#endif
+
 namespace sirius {
 
 class Hloc_operator
@@ -40,7 +47,7 @@ class Hloc_operator
 
         Communicator const& comm_col_;
 
-        std::vector<double> pw_ekin_;
+        mdarray<double, 1> pw_ekin_;
 
         mdarray<double, 2> veff_vec_;
 
@@ -62,7 +69,8 @@ class Hloc_operator
               gkvec_(gkvec__),
               comm_col_(comm_col__)
         {
-            pw_ekin_ = std::vector<double>(gkvec_.gvec_count_fft(), 0);
+            pw_ekin_ = mdarray<double, 1>(gkvec_.gvec_count_fft(), "pw_ekin_");
+            pw_ekin_.zero();
             
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), 1);
             std::memcpy(&veff_vec_[0], &veff__[0], fft_.local_size() * sizeof(double));
@@ -74,6 +82,12 @@ class Hloc_operator
             if (fft_.hybrid()) {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
+            }
+            if (fft_.gpu_only()) {
+                vphi1_.allocate_on_device();
+                if (gkvec_.reduced()) {
+                    vphi2_.allocate_on_device();
+                }
             }
             #endif
         }
@@ -100,7 +114,7 @@ class Hloc_operator
             PROFILE();
 
             /* cache kinteic energy of plane-waves */
-            pw_ekin_ = std::vector<double>(gkvec_.gvec_count_fft());
+            pw_ekin_ = mdarray<double, 1>(gkvec_.gvec_count_fft());
             for (int ig_loc = 0; ig_loc < gkvec_.gvec_count_fft(); ig_loc++) {
                 /* global index of G-vector */
                 int ig = gkvec_.gvec_offset_fft() + ig_loc;
@@ -110,7 +124,8 @@ class Hloc_operator
             }
             #ifdef __PRINT_OBJECT_CHECKSUM
             {
-                auto cs = std::accumulate(pw_ekin_.begin(), pw_ekin_.end(), 0.0);
+                //auto cs = std::accumulate(pw_ekin_.begin(), pw_ekin_.end(), 0.0);
+                auto cs = pw_ekin_.checksum();
                 fft_.comm().allreduce(&cs, 1);
                 DUMP("checksum(pw_ekin): %18.10f", cs);
             }
@@ -173,6 +188,14 @@ class Hloc_operator
             if (fft_.hybrid()) {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
+                pw_ekin_.allocate_on_device();
+                pw_ekin_.copy_to_device();
+            }
+            if (fft_.gpu_only()) {
+                vphi1_.allocate_on_device();
+                if (gkvec_.reduced()) {
+                    vphi2_.allocate_on_device();
+                }
             }
             #endif
         }
@@ -224,7 +247,13 @@ class Hloc_operator
             /* if we don't have G-vector reductions, first = 0 and we start a normal loop */
             for (int i = first; i < hphi__.spl_num_swapped().local_size(); i++) {
                 /* phi(G) -> phi(r) */
-                fft_.transform<1>(gkvec_, hphi__[i]);
+                if (fft_.gpu_only()) {
+                    #ifdef __GPU
+                    fft_.transform<1>(gkvec_, hphi__.coeffs_swapped().at<GPU>(0, i));
+                    #endif
+                } else {
+                    fft_.transform<1>(gkvec_, hphi__[i]);
+                }
                 /* multiply by effective potential */
                 if (fft_.hybrid()) {
                     #ifdef __GPU
@@ -239,11 +268,25 @@ class Hloc_operator
                     }
                 }
                 /* V(r)phi(r) -> [V*phi](G) */
-                fft_.transform<-1>(gkvec_, &vphi1_[0]);
+                if (fft_.gpu_only()) {
+                    #ifdef __GPU
+                    fft_.transform<-1>(gkvec_, vphi1_.at<GPU>());
+                    #endif
+                } else {
+                    fft_.transform<-1>(gkvec_, vphi1_.at<CPU>());
+                }
+
                 /* add kinetic energy */
-                #pragma omp parallel for
-                for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
-                    hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
+                if (fft_.gpu_only()) {
+                    #ifdef __GPU
+                    add_pw_ekin_gpu(gkvec_.gvec_count_fft(), pw_ekin_.at<GPU>(), vphi1_.at<GPU>(),
+                                    hphi__.coeffs_swapped().at<GPU>(0, i));
+                    #endif
+                } else {
+                    #pragma omp parallel for
+                    for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
+                        hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
+                    }
                 }
             }
 

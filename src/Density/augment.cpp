@@ -172,28 +172,35 @@ void Density::augment(K_set& ks__)
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
                 {
-
-                    double ar = 0;
-                    double ai = 0;
+                    //double ar = 0;
+                    //double ai = 0;
+                    double_complex zsum(0, 0);
                     /* get contribution from non-diagonal terms */
                     for (int i = 0; i < nbf * (nbf + 1) / 2; i++)
                     {
-                        double q = 2.0 * ctx_.augmentation_op(iat).q_pw(i, igloc).real();
+                        double_complex z1 = ctx_.augmentation_op(iat).q_pw(i, igloc);
+                        //double q = 2.0 * ctx_.augmentation_op(iat).q_pw(i, igloc).real();
+                        double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
 
                         /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                        ar += dm_pw(i, 2 * igloc)     * q;
-                        ai += dm_pw(i, 2 * igloc + 1) * q;
+                        //ar += dm_pw(i, 2 * igloc)     * q;
+                        //ai += dm_pw(i, 2 * igloc + 1) * q;
+                        zsum += z1 * z2 * 2.0;
                     }
                     /* remove one diagonal contribution which was double-counted */
                     for (int xi = 0; xi < nbf; xi++)
                     {
                         int i = xi * (xi + 1) / 2 + xi;
-                        double q = ctx_.augmentation_op(iat).q_pw(i, igloc).real();
-                        ar -= dm_pw(i, 2 * igloc)     * q;
-                        ai -= dm_pw(i, 2 * igloc + 1) * q;
+                        double_complex z1 = ctx_.augmentation_op(iat).q_pw(i, igloc);
+                        double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
+                        zsum -= z1 * z2;
+
+                        //double q = ctx_.augmentation_op(iat).q_pw(i, igloc).real();
+                        //ar -= dm_pw(i, 2 * igloc)     * q;
+                        //ai -= dm_pw(i, 2 * igloc + 1) * q;
 
                     }
-                    rho_vec[iv]->f_pw(spl_gvec[igloc]) += double_complex(ar, ai);
+                    rho_vec[iv]->f_pw(spl_gvec[igloc]) += zsum; //double_complex(ar, ai);
                 }
                 t4.stop();
             }

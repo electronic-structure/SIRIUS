@@ -162,8 +162,9 @@ void cuda_create_streams(int num_streams__)
     cuda_streams = std::vector<cudaStream_t>(num_streams__);
 
     //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
-    for (size_t i = 0; i < cuda_streams.size(); i++)
+    for (size_t i = 0; i < cuda_streams.size(); i++) {
         CALL_CUDA(cudaStreamCreate, (&cuda_streams[i]));
+    }
 }
 
 int get_num_cuda_streams()
@@ -173,8 +174,9 @@ int get_num_cuda_streams()
 
 void cuda_destroy_streams()
 {
-    for (size_t i = 0; i < cuda_streams.size(); i++) 
+    for (size_t i = 0; i < cuda_streams.size(); i++) {
         CALL_CUDA(cudaStreamDestroy, (cuda_streams[i]));
+    }
 }
 
 void cuda_stream_synchronize(int stream_id__)
@@ -273,6 +275,19 @@ void cuda_copy2d_to_host(void* dst__, size_t ld1__, const void* src__, size_t ld
                          size_t ncol__, int elem_size__)
 {
     CALL_CUDA(cudaMemcpy2D, (dst__, ld1__ * elem_size__, src__, ld2__ * elem_size__, nrow__ * elem_size__, ncol__, cudaMemcpyDeviceToHost));
+}
+
+bool cuda_check_device_ptr(void const* ptr__)
+{
+    cudaPointerAttributes attr;
+    cudaError_t error = cudaPointerGetAttributes(&attr, ptr__);
+    if (error != cudaSuccess) {
+        return false;
+    }
+    if (attr.memoryType == cudaMemoryTypeDevice) {
+        return true;
+    }
+    return false;
 }
 
 } // extern "C"

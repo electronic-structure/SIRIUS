@@ -42,7 +42,7 @@ void Simulation_context::init_fft()
         /* create FFT driver for coarse mesh */
         fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
                                                        mpi_grid_fft_vloc_->communicator(1 << 0),
-                                                       processing_unit(), 0.9));
+                                                       processing_unit(), 1.0));
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),

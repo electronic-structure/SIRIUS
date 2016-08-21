@@ -741,6 +741,11 @@ class mdarray_base
                 pinned_ = false;
             }
         }
+
+        inline bool allocated_on_device() const // TODO: better name
+        {
+            return (ptr_device_ != nullptr);
+        }
         #endif
 };
 

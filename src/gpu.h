@@ -88,6 +88,8 @@ void cuda_device_reset();
 
 void cuda_check_last_error();
 
+bool cuda_check_device_ptr(void const* ptr__);
+
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                   cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                   int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);

@@ -99,6 +99,11 @@ class Wave_functions<false>
             return &wf_coeffs_swapped_(0, i__);
         }
 
+        mdarray<double_complex, 2>& coeffs_swapped()
+        {
+            return wf_coeffs_swapped_;
+        }
+
         inline int num_gvec_loc() const
         {
             return num_gvec_loc_;
@@ -111,16 +116,18 @@ class Wave_functions<false>
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__, int j0__)
         {
-            if (pu_ == CPU)
-            {
-                std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
+            switch (pu_) {
+                case CPU: {
+                    std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    acc::copy(wf_coeffs_.at<GPU>(0, j0__), src__.wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc_ * n__);
+                    #endif
+                    break;
+                }
             }
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                acc::copy(wf_coeffs_.at<GPU>(0, j0__), src__.wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc_ * n__);
-            }
-            #endif
         }
 
         inline void copy_from(Wave_functions const& src__, int i0__, int n__)

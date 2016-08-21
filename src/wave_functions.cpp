@@ -11,7 +11,22 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_partition con
 
     /* trivial case */
     if (comm_col__.size() == 1) {
-        wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_(0, idx0__), num_gvec_loc_, n__);
+        switch (pu_) {
+            case CPU: {
+                wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_(0, idx0__), num_gvec_loc_, n__);
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                if (wf_coeffs_.allocated_on_device()) {
+                    wf_coeffs_swapped_ = mdarray<double_complex, 2>(wf_coeffs_.at<CPU>(0, idx0__), wf_coeffs_.at<GPU>(0, idx0__), num_gvec_loc_, n__);
+                } else {
+                    wf_coeffs_swapped_ = mdarray<double_complex, 2>(wf_coeffs_.at<CPU>(0, idx0__), num_gvec_loc_, n__);
+                }
+                #endif
+                break;
+            }
+        }
         return;
     } else {
         /* maximum local number of wave-functions */
@@ -31,8 +46,7 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_partition con
     
     /* send and recieve dimensions */
     block_data_descriptor sd(comm_col__.size()), rd(comm_col__.size());
-    for (int j = 0; j < comm_col__.size(); j++)
-    {
+    for (int j = 0; j < comm_col__.size(); j++) {
         sd.counts[j] = spl_n_.local_size(j)                 * gvec__.gvec_fft_slab().counts[comm_col__.rank()];
         rd.counts[j] = spl_n_.local_size(comm_col__.rank()) * gvec__.gvec_fft_slab().counts[j];
     }
@@ -44,10 +58,8 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_partition con
                       
     /* reorder recieved blocks */
     #pragma omp parallel for
-    for (int i = 0; i < n_loc; i++)
-    {
-        for (int j = 0; j < comm_col__.size(); j++)
-        {
+    for (int i = 0; i < n_loc; i++) {
+        for (int j = 0; j < comm_col__.size(); j++) {
             int offset = gvec__.gvec_fft_slab().offsets[j];
             int count  = gvec__.gvec_fft_slab().counts[j];
             std::memcpy(&wf_coeffs_swapped_(offset, i), &send_recv_buf_[offset * n_loc + count * i], count * sizeof(double_complex));

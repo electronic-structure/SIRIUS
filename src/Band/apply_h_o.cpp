@@ -24,18 +24,24 @@ void Band::apply_h_o(K_point* kp__,
     hphi__.copy_from(phi__, N__, n__);
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) hphi__.copy_to_host(N__, n__);
+    if (ctx_.processing_unit() == GPU && !ctx_.fft_coarse().gpu_only()) {
+        hphi__.copy_to_host(N__, n__);
+    }
     #endif
     /* apply local part of Hamiltonian */
     h_op.apply(ispn__, hphi__, N__, n__);
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) hphi__.copy_to_device(N__, n__);
+    if (ctx_.processing_unit() == GPU && !ctx_.fft_coarse().gpu_only()) {
+        hphi__.copy_to_device(N__, n__);
+    }
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) phi__.copy_to_host(N__, n__);
+        if (ctx_.processing_unit() == GPU) {
+            phi__.copy_to_host(N__, n__);
+        }
         #endif
         auto cs1 = mdarray<double_complex, 1>(&phi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
         auto cs2 = mdarray<double_complex, 1>(&hphi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
@@ -53,19 +59,15 @@ void Band::apply_h_o(K_point* kp__,
         return;
     }
 
-    for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++)
-    {
+    for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++) {
         kp__->beta_projectors().generate(i);
 
         kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
 
-        if (!ctx_.iterative_solver_input_section().real_space_prj_)
-        {
+        if (!ctx_.iterative_solver_input_section().real_space_prj_) {
             d_op.apply(i, ispn__, hphi__, N__, n__);
             q_op.apply(i, 0, ophi__, N__, n__);
-        }
-        else
-        {
+        } else {
             STOP();
             //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
         }
