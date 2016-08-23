@@ -91,6 +91,11 @@ class Simulation_context: public Simulation_parameters
         ev_solver_t gen_evp_solver_type_{ev_lapack};
 
         mdarray<double_complex, 3> phase_factors_;
+        
+        #ifdef __GPU
+        mdarray<int, 2> gvec_coord_;
+        std::vector< mdarray<double, 2> > atom_coord_;
+        #endif
 
         double time_active_;
         
@@ -278,7 +283,7 @@ class Simulation_context: public Simulation_parameters
             return gen_evp_solver_type_;
         }
 
-        Augmentation_operator const& augmentation_op(int iat__) const
+        inline Augmentation_operator const& augmentation_op(int iat__) const
         {
             return augmentation_op_[iat__];
         }
@@ -288,6 +293,16 @@ class Simulation_context: public Simulation_parameters
         {
             auto G = gvec_.gvec(ig__);
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
+        }
+
+        inline mdarray<int, 2> const& gvec_coord() const
+        {
+            return gvec_coord_;
+        }
+
+        inline mdarray<double, 2> const& atom_coord(int iat__) const
+        {
+            return atom_coord_[iat__];
         }
 };
 

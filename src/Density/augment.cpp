@@ -37,13 +37,10 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
 
 extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    int nbf__,
-                                   double_complex const* q_pw_t__,
+                                   double const* q_pw__,
                                    double const* dm_pw__,
                                    double_complex* rho_pw__);
 #endif
-
-// TODO: looks like only real part of Q(G) is sufficient; x2 factor in copying to GPU
-//       check if this also holds for the non-collinear case
 
 void Density::augment(K_set& ks__)
 {
@@ -60,37 +57,26 @@ void Density::augment(K_set& ks__)
     }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    for (auto e: rho_vec)
-    {
+    for (auto e: rho_vec) {
         auto cs = e->checksum_pw();
         DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
     }
     #endif
 
-    for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++)
-        ctx_.augmentation_op(iat).prepare(0);
+    for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
+        ctx_.augmentation_op(iat).prepare();
+    }
 
     #ifdef __GPU
-    mdarray<int, 2> gvec;
     mdarray<double_complex, 2> rho_pw_gpu;
-    if (ctx_.processing_unit() == GPU)
-    {
-        gvec = mdarray<int, 2>(3, spl_gvec.local_size());
-        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-        {
-            for (int x: {0, 1, 2}) gvec(x, igloc) = ctx_.gvec().gvec(spl_gvec[igloc])[x];
-        }
-        gvec.allocate_on_device();
-        gvec.copy_to_device();
-        
+    if (ctx_.processing_unit() == GPU) {
         rho_pw_gpu = mdarray<double_complex, 2>(spl_gvec.local_size(), ctx_.num_mag_dims() + 1);
         rho_pw_gpu.allocate_on_device();
         rho_pw_gpu.zero_on_device();
     }
     #endif
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         if (!atom_type.uspp().augmentation_) {
             continue;
@@ -101,24 +87,18 @@ void Density::augment(K_set& ks__)
         /* convert to real matrix */
         mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
         #pragma omp parallel for
-        for (int i = 0; i < atom_type.num_atoms(); i++)
-        {
+        for (int i = 0; i < atom_type.num_atoms(); i++) {
             int ia = atom_type.atom_id(i);
 
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
-                {
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    switch (ctx_.num_mag_dims())
-                    {
-                        case 0:
-                        {
+                    switch (ctx_.num_mag_dims()) {
+                        case 0: {
                             dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
                             break;
                         }
-                        case 1:
-                        {
+                        case 1: {
                             dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
                             dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
                             break;
@@ -128,18 +108,15 @@ void Density::augment(K_set& ks__)
             }
         }
 
-        if (ctx_.processing_unit() == CPU)
-        {
+        if (ctx_.processing_unit() == CPU) {
             runtime::Timer t2("sirius::Density::augment|phase_fac");
             /* treat phase factors as real array with x2 size */
             mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_gvec.local_size() * 2);
 
             #pragma omp parallel for
-            for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-            {
+            for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
                 int ig = spl_gvec[igloc];
-                for (int i = 0; i < atom_type.num_atoms(); i++)
-                {
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
                     double_complex z = std::conj(ctx_.gvec_phase_factor(ig, ia));
                     phase_factors(i, 2 * igloc)     = z.real();
@@ -151,8 +128,7 @@ void Density::augment(K_set& ks__)
             /* treat auxiliary array as double with x2 size */
             mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
 
-            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
-            {
+            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 runtime::Timer t3("sirius::Density::augment|gemm");
                 linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2, atom_type.num_atoms(), 
                                   &dm(0, 0, iv), dm.ld(),
@@ -170,55 +146,32 @@ void Density::augment(K_set& ks__)
 
                 runtime::Timer t4("sirius::Density::augment|sum");
                 #pragma omp parallel for
-                for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-                {
-                    //double ar = 0;
-                    //double ai = 0;
+                for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
                     double_complex zsum(0, 0);
                     /* get contribution from non-diagonal terms */
-                    for (int i = 0; i < nbf * (nbf + 1) / 2; i++)
-                    {
-                        double_complex z1 = ctx_.augmentation_op(iat).q_pw(i, igloc);
-                        //double q = 2.0 * ctx_.augmentation_op(iat).q_pw(i, igloc).real();
+                    for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                        double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
+                                                           ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
                         double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
 
-                        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-                        //ar += dm_pw(i, 2 * igloc)     * q;
-                        //ai += dm_pw(i, 2 * igloc + 1) * q;
                         zsum += z1 * z2 * 2.0;
                     }
                     /* remove one diagonal contribution which was double-counted */
-                    for (int xi = 0; xi < nbf; xi++)
-                    {
+                    for (int xi = 0; xi < nbf; xi++) {
                         int i = xi * (xi + 1) / 2 + xi;
-                        double_complex z1 = ctx_.augmentation_op(iat).q_pw(i, igloc);
+                        double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
+                                                           ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
                         double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
                         zsum -= z1 * z2;
-
-                        //double q = ctx_.augmentation_op(iat).q_pw(i, igloc).real();
-                        //ar -= dm_pw(i, 2 * igloc)     * q;
-                        //ai -= dm_pw(i, 2 * igloc + 1) * q;
-
                     }
-                    rho_vec[iv]->f_pw(spl_gvec[igloc]) += zsum; //double_complex(ar, ai);
+                    rho_vec[iv]->f_pw(spl_gvec[igloc]) += zsum;
                 }
                 t4.stop();
             }
         }
 
         #ifdef __GPU
-        if (ctx_.processing_unit() == GPU)
-        {
-            mdarray<double, 2> atom_pos(3, atom_type.num_atoms());
-            #pragma omp parallel for
-            for (int i = 0; i < atom_type.num_atoms(); i++)
-            {
-                int ia = atom_type.atom_id(i);
-                auto pos = unit_cell_.atom(ia).position();
-                for (int x: {0, 1, 2}) atom_pos(x, i) = pos[x];
-            }
-            atom_pos.allocate_on_device();
-            atom_pos.copy_to_device();
+        if (ctx_.processing_unit() == GPU) {
 
             dm.allocate_on_device();
             dm.copy_to_device();
@@ -227,16 +180,14 @@ void Density::augment(K_set& ks__)
             mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
             dm_pw.allocate_on_device();
 
-            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
-            {
+            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 generate_dm_pw_gpu(atom_type.num_atoms(),
                                    spl_gvec.local_size(),
                                    nbf,
-                                   atom_pos.at<GPU>(),
-                                   gvec.at<GPU>(),
+                                   ctx_.atom_coord(iat).at<GPU>(),
+                                   ctx_.gvec_coord().at<GPU>(),
                                    dm.at<GPU>(0, 0, iv),
                                    dm_pw.at<GPU>());
-                
                 sum_q_pw_dm_pw_gpu(spl_gvec.local_size(), 
                                    nbf,
                                    ctx_.augmentation_op(iat).q_pw().at<GPU>(),
@@ -248,14 +199,11 @@ void Density::augment(K_set& ks__)
     }
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
+    if (ctx_.processing_unit() == GPU) {
         rho_pw_gpu.copy_to_host();
-        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++)
-        {
+        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             #pragma omp parallel for
-            for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-            {
+            for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
                 int ig = spl_gvec[igloc];
                 rho_vec[iv]->f_pw(ig) += rho_pw_gpu(igloc, iv);
             }
@@ -264,8 +212,7 @@ void Density::augment(K_set& ks__)
     #endif
 
     runtime::Timer t5("sirius::Density::augment|mpi");
-    for (auto e: rho_vec)
-    {
+    for (auto e: rho_vec) {
         ctx_.comm().allgather(&e->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
 
         #ifdef __PRINT_OBJECT_CHECKSUM
@@ -277,8 +224,9 @@ void Density::augment(K_set& ks__)
     }
     t5.stop();
 
-    for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++)
-        ctx_.augmentation_op(iat).dismiss(0);
+    for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
+        ctx_.augmentation_op(iat).dismiss();
+    }
 }
 
 };

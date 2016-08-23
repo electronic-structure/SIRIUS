@@ -49,23 +49,8 @@ void Potential::generate_D_operator_matrix()
    
     /* allocate on device if necessary */ 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        ctx_.augmentation_op(iat).prepare(1);
+        ctx_.augmentation_op(iat).prepare();
     }
-
-    #ifdef __GPU
-    /* copy G-vectors to GPU */
-    mdarray<int, 2> gvec;
-    if (ctx_.processing_unit() == GPU) {
-        gvec = mdarray<int, 2>(3, spl_num_gvec_.local_size());
-        for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) {
-            for (int x: {0, 1, 2}) {
-                gvec(x, igloc) = ctx_.gvec().gvec(spl_num_gvec_[igloc])[x];
-            }
-        }
-        gvec.allocate_on_device();
-        gvec.copy_to_device();
-    }
-    #endif
 
     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
         #ifdef __GPU
@@ -113,8 +98,8 @@ void Potential::generate_D_operator_matrix()
                     }
                 }
 
-                linalg<CPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_num_gvec_.local_size(),
-                                  ctx_.augmentation_op(iat).q_pw_real_t(), veff_a, d_tmp);
+                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_num_gvec_.local_size(),
+                                  ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
 
             }
             #ifdef __GPU
@@ -124,27 +109,15 @@ void Potential::generate_D_operator_matrix()
                 
                 d_tmp.allocate_on_device();
                 
-                /* copy atom positions to GPU */
-                mdarray<double, 2> atom_pos(3, atom_type.num_atoms());
-                for (int i = 0; i < atom_type.num_atoms(); i++) {
-                    int ia = atom_type.atom_id(i);
-                    auto pos = unit_cell_.atom(ia).position();
-                    for (int x: {0, 1, 2}) {
-                        atom_pos(x, i) = pos[x];
-                    }
-                }
-                atom_pos.allocate_on_device();
-                atom_pos.copy_to_device();
-
                 mul_veff_with_phase_factors_gpu(atom_type.num_atoms(),
                                                 spl_num_gvec_.local_size(),
                                                 veff.at<GPU>(),
-                                                gvec.at<GPU>(),
-                                                atom_pos.at<GPU>(),
+                                                ctx_.gvec_coord().at<GPU>(),
+                                                ctx_.atom_coord(iat).at<GPU>(),
                                                 veff_a.at<GPU>());
 
-                linalg<GPU>::gemm(1, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_num_gvec_.local_size(),
-                                  ctx_.augmentation_op(iat).q_pw_real_t(), veff_a, d_tmp);
+                linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_num_gvec_.local_size(),
+                                  ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
 
                 d_tmp.copy_to_host();
             }
@@ -154,7 +127,7 @@ void Potential::generate_D_operator_matrix()
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
-                            d_tmp(j, i) = 2 * d_tmp(j, i) - veff_vec[iv]->f_pw(0).real() * ctx_.augmentation_op(iat).q_pw_real_t()(0, j);
+                            d_tmp(j, i) = 2 * d_tmp(j, i) - veff_vec[iv]->f_pw(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 } else {
@@ -212,7 +185,7 @@ void Potential::generate_D_operator_matrix()
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        ctx_.augmentation_op(iat).dismiss(1);
+        ctx_.augmentation_op(iat).dismiss();
     }
 }
 

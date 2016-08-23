@@ -148,8 +148,7 @@ void Simulation_context::initialize()
         step_function_ = std::unique_ptr<Step_function>(new Step_function(unit_cell_, fft_.get(), gvec_, comm_));
     }
 
-    if (iterative_solver_input_section().real_space_prj_) 
-    {
+    if (iterative_solver_input_section().real_space_prj_) {
         STOP();
         //real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iterative_solver_input_section().R_mask_scale_,
         //                                     iterative_solver_input_section().mask_alpha_,
@@ -157,26 +156,31 @@ void Simulation_context::initialize()
     }
 
     /* take 10% of empty non-magnetic states */
-    if (num_fv_states_ < 0) 
-    {
+    if (num_fv_states_ < 0) {
         num_fv_states_ = static_cast<int>(1e-8 + unit_cell_.num_valence_electrons() / 2.0) +
                                           std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
     }
     
-    if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0))
+    if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0)) {
         TERMINATE("not enough first-variational states");
+    }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
-    if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1)
-    {
-        if (evsn[0] == "") evsn[0] = "lapack";
-        if (evsn[1] == "") evsn[1] = "lapack";
-    }
-    else
-    {
-        if (evsn[0] == "") evsn[0] = "scalapack";
-        if (evsn[1] == "") evsn[1] = "elpa1";
+    if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1) {
+        if (evsn[0] == "") {
+            evsn[0] = "lapack";
+        }
+        if (evsn[1] == "") {
+            evsn[1] = "lapack";
+        }
+    } else {
+        if (evsn[0] == "") {
+            evsn[0] = "scalapack";
+        }
+        if (evsn[1] == "") {
+            evsn[1] = "elpa1";
+        }
     }
 
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
@@ -192,12 +196,10 @@ void Simulation_context::initialize()
     str_to_ev_solver_t["rs_cpu"]    = ev_rs_cpu;
     str_to_ev_solver_t["rs_gpu"]    = ev_rs_gpu;
 
-    for (int i: {0, 1})
-    {
+    for (int i: {0, 1}) {
         auto name = evsn[i];
 
-        if (str_to_ev_solver_t.count(name) == 0)
-        {
+        if (str_to_ev_solver_t.count(name) == 0) {
             std::stringstream s;
             s << "wrong eigen value solver " << name;
             TERMINATE(s);
@@ -206,15 +208,44 @@ void Simulation_context::initialize()
     }
 
     #if (__VERBOSITY > 0)
-    if (comm_.rank() == 0) print_info();
+    if (comm_.rank() == 0) {
+        print_info();
+    }
     #endif
 
-    if (esm_type() == ultrasoft_pseudopotential || esm_type() == paw_pseudopotential)
-    {
+    if (esm_type() == ultrasoft_pseudopotential || esm_type() == paw_pseudopotential) {
         /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega())));
         }
+    }
+    
+    if (processing_unit() == GPU) {
+        #ifdef __GPU
+        splindex<block> spl_num_gvec(gvec_.num_gvec(), comm_.size(), comm_.rank());
+        gvec_coord_ = mdarray<int, 2>(3, spl_num_gvec.local_size());
+        for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
+            int ig = spl_num_gvec[igloc];
+            auto G = gvec_.gvec(ig);
+            for (int x: {0, 1, 2}) {
+                gvec_coord_(x, igloc) = G[x];
+            }
+        }
+        gvec_coord_.allocate_on_device();
+        gvec_coord_.copy_to_device();
+
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            atom_coord_.push_back(std::move(mdarray<double, 2>(3, unit_cell_.atom_type(iat).num_atoms())));
+            for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+                int ia = unit_cell_.atom_type(iat).atom_id(i);
+                for (int x: {0, 1, 2}) {
+                    atom_coord_.back()(x, i) = unit_cell_.atom(ia).position()[x];
+                }
+            }
+            atom_coord_.back().allocate_on_device();
+            atom_coord_.back().copy_to_device();
+        }
+        #endif
     }
     
     time_active_ = -runtime::wtime();

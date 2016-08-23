@@ -37,11 +37,9 @@ class Augmentation_operator
 
         Atom_type const& atom_type_;
 
-        mdarray<double_complex, 2> q_mtrx_;
+        mdarray<double, 2> q_mtrx_;
 
-        mdarray<double_complex, 2> q_pw_;
-
-        mdarray<double, 2> q_pw_real_t_;
+        mdarray<double, 2> q_pw_;
         
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
@@ -146,12 +144,11 @@ class Augmentation_operator
             /* number of beta-projectors */
             int nbf = atom_type_.mt_basis_size();
             
-            q_mtrx_ = mdarray<double_complex, 2>(nbf, nbf);
+            q_mtrx_ = mdarray<double, 2>(nbf, nbf);
             q_mtrx_.zero();
 
             /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double_complex, 2>(nbf * (nbf + 1) / 2, spl_num_gvec.local_size());
-            q_pw_real_t_ = mdarray<double, 2>(2 * spl_num_gvec.local_size(), nbf * (nbf + 1) / 2);
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * spl_num_gvec.local_size());
             #pragma omp parallel for
             for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
             {
@@ -175,26 +172,23 @@ class Augmentation_operator
                         /* packed radial-function index */
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
-                        for (int lm3 = 0; lm3 < lmmax; lm3++)
+                        for (int lm3 = 0; lm3 < lmmax; lm3++) {
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
-        
-                        q_pw_(idx12, igloc) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
-                        q_pw_real_t_(2 * igloc,     idx12) = q_pw_(idx12, igloc).real();
-                        q_pw_real_t_(2 * igloc + 1, idx12) = q_pw_(idx12, igloc).imag();
+                        }
+
+                        double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                        q_pw_(idx12, 2 * igloc)     = z.real();
+                        q_pw_(idx12, 2 * igloc + 1) = z.imag();
                     }
                 }
             }
     
-            if (comm_.rank() == 0)
-            {
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 <= xi2; xi1++)
-                    {
+            if (comm_.rank() == 0) {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         /* packed orbital index */
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                        q_mtrx_(xi1, xi2) = omega__ * q_pw_(idx12, 0);
-                        q_mtrx_(xi2, xi1) = std::conj(q_mtrx_(xi1, xi2));
+                        q_mtrx_(xi1, xi2) = q_mtrx_(xi2, xi1) = omega__ * q_pw_(idx12, 0);
                     }
                 }
             }
@@ -202,9 +196,9 @@ class Augmentation_operator
             comm_.bcast(&q_mtrx_(0, 0), nbf * nbf , 0);
 
             #ifdef __PRINT_OBJECT_CHECKSUM
-            auto z = q_pw_.checksum();
-            comm_.allreduce(&z, 1);
-            DUMP("checksum(q_pw) : %18.10f %18.10f", z.real(), z.imag());
+            double cs = q_pw_.checksum();
+            comm_.allreduce(&cs, 1);
+            DUMP("checksum(q_pw) : %18.10f", cs);
             #endif
         }
 
@@ -225,68 +219,36 @@ class Augmentation_operator
             }
         }
 
-        void prepare(int what__) const
+        void prepare() const
         {
             #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU)
-            {
-                switch (what__)
-                {
-                    case 0:
-                    {
-                        q_pw_.allocate_on_device();
-                        q_pw_.copy_to_device();
-                        break;
-                    }
-                    case 1:
-                    {
-                        q_pw_real_t_.allocate_on_device();
-                        q_pw_real_t_.copy_to_device();
-                        break;
-                    }
-                }
+            if (atom_type_.parameters().processing_unit() == GPU) {
+                q_pw_.allocate_on_device();
+                q_pw_.copy_to_device();
             }
             #endif
         }
 
-        void dismiss(int what__) const
+        void dismiss() const
         {
             #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU)
-            {
-                switch (what__)
-                {
-                    case 0:
-                    {
-                        q_pw_.deallocate_on_device();
-                        break;
-                    }
-                    case 1:
-                    {
-                        q_pw_real_t_.deallocate_on_device();
-                        break;
-                    }
-                }
+            if (atom_type_.parameters().processing_unit() == GPU) {
+                q_pw_.deallocate_on_device();
             }
             #endif
         }
 
-        mdarray<double_complex, 2> const& q_pw() const
+        mdarray<double, 2> const& q_pw() const
         {
             return q_pw_;
         }
 
-        mdarray<double, 2> const& q_pw_real_t() const
+        double q_pw(int i__, int ig__) const
         {
-            return q_pw_real_t_;
+            return q_pw_(i__, ig__);
         }
 
-        double_complex const& q_pw(int idx__, int ig__) const
-        { 
-            return q_pw_(idx__, ig__);
-        }
-
-        double_complex const& q_mtrx(int xi1__, int xi2__) const
+        double const& q_mtrx(int xi1__, int xi2__) const
         {
             return q_mtrx_(xi1__, xi2__);
         }

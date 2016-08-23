@@ -4,7 +4,7 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
 (
     int num_gvec_loc__,
     int nbf__,
-    cuDoubleComplex const* q_pw_t__,
+    double const* q_pw__,
     double const* dm_pw__,
     cuDoubleComplex* rho_pw__
 )
@@ -12,38 +12,35 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
     int ld = nbf__ * (nbf__ + 1) / 2;
 
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
-    if (igloc < num_gvec_loc__)
-    {
-        double ar = 0;
-        double ai = 0;
+    if (igloc < num_gvec_loc__) {
+        cuDoubleComplex zsum = make_cuDoubleComplex(0, 0);
 
-        for (int i = 0; i < ld; i++)
-        {
-            double q = 2.0 * q_pw_t__[array2D_offset(i, igloc, ld)].x;
-
-            /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-            ar += dm_pw__[array2D_offset(i, 2 * igloc,     ld)] * q;
-            ai += dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)] * q;
+        for (int i = 0; i < ld; i++) {
+            cuDoubleComplex z1 = make_cuDoubleComplex(2.0 * q_pw__[array2D_offset(i, 2 * igloc, ld)],
+                                                      2.0 * q_pw__[array2D_offset(i, 2 * igloc + 1, ld)]);
+            cuDoubleComplex z2 = make_cuDoubleComplex(dm_pw__[array2D_offset(i, 2 * igloc, ld)],
+                                                      dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)]);
+            zsum = cuCadd(zsum, cuCmul(z1, z2));
         }
 
         /* remove one diagonal contribution which was double-counted */
-        for (int xi = 0; xi < nbf__; xi++)
-        {
+        for (int xi = 0; xi < nbf__; xi++) {
             int i = xi * (xi + 1) / 2 + xi;
-            double q = q_pw_t__[array2D_offset(i, igloc, ld)].x;
 
-            /* D_{xi2,xi1} * Q(G)_{xi1, xi2} + D_{xi1,xi2} * Q(G)_{xix, xi1}^{+} */
-            ar -= dm_pw__[array2D_offset(i, 2 * igloc,     ld)] * q;
-            ai -= dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)] * q;
+            cuDoubleComplex z1 = make_cuDoubleComplex(q_pw__[array2D_offset(i, 2 * igloc, ld)],
+                                                      q_pw__[array2D_offset(i, 2 * igloc + 1, ld)]);
+            cuDoubleComplex z2 = make_cuDoubleComplex(dm_pw__[array2D_offset(i, 2 * igloc, ld)],
+                                                      dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)]);
+            zsum = cuCsub(zsum, cuCmul(z1, z2));
         }
 
-        rho_pw__[igloc] = cuCadd(rho_pw__[igloc], make_cuDoubleComplex(ar, ai));
+        rho_pw__[igloc] = cuCadd(rho_pw__[igloc], zsum);
     }
 }
 
 extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    int nbf__,
-                                   cuDoubleComplex const* q_pw_t__,
+                                   double const* q_pw__,
                                    double const* dm_pw__,
                                    cuDoubleComplex* rho_pw__)
 {
@@ -56,7 +53,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
     (
         num_gvec_loc__, 
         nbf__, 
-        q_pw_t__, 
+        q_pw__, 
         dm_pw__, 
         rho_pw__
     );

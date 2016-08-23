@@ -18,7 +18,7 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_partition con
             }
             case GPU: {
                 #ifdef __GPU
-                if (wf_coeffs_.allocated_on_device()) {
+                if (wf_coeffs_.on_device()) {
                     wf_coeffs_swapped_ = mdarray<double_complex, 2>(wf_coeffs_.at<CPU>(0, idx0__), wf_coeffs_.at<GPU>(0, idx0__), num_gvec_loc_, n__);
                 } else {
                     wf_coeffs_swapped_ = mdarray<double_complex, 2>(wf_coeffs_.at<CPU>(0, idx0__), num_gvec_loc_, n__);

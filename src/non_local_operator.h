@@ -174,8 +174,7 @@ class Q_operator: public Non_local_operator<T>
                     for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
                         if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
-                            assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                         }
                     }
                 }

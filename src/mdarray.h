@@ -742,7 +742,7 @@ class mdarray_base
             }
         }
 
-        inline bool allocated_on_device() const // TODO: better name
+        inline bool on_device() const
         {
             return (ptr_device_ != nullptr);
         }
