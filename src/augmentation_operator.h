@@ -40,6 +40,8 @@ class Augmentation_operator
         mdarray<double, 2> q_mtrx_;
 
         mdarray<double, 2> q_pw_;
+
+        mdarray<double, 1> sym_weight_;
         
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
@@ -182,6 +184,15 @@ class Augmentation_operator
                     }
                 }
             }
+
+            sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2);
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                    /* packed orbital index */
+                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                    sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
+                }
+            }
     
             if (comm_.rank() == 0) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -225,6 +236,9 @@ class Augmentation_operator
             if (atom_type_.parameters().processing_unit() == GPU) {
                 q_pw_.allocate_on_device();
                 q_pw_.copy_to_device();
+
+                sym_weight_.allocate_on_device();
+                sym_weight_.copy_to_device();
             }
             #endif
         }
@@ -234,6 +248,7 @@ class Augmentation_operator
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU) {
                 q_pw_.deallocate_on_device();
+                sym_weight_.deallocate_on_device();
             }
             #endif
         }
@@ -251,6 +266,16 @@ class Augmentation_operator
         double const& q_mtrx(int xi1__, int xi2__) const
         {
             return q_mtrx_(xi1__, xi2__);
+        }
+
+        inline mdarray<double, 1> const& sym_weight() const
+        {
+            return sym_weight_;
+        }
+
+        inline double sym_weight(int idx__) const
+        {
+            return sym_weight_(idx__);
         }
 };
 

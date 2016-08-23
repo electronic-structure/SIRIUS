@@ -41,6 +41,9 @@ void Band::apply_h_o(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             phi__.copy_to_host(N__, n__);
+            if (ctx_.fft_coarse().gpu_only()) {
+                hphi__.copy_to_host(N__, n__);
+            }
         }
         #endif
         auto cs1 = mdarray<double_complex, 1>(&phi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();

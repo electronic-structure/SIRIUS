@@ -39,6 +39,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    int nbf__,
                                    double const* q_pw__,
                                    double const* dm_pw__,
+                                   double const* sym_weight__,
                                    double_complex* rho_pw__);
 #endif
 
@@ -154,16 +155,16 @@ void Density::augment(K_set& ks__)
                                                            ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
                         double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
 
-                        zsum += z1 * z2 * 2.0;
+                        zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
                     }
-                    /* remove one diagonal contribution which was double-counted */
-                    for (int xi = 0; xi < nbf; xi++) {
-                        int i = xi * (xi + 1) / 2 + xi;
-                        double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
-                                                           ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
-                        double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
-                        zsum -= z1 * z2;
-                    }
+                    //= /* remove one diagonal contribution which was double-counted */
+                    //= for (int xi = 0; xi < nbf; xi++) {
+                    //=     int i = xi * (xi + 1) / 2 + xi;
+                    //=     double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
+                    //=                                        ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
+                    //=     double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
+                    //=     zsum -= z1 * z2;
+                    //= }
                     rho_vec[iv]->f_pw(spl_gvec[igloc]) += zsum;
                 }
                 t4.stop();
@@ -192,6 +193,7 @@ void Density::augment(K_set& ks__)
                                    nbf,
                                    ctx_.augmentation_op(iat).q_pw().at<GPU>(),
                                    dm_pw.at<GPU>(),
+                                   ctx_.augmentation_op(iat).sym_weight().at<GPU>(),
                                    rho_pw_gpu.at<GPU>(0, iv));
             }
         }

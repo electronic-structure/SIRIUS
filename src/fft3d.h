@@ -981,6 +981,7 @@ class FFT3D
 
             #ifdef __GPU
             if (comm_.size() == 1 && gpu_only_impl_ && cuda_check_device_ptr(data__)) {
+            //if (comm_.size() == 1 && gpu_only_impl_) {
                 if (gvec__.reduced()) {
                     TERMINATE_NOT_IMPLEMENTED
                 } else {
