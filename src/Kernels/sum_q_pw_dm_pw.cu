@@ -43,12 +43,9 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
         }
         __syncthreads();
     }
-
-    //== if (igloc == 0 && threadIdx.x == 0) {
-    //==     printf("sum_q_pw_dm_pw_gpu_kernel: %18.12f %18.12f\n", rho_re[0], rho_im[0]);
-    //== }
-
-    rho_pw__[igloc] = cuCadd(rho_pw__[igloc], make_cuDoubleComplex(rho_re[0], rho_im[0]));
+    if (threadIdx.x == 0) {
+        rho_pw__[igloc] = cuCadd(rho_pw__[igloc], make_cuDoubleComplex(rho_re[0], rho_im[0]));
+    }
 }
 
 extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
@@ -56,14 +53,17 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    double const* q_pw__,
                                    double const* dm_pw__,
                                    double const* sym_weight__,
-                                   cuDoubleComplex* rho_pw__)
+                                   cuDoubleComplex* rho_pw__,
+                                   int stream_id__)
 {
     CUDA_timer t("sum_q_pw_dm_pw_gpu");
+
+    cudaStream_t stream = cuda_stream_by_id(stream_id__);
 
     dim3 grid_t(64);
     dim3 grid_b(num_gvec_loc__);
     
-    sum_q_pw_dm_pw_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double)>>>
+    sum_q_pw_dm_pw_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double), stream>>>
     (
         nbf__, 
         q_pw__, 

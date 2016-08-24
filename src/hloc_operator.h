@@ -290,6 +290,7 @@ class Hloc_operator
                         hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
                     }
                 }
+                //acc::sync_stream(-1);
             }
 
             hphi__.swap_backward(idx0__, n__, gkvec_, comm_col_);

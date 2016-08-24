@@ -35,15 +35,19 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
                                    int num_beta__,
                                    double const* atom_pos__,
                                    int const* gvec__,
+                                   double* phase_factors__,
                                    double const* dm__,
-                                   double* dm_pw__);
+                                   double* dm_pw__,
+                                   int stream_id__);
 
 extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    int nbf__,
                                    double const* q_pw__,
                                    double const* dm_pw__,
                                    double const* sym_weight__,
-                                   double_complex* rho_pw__);
+                                   double_complex* rho_pw__,
+                                   int stream_id__);
+
 #endif
 
 namespace sirius
@@ -377,7 +381,36 @@ class Density
         }
         
         /// Set pointers to muffin-tin and interstitial magnetization arrays
-        void set_magnetization_ptr(double* magmt, double* magir);
+        void set_magnetization_ptr(double* magmt, double* magir)
+        {
+            if (ctx_.num_mag_dims() == 0) {
+                return;
+            }
+            assert(ctx_.num_spins() == 2);
+
+            // set temporary array wrapper
+            mdarray<double, 4> magmt_tmp(magmt, ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), 
+                                         unit_cell_.num_atoms(), ctx_.num_mag_dims());
+            mdarray<double, 2> magir_tmp(magir, ctx_.fft().size(), ctx_.num_mag_dims());
+            
+            if (ctx_.num_mag_dims() == 1) {
+                /* z component is the first and only one */
+                magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
+                magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
+            }
+
+            if (ctx_.num_mag_dims() == 3) {
+                /* z component is the first */
+                magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
+                magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
+                /* x component is the second */
+                magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
+                magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
+                /* y component is the third */
+                magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
+                magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
+            }
+        }
         
         /// Zero density and magnetization
         void zero()
@@ -440,20 +473,95 @@ class Density
          *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
          *  \f]
          */
-        void augment(K_set& ks__);
+        void augment(K_set& ks__)
+        {
+            PROFILE_WITH_TIMER("sirius::Density::augment");
+
+            /* split G-vectors between ranks */
+            splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+            
+            /* collect density and magnetization into single array */
+            std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
+            rho_vec[0] = rho_;
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                rho_vec[1 + j] = magnetization_[j];
+            }
+
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            for (auto e: rho_vec) {
+                auto cs = e->checksum_pw();
+                DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
+            }
+            #endif
+
+            //== for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
+            //==     ctx_.augmentation_op(iat).prepare(0);
+            //==     acc::sync_stream(0);
+            //== }
+
+            mdarray<double_complex, 2> rho_aug(spl_gvec.local_size(), ctx_.num_mag_dims() + 1);
+
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                rho_aug.allocate_on_device();
+            }
+            #endif
+            
+            switch (ctx_.processing_unit()) {
+                case CPU: {
+                    generate_rho_aug<CPU>(rho_vec, rho_aug);
+                    break;
+                }
+                case GPU: {
+                    generate_rho_aug<GPU>(rho_vec, rho_aug);
+                    break;
+                }
+            }
+
+            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                #pragma omp parallel for
+                for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
+                    rho_vec[iv]->f_pw(spl_gvec[igloc]) += rho_aug(igloc, iv);
+                }
+            }
+
+            runtime::Timer t5("sirius::Density::augment|mpi");
+            for (auto e: rho_vec) {
+                ctx_.comm().allgather(&e->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
+
+                #ifdef __PRINT_OBJECT_CHECKSUM
+                {
+                    auto cs = e->checksum_pw();
+                    DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
+                }
+                #endif
+            }
+            t5.stop();
+
+            //for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
+            //    ctx_.augmentation_op(iat).dismiss();
+            //}
+        }
 
         template <processing_unit_t pu>
         void generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
                               mdarray<double_complex, 2>& rho_aug__)
         {
+            PROFILE_WITH_TIMER("sirius::Density::generate_rho_aug");
+
             splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
 
             if (pu == CPU) {
                 rho_aug__.zero();
             }
+
+            #ifdef __GPU
             if (pu == GPU) {
                 rho_aug__.zero_on_device();
             }
+            #endif
+            
+            ctx_.augmentation_op(0).prepare(0);
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 auto& atom_type = unit_cell_.atom_type(iat);
@@ -488,7 +596,7 @@ class Density
                 }
 
                 if (pu == CPU) {
-                    runtime::Timer t2("sirius::Density::augment|phase_fac");
+                    runtime::Timer t2("sirius::Density::generate_rho_aug|phase_fac");
                     /* treat phase factors as real array with x2 size */
                     mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_gvec.local_size() * 2);
 
@@ -508,7 +616,7 @@ class Density
                     mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
 
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        runtime::Timer t3("sirius::Density::augment|gemm");
+                        runtime::Timer t3("sirius::Density::generate_rho_aug|gemm");
                         linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2, atom_type.num_atoms(), 
                                           &dm(0, 0, iv), dm.ld(),
                                           &phase_factors(0, 0), phase_factors.ld(), 
@@ -523,7 +631,7 @@ class Density
                         }
                         #endif
 
-                        runtime::Timer t4("sirius::Density::augment|sum");
+                        runtime::Timer t4("sirius::Density::generate_rho_aug|sum");
                         #pragma omp parallel for
                         for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
                             double_complex zsum(0, 0);
@@ -543,14 +651,20 @@ class Density
 
                 #ifdef __GPU
                 if (pu == GPU) {
-
                     dm.allocate_on_device();
                     dm.copy_to_device();
 
                     /* treat auxiliary array as double with x2 size */
-                    //mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
-                    mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
+                    mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
                     dm_pw.allocate_on_device();
+
+                    mdarray<double, 2> phase_factors(nullptr, atom_type.num_atoms(), spl_gvec.local_size() * 2);
+                    phase_factors.allocate_on_device();
+
+                    acc::sync_stream(0);
+                    if (iat + 1 != unit_cell_.num_atom_types()) {
+                        ctx_.augmentation_op(iat + 1).prepare(0);
+                    }
 
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         generate_dm_pw_gpu(atom_type.num_atoms(),
@@ -558,29 +672,20 @@ class Density
                                            nbf,
                                            ctx_.atom_coord(iat).at<GPU>(),
                                            ctx_.gvec_coord().at<GPU>(),
+                                           phase_factors.at<GPU>(),
                                            dm.at<GPU>(0, 0, iv),
-                                           dm_pw.at<GPU>());
-                        #ifdef __PRINT_OBJECT_CHECKSUM
-                        {
-                            dm_pw.copy_to_host();
-                            auto cs = dm_pw.checksum();
-                            DUMP("checksum(dm_pw): %18.10f", cs);
-                        }
-                        #endif
+                                           dm_pw.at<GPU>(),
+                                           1);
                         sum_q_pw_dm_pw_gpu(spl_gvec.local_size(), 
                                            nbf,
                                            ctx_.augmentation_op(iat).q_pw().at<GPU>(),
                                            dm_pw.at<GPU>(),
                                            ctx_.augmentation_op(iat).sym_weight().at<GPU>(),
-                                           rho_aug__.at<GPU>(0, iv));
-                        #ifdef __PRINT_OBJECT_CHECKSUM
-                        {
-                            rho_aug__.copy_to_host();
-                            auto cs = rho_aug__.checksum();
-                            DUMP("checksum(rho_aug): %20.14f %20.14f", cs.real(), cs.imag());
-                        }
-                        #endif
+                                           rho_aug__.at<GPU>(0, iv),
+                                           1);
                     }
+                    acc::sync_stream(1);
+                    ctx_.augmentation_op(iat).dismiss();
                 }
                 #endif
             }
