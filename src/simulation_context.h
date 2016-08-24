@@ -295,6 +295,7 @@ class Simulation_context: public Simulation_parameters
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 
+        #ifdef __GPU
         inline mdarray<int, 2> const& gvec_coord() const
         {
             return gvec_coord_;
@@ -304,6 +305,7 @@ class Simulation_context: public Simulation_parameters
         {
             return atom_coord_[iat__];
         }
+        #endif
 };
 
 };
