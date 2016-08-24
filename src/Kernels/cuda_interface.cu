@@ -1,4 +1,5 @@
 #include <cuda.h>
+#include <cublas.h>
 #include <cublas_v2.h>
 #include <execinfo.h>
 #include <unistd.h>
@@ -19,34 +20,34 @@ inline void stack_backtrace()
 }
 
 #ifdef NDEBUG
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error = func__ args__;                                                                             \
-    if (error != cudaSuccess)                                                                                      \
-    {                                                                                                              \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
+    #define CALL_CUDA(func__, args__)                                                                                  \
+    {                                                                                                                  \
+        cudaError_t error = func__ args__;                                                                             \
+        if (error != cudaSuccess)                                                                                      \
+        {                                                                                                              \
+            char nm[1024];                                                                                             \
+            gethostname(nm, 1024);                                                                                     \
+            printf("hostname: %s\n", nm);                                                                              \
+            printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+            stack_backtrace();                                                                                         \
+        }                                                                                                              \
+    }
 #else
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error;                                                                                             \
-    func__ args__;                                                                                                 \
-    cudaDeviceSynchronize();                                                                                       \
-    error = cudaGetLastError();                                                                                    \
-    if (error != cudaSuccess)                                                                                      \
-    {                                                                                                              \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
+    #define CALL_CUDA(func__, args__)                                                                                  \
+    {                                                                                                                  \
+        cudaError_t error;                                                                                             \
+        func__ args__;                                                                                                 \
+        cudaDeviceSynchronize();                                                                                       \
+        error = cudaGetLastError();                                                                                    \
+        if (error != cudaSuccess)                                                                                      \
+        {                                                                                                              \
+            char nm[1024];                                                                                             \
+            gethostname(nm, 1024);                                                                                     \
+            printf("hostname: %s\n", nm);                                                                              \
+            printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+            stack_backtrace();                                                                                         \
+        }                                                                                                              \
+    }
 #endif
 
 //================
@@ -281,6 +282,7 @@ bool cuda_check_device_ptr(void const* ptr__)
 {
     cudaPointerAttributes attr;
     cudaError_t error = cudaPointerGetAttributes(&attr, ptr__);
+    cudaGetLastError();
     if (error != cudaSuccess) {
         return false;
     }
@@ -289,6 +291,19 @@ bool cuda_check_device_ptr(void const* ptr__)
     }
     return false;
 }
+
+//int cuda_check_device_ptr(void *ptr__) 
+//{
+//    int data;
+//    CUresult result;
+//
+//    result = cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, (CUdeviceptr)ptr__);
+//    if (result != CUDA_SUCCESS) {
+//        return 0;
+//    }
+//    return (data == CU_MEMORYTYPE_DEVICE);
+//}
+
 
 } // extern "C"
 
@@ -332,19 +347,38 @@ void cublas_error_message(cublasStatus_t status)
     }
 }
 
-#define CALL_CUBLAS(func__, args__)                                                 \
-{                                                                                   \
-    cublasStatus_t status;                                                          \
-    if ((status = func__ args__) != CUBLAS_STATUS_SUCCESS)                          \
-    {                                                                               \
-        cublas_error_message(status);                                               \
-        char nm[1024];                                                              \
-        gethostname(nm, 1024);                                                      \
-        printf("hostname: %s\n", nm);                                               \
-        printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
-        exit(-100);                                                                 \
-    }                                                                               \
-}
+#ifdef NDEBUG
+    #define CALL_CUBLAS(func__, args__)                                                 \
+    {                                                                                   \
+        cublasStatus_t status;                                                          \
+        if ((status = func__ args__) != CUBLAS_STATUS_SUCCESS)                          \
+        {                                                                               \
+            cublas_error_message(status);                                               \
+            char nm[1024];                                                              \
+            gethostname(nm, 1024);                                                      \
+            printf("hostname: %s\n", nm);                                               \
+            printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
+            stack_backtrace();                                                          \
+        }                                                                               \
+    }
+#else
+    #define CALL_CUBLAS(func__, args__)                                                 \
+    {                                                                                   \
+        cublasStatus_t status;                                                          \
+        func__ args__;                                                                  \
+        cudaDeviceSynchronize();                                                        \
+        status = cublasGetError();                                                      \
+        if (status != CUBLAS_STATUS_SUCCESS)                                            \
+        {                                                                               \
+            cublas_error_message(status);                                               \
+            char nm[1024];                                                              \
+            gethostname(nm, 1024);                                                      \
+            printf("hostname: %s\n", nm);                                               \
+            printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
+            stack_backtrace();                                                          \
+        }                                                                               \
+    }
+#endif
 
 extern "C" void cublas_create_handles(int num_handles)
 {

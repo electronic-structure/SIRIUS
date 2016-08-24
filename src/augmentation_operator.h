@@ -152,20 +152,17 @@ class Augmentation_operator
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * spl_num_gvec.local_size());
             #pragma omp parallel for
-            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
-            {
+            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
                 int ig = spl_num_gvec[igloc];
                 int igs = gvec__.shell(ig);
 
                 std::vector<double_complex> v(lmmax);
 
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
                     int lm2 = atom_type_.indexb(xi2).lm;
                     int idxrf2 = atom_type_.indexb(xi2).idxrf;
         
-                    for (int xi1 = 0; xi1 <= xi2; xi1++)
-                    {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int lm1 = atom_type_.indexb(xi1).lm;
                         int idxrf1 = atom_type_.indexb(xi1).idxrf;
                         
@@ -230,15 +227,17 @@ class Augmentation_operator
             }
         }
 
-        void prepare() const
+        void prepare(int stream_id__) const
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU) {
-                q_pw_.allocate_on_device();
-                q_pw_.copy_to_device();
-
+                sym_weight_.pin_memory();
                 sym_weight_.allocate_on_device();
-                sym_weight_.copy_to_device();
+                sym_weight_.async_copy_to_device(stream_id__);
+
+                q_pw_.pin_memory();
+                q_pw_.allocate_on_device();
+                q_pw_.async_copy_to_device(stream_id__);
             }
             #endif
         }

@@ -202,7 +202,7 @@ class linalg<GPU>: public linalg_base
         
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
-                         matrix<T>& C);
+                         matrix<T>& C, int stream_id = -1);
 
         /// Cholesky factorization
         template <typename T>

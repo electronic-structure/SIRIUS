@@ -665,17 +665,17 @@ void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n,
 template<>
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                            matrix<ftn_double_complex> const& A, matrix<ftn_double_complex> const& B,
-                                           matrix<ftn_double_complex>& C)
+                                           matrix<ftn_double_complex>& C, int stream_id)
 {
-    gemm(transa, transb, m, n, k, A.at<GPU>(), A.ld(), B.at<GPU>(), B.ld(), C.at<GPU>(), C.ld());
+    gemm(transa, transb, m, n, k, A.at<GPU>(), A.ld(), B.at<GPU>(), B.ld(), C.at<GPU>(), C.ld(), stream_id);
 }
 
 template<>
 void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                    matrix<ftn_double> const& A, matrix<ftn_double> const& B,
-                                   matrix<ftn_double>& C)
+                                   matrix<ftn_double>& C, int stream_id)
 {
-    gemm(transa, transb, m, n, k, A.at<GPU>(), A.ld(), B.at<GPU>(), B.ld(), C.at<GPU>(), C.ld());
+    gemm(transa, transb, m, n, k, A.at<GPU>(), A.ld(), B.at<GPU>(), B.ld(), C.at<GPU>(), C.ld(), stream_id);
 }
 
 template<>

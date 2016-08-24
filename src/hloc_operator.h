@@ -82,6 +82,9 @@ class Hloc_operator
             if (fft_.hybrid()) {
                 veff_vec_.allocate_on_device();
                 veff_vec_.copy_to_device();
+
+                pw_ekin_.allocate_on_device();
+                pw_ekin_.copy_to_device();
             }
             if (fft_.gpu_only()) {
                 vphi1_.allocate_on_device();
@@ -275,7 +278,6 @@ class Hloc_operator
                 } else {
                     fft_.transform<-1>(gkvec_, vphi1_.at<CPU>());
                 }
-
                 /* add kinetic energy */
                 if (fft_.gpu_only()) {
                     #ifdef __GPU

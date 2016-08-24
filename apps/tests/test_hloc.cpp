@@ -5,13 +5,15 @@ using namespace sirius;
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
                int use_gpu__, double gpu_workload__)
 {
+    processing_unit_t pu = static_cast<processing_unit_t>(use_gpu__);
+
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu__), gpu_workload__);
+    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu, gpu_workload__);
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), mpi_grid.communicator(1 << 0), false);
 
@@ -35,25 +37,41 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     int num_gvec_loc = gvec.gvec_count(mpi_grid.communicator().rank());
 
-    Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, CPU);
-    for (int i = 0; i < 4 * num_bands__; i++)
-    {
-        for (int j = 0; j < phi.num_gvec_loc(); j++)
-        {
+    Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, pu);
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.num_gvec_loc(); j++) {
             phi(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    Wave_functions<false> hphi(num_gvec_loc, 4 * num_bands__, CPU);
+    Wave_functions<false> hphi(num_gvec_loc, 4 * num_bands__, pu);
+    #ifdef __GPU
+    if (pu == GPU) {
+        phi.allocate_on_device();
+        phi.copy_to_device(0, 4 * num_bands__);
+        hphi.allocate_on_device();
+    }
+    #endif
     
     mpi_comm_world().barrier();
     runtime::Timer t1("h_loc");
     for (int i = 0; i < 4; i++)
     {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
+        #ifdef __GPU
+        if (pu == GPU && !fft.gpu_only()) {
+            hphi.copy_to_host(i * num_bands__, num_bands__);
+        }
+        #endif
         hloc.apply(0, hphi, i * num_bands__, num_bands__);
     }
     mpi_comm_world().barrier();
     t1.stop();
+
+    #ifdef __GPU
+    if (pu == GPU && fft.gpu_only()) {
+        hphi.copy_to_host(0, 4 * num_bands__);
+    }
+    #endif
 
     double diff = 0;
     for (int i = 0; i < 4 * num_bands__; i++)

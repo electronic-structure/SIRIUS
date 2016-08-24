@@ -25,9 +25,9 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
     for (int n = 0; n < N; n++) {
         int i = n * blockDim.x + threadIdx.x;
         if (i < ld) {
-            double qx =  q_pw__[array2D_offset(i, 2 * igloc, ld)];
+            double qx =  q_pw__[array2D_offset(i, 2 * igloc,     ld)];
             double qy =  q_pw__[array2D_offset(i, 2 * igloc + 1, ld)];
-            double dx = dm_pw__[array2D_offset(i, 2 * igloc, ld)];
+            double dx = dm_pw__[array2D_offset(i, 2 * igloc,     ld)];
             double dy = dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)];
 
             rho_re[threadIdx.x] += sym_weight__[i] * (dx * qx - dy * qy);
@@ -43,6 +43,10 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
         }
         __syncthreads();
     }
+
+    //== if (igloc == 0 && threadIdx.x == 0) {
+    //==     printf("sum_q_pw_dm_pw_gpu_kernel: %18.12f %18.12f\n", rho_re[0], rho_im[0]);
+    //== }
 
     rho_pw__[igloc] = cuCadd(rho_pw__[igloc], make_cuDoubleComplex(rho_re[0], rho_im[0]));
 }

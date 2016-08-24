@@ -65,17 +65,25 @@ void Density::augment(K_set& ks__)
     #endif
 
     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
-        ctx_.augmentation_op(iat).prepare();
+        ctx_.augmentation_op(iat).prepare(0);
+        acc::sync_stream(0);
     }
 
     #ifdef __GPU
     mdarray<double_complex, 2> rho_pw_gpu;
-    if (ctx_.processing_unit() == GPU) {
+    //if (ctx_.processing_unit() == GPU) {
         rho_pw_gpu = mdarray<double_complex, 2>(spl_gvec.local_size(), ctx_.num_mag_dims() + 1);
         rho_pw_gpu.allocate_on_device();
         rho_pw_gpu.zero_on_device();
-    }
+    //}
     #endif
+
+    generate_rho_aug<CPU>(rho_vec, rho_pw_gpu);
+    generate_rho_aug<GPU>(rho_vec, rho_pw_gpu);
+
+    STOP();
+
+
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -157,14 +165,6 @@ void Density::augment(K_set& ks__)
 
                         zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
                     }
-                    //= /* remove one diagonal contribution which was double-counted */
-                    //= for (int xi = 0; xi < nbf; xi++) {
-                    //=     int i = xi * (xi + 1) / 2 + xi;
-                    //=     double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
-                    //=                                        ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
-                    //=     double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
-                    //=     zsum -= z1 * z2;
-                    //= }
                     rho_vec[iv]->f_pw(spl_gvec[igloc]) += zsum;
                 }
                 t4.stop();
@@ -178,7 +178,8 @@ void Density::augment(K_set& ks__)
             dm.copy_to_device();
 
             /* treat auxiliary array as double with x2 size */
-            mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
+            //mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
+            mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
             dm_pw.allocate_on_device();
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
@@ -189,12 +190,26 @@ void Density::augment(K_set& ks__)
                                    ctx_.gvec_coord().at<GPU>(),
                                    dm.at<GPU>(0, 0, iv),
                                    dm_pw.at<GPU>());
+                #ifdef __PRINT_OBJECT_CHECKSUM
+                {
+                    dm_pw.copy_to_host();
+                    auto cs = dm_pw.checksum();
+                    DUMP("checksum(dm_pw): %20.14f", cs);
+                }
+                #endif
                 sum_q_pw_dm_pw_gpu(spl_gvec.local_size(), 
                                    nbf,
                                    ctx_.augmentation_op(iat).q_pw().at<GPU>(),
                                    dm_pw.at<GPU>(),
                                    ctx_.augmentation_op(iat).sym_weight().at<GPU>(),
                                    rho_pw_gpu.at<GPU>(0, iv));
+                #ifdef __PRINT_OBJECT_CHECKSUM
+                {
+                    rho_pw_gpu.copy_to_host();
+                    auto cs = rho_pw_gpu.checksum();
+                    DUMP("checksum(rho_pw_gpu): %20.14f %20.14f", cs.real(), cs.imag());
+                }
+                #endif
             }
         }
         #endif
@@ -203,11 +218,16 @@ void Density::augment(K_set& ks__)
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         rho_pw_gpu.copy_to_host();
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        {
+            auto cs = rho_pw_gpu.checksum();
+            DUMP("checksum(rho_pw_gpu): %20.14f %20.14f", cs.real(), cs.imag());
+        }
+        #endif
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             #pragma omp parallel for
             for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
-                int ig = spl_gvec[igloc];
-                rho_vec[iv]->f_pw(ig) += rho_pw_gpu(igloc, iv);
+                rho_vec[iv]->f_pw(spl_gvec[igloc]) += rho_pw_gpu(igloc, iv);
             }
         }
     }

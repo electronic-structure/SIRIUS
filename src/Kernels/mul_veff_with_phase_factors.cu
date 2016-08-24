@@ -31,12 +31,15 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 cuDoubleComplex const* veff__, 
                                                 int const* gvec__, 
                                                 double const* atom_pos__,
-                                                double* veff_a__)
+                                                double* veff_a__,
+                                                int stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    mul_veff_with_phase_factors_gpu_kernel <<<grid_b, grid_t>>>
+    cudaStream_t stream = cuda_stream_by_id(stream_id__);
+
+    mul_veff_with_phase_factors_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         num_gvec_loc__,
         veff__,

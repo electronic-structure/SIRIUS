@@ -223,7 +223,7 @@ class mdarray_base
         std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_;
         
         /// Raw pointer.
-        T* ptr_;
+        mutable T* ptr_;
         
         #ifdef __GPU
         /// Unique pointer to the allocated GPU memory.
@@ -233,7 +233,7 @@ class mdarray_base
         mutable T* ptr_device_;  
         #endif
 
-        bool pinned_;
+        mutable bool pinned_;
         
         /// Array dimensions.
         mdarray_index_descriptor dims_[N];
@@ -704,7 +704,7 @@ class mdarray_base
             acc::copyout(ptr_, ptr_device_, n__);
         }
 
-        void async_copy_to_device(int stream_id__ = -1) 
+        void async_copy_to_device(int stream_id__ = -1) const
         {
             cuda_async_copy_to_device(ptr_device_, ptr_, size() * sizeof(T), stream_id__);
         }
@@ -719,7 +719,7 @@ class mdarray_base
             cuda_memset(ptr_device_, 0, size() * sizeof(T));
         }
 
-        void pin_memory()
+        void pin_memory() const
         {
             //if (pinned_) {
             //    printf("error at line %i of file %s: array is already pinned\n", __LINE__, __FILE__);
