@@ -92,7 +92,7 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 
 #endif
 
-// TODO: compute z-coordinates using fft_grid (here and in Gvec)
+#define __CUFFT3D
 
 namespace sirius {
 
@@ -158,6 +158,7 @@ class FFT3D
         bool gpu_only_impl_{false};
         cufftHandle cufft_plan_xy_;
         cufftHandle cufft_plan_z_;
+        cufftHandle cufft_plan_3d_;
         mdarray<char, 1> cufft_work_buf_;
         int cufft_nbatch_xy_{0};
         int cufft_nbatch_z_{0};
@@ -178,6 +179,11 @@ class FFT3D
         {
             switch (direction) {
                 case 1: {
+                    #ifdef __CUFFT3D
+                    cufft_batch_load_gpu(grid_.size(), gvec__.num_gvec(), 1, 
+                                         z_col_map_.at<GPU>(), data__, fft_buffer_.at<GPU>());
+                    cufft_backward_transform(cufft_plan_3d_, fft_buffer_.at<GPU>());
+                    #else
                     /* load all columns into FFT buffer */
                     cufft_batch_load_gpu(gvec__.num_zcol() * grid_.size(2), gvec__.num_gvec(), 1, 
                                          z_col_map_.at<GPU>(), data__, fft_buffer_aux1_.at<GPU>());
@@ -191,9 +197,15 @@ class FFT3D
                                       cufft_nbatch_xy_, gvec__.num_zcol(), z_col_pos_.at<GPU>(), use_reduction, 0);
                     /* execute FFT */
                     cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                    #endif
                     break;
                 }
                 case -1: {
+                    #ifdef __CUFFT3D
+                    cufft_forward_transform(cufft_plan_3d_, fft_buffer_.at<GPU>());
+                    cufft_batch_unload_gpu(grid_.size(), gvec__.num_gvec(), 1, 
+                                           z_col_map_.at<GPU>(), fft_buffer_.at<GPU>(), data__, 0.0, 1.0 / size());
+                    #else
                     /* executes FFT */
                     cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                     /* pack z-columns */
@@ -205,6 +217,7 @@ class FFT3D
                     /* get all columns from FFT buffer */
                     cufft_batch_unload_gpu(gvec__.num_zcol() * grid_.size(2), gvec__.num_gvec(), 1, 
                                            z_col_map_.at<GPU>(), fft_buffer_aux1_.at<GPU>(), data__, 0.0, 1.0 / size());
+                    #endif
                     break;
                 }
                 default: {
@@ -704,11 +717,22 @@ class FFT3D
                 /* stream #0 will execute FFTs */
                 cufft_set_stream(cufft_plan_xy_, 0);
 
+                #ifdef __CUFFT3D
+                if (comm_.size() != 1) {
+                    TERMINATE("CUFFT3D can't be parallel");
+                }
+                gpu_only_impl_ = true;
+                cufft_create_plan_handle(&cufft_plan_3d_);
+                int dims[] = {grid_.size(2), grid_.size(1), grid_.size(0)};
+                cufft_create_batch_plan(cufft_plan_3d_, 3, dims, dims, 1, grid_.size(2) * grid_.size(1) * grid_.size(0), 1, 0);
+                cufft_set_stream(cufft_plan_3d_, 0);
+                #else
                 if (comm_.size() == 1 && cufft_nbatch_xy_ == grid_.size(2)) {
                     gpu_only_impl_ = true;
                     cufft_create_plan_handle(&cufft_plan_z_);
                     cufft_set_stream(cufft_plan_z_, 0);
                 }
+                #endif
             }
             #endif
         }
@@ -728,9 +752,13 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU) {
                 cufft_destroy_plan_handle(cufft_plan_xy_);
+                #ifdef __CUFFT3D
+                cufft_destroy_plan_handle(cufft_plan_3d_);
+                #else
                 if (gpu_only_impl_) {
                     cufft_destroy_plan_handle(cufft_plan_z_);
                 }
+                #endif
             }
             #endif
         }
@@ -888,22 +916,34 @@ class FFT3D
                         for (size_t j = 0; j < gvec__.zcol(i).z.size(); j++) {
                             /* global index of the G-vector */
                             size_t ig = gvec__.zcol_offs(i) + j;
+                            #ifdef __CUFFT3D
+                            auto G = gvec__.gvec().gvec(static_cast<int>(ig));
+                            z_col_map_[ig] = grid_.index_by_gvec(G[0], G[1], G[2]);
+                            #else
                             /* coordinate inside FFT 1D bufer */
                             int z = grid().coord_by_gvec(gvec__.zcol(i).z[j], 2);
                             z_col_map_[ig] = i * grid_.size(2) + z;
+                            #endif
                         }
                     }
                     z_col_map_.allocate_on_device();
                     z_col_map_.copy_to_device();
                     
+                    #ifdef __CUFFT3D
+                    int dims_xy[] = {grid_.size(1), grid_.size(0)};
+                    int dims[] = {grid_.size(2), grid_.size(1), grid_.size(0)};
+                    work_size = std::max(cufft_get_work_size(2, dims_xy, cufft_nbatch_xy_),
+                                         cufft_get_work_size(3, dims, 1));
+                    #else
                     int dim_z[] = {grid_.size(2)};
                     cufft_nbatch_z_ = gvec__.num_zcol();
                     cufft_create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), cufft_nbatch_z_, 0);
 
-                    int dims_xy[] = {grid_.size(0), grid_.size(1)};
+                    int dims_xy[] = {grid_.size(1), grid_.size(0)};
                     /* worksize for z and xy transforms */
                     work_size = std::max(cufft_get_work_size(2, dims_xy, cufft_nbatch_xy_),
                                          cufft_get_work_size(1, dim_z, cufft_nbatch_z_));
+                    #endif
                 } else {
                     int dims_xy[] = {grid_.size(0), grid_.size(1)};
                     work_size = cufft_get_work_size(2, dims_xy, cufft_nbatch_xy_);
@@ -915,7 +955,11 @@ class FFT3D
                 /* set work area for cufft */ 
                 cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
                 if (gpu_only_impl_) {
+                    #ifdef __CUFFT3D
+                    cufft_set_work_area(cufft_plan_3d_, cufft_work_buf_.at<GPU>());
+                    #else
                     cufft_set_work_area(cufft_plan_z_, cufft_work_buf_.at<GPU>());
+                    #endif
                 }
 
                 fft_buffer_aux1_.allocate_on_device();
