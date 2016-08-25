@@ -81,6 +81,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
             diff += std::abs(2.0 * phi(j, i) - hphi(j, i));
         }
     }
+    if (diff != diff) {
+        TERMINATE("NaN");
+    }
     mpi_comm_world().allreduce(&diff, 1);
     if (mpi_comm_world().rank() == 0)
     {
@@ -100,8 +103,7 @@ int main(int argn, char** argv)
     args.register_key("--gpu_workload=", "{double} worload of GPU");
 
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
@@ -113,7 +115,9 @@ int main(int argn, char** argv)
     auto gpu_workload = args.value<double>("gpu_workload", 0.8);
 
     sirius::initialize(1);
-    test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
+    for (int i = 0; i < 10; i++) {
+        test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
+    }
     mpi_comm_world().barrier();
     runtime::Timer::print();
     runtime::Timer::print_all();
