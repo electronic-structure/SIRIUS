@@ -135,12 +135,12 @@ void Simulation_context::initialize()
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms());
 
     #pragma omp parallel for
-    for (int i = limits.first; i <= limits.second; i++)
-    {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
+    for (int i = limits.first; i <= limits.second; i++) {
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto pos = unit_cell_.atom(ia).position();
-            for (int x: {0, 1, 2}) phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+            for (int x: {0, 1, 2}) {
+                phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+            }
         }
     }
     
@@ -223,12 +223,12 @@ void Simulation_context::initialize()
     if (processing_unit() == GPU) {
         #ifdef __GPU
         splindex<block> spl_num_gvec(gvec_.num_gvec(), comm_.size(), comm_.rank());
-        gvec_coord_ = mdarray<int, 2>(3, spl_num_gvec.local_size());
+        gvec_coord_ = mdarray<int, 2>(spl_num_gvec.local_size(), 3, "gvec_coord_");
         for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
             int ig = spl_num_gvec[igloc];
             auto G = gvec_.gvec(ig);
             for (int x: {0, 1, 2}) {
-                gvec_coord_(x, igloc) = G[x];
+                gvec_coord_(igloc, x) = G[x];
             }
         }
         gvec_coord_.allocate_on_device();

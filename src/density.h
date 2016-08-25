@@ -494,11 +494,6 @@ class Density
             }
             #endif
 
-            //== for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
-            //==     ctx_.augmentation_op(iat).prepare(0);
-            //==     acc::sync_stream(0);
-            //== }
-
             mdarray<double_complex, 2> rho_aug(spl_gvec.local_size(), ctx_.num_mag_dims() + 1);
 
             #ifdef __GPU
@@ -537,10 +532,6 @@ class Density
                 #endif
             }
             t5.stop();
-
-            //for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
-            //    ctx_.augmentation_op(iat).dismiss();
-            //}
         }
 
         template <processing_unit_t pu>
@@ -658,7 +649,7 @@ class Density
                     mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
                     dm_pw.allocate_on_device();
 
-                    mdarray<double, 2> phase_factors(nullptr, atom_type.num_atoms(), spl_gvec.local_size() * 2);
+                    mdarray<double, 1> phase_factors(nullptr, atom_type.num_atoms() * spl_gvec.local_size() * 2);
                     phase_factors.allocate_on_device();
 
                     acc::sync_stream(0);

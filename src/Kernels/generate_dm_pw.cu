@@ -16,26 +16,24 @@ __global__ void generate_phase_factors_conj_gpu_kernel
     int num_atoms__, 
     double const* atom_pos__, 
     int const* gvec__, 
-    double* phase_factors__
+    cuDoubleComplex* phase_factors__
 )
 {
     int ia = blockIdx.y;
+    double ax = atom_pos__[array2D_offset(0, ia, 3)];
+    double ay = atom_pos__[array2D_offset(1, ia, 3)];
+    double az = atom_pos__[array2D_offset(2, ia, 3)];
+
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (igloc < num_gvec_loc__)
     {
-        int gvx = gvec__[array2D_offset(0, igloc, 3)];
-        int gvy = gvec__[array2D_offset(1, igloc, 3)];
-        int gvz = gvec__[array2D_offset(2, igloc, 3)];
+        int gvx = gvec__[array2D_offset(igloc, 0, num_gvec_loc__)];
+        int gvy = gvec__[array2D_offset(igloc, 1, num_gvec_loc__)];
+        int gvz = gvec__[array2D_offset(igloc, 2, num_gvec_loc__)];
     
-        double ax = atom_pos__[array2D_offset(0, ia, 3)];
-        double ay = atom_pos__[array2D_offset(1, ia, 3)];
-        double az = atom_pos__[array2D_offset(2, ia, 3)];
-
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
-
-        phase_factors__[array2D_offset(ia, 2 * igloc,     num_atoms__)] = cos(p);
-        phase_factors__[array2D_offset(ia, 2 * igloc + 1, num_atoms__)] = -sin(p);
+        phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_cuDoubleComplex(cos(p), -sin(p));
     }
 }
 
@@ -49,7 +47,7 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
                                    double* dm_pw__,
                                    int stream_id__)
 {
-    CUDA_timer t("generate_dm_pw_gpu");
+    //CUDA_timer t("generate_dm_pw_gpu");
 
     cudaStream_t stream = cuda_stream_by_id(stream_id__);
 
@@ -62,14 +60,18 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
         num_atoms__, 
         atom_pos__, 
         gvec__, 
-        phase_factors__
+        (cuDoubleComplex*)phase_factors__
     );
     
     double alpha = 1;
     double beta = 0;
 
-    cublas_dgemm(0, 0, nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__, &alpha, 
-                 dm__, nbf__ * (nbf__ + 1) / 2, phase_factors__, num_atoms__, &beta,
-                 dm_pw__, nbf__ * (nbf__ + 1) / 2, stream_id__);
+    cublas_dgemm(0, 1, nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
+                 &alpha, 
+                 dm__, nbf__ * (nbf__ + 1) / 2,
+                 phase_factors__, num_gvec_loc__ * 2,
+                 &beta,
+                 dm_pw__, nbf__ * (nbf__ + 1) / 2,
+                 stream_id__);
 }
 
