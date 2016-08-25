@@ -99,6 +99,11 @@ class Wave_functions<false>
             return &wf_coeffs_swapped_(0, i__);
         }
 
+        mdarray<double_complex, 2>& coeffs()
+        {
+            return wf_coeffs_;
+        }
+
         mdarray<double_complex, 2>& coeffs_swapped()
         {
             return wf_coeffs_swapped_;
@@ -141,11 +146,6 @@ class Wave_functions<false>
         template <typename T>
         void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
                    mdarray<T, 2>& result__, int irow__, int icol__, Communicator const& comm);
-
-        mdarray<double_complex, 2>& coeffs()
-        {
-            return wf_coeffs_;
-        }
 
         #ifdef __GPU
         void allocate_on_device()

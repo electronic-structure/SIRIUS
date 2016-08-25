@@ -449,6 +449,8 @@ class Density
 
         /// Generate valence charge density and magnetization from the wave functions.
         void generate_valence(K_set& ks__);
+
+        inline void generate_valence_new(K_set& ks__);
         
         /// Add augmentation charge Q(r)
         /** Restore valence density by adding the Q-operator constribution.
@@ -907,6 +909,151 @@ class Density
             return density_matrix_;
         }
 };
+
+inline void Density::generate_valence_new(K_set& ks__)
+{
+    PROFILE_WITH_TIMER("sirius::Density::generate_valence_new");
+
+    double wt{0};
+    double occ_val{0};
+    for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
+        wt += ks__[ik]->weight();
+        for (int j = 0; j < ctx_.num_bands(); j++) {
+            occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+        }
+    }
+
+    if (std::abs(wt - 1.0) > 1e-12) {
+        TERMINATE("K_point weights don't sum to one");
+    }
+
+    if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8) {
+        std::stringstream s;
+        s << "wrong occupancies" << std::endl
+          << "  computed : " << occ_val << std::endl
+          << "  required : " << unit_cell_.num_valence_electrons() << std::endl
+          << "  difference : " << std::abs(occ_val - unit_cell_.num_valence_electrons());
+        WARNING(s);
+    }
+
+    assert(ctx_.num_mag_dims() != 3);
+
+    /* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
+       because density matrix is symmetric */
+    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
+    
+    mdarray<double_complex, 4> mt_complex_density_matrix;
+
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+        /* complex density matrix */
+        mt_complex_density_matrix = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), 
+                                                               unit_cell_.max_mt_basis_size(),
+                                                               ndm, unit_cell_.num_atoms());
+        mt_complex_density_matrix.zero();
+    }
+
+    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+        density_matrix_.zero();
+    }
+
+    /* zero density and magnetization */
+    zero();
+    
+    /* start the main loop over k-points */
+    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
+        int ik = ks__.spl_num_kpoints(ikloc);
+        auto kp = ks__[ik];
+
+        /* swap wave functions */
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            int nbnd = kp->num_occupied_bands(ispn);
+            if (ctx_.full_potential()) {
+                kp->spinor_wave_functions<true>(ispn).swap_forward(0, nbnd);
+            } else {
+                #ifdef __GPU
+                if (ctx_.processing_unit() == GPU) {
+                    kp->spinor_wave_functions<false>(ispn).allocate_on_device();
+                    kp->spinor_wave_functions<false>(ispn).copy_to_device(0, nbnd);
+                }
+                #endif
+                kp->spinor_wave_functions<false>(ispn).swap_forward(0, nbnd, kp->gkvec().partition(),
+                                                                    ctx_.mpi_grid_fft().communicator(1 << 1));
+            }
+        }
+        
+        if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+            add_k_point_contribution_mt(kp, mt_complex_density_matrix);
+        }
+        
+        if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+            if (ctx_.gamma_point()) {
+                add_k_point_contribution<double>(kp, density_matrix_);
+            } else {
+                add_k_point_contribution<double_complex>(kp, density_matrix_);
+            }
+        }
+
+        if (ctx_.full_potential()) {
+            add_k_point_contribution_rg<true>(kp);
+        } else {
+            add_k_point_contribution_rg<false>(kp);
+        }
+
+
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                kp->spinor_wave_functions<false>(ispn).deallocate_on_device();
+            }
+            #endif
+        }
+    }
+
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+        for (int j = 0; j < ndm; j++) {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                int ialoc = unit_cell_.spl_num_atoms().local_index(ia);
+                int rank = unit_cell_.spl_num_atoms().local_rank(ia);
+                double_complex* dest_ptr = (ctx_.comm().rank() == rank) ? &density_matrix_(0, 0, j, ialoc) : nullptr;
+                ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), dest_ptr,
+                                   unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
+            }
+        }
+    }
+
+    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+        ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
+    }
+
+    /* reduce arrays; assume that each rank did its own fraction of the density */
+    auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _mpi_dim_k_ | 1 << _mpi_dim_k_col_)
+                                         : ctx_.comm();
+
+    comm.allreduce(&rho_->f_rg(0), ctx_.fft().local_size()); 
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        comm.allreduce(&magnetization_[j]->f_rg(0), ctx_.fft().local_size()); 
+    }
+
+    ctx_.fft().prepare(ctx_.gvec().partition());
+    /* get rho(G) and mag(G)
+     * they are required to symmetrize density and magnetization */
+    rho_->fft_transform(-1);
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        magnetization_[j]->fft_transform(-1);
+    }
+    ctx_.fft().dismiss();
+
+    //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
+    //== STOP();
+
+    if (!ctx_.full_potential()) {
+        augment(ks__);
+    }
+
+    if (ctx_.esm_type() == paw_pseudopotential) {
+        symmetrize_density_matrix();
+    }
+}
 
 }
 

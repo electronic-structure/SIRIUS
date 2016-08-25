@@ -23,8 +23,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     density_rg.zero();
 
     #ifdef __GPU
-    if (ctx_.fft().hybrid())
-    {
+    if (ctx_.fft().hybrid()) {
         density_rg.allocate_on_device();
         density_rg.zero_on_device();
     }
@@ -35,36 +34,35 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     int wf_pw_offset = kp__->wf_pw_offset();
         
     /* non-magnetic or collinear case */
-    if (ctx_.num_mag_dims() != 3)
-    {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-        {
+    if (ctx_.num_mag_dims() != 3) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             if (!kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().global_index_size()) {
                 continue;
             }
 
             #pragma omp for schedule(dynamic, 1)
-            for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().local_size(); i++)
-            {
+            for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().local_size(); i++) {
                 int j = kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped()[i];
                 double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
 
-                /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
+                    /* transform to real space; in case of GPU wave-function stays in GPU memory */
+                if (ctx_.fft().gpu_only()) {
+                    ctx_.fft().transform<1>(kp__->gkvec().partition(),
+                                            kp__->spinor_wave_functions<mt_spheres>(ispn).coeffs_swapped().template at<GPU>(wf_pw_offset, i));
+                } else {
+                    ctx_.fft().transform<1>(kp__->gkvec().partition(),
+                                            kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
+                }
 
-                if (ctx_.fft().hybrid())
-                {
+                if (ctx_.fft().hybrid()) {
                     #ifdef __GPU
                     update_density_rg_1_gpu(ctx_.fft().local_size(), ctx_.fft().buffer<GPU>(), w, density_rg.at<GPU>(0, ispn));
                     #else
                     TERMINATE_NO_GPU
                     #endif
-                }
-                else
-                {
+                } else {
                     #pragma omp parallel for
-                    for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
-                    {
+                    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
                         auto z = ctx_.fft().buffer(ir);
                         density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                     }

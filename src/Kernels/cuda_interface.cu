@@ -758,4 +758,18 @@ extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_
 //==     );
 //== }
 
+__global__ void cuda_label_event_gpu_kernel(const char* label__)
+{
+}
+
+extern "C" void cuda_label_event_gpu(const char* label__)
+{
+    dim3 grid_t(32);
+    dim3 grid_b(1);
+    cuda_label_event_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        label__
+    );
+}
+
 

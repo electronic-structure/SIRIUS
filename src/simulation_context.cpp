@@ -32,7 +32,7 @@ void Simulation_context::init_fft()
 
     /* create FFT driver for dense mesh (density and potential) */
     fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0),
-                                            processing_unit(), 0.9));
+                                            processing_unit(), 1));
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),

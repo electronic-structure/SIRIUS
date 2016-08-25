@@ -142,6 +142,8 @@ int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda);
 int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda);
 #endif
 
+void cuda_label_event_gpu(const char* label__);
+
 }
 
 namespace acc {
