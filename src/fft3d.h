@@ -92,7 +92,7 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 
 #endif
 
-#define __CUFFT3D
+//#define __CUFFT3D
 
 namespace sirius {
 
