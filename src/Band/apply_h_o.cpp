@@ -19,7 +19,8 @@ void Band::apply_h_o(K_point* kp__,
                      Q_operator<T>& q_op) const
 {
     PROFILE_WITH_TIMER("sirius::Band::apply_h_o");
-
+    
+    double t1 = -runtime::wtime();
     /* set initial hphi */
     hphi__.copy_from(phi__, N__, n__);
 
@@ -35,6 +36,11 @@ void Band::apply_h_o(K_point* kp__,
         hphi__.copy_to_device(N__, n__);
     }
     #endif
+    t1 += runtime::wtime();
+
+    if (kp__->comm().rank() == 0) {
+        DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
+    }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
