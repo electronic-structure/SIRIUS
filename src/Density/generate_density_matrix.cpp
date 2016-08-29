@@ -34,7 +34,8 @@ void Density::generate_density_matrix(K_set& ks__)
         }
     }
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
+        ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         density_matrix_.zero();
         
         /* add k-point contribution */

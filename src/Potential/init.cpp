@@ -4,7 +4,7 @@ namespace sirius {
 
 void Potential::init()
 {
-    if (ctx_.esm_type() == full_potential_lapwlo)
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo)
     {
         /* compute values of spherical Bessel functions at MT boundary */
         sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, unit_cell_.num_atom_types(), 

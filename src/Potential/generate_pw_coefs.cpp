@@ -44,7 +44,7 @@ void Potential::generate_pw_coefs()
         }
     }
 
-    if (ctx_.esm_type() == full_potential_pwlo) {
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_pwlo) {
         switch (ctx_.processing_unit()) {
             case CPU:
                 STOP();

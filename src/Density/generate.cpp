@@ -6,13 +6,15 @@ void Density::generate(K_set& ks__)
 {
     PROFILE_WITH_TIMER("sirius::Density::generate");
 
-    if (ctx_.processing_unit() == GPU &&
-        ctx_.mpi_grid().communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_).size() == 1 &&
-        !ctx_.full_potential()) {
-        generate_valence_new(ks__);
-    } else {
-        generate_valence(ks__);
-    }
+    //if (ctx_.processing_unit() == GPU &&
+    //    ctx_.mpi_grid().communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_).size() == 1 &&
+    //    !ctx_.full_potential()) {
+    //    generate_valence_new(ks__);
+    //} else {
+    //    generate_valence(ks__);
+    //}
+
+    generate_valence_new(ks__);
 
     if (ctx_.full_potential()) {
         /* find the core states */
@@ -31,7 +33,7 @@ void Density::generate(K_set& ks__)
         }
     }
     
-    double nel = 0;
+    double nel{0};
     if (ctx_.full_potential()) {
         std::vector<double> nel_mt;
         double nel_it;

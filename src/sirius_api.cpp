@@ -1480,7 +1480,7 @@ void sirius_get_fv_h_o(int32_t const* kset_id__,
 
         dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
         dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
-        dft_ground_state->band().set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);
+        dft_ground_state->band().set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, potential->effective_potential(), h, o);
     }
 }
 

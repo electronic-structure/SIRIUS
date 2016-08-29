@@ -88,12 +88,12 @@ void Density::generate_valence(K_set& ks__)
     /* for muffin-tin part */
     switch (ctx_.esm_type())
     {
-        case full_potential_lapwlo:
+        case electronic_structure_method_t::full_potential_lapwlo:
         {
             generate_valence_density_mt(ks__);
             break;
         }
-        case full_potential_pwlo:
+        case electronic_structure_method_t::full_potential_pwlo:
         {
             STOP();
         }
@@ -126,11 +126,11 @@ void Density::generate_valence(K_set& ks__)
 
     ctx_.fft().dismiss();
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential) {
         augment(ks__);
     }
 
-    if (ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         augment(ks__);
         symmetrize_density_matrix();
     }

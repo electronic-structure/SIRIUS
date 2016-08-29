@@ -97,7 +97,7 @@ class Simulation_parameters
         relativity_t core_relativity_{relativity_t::dirac};
         
         /// Type of electronic structure method.
-        electronic_structure_method_t esm_type_{full_potential_lapwlo};
+        electronic_structure_method_t esm_type_{electronic_structure_method_t::full_potential_lapwlo};
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
@@ -211,11 +211,11 @@ class Simulation_parameters
         {
             std::map<std::string, electronic_structure_method_t> m;
 
-            m["full_potential_lapwlo"]           = full_potential_lapwlo;
-            m["full_potential_pwlo"]             = full_potential_pwlo;
-            m["ultrasoft_pseudopotential"]       = ultrasoft_pseudopotential;
-            m["norm_conserving_pseudopotential"] = norm_conserving_pseudopotential;
-            m["paw_pseudopotential"]             = paw_pseudopotential;
+            m["full_potential_lapwlo"]           = electronic_structure_method_t::full_potential_lapwlo;
+            m["full_potential_pwlo"]             = electronic_structure_method_t::full_potential_pwlo;
+            m["ultrasoft_pseudopotential"]       = electronic_structure_method_t::ultrasoft_pseudopotential;
+            m["norm_conserving_pseudopotential"] = electronic_structure_method_t::norm_conserving_pseudopotential;
+            m["paw_pseudopotential"]             = electronic_structure_method_t::paw_pseudopotential;
 
             if (m.count(name__) == 0)
             {
@@ -415,7 +415,8 @@ class Simulation_parameters
 
         inline bool full_potential() const
         {
-            return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
+            return (esm_type_ == electronic_structure_method_t::full_potential_lapwlo ||
+                    esm_type_ == electronic_structure_method_t::full_potential_pwlo);
         }
 
         inline std::vector<std::string> const& xc_functionals() const

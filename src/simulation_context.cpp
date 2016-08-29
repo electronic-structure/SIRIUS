@@ -213,7 +213,8 @@ void Simulation_context::initialize()
     }
     #endif
 
-    if (esm_type() == ultrasoft_pseudopotential || esm_type() == paw_pseudopotential) {
+    if (esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
+        esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega())));

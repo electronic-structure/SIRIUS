@@ -952,7 +952,8 @@ inline void Density::generate_valence_new(K_set& ks__)
         mt_complex_density_matrix.zero();
     }
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
+        ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         density_matrix_.zero();
     }
 
@@ -985,7 +986,8 @@ inline void Density::generate_valence_new(K_set& ks__)
             add_k_point_contribution_mt(kp, mt_complex_density_matrix);
         }
         
-        if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+        if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
+            ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
             if (ctx_.gamma_point()) {
                 add_k_point_contribution<double>(kp, density_matrix_);
             } else {
@@ -1021,7 +1023,8 @@ inline void Density::generate_valence_new(K_set& ks__)
         }
     }
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
+        ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
@@ -1032,6 +1035,20 @@ inline void Density::generate_valence_new(K_set& ks__)
     comm.allreduce(&rho_->f_rg(0), ctx_.fft().local_size()); 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         comm.allreduce(&magnetization_[j]->f_rg(0), ctx_.fft().local_size()); 
+    }
+
+    /* for muffin-tin part */
+    switch (ctx_.esm_type()) {
+        case electronic_structure_method_t::full_potential_lapwlo: {
+            generate_valence_density_mt(ks__);
+            break;
+        }
+        case electronic_structure_method_t::full_potential_pwlo: {
+            STOP();
+        }
+        default: {
+            break;
+        }
     }
 
     ctx_.fft().prepare(ctx_.gvec().partition());
@@ -1050,7 +1067,7 @@ inline void Density::generate_valence_new(K_set& ks__)
         augment(ks__);
     }
 
-    if (ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         symmetrize_density_matrix();
     }
 }

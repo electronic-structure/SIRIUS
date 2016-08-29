@@ -1034,8 +1034,8 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
 
     switch (ctx_.esm_type())
     {
-        case full_potential_pwlo:
-        case full_potential_lapwlo:
+        case electronic_structure_method_t::full_potential_pwlo:
+        case electronic_structure_method_t::full_potential_lapwlo:
         {
             diag_fv_full_potential(kp__, effective_potential__);
             break;
@@ -1053,9 +1053,9 @@ void Band::solve_fd(K_point* kp__,
 {
     switch (ctx_.esm_type())
     {
-        case paw_pseudopotential:
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
+        case electronic_structure_method_t::paw_pseudopotential:
+        case electronic_structure_method_t::ultrasoft_pseudopotential:
+        case electronic_structure_method_t::norm_conserving_pseudopotential:
         {
             if (ctx_.gamma_point())
             {

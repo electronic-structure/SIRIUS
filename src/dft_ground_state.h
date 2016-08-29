@@ -209,26 +209,26 @@ class DFT_ground_state
 
             switch (ctx_.esm_type())
             {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
+                case electronic_structure_method_t::full_potential_lapwlo:
+                case electronic_structure_method_t::full_potential_pwlo:
                 {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                 }
                 break;
 
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
+                case electronic_structure_method_t::ultrasoft_pseudopotential:
+                case electronic_structure_method_t::norm_conserving_pseudopotential:
                 {
                     tot_en = kset_.valence_eval_sum() - energy_veff() + 0.5 * energy_vha() +
                              energy_exc() + ewald_energy_;
                 }
                 break;
 
-                case paw_pseudopotential:
+                case electronic_structure_method_t::paw_pseudopotential:
                 {
-                    tot_en = ( kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy() )    // Ekin
-                             + 0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() +              // Epot
-                             ewald_energy_ ;                                                                    // Ewald
+                    tot_en = (kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy())    // Ekin
+                             + 0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() +            // Epot
+                             ewald_energy_ ;                                                                  // Ewald
                 }
                 break;
 
@@ -245,26 +245,27 @@ class DFT_ground_state
         {
             switch(ctx_.esm_type())
             {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
+                case electronic_structure_method_t::full_potential_lapwlo:
+                case electronic_structure_method_t::full_potential_pwlo:
                 {
                     potential_.generate_effective_potential(density_.rho(), density_.magnetization());
                     break;
                 }
 
                 //TODO case paw_pseudopotential think about
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
+                case electronic_structure_method_t::ultrasoft_pseudopotential:
+                case electronic_structure_method_t::norm_conserving_pseudopotential:
                 {
                     potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
                     break;
                 };
 
-                case paw_pseudopotential:
+                case electronic_structure_method_t::paw_pseudopotential:
                 {
                     potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
                     potential_.generate_PAW_effective_potential(density_);
-                }break;
+                    break;
+                }
 
             }
         }

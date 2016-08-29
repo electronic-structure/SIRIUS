@@ -60,7 +60,7 @@ void Atom_type::init(int offset_lo__)
         set_radial_grid();
     }
     
-    if (parameters_.esm_type() == full_potential_lapwlo) {
+    if (parameters_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         /* initialize free atom density and potential */
         //== init_free_atom(false);
 

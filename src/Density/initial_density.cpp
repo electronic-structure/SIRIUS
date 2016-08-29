@@ -18,7 +18,7 @@ void Density::initial_density()
     } else {
         initial_density_pseudo();
 
-        if(ctx_.esm_type() == paw_pseudopotential) {
+        if(ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
             initialize_beta_density_matrix();
 
             generate_paw_loc_density();

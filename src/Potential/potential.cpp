@@ -40,7 +40,7 @@ Potential::Potential(Simulation_context& ctx__)
         sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
     }
 
-    if (ctx_.esm_type() == full_potential_lapwlo) {
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */
@@ -106,7 +106,7 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     // if PAW calc
-    if(ctx_.esm_type() == paw_pseudopotential)
+    if(ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential)
     {
         init_PAW();
     }

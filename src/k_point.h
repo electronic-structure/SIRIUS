@@ -269,17 +269,17 @@ class K_point
         {
             switch (ctx_.esm_type())
             {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
+                case electronic_structure_method_t::full_potential_lapwlo:
+                case electronic_structure_method_t::full_potential_pwlo:
                 {
                     return unit_cell_.mt_basis_size() + num_gkvec();
                     break;
                 }
 
                 //TODO case paw_pseudopotential think about
-                case paw_pseudopotential:
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
+                case electronic_structure_method_t::paw_pseudopotential:
+                case electronic_structure_method_t::ultrasoft_pseudopotential:
+                case electronic_structure_method_t::norm_conserving_pseudopotential:
                 {
                     return num_gkvec();
                     break;
@@ -292,15 +292,15 @@ class K_point
         {
             switch (ctx_.esm_type())
             {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
+                case electronic_structure_method_t::full_potential_lapwlo:
+                case electronic_structure_method_t::full_potential_pwlo:
                 {
                     return unit_cell_.mt_basis_size();
                     break;
                 }
-                case paw_pseudopotential:
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
+                case electronic_structure_method_t::paw_pseudopotential:
+                case electronic_structure_method_t::ultrasoft_pseudopotential:
+                case electronic_structure_method_t::norm_conserving_pseudopotential:
                 {
                     return 0;
                     break;

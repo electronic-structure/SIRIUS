@@ -52,14 +52,14 @@ void K_point::initialize()
     double gk_cutoff = 0;
     switch (ctx_.esm_type())
     {
-        case paw_pseudopotential:
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
+        case electronic_structure_method_t::paw_pseudopotential:
+        case electronic_structure_method_t::ultrasoft_pseudopotential:
+        case electronic_structure_method_t::norm_conserving_pseudopotential:
         {
             gk_cutoff = ctx_.gk_cutoff();
             break;
         }
-        case full_potential_lapwlo:
+        case electronic_structure_method_t::full_potential_lapwlo:
         {
             //gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
             gk_cutoff = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
@@ -98,7 +98,7 @@ void K_point::initialize()
             atom_lo_rows_[ia].push_back(irow);
         }
     }
-    if (ctx_.esm_type() == full_potential_pwlo)
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_pwlo)
     {
         /** \todo Correct the memory leak */
         STOP();
@@ -110,7 +110,7 @@ void K_point::initialize()
         //== }
     }
 
-    if (ctx_.esm_type() == full_potential_lapwlo)
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo)
     {
         alm_coeffs_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec(),
                                                 gklo_basis_descriptors_);

@@ -22,13 +22,13 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     {
         case CPU:
         {
-            set_fv_h_o<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
         #ifdef __GPU
         case GPU:
         {
-            set_fv_h_o<GPU, full_potential_lapwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
         #endif

@@ -29,20 +29,20 @@ Density::Density(Simulation_context& ctx__)
 
     switch (ctx_.esm_type())
     {
-        case full_potential_lapwlo:
+        case electronic_structure_method_t::full_potential_lapwlo:
         {
             gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
             break;
         }
-        case full_potential_pwlo:
+        case electronic_structure_method_t::full_potential_pwlo:
         {
             gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_pw(), ctx_.lmax_rho(), ctx_.lmax_pw(), SHT::gaunt_hybrid));
             break;
         }
 
-        case paw_pseudopotential:
-        case ultrasoft_pseudopotential:
-        case norm_conserving_pseudopotential:
+        case electronic_structure_method_t::paw_pseudopotential:
+        case electronic_structure_method_t::ultrasoft_pseudopotential:
+        case electronic_structure_method_t::norm_conserving_pseudopotential:
         {
             break;
         }
