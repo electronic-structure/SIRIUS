@@ -174,7 +174,7 @@ Simulation_context* create_sim_ctx(std::string                     fname__,
     ctx.set_pw_cutoff(inp__.pw_cutoff_);
     ctx.set_aw_cutoff(inp__.aw_cutoff_);
     ctx.set_gk_cutoff(inp__.gk_cutoff_);
-    if (ctx.esm_type() == full_potential_lapwlo) {
+    if (ctx.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         ctx.set_lmax_apw(inp__.lmax_apw_);
         ctx.set_lmax_pot(inp__.lmax_pot_);
         ctx.set_lmax_rho(inp__.lmax_rho_);

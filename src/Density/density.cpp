@@ -50,20 +50,10 @@ Density::Density(Simulation_context& ctx__)
 
     l_by_lm_ = Utils::l_by_lm(ctx_.lmax_rho());
 
-    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
-     * because density matrix is symmetric. */
-    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
+    density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
+                                                 ctx_.num_mag_comp(), unit_cell_.num_atoms());
 
-    if (ctx_.full_potential()) {
-        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
-                                                     ndm, unit_cell_.spl_num_atoms().local_size());
-    } else {
-        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
-                                                     ndm, unit_cell_.num_atoms());
-    }
-
-    if (!ctx_.full_potential())
-    {
+    if (!ctx_.full_potential()) {
         lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
         std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()), 1.0);
         for (size_t i = 0; i < density_matrix_.size(); i++) {
@@ -73,8 +63,7 @@ Density::Density(Simulation_context& ctx__)
         weights[0] = 0;
         lf_gvec_[0] = 0;
 
-        for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++)
-        {
+        for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++) {
             auto G = ctx_.gvec_coarse().gvec(ig);
             /* save index of low-frequency G-vector */
             lf_gvec_[ig] = ctx_.gvec().index_by_gvec(G);

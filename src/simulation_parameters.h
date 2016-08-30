@@ -331,10 +331,12 @@ class Simulation_parameters
             
             return num_mag_dims_;
         }
-    
+        
+        /// Number of components in the complex density matrix.
+        /** In case of non-collinear magnetism only one out of two non-diagonal components is stored. */
         inline int num_mag_comp() const
         {
-            return num_mag_dims_ == 3 ? num_mag_dims_ : num_spins_;
+            return num_mag_dims_ == 3 ? 3 : num_spins_;
         }
 
         inline int max_occupancy() const

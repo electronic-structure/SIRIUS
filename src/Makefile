@@ -9,15 +9,9 @@ SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \
-       Density/add_k_point_contribution.cpp \
-       Density/add_k_point_contribution_rg.cpp \
        Density/generate_rho_radial_integrals.cpp \
-       Density/generate.cpp \
-       Density/generate_density_matrix.cpp \
        Density/symmetrize_density_matrix.cpp \
-       Density/generate_valence.cpp \
        Density/generate_valence_density_mt.cpp \
-       Density/generate_valence_density_it.cpp \
        Density/check_density_continuity_at_mt.cpp \
        Band/set_fv_h_o.cpp \
        Band/set_h_o.cpp \

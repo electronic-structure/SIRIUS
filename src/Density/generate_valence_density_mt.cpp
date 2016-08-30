@@ -10,39 +10,6 @@ void Density::generate_valence_density_mt(K_set& ks)
 {
     PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_mt");
 
-    ///* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
-    //   because density matrix is symmetric */
-    //int num_zdmat = (ctx_.num_mag_dims() == 3) ? 3 : (ctx_.num_mag_dims() + 1);
-
-    ///* complex density matrix */
-    //mdarray<double_complex, 4> mt_complex_density_matrix(unit_cell_.max_mt_basis_size(), 
-    //                                                     unit_cell_.max_mt_basis_size(),
-    //                                                     num_zdmat, unit_cell_.num_atoms());
-    //mt_complex_density_matrix.zero();
-    //
-    ///* add k-point contribution */
-    //for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
-    //{
-    //    int ik = ks.spl_num_kpoints(ikloc);
-    //    add_k_point_contribution_mt(ks[ik], mt_complex_density_matrix);
-    //}
-    //
-    //mdarray<double_complex, 4> mt_complex_density_matrix_loc(unit_cell_.max_mt_basis_size(), 
-    //                                                         unit_cell_.max_mt_basis_size(),
-    //                                                         num_zdmat, unit_cell_.spl_num_atoms().local_size(0));
-   
-    //for (int j = 0; j < num_zdmat; j++)
-    //{
-    //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    //    {
-    //        int ialoc = unit_cell_.spl_num_atoms().local_index(ia);
-    //        int rank = unit_cell_.spl_num_atoms().local_rank(ia);
-
-    //        ctx_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
-    //                           unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size(), rank);
-    //    }
-    //}
-   
     /* compute occupation matrix */
     if (ctx_.uj_correction())
     {
@@ -124,17 +91,17 @@ void Density::generate_valence_density_mt(K_set& ks)
         {
             case 3:
             {
-                reduce_density_matrix<3>(atom_type, ialoc, density_matrix_, *gaunt_coefs_, mt_density_matrix);
+                reduce_density_matrix<3>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
                 break;
             }
             case 1:
             {
-                reduce_density_matrix<1>(atom_type, ialoc, density_matrix_, *gaunt_coefs_, mt_density_matrix);
+                reduce_density_matrix<1>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
                 break;
             }
             case 0:
             {
-                reduce_density_matrix<0>(atom_type, ialoc, density_matrix_, *gaunt_coefs_, mt_density_matrix);
+                reduce_density_matrix<0>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
                 break;
             }
         }
