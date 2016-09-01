@@ -45,23 +45,23 @@ void Band::residuals_aux(K_point* kp__,
         /* global index of residual */
         res_idx = mdarray<int, 1>(num_bands__);
         for (int i = 0; i < num_bands__; i++) res_idx[i] = i;
-        res_idx.allocate_on_device();
+        res_idx.allocate(memory_t::device);
         res_idx.copy_to_device();
 
         eval = mdarray<double, 1>(&eval__[0], num_bands__);
-        eval.allocate_on_device();
+        eval.allocate(memory_t::device);
         eval.copy_to_device();
 
         h_diag = mdarray<double, 1>(&h_diag__[0], kp__->num_gkvec_row());
-        h_diag.allocate_on_device();
+        h_diag.allocate(memory_t::device);
         h_diag.copy_to_device();
 
         o_diag = mdarray<double, 1>(&o_diag__[0], kp__->num_gkvec_row());
-        o_diag.allocate_on_device();
+        o_diag.allocate(memory_t::device);
         o_diag.copy_to_device();
 
-        res_norm.allocate_on_device();
-        p_norm.allocate_on_device();
+        res_norm.allocate(memory_t::device);
+        p_norm.allocate(memory_t::device);
     }
     #endif
 

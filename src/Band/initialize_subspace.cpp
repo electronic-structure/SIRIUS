@@ -114,13 +114,13 @@ void Band::initialize_subspace(K_point* kp__,
     matrix<T> hmlt_old(num_phi, num_phi);
     matrix<T> ovlp_old(num_phi, num_phi);
 
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma)
-    {
-        hmlt.pin_memory();
-        ovlp.pin_memory();
-    }
-    #endif
+    //#ifdef __GPU
+    //if (gen_evp_solver_->type() == ev_magma)
+    //{
+    //    hmlt.pin_memory();
+    //    ovlp.pin_memory();
+    //}
+    //#endif
 
     matrix<T> evec(num_phi, num_phi);
 
@@ -153,8 +153,8 @@ void Band::initialize_subspace(K_point* kp__,
         phi.copy_to_device(0, num_phi);
         hphi.allocate_on_device();
         ophi.allocate_on_device();
-        evec.allocate_on_device();
-        ovlp.allocate_on_device();
+        evec.allocate(memory_t::device);
+        ovlp.allocate(memory_t::device);
     }
     #endif
 

@@ -36,7 +36,7 @@ void Wave_functions<false>::swap_forward(int idx0__, int n__, Gvec_partition con
         /* reallocate buffers if necessary */
         if (wf_coeffs_swapped_buf_.size() < sz) {
             wf_coeffs_swapped_buf_ = mdarray<double_complex, 1>(sz);
-            send_recv_buf_ = mdarray<double_complex, 1>(sz, "send_recv_buf_");
+            send_recv_buf_ = mdarray<double_complex, 1>(sz, memory_t::host, "send_recv_buf_");
         }
         wf_coeffs_swapped_ = mdarray<double_complex, 2>(&wf_coeffs_swapped_buf_[0], gvec__.gvec_count_fft(), max_nwf_loc);
     }
@@ -125,7 +125,9 @@ void Wave_functions<false>::inner<double_complex>(int i0__, int m__, Wave_functi
         {
             inner_prod_buf_ = mdarray<double, 1>(2 * m__ * n__);
             #ifdef __GPU
-            if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
+            if (pu_ == GPU) {
+                inner_prod_buf_.allocate(memory_t::device);
+            }
             #endif
         }
         switch (pu_)
@@ -186,7 +188,9 @@ void Wave_functions<false>::inner<double>(int i0__, int m__, Wave_functions& ket
         {
             inner_prod_buf_ = mdarray<double, 1>(m__ * n__);
             #ifdef __GPU
-            if (pu_ == GPU) inner_prod_buf_.allocate_on_device();
+            if (pu_ == GPU) {
+                inner_prod_buf_.allocate(memory_t::device);
+            }
             #endif
         }
         double alpha = 2;

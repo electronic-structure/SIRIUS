@@ -197,9 +197,9 @@ class Radial_grid
         #ifdef __GPU
         void copy_to_device()
         {
-            x_.allocate_on_device();
+            x_.allocate(memory_t::device);
             x_.copy_to_device();
-            dx_.allocate_on_device();
+            dx_.allocate(memory_t::device);
             dx_.copy_to_device();
         }
         #endif

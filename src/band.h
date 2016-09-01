@@ -477,7 +477,7 @@ class Band
          *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
          *  \f]
          */
-        template <processing_unit_t pu, electronic_structure_method_t basis>
+        template <device_t pu, electronic_structure_method_t basis>
         void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, dmatrix<double_complex>& h, 
                         dmatrix<double_complex>& o) const;
         

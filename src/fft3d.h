@@ -117,7 +117,7 @@ class FFT3D
         Communicator const& comm_;
 
         /// Main processing unit of this FFT.
-        processing_unit_t pu_;
+        device_t pu_;
         
         /// Split z-direction.
         splindex<block> spl_z_;
@@ -663,7 +663,7 @@ class FFT3D
         /// Constructor.
         FFT3D(FFT3D_grid grid__,
               Communicator const& comm__,
-              processing_unit_t pu__,
+              device_t pu__,
               double gpu_workload = 0.8)
             : comm_(comm__),
               pu_(pu__),
@@ -677,7 +677,7 @@ class FFT3D
             offset_z_ = spl_z_.global_offset();
 
             /* allocate main buffer */
-            fft_buffer_ = mdarray<double_complex, 1>(local_size(), "FFT3D.fft_buffer_");
+            fft_buffer_ = mdarray<double_complex, 1>(local_size(), memory_t::host_pinned, "FFT3D.fft_buffer_");
             
             /* allocate 1d and 2d buffers */
             for (int i = 0; i < omp_get_max_threads(); i++) {
@@ -853,7 +853,7 @@ class FFT3D
             return fft_buffer_[idx__];
         }
         
-        template <processing_unit_t pu>
+        template <device_t pu>
         inline double_complex* buffer()
         {
             return fft_buffer_.at<pu>();
@@ -892,7 +892,7 @@ class FFT3D
 
             int nc = gvec__.reduced() ? 2 : 1;
 
-            z_col_pos_ = mdarray<int, 2>(gvec__.num_zcol(), nc, "FFT3D.z_col_pos_");
+            z_col_pos_ = mdarray<int, 2>(gvec__.num_zcol(), nc, memory_t::host, "FFT3D.z_col_pos_");
             #pragma omp parallel for
             for (int i = 0; i < gvec__.num_zcol(); i++) {
                 int x = grid().coord_by_gvec(gvec__.zcol(i).x, 0);
@@ -910,7 +910,7 @@ class FFT3D
                 /* for the full GPU transform */
                 size_t work_size;
                 if (gpu_only_impl_) {
-                    z_col_map_ = mdarray<int, 1>(gvec__.num_gvec(), "FFT3D.z_col_map_");
+                    z_col_map_ = mdarray<int, 1>(gvec__.num_gvec(), memory_t::host | memory_t::device, "FFT3D.z_col_map_");
                     #pragma omp parallel for
                     for (int i = 0; i < gvec__.num_zcol(); i++) {
                         for (size_t j = 0; j < gvec__.zcol(i).z.size(); j++) {
@@ -926,7 +926,6 @@ class FFT3D
                             #endif
                         }
                     }
-                    z_col_map_.allocate_on_device();
                     z_col_map_.copy_to_device();
                     
                     #ifdef __CUFFT3D
@@ -950,8 +949,7 @@ class FFT3D
                 }
                
                 /* allocate cufft work buffer */
-                cufft_work_buf_ = mdarray<char, 1>(nullptr, work_size, "FFT3D.cufft_work_buf_");
-                cufft_work_buf_.allocate_on_device();
+                cufft_work_buf_ = mdarray<char, 1>(work_size, memory_t::device, "FFT3D.cufft_work_buf_");
                 /* set work area for cufft */ 
                 cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
                 if (gpu_only_impl_) {
@@ -962,16 +960,16 @@ class FFT3D
                     #endif
                 }
 
-                fft_buffer_aux1_.allocate_on_device();
-                fft_buffer_aux2_.allocate_on_device();
+                fft_buffer_aux1_.allocate(memory_t::device);
+                fft_buffer_aux2_.allocate(memory_t::device);
                 
-                /* we will do async transfers between cpu and gpu */
-                if (!gpu_only_impl_) {
-                    fft_buffer_.pin_memory();
-                }
-                fft_buffer_.allocate_on_device();
+                ///* we will do async transfers between cpu and gpu */
+                //if (!gpu_only_impl_) {
+                //    fft_buffer_.pin_memory();
+                //}
+                fft_buffer_.allocate(memory_t::device);
 
-                z_col_pos_.allocate_on_device();
+                z_col_pos_.allocate(memory_t::device);
                 z_col_pos_.copy_to_device();
             }
             #endif
@@ -1014,11 +1012,10 @@ class FFT3D
                 sz_max = grid_.size(2) * gvec__.num_zcol();
             }
             if (sz_max > fft_buffer_aux1_.size()) {
-                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux1_");
+                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux1_");
                 #ifdef __GPU
                 if (pu_ == GPU) {
-                    fft_buffer_aux1_.pin_memory();
-                    fft_buffer_aux1_.allocate_on_device();
+                    fft_buffer_aux1_.allocate(memory_t::device);
                 }
                 #endif
             }
@@ -1106,20 +1103,18 @@ class FFT3D
             }
             
             if (sz_max > fft_buffer_aux1_.size()) {
-                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux1_");
+                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux1_");
                 #ifdef __GPU
                 if (pu_ == GPU) {
-                    fft_buffer_aux1_.pin_memory();
-                    fft_buffer_aux1_.allocate_on_device();
+                    fft_buffer_aux1_.allocate(memory_t::device);
                 }
                 #endif
             }
             if (sz_max > fft_buffer_aux2_.size()) {
-                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, "fft_buffer_aux2_");
+                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux2_");
                 #ifdef __GPU
                 if (pu_ == GPU) {
-                    fft_buffer_aux2_.pin_memory();
-                    fft_buffer_aux2_.allocate_on_device();
+                    fft_buffer_aux2_.allocate(memory_t::device);
                 }
                 #endif
             }

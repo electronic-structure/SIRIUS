@@ -475,7 +475,7 @@ class Density
 
             #ifdef __GPU
             if (ctx_.processing_unit() == GPU) {
-                rho_aug.allocate_on_device();
+                rho_aug.allocate(memory_t::device);
             }
             #endif
             
@@ -511,7 +511,7 @@ class Density
             t5.stop();
         }
 
-        template <processing_unit_t pu>
+        template <device_t pu>
         inline void generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
                               mdarray<double_complex, 2>& rho_aug__);
         
@@ -888,7 +888,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
     }
 }
 
-template <processing_unit_t pu>
+template <device_t pu>
 inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
                                       mdarray<double_complex, 2>& rho_aug__)
 {
@@ -996,15 +996,15 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
 
         #ifdef __GPU
         if (pu == GPU) {
-            dm.allocate_on_device();
+            dm.allocate(memory_t::device);
             dm.copy_to_device();
 
             /* treat auxiliary array as double with x2 size */
             mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
-            dm_pw.allocate_on_device();
+            dm_pw.allocate(memory_t::device);
 
             mdarray<double, 1> phase_factors(nullptr, atom_type.num_atoms() * spl_gvec.local_size() * 2);
-            phase_factors.allocate_on_device();
+            phase_factors.allocate(memory_t::device);
 
             acc::sync_stream(0);
             if (iat + 1 != unit_cell_.num_atom_types()) {
@@ -1247,7 +1247,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
     #ifdef __GPU
     if (ctx_.fft().hybrid()) {
-        density_rg.allocate_on_device();
+        density_rg.allocate(memory_t::device);
         density_rg.zero_on_device();
     }
     #endif

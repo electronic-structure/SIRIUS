@@ -37,7 +37,7 @@ class Non_local_operator
 
         Beta_projectors& beta_;
 
-        processing_unit_t pu_;
+        device_t pu_;
         
         int packed_mtrx_size_;
 
@@ -55,7 +55,7 @@ class Non_local_operator
 
     public:
 
-        Non_local_operator(Beta_projectors& beta__, processing_unit_t pu__) : beta_(beta__), pu_(pu__)
+        Non_local_operator(Beta_projectors& beta__, device_t pu__) : beta_(beta__), pu_(pu__)
         {
             PROFILE();
 
@@ -72,7 +72,7 @@ class Non_local_operator
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                packed_mtrx_offset_.allocate_on_device();
+                packed_mtrx_offset_.allocate(memory_t::device);
                 packed_mtrx_offset_.copy_to_device();
             }
             #endif
@@ -141,9 +141,8 @@ class D_operator: public Non_local_operator<T>
                 }
             }
             #ifdef __GPU
-            if (this->pu_ == GPU)
-            {
-                this->op_.allocate_on_device();
+            if (this->pu_ == GPU) {
+                this->op_.allocate(memory_t::device);
                 this->op_.copy_to_device();
             }
             #endif
@@ -180,9 +179,8 @@ class Q_operator: public Non_local_operator<T>
                 }
             }
             #ifdef __GPU
-            if (this->pu_ == GPU)
-            {
-                this->op_.allocate_on_device();
+            if (this->pu_ == GPU) {
+                this->op_.allocate(memory_t::device);
                 this->op_.copy_to_device();
             }
             #endif
@@ -216,7 +214,7 @@ class P_operator: public Non_local_operator<T>
             }
             #ifdef __GPU
             if (this->pu_ == GPU) {
-                this->op_.allocate_on_device();
+                this->op_.allocate(memory_t::device);
                 this->op_.copy_to_device();
             }
             #endif

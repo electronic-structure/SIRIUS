@@ -135,14 +135,11 @@ void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>
     int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
     DUMP("max_mt_aw: %i", max_mt_aw);
 
-    experimental::mdarray<double_complex, 3, 1> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2);
-    alm_row.allocate_on_device();
+    mdarray<double_complex, 3> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
 
-    experimental::mdarray<double_complex, 3, 1> alm_col(kp__->num_gkvec_col(), max_mt_aw, 2);
-    alm_col.allocate_on_device();
+    mdarray<double_complex, 3> alm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
 
-    experimental::mdarray<double_complex, 3, 1> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2);
-    halm_col.allocate_on_device();
+    mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
     t2.stop();
 
     runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");

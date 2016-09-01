@@ -46,6 +46,8 @@ class Augmentation_operator
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
         {
+            PROFILE_WITH_TIMER("sirius::Augmentation_operator::get_radial_integrals");
+
             // TODO: this can be distributed over G-shells (each mpi rank holds radial integrals only for
             //       G-shells of local fraction of G-vectors
 
@@ -63,8 +65,9 @@ class Augmentation_operator
                 {
                     qrf_spline(l3, idx) = Spline<double>(atom_type_.radial_grid());
 
-                    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++)
+                    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
                         qrf_spline(l3, idx)[ir] = atom_type_.uspp().q_radial_functions_l(ir, idx, l3); //= qrf(ir, l3, idx);
+                    }
 
                     qrf_spline(l3, idx).interpolate();
                 }
@@ -150,7 +153,7 @@ class Augmentation_operator
             q_mtrx_.zero();
 
             /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * spl_num_gvec.local_size());
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * spl_num_gvec.local_size(), memory_t::host_pinned);
             #pragma omp parallel for
             for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
                 int ig = spl_num_gvec[igloc];
@@ -182,7 +185,7 @@ class Augmentation_operator
                 }
             }
 
-            sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2);
+            sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned);
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     /* packed orbital index */
@@ -231,12 +234,10 @@ class Augmentation_operator
         {
             #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU) {
-                sym_weight_.pin_memory();
-                sym_weight_.allocate_on_device();
+                sym_weight_.allocate(memory_t::device);
                 sym_weight_.async_copy_to_device(stream_id__);
 
-                q_pw_.pin_memory();
-                q_pw_.allocate_on_device();
+                q_pw_.allocate(memory_t::device);
                 q_pw_.async_copy_to_device(stream_id__);
             }
             #endif

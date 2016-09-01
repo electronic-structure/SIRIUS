@@ -228,15 +228,13 @@ void K_point::generate_fv_states()
         #ifdef __GPU
         int tid = omp_get_thread_num();
         #endif
-        mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+        mdarray<double_complex, 2> alm(num_gkvec(), unit_cell_.max_mt_aw_basis_size(), memory_t::host_pinned);
         mdarray<double_complex, 2> tmp;
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
-            alm.pin_memory();
-            alm.allocate_on_device();
-            tmp = mdarray<double_complex, 2>(nullptr, unit_cell_.max_mt_aw_basis_size(), nbnd_loc);
-            tmp.allocate_on_device();
+            alm.allocate(memory_t::device);
+            tmp = mdarray<double_complex, 2>(unit_cell_.max_mt_aw_basis_size(), nbnd_loc, memory_t::device);
 
             // TODO: pin memory for fv_states (output buffer), otherwise async copy won't work
         }

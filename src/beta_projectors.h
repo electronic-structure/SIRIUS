@@ -63,7 +63,7 @@ class Beta_projectors
 
         int lmax_beta_;
 
-        processing_unit_t pu_;
+        device_t pu_;
 
         int num_gkvec_loc_;
 
@@ -111,7 +111,7 @@ class Beta_projectors
         Beta_projectors(Communicator const& comm__,
                         Unit_cell const& unit_cell__,
                         Gvec const& gkvec__,
-                        processing_unit_t pu__);
+                        device_t pu__);
 
         matrix<double_complex>& beta_gk_t()
         {
@@ -164,10 +164,9 @@ class Beta_projectors
         void prepare()
         {
             #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                beta_gk_gpu_.allocate_on_device();
-                beta_phi_.allocate_on_device();
+            if (pu_ == GPU) {
+                beta_gk_gpu_.allocate(memory_t::device);
+                beta_phi_.allocate(memory_t::device);
             }
             #endif
         }
@@ -175,8 +174,7 @@ class Beta_projectors
         void dismiss()
         {
             #ifdef __GPU
-            if (pu_ == GPU)
-            {
+            if (pu_ == GPU) {
                 beta_gk_gpu_.deallocate_on_device();
                 beta_phi_.deallocate_on_device();
             }

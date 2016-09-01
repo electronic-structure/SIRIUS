@@ -73,18 +73,20 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* residuals */
     Wave_functions<false> res(kp__->num_gkvec_loc(), num_bands, pu);
 
-    /* allocate Hamiltonian and overlap */
-    matrix<T> hmlt(num_phi, num_phi);
-    matrix<T> ovlp(num_phi, num_phi);
-    matrix<T> hmlt_old(num_phi, num_phi);
-    matrix<T> ovlp_old(num_phi, num_phi);
+    auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma) {
-        hmlt.pin_memory();
-        ovlp.pin_memory();
-    }
-    #endif
+    /* allocate Hamiltonian and overlap */
+    matrix<T> hmlt(num_phi, num_phi, mem_type);
+    matrix<T> ovlp(num_phi, num_phi, mem_type);
+    matrix<T> hmlt_old(num_phi, num_phi, mem_type);
+    matrix<T> ovlp_old(num_phi, num_phi, mem_type);
+
+    //= #ifdef __GPU
+    //= if (gen_evp_solver_->type() == ev_magma) {
+    //=     hmlt.pin_memory();
+    //=     ovlp.pin_memory();
+    //= }
+    //= #endif
 
     matrix<T> evec(num_phi, num_phi);
 
@@ -125,9 +127,9 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         hpsi.allocate_on_device();
         opsi.allocate_on_device();
 
-        evec.allocate_on_device();
+        evec.allocate(memory_t::device);
 
-        ovlp.allocate_on_device();
+        ovlp.allocate(memory_t::device);
     }
     #endif
 

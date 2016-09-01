@@ -69,7 +69,7 @@ class Hloc_operator
               gkvec_(gkvec__),
               comm_col_(comm_col__)
         {
-            pw_ekin_ = mdarray<double, 1>(gkvec_.gvec_count_fft(), "pw_ekin_");
+            pw_ekin_ = mdarray<double, 1>(gkvec_.gvec_count_fft(), memory_t::host, "pw_ekin_");
             pw_ekin_.zero();
             
             veff_vec_ = mdarray<double, 2>(fft_.local_size(), 1);
@@ -80,16 +80,16 @@ class Hloc_operator
             }
             #ifdef __GPU
             if (fft_.hybrid()) {
-                veff_vec_.allocate_on_device();
+                veff_vec_.allocate(memory_t::device);
                 veff_vec_.copy_to_device();
 
-                pw_ekin_.allocate_on_device();
+                pw_ekin_.allocate(memory_t::device);
                 pw_ekin_.copy_to_device();
             }
             if (fft_.gpu_only()) {
-                vphi1_.allocate_on_device();
+                vphi1_.allocate(memory_t::device);
                 if (gkvec_.reduced()) {
-                    vphi2_.allocate_on_device();
+                    vphi2_.allocate(memory_t::device);
                 }
             }
             #endif
@@ -189,15 +189,15 @@ class Hloc_operator
 
             #ifdef __GPU
             if (fft_.hybrid()) {
-                veff_vec_.allocate_on_device();
+                veff_vec_.allocate(memory_t::device);
                 veff_vec_.copy_to_device();
-                pw_ekin_.allocate_on_device();
+                pw_ekin_.allocate(memory_t::device);
                 pw_ekin_.copy_to_device();
             }
             if (fft_.gpu_only()) {
-                vphi1_.allocate_on_device();
+                vphi1_.allocate(memory_t::device);
                 if (gkvec_.reduced()) {
-                    vphi2_.allocate_on_device();
+                    vphi2_.allocate(memory_t::device);
                 }
             }
             #endif

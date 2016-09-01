@@ -32,7 +32,7 @@
 #include "dmatrix.h"
 
 /// Linear algebra interface class.
-template <processing_unit_t pu>
+template <device_t pu>
 class linalg;
 
 template<> 

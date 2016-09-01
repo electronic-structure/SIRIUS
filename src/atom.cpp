@@ -11,7 +11,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
                                             double const* g__,
                                             double* result__);
 
-void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__)
+void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
 {
     PROFILE_WITH_TIMER("sirius::Atom::generate_radial_integrals");
     
@@ -103,7 +103,7 @@ void Atom::generate_radial_integrals(processing_unit_t pu__, Communicator const&
         vrf_coef.copy_to_device();
         t1.stop();
 
-        result.allocate_on_device();
+        result.allocate(memory_t::device);
         runtime::Timer t2("sirius::Atom::generate_radial_integrals|inner");
         spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(), rgrid.dx().at<GPU>(),
                                     rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());

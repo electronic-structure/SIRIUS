@@ -162,7 +162,7 @@ class Atom
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
          */
-        void generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__);
+        void generate_radial_integrals(device_t pu__, Communicator const& comm__);
         
         /// Return pointer to corresponding atom type class.
         inline Atom_type const& type() const

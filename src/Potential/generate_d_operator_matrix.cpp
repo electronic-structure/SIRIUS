@@ -57,7 +57,7 @@ void Potential::generate_D_operator_matrix()
     #ifdef __GPU
     mdarray<double_complex, 1> veff_tmp(nullptr, spl_num_gvec_.local_size());
     if (ctx_.processing_unit() == GPU) {
-        veff_tmp.allocate_on_device();
+        veff_tmp.allocate(memory_t::device);
     }
     #endif
     
@@ -113,10 +113,9 @@ void Potential::generate_D_operator_matrix()
                                                   spl_num_gvec_.local_size());
                 veff.copy_to_device();
 
-                matrix<double> veff_a(nullptr, 2 * spl_num_gvec_.local_size(), atom_type.num_atoms());
-                veff_a.allocate_on_device();
+                matrix<double> veff_a(2 * spl_num_gvec_.local_size(), atom_type.num_atoms(), memory_t::device);
                 
-                d_tmp.allocate_on_device();
+                d_tmp.allocate(memory_t::device);
 
                 acc::sync_stream(0);
                 if (iat + 1 != unit_cell_.num_atom_types()) {

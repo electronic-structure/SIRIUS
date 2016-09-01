@@ -447,7 +447,7 @@ class Potential
         
         void update_atomic_potential();
         
-        template <processing_unit_t pu> 
+        template <device_t pu> 
         void add_mt_contribution_to_pw();
 
         /// Generate plane-wave coefficients of the potential in the interstitial region

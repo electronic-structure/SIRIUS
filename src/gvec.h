@@ -290,7 +290,7 @@ class Gvec
                 z_columns_.insert(z_columns_.end(), zcols_local[rank].begin(), zcols_local[rank].end());
             }
 
-            gvec_index_by_xy_ = mdarray<int, 3>(2, fft_box__.limits(0), fft_box__.limits(1), "Gvec.gvec_index_by_xy_");
+            gvec_index_by_xy_ = mdarray<int, 3>(2, fft_box__.limits(0), fft_box__.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
             std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
             
             /* build the full G-vector index and reverse mapping */
@@ -511,7 +511,7 @@ inline void Gvec_partition::build_fft_distr()
 
 inline void Gvec_partition::calc_offsets()
 {
-    zcol_offs_ = mdarray<int, 1>(gvec_->num_zcol(), "Gvec_partition.zcol_offs_");
+    zcol_offs_ = mdarray<int, 1>(gvec_->num_zcol(), memory_t::host, "Gvec_partition.zcol_offs_");
     for (int rank = 0; rank < fft_comm_->size(); rank++) {
         int offs{0};
         /* loop over local number of z-columns */

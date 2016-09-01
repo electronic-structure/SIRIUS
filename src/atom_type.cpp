@@ -150,14 +150,10 @@ void Atom_type::init(int offset_lo__)
     if (parameters_.processing_unit() == GPU && parameters_.full_potential())
     {
         #ifdef __GPU
-        idx_radial_integrals_.allocate_on_device();
+        idx_radial_integrals_.allocate(memory_t::device);
         idx_radial_integrals_.copy_to_device();
-        rf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, indexr().size());
-        rf_coef_.allocate(1);
-        rf_coef_.allocate_on_device();
-        vrf_coef_ = mdarray<double, 3>(nullptr, num_mt_points_, 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1)); 
-        vrf_coef_.allocate(1);
-        vrf_coef_.allocate_on_device();
+        rf_coef_ = mdarray<double, 3>(num_mt_points_, 4, indexr().size(), memory_t::host_pinned | memory_t::device);
+        vrf_coef_ = mdarray<double, 3>(num_mt_points_, 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1), memory_t::host_pinned | memory_t::device); 
         #else
         TERMINATE_NO_GPU
         #endif

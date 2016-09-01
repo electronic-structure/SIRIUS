@@ -37,24 +37,24 @@ class dmatrix
     private:
 
         /// Global number of matrix rows.
-        int num_rows_;
+        int num_rows_{0};
 
         /// Global number of matrix columns.
-        int num_cols_;
+        int num_cols_{0};
 
-        int num_ranks_row_;
+        int num_ranks_row_{0};
 
-        int rank_row_;
+        int rank_row_{-1};
 
-        int num_ranks_col_;
+        int num_ranks_col_{0};
 
-        int rank_col_;
+        int rank_col_{-1};
 
-        int bs_row_;
+        int bs_row_{0};
 
-        int bs_col_;
+        int bs_col_{0};
 
-        BLACS_grid const* blacs_grid_;
+        BLACS_grid const* blacs_grid_{nullptr};
 
         splindex<block_cyclic> spl_row_;
 
@@ -68,14 +68,14 @@ class dmatrix
 
         void init()
         {
-            spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_row_);
-            spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs_col_);
+            //spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_row_);
+            //spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs_col_);
 
-            matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
+            //matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef __SCALAPACK
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0,
-                                  blacs_grid_->context(), matrix_local_.ld());
+                                  blacs_grid_->context(), spl_row_.local_size());
             #endif
         }
 
@@ -83,15 +83,6 @@ class dmatrix
         
         // Default constructor
         dmatrix()
-            : num_rows_(0),
-              num_cols_(0),
-              num_ranks_row_(1), 
-              rank_row_(0), 
-              num_ranks_col_(1), 
-              rank_col_(0),
-              bs_row_(1),
-              bs_col_(1),
-              blacs_grid_(nullptr)
         {
         }
         
@@ -104,10 +95,12 @@ class dmatrix
               rank_col_(blacs_grid__.rank_col()),
               bs_row_(bs_row__),
               bs_col_(bs_col__),
-              blacs_grid_(&blacs_grid__)
+              blacs_grid_(&blacs_grid__),
+              spl_row_(num_rows_, num_ranks_row_, rank_row_, bs_row_),
+              spl_col_(num_cols_, num_ranks_col_, rank_col_, bs_col_)
         {
             init();
-            matrix_local_.allocate();
+            matrix_local_ = matrix<T>(spl_row_.local_size(), spl_col_.local_size());
         }
 
         dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__) 
@@ -119,7 +112,9 @@ class dmatrix
               rank_col_(blacs_grid__.rank_col()),
               bs_row_(bs_row__),
               bs_col_(bs_col__),
-              blacs_grid_(&blacs_grid__)
+              blacs_grid_(&blacs_grid__),
+              spl_row_(num_rows_, num_ranks_row_, rank_row_, bs_row_),
+              spl_col_(num_cols_, num_ranks_col_, rank_col_, bs_col_)
         {
             init();
             matrix_local_ = matrix<T>(ptr__, spl_row_.local_size(), spl_col_.local_size());
@@ -232,7 +227,7 @@ class dmatrix
         #ifdef __GPU
         inline void allocate_on_device()
         {
-            matrix_local_.allocate_on_device();
+            matrix_local_.allocate(memory_t::device);
         }
 
         inline void deallocate_on_device()
@@ -240,15 +235,15 @@ class dmatrix
             matrix_local_.deallocate_on_device();
         }
 
-        inline void pin_memory()
-        {
-            matrix_local_.pin_memory();
-        }
+        //== inline void pin_memory()
+        //== {
+        //==     matrix_local_.pin_memory();
+        //== }
 
-        inline void unpin_memory()
-        {
-            matrix_local_.unpin_memory();
-        }
+        //== inline void unpin_memory()
+        //== {
+        //==     matrix_local_.unpin_memory();
+        //== }
 
         inline void zero_on_device()
         {
@@ -295,19 +290,19 @@ class dmatrix
             return matrix_local_(irow_loc, icol_loc);
         }
         
-        template <processing_unit_t pu>
+        template <device_t pu>
         inline T* at() 
         {
             return matrix_local_.at<pu>();
         }
 
-        template <processing_unit_t pu>
+        template <device_t pu>
         inline T const* at() const
         {
             return matrix_local_.at<pu>();
         }
 
-        template <processing_unit_t pu>
+        template <device_t pu>
         inline T* at(int64_t const irow_loc, int64_t const icol_loc) 
         {
             return matrix_local_.at<pu>(irow_loc, icol_loc);
@@ -379,7 +374,7 @@ class dmatrix
             return num_ranks_col_;
         }
         
-        template <processing_unit_t pu>
+        template <device_t pu>
         static void copy_col(dmatrix<T> const& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__)
         {
             assert(src__.num_rows_local() == dest__.num_rows_local());

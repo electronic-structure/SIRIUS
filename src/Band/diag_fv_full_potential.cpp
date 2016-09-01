@@ -11,11 +11,11 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
 
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
-    dmatrix<double_complex> h(nullptr, ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(nullptr, ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
     
-    h.allocate(alloc_mode);
-    o.allocate(alloc_mode);
+    //h.allocate(alloc_mode);
+    //o.allocate(alloc_mode);
     
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit())
@@ -74,8 +74,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     }
     kp->set_fv_eigen_values(&eval[0]);
 
-    h.deallocate();
-    o.deallocate();
+    //h.deallocate();
+    //o.deallocate();
 }
 
 };

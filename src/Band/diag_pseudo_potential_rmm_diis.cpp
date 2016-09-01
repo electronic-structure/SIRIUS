@@ -85,18 +85,20 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     Wave_functions<false> hphi_tmp(kp__->num_gkvec_loc(), num_bands, pu);
     Wave_functions<false> ophi_tmp(kp__->num_gkvec_loc(), num_bands, pu);
 
+    auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+
     /* allocate Hamiltonian and overlap */
-    matrix<T> hmlt(num_bands, num_bands);
-    matrix<T> ovlp(num_bands, num_bands);
+    matrix<T> hmlt(num_bands, num_bands, mem_type);
+    matrix<T> ovlp(num_bands, num_bands, mem_type);
     matrix<T> hmlt_old;
     matrix<T> ovlp_old;
 
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma) {
-        hmlt.pin_memory();
-        ovlp.pin_memory();
-    }
-    #endif
+    //#ifdef __GPU
+    //if (gen_evp_solver_->type() == ev_magma) {
+    //    hmlt.pin_memory();
+    //    ovlp.pin_memory();
+    //}
+    //#endif
 
     matrix<T> evec(num_bands, num_bands);
 

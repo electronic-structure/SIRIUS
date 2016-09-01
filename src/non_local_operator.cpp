@@ -44,7 +44,7 @@ void Non_local_operator<double_complex>::apply(int chunk__, int ispn__, Wave_fun
     {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
         #ifdef __GPU
-        if (pu_ == GPU) work_.allocate_on_device();
+        if (pu_ == GPU) work_.allocate(memory_t::device);
         #endif
     }
 
@@ -120,7 +120,7 @@ void Non_local_operator<double>::apply(int chunk__, int ispn__, Wave_functions<f
     {
         work_ = mdarray<double, 1>(nbeta * n__);
         #ifdef __GPU
-        if (pu_ == GPU) work_.allocate_on_device();
+        if (pu_ == GPU) work_.allocate(memory_t::device);
         #endif
     }
 

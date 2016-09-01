@@ -42,7 +42,7 @@ class Wave_functions<false>
     private:
         
         /// Type of processing unit used.
-        processing_unit_t pu_;
+        device_t pu_;
         
         /// Local number of G-vectors.
         int num_gvec_loc_;
@@ -71,14 +71,14 @@ class Wave_functions<false>
 
     public:
 
-        Wave_functions(int num_gvec_loc__, int num_wfs__, processing_unit_t pu__)
+        Wave_functions(int num_gvec_loc__, int num_wfs__, device_t pu__)
             : pu_(pu__),
               num_gvec_loc_(num_gvec_loc__),
               num_wfs_(num_wfs__)
         {
             PROFILE();
             /* primary storage of PW wave functions: slabs */ 
-            wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, "wf_coeffs_");
+            wf_coeffs_ = mdarray<double_complex, 2>(num_gvec_loc_, num_wfs_, memory_t::host, "wf_coeffs_");
         }
 
         ~Wave_functions()
@@ -150,7 +150,7 @@ class Wave_functions<false>
         #ifdef __GPU
         void allocate_on_device()
         {
-            wf_coeffs_.allocate_on_device();
+            wf_coeffs_.allocate(memory_t::device);
         }
 
         void deallocate_on_device()

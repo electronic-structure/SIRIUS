@@ -75,8 +75,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     int bs = ctx_.cyclic_block_size();
 
     if (ctx_.num_mag_dims() != 3) {
-        dmatrix<double_complex> h(nullptr, nfv, nfv, ctx_.blacs_grid(), bs, bs);
-        h.allocate(alloc_mode);
+        dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
+        //h.allocate(alloc_mode);
 
         if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1) {
             #ifdef __GPU

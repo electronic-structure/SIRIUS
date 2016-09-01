@@ -82,7 +82,7 @@ class Simulation_parameters
         bool gamma_point_{false};
 
         /// Type of the processing unit.
-        processing_unit_t processing_unit_{CPU};
+        device_t processing_unit_{CPU};
     
         /// Smearing function width.
         double smearing_width_{0.001};
@@ -257,7 +257,7 @@ class Simulation_parameters
             valence_relativity_ = m[name__];
         }
 
-        inline void set_processing_unit(processing_unit_t pu__)
+        inline void set_processing_unit(device_t pu__)
         {
             processing_unit_ = pu__;
         }
@@ -359,7 +359,7 @@ class Simulation_parameters
             return gamma_point_;
         }
     
-        inline processing_unit_t processing_unit() const
+        inline device_t processing_unit() const
         {
             return processing_unit_;
         }

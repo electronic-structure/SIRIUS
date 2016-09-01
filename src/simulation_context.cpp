@@ -224,7 +224,7 @@ void Simulation_context::initialize()
     if (processing_unit() == GPU) {
         #ifdef __GPU
         splindex<block> spl_num_gvec(gvec_.num_gvec(), comm_.size(), comm_.rank());
-        gvec_coord_ = mdarray<int, 2>(spl_num_gvec.local_size(), 3, "gvec_coord_");
+        gvec_coord_ = mdarray<int, 2>(spl_num_gvec.local_size(), 3, memory_t::host | memory_t::device, "gvec_coord_");
         for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
             int ig = spl_num_gvec[igloc];
             auto G = gvec_.gvec(ig);
@@ -232,18 +232,16 @@ void Simulation_context::initialize()
                 gvec_coord_(igloc, x) = G[x];
             }
         }
-        gvec_coord_.allocate_on_device();
         gvec_coord_.copy_to_device();
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            atom_coord_.push_back(std::move(mdarray<double, 2>(3, unit_cell_.atom_type(iat).num_atoms())));
+            atom_coord_.push_back(std::move(mdarray<double, 2>(3, unit_cell_.atom_type(iat).num_atoms(), memory_t::host | memory_t::device)));
             for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
                 int ia = unit_cell_.atom_type(iat).atom_id(i);
                 for (int x: {0, 1, 2}) {
                     atom_coord_.back()(x, i) = unit_cell_.atom(ia).position()[x];
                 }
             }
-            atom_coord_.back().allocate_on_device();
             atom_coord_.back().copy_to_device();
         }
         #endif

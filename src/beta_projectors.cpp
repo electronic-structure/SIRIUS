@@ -29,7 +29,7 @@ namespace sirius {
 Beta_projectors::Beta_projectors(Communicator const& comm__,
                                  Unit_cell const& unit_cell__,
                                  Gvec const& gkvec__,
-                                 processing_unit_t pu__)
+                                 device_t pu__)
     : comm_(comm__),
       unit_cell_(unit_cell__),
       gkvec_(gkvec__),
@@ -45,7 +45,7 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     #ifdef __GPU
     if (pu_ == GPU)
     {
-        gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_);
+        gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_, memory_t::host | memory_t::device);
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
         {
@@ -55,16 +55,15 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
                 gkvec_coord_(x, igk_loc) = vgk[x];
             }
         }
-        gkvec_coord_.allocate_on_device();
         gkvec_coord_.copy_to_device();
 
-        beta_gk_t_.allocate_on_device();
+        beta_gk_t_.allocate(memory_t::device);
         beta_gk_t_.copy_to_device();
     }
     #endif
     
     #ifdef __GPU
-    beta_gk_gpu_ = matrix<double_complex>(nullptr, num_gkvec_loc_, max_num_beta_);
+    //beta_gk_gpu_ = matrix<double_complex>(num_gkvec_loc_, max_num_beta_, memory_t::none);
     #endif
 
     beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
@@ -234,10 +233,10 @@ void Beta_projectors::split_in_chunks()
         #ifdef __GPU
         if (pu_ == GPU)
         {
-            beta_chunks_[ib].desc_.allocate_on_device();
+            beta_chunks_[ib].desc_.allocate(memory_t::device);
             beta_chunks_[ib].desc_.copy_to_device();
 
-            beta_chunks_[ib].atom_pos_.allocate_on_device();
+            beta_chunks_[ib].atom_pos_.allocate(memory_t::device);
             beta_chunks_[ib].atom_pos_.copy_to_device();
         }
         #endif
@@ -293,7 +292,9 @@ void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& 
     {
         beta_phi_ = mdarray<double, 1>(2 * nbeta * n__);
         #ifdef __GPU
-        if (pu_ == GPU) beta_phi_.allocate_on_device();
+        if (pu_ == GPU) {
+            beta_phi_.allocate(memory_t::device);
+        }
         #endif
     }
 
@@ -346,7 +347,9 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
     {
         beta_phi_ = mdarray<double, 1>(nbeta * n__);
         #ifdef __GPU
-        if (pu_ == GPU) beta_phi_.allocate_on_device();
+        if (pu_ == GPU) {
+            beta_phi_.allocate(memory_t::device);
+        }
         #endif
     }
 
