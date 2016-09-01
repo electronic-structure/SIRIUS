@@ -55,12 +55,9 @@ double test_gemm(int M, int N, int K, int transa)
         imax = K;
         jmax = M;
     }
-    a = matrix<gemm_type>(nullptr, imax, jmax);
-    b = matrix<gemm_type>(nullptr, K, N);
-    c = matrix<gemm_type>(nullptr, M, N);
-    a.allocate(alloc_mode);
-    b.allocate(alloc_mode);
-    c.allocate(alloc_mode);
+    a = matrix<gemm_type>(imax, jmax);
+    b = matrix<gemm_type>(K, N);
+    c = matrix<gemm_type>(M, N);
 
     for (int j = 0; j < jmax; j++)
     {

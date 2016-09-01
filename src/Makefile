@@ -5,7 +5,7 @@ include ../make.inc
 SRC =  LebedevLaikov.cpp linalg.cpp  \
        sht.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
        xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       simulation_context.cpp wave_functions.cpp beta_projectors.cpp non_local_operator.cpp \
+       simulation_context.cpp wave_functions.cpp beta_projectors.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Density/density.cpp \
        Density/initial_density.cpp \

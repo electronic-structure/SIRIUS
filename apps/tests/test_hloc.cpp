@@ -5,7 +5,7 @@ using namespace sirius;
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
                int use_gpu__, double gpu_workload__)
 {
-    processing_unit_t pu = static_cast<processing_unit_t>(use_gpu__);
+    device_t pu = static_cast<device_t>(use_gpu__);
 
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
