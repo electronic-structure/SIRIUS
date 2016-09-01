@@ -14,12 +14,9 @@ void K_point::generate_spinor_wave_functions()
         if (!ctx_.need_sv())
         {
             /* copy eigen-states and exit */
-            if (ctx_.full_potential())
-            {
-                fv_states<true>().coeffs().panel() >> spinor_wave_functions<true>(0).coeffs().panel();
-            }
-            else
-            {
+            if (ctx_.full_potential()) {
+                fv_states<true>().coeffs() >> spinor_wave_functions<true>(0).coeffs();
+            } else {
                 fv_states<false>().coeffs() >> spinor_wave_functions<false>(0).coeffs();
             }
             return;

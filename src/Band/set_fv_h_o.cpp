@@ -70,7 +70,7 @@ void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>
                     apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col_tmp, halm_col_tmp);
 
                     /* setup apw-lo and lo-apw blocks */
-                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
+                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);
                 }
             }
         }
@@ -98,10 +98,10 @@ void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
+    set_fv_h_o_it(kp__, effective_potential__, h__, o__);
 
     /* setup lo-lo block */
-    set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
+    set_fv_h_o_lo_lo(kp__, h__, o__);
 }
 
 //=====================================================================================================================
@@ -118,11 +118,11 @@ void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>
     
     runtime::Timer t2("sirius::Band::set_fv_h_o|alloc");
     h__.zero();
-    h__.allocate_on_device();
+    h__.allocate(memory_t::device);
     h__.zero_on_device();
 
     o__.zero();
-    o__.allocate_on_device();
+    o__.allocate(memory_t::device);
     o__.zero_on_device();
 
     double_complex zone(1, 0);
@@ -192,7 +192,7 @@ void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>
                     halm_col_tmp.async_copy_to_device(tid);
 
                     /* setup apw-lo and lo-apw blocks */
-                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__.panel(), o__.panel());
+                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);
                 }
             }
             acc::sync_stream(tid);
@@ -217,10 +217,10 @@ void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
+    set_fv_h_o_it(kp__, effective_potential__, h__, o__);
 
     /* setup lo-lo block */
-    set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
+    set_fv_h_o_lo_lo(kp__, h__, o__);
 
     h__.deallocate_on_device();
     o__.deallocate_on_device();

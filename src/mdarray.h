@@ -28,8 +28,10 @@
 #include <signal.h>
 #include <cassert>
 #include <memory>
+#include <string>
 #include <atomic>
 #include <vector>
+#include <array>
 #include <cstring>
 #include <initializer_list>
 #include <type_traits>
@@ -389,9 +391,9 @@ class mdarray_base
         mdarray_base(mdarray_base<T, N>&& src) 
             : label_(src.label_),
               unique_ptr_(std::move(src.unique_ptr_)),
-              raw_ptr_(src.raw_ptr_),
+              raw_ptr_(src.raw_ptr_)
               #ifdef __GPU
-              unique_ptr_device_(std::move(src.unique_ptr_device_)),
+              ,unique_ptr_device_(std::move(src.unique_ptr_device_)),
               raw_ptr_device_(src.raw_ptr_device_)
               #endif
         {

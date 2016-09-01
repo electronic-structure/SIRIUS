@@ -48,8 +48,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = h.panel().checksum();
-    auto z2 = o.panel().checksum();
+    auto z1 = h.checksum();
+    auto z2 = o.checksum();
     DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
     DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif

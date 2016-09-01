@@ -43,7 +43,7 @@ void K_point::generate_fv_states()
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        fv_ev_swp.allocate_on_device();
+        fv_ev_swp.allocate(memory_t::device);
         fv_ev_swp.copy_to_device();
     }
     #endif

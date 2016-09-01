@@ -25,6 +25,9 @@
 #ifndef __SPLINDEX_H__
 #define __SPLINDEX_H__
 
+#include <algorithm>
+#include <vector>
+#include <sstream>
 #include <limits>
 
 enum splindex_t {block, block_cyclic};
