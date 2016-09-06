@@ -70,6 +70,11 @@ Density::Density(Simulation_context& ctx__)
             weights.push_back(0);
         }
 
+        for(int i= weights.size() - 1; i >= weights.size() - density_matrix_.size() ; i--)
+        {
+            weights[i] = 0.0;
+        }
+
         weights[0] = 0;
         lf_gvec_[0] = 0;
 
@@ -165,27 +170,35 @@ Density::Density(Simulation_context& ctx__)
         }
     }
 
+
+    std::cout<<"SPL ATOMS "<< unit_cell_.spl_num_atoms().local_size()<< std::endl;
+
     //--- Allocate local PAW density arrays ---
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
     {
+        int ia = unit_cell_.spl_num_atoms(i);
+
         auto& atom = unit_cell_.atom(ia);
 
         auto& atype = atom.type();
 
         int n_mt_points = atype.num_mt_points();
 
+        int rad_func_lmax = atype.indexr().lmax_lo();
+        int n_rho_lm_comp = (2 * rad_func_lmax + 1) * (2 * rad_func_lmax + 1);
+
         // allocate
-        mdarray<double, 2> ae_atom_density(ctx_.lmmax_rho(), n_mt_points);
-        mdarray<double, 2> ps_atom_density(ctx_.lmmax_rho(), n_mt_points);
+        mdarray<double, 2> ae_atom_density(n_rho_lm_comp, n_mt_points);
+        mdarray<double, 2> ps_atom_density(n_rho_lm_comp, n_mt_points);
 
         // add
         paw_ae_local_density_.push_back(std::move(ae_atom_density));
         paw_ps_local_density_.push_back(std::move(ps_atom_density));
 
         // magnetization
-        mdarray<double, 3> ae_atom_magn(ctx_.lmmax_rho(), n_mt_points, 3);
-        mdarray<double, 3> ps_atom_magn(ctx_.lmmax_rho(), n_mt_points, 3);
+        mdarray<double, 3> ae_atom_magn(n_rho_lm_comp, n_mt_points, 3);
+        mdarray<double, 3> ps_atom_magn(n_rho_lm_comp, n_mt_points, 3);
 
         ae_atom_magn.zero();
         ps_atom_magn.zero();
@@ -194,7 +207,7 @@ Density::Density(Simulation_context& ctx__)
         paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
 
     }
-
+    std::cout<<"paw density init done"<< std::endl;
 }
 
 Density::~Density()

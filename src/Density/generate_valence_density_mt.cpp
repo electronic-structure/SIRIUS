@@ -1,6 +1,9 @@
 #include "density.h"
 #include <fstream>
 
+//#include <tbb/tbb.h>
+//#include <tbb/parallel_for.h>
+
 using namespace std;
 
 namespace sirius
@@ -200,8 +203,14 @@ void Density::generate_paw_loc_density()
 //  ofstream of("loc_density.txt");
     //of<<"========================================"<<endl;
 
-    for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+    PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
+    
+#pragma omp parallel for
+    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
+//    tbb::parallel_for( size_t(0), (size_t)unit_cell_.spl_num_atoms().local_size(), [&]( size_t i )
     {
+        int ia = unit_cell_.spl_num_atoms(i);
+
         auto& atom = unit_cell_.atom(ia);
 
         auto& atom_type = atom.type();
@@ -219,15 +228,15 @@ void Density::generate_paw_loc_density()
                 SHT::gaunt_rlm);
 
         // get density for current atom
-        mdarray<double,2> &ae_atom_density = paw_ae_local_density_[ia];
-        mdarray<double,2> &ps_atom_density = paw_ps_local_density_[ia];
+        mdarray<double,2> &ae_atom_density = paw_ae_local_density_[i];
+        mdarray<double,2> &ps_atom_density = paw_ps_local_density_[i];
 
         ae_atom_density.zero();
         ps_atom_density.zero();
 
         // and magnetization
-        auto &ae_atom_magnetization = paw_ae_local_magnetization_[ia];
-        auto &ps_atom_magnetization = paw_ps_local_magnetization_[ia];
+        auto &ae_atom_magnetization = paw_ae_local_magnetization_[i];
+        auto &ps_atom_magnetization = paw_ps_local_magnetization_[i];
 
         ae_atom_magnetization.zero();
         ps_atom_magnetization.zero();
@@ -249,7 +258,6 @@ void Density::generate_paw_loc_density()
                 int irb1 = atom_type.indexb(ib1).idxrf;
 
                 // index to iterate Qij,
-                // TODO check indices
                 int iqij = irb2 * (irb2 + 1) / 2 + irb1;
 
                 // get num of non-zero GC
@@ -262,13 +270,7 @@ void Density::generate_paw_loc_density()
                 {
                     auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
-                    //                      if(lm3coef.lm3 >= (int)ae_atom_density.size(1))
-                    //                      {
-                    //                          TERMINATE("PAW: lm3 index out of range of lm part of density array");;
-                    //                      }
-
                     // iterate over radial points
-                    // size of ps and ae must be equal TODO: if not?
                     // this part in fortran looks better, is there the same for c++?
                     for(int irad = 0; irad < (int)grid.num_points(); irad++)
                     {
@@ -302,8 +304,8 @@ void Density::generate_paw_loc_density()
                                 ps_atom_density(lm3coef.lm3,irad) += ps_dens_d;
 
                                 // add magnetization to 2nd components (0th and 1st are always zero )
-                                ae_atom_magnetization(lm3coef.lm3,irad,2)= ae_dens_u - ae_dens_d;
-                                ps_atom_magnetization(lm3coef.lm3,irad,2)= ps_dens_u - ps_dens_d;
+                                ae_atom_magnetization(lm3coef.lm3,irad,0)= ae_dens_u - ae_dens_d;
+                                ps_atom_magnetization(lm3coef.lm3,irad,0)= ps_dens_u - ps_dens_d;
                             }break;
 
                             case 3:
@@ -319,15 +321,13 @@ void Density::generate_paw_loc_density()
                 }
             }
         }
+    
 
+//        std::cout<<"density hash " << ia <<" : "<< Utils::hash((void*)(&paw_ae_local_density_[i](0,0)),  paw_ae_local_density_[i].size() * sizeof(double) )<< " "
+//                << Utils::hash((void*)(&paw_ps_local_density_[i](0,0)),  paw_ps_local_density_[i].size() * sizeof(double) ) << std::endl;
 
-//      }
-
-
-
-
-
-    }
+    } 
+//    );
 
 //
 //
