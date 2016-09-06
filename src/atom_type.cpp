@@ -397,6 +397,10 @@ void Atom_type::read_input_lo(json const& parser)
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
 
+    if (!parser.count("lo")) {
+        return;
+    }
+
     int l;
     for (size_t j = 0; j < parser["lo"].size(); j++) {
         l = parser["lo"][j]["l"];

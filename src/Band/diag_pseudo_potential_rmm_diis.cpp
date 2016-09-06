@@ -394,8 +394,9 @@ void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
         std::memcpy(&ophi_tmp(0, i), &(*ophi[last[i]])(0, i), kp__->num_gkvec_loc() * sizeof(double_complex));
     }
 
-
-    orthogonalize<T>(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, ovlp);
+    if (typeid(T) == typeid(double)) {
+        orthogonalize<T>(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, ovlp);
+    }
 
     set_h_o<T>(kp__, 0, num_bands, phi_tmp, hphi_tmp, ophi_tmp, hmlt, ovlp, hmlt_old, ovlp_old);
     

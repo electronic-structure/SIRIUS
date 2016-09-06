@@ -538,6 +538,11 @@ class K_point
             return alm_coeffs_col_;
         }
 
+        inline Matching_coefficients const& alm_coeffs() const
+        {
+            return *alm_coeffs_;
+        }
+
         inline Communicator const& comm() const
         {
             return comm_;

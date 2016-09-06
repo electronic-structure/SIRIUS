@@ -244,7 +244,9 @@ class Utils
             fclose(fout);
         }
 
-        static void write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx)
+        static void write_matrix(std::string const& fname,
+                                 bool write_all,
+                                 matrix<double_complex> const& mtrx)
         {
             static int icount = 0;
 

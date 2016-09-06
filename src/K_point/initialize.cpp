@@ -7,7 +7,9 @@ void K_point::initialize()
     PROFILE_WITH_TIMER("sirius::K_point::initialize");
     
     zil_.resize(ctx_.lmax_apw() + 1);
-    for (int l = 0; l <= ctx_.lmax_apw(); l++) zil_[l] = std::pow(double_complex(0, 1), l);
+    for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+        zil_[l] = std::pow(double_complex(0, 1), l);
+    }
    
     l_by_lm_ = Utils::l_by_lm(ctx_.lmax_apw());
 
@@ -36,15 +38,17 @@ void K_point::initialize()
      */
     int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
-    if (use_second_variation && ctx_.need_sv())
-    {
+    if (use_second_variation && ctx_.need_sv()) {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
         sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
-        if (ctx_.num_mag_dims() == 1)
+        if (ctx_.num_mag_dims() == 1) {
             sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
+        }
     }
 
-    if (use_second_variation) fv_eigen_values_.resize(ctx_.num_fv_states());
+    if (use_second_variation) {
+        fv_eigen_values_.resize(ctx_.num_fv_states());
+    }
 
     /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
      * form the input whereas for full-potential calculations this is derived 
@@ -175,6 +179,12 @@ void K_point::initialize()
         if (use_second_variation)
         {
             fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
+            fv_eigen_vectors_->coeffs().zero();
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                fv_eigen_vectors_->coeffs().set(i,     i, double_complex(1, 0));
+                fv_eigen_vectors_->coeffs().set(i + 1, i, double_complex(0.5, 0));
+                fv_eigen_vectors_->coeffs().set(i + 2, i, double_complex(0.25, 0));
+            }
 
             fv_states_ = new Wave_functions<true>(wf_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
 

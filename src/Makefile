@@ -14,25 +14,20 @@ SRC =  LebedevLaikov.cpp linalg.cpp  \
        Density/generate_valence_density_mt.cpp \
        Density/check_density_continuity_at_mt.cpp \
        Band/set_fv_h_o.cpp \
-       Band/set_h_o.cpp \
        Band/add_nl_h_o_pw.cpp \
        Band/add_nl_h_o_rs.cpp \
        Band/apply_h.cpp \
        Band/apply_h_o.cpp \
        Band/apply_h_o_fast_parallel_rs.cpp \
        Band/get_h_o_diag.cpp \
-       Band/diag_pseudo_potential.cpp \
        Band/diag_pseudo_potential_exact.cpp \
        Band/diag_pseudo_potential_davidson.cpp \
        Band/diag_pseudo_potential_rmm_diis.cpp \
        Band/diag_pseudo_potential_chebyshev.cpp \
-       Band/diag_h_o.cpp \
        Band/apply_magnetic_field.cpp \
        Band/residuals_aux.cpp \
        Band/solve_sv.cpp \
        Band/residuals.cpp \
-       Band/diag_fv_full_potential.cpp \
-       Band/orthogonalize.cpp \
        Band/initialize_subspace.cpp \
        Potential/potential.cpp \
        Potential/init.cpp \

@@ -1028,25 +1028,6 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const
 //==     alm.deallocate();
 //== }
 
-void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const
-{
-    if (kp__->gklo_basis_size() < ctx_.num_fv_states()) TERMINATE("basis size is too small");
-
-    switch (ctx_.esm_type())
-    {
-        case electronic_structure_method_t::full_potential_pwlo:
-        case electronic_structure_method_t::full_potential_lapwlo:
-        {
-            diag_fv_full_potential(kp__, effective_potential__);
-            break;
-        }
-        default:
-        {
-            TERMINATE_NOT_IMPLEMENTED
-        }
-    }
-}
-
 void Band::solve_fd(K_point* kp__,
                     Periodic_function<double>* effective_potential__, 
                     Periodic_function<double>* effective_magnetic_field__[3]) const

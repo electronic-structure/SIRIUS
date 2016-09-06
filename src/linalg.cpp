@@ -395,6 +395,14 @@ ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
     return info;
 }
 
+template<>
+ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda)
+{
+    ftn_int info;
+    FORTRAN(zpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
+    return info;
+}
+
 template <>
 ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
 {
@@ -404,10 +412,25 @@ ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
 }
 
 template <>
+ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda)
+{
+    ftn_int info;
+    FORTRAN(ztrtri)("U", "N", &n, A, &lda, &info, (ftn_len)1, (ftn_len)1);
+    return info;
+}
+
+template <>
 void linalg<CPU>::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double alpha,
                                    ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
 {
     FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, &alpha, A, &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+}
+
+template <>
+void linalg<CPU>::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double_complex alpha,
+                                           ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb)
+{
+    FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, &alpha, A, &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
 }
 
 #ifdef __SCALAPACK

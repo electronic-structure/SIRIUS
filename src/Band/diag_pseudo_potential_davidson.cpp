@@ -161,7 +161,9 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
-        orthogonalize<T>(kp__, N, n, phi, hphi, ophi, ovlp);
+        if (typeid(T) == typeid(double)) {
+            orthogonalize<T>(kp__, N, n, phi, hphi, ophi, ovlp);
+        }
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -185,54 +187,45 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
         /* check if occupied bands have converged */
         bool occ_band_converged = true;
-        for (int i = 0; i < num_bands; i++)
-        {
+        for (int i = 0; i < num_bands; i++) {
             if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-2 &&
-                std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) 
-            {
+                std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) {
                 occ_band_converged = false;
             }
         }
 
         /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1 && !occ_band_converged)
-        {
+        if (k != itso.num_steps_ - 1 && !occ_band_converged) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
             n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged)
-        {   
+        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {   
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             psi.transform_from<T>(phi, N, evec, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged)
-            {
+            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {
                 break;
             }
-            else /* otherwise, set Psi as a new trial basis */
-            {
+            else { /* otherwise, set Psi as a new trial basis */
                 #if (__VERBOSITY > 2)
-                if (kp__->comm().rank() == 0)
-                {
+                if (kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
                 #endif
                 hmlt_old.zero();
                 ovlp_old.zero();
-                for (int i = 0; i < num_bands; i++)
-                {
+                for (int i = 0; i < num_bands; i++) {
                     hmlt_old(i, i) = eval[i];
                     ovlp_old(i, i) = 1.0;
                 }
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
-                if (converge_by_energy)
-                {
+                if (converge_by_energy) {
                     hpsi.transform_from<T>(hphi, N, evec, num_bands);
                     opsi.transform_from<T>(ophi, N, evec, num_bands);
                 }
@@ -252,12 +245,12 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     kp__->beta_projectors().dismiss();
 
-    for (int j = 0; j < ctx_.num_fv_states(); j++)
+    for (int j = 0; j < ctx_.num_fv_states(); j++) {
         kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
+    }
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
+    if (ctx_.processing_unit() == GPU) {
         psi.copy_to_host(0, num_bands);
         psi.deallocate_on_device();
     }

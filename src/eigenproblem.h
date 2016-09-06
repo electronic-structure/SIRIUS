@@ -175,7 +175,8 @@ class Eigenproblem_lapack: public Eigenproblem
                 std::stringstream s;
                 s << "not all eigen-values are found" << std::endl
                   << "target number of eign-values: " << nevec << std::endl
-                  << "number of eign-values found: " << m;
+                  << "number of eign-values found: " << m << std::endl
+                  << "matrix size: " << matrix_size;
                 WARNING(s);
                 return 1;
             }
