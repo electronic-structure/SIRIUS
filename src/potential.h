@@ -105,6 +105,7 @@ class Potential
         std::vector< mdarray<double,3> > ae_paw_local_potential_;
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
 
+
         // because one need to call allreduce for a whole matrix
         mdarray<double_complex,4>  paw_dij_;
 

@@ -20,3 +20,7 @@ latex/
 .plist
 
 *.dSYM/
+
+output*.json
+
+*.h5

@@ -169,6 +169,8 @@ class Spheric_function
 };
 
 
+
+//-------------------------------------------------------------------------------------
 /// dot operator
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
@@ -191,6 +193,9 @@ Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& a__
 }
 
 
+
+
+//-------------------------------------------------------------------------------------
 /// plus operator
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
@@ -210,10 +215,13 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
         }
     }
 
-    return result;
+    return std::move(result);
 }
 
 
+
+
+//-------------------------------------------------------------------------------------
 /// minus operator
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
@@ -232,6 +240,9 @@ Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__
     return std::move(res);
 }
 
+
+
+//-------------------------------------------------------------------------------------
 /// scale sperical function
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> const& b__)
@@ -250,6 +261,8 @@ Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> con
 }
 
 
+
+//-------------------------------------------------------------------------------------
 /// scale sperical function (inverse order)
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__, T a__ )
@@ -257,6 +270,9 @@ Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__
     return std::move(a__ * b__);
 }
 
+
+
+//-------------------------------------------------------------------------------------
 /// Inner product of two spherical functions.
 template <function_domain_t domain_t, typename T>
 T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
@@ -281,6 +297,9 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
     return s.interpolate().integrate(2);
 }
 
+
+
+//-------------------------------------------------------------------------------------
 /// Compute Laplacian of the spheric function.
 /** Laplacian in spherical coordinates has the following expression:
  *  \f[
@@ -318,6 +337,10 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
     return std::move(g);
 }
 
+
+
+
+//-------------------------------------------------------------------------------------
 /// Convert from Ylm to Rlm representation.
 inline Spheric_function<spectral, double> convert(Spheric_function<spectral, double_complex> const& f__)
 {
@@ -353,7 +376,11 @@ inline Spheric_function<spectral, double> convert(Spheric_function<spectral, dou
 
     return std::move(g);
 }
-        
+
+
+
+
+//-------------------------------------------------------------------------------------
 inline Spheric_function<spectral, double_complex> convert(Spheric_function<spectral, double> const& f__)
 {
     int lmax = Utils::lmax_by_lmmax(f__.angular_domain_size());
@@ -389,6 +416,9 @@ inline Spheric_function<spectral, double_complex> convert(Spheric_function<spect
     return std::move(g);
 }
 
+
+
+//-------------------------------------------------------------------------------------
 template <typename T>
 Spheric_function<spatial, T> transform(SHT* sht__, Spheric_function<spectral, T> const& f__)
 {
@@ -400,6 +430,10 @@ Spheric_function<spatial, T> transform(SHT* sht__, Spheric_function<spectral, T>
     return std::move(g);
 }
 
+
+
+
+//-------------------------------------------------------------------------------------
 template <typename T>
 Spheric_function<spectral, T> transform(SHT* sht__, Spheric_function<spatial, T> const& f__)
 {
@@ -410,6 +444,10 @@ Spheric_function<spectral, T> transform(SHT* sht__, Spheric_function<spatial, T>
     return std::move(g);
 }
 
+
+
+
+//-------------------------------------------------------------------------------------
 /// Gradient of a spheric function.
 template <function_domain_t domain_t, typename T = double_complex>
 class Spheric_function_gradient
@@ -453,12 +491,21 @@ class Spheric_function_gradient
         }
 };
 
+
+
+//-------------------------------------------------------------------------------------
 /// Gradient of the function in complex spherical harmonics.
 Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f);
 
+
+
+//-------------------------------------------------------------------------------------
 /// Gradient of the function in real spherical harmonics.
 Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double> const& f);
 
+
+
+//-------------------------------------------------------------------------------------
 Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double> const& f, 
                                             Spheric_function_gradient<spatial, double> const& g);
 
