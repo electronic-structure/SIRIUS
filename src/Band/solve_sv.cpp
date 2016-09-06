@@ -134,7 +134,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
                           complex_zero, h, 0, nfv);
         
         for (int i = 0; i < nfv; i++) {
-            h.add(i, i, kp->fv_eigen_value(i));
+            h.add(i,       i,       kp->fv_eigen_value(i));
             h.add(i + nfv, i + nfv, kp->fv_eigen_value(i));
         }
         runtime::Timer t1("sirius::Band::solve_sv|stdevp");

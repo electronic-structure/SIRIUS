@@ -29,6 +29,8 @@
 #include "mpi_grid.h"
 #include "linalg.h"
 
+#include "matrix_storage.h"
+
 namespace sirius {
 
 template <bool mt_spheres>
