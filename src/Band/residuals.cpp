@@ -81,13 +81,13 @@ int Band::residuals(K_point* kp__,
                     {
                         case CPU:
                         {
-                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_gvec_loc() * sizeof(double_complex));
+                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_rows_loc() * sizeof(double_complex));
                             break;
                         }
                         case GPU:
                         {
                             #ifdef __GPU
-                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.coeffs().at<GPU>(0, i), res__.num_gvec_loc());
+                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.prime().at<GPU>(0, i), res__.num_rows_loc());
                             #else
                             TERMINATE_NO_GPU
                             #endif
@@ -129,7 +129,7 @@ int Band::residuals(K_point* kp__,
                     {
                         case CPU:
                         {
-                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_gvec_loc() * sizeof(double_complex));
+                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_rows_loc() * sizeof(double_complex));
                             break;
                         }
                         case GPU:

@@ -30,15 +30,15 @@ class pstdout
         
         std::vector<char> buffer_;
 
-        int fill_;
+        int count_{0};
 
         Communicator const& comm_;
 
     public:
 
-        pstdout(Communicator const& comm__) : fill_(0), comm_(comm__)
+        pstdout(Communicator const& comm__) : comm_(comm__)
         {
-            buffer_.resize(8129);
+            buffer_.resize(10240);
         }
 
         ~pstdout()
@@ -57,32 +57,37 @@ class pstdout
 
             n = std::min(n, (int)str.size());
             
-            if ((int)buffer_.size() - fill_ < n) buffer_.resize(buffer_.size() + str.size());
-            std::memcpy(&buffer_[fill_], &str[0], n);
-            fill_ += n;
+            if ((int)buffer_.size() - count_ < n) {
+                buffer_.resize(buffer_.size() + str.size());
+            }
+            std::memcpy(&buffer_[count_], &str[0], n);
+            count_ += n;
         }
 
         void flush()
         {
-            std::vector<int> local_fills(comm_.size());
-            comm_.allgather(&fill_, &local_fills[0], comm_.rank(), 1); 
+            std::vector<int> counts(comm_.size());
+            comm_.allgather(&count_, &counts[0], comm_.rank(), 1); 
             
-            int offset = 0;
-            for (int i = 0; i < comm_.rank(); i++) offset += local_fills[i];
+            int offset{0};
+            for (int i = 0; i < comm_.rank(); i++) {
+                offset += counts[i];
+            }
             
             /* total size of the output buffer */
-            int sz = fill_;
+            int sz = count_;
             comm_.allreduce(&sz, 1);
             
-            if (sz != 0)
-            {
+            if (sz != 0) {
                 std::vector<char> outb(sz + 1);
-                comm_.allgather(&buffer_[0], &outb[0], offset, fill_);
+                comm_.allgather(&buffer_[0], &outb[0], offset, count_);
                 outb[sz] = 0;
 
-                if (comm_.rank() == 0) std::printf("%s", &outb[0]);
+                if (comm_.rank() == 0) {
+                    std::printf("%s", &outb[0]);
+                }
             }
-            fill_ = 0;
+            count_ = 0;
         }
 };
 

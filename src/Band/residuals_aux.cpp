@@ -73,7 +73,7 @@ void Band::residuals_aux(K_point* kp__,
         {
             res_norm[i] = 0;
             p_norm[i] = 0;
-            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
+            for (int ig = 0; ig < res__.num_rows_loc(); ig++) 
             {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
                 res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
@@ -87,7 +87,7 @@ void Band::residuals_aux(K_point* kp__,
                     res_norm__[i] *= 2;
             }
             /* apply preconditioner */
-            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) 
+            for (int ig = 0; ig < res__.num_rows_loc(); ig++) 
             {
                 double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
@@ -107,7 +107,7 @@ void Band::residuals_aux(K_point* kp__,
     #ifdef __GPU
     if (pu == GPU)
     {
-        residuals_aux_gpu(res__.num_gvec_loc(), num_bands__, res_idx.at<GPU>(), eval.at<GPU>(),
+        residuals_aux_gpu(res__.num_rows_loc(), num_bands__, res_idx.at<GPU>(), eval.at<GPU>(),
                           hpsi__.coeffs().at<GPU>(), opsi__.coeffs().at<GPU>(),
                           h_diag.at<GPU>(), o_diag.at<GPU>(), res__.coeffs().at<GPU>(),
                           res_norm.at<GPU>(), p_norm.at<GPU>(), kp__->gkvec().reduced(), kp__->comm().rank());
@@ -127,7 +127,7 @@ void Band::residuals_aux(K_point* kp__,
         #pragma omp parallel for
         for (int i = 0; i < num_bands__; i++)
         {
-            for (int ig = 0; ig < res__.num_gvec_loc(); ig++) res__(ig, i) *= p_norm[i];
+            for (int ig = 0; ig < res__.num_rows_loc(); ig++) res__(ig, i) *= p_norm[i];
         }
     }
     #ifdef __GPU

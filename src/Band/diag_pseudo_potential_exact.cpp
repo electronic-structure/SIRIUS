@@ -29,7 +29,7 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     
     std::vector<double> eval(ngk);
 
-    phi.coeffs().zero();
+    phi.prime().zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
 
     apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
@@ -45,13 +45,13 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     #endif
 
     if (gen_evp_solver()->solve(ngk, num_bands,
-                                hphi.coeffs().at<CPU>(),
-                                hphi.coeffs().ld(),
-                                ophi.coeffs().at<CPU>(),
-                                ophi.coeffs().ld(), 
+                                hphi.prime().at<CPU>(),
+                                hphi.prime().ld(),
+                                ophi.prime().at<CPU>(),
+                                ophi.prime().ld(), 
                                 &eval[0],
-                                psi.coeffs().at<CPU>(),
-                                psi.coeffs().ld()))
+                                psi.prime().at<CPU>(),
+                                psi.prime().ld()))
     {
         TERMINATE("error in evp solve");
     }

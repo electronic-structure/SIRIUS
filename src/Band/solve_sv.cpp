@@ -38,7 +38,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     }
     else {
         hpsi[0]->set_num_swapped(ctx_.num_fv_states());
-        std::memset((*hpsi[0])[0], 0, kp->wf_size() * hpsi[0]->spl_num_swapped().local_size() * sizeof(double_complex));
+        std::memset((*hpsi[0])[0], 0, kp->wf_size() * hpsi[0]->spl_num_col().local_size() * sizeof(double_complex));
     }
 
     //== if (ctx_.uj_correction())
@@ -107,7 +107,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
                 #endif
             } else {
                 /* compute <wf_i | h * wf_j> for up-up or dn-dn block */
-                linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), hpsi[ispn]->coeffs(),
+                linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().prime(), hpsi[ispn]->prime(),
                                   complex_zero, h);
             }
             
@@ -124,13 +124,13 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
 
         /* compute <wf_i | h * wf_j> for up-up block */
-        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[0]->coeffs(), 0, 0,
+        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().prime(), 0, 0, hpsi[0]->prime(), 0, 0,
                           complex_zero, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[1]->coeffs(), 0, 0,
+        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().prime(), 0, 0, hpsi[1]->prime(), 0, 0,
                           complex_zero, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().coeffs(), 0, 0, hpsi[2]->coeffs(), 0, 0,
+        linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().prime(), 0, 0, hpsi[2]->prime(), 0, 0,
                           complex_zero, h, 0, nfv);
         
         for (int i = 0; i < nfv; i++) {

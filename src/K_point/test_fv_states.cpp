@@ -9,7 +9,7 @@ void K_point::test_fv_states()
     Wave_functions<true> o_fv(wf_size(), ctx_.num_fv_states(), ctx_.cyclic_block_size(), ctx_.blacs_grid(), ctx_.blacs_grid_slice());
     o_fv.set_num_swapped(ctx_.num_fv_states());
 
-    for (int i = 0; i < o_fv.spl_num_swapped().local_size(); i++)
+    for (int i = 0; i < o_fv.spl_num_col().local_size(); i++)
     {
         std::memset(o_fv[i], 0, wf_size() * sizeof(double_complex));
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -45,7 +45,7 @@ void K_point::test_fv_states()
                                  ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
     
     linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), wf_size(), double_complex(1, 0),
-                      fv_states<true>().coeffs(), o_fv.coeffs(), double_complex(0, 0), ovlp);
+                      fv_states<true>().prime(), o_fv.prime(), double_complex(0, 0), ovlp);
     
     double max_err = 0;
     for (int i = 0; i < ovlp.num_cols_local(); i++)

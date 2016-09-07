@@ -207,17 +207,17 @@ class Hloc_operator
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
-            hphi__.swap_forward(idx0__, n__, gkvec_, comm_col_);
+            hphi__.remap_forward(idx0__, n__, gkvec_, comm_col_);
 
             int first{0};
             /* if G-vectors are reduced, wave-functions are real and 
              * we can transform two of them at once */
             if (gkvec_.reduced()) {
-                int npairs = hphi__.spl_num_swapped().local_size() / 2;
+                int npairs = hphi__.spl_num_col().local_size() / 2;
 
                 for (int i = 0; i < npairs; i++) {
                     /* phi(G) -> phi(r) */
-                    fft_.transform<1>(gkvec_, hphi__[2 * i], hphi__[2 * i + 1]);
+                    fft_.transform<1>(gkvec_, hphi__.spare().at<CPU>(0, 2 * i), hphi__.spare().at<CPU>(0, 2 * i + 1));
                     /* multiply by effective potential */
                     if (fft_.hybrid()) {
                         #ifdef __GPU
@@ -237,25 +237,25 @@ class Hloc_operator
                     /* add kinetic energy */
                     #pragma omp parallel for
                     for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
-                        hphi__[2 * i    ][ig] = hphi__[2 * i    ][ig] * pw_ekin_[ig] + vphi1_[ig];
-                        hphi__[2 * i + 1][ig] = hphi__[2 * i + 1][ig] * pw_ekin_[ig] + vphi2_[ig];
+                        hphi__.spare()(ig, 2 * i)     = hphi__.spare()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig];
+                        hphi__.spare()(ig, 2 * i + 1) = hphi__.spare()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig];
                     }
                 }
                 
                 /* check if we have to do last wave-function which had no pair */
-                first = (hphi__.spl_num_swapped().local_size() % 2) ? hphi__.spl_num_swapped().local_size() - 1
-                                                                    : hphi__.spl_num_swapped().local_size();
+                first = (hphi__.spl_num_col().local_size() % 2) ? hphi__.spl_num_col().local_size() - 1
+                                                                : hphi__.spl_num_col().local_size();
             }
             
             /* if we don't have G-vector reductions, first = 0 and we start a normal loop */
-            for (int i = first; i < hphi__.spl_num_swapped().local_size(); i++) {
+            for (int i = first; i < hphi__.spl_num_col().local_size(); i++) {
                 /* phi(G) -> phi(r) */
                 if (fft_.gpu_only()) {
                     #ifdef __GPU
                     fft_.transform<1>(gkvec_, hphi__.coeffs_swapped().at<GPU>(0, i));
                     #endif
                 } else {
-                    fft_.transform<1>(gkvec_, hphi__[i]);
+                    fft_.transform<1>(gkvec_, hphi__.spare().at<CPU>(0, i));
                 }
                 /* multiply by effective potential */
                 if (fft_.hybrid()) {
@@ -287,13 +287,13 @@ class Hloc_operator
                 } else {
                     #pragma omp parallel for
                     for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
-                        hphi__[i][ig] = hphi__[i][ig] * pw_ekin_[ig] + vphi1_[ig];
+                        hphi__.spare()(ig, i) = hphi__.spare()(ig, i) * pw_ekin_[ig] + vphi1_[ig];
                     }
                 }
                 //acc::sync_stream(-1);
             }
 
-            hphi__.swap_backward(idx0__, n__, gkvec_, comm_col_);
+            hphi__.remap_backward(idx0__, n__, gkvec_, comm_col_);
         }
 
         inline double v0(int ispn__)

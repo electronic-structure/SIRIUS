@@ -39,7 +39,7 @@ void K_point::generate_fv_states()
     auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
     #endif
     /* local number of bands */
-    int nbnd_loc = fv_eigen_vectors_->spl_num_swapped().local_size();
+    int nbnd_loc = fv_eigen_vectors_->spl_num_col().local_size();
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
@@ -50,7 +50,7 @@ void K_point::generate_fv_states()
 
     fv_states<true>().set_num_swapped(ctx_.num_fv_states());
 
-    assert(nbnd_loc == fv_states<true>().spl_num_swapped().local_size());
+    assert(nbnd_loc == fv_states<true>().spl_num_col().local_size());
 
     //if (ctx_.processing_unit() == GPU)
     //{

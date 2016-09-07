@@ -37,7 +37,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
 
     assert(hpsi__.size() >= 2);
 
-    int nfv = fv_states__.spl_num_swapped().local_size();
+    int nfv = fv_states__.spl_num_col().local_size();
 
     for (auto& e: hpsi__) e->set_num_swapped(ctx_.num_fv_states());
 
@@ -109,7 +109,7 @@ void Band::apply_magnetic_field(Wave_functions<true>& fv_states__,
     if (hpsi__.size() == 3) psi_r.resize(ctx_.fft().local_size());
 
     int wf_pw_offset = unit_cell_.mt_basis_size();
-    for (int i = 0; i < fv_states__.spl_num_swapped().local_size(); i++)
+    for (int i = 0; i < fv_states__.spl_num_col().local_size(); i++)
     {
         /* transform first-variational state to real space */
         ctx_.fft().transform<1>(gkvec__.partition(), &fv_states__[i][wf_pw_offset]);

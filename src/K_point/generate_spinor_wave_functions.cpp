@@ -15,9 +15,9 @@ void K_point::generate_spinor_wave_functions()
         {
             /* copy eigen-states and exit */
             if (ctx_.full_potential()) {
-                fv_states<true>().coeffs() >> spinor_wave_functions<true>(0).coeffs();
+                fv_states<true>().prime() >> spinor_wave_functions<true>(0).prime();
             } else {
-                fv_states<false>().coeffs() >> spinor_wave_functions<false>(0).coeffs();
+                fv_states<false>().prime() >> spinor_wave_functions<false>(0).prime();
             }
             return;
         }
@@ -38,8 +38,8 @@ void K_point::generate_spinor_wave_functions()
                 o = 0;
             }
             /* multiply consecutively up and dn blocks */
-            linalg<CPU>::gemm(0, 0, wf_size(), nbnd, nfv, double_complex(1, 0), fv_states<true>().coeffs(), 0, 0,
-                              sv_eigen_vectors_[s], o, 0, double_complex(0, 0), spinor_wave_functions<true>(ispn).coeffs(), 0, 0);
+            linalg<CPU>::gemm(0, 0, wf_size(), nbnd, nfv, double_complex(1, 0), fv_states<true>().prime(), 0, 0,
+                              sv_eigen_vectors_[s], o, 0, double_complex(0, 0), spinor_wave_functions<true>(ispn).prime(), 0, 0);
         }
  
         ///* serial version */

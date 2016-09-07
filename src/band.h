@@ -1057,9 +1057,11 @@ inline void Band::set_h_o<double_complex>(K_point* kp__,
     }
 
     /* <{phi,res}|H|res> */
-    phi__.inner<double_complex>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
+    //phi__.inner<double_complex>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
+    inner(phi__, 0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm(), ctx_.processing_unit());
     /* <{phi,res}|O|res> */
-    phi__.inner<double_complex>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__, kp__->comm());
+    //phi__.inner<double_complex>(0, N__ + n__, ophi__, N__, n__, o__, 0, N__, kp__->comm());
+    inner(phi__, 0, N__ + n__, ophi__, N__, n__, o__, 0, N__, kp__->comm(), ctx_.processing_unit());
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex cs1(0, 0);
@@ -1165,7 +1167,8 @@ inline void Band::set_h_o<double>(K_point* kp__,
     }
 
     /* <{phi,res}|H|res> */
-    phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
+    //phi__.inner<double>(0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm());
+    inner(phi__, 0, N__ + n__, hphi__, N__, n__, h__, 0, N__, kp__->comm(), ctx_.processing_unit());
 
     int i0 = N__;
     if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2) {
@@ -1355,16 +1358,17 @@ inline void Band::orthogonalize<double_complex>(K_point* kp__,
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
-        phi__.inner<double_complex>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+        //phi__.inner<double_complex>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+        inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
 
         if (ctx_.processing_unit() == CPU) {
             for (int i = 0; i < 3; i++) {
-                linalg<CPU>::gemm(0, 0, wfs[i]->coeffs().ld(), n__, N__,
+                linalg<CPU>::gemm(0, 0, wfs[i]->num_rows_loc(), n__, N__,
                                   double_complex(-1, 0), 
-                                  wfs[i]->coeffs().at<CPU>(0, 0), wfs[i]->coeffs().ld(),
+                                  wfs[i]->prime().at<CPU>(0, 0), wfs[i]->prime().ld(),
                                   o__.at<CPU>(0, 0), o__.ld(),
                                   double_complex(1, 0),
-                                  wfs[i]->coeffs().at<CPU>(0, N__), wfs[i]->coeffs().ld());
+                                  wfs[i]->prime().at<CPU>(0, N__), wfs[i]->prime().ld());
             }
         }
         #ifdef __GPU
@@ -1392,7 +1396,8 @@ inline void Band::orthogonalize<double_complex>(K_point* kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    phi__.inner<double_complex>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+    //phi__.inner<double_complex>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+    inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
     
     if (ctx_.processing_unit() == CPU) {
         int info;
@@ -1407,9 +1412,9 @@ inline void Band::orthogonalize<double_complex>(K_point* kp__,
         }
 
         for (int i = 0; i < 3; i++) {
-            linalg<CPU>::trmm('R', 'U', 'N', wfs[i]->num_gvec_loc(), n__, double_complex(1, 0),
+            linalg<CPU>::trmm('R', 'U', 'N', wfs[i]->num_rows_loc(), n__, double_complex(1, 0),
                               o__.at<CPU>(0, 0), o__.ld(),
-                              wfs[i]->coeffs().at<CPU>(0, N__), wfs[i]->num_gvec_loc());
+                              wfs[i]->prime().at<CPU>(0, N__), wfs[i]->prime().ld());
         }
     }
 
@@ -1460,18 +1465,19 @@ inline void Band::orthogonalize<double>(K_point* kp__,
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0)
     {
-        phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+        //phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+        inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
 
         if (ctx_.processing_unit() == CPU)
         {
             for (int i = 0; i < 3; i++)
             {
-                linalg<CPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__,
+                linalg<CPU>::gemm(0, 0, 2 * wfs[i]->num_rows_loc(), n__, N__,
                                   -1.0, 
-                                  (double*)wfs[i]->coeffs().at<CPU>(0, 0), 2 * kp__->num_gkvec_loc(),
+                                  (double*)wfs[i]->prime().at<CPU>(0, 0), 2 * wfs[i]->prime().ld(),
                                   o__.at<CPU>(0, 0), o__.ld(),
                                   1.0,
-                                  (double*)wfs[i]->coeffs().at<CPU>(0, N__), 2 * kp__->num_gkvec_loc());
+                                  (double*)wfs[i]->prime().at<CPU>(0, N__), 2 * wfs[i]->prime().ld());
             }
         }
         #ifdef __GPU
@@ -1499,7 +1505,8 @@ inline void Band::orthogonalize<double>(K_point* kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    phi__.inner<double>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+    //phi__.inner<double>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+    inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
 
     if (ctx_.processing_unit() == CPU)
     {
@@ -1518,7 +1525,7 @@ inline void Band::orthogonalize<double>(K_point* kp__,
         {
             linalg<CPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, 1.0,
                               o__.at<CPU>(0, 0), o__.ld(),
-                              (double*)wfs[i]->coeffs().at<CPU>(0, N__), 2 * kp__->num_gkvec_loc());
+                              (double*)wfs[i]->prime().at<CPU>(0, N__), 2 * wfs[i]->prime().ld());
         }
     }
 
@@ -1586,19 +1593,19 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     mdarray<double_complex, 1> buf_pw(kp__->num_gkvec());
     
     for (int j = N__; j < N__ + n__; j++) {
-        ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.coeffs().at<CPU>(0, j));
+        ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.prime().at<CPU>(0, j));
         #pragma omp parallel for
         for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
             ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
             /* save phi(r) * Theta(r) */
             buf_rg[ir] = ctx_.fft().buffer(ir);
         }
-        ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.coeffs().at<CPU>(0, j));
+        ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.prime().at<CPU>(0, j));
         #pragma omp parallel for
         for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
             ctx_.fft().buffer(ir) = buf_rg[ir] * effective_potential__->f_rg(ir);
         }
-        ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.coeffs().at<CPU>(0, j));
+        ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.prime().at<CPU>(0, j));
         
         for (int x: {0, 1, 2}) {
             for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
@@ -1642,13 +1649,13 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
         linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec(),
                           alm.at<CPU>(), alm.ld(),
-                          phi__.coeffs().at<CPU>(0, N__), phi__.coeffs().ld(),
+                          phi__.prime().at<CPU>(0, N__), phi__.prime().ld(),
                           tmp.at<CPU>(), tmp.ld());
 
         /* htmp(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
         linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec(),
                           halm.at<CPU>(), halm.ld(),
-                          phi__.coeffs().at<CPU>(0, N__), phi__.coeffs().ld(),
+                          phi__.prime().at<CPU>(0, N__), phi__.prime().ld(),
                           htmp.at<CPU>(), htmp.ld());
 
         for (int xi = 0; xi < nmt; xi++) {
@@ -1661,15 +1668,15 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                           alm.at<CPU>(), alm.ld(),
                           tmp.at<CPU>(), tmp.ld(),
                           zone,
-                          ophi__.coeffs().at<CPU>(0, N__),
-                          ophi__.coeffs().ld());
+                          ophi__.prime().at<CPU>(0, N__),
+                          ophi__.prime().ld());
         /* APW-APW contribution to Hamiltonian */
         linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, nmt, zone,
                           alm.at<CPU>(), alm.ld(),
                           htmp.at<CPU>(), htmp.ld(),
                           zone,
-                          hphi__.coeffs().at<CPU>(0, N__),
-                          hphi__.coeffs().ld());
+                          hphi__.prime().at<CPU>(0, N__),
+                          hphi__.prime().ld());
         
         int offs = type.mt_aw_basis_size();
         for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
@@ -1798,7 +1805,7 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
     if (gen_evp_solver()->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                &eval[0], kp->fv_eigen_vectors().coeffs().at<CPU>(), kp->fv_eigen_vectors().coeffs().ld(),
+                                &eval[0], kp->fv_eigen_vectors().prime().at<CPU>(), kp->fv_eigen_vectors().prime().ld(),
                                 kp->gklo_basis_size_row(), kp->gklo_basis_size_col()))
 
     {
@@ -1947,7 +1954,7 @@ inline int Band::residuals(K_point* kp__,
                 if (n != i) {
                     switch (ctx_.processing_unit()) {
                         case CPU: {
-                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_gvec_loc() * sizeof(double_complex));
+                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_rows_loc() * sizeof(double_complex));
                             break;
                         }
                         case GPU:
@@ -1983,7 +1990,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
 
     /* short notation for target wave-functions */
     Wave_functions<false> psi(kp->gklo_basis_size(), num_bands, CPU);
-    kp->fv_eigen_vectors().coeffs() >> psi.coeffs();
+    kp->fv_eigen_vectors().prime() >> psi.prime();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
@@ -2133,7 +2140,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
     }
 
     kp->set_fv_eigen_values(&eval[0]);
-    psi.coeffs() >> kp->fv_eigen_vectors().coeffs();
+    psi.prime() >> kp->fv_eigen_vectors().prime();
 
     kp->comm().barrier();
 }

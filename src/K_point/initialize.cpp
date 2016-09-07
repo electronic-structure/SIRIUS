@@ -179,11 +179,11 @@ void K_point::initialize()
         if (use_second_variation)
         {
             fv_eigen_vectors_ = new Wave_functions<true>(gklo_basis_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());
-            fv_eigen_vectors_->coeffs().zero();
+            fv_eigen_vectors_->prime().zero();
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                fv_eigen_vectors_->coeffs().set(i,     i, double_complex(1, 0));
-                fv_eigen_vectors_->coeffs().set(i + 1, i, double_complex(0.5, 0));
-                fv_eigen_vectors_->coeffs().set(i + 2, i, double_complex(0.25, 0));
+                fv_eigen_vectors_->prime().set(i,     i, double_complex(1, 0));
+                fv_eigen_vectors_->prime().set(i + 1, i, double_complex(0.5, 0));
+                fv_eigen_vectors_->prime().set(i + 2, i, double_complex(0.25, 0));
             }
 
             fv_states_ = new Wave_functions<true>(wf_size(), ctx_.num_fv_states(), bs, ctx_.blacs_grid(), ctx_.blacs_grid_slice());

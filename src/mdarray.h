@@ -384,7 +384,6 @@ class mdarray_base
         /// Destructor.
         ~mdarray_base()
         {
-            //deallocate();
         }
 
         /// Move constructor
@@ -646,25 +645,11 @@ class mdarray_base
         }
 
         #ifdef __GPU
-        //== void allocate_on_device() const
-        //== {
-        //==     size_t sz = size();
-
-        //==     ptr_device_ = (T*)cuda_malloc(sz * sizeof(T));
-
-        //==     unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T> >(ptr_device_, mdarray_mem_mgr<T>(sz, 2));
-        //== }
-
         void deallocate_on_device() const
         {
             unique_ptr_device_.reset(nullptr);
             raw_ptr_device_ = nullptr;
         }
-
-        //void allocate_page_locked() const
-        //{
-        //    allocate(1);
-        //}
 
         void copy_to_device() const
         {
@@ -712,35 +697,16 @@ class mdarray_base
         {
             acc::zero(raw_ptr_device_, size());
         }
-
-        //== void pin_memory() const
-        //== {
-        //==     //if (pinned_) {
-        //==     //    printf("error at line %i of file %s: array is already pinned\n", __LINE__, __FILE__);
-        //==     //    raise(SIGTERM);
-        //==     //    exit(-1);
-        //==     //}
-        //==     //cuda_host_register(ptr_, size() * sizeof(T));
-        //==     //pinned_ = true;
-        //==     if (!pinned_) {
-        //==         cuda_host_register(ptr_, size() * sizeof(T));
-        //==         pinned_ = true;
-        //==     }
-        //== }
-        //== 
-        //== void unpin_memory()
-        //== {
-        //==     if (pinned_) {
-        //==         cuda_host_unregister(ptr_);
-        //==         pinned_ = false;
-        //==     }
-        //== }
+        #endif
 
         inline bool on_device() const
         {
+            #ifdef __GPU
             return (raw_ptr_device_ != nullptr);
+            #else
+            return false;
+            #endif
         }
-        #endif
 };
 
 /// Multidimensional array.

@@ -735,7 +735,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
         /* non-magnetic or spin-collinear case */
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                int nbnd = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped().local_size();
+                int nbnd = kp__->spinor_wave_functions<true>(ispn).spl_num_col().local_size();
 
                 mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
                 mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
@@ -745,7 +745,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                     int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
 
                     for (int i = 0; i < nbnd; i++) {
-                        int j = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped()[i];
+                        int j = kp__->spinor_wave_functions<true>(ispn).spl_num_col()[i];
  
                         for (int xi = 0; xi < mt_basis_size; xi++) {
                             wf1(xi, i) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
@@ -761,10 +761,10 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                 }
             }
         } else {
-            assert(kp__->spinor_wave_functions<true>(0).spl_num_swapped().local_size() ==
-                   kp__->spinor_wave_functions<true>(1).spl_num_swapped().local_size());
+            assert(kp__->spinor_wave_functions<true>(0).spl_num_col().local_size() ==
+                   kp__->spinor_wave_functions<true>(1).spl_num_col().local_size());
 
-            int nbnd = kp__->spinor_wave_functions<true>(0).spl_num_swapped().local_size();
+            int nbnd = kp__->spinor_wave_functions<true>(0).spl_num_col().local_size();
 
             mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
             mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
@@ -775,7 +775,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int i = 0; i < nbnd; i++) {
-                        int j = kp__->spinor_wave_functions<true>(ispn).spl_num_swapped()[i];
+                        int j = kp__->spinor_wave_functions<true>(ispn).spl_num_col()[i];
 
                         for (int xi = 0; xi < mt_basis_size; xi++) {
                             wf1(xi, i, ispn) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
@@ -1097,8 +1097,8 @@ inline void Density::generate_valence(K_set& ks__)
                     kp->spinor_wave_functions<false>(ispn).copy_to_device(0, nbnd);
                 }
                 #endif
-                kp->spinor_wave_functions<false>(ispn).swap_forward(0, nbnd, kp->gkvec().partition(),
-                                                                    ctx_.mpi_grid_fft().communicator(1 << 1));
+                kp->spinor_wave_functions<false>(ispn).remap_forward(0, nbnd, kp->gkvec().partition(),
+                                                                     ctx_.mpi_grid_fft().communicator(1 << 1));
             }
         }
         
@@ -1259,22 +1259,22 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     /* non-magnetic or collinear case */
     if (ctx_.num_mag_dims() != 3) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            if (!kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().global_index_size()) {
+            if (!kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_col().global_index_size()) {
                 continue;
             }
 
             #pragma omp for schedule(dynamic, 1)
-            for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped().local_size(); i++) {
-                int j = kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_swapped()[i];
+            for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_col().local_size(); i++) {
+                int j = kp__->spinor_wave_functions<mt_spheres>(ispn).spl_num_col()[i];
                 double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
 
                 /* transform to real space; in case of GPU wave-function stays in GPU memory */
                 if (ctx_.fft().gpu_only()) {
                     ctx_.fft().transform<1>(kp__->gkvec().partition(),
-                                            kp__->spinor_wave_functions<mt_spheres>(ispn).coeffs_swapped().template at<GPU>(wf_pw_offset, i));
+                                            kp__->spinor_wave_functions<mt_spheres>(ispn).spare().template at<GPU>(wf_pw_offset, i));
                 } else {
                     ctx_.fft().transform<1>(kp__->gkvec().partition(),
-                                            kp__->spinor_wave_functions<mt_spheres>(ispn)[i] + wf_pw_offset);
+                                            kp__->spinor_wave_functions<mt_spheres>(ispn).spare().template at<CPU>(wf_pw_offset, i));
                 }
 
                 if (ctx_.fft().hybrid()) {
@@ -1293,23 +1293,23 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             }
         }
     } else {
-        assert(kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped().local_size() ==
-               kp__->spinor_wave_functions<mt_spheres>(1).spl_num_swapped().local_size());
+        assert(kp__->spinor_wave_functions<mt_spheres>(0).spl_num_col().local_size() ==
+               kp__->spinor_wave_functions<mt_spheres>(1).spl_num_col().local_size());
 
         std::vector<double_complex> psi_r(ctx_.fft().local_size());
 
         #pragma omp for schedule(dynamic, 1)
-        for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped().local_size(); i++)
+        for (int i = 0; i < kp__->spinor_wave_functions<mt_spheres>(0).spl_num_col().local_size(); i++)
         {
-            int j = kp__->spinor_wave_functions<mt_spheres>(0).spl_num_swapped()[i];
+            int j = kp__->spinor_wave_functions<mt_spheres>(0).spl_num_col()[i];
             double w = kp__->band_occupancy(j) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions<mt_spheres>(0)[i] + wf_pw_offset);
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions<mt_spheres>(0).spare().template at<CPU>(wf_pw_offset, i));
             /* save in auxiliary buffer */
             ctx_.fft().output(&psi_r[0]);
             /* transform dn- component of spinor wave function */
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions<mt_spheres>(1)[i] + wf_pw_offset);
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions<mt_spheres>(1).spare().template at<CPU>(wf_pw_offset, i));
 
             if (ctx_.fft().hybrid())
             {
