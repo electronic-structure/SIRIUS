@@ -192,6 +192,8 @@ void Band::apply_fv_h_o(int num_gkvec, int ia, mdarray<double_complex, 2>& alm,
     
     printf("type.mt_aw_basis_size() = %10i\n", type.mt_aw_basis_size());
     
+    /* Apply Hamiltonian to psi, APW-APW controbution */
+
     mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
     
     for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++)
