@@ -14,23 +14,21 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     PROFILE();
 
     /* short notation for target wave-functions */
-    auto& psi = kp__->spinor_wave_functions<false>(ispn__);
+    auto& psi = kp__->spinor_wave_functions(ispn__);
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();     
 
     int ngk = kp__->num_gkvec();
 
-    auto pu = ctx_.processing_unit();
-
-    Wave_functions<false>  phi(kp__->num_gkvec_loc(), ngk, pu);
-    Wave_functions<false> hphi(kp__->num_gkvec_loc(), ngk, pu);
-    Wave_functions<false> ophi(kp__->num_gkvec_loc(), ngk, pu);
+    wave_functions  phi(ctx_, kp__->comm(), kp__->gkvec(), ngk);
+    wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), ngk);
+    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), ngk);
     
     std::vector<double> eval(ngk);
 
-    phi.prime().zero();
-    for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
+    phi.pw_coeffs().prime().zero();
+    for (int i = 0; i < ngk; i++) phi.pw_coeffs().prime(i, i) = complex_one;
 
     apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
@@ -45,13 +43,13 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     #endif
 
     if (gen_evp_solver()->solve(ngk, num_bands,
-                                hphi.prime().at<CPU>(),
-                                hphi.prime().ld(),
-                                ophi.prime().at<CPU>(),
-                                ophi.prime().ld(), 
+                                hphi.pw_coeffs().prime().at<CPU>(),
+                                hphi.pw_coeffs().prime().ld(),
+                                ophi.pw_coeffs().prime().at<CPU>(),
+                                ophi.pw_coeffs().prime().ld(), 
                                 &eval[0],
-                                psi.prime().at<CPU>(),
-                                psi.prime().ld()))
+                                psi.pw_coeffs().prime().at<CPU>(),
+                                psi.pw_coeffs().prime().ld()))
     {
         TERMINATE("error in evp solve");
     }

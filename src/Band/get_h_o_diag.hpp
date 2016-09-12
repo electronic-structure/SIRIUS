@@ -1,36 +1,77 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
-// the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+inline std::vector<double>
+Band::get_h_diag(K_point* kp__,
+                 double v0__,
+                 double theta0__) const
+{
+    std::vector<double> h_diag(kp__->gklo_basis_size());
+    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+        double ekin = 0.5 * (kp__->gkvec().gkvec_cart(ig) * kp__->gkvec().gkvec_cart(ig));
+        h_diag[ig] = v0__ + ekin * theta0__;
+    }
 
-/** \file get_h_o_diag.cpp
- *   
- *  \brief Contains implementation of sirius::Band::get_h_diag and sirius::Band::get_o_diag methods.
- */
+    matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+    matrix<double_complex> halm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
 
-#include "band.h"
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom = unit_cell_.atom(ia);
+        auto& type = atom.type();
+        int nmt = atom.mt_aw_basis_size();
 
-namespace sirius {
+        kp__->alm_coeffs().generate(ia, alm);
+        apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec(), alm, halm);
+
+        for (int xi = 0; xi < nmt; xi++) {
+            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+                h_diag[ig] += std::real(std::conj(alm(ig, xi)) * halm(ig, xi));
+            }
+        }
+
+        int offs = type.mt_aw_basis_size();
+        for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
+            int xi_lo = offs + ilo;
+            int j     = ilo + kp__->num_gkvec() + atom.offset_lo();
+            /* local orbital indices */
+            int lm_lo    = type.indexb(xi_lo).lm;
+            int idxrf_lo = type.indexb(xi_lo).idxrf;
+
+            h_diag[j] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo, gaunt_coefs_->gaunt_vector(lm_lo, lm_lo)).real();
+        }
+    }
+    return std::move(h_diag);
+}
+
+inline std::vector<double>
+Band::get_o_diag(K_point* kp__,
+                 double theta0__) const
+{
+    std::vector<double> o_diag(kp__->gklo_basis_size(), 1);
+    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+        o_diag[ig] = theta0__;
+    }
+
+    matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom = unit_cell_.atom(ia);
+        int nmt = atom.mt_aw_basis_size();
+
+        kp__->alm_coeffs().generate(ia, alm);
+
+        for (int xi = 0; xi < nmt; xi++) {
+            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+                o_diag[ig] += std::real(std::conj(alm(ig, xi)) * alm(ig, xi));
+            }
+        }
+    }
+    return std::move(o_diag);
+}
 
 template <typename T>
-std::vector<double> Band::get_h_diag(K_point* kp__,
-                                     int ispn__,
-                                     double v0__,
-                                     D_operator<T>& d_op__) const
+inline std::vector<double>
+Band::get_h_diag(K_point* kp__,
+                 int ispn__,
+                 double v0__,
+                 D_operator<T>& d_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
 
@@ -39,7 +80,7 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
     /* local H contribution */
     for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
     {
-        int ig = kp__->gklo_basis_descriptor_row(ig_loc).ig;
+        int ig = kp__->gklo_basis_descriptor_loc(ig_loc).ig;
         auto vgk = kp__->gkvec().gkvec_cart(ig);
         h_diag[ig_loc] = 0.5 * (vgk * vgk) + v0__;
     }
@@ -87,8 +128,9 @@ std::vector<double> Band::get_h_diag(K_point* kp__,
 }
 
 template <typename T>
-std::vector<double> Band::get_o_diag(K_point* kp__,
-                                     Q_operator<T>& q_op__) const
+inline std::vector<double> 
+Band::get_o_diag(K_point* kp__,
+                 Q_operator<T>& q_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
 
@@ -144,20 +186,3 @@ std::vector<double> Band::get_o_diag(K_point* kp__,
 
     return o_diag;
 }
-
-template std::vector<double> Band::get_h_diag<double>(K_point* kp__,
-                                                      int ispn__,
-                                                      double v0__,
-                                                      D_operator<double>& d_op__) const;
-
-template std::vector<double> Band::get_h_diag<double_complex>(K_point* kp__,
-                                                              int ispn__,
-                                                              double v0__,
-                                                              D_operator<double_complex>& d_op__) const;
-
-template std::vector<double> Band::get_o_diag<double>(K_point* kp__,
-                                                      Q_operator<double>& q_op__) const;
-
-template std::vector<double> Band::get_o_diag<double_complex>(K_point* kp__,
-                                                              Q_operator<double_complex>& q_op__) const;
-};

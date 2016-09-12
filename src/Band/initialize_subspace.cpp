@@ -12,12 +12,10 @@ void Band::initialize_subspace(K_point* kp__,
 {
     PROFILE();
 
-    auto pu = ctx_.processing_unit();
-
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
 
-    Wave_functions<false> phi(kp__->num_gkvec_loc(), num_phi, pu);
+    wave_functions phi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
 
     #pragma omp parallel
     {
@@ -43,7 +41,7 @@ void Band::initialize_subspace(K_point* kp__,
                     for (int m = -l; m <= l; m++) {
                         int lm = Utils::lm_by_l_m(l, m);
                         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                        phi(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
+                        phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
                     }
                 }
             }
@@ -52,7 +50,7 @@ void Band::initialize_subspace(K_point* kp__,
     #pragma omp parallel for
     for (int i = num_ao__; i < num_phi; i++) {
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-            phi(igk_loc, i) = 0;
+            phi.pw_coeffs().prime(igk_loc, i) = 0;
         }
     }
 
@@ -87,7 +85,7 @@ void Band::initialize_subspace(K_point* kp__,
             int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
             auto v2 = kp__->gkvec().gvec(igk);
             if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
-                phi(igk_loc, num_ao__ + i) = 1.0;
+                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
             }
         }
     }
@@ -104,8 +102,8 @@ void Band::initialize_subspace(K_point* kp__,
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
     /* allocate wave-functions */
-    Wave_functions<false> hphi(kp__->num_gkvec_loc(), num_phi, pu);
-    Wave_functions<false> ophi(kp__->num_gkvec_loc(), num_phi, pu);
+    wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
 
     /* allocate Hamiltonian and overlap */
     matrix<T> hmlt(num_phi, num_phi);
@@ -195,13 +193,13 @@ void Band::initialize_subspace(K_point* kp__,
         if (ctx_.processing_unit() == GPU) kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
         #endif
 
-        kp__->spinor_wave_functions<false>(ispn).transform_from<T>(phi, num_phi, evec, num_bands);
+        kp__->spinor_wave_functions(ispn).transform_from<T>(phi, num_phi, evec, num_bands);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU)
         {
-            kp__->spinor_wave_functions<false>(ispn).copy_to_host(0, num_bands);
-            kp__->spinor_wave_functions<false>(ispn).deallocate_on_device();
+            kp__->spinor_wave_functions(ispn).copy_to_host(0, num_bands);
+            kp__->spinor_wave_functions(ispn).deallocate_on_device();
         }
         #endif
 

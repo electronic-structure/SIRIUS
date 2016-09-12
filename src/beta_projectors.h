@@ -159,7 +159,7 @@ class Beta_projectors
         void generate(int chunk__);
 
         template <typename T>
-        void inner(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__);
+        void inner(int chunk__, wave_functions& phi__, int idx0__, int n__);
 
         void prepare()
         {

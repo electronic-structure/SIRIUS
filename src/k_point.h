@@ -62,7 +62,7 @@ class K_point
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
-        Wave_functions<true>* fv_eigen_vectors_;
+        std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>> fv_eigen_vectors_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -74,10 +74,10 @@ class K_point
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// First-variational states.
-        void* fv_states_;
+        std::unique_ptr<wave_functions> fv_states_{nullptr};
 
         /// Two-component (spinor) wave functions describing the bands.
-        void* spinor_wave_functions_[2];
+        std::unique_ptr<wave_functions> spinor_wave_functions_[2] = {nullptr, nullptr};
 
         /// Band occupation numbers.
         std::vector<double> band_occupancies_;
@@ -85,17 +85,19 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_; 
 
-        Matching_coefficients* alm_coeffs_row_;
+        Matching_coefficients* alm_coeffs_row_{nullptr};
 
-        Matching_coefficients* alm_coeffs_col_;
+        Matching_coefficients* alm_coeffs_col_{nullptr};
 
-        Matching_coefficients* alm_coeffs_;
+        Matching_coefficients* alm_coeffs_{nullptr};
+
+        std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
         /// number of G+k vectors distributed along rows of MPI grid
-        int num_gkvec_row_;
+        int num_gkvec_row_{0};
         
         /// number of G+k vectors distributed along columns of MPI grid
-        int num_gkvec_col_;
+        int num_gkvec_col_{0};
 
         /// Short information about each G+k or lo basis function.
         /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
@@ -108,6 +110,8 @@ class K_point
         /// Basis descriptors distributed between columns of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
+
+        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_loc_;
 
         /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
         std::vector< std::vector<int> > atom_lo_cols_;
@@ -131,12 +135,10 @@ class K_point
 
         int num_ranks_row_;
 
-        Beta_projectors* beta_projectors_;
+        Beta_projectors* beta_projectors_{nullptr};
        
         /// Preconditioner matrix for Chebyshev solver.  
         mdarray<double_complex, 3> p_mtrx_;
-
-        mdarray<double, 2> gkvec_row_;
 
         Communicator const& comm_;
 
@@ -155,6 +157,14 @@ class K_point
         /// Test orthonormalization of first-variational states.
         void test_fv_states();
 
+        block_data_descriptor mt_coeffs_distr_;
+        std::vector<int> offset_mt_coeffs_;
+
+        block_data_descriptor lo_coeffs_distr_;
+        std::vector<int> offset_lo_coeffs_;
+
+        splindex<block> spl_num_atoms_;
+
     public:
 
         /// Constructor
@@ -169,32 +179,6 @@ class K_point
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
-            if (fv_eigen_vectors_ != nullptr) delete fv_eigen_vectors_;
-            if (fv_states_ != nullptr)
-            {
-                if (ctx_.full_potential())
-                {
-                    delete reinterpret_cast<Wave_functions<true>*>(fv_states_);
-                }
-                else 
-                {
-                    delete reinterpret_cast<Wave_functions<false>*>(fv_states_);
-                }
-            }
-            for (int ispn: {0, 1})
-            {
-                if (spinor_wave_functions_[ispn] != nullptr)
-                {   
-                    if (ctx_.full_potential())
-                    {
-                        delete reinterpret_cast<Wave_functions<true>*>(spinor_wave_functions_[ispn]);
-                    }
-                    else
-                    {
-                        delete reinterpret_cast<Wave_functions<false>*>(spinor_wave_functions_[ispn]);
-                    }
-                }
-            }
         }
 
         /// Initialize the k-point related arrays and data
@@ -369,16 +353,14 @@ class K_point
             return weight_;
         }
 
-        template <bool mt_spheres>
-        inline Wave_functions<mt_spheres>& fv_states()
+        inline wave_functions& fv_states()
         {
-            return *reinterpret_cast<Wave_functions<mt_spheres>*>(fv_states_);
+            return *fv_states_;
         }
 
-        template <bool mt_spheres>
-        inline Wave_functions<mt_spheres>& spinor_wave_functions(int ispn__)
+        inline wave_functions& spinor_wave_functions(int ispn__)
         {
-            return *reinterpret_cast<Wave_functions<mt_spheres>*>(spinor_wave_functions_[ispn__]);
+            return *(spinor_wave_functions_[ispn__]);
         }
 
         inline vector3d<double> vk() const
@@ -444,6 +426,12 @@ class K_point
             return gklo_basis_descriptors_row_[idx];
         }
 
+        inline gklo_basis_descriptor const& gklo_basis_descriptor_loc(int idx__) const
+        {
+            assert(idx__ >= 0 && idx__ < (int)gklo_basis_descriptors_loc_.size());
+            return gklo_basis_descriptors_loc_[idx__];
+        }
+
         inline int num_ranks_row() const
         {
             return num_ranks_row_;
@@ -499,7 +487,7 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline Wave_functions<true>& fv_eigen_vectors()
+        inline matrix_storage<double_complex, matrix_storage_t::block_cyclic>& fv_eigen_vectors()
         {
             return *fv_eigen_vectors_;
         }
@@ -542,6 +530,11 @@ class K_point
         inline Matching_coefficients const& alm_coeffs() const
         {
             return *alm_coeffs_;
+        }
+
+        inline Matching_coefficients const& alm_coeffs_loc() const
+        {
+            return *alm_coeffs_loc_;
         }
 
         inline Communicator const& comm() const

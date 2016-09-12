@@ -47,15 +47,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
 
-    auto pu = ctx_.processing_unit();
-
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
     auto& itso = ctx_.iterative_solver_input_section();
 
     /* short notation for target wave-functions */
-    auto& psi = kp__->spinor_wave_functions<false>(ispn__);
+    auto& psi = kp__->spinor_wave_functions(ispn__);
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
@@ -65,13 +63,13 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
     /* allocate wave-functions */
-    Wave_functions<false>  phi(kp__->num_gkvec_loc(), num_phi, pu);
-    Wave_functions<false> hphi(kp__->num_gkvec_loc(), num_phi, pu);
-    Wave_functions<false> ophi(kp__->num_gkvec_loc(), num_phi, pu);
-    Wave_functions<false> hpsi(kp__->num_gkvec_loc(), num_bands, pu);
-    Wave_functions<false> opsi(kp__->num_gkvec_loc(), num_bands, pu);
+    wave_functions  phi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions hpsi(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions opsi(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
     /* residuals */
-    Wave_functions<false> res(kp__->num_gkvec_loc(), num_bands, pu);
+    wave_functions res(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
 
     auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 

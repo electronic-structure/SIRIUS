@@ -21,9 +21,9 @@ extern "C" void residuals_aux_gpu(int num_gvec_loc__,
 void Band::residuals_aux(K_point* kp__,
                          int num_bands__,
                          std::vector<double>& eval__,
-                         Wave_functions<false>& hpsi__,
-                         Wave_functions<false>& opsi__,
-                         Wave_functions<false>& res__,
+                         wave_functions& hpsi__,
+                         wave_functions& opsi__,
+                         wave_functions& res__,
                          std::vector<double>& h_diag__,
                          std::vector<double>& o_diag__,
                          std::vector<double>& res_norm__) const
@@ -66,41 +66,37 @@ void Band::residuals_aux(K_point* kp__,
     #endif
 
     /* compute residuals norm and apply preconditioner */
-    if (pu == CPU)
-    {
+    if (pu == CPU) {
         #pragma omp parallel for
-        for (int i = 0; i < num_bands__; i++)
-        {
+        for (int i = 0; i < num_bands__; i++) {
             res_norm[i] = 0;
             p_norm[i] = 0;
-            for (int ig = 0; ig < res__.num_rows_loc(); ig++) 
-            {
+            for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-                res__(ig, i) = hpsi__(ig, i) - eval__[i] * opsi__(ig, i);
-                res_norm__[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
+                res__.pw_coeffs().prime(ig, i) = hpsi__.pw_coeffs().prime(ig, i) - eval__[i] * opsi__.pw_coeffs().prime(ig, i);
+                res_norm__[i] += (std::pow(res__.pw_coeffs().prime(ig, i).real(), 2) + std::pow(res__.pw_coeffs().prime(ig, i).imag(), 2));
             }
-            if (kp__->gkvec().reduced())
-            {
-                if (kp__->comm().rank() == 0)
-                    res_norm__[i] = 2 * res_norm__[i] - std::pow(res__(0, i).real(), 2);
-                else
+            if (kp__->gkvec().reduced()) {
+                if (kp__->comm().rank() == 0) {
+                    res_norm__[i] = 2 * res_norm__[i] - std::pow(res__.pw_coeffs().prime(0, i).real(), 2);
+                } else {
                     res_norm__[i] *= 2;
+                }
             }
             /* apply preconditioner */
-            for (int ig = 0; ig < res__.num_rows_loc(); ig++) 
-            {
+            for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
                 double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                res__(ig, i) /= p;
+                res__.pw_coeffs().prime(ig, i) /= p;
                 /* norm of the preconditioned residual */
-                p_norm[i] += (std::pow(res__(ig, i).real(), 2) + std::pow(res__(ig, i).imag(), 2));
+                p_norm[i] += (std::pow(res__.pw_coeffs().prime(ig, i).real(), 2) + std::pow(res__.pw_coeffs().prime(ig, i).imag(), 2));
             }
-            if (kp__->gkvec().reduced())
-            {
-                if (kp__->comm().rank() == 0)
-                    p_norm[i] = 2 * p_norm[i] - std::pow(res__(0, i).real(), 2);
-                else
+            if (kp__->gkvec().reduced()) {
+                if (kp__->comm().rank() == 0) {
+                    p_norm[i] = 2 * p_norm[i] - std::pow(res__.pw_coeffs().prime(0, i).real(), 2);
+                } else {
                     p_norm[i] *= 2;
+                }
             }
         }
     }
@@ -122,12 +118,12 @@ void Band::residuals_aux(K_point* kp__,
     for (int i = 0; i < num_bands__; i++) p_norm[i] = 1.0 / std::sqrt(p_norm[i]);
 
     /* normalize preconditioned residuals */
-    if (pu == CPU)
-    {
+    if (pu == CPU) {
         #pragma omp parallel for
-        for (int i = 0; i < num_bands__; i++)
-        {
-            for (int ig = 0; ig < res__.num_rows_loc(); ig++) res__(ig, i) *= p_norm[i];
+        for (int i = 0; i < num_bands__; i++) {
+            for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
+                res__.pw_coeffs().prime(ig, i) *= p_norm[i];
+            }
         }
     }
     #ifdef __GPU

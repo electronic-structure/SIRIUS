@@ -34,7 +34,7 @@ void K_point::generate_fv_states()
         return;
     }
 
-    fv_eigen_vectors_->swap_forward(0, ctx_.num_fv_states());
+    fv_eigen_vectors_->remap_forward(0, ctx_.num_fv_states());
     #ifdef __GPU
     auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
     #endif
@@ -48,7 +48,10 @@ void K_point::generate_fv_states()
     }
     #endif
 
-    fv_states<true>().set_num_swapped(ctx_.num_fv_states());
+    Gvec_partition gkvec_tot(gkvec(), mpi_comm_self());
+
+    fv_states().pw_coeffs().set_num_spare(ctx_.num_fv_states(), gkvec_tot, comm());
+    fv_states().mt_coeffs().set_num_spare(ctx_.num_fv_states());
 
     assert(nbnd_loc == fv_states<true>().spl_num_col().local_size());
 

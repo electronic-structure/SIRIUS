@@ -64,10 +64,10 @@ class Band
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(Wave_functions<true>& fv_states__,
+        void apply_magnetic_field(wave_functions& fv_states__,
                                   Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
-                                  std::vector<Wave_functions<true>*>& hpsi__) const;
+                                  std::vector<wave_functions*>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -82,32 +82,34 @@ class Band
         void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
 
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
-        void set_fv_h_o_it(K_point* kp,
-                           Periodic_function<double>* effective_potential, 
-                           matrix<double_complex>& h,
-                           matrix<double_complex>& o) const;
+        inline void set_fv_h_o_it(K_point* kp,
+                                  Periodic_function<double>* effective_potential, 
+                                  matrix<double_complex>& h,
+                                  matrix<double_complex>& o) const;
 
-        void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
+        inline void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
 
         template <spin_block_t sblock>
-        void set_h_it(K_point* kp,
-                      Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3],
-                      matrix<double_complex>& h) const;
+        inline void set_h_it(K_point* kp,
+                             Periodic_function<double>* effective_potential, 
+                             Periodic_function<double>* effective_magnetic_field[3],
+                             matrix<double_complex>& h) const;
         
         /// Setup lo-lo block of Hamiltonian and overlap matrices
-        void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
+        inline void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
 
         template <spin_block_t sblock>
-        void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
+        inline void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
         
-        void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
+        inline void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
        
-        void set_o(K_point* kp, mdarray<double_complex, 2>& o);
+        inline void set_o(K_point* kp, mdarray<double_complex, 2>& o);
     
         template <spin_block_t sblock> 
-        void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
-                   Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
+        inline void set_h(K_point* kp,
+                          Periodic_function<double>* effective_potential, 
+                          Periodic_function<double>* effective_magnetic_field[3],
+                          mdarray<double_complex, 2>& h);
        
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
@@ -222,23 +224,23 @@ class Band
                              std::vector<double>& eval__) const;
 
         template <typename T>
-        void apply_h(K_point* kp__,
-                     int ispn__, 
-                     int N__,
-                     int n__,
-                     Wave_functions<false>& phi__,
-                     Wave_functions<false>& hphi__,
-                     Hloc_operator &h_op,
-                     D_operator<T>& d_op) const;
+        inline void apply_h(K_point* kp__,
+                            int ispn__, 
+                            int N__,
+                            int n__,
+                            wave_functions& phi__,
+                            wave_functions& hphi__,
+                            Hloc_operator &h_op,
+                            D_operator<T>& d_op) const;
 
         template <typename T>
         void apply_h_o(K_point* kp__,
                        int ispn__, 
                        int N__,
                        int n__,
-                       Wave_functions<false>& phi__,
-                       Wave_functions<false>& hphi__,
-                       Wave_functions<false>& ophi__,
+                       wave_functions& phi__,
+                       wave_functions& hphi__,
+                       wave_functions& ophi__,
                        Hloc_operator &h_op,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
@@ -247,29 +249,29 @@ class Band
         inline void set_h_o(K_point* kp__,
                             int N__,
                             int n__,
-                            Wave_functions<false>& phi__,
-                            Wave_functions<false>& hphi__,
-                            Wave_functions<false>& ophi__,
+                            wave_functions& phi__,
+                            wave_functions& hphi__,
+                            wave_functions& ophi__,
                             matrix<T>& h__,
                             matrix<T>& o__,
                             matrix<T>& h_old__,
                             matrix<T>& o_old__) const;
         
         template <typename T>
-        int residuals(K_point* kp__,
-                      int ispn__,
-                      int N__,
-                      int num_bands__,
-                      std::vector<double>& eval__,
-                      std::vector<double>& eval_old__,
-                      matrix<T>& evec__,
-                      Wave_functions<false>& hphi__,
-                      Wave_functions<false>& ophi__,
-                      Wave_functions<false>& hpsi__,
-                      Wave_functions<false>& opsi__,
-                      Wave_functions<false>& res__,
-                      std::vector<double>& h_diag__,
-                      std::vector<double>& o_diag__) const;
+        inline int residuals(K_point* kp__,
+                             int ispn__,
+                             int N__,
+                             int num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             matrix<T>& evec__,
+                             wave_functions& hphi__,
+                             wave_functions& ophi__,
+                             wave_functions& hpsi__,
+                             wave_functions& opsi__,
+                             wave_functions& res__,
+                             std::vector<double>& h_diag__,
+                             std::vector<double>& o_diag__) const;
 
         inline int residuals(K_point* kp__,
                              int N__,
@@ -277,42 +279,40 @@ class Band
                              std::vector<double>& eval__,
                              std::vector<double>& eval_old__,
                              matrix<double_complex>& evec__,
-                             Wave_functions<false>& hphi__,
-                             Wave_functions<false>& ophi__,
-                             Wave_functions<false>& hpsi__,
-                             Wave_functions<false>& opsi__,
-                             Wave_functions<false>& res__,
+                             wave_functions& hphi__,
+                             wave_functions& ophi__,
+                             wave_functions& hpsi__,
+                             wave_functions& opsi__,
+                             wave_functions& res__,
                              std::vector<double>& h_diag__,
                              std::vector<double>& o_diag__) const;
+
+        //inline void orthogonalize(K_point* kp__,
+        //                          int N__,
+        //                          int n__,
+        //                          lapwlo_wave_functions& phi__,
+        //                          lapwlo_wave_functions& hphi__,
+        //                          lapwlo_wave_functions& ophi__,
+        //                          matrix<double_complex>& o__) const;
 
         template <typename T>
         inline void orthogonalize(K_point* kp__,
                                   int N__,
                                   int n__,
-                                  Wave_functions<false>& phi__,
-                                  Wave_functions<false>& hphi__,
-                                  Wave_functions<false>& ophi__,
+                                  wave_functions& phi__,
+                                  wave_functions& hphi__,
+                                  wave_functions& ophi__,
                                   matrix<T>& o__) const;
 
         void residuals_aux(K_point* kp__,
                            int num_bands__,
                            std::vector<double>& eval__,
-                           Wave_functions<false>& hpsi__,
-                           Wave_functions<false>& opsi__,
-                           Wave_functions<false>& res__,
+                           wave_functions& hpsi__,
+                           wave_functions& opsi__,
+                           wave_functions& res__,
                            std::vector<double>& h_diag__,
                            std::vector<double>& o_diag__,
                            std::vector<double>& res_norm__) const;
-
-        void add_nl_h_o_pw(K_point* kp__,
-                           int n__,
-                           matrix<double_complex>& phi__,
-                           matrix<double_complex>& hphi__,
-                           matrix<double_complex>& ophi__,
-                           matrix<double_complex>& beta_gk__,
-                           mdarray<int, 1>& packed_mtrx_offset__,
-                           mdarray<double_complex, 1>& d_mtrx_packed__,
-                           mdarray<double_complex, 1>& q_mtrx_packed__);
 
         void add_nl_h_o_rs(K_point* kp__,
                            int n__,
@@ -676,9 +676,9 @@ class Band
                                  Periodic_function<double>* effective_potential__,
                                  int N,
                                  int n,
-                                 Wave_functions<false>& phi__,
-                                 Wave_functions<false>& hphi__,
-                                 Wave_functions<false>& ophi__) const;
+                                 wave_functions& phi__,
+                                 wave_functions& hphi__,
+                                 wave_functions& ophi__) const;
 
         /// Solve first-variational (non-magnetic) problem
         inline void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const
@@ -719,84 +719,25 @@ class Band
             return gen_evp_solver_;
         }
 
-        /// Get diagonal elements of Hamiltonian.
-        std::vector<double> get_h_diag(K_point* kp__,
-                                       double v0__,
-                                       double theta0__) const
-        {
-            std::vector<double> h_diag(kp__->gklo_basis_size());
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                double ekin = 0.5 * (kp__->gkvec().gkvec_cart(ig) * kp__->gkvec().gkvec_cart(ig));
-                h_diag[ig] = v0__ + ekin * theta0__;
-            }
+        /// Get diagonal elements of LAPW Hamiltonian.
+        inline std::vector<double> get_h_diag(K_point* kp__,
+                                              double v0__,
+                                              double theta0__) const;
 
-            matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-            matrix<double_complex> halm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto& atom = unit_cell_.atom(ia);
-                auto& type = atom.type();
-                int nmt = atom.mt_aw_basis_size();
-
-                kp__->alm_coeffs().generate(ia, alm);
-                apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec(), alm, halm);
-
-                for (int xi = 0; xi < nmt; xi++) {
-                    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                        h_diag[ig] += std::real(std::conj(alm(ig, xi)) * halm(ig, xi));
-                    }
-                }
-
-                int offs = type.mt_aw_basis_size();
-                for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
-                    int xi_lo = offs + ilo;
-                    int j     = ilo + kp__->num_gkvec() + atom.offset_lo();
-                    /* local orbital indices */
-                    int lm_lo    = type.indexb(xi_lo).lm;
-                    int idxrf_lo = type.indexb(xi_lo).idxrf;
-
-                    h_diag[j] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo, gaunt_coefs_->gaunt_vector(lm_lo, lm_lo)).real();
-                }
-            }
-            return std::move(h_diag);
-        }
-
-        std::vector<double> get_o_diag(K_point* kp__,
-                                       double theta0__) const
-        {
-            std::vector<double> o_diag(kp__->gklo_basis_size(), 1);
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                o_diag[ig] = theta0__;
-            }
-
-            matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto& atom = unit_cell_.atom(ia);
-                int nmt = atom.mt_aw_basis_size();
-
-                kp__->alm_coeffs().generate(ia, alm);
-
-                for (int xi = 0; xi < nmt; xi++) {
-                    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                        o_diag[ig] += std::real(std::conj(alm(ig, xi)) * alm(ig, xi));
-                    }
-                }
-            }
-            return std::move(o_diag);
-        }
+        /// Get diagonal elements of LAPW overlap.
+        inline std::vector<double> get_o_diag(K_point* kp__,
+                                              double theta0__) const;
 
         template <typename T>
-        std::vector<double> get_h_diag(K_point* kp__,
-                                       int ispn__,
-                                       double v0__,
-                                       D_operator<T>& d_op__) const;
+        inline std::vector<double> get_h_diag(K_point* kp__,
+                                              int ispn__,
+                                              double v0__,
+                                              D_operator<T>& d_op__) const;
 
         /// Get diagonal elements of overlap matrix.
         template <typename T>
-        std::vector<double> get_o_diag(K_point* kp__,
-                                       Q_operator<T>& q_op__) const;
-
+        inline std::vector<double> get_o_diag(K_point* kp__,
+                                              Q_operator<T>& q_op__) const;
 
         template <typename T>
         void initialize_subspace(K_point* kp__,
@@ -807,227 +748,10 @@ class Band
                                  std::vector< std::vector< Spline<double> > >& rad_int__) const;
 };
 
-template<> 
-inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                        Periodic_function<double>* effective_potential__,
-                                                                                        dmatrix<double_complex>& h__,
-                                                                                        dmatrix<double_complex>& o__) const
-{
-    PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
-    
-    h__.zero();
-    o__.zero();
-
-    double_complex zone(1, 0);
-    
-    int num_atoms_in_block = 2 * omp_get_max_threads();
-    int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
-               std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
-    DUMP("nblk: %i", nblk);
-
-    int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
-    DUMP("max_mt_aw: %i", max_mt_aw);
-
-    mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), max_mt_aw);
-    mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), max_mt_aw);
-    mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), max_mt_aw);
-
-    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
-    for (int iblk = 0; iblk < nblk; iblk++)
-    {
-        int num_mt_aw = 0;
-        std::vector<int> offsets(num_atoms_in_block);
-        for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
-        {
-            auto& atom = unit_cell_.atom(ia);
-            auto& type = atom.type();
-            offsets[ia - iblk * num_atoms_in_block] = num_mt_aw;
-            num_mt_aw += type.mt_aw_basis_size();
-        }
-        
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        alm_row.zero();
-        alm_col.zero();
-        halm_col.zero();
-        #endif
-
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++)
-            {
-                if (ia % omp_get_num_threads() == tid)
-                {
-                    int ialoc = ia - iblk * num_atoms_in_block;
-                    auto& atom = unit_cell_.atom(ia);
-                    auto& type = atom.type();
-
-                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), type.mt_aw_basis_size());
-                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type.mt_aw_basis_size());
-                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type.mt_aw_basis_size());
-
-                    kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
-                    {
-                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
-                    }
-                    kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
-                    apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col_tmp, halm_col_tmp);
-
-                    /* setup apw-lo and lo-apw blocks */
-                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);
-                }
-            }
-        }
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z1 = alm_row.checksum();
-        double_complex z2 = alm_col.checksum();
-        double_complex z3 = halm_col.checksum();
-        DUMP("checksum(alm_row): %18.10f %18.10f", std::real(z1), std::imag(z1));
-        DUMP("checksum(alm_col): %18.10f %18.10f", std::real(z2), std::imag(z2));
-        DUMP("checksum(halm_col): %18.10f %18.10f", std::real(z3), std::imag(z3));
-        #endif
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone,
-                          alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), zone, 
-                          o__.at<CPU>(), o__.ld());
-
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, zone, 
-                          alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), zone,
-                          h__.at<CPU>(), h__.ld());
-    }
-    double tval = t1.stop();
-    if (kp__->comm().rank() == 0)
-    {
-        DUMP("effective zgemm performance: %12.6f GFlops",
-             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
-    }
-
-    /* add interstitial contributon */
-    set_fv_h_o_it(kp__, effective_potential__, h__, o__);
-
-    /* setup lo-lo block */
-    set_fv_h_o_lo_lo(kp__, h__, o__);
-}
-
-#ifdef __GPU
-template<> 
-inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                        Periodic_function<double>* effective_potential__,
-                                                                                        dmatrix<double_complex>& h__,
-                                                                                        dmatrix<double_complex>& o__) const
-{
-    runtime::Timer t("sirius::Band::set_fv_h_o");
-    
-    runtime::Timer t2("sirius::Band::set_fv_h_o|alloc");
-    h__.zero();
-    h__.allocate(memory_t::device);
-    h__.zero_on_device();
-
-    o__.zero();
-    o__.allocate(memory_t::device);
-    o__.zero_on_device();
-
-    double_complex zone(1, 0);
-
-    int num_atoms_in_block = 2 * omp_get_max_threads();
-    int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
-               std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
-    DUMP("nblk: %i", nblk);
-
-    int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
-    DUMP("max_mt_aw: %i", max_mt_aw);
-
-    mdarray<double_complex, 3> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
-
-    mdarray<double_complex, 3> alm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
-
-    mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
-    t2.stop();
-
-    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
-    for (int iblk = 0; iblk < nblk; iblk++) {
-        int num_mt_aw = 0;
-        std::vector<int> offsets(num_atoms_in_block);
-        for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++) {
-            int ialoc = ia - iblk * num_atoms_in_block;
-            auto& atom = unit_cell_.atom(ia);
-            auto& type = atom.type();
-            offsets[ialoc] = num_mt_aw;
-            num_mt_aw += type.mt_aw_basis_size();
-        }
-
-        int s = iblk % 2;
-            
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            for (int ia = iblk * num_atoms_in_block; ia < std::min(unit_cell_.num_atoms(), (iblk + 1) * num_atoms_in_block); ia++) {
-                if (ia % omp_get_num_threads() == tid) {
-                    int ialoc = ia - iblk * num_atoms_in_block;
-                    auto& atom = unit_cell_.atom(ia);
-                    auto& type = atom.type();
-
-                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc], s),
-                                                           alm_row.at<GPU>(0, offsets[ialoc], s),
-                                                           kp__->num_gkvec_row(), type.mt_aw_basis_size());
-
-                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc], s),
-                                                           alm_col.at<GPU>(0, offsets[ialoc], s),
-                                                           kp__->num_gkvec_col(), type.mt_aw_basis_size());
-                    
-                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc], s),
-                                                            halm_col.at<GPU>(0, offsets[ialoc], s),
-                                                            kp__->num_gkvec_col(), type.mt_aw_basis_size());
-
-                    kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
-                            alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
-                        }
-                    }
-                    alm_row_tmp.async_copy_to_device(tid);
-
-                    kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
-                    alm_col_tmp.async_copy_to_device(tid);
-
-                    apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col_tmp, halm_col_tmp);
-                    halm_col_tmp.async_copy_to_device(tid);
-
-                    /* setup apw-lo and lo-apw blocks */
-                    set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);
-                }
-            }
-            acc::sync_stream(tid);
-        }
-        acc::sync_stream(omp_get_max_threads());
-        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
-                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone, 
-                          o__.at<GPU>(), o__.ld(), omp_get_max_threads());
-
-        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone, 
-                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &zone,
-                          h__.at<GPU>(), h__.ld(), omp_get_max_threads());
-    }
-
-    acc::copyout(h__.at<CPU>(), h__.ld(), h__.at<GPU>(), h__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
-    acc::copyout(o__.at<CPU>(), o__.ld(), o__.at<GPU>(), o__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
-    
-    double tval = t1.stop();
-    if (kp__->comm().rank() == 0) {
-        DUMP("effective zgemm performance: %12.6f GFlops",
-             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
-    }
-
-    /* add interstitial contributon */
-    set_fv_h_o_it(kp__, effective_potential__, h__, o__);
-
-    /* setup lo-lo block */
-    set_fv_h_o_lo_lo(kp__, h__, o__);
-
-    h__.deallocate_on_device();
-    o__.deallocate_on_device();
-}
-#endif
+#include "Band/get_h_o_diag.hpp"
+#include "Band/apply_h.hpp"
+#include "Band/set_fv_h_o.hpp"
+#include "Band/residuals.hpp"
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
  *  \param [in] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
@@ -1037,9 +761,9 @@ template <>
 inline void Band::set_h_o<double_complex>(K_point* kp__,
                                           int N__,
                                           int n__,
-                                          Wave_functions<false>& phi__,
-                                          Wave_functions<false>& hphi__,
-                                          Wave_functions<false>& ophi__,
+                                          wave_functions& phi__,
+                                          wave_functions& hphi__,
+                                          wave_functions& ophi__,
                                           matrix<double_complex>& h__,
                                           matrix<double_complex>& o__,
                                           matrix<double_complex>& h_old__,
@@ -1050,8 +774,7 @@ inline void Band::set_h_o<double_complex>(K_point* kp__,
     assert(n__ != 0);
 
     /* copy old Hamiltonian and overlap */
-    for (int i = 0; i < N__; i++)
-    {
+    for (int i = 0; i < N__; i++) {
         std::memcpy(&h__(0, i), &h_old__(0, i), N__ * sizeof(double_complex));
         std::memcpy(&o__(0, i), &o_old__(0, i), N__ * sizeof(double_complex));
     }
@@ -1149,9 +872,9 @@ template <>
 inline void Band::set_h_o<double>(K_point* kp__,
                                   int N__,
                                   int n__,
-                                  Wave_functions<false>& phi__,
-                                  Wave_functions<false>& hphi__,
-                                  Wave_functions<false>& ophi__,
+                                  wave_functions& phi__,
+                                  wave_functions& hphi__,
+                                  wave_functions& ophi__,
                                   matrix<double>& h__,
                                   matrix<double>& o__,
                                   matrix<double>& h_old__,
@@ -1348,27 +1071,28 @@ template <>
 inline void Band::orthogonalize<double_complex>(K_point* kp__,
                                                 int N__,
                                                 int n__,
-                                                Wave_functions<false>& phi__,
-                                                Wave_functions<false>& hphi__,
-                                                Wave_functions<false>& ophi__,
+                                                wave_functions& phi__,
+                                                wave_functions& hphi__,
+                                                wave_functions& ophi__,
                                                 matrix<double_complex>& o__) const
 {
-    std::array<Wave_functions<false>*, 3> wfs = {&phi__, &hphi__, &ophi__};
+    auto wfs = {&phi__, &hphi__, &ophi__};
+
+    if (phi__.params().full_potential()) STOP();
 
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
-        //phi__.inner<double_complex>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
         inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
 
         if (ctx_.processing_unit() == CPU) {
-            for (int i = 0; i < 3; i++) {
-                linalg<CPU>::gemm(0, 0, wfs[i]->num_rows_loc(), n__, N__,
+            for (auto& e: wfs) {
+                linalg<CPU>::gemm(0, 0, e->pw_coeffs().num_rows_loc(), n__, N__,
                                   double_complex(-1, 0), 
-                                  wfs[i]->prime().at<CPU>(0, 0), wfs[i]->prime().ld(),
+                                  e->pw_coeffs().prime().at<CPU>(0, 0), e->pw_coeffs().prime().ld(),
                                   o__.at<CPU>(0, 0), o__.ld(),
                                   double_complex(1, 0),
-                                  wfs[i]->prime().at<CPU>(0, N__), wfs[i]->prime().ld());
+                                  e->pw_coeffs().prime().at<CPU>(0, N__), e->pw_coeffs().prime().ld());
             }
         }
         #ifdef __GPU
@@ -1396,7 +1120,6 @@ inline void Band::orthogonalize<double_complex>(K_point* kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    //phi__.inner<double_complex>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
     inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
     
     if (ctx_.processing_unit() == CPU) {
@@ -1411,10 +1134,10 @@ inline void Band::orthogonalize<double_complex>(K_point* kp__,
             TERMINATE("error in inversion");
         }
 
-        for (int i = 0; i < 3; i++) {
-            linalg<CPU>::trmm('R', 'U', 'N', wfs[i]->num_rows_loc(), n__, double_complex(1, 0),
+        for (auto& e: wfs) {
+            linalg<CPU>::trmm('R', 'U', 'N', e->pw_coeffs().num_rows_loc(), n__, double_complex(1, 0),
                               o__.at<CPU>(0, 0), o__.ld(),
-                              wfs[i]->prime().at<CPU>(0, N__), wfs[i]->prime().ld());
+                              e->pw_coeffs().prime().at<CPU>(0, N__), e->pw_coeffs().prime().ld());
         }
     }
 
@@ -1452,45 +1175,39 @@ template <>
 inline void Band::orthogonalize<double>(K_point* kp__,
                                         int N__,
                                         int n__,
-                                        Wave_functions<false>& phi__,
-                                        Wave_functions<false>& hphi__,
-                                        Wave_functions<false>& ophi__,
+                                        wave_functions& phi__,
+                                        wave_functions& hphi__,
+                                        wave_functions& ophi__,
                                         matrix<double>& o__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::orthogonalize");
 
-    std::array<Wave_functions<false>*, 3> wfs = {&phi__, &hphi__, &ophi__};
+    auto wfs = {&phi__, &hphi__, &ophi__};
 
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
-    if (N__ > 0)
-    {
-        //phi__.inner<double>(0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
+    if (N__ > 0) {
         inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
 
-        if (ctx_.processing_unit() == CPU)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                linalg<CPU>::gemm(0, 0, 2 * wfs[i]->num_rows_loc(), n__, N__,
+        if (ctx_.processing_unit() == CPU) {
+            for (auto& e: wfs) {
+                linalg<CPU>::gemm(0, 0, 2 * e->pw_coeffs().num_rows_loc(), n__, N__,
                                   -1.0, 
-                                  (double*)wfs[i]->prime().at<CPU>(0, 0), 2 * wfs[i]->prime().ld(),
+                                  (double*)e->pw_coeffs().prime().at<CPU>(0, 0), 2 * e->pw_coeffs().prime().ld(),
                                   o__.at<CPU>(0, 0), o__.ld(),
                                   1.0,
-                                  (double*)wfs[i]->prime().at<CPU>(0, N__), 2 * wfs[i]->prime().ld());
+                                  (double*)e->pw_coeffs().prime().at<CPU>(0, N__), 2 * e->pw_coeffs().prime().ld());
             }
         }
         #ifdef __GPU
-        if (ctx_.processing_unit() == GPU)
-        {
+        if (ctx_.processing_unit() == GPU) {
             /* copy overlap matrix <phi_old|phi_new> to GPU */
             acc::copyin(o__.at<GPU>(0, 0), o__.ld(), o__.at<CPU>(0, 0), o__.ld(), N__, n__);
 
             double alpha = 1;
             double m_alpha = -1;
 
-            for (int i = 0; i < 3; i++)
-            {
+            for (int i = 0; i < 3; i++) {
                 linalg<GPU>::gemm(0, 0, 2 * kp__->num_gkvec_loc(), n__, N__,
                                   &m_alpha, 
                                   (double*)wfs[i]->coeffs().at<GPU>(0, 0), 2 * kp__->num_gkvec_loc(),
@@ -1505,50 +1222,45 @@ inline void Band::orthogonalize<double>(K_point* kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    //phi__.inner<double>(N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm());
     inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0, kp__->comm(), ctx_.processing_unit());
 
-    if (ctx_.processing_unit() == CPU)
-    {
+    if (ctx_.processing_unit() == CPU) {
         int info;
-        if ((info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())))
-        {
+        if ((info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld()))) {
             std::stringstream s;
             s << "error in factorization, info = " << info;
             TERMINATE(s);
         }
 
-        if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld()))
+        if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld())) {
             TERMINATE("error in inversion");
+        }
 
-        for (int i = 0; i < 3; i++)
-        {
-            linalg<CPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, 1.0,
+        for (auto& e: wfs) {
+            linalg<CPU>::trmm('R', 'U', 'N', 2 * e->pw_coeffs().num_rows_loc(), n__, 1.0,
                               o__.at<CPU>(0, 0), o__.ld(),
-                              (double*)wfs[i]->prime().at<CPU>(0, N__), 2 * wfs[i]->prime().ld());
+                              (double*)e->pw_coeffs().prime().at<CPU>(0, N__), 2 * e->pw_coeffs().prime().ld());
         }
     }
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
+    if (ctx_.processing_unit() == GPU) {
         acc::copyin(o__.at<GPU>(0, 0), o__.ld(), o__.at<CPU>(0, 0), o__.ld(), n__, n__);
 
         int info;
-        if ((info = linalg<GPU>::potrf(n__, o__.at<GPU>(0, 0), o__.ld())))
-        {
+        if ((info = linalg<GPU>::potrf(n__, o__.at<GPU>(0, 0), o__.ld()))) {
             std::stringstream s;
             s << "error in factorization, info = " << info;
             TERMINATE(s);
         }
 
-        if (linalg<GPU>::trtri(n__, o__.at<GPU>(0, 0), o__.ld()))
+        if (linalg<GPU>::trtri(n__, o__.at<GPU>(0, 0), o__.ld())) {
             TERMINATE("error in inversion");
+        }
 
         double alpha = 1;
 
-        for (int i = 0; i < 3; i++)
-        {
+        for (int i = 0; i < 3; i++) {
             linalg<GPU>::trmm('R', 'U', 'N', 2 * kp__->num_gkvec_loc(), n__, &alpha,
                               o__.at<GPU>(0, 0), o__.ld(),
                               (double*)wfs[i]->coeffs().at<GPU>(0, N__), 2 * kp__->num_gkvec_loc());
@@ -1581,160 +1293,278 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                                Periodic_function<double>* effective_potential__,
                                int N__,
                                int n__,
-                               Wave_functions<false>& phi__,
-                               Wave_functions<false>& hphi__,
-                               Wave_functions<false>& ophi__) const
+                               wave_functions& phi__,
+                               wave_functions& hphi__,
+                               wave_functions& ophi__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::apply_fv_h_o");
 
     ctx_.fft().prepare(kp__->gkvec().partition());
 
-    mdarray<double_complex, 1> buf_rg(ctx_.fft().local_size());
-    mdarray<double_complex, 1> buf_pw(kp__->num_gkvec());
-    
-    for (int j = N__; j < N__ + n__; j++) {
-        ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.prime().at<CPU>(0, j));
-        #pragma omp parallel for
-        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-            ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
-            /* save phi(r) * Theta(r) */
-            buf_rg[ir] = ctx_.fft().buffer(ir);
-        }
-        ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.prime().at<CPU>(0, j));
-        #pragma omp parallel for
-        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-            ctx_.fft().buffer(ir) = buf_rg[ir] * effective_potential__->f_rg(ir);
-        }
-        ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.prime().at<CPU>(0, j));
-        
-        for (int x: {0, 1, 2}) {
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                buf_pw[ig] = phi__(ig, j) * kp__->gkvec().gkvec_cart(ig)[x];
-            }
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), &buf_pw[0]);
-            #pragma omp parallel for
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
-            }
-            ctx_.fft().transform<-1>(kp__->gkvec().partition(), &buf_pw[0]);
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                hphi__(ig, j) += 0.5 * buf_pw[ig] * kp__->gkvec().gkvec_cart(ig)[x];
-            }
-        }
-    }
+    STOP();
 
-    ctx_.fft().dismiss();
-
-    matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-    matrix<double_complex> halm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-    matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
-    matrix<double_complex> htmp(unit_cell_.max_mt_aw_basis_size(), n__);
-
-    double_complex zone(1, 0);
-
-    for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
-        for (int ilo = kp__->num_gkvec(); ilo < kp__->gklo_basis_size(); ilo++) {
-            ophi__(ilo, ibnd) = 0;
-            hphi__(ilo, ibnd) = 0;
-        }
-    }
-    
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto& atom = unit_cell_.atom(ia);
-        auto& type = atom.type(); 
-        int nmt = atom.mt_aw_basis_size();
-        kp__->alm_coeffs().generate(ia, alm);
-        apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec(), alm, halm);
-        
-        /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
-        linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec(),
-                          alm.at<CPU>(), alm.ld(),
-                          phi__.prime().at<CPU>(0, N__), phi__.prime().ld(),
-                          tmp.at<CPU>(), tmp.ld());
-
-        /* htmp(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-        linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec(),
-                          halm.at<CPU>(), halm.ld(),
-                          phi__.prime().at<CPU>(0, N__), phi__.prime().ld(),
-                          htmp.at<CPU>(), htmp.ld());
-
-        for (int xi = 0; xi < nmt; xi++) {
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                alm(ig, xi) = std::conj(alm(ig, xi));
-            }
-        }
-        /* APW-APW contribution to overlap */
-        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, nmt, zone,
-                          alm.at<CPU>(), alm.ld(),
-                          tmp.at<CPU>(), tmp.ld(),
-                          zone,
-                          ophi__.prime().at<CPU>(0, N__),
-                          ophi__.prime().ld());
-        /* APW-APW contribution to Hamiltonian */
-        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, nmt, zone,
-                          alm.at<CPU>(), alm.ld(),
-                          htmp.at<CPU>(), htmp.ld(),
-                          zone,
-                          hphi__.prime().at<CPU>(0, N__),
-                          hphi__.prime().ld());
-        
-        int offs = type.mt_aw_basis_size();
-        for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
-            for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
-                int j = ilo + kp__->num_gkvec() + atom.offset_lo();
-                int xi_lo = offs + ilo;
-                /* local orbital indices */
-                int l_lo     = type.indexb(xi_lo).l;
-                int lm_lo    = type.indexb(xi_lo).lm;
-                int order_lo = type.indexb(xi_lo).order;
-                int idxrf_lo = type.indexb(xi_lo).idxrf;
-
-                for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
-                    /* lo-APW contribution */
-                    ophi__(j, ibnd) += atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
-                                       tmp(type.indexb_by_lm_order(lm_lo, order_aw), ibnd - N__);
-                    /* APW-lo contribution */
-                    auto z = phi__(j, ibnd) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
-                    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                        ophi__(ig, ibnd) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
-                    }
-                }
-
-                double_complex z(0, 0);
-                for (int xi = 0; xi < nmt; xi++) {
-                    int lm_aw    = type.indexb(xi).lm;
-                    int idxrf_aw = type.indexb(xi).idxrf;
-                    z += atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gaunt_coefs_->gaunt_vector(lm_lo, lm_aw)) *
-                         tmp(xi, ibnd - N__);
-                }
-                /* lo-APW contribution */
-                hphi__(j, ibnd) += z;
-                
-                for (int xi = 0; xi < nmt; xi++) {
-                    int lm_aw    = type.indexb(xi).lm;
-                    int idxrf_aw = type.indexb(xi).idxrf;
-
-                    auto z = phi__(j, ibnd) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gaunt_coefs_->gaunt_vector(lm_aw, lm_lo));
-                    /* APW-lo contribution */
-                    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                        hphi__(ig, ibnd) += alm(ig, xi) * z; 
-                    }
-                }
-
-                /* lo-lo contribution */
-                for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
-                    int j1     = jlo + kp__->num_gkvec() + atom.offset_lo();
-                    int lm1    = type.indexb(offs + jlo).lm;
-                    int order1 = type.indexb(offs + jlo).order;
-                    int idxrf1 = type.indexb(offs + jlo).idxrf;
-                    if (lm_lo == lm1) {
-                        ophi__(j, ibnd) += phi__(j1, ibnd) * atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
-                    }
-                    hphi__(j, ibnd) +=  phi__(j1, ibnd) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gaunt_coefs_->gaunt_vector(lm_lo, lm1));
-                }
-            }
-        }
-    }
+//==     mdarray<double_complex, 1> buf_rg(ctx_.fft().local_size());
+//==     mdarray<double_complex, 1> buf_pw(kp__->gkvec().partition().gvec_count_fft());
+//== 
+//==     hphi__.copy_from(phi__, N__, n__);
+//==     ophi__.copy_from(phi__, N__, n__);
+//== 
+//==      phi__.apw_coeffs().remap_forward(N__, n__, kp__->gkvec().partition(), ctx_.mpi_grid_fft().communicator(1 << 1));
+//==     hphi__.apw_coeffs().remap_forward(N__, n__, kp__->gkvec().partition(), ctx_.mpi_grid_fft().communicator(1 << 1));
+//==     ophi__.apw_coeffs().remap_forward(N__, n__, kp__->gkvec().partition(), ctx_.mpi_grid_fft().communicator(1 << 1));
+//==     
+//==     STOP();
+//==     for (int j = N__; j < N__ + n__; j++) {
+//==         /* phi(G) -> phi(r) */
+//==         ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.apw_coeffs().spare().at<CPU>(0, j));
+//==         #pragma omp parallel for
+//==         for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+//==             ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+//==             /* save phi(r) * Theta(r) */
+//==             buf_rg[ir] = ctx_.fft().buffer(ir);
+//==         }
+//==         /* phi(r) * Theta(r) -> ophi(G) */
+//==         ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.apw_coeffs().spare().at<CPU>(0, j));
+//==         #pragma omp parallel for
+//==         for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+//==             ctx_.fft().buffer(ir) = buf_rg[ir] * effective_potential__->f_rg(ir);
+//==         }
+//==         /* phi(r) * Theta(r) * V(r) -> ophi(G) */
+//==         ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.apw_coeffs().spare().at<CPU>(0, j));
+//==         
+//==         for (int x: {0, 1, 2}) {
+//==             for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
+//==                 int ig = kp__->gkvec().partition().gvec_offset_fft() + igloc;
+//==                 buf_pw[igloc] = phi__.apw_coeffs().spare()(igloc, j) * kp__->gkvec().gkvec_cart(ig)[x];
+//==             }
+//==             ctx_.fft().transform<1>(kp__->gkvec().partition(), &buf_pw[0]);
+//==             #pragma omp parallel for
+//==             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+//==                 ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+//==             }
+//==             ctx_.fft().transform<-1>(kp__->gkvec().partition(), &buf_pw[0]);
+//==             for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
+//==                 int ig = kp__->gkvec().partition().gvec_offset_fft() + igloc;
+//==                 hphi__.apw_coeffs().spare()(igloc, j) += 0.5 * buf_pw[igloc] * kp__->gkvec().gkvec_cart(ig)[x];
+//==             }
+//==         }
+//==     }
+//== 
+//==     hphi__.apw_coeffs().remap_backward(N__, n__, kp__->gkvec().partition(), ctx_.mpi_grid_fft().communicator(1 << 1));
+//==     ophi__.apw_coeffs().remap_backward(N__, n__, kp__->gkvec().partition(), ctx_.mpi_grid_fft().communicator(1 << 1));
+//== 
+//==     ctx_.fft().dismiss();
+//== 
+//==     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+//==     matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+//==     matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
+//==     matrix<double_complex> htmp(unit_cell_.max_mt_aw_basis_size(), n__);
+//== 
+//==     double_complex zone(1, 0);
+//== 
+//==     //mdarray<double_complex, 2> ophi_lo(ophi__.num_lo_loc(), n__);
+//==     //mdarray<double_complex, 2> hphi_lo(hphi__.num_lo_loc(), n__);
+//== 
+//==     //ophi_lo.zero();
+//==     //hphi_lo.zero();
+//==     
+//==     assert(ophi__.num_lo_loc() == hphi__.num_lo_loc());
+//==     for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
+//==         for (int ilo = 0; ilo < hphi__.num_lo_loc(); ilo++) {
+//==             ophi__.lo_coeffs()(ilo, ibnd) = 0;
+//==             hphi__.lo_coeffs()(ilo, ibnd) = 0;
+//==         }
+//==     }
+//==     
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+//==         auto& atom = unit_cell_.atom(ia);
+//==         auto& type = atom.type(); 
+//==         int nmt = atom.mt_aw_basis_size();
+//==         kp__->alm_coeffs_loc().generate(ia, alm);
+//==         apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec(), alm, halm);
+//==         
+//==         /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
+//==         linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+//==                           alm.at<CPU>(), alm.ld(),
+//==                           phi__.apw_coeffs().prime().at<CPU>(0, N__), phi__.apw_coeffs().prime().ld(),
+//==                           tmp.at<CPU>(), tmp.ld());
+//==         kp__->comm().allreduce(tmp.at<CPU>(), static_cast<int>(tmp.size()));
+//== 
+//==         /* htmp(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
+//==         linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+//==                           halm.at<CPU>(), halm.ld(),
+//==                           phi__.apw_coeffs().prime().at<CPU>(0, N__), phi__.apw_coeffs().prime().ld(),
+//==                           htmp.at<CPU>(), htmp.ld());
+//==         kp__->comm().allreduce(htmp.at<CPU>(), static_cast<int>(tmp.size()));
+//== 
+//==         for (int xi = 0; xi < nmt; xi++) {
+//==             for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+//==                 alm(ig, xi) = std::conj(alm(ig, xi));
+//==             }
+//==         }
+//==         /* APW-APW contribution to overlap */
+//==         linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt, zone,
+//==                           alm.at<CPU>(), alm.ld(),
+//==                           tmp.at<CPU>(), tmp.ld(),
+//==                           zone,
+//==                           ophi__.apw_coeffs().prime().at<CPU>(0, N__),
+//==                           ophi__.apw_coeffs().prime().ld());
+//==         /* APW-APW contribution to Hamiltonian */
+//==         linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt, zone,
+//==                           alm.at<CPU>(), alm.ld(),
+//==                           htmp.at<CPU>(), htmp.ld(),
+//==                           zone,
+//==                           hphi__.apw_coeffs().prime().at<CPU>(0, N__),
+//==                           hphi__.apw_coeffs().prime().ld());
+//==         
+//==         int offs = type.mt_aw_basis_size();
+//==         
+//==         /* local orbital coefficients of atom ia for all states */
+//==         matrix<double_complex> phi_lo_ia(atom.mt_lo_basis_size(), n__);
+//==         auto ia_location = phi__.spl_num_atoms().location(ia);
+//==         if (ia_location.second == kp__->comm().rank()) {
+//==             for (int i = 0; i < n__; i++) {
+//==                 std::memcpy(&phi_lo_ia(0, i),
+//==                             phi__.lo_coeffs().at<CPU>(phi__.offset_lo(ia_location.first), N__ + i),
+//==                             atom.mt_lo_basis_size() * sizeof(double_complex));
+//==             }
+//==         }
+//==         kp__->comm().bcast(phi_lo_ia.at<CPU>(), static_cast<int>(phi_lo_ia.size()), ia_location.second);
+//== 
+//==         /* sum over local obritals (this are the APW-lo and lo-lo contributions) */
+//==         for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
+//==             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
+//==                 //int j = ilo + kp__->num_gkvec() + atom.offset_lo();
+//==                 int xi_lo = offs + ilo;
+//==                 /* local orbital indices */
+//==                 int l_lo     = type.indexb(xi_lo).l;
+//==                 int lm_lo    = type.indexb(xi_lo).lm;
+//==                 int order_lo = type.indexb(xi_lo).order;
+//==                 int idxrf_lo = type.indexb(xi_lo).idxrf;
+//== 
+//==                 for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
+//==                     /* APW-lo contribution */
+//==                     auto z = phi_lo_ia(ilo, ibnd) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
+//==                     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+//==                         ophi__.apw_coeffs()(ig, ibnd) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
+//==                     }
+//==                 }
+//== 
+//==                 for (int xi = 0; xi < nmt; xi++) {
+//==                     int lm_aw    = type.indexb(xi).lm;
+//==                     int idxrf_aw = type.indexb(xi).idxrf;
+//==                     auto& gc = gaunt_coefs_->gaunt_vector(lm_aw, lm_lo);
+//== 
+//==                     auto z = phi_lo_ia(ilo, ibnd) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
+//==                     /* APW-lo contribution */
+//==                     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+//==                         hphi__.apw_coeffs()(ig, ibnd) += alm(ig, xi) * z; 
+//==                     }
+//==                 }
+//==                 
+//==                 if (ia_location.second == kp__->comm().rank()) {
+//==                     /* lo-lo contribution */
+//==                     for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
+//==                         //int j1     = jlo + kp__->num_gkvec() + atom.offset_lo();
+//==                         int lm1    = type.indexb(offs + jlo).lm;
+//==                         int order1 = type.indexb(offs + jlo).order;
+//==                         int idxrf1 = type.indexb(offs + jlo).idxrf;
+//==                         auto& gc = gaunt_coefs_->gaunt_vector(lm_lo, lm1);
+//==                         if (lm_lo == lm1) {
+//==                             //ophi__(j, ibnd) += phi__(j1, ibnd) * atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
+//==                             ophi__.lo_coeffs()(ophi__.offset_lo(ia_location.first) + ilo, ibnd) += phi_lo_ia(jlo, ibnd) *
+//==                                 atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
+//==                         }
+//==                         //hphi__(j, ibnd) +=  phi__(j1, ibnd) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc);
+//==                         hphi__.lo_coeffs()(hphi__.offset_lo(ia_location.first) + ilo, ibnd) += phi_lo_ia(jlo, ibnd) *
+//==                             atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc);
+//==                     }
+//== 
+//==                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
+//==                         /* lo-APW contribution */
+//==                         ophi__.lo_coeffs()(ophi__.offset_lo(ia_location.first) + ilo, ibnd) += atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
+//==                                                                                                tmp(type.indexb_by_lm_order(lm_lo, order_aw), ibnd - N__);
+//==                     }
+//== 
+//==                     double_complex z(0, 0);
+//==                     for (int xi = 0; xi < nmt; xi++) {
+//==                         int lm_aw    = type.indexb(xi).lm;
+//==                         int idxrf_aw = type.indexb(xi).idxrf;
+//==                         auto& gc = gaunt_coefs_->gaunt_vector(lm_lo, lm_aw);
+//==                         z += atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc) * tmp(xi, ibnd - N__);
+//==                     }
+//==                     /* lo-APW contribution */
+//==                     hphi__.lo_coeffs()(hphi__.offset_lo(ia_location.first) + ilo, ibnd) += z;
+//==                 }
+//==             }
+//==         }
+//==         
+//==         //== /* lo-APW contribution */
+//==         //== for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
+//==         //==     for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
+//==         //==         int j = ilo + kp__->num_gkvec() + atom.offset_lo();
+//==         //==         int xi_lo = offs + ilo;
+//==         //==         /* local orbital indices */
+//==         //==         int l_lo     = type.indexb(xi_lo).l;
+//==         //==         int lm_lo    = type.indexb(xi_lo).lm;
+//==         //==         int order_lo = type.indexb(xi_lo).order;
+//==         //==         int idxrf_lo = type.indexb(xi_lo).idxrf;
+//== 
+//==         //==         for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
+//==         //==             /* lo-APW contribution */
+//==         //==             ophi__(j, ibnd) += atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
+//==         //==                                tmp(type.indexb_by_lm_order(lm_lo, order_aw), ibnd - N__);
+//==         //==             ///* APW-lo contribution */
+//==         //==             //auto z = phi__(j, ibnd) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
+//==         //==             //for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+//==         //==             //    ophi__(ig, ibnd) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
+//==         //==             //}
+//==         //==         }
+//== 
+//==         //==         double_complex z(0, 0);
+//==         //==         for (int xi = 0; xi < nmt; xi++) {
+//==         //==             int lm_aw    = type.indexb(xi).lm;
+//==         //==             int idxrf_aw = type.indexb(xi).idxrf;
+//==         //==             auto& gc = gaunt_coefs_->gaunt_vector(lm_lo, lm_aw);
+//==         //==             z += atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc) * tmp(xi, ibnd - N__);
+//==         //==         }
+//==         //==         /* lo-APW contribution */
+//==         //==         hphi__(j, ibnd) += z;
+//==         //==         
+//==         //==         //==for (int xi = 0; xi < nmt; xi++) {
+//==         //==         //==    int lm_aw    = type.indexb(xi).lm;
+//==         //==         //==    int idxrf_aw = type.indexb(xi).idxrf;
+//== 
+//==         //==         //==    auto z = phi__(j, ibnd) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gaunt_coefs_->gaunt_vector(lm_aw, lm_lo));
+//==         //==         //==    /* APW-lo contribution */
+//==         //==         //==    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+//==         //==         //==        hphi__(ig, ibnd) += alm(ig, xi) * z; 
+//==         //==         //==    }
+//==         //==         //==}
+//== 
+//==         //==         //== /* lo-lo contribution */
+//==         //==         //== for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
+//==         //==         //==     int j1     = jlo + kp__->num_gkvec() + atom.offset_lo();
+//==         //==         //==     int lm1    = type.indexb(offs + jlo).lm;
+//==         //==         //==     int order1 = type.indexb(offs + jlo).order;
+//==         //==         //==     int idxrf1 = type.indexb(offs + jlo).idxrf;
+//==         //==         //==     if (lm_lo == lm1) {
+//==         //==         //==         ophi__(j, ibnd) += phi__(j1, ibnd) * atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
+//==         //==         //==     }
+//==         //==         //==     hphi__(j, ibnd) +=  phi__(j1, ibnd) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gaunt_coefs_->gaunt_vector(lm_lo, lm1));
+//==         //==         //== }
+//==         //==     }
+//==         //== }
+//==     }
+//==     //for (int i = 0; i < n__; i++) {
+//==     //    std::memcpy(hphi__.lo_coeffs().at<CPU>(0, N__ + i),
+//==     //                &hphi_lo(0, i),
+//==     //                hphi__.num_lo_loc() * sizeof(double_complex));
+//==     //    
+//==     //    std::memcpy(ophi__.lo_coeffs().at<CPU>(0, N__ + i),
+//==     //                &ophi_lo(0, i),
+//==     //                ophi__.num_lo_loc() * sizeof(double_complex));
+//==     //}
 }
 
 inline void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential) const
@@ -1844,11 +1674,11 @@ inline int Band::residuals(K_point* kp__,
                            std::vector<double>& eval__,
                            std::vector<double>& eval_old__,
                            matrix<double_complex>& evec__,
-                           Wave_functions<false>& hphi__,
-                           Wave_functions<false>& ophi__,
-                           Wave_functions<false>& hpsi__,
-                           Wave_functions<false>& opsi__,
-                           Wave_functions<false>& res__,
+                           wave_functions& hphi__,
+                           wave_functions& ophi__,
+                           wave_functions& hpsi__,
+                           wave_functions& opsi__,
+                           wave_functions& res__,
                            std::vector<double>& h_diag__,
                            std::vector<double>& o_diag__) const
 {
@@ -1952,21 +1782,7 @@ inline int Band::residuals(K_point* kp__,
             if (res_norm[i] > itso.residual_tolerance_) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
-                    switch (ctx_.processing_unit()) {
-                        case CPU: {
-                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_rows_loc() * sizeof(double_complex));
-                            break;
-                        }
-                        case GPU:
-                        {
-                            #ifdef __GPU
-                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.coeffs().at<GPU>(0, i), res__.num_gvec_loc());
-                            #else
-                            TERMINATE_NO_GPU
-                            #endif
-                            break;
-                        }
-                    }
+                    res__.copy_from(res__, i, 1, n);
                 }
                 n++;
             }
@@ -1980,169 +1796,194 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_davidson");
 
-    auto h_diag = get_h_diag(kp, effective_potential->f_pw(0).real(), ctx_.step_function().theta_pw(0).real());
-    auto o_diag = get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
+    STOP();
 
-    /* short notation for number of target wave-functions */
-    int num_bands = ctx_.num_fv_states();
+    //auto h_diag = get_h_diag(kp, effective_potential->f_pw(0).real(), ctx_.step_function().theta_pw(0).real());
+    //auto o_diag = get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    ///* short notation for number of target wave-functions */
+    //int num_bands = ctx_.num_fv_states();
 
-    /* short notation for target wave-functions */
-    Wave_functions<false> psi(kp->gklo_basis_size(), num_bands, CPU);
-    kp->fv_eigen_vectors().prime() >> psi.prime();
+    //auto& itso = ctx_.iterative_solver_input_section();
 
-    bool converge_by_energy = (itso.converge_by_energy_ == 1);
-    
-    assert(num_bands * 2 < kp->num_gkvec()); // iterative subspace size can't be smaller than this
+    ///* short notation for target wave-functions */
+    //Wave_functions<false> psi(kp->gklo_basis_size(), num_bands, CPU);
+    //kp->fv_eigen_vectors().prime() >> psi.prime();
 
-    /* number of auxiliary basis functions */
-    int num_phi = std::min(itso.subspace_size_ * num_bands, kp->num_gkvec());
+    //lapwlo_wave_functions psi1(kp, ctx_, num_bands);
+    //psi1.apw_coeffs().prime().zero();
+    //psi1.lo_coeffs().zero();
+    //for (int i = 0; i < num_bands; i++) {
+    //    for (int ig = 0; ig < kp->gkvec().gvec_count(kp->comm().rank()); ig++) {
+    //        if (ig + kp->gkvec().gvec_offset(kp->comm().rank()) == i) {
+    //            psi1.apw_coeffs()(ig, i) = 1.0;
+    //        }
+    //        if (ig + kp->gkvec().gvec_offset(kp->comm().rank()) == i + 1) {
+    //            psi1.apw_coeffs()(ig, i) = 0.5;
+    //        }
+    //        if (ig + kp->gkvec().gvec_offset(kp->comm().rank()) == i + 2) {
+    //            psi1.apw_coeffs()(ig, i) = 0.25;
+    //        }
+    //    }
+    //}
 
-    /* allocate wave-functions */
-    Wave_functions<false>  phi(kp->gklo_basis_size(), num_phi, CPU);
-    Wave_functions<false> hphi(kp->gklo_basis_size(), num_phi, CPU);
-    Wave_functions<false> ophi(kp->gklo_basis_size(), num_phi, CPU);
-    Wave_functions<false> hpsi(kp->gklo_basis_size(), num_bands, CPU);
-    Wave_functions<false> opsi(kp->gklo_basis_size(), num_bands, CPU);
+    //bool converge_by_energy = (itso.converge_by_energy_ == 1);
+    //
+    //assert(num_bands * 2 < kp->num_gkvec()); // iterative subspace size can't be smaller than this
 
-    /* residuals */
-    Wave_functions<false> res(kp->gklo_basis_size(), num_bands, CPU);
+    ///* number of auxiliary basis functions */
+    //int num_phi = std::min(itso.subspace_size_ * num_bands, kp->num_gkvec());
 
-    auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    ///* allocate wave-functions */
+    //Wave_functions<false>  phi(kp->gklo_basis_size(), num_phi, CPU);
+    //Wave_functions<false> hphi(kp->gklo_basis_size(), num_phi, CPU);
+    //Wave_functions<false> ophi(kp->gklo_basis_size(), num_phi, CPU);
+    //Wave_functions<false> hpsi(kp->gklo_basis_size(), num_bands, CPU);
+    //Wave_functions<false> opsi(kp->gklo_basis_size(), num_bands, CPU);
 
-    /* allocate Hamiltonian and overlap */
-    matrix<double_complex> hmlt(num_phi, num_phi, mem_type);
-    matrix<double_complex> ovlp(num_phi, num_phi, mem_type);
-    matrix<double_complex> hmlt_old(num_phi, num_phi, mem_type);
-    matrix<double_complex> ovlp_old(num_phi, num_phi, mem_type);
+    //lapwlo_wave_functions  phi1(kp, ctx_, num_phi);
+    //lapwlo_wave_functions hphi1(kp, ctx_, num_phi);
+    //lapwlo_wave_functions ophi1(kp, ctx_, num_phi);
 
-    matrix<double_complex> evec(num_phi, num_phi);
+    ///* residuals */
+    //Wave_functions<false> res(kp->gklo_basis_size(), num_bands, CPU);
 
-    int bs = ctx_.cyclic_block_size();
+    //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
-    dmatrix<double_complex> hmlt_dist;
-    dmatrix<double_complex> ovlp_dist;
-    dmatrix<double_complex> evec_dist;
-    if (kp->comm().size() == 1) {
-        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    } else {
-        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
+    ///* allocate Hamiltonian and overlap */
+    //matrix<double_complex> hmlt(num_phi, num_phi, mem_type);
+    //matrix<double_complex> ovlp(num_phi, num_phi, mem_type);
+    //matrix<double_complex> hmlt_old(num_phi, num_phi, mem_type);
+    //matrix<double_complex> ovlp_old(num_phi, num_phi, mem_type);
 
-    std::vector<double> eval(num_bands);
-    for (int i = 0; i < num_bands; i++) {
-        eval[i] = kp->band_energy(i);
-    }
-    std::vector<double> eval_old(num_bands);
-    
-    /* trial basis functions */
-    phi.copy_from(psi, 0, num_bands);
+    //matrix<double_complex> evec(num_phi, num_phi);
 
-    /* current subspace size */
-    int N = 0;
+    //int bs = ctx_.cyclic_block_size();
 
-    /* number of newly added basis functions */
-    int n = num_bands;
+    //dmatrix<double_complex> hmlt_dist;
+    //dmatrix<double_complex> ovlp_dist;
+    //dmatrix<double_complex> evec_dist;
+    //if (kp->comm().size() == 1) {
+    //    hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    //    ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    //    evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    //} else {
+    //    hmlt_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    //    ovlp_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    //    evec_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    //}
 
-    #if (__VERBOSITY > 2)
-    if (kp->comm().rank() == 0) {
-        DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
-    }
-    #endif
+    //std::vector<double> eval(num_bands);
+    //for (int i = 0; i < num_bands; i++) {
+    //    eval[i] = kp->band_energy(i);
+    //}
+    //std::vector<double> eval_old(num_bands);
+    //
+    ///* trial basis functions */
+    //phi.copy_from(psi, 0, num_bands);
+    //
+    //phi1.copy_from(psi1, 0, num_bands);
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #ifdef __GPU
-    gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
-    #endif
-    #endif
-    
-    /* start iterative diagonalization */
-    for (int k = 0; k < itso.num_steps_; k++) {
-        /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, effective_potential, N, n, phi, hphi, ophi);
-        
-        orthogonalize<double_complex>(kp, N, n, phi, hphi, ophi, ovlp);
+    ///* current subspace size */
+    //int N = 0;
 
-        /* setup eigen-value problem
-         * N is the number of previous basis functions
-         * n is the number of new basis functions */
-        set_h_o<double_complex>(kp, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+    ///* number of newly added basis functions */
+    //int n = num_bands;
 
-        /* increase size of the variation space */
-        N += n;
+    //#if (__VERBOSITY > 2)
+    //if (kp->comm().rank() == 0) {
+    //    DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
+    //}
+    //#endif
 
-        eval_old = eval;
+    //#ifdef __PRINT_MEMORY_USAGE
+    //MEMORY_USAGE_INFO();
+    //#ifdef __GPU
+    //gpu_mem = cuda_get_free_mem() >> 20;
+    //printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
+    //#endif
+    //#endif
+    //
+    ///* start iterative diagonalization */
+    //for (int k = 0; k < itso.num_steps_; k++) {
+    //    /* apply Hamiltonian and overlap operators to the new basis functions */
+    //    apply_fv_h_o(kp, effective_potential, N, n, phi1, hphi1, ophi1);
+    //    
+    //    orthogonalize(kp, N, n, phi1, hphi1, ophi1, ovlp);
 
-        /* solve generalized eigen-value problem with the size N */
-        diag_h_o<double_complex>(kp, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
-        
-        #if (__VERBOSITY > 2)
-        if (kp->comm().rank() == 0) {
-            DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
-        }
-        #endif
+    //    /* setup eigen-value problem
+    //     * N is the number of previous basis functions
+    //     * n is the number of new basis functions */
+    //    set_h_o<double_complex>(kp, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
 
-        /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1) {
-            /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(kp, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
-        }
+    //    /* increase size of the variation space */
+    //    N += n;
 
-        /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {   
-            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
-            /* recompute wave-functions */
-            /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            psi.transform_from<double_complex>(phi, N, evec, num_bands);
+    //    eval_old = eval;
 
-            /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-                break;
-            }
-            else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp->comm().rank() == 0) {
-                    DUMP("subspace size limit reached");
-                }
-                #endif
-                hmlt_old.zero();
-                ovlp_old.zero();
-                for (int i = 0; i < num_bands; i++) {
-                    hmlt_old(i, i) = eval[i];
-                    ovlp_old(i, i) = 1.0;
-                }
+    //    /* solve generalized eigen-value problem with the size N */
+    //    diag_h_o<double_complex>(kp, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
+    //    
+    //    #if (__VERBOSITY > 2)
+    //    if (kp->comm().rank() == 0) {
+    //        DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
+    //        for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+    //    }
+    //    #endif
 
-                /* need to compute all hpsi and opsi states (not only unconverged) */
-                if (converge_by_energy) {
-                    hpsi.transform_from<double_complex>(hphi, N, evec, num_bands);
-                    opsi.transform_from<double_complex>(ophi, N, evec, num_bands);
-                }
+    //    /* don't compute residuals on last iteration */
+    //    if (k != itso.num_steps_ - 1) {
+    //        /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
+    //        n = residuals(kp, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+    //    }
+
+    //    /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
+    //    if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {   
+    //        runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
+    //        /* recompute wave-functions */
+    //        /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
+    //        psi.transform_from<double_complex>(phi, N, evec, num_bands);
+
+    //        /* exit the loop if the eigen-vectors are converged or this is a last iteration */
+    //        if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+    //            break;
+    //        }
+    //        else { /* otherwise, set Psi as a new trial basis */
+    //            #if (__VERBOSITY > 2)
+    //            if (kp->comm().rank() == 0) {
+    //                DUMP("subspace size limit reached");
+    //            }
+    //            #endif
+    //            hmlt_old.zero();
+    //            ovlp_old.zero();
+    //            for (int i = 0; i < num_bands; i++) {
+    //                hmlt_old(i, i) = eval[i];
+    //                ovlp_old(i, i) = 1.0;
+    //            }
+
+    //            /* need to compute all hpsi and opsi states (not only unconverged) */
+    //            if (converge_by_energy) {
+    //                hpsi.transform_from<double_complex>(hphi, N, evec, num_bands);
+    //                opsi.transform_from<double_complex>(ophi, N, evec, num_bands);
+    //            }
  
-                /* update basis functions */
-                phi.copy_from(psi, 0, num_bands);
-                /* update hphi and ophi */
-                hphi.copy_from(hpsi, 0, num_bands);
-                ophi.copy_from(opsi, 0, num_bands);
-                /* number of basis functions that we already have */
-                N = num_bands;
-            }
-        }
-        /* expand variational subspace with new basis vectors obtatined from residuals */
-        phi.copy_from(res, 0, n, N);
-    }
+    //            /* update basis functions */
+    //            phi.copy_from(psi, 0, num_bands);
+    //            /* update hphi and ophi */
+    //            hphi.copy_from(hpsi, 0, num_bands);
+    //            ophi.copy_from(opsi, 0, num_bands);
+    //            /* number of basis functions that we already have */
+    //            N = num_bands;
+    //        }
+    //    }
+    //    /* expand variational subspace with new basis vectors obtatined from residuals */
+    //    phi.copy_from(res, 0, n, N);
+    //}
 
-    kp->set_fv_eigen_values(&eval[0]);
-    psi.prime() >> kp->fv_eigen_vectors().prime();
+    //kp->set_fv_eigen_values(&eval[0]);
+    //psi.prime() >> kp->fv_eigen_vectors().prime();
 
-    kp->comm().barrier();
+    //kp->comm().barrier();
 }
 
 #include "band.hpp"

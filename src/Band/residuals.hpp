@@ -1,22 +1,18 @@
-#include "band.h"
-
-namespace sirius {
-
 template <typename T>
-int Band::residuals(K_point* kp__,
-                    int ispn__,
-                    int N__,
-                    int num_bands__,
-                    std::vector<double>& eval__,
-                    std::vector<double>& eval_old__,
-                    matrix<T>& evec__,
-                    Wave_functions<false>& hphi__,
-                    Wave_functions<false>& ophi__,
-                    Wave_functions<false>& hpsi__,
-                    Wave_functions<false>& opsi__,
-                    Wave_functions<false>& res__,
-                    std::vector<double>& h_diag__,
-                    std::vector<double>& o_diag__) const
+inline int Band::residuals(K_point* kp__,
+                           int ispn__,
+                           int N__,
+                           int num_bands__,
+                           std::vector<double>& eval__,
+                           std::vector<double>& eval_old__,
+                           matrix<T>& evec__,
+                           wave_functions& hphi__,
+                           wave_functions& ophi__,
+                           wave_functions& hpsi__,
+                           wave_functions& opsi__,
+                           wave_functions& res__,
+                           std::vector<double>& h_diag__,
+                           std::vector<double>& o_diag__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::residuals");
 
@@ -75,25 +71,8 @@ int Band::residuals(K_point* kp__,
             if (res_norm[i] > itso.residual_tolerance_)
             {
                 /* shift unconverged residuals to the beginning of array */
-                if (n != i)
-                {
-                    switch (ctx_.processing_unit())
-                    {
-                        case CPU:
-                        {
-                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_rows_loc() * sizeof(double_complex));
-                            break;
-                        }
-                        case GPU:
-                        {
-                            #ifdef __GPU
-                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.prime().at<GPU>(0, i), res__.num_rows_loc());
-                            #else
-                            TERMINATE_NO_GPU
-                            #endif
-                            break;
-                        }
-                    }
+                if (n != i) {
+                    res__.copy_from(res__, i, 1, n);
                 }
                 n++;
             }
@@ -123,25 +102,8 @@ int Band::residuals(K_point* kp__,
             if (take_res && res_norm[i] > itso.residual_tolerance_)
             {
                 /* shift unconverged residuals to the beginning of array */
-                if (n != i)
-                {
-                    switch (ctx_.processing_unit())
-                    {
-                        case CPU:
-                        {
-                            std::memcpy(&res__(0, n), &res__(0, i), res__.num_rows_loc() * sizeof(double_complex));
-                            break;
-                        }
-                        case GPU:
-                        {
-                            #ifdef __GPU
-                            acc::copy(res__.coeffs().at<GPU>(0, n), res__.coeffs().at<GPU>(0, i), res__.num_gvec_loc());
-                            #else
-                            TERMINATE_NO_GPU
-                            #endif
-                            break;
-                        }
-                    }
+                if (n != i) {
+                    res__.copy_from(res__, i, 1, n);
                 }
                 n++;
             }
@@ -182,35 +144,3 @@ int Band::residuals(K_point* kp__,
 
     return n;
 }
-
-template int Band::residuals<double_complex>(K_point* kp__,
-                                             int ispn__,
-                                             int N__,
-                                             int num_bands__,
-                                             std::vector<double>& eval__,
-                                             std::vector<double>& eval_old__,
-                                             matrix<double_complex>& evec__,
-                                             Wave_functions<false>& hphi__,
-                                             Wave_functions<false>& ophi__,
-                                             Wave_functions<false>& hpsi__,
-                                             Wave_functions<false>& opsi__,
-                                             Wave_functions<false>& res__,
-                                             std::vector<double>& h_diag__,
-                                             std::vector<double>& o_diag__) const;
-
-template int Band::residuals<double>(K_point* kp__,
-                                     int ispn__,
-                                     int N__,
-                                     int num_bands__,
-                                     std::vector<double>& eval__,
-                                     std::vector<double>& eval_old__,
-                                     matrix<double>& evec__,
-                                     Wave_functions<false>& hphi__,
-                                     Wave_functions<false>& ophi__,
-                                     Wave_functions<false>& hpsi__,
-                                     Wave_functions<false>& opsi__,
-                                     Wave_functions<false>& res__,
-                                     std::vector<double>& h_diag__,
-                                     std::vector<double>& o_diag__) const;
-
-};

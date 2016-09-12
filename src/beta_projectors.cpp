@@ -280,11 +280,11 @@ void Beta_projectors::generate(int chunk__)
 }
 
 template<>
-void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
+void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 
-    assert(num_gkvec_loc_ == phi__.num_gvec_loc());
+    assert(num_gkvec_loc_ == phi__.pw_coeffs().num_rows_loc());
 
     int nbeta = beta_chunk(chunk__).num_beta_;
 
@@ -303,8 +303,10 @@ void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& 
         case CPU:
         {
             /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<CPU>(), num_gkvec_loc_,
-                              &phi__(0, idx0__), num_gkvec_loc_, (double_complex*)beta_phi_.at<CPU>(), nbeta);
+            linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_,
+                              beta_gk_.at<CPU>(), num_gkvec_loc_,
+                              phi__.pw_coeffs().prime().at<CPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
+                              (double_complex*)beta_phi_.at<CPU>(), nbeta);
             break;
         }
         case GPU:
@@ -335,11 +337,11 @@ void Beta_projectors::inner<double_complex>(int chunk__, Wave_functions<false>& 
 }
 
 template<>
-void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__)
+void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0__, int n__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 
-    assert(num_gkvec_loc_ == phi__.num_gvec_loc());
+    assert(num_gkvec_loc_ == phi__.pw_coeffs().num_rows_loc());
 
     int nbeta = beta_chunk(chunk__).num_beta_;
 
@@ -357,28 +359,25 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
     double a1 = -1;
     double b = 0;
 
-    switch (pu_)
-    {
-        case CPU:
-        {
+    switch (pu_) {
+        case CPU: {
             /* compute <beta|phi> */
             linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
                               a,
                               (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_,
-                              (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_,
+                              (double*)phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * phi__.pw_coeffs().prime().ld(),
                               b,
                               beta_phi_.at<CPU>(), nbeta);
 
-            if (comm_.rank() == 0)
-            {
+            if (comm_.rank() == 0) {
                 /* subtract one extra G=0 contribution */
                 linalg<CPU>::ger(nbeta, n__, a1, (double*)&beta_gk_(0, 0), 2 * num_gkvec_loc_,
-                                (double*)&phi__(0, idx0__), 2 * num_gkvec_loc_, &beta_phi_[0], nbeta); 
+                                (double*)phi__.pw_coeffs().prime().at<CPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
+                                &beta_phi_[0], nbeta); 
             }
             break;
         }
-        case GPU:
-        {
+        case GPU: {
             #ifdef __GPU
             linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
                               &a,
@@ -386,8 +385,7 @@ void Beta_projectors::inner<double>(int chunk__, Wave_functions<false>& phi__, i
                               (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_,
                               &b,
                               beta_phi_.at<GPU>(), nbeta);
-            if (comm_.rank() == 0)
-            {
+            if (comm_.rank() == 0) {
                 /* subtract one extra G=0 contribution */
                 linalg<GPU>::ger(nbeta, n__, &a1, (double*)beta_gk_.at<GPU>(0, 0), 2 * num_gkvec_loc_,
                                 (double*)phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc_, beta_phi_.at<GPU>(), nbeta); 

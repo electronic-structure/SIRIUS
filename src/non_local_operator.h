@@ -82,7 +82,7 @@ class Non_local_operator
         {
         }
         
-        inline void apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__);
+        inline void apply(int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__);
 
         inline T operator()(int xi1__, int xi2__, int ia__)
         {
@@ -97,13 +97,17 @@ class Non_local_operator
 };
 
 template<>
-inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__)
+inline void Non_local_operator<double_complex>::apply(int chunk__,
+                                                      int ispn__,
+                                                      wave_functions& op_phi__,
+                                                      int idx0__,
+                                                      int n__)
 {
     PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
 
     if (is_null_) return;
 
-    assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
+    assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
     auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
     auto& beta_gk = beta_.beta_gk();
@@ -138,7 +142,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn__, W
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, double_complex(1, 0),
                           beta_gk.at<CPU>(), num_gkvec_loc, work_.at<CPU>(), nbeta, double_complex(1, 0),
-                          &op_phi__(0, idx0__), num_gkvec_loc);
+                          op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
     }
     #ifdef __GPU
     if (pu_ == GPU)
@@ -173,13 +177,17 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn__, W
 }
 
 template<>
-inline void Non_local_operator<double>::apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__)
+inline void Non_local_operator<double>::apply(int chunk__,
+                                              int ispn__,
+                                              wave_functions& op_phi__,
+                                              int idx0__,
+                                              int n__)
 {
     PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
 
     if (is_null_) return;
 
-    assert(op_phi__.num_gvec_loc() == beta_.num_gkvec_loc());
+    assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
     auto beta_phi = beta_.beta_phi<double>(chunk__, n__);
     auto& beta_gk = beta_.beta_gk();
@@ -214,7 +222,7 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn__, Wave_func
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0,
                           (double*)beta_gk.at<CPU>(), 2 * num_gkvec_loc, work_.at<CPU>(), nbeta, 1.0,
-                          (double*)&op_phi__(0, idx0__), 2 * num_gkvec_loc);
+                          (double*)op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * op_phi__.pw_coeffs().prime().ld());
     }
     #ifdef __GPU
     if (pu_ == GPU)
