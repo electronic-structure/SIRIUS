@@ -60,11 +60,6 @@ Density::Density(Simulation_context& ctx__)
             weights.push_back(0);
         }
 
-        for(int i= weights.size() - 1; i >= weights.size() - density_matrix_.size() ; i--)
-        {
-            weights[i] = 0.0;
-        }
-
         weights[0] = 0;
         lf_gvec_[0] = 0;
 
