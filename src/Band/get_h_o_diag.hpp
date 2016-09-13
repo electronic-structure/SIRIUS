@@ -3,38 +3,52 @@ Band::get_h_diag(K_point* kp__,
                  double v0__,
                  double theta0__) const
 {
-    std::vector<double> h_diag(kp__->gklo_basis_size());
-    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-        double ekin = 0.5 * (kp__->gkvec().gkvec_cart(ig) * kp__->gkvec().gkvec_cart(ig));
-        h_diag[ig] = v0__ + ekin * theta0__;
+    // TODO: code is replicated in o_diag
+    splindex<block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
+    int nlo{0};
+    for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
+        int ia = spl_num_atoms[ialoc];
+        nlo += unit_cell_.atom(ia).mt_lo_basis_size();
     }
 
-    matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
-    matrix<double_complex> halm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+    std::vector<double> h_diag(kp__->num_gkvec_loc() + nlo);
+    for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+        int ig = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igloc;
+
+        double ekin = 0.5 * (kp__->gkvec().gkvec_cart(ig) * kp__->gkvec().gkvec_cart(ig));
+        h_diag[igloc] = v0__ + ekin * theta0__;
+    }
+
+    matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+    matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom = unit_cell_.atom(ia);
-        auto& type = atom.type();
         int nmt = atom.mt_aw_basis_size();
 
-        kp__->alm_coeffs().generate(ia, alm);
-        apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec(), alm, halm);
+        kp__->alm_coeffs_loc().generate(ia, alm);
+        apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_loc(), alm, halm);
 
         for (int xi = 0; xi < nmt; xi++) {
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                h_diag[ig] += std::real(std::conj(alm(ig, xi)) * halm(ig, xi));
+            for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+                h_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * halm(igloc, xi));
             }
         }
-
-        int offs = type.mt_aw_basis_size();
+    }
+    
+    nlo = 0;
+    for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
+        int ia = spl_num_atoms[ialoc];
+        auto& atom = unit_cell_.atom(ia);
+        auto& type = atom.type();
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
-            int xi_lo = offs + ilo;
-            int j     = ilo + kp__->num_gkvec() + atom.offset_lo();
+            int xi_lo = type.mt_aw_basis_size() + ilo;
             /* local orbital indices */
             int lm_lo    = type.indexb(xi_lo).lm;
             int idxrf_lo = type.indexb(xi_lo).idxrf;
 
-            h_diag[j] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo, gaunt_coefs_->gaunt_vector(lm_lo, lm_lo)).real();
+            h_diag[kp__->num_gkvec_loc() + nlo] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo, gaunt_coefs_->gaunt_vector(lm_lo, lm_lo)).real();
+            nlo++;
         }
     }
     return std::move(h_diag);
@@ -44,22 +58,29 @@ inline std::vector<double>
 Band::get_o_diag(K_point* kp__,
                  double theta0__) const
 {
-    std::vector<double> o_diag(kp__->gklo_basis_size(), 1);
-    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-        o_diag[ig] = theta0__;
+    splindex<block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
+    int nlo{0};
+    for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
+        int ia = spl_num_atoms[ialoc];
+        nlo += unit_cell_.atom(ia).mt_lo_basis_size();
+    }
+    
+    std::vector<double> o_diag(kp__->num_gkvec_loc() + nlo, 1);
+    for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+        o_diag[igloc] = theta0__;
     }
 
-    matrix<double_complex> alm(kp__->num_gkvec(), unit_cell_.max_mt_aw_basis_size());
+    matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom = unit_cell_.atom(ia);
         int nmt = atom.mt_aw_basis_size();
 
-        kp__->alm_coeffs().generate(ia, alm);
+        kp__->alm_coeffs_loc().generate(ia, alm);
 
         for (int xi = 0; xi < nmt; xi++) {
-            for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-                o_diag[ig] += std::real(std::conj(alm(ig, xi)) * alm(ig, xi));
+            for (int igloc = 0; igloc < kp__->num_gkvec(); igloc++) {
+                o_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * alm(igloc, xi));
             }
         }
     }
