@@ -296,25 +296,25 @@ class Band
                                   wave_functions& ophi__,
                                   matrix<T>& o__) const;
 
-        void residuals_aux(K_point* kp__,
-                           int num_bands__,
-                           std::vector<double>& eval__,
-                           wave_functions& hpsi__,
-                           wave_functions& opsi__,
-                           wave_functions& res__,
-                           std::vector<double>& h_diag__,
-                           std::vector<double>& o_diag__,
-                           std::vector<double>& res_norm__) const;
+        inline void residuals_aux(K_point* kp__,
+                                  int num_bands__,
+                                  std::vector<double>& eval__,
+                                  wave_functions& hpsi__,
+                                  wave_functions& opsi__,
+                                  wave_functions& res__,
+                                  std::vector<double>& h_diag__,
+                                  std::vector<double>& o_diag__,
+                                  std::vector<double>& res_norm__) const;
 
-        void add_nl_h_o_rs(K_point* kp__,
-                           int n__,
-                           matrix<double_complex>& phi__,
-                           matrix<double_complex>& hphi__,
-                           matrix<double_complex>& ophi__,
-                           mdarray<int, 1>& packed_mtrx_offset__,
-                           mdarray<double_complex, 1>& d_mtrx_packed__,
-                           mdarray<double_complex, 1>& q_mtrx_packed__,
-                           mdarray<double_complex, 1>& kappa__);
+        //== void add_nl_h_o_rs(K_point* kp__,
+        //==                    int n__,
+        //==                    matrix<double_complex>& phi__,
+        //==                    matrix<double_complex>& hphi__,
+        //==                    matrix<double_complex>& ophi__,
+        //==                    mdarray<int, 1>& packed_mtrx_offset__,
+        //==                    mdarray<double_complex, 1>& d_mtrx_packed__,
+        //==                    mdarray<double_complex, 1>& q_mtrx_packed__,
+        //==                    mdarray<double_complex, 1>& kappa__);
 
     public:
         
