@@ -58,10 +58,10 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
 
         /// Auxiliary matrix storage.
         /** This distribution is used by the FFT driver */
-        mdarray<T, 2> spare_;
+        mdarray<T, 2> extra_;
 
-        /// Raw buffer for the spare storage.
-        mdarray<T, 1> spare_buf_;
+        /// Raw buffer for the extra storage.
+        mdarray<T, 1> extra_buf_;
 
         /// Raw send-recieve buffer.
         mdarray<T, 1> send_recv_buf_;
@@ -83,6 +83,40 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
             prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
         }
 
+        inline void set_num_extra(int n__,
+                                  Gvec_partition const& gvec_distr__,
+                                  Communicator const& comm_col__,
+                                  int idx0__ = 0)
+        {
+            /* this is how n columns of the matrix will be distributed between columns of the MPI grid */
+            spl_num_col_ = splindex<block>(n__, comm_col__.size(), comm_col__.rank());
+            
+            /* trivial case */
+            if (comm_col__.size() == 1) {
+                if (pu_ == GPU && prime_.on_device()) {
+                    extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__),
+                                           prime_.template at<GPU>(0, idx0__),
+                                           num_rows_loc_,
+                                           n__);
+                } else {
+                    extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__),
+                                           num_rows_loc_,
+                                           n__);
+                }
+            } else {
+                /* maximum local number of matrix columns */
+                int max_n_loc = splindex_base<int>::block_size(n__, comm_col__.size());
+                /* upper limit for the size of swapped extra matrix */
+                size_t sz = gvec_distr__.gvec_count_fft() * max_n_loc;
+                /* reallocate buffers if necessary */
+                if (extra_buf_.size() < sz) {
+                    extra_buf_ = mdarray<T, 1>(sz);
+                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "send_recv_buf_");
+                }
+                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), gvec_distr__.gvec_count_fft(), max_n_loc);
+            }
+        }
+
         void remap_forward(int idx0__,
                            int n__,
                            Gvec_partition const& gvec__,
@@ -90,28 +124,11 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
         {
             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
 
-            /* this is how n columns of the matrix will be distributed between columns of the MPI grid */
-            spl_num_col_ = splindex<block>(n__, comm_col__.size(), comm_col__.rank());
+            set_num_extra(n__, gvec__, comm_col__, idx0__);
 
             /* trivial case */
             if (comm_col__.size() == 1) {
-                if (pu_ == GPU && prime_.on_device()) {
-                    spare_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), prime_.template at<GPU>(0, idx0__), num_rows_loc_, n__);
-                } else {
-                    spare_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), num_rows_loc_, n__);
-                }
                 return;
-            } else {
-                /* maximum local number of matrix columns */
-                int max_n_loc = splindex_base<int>::block_size(n__, comm_col__.size());
-                /* upper limit for the size of swapped spare matrix */
-                size_t sz = gvec__.gvec_count_fft() * max_n_loc;
-                /* reallocate buffers if necessary */
-                if (spare_buf_.size() < sz) {
-                    spare_buf_ = mdarray<T, 1>(sz);
-                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "send_recv_buf_");
-                }
-                spare_ = mdarray<T, 2>(spare_buf_.template at<CPU>(), gvec__.gvec_count_fft(), max_n_loc);
             }
             
             /* local number of columns */
@@ -135,7 +152,7 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
                 for (int j = 0; j < comm_col__.size(); j++) {
                     int offset = gvec__.gvec_fft_slab().offsets[j];
                     int count  = gvec__.gvec_fft_slab().counts[j];
-                    std::memcpy(&spare_(offset, i), &send_recv_buf_[offset * n_loc + count * i], count * sizeof(T));
+                    std::memcpy(&extra_(offset, i), &send_recv_buf_[offset * n_loc + count * i], count * sizeof(T));
                 }
             }
         }
@@ -161,7 +178,7 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
                 for (int j = 0; j < comm_col__.size(); j++) {
                     int offset = gvec__.gvec_fft_slab().offsets[j];
                     int count  = gvec__.gvec_fft_slab().counts[j];
-                    std::memcpy(&send_recv_buf_[offset * n_loc + count * i], &spare_(offset, i), count * sizeof(T));
+                    std::memcpy(&send_recv_buf_[offset * n_loc + count * i], &extra_(offset, i), count * sizeof(T));
                 }
             }
 
@@ -178,25 +195,10 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
                                 prime_.template at<CPU>(0, idx0__), rd.counts.data(), rd.offsets.data());
         }
 
-        //inline T& operator()(int irow__, int icol__)
-        //{
-        //    return prime_(irow__, icol__);
-        //}
-
-        //inline T const& operator()(int irow__, int icol__) const
-        //{
-        //    return prime_(irow__, icol__);
-        //}
-
         inline T& prime(int irow__, int icol__)
         {
             return prime_(irow__, icol__);
         }
-
-        //inline T const& operator()(int irow__, int icol__) const
-        //{
-        //    return prime_(irow__, icol__);
-        //}
 
         mdarray<T, 2>& prime()
         {
@@ -208,14 +210,14 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
             return prime_;
         }
 
-        mdarray<T, 2>& spare()
+        mdarray<T, 2>& extra()
         {
-            return spare_;
+            return extra_;
         }
 
-        mdarray<T, 2> const& spare() const
+        mdarray<T, 2> const& extra() const
         {
-            return spare_;
+            return extra_;
         }
         
         /// Local number of rows in prime matrix.
@@ -228,58 +230,6 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
         {
             return spl_num_col_;
         }
-
-        inline int set_num_spare(int n__, Gvec_partition const& gvec_distr__, Communicator const& comm_col__)
-        {
-            /* trivial case */
-            if (comm_col__.size() == 1) {
-                if (pu_ == GPU && prime_.on_device()) {
-                    spare_ = mdarray<T, 2>(prime_.template at<CPU>(), prime_.template at<GPU>(), num_rows_loc_, n__);
-                } else {
-                    spare_ = mdarray<T, 2>(prime_.template at<CPU>(), num_rows_loc_, n__);
-                }
-                return;
-            } else {
-                /* maximum local number of matrix columns */
-                int max_n_loc = splindex_base<int>::block_size(n__, comm_col__.size());
-                /* upper limit for the size of swapped spare matrix */
-                size_t sz = gvec_distr__.gvec_count_fft() * max_n_loc;
-                /* reallocate buffers if necessary */
-                if (spare_buf_.size() < sz) {
-                    spare_buf_ = mdarray<T, 1>(sz);
-                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "send_recv_buf_");
-                }
-                spare_ = mdarray<T, 2>(spare_buf_.template at<CPU>(), gvec_distr__.gvec_count_fft(), max_n_loc);
-            }
-        }
-
-        //inline void copy_from(Wave_functions const& src__, int i0__, int n__, int j0__)
-        //{
-        //    switch (pu_) {
-        //        case CPU: {
-        //            std::memcpy(&wf_coeffs_(0, j0__), &src__.wf_coeffs_(0, i0__), num_gvec_loc_ * n__ * sizeof(double_complex));
-        //            break;
-        //        }
-        //        case GPU: {
-        //            #ifdef __GPU
-        //            acc::copy(wf_coeffs_.at<GPU>(0, j0__), src__.wf_coeffs_.at<GPU>(0, i0__), num_gvec_loc_ * n__);
-        //            #endif
-        //            break;
-        //        }
-        //    }
-        //}
-
-        //inline void copy_from(Wave_functions const& src__, int i0__, int n__)
-        //{
-        //    copy_from(src__, i0__, n__, i0__);
-        //}
-        //
-        //template <typename T>
-        //void transform_from(Wave_functions& wf__, int nwf__, matrix<T>& mtrx__, int n__);
-
-        //template <typename T>
-        //void inner(int i0__, int m__, Wave_functions& ket__, int j0__, int n__,
-        //           mdarray<T, 2>& result__, int irow__, int icol__, Communicator const& comm);
 
         //#ifdef __GPU
         //void allocate_on_device()
@@ -322,10 +272,10 @@ class matrix_storage<T, matrix_storage_t::block_cyclic>
 
         dmatrix<T> prime_;
 
-        dmatrix<T> spare_;
+        dmatrix<T> extra_;
 
-        /// Raw buffer for the spare storage.
-        mdarray<T, 1> spare_buf_;
+        /// Raw buffer for the extra storage.
+        mdarray<T, 1> extra_buf_;
 
         /// Column distribution in auxiliary matrix.
         splindex<block> spl_num_col_;
@@ -343,8 +293,9 @@ class matrix_storage<T, matrix_storage_t::block_cyclic>
 
             prime_ = dmatrix<T>(num_rows_, num_cols_, blacs_grid_, bs_, bs_);
         }
-
-        void set_num_spare(int n__)
+        
+        /// Set extra-storage matrix.
+        void set_num_extra(int n__)
         {
             /* this is how n wave-functions will be distributed between panels */
             spl_num_col_ = splindex<block>(n__, blacs_grid_slice_.num_ranks_col(), blacs_grid_slice_.rank_col());
@@ -352,22 +303,22 @@ class matrix_storage<T, matrix_storage_t::block_cyclic>
             int bs = splindex_base<int>::block_size(n__, blacs_grid_slice_.num_ranks_col());
             if (blacs_grid_.comm().size() > 1) {
                 size_t sz = num_rows_ * bs;
-                if (spare_buf_.size() < sz) {
-                    spare_buf_ = mdarray<T, 1>(sz);
+                if (extra_buf_.size() < sz) {
+                    extra_buf_ = mdarray<T, 1>(sz);
                 }
-                spare_ = dmatrix<T>(&spare_buf_[0], num_rows_, n__, blacs_grid_slice_, 1, bs);
+                extra_ = dmatrix<T>(&extra_buf_[0], num_rows_, n__, blacs_grid_slice_, 1, bs);
             } else {
-                spare_ = dmatrix<T>(prime_.template at<CPU>(), num_rows_, n__, blacs_grid_slice_, 1, bs);
+                extra_ = dmatrix<T>(prime_.template at<CPU>(), num_rows_, n__, blacs_grid_slice_, 1, bs);
             }
         }
 
         void remap_forward(int idx0__, int n__)
         {
             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
-            set_num_spare(n__);
+            set_num_extra(n__);
             if (blacs_grid_.comm().size() > 1) {
                 #ifdef __SCALAPACK
-                linalg<CPU>::gemr2d(num_rows_, n__, prime_, 0, idx0__, spare_, 0, 0, blacs_grid_.context());
+                linalg<CPU>::gemr2d(num_rows_, n__, prime_, 0, idx0__, extra_, 0, 0, blacs_grid_.context());
                 #else
                 TERMINATE_NO_SCALAPACK
                 #endif
@@ -379,7 +330,7 @@ class matrix_storage<T, matrix_storage_t::block_cyclic>
             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_backward");
             if (blacs_grid_.comm().size() > 1) {
                 #ifdef __SCALAPACK
-                linalg<CPU>::gemr2d(num_rows_, n__, spare_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
+                linalg<CPU>::gemr2d(num_rows_, n__, extra_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
                 #else
                 TERMINATE_NO_SCALAPACK
                 #endif
@@ -391,25 +342,10 @@ class matrix_storage<T, matrix_storage_t::block_cyclic>
             return prime_;
         }
 
-        dmatrix<double_complex>& spare()
+        dmatrix<double_complex>& extra()
         {
-            return spare_;
+            return extra_;
         }
-
-        //inline int wf_size() const
-        //{
-        //    return wf_size_;
-        //}
-
-        //inline double_complex& operator()(int i__, int j__)
-        //{
-        //    return wf_coeffs_(i__, j__);
-        //}
-
-        //inline double_complex* operator[](int i__)
-        //{
-        //    return &wf_coeffs_swapped_(0, i__);
-        //}
 
         inline splindex<block> const& spl_num_col() const
         {
@@ -433,7 +369,13 @@ class matrix_storage<T, matrix_storage_t::slab>
 
         /// Auxiliary matrix storage.
         /** This distribution is used by the FFT driver */
-        mdarray<T, 2> spare_;
+        mdarray<T, 2> extra_;
+
+        /// Raw buffer for the extra storage.
+        mdarray<T, 1> extra_buf_;
+
+        /// Column distribution in auxiliary matrix.
+        splindex<block> spl_num_col_;
 
     public:
 
@@ -447,6 +389,11 @@ class matrix_storage<T, matrix_storage_t::slab>
             PROFILE();
             /* primary storage data: slabs */ 
             prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
+        }
+
+        inline splindex<block> const& spl_num_col() const
+        {
+            return spl_num_col_;
         }
 
         inline int num_rows_loc() const
@@ -464,10 +411,71 @@ class matrix_storage<T, matrix_storage_t::slab>
             return prime_;
         }
 
-        mdarray<T, 2> const& spare() const
+        inline T& prime(int irow__, int icol__)
         {
-            return spare_;
+            return prime_(irow__, icol__);
         }
+
+        mdarray<T, 2>& extra()
+        {
+            return extra_;
+        }
+
+        mdarray<T, 2> const& extra() const
+        {
+            return extra_;
+        }
+
+        inline void set_num_extra(int n__, int num_rows__, Communicator const& comm__, int idx0__ = 0)
+        {
+            /* this is how n wave-functions will be distributed between MPI ranks */
+            spl_num_col_ = splindex<block>(n__, comm__.size(), comm__.rank());
+
+            /* trivial case */
+            if (comm__.size() == 1) {
+                assert(num_rows__ == num_rows_loc_);
+                if (pu_ == GPU && prime_.on_device()) {
+                    extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__),
+                                           prime_.template at<GPU>(0, idx0__),
+                                           num_rows__,
+                                           n__);
+                } else {
+                    extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__),
+                                           num_rows__,
+                                           n__);
+                }
+            } else {
+                /* maximum local number of matrix columns */
+                int max_n_loc = splindex_base<int>::block_size(n__, comm__.size());
+                /* upper limit for the size of swapped extra matrix */
+                size_t sz = num_rows__ * max_n_loc;
+                /* reallocate buffers if necessary */
+                if (extra_buf_.size() < sz) {
+                    extra_buf_ = mdarray<T, 1>(sz);
+                }
+                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc);
+            }
+        }
+
+        inline void remap_forward(int num_rows__, int idx0__, int n__, Communicator const& comm__)
+        {
+            set_num_extra(n__, num_rows__, comm__, idx0__);
+
+            /* trivial case */
+            if (comm__.size() == 1) {
+                return;
+            }
+
+        }
+
+        inline void remap_backward(int idx0__, int n__, Communicator const& comm__)
+        {
+            if (comm__.size() > 1) {
+                STOP();
+            }
+
+        }
+
 };
 
 }

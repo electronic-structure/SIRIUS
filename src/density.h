@@ -731,71 +731,68 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
     PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_dm");
     
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
-        STOP();
-        ///* non-magnetic or spin-collinear case */
-        //if (ctx_.num_mag_dims() != 3) {
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        int nbnd = kp__->spinor_wave_functions<true>(ispn).spl_num_col().local_size();
+        /* non-magnetic or spin-collinear case */
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                int nbnd = kp__->num_occupied_bands(ispn);
 
-        //        mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
-        //        mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
+                mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
+                mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
 
-        //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //            int offset_wf = unit_cell_.atom(ia).offset_wf();
-        //            int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+                for (int ialoc = 0; ialoc < kp__->spinor_wave_functions(ispn).spl_num_atoms().local_size(); ialoc++) {
+                    int ia = kp__->spinor_wave_functions(ispn).spl_num_atoms()[ialoc];
+                    int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+                    int offset_wf = kp__->spinor_wave_functions(ispn).offset_mt_coeffs(ialoc);
 
-        //            for (int i = 0; i < nbnd; i++) {
-        //                int j = kp__->spinor_wave_functions<true>(ispn).spl_num_col()[i];
- 
-        //                for (int xi = 0; xi < mt_basis_size; xi++) {
-        //                    wf1(xi, i) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
-        //                    wf2(xi, i) = kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi] * 
-        //                                 kp__->band_occupancy(j + ispn * ctx_.num_fv_states()) *
-        //                                 kp__->weight();
-        //                }
-        //            }
-        //            /* add |psi_j> n_j <psi_j| to density matrix */
-        //            linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-        //                                  &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), complex_one, 
-        //                                  density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
-        //        }
-        //    }
-        //} else {
-        //    assert(kp__->spinor_wave_functions<true>(0).spl_num_col().local_size() ==
-        //           kp__->spinor_wave_functions<true>(1).spl_num_col().local_size());
+                    for (int i = 0; i < nbnd; i++) {
+                        for (int xi = 0; xi < mt_basis_size; xi++) {
+                            auto c = kp__->spinor_wave_functions(ispn).mt_coeffs().prime(offset_wf + xi, i);
+                            wf1(xi, i) = std::conj(c);
+                            wf2(xi, i) = c * kp__->band_occupancy(i + ispn * ctx_.num_fv_states()) * kp__->weight();
+                        }
+                    }
+                    /* add |psi_j> n_j <psi_j| to density matrix */
+                    linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
+                                          &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), complex_one, 
+                                          density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
+                }
+            }
+        } else {
+            int nbnd = kp__->num_occupied_bands();
 
-        //    int nbnd = kp__->spinor_wave_functions<true>(0).spl_num_col().local_size();
+            mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
+            mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
 
-        //    mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
-        //    mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
+            assert(kp__->spinor_wave_functions(0).spl_num_atoms().local_size() ==
+                   kp__->spinor_wave_functions(1).spl_num_atoms().local_size());
 
-        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //        int offset_wf = unit_cell_.atom(ia).offset_wf();
-        //        int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+            for (int ialoc = 0; ialoc < kp__->spinor_wave_functions(0).spl_num_atoms().local_size(); ialoc++) {
+                int ia = kp__->spinor_wave_functions(0).spl_num_atoms()[ialoc];
+                int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+                int offset_wf = kp__->spinor_wave_functions(0).offset_mt_coeffs(ialoc);
 
-        //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //            for (int i = 0; i < nbnd; i++) {
-        //                int j = kp__->spinor_wave_functions<true>(ispn).spl_num_col()[i];
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    for (int i = 0; i < nbnd; i++) {
 
-        //                for (int xi = 0; xi < mt_basis_size; xi++) {
-        //                    wf1(xi, i, ispn) = std::conj(kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi]);
-        //                    wf2(xi, i, ispn) = kp__->spinor_wave_functions<true>(ispn)[i][offset_wf + xi] * 
-        //                                       kp__->band_occupancy(j) * kp__->weight();
-        //                }
-        //            }
-        //        }
-        //        /* compute diagonal terms */
-        //        for (int ispn = 0; ispn < 2; ispn++) {
-        //            linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-        //                              &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), complex_one, 
-        //                              density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
-        //        }
-        //        /* offdiagonal term */
-        //        linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-        //                          &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), complex_one, 
-        //                          density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
-        //    }
-        //}
+                        for (int xi = 0; xi < mt_basis_size; xi++) {
+                            auto c = kp__->spinor_wave_functions(ispn).mt_coeffs().prime(offset_wf + xi, i);
+                            wf1(xi, i, ispn) = std::conj(c);
+                            wf2(xi, i, ispn) = c * kp__->band_occupancy(i) * kp__->weight();
+                        }
+                    }
+                }
+                /* compute diagonal terms */
+                for (int ispn = 0; ispn < 2; ispn++) {
+                    linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
+                                      &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), complex_one, 
+                                      density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
+                }
+                /* offdiagonal term */
+                linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
+                                  &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), complex_one, 
+                                  density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
+            }
+        }
     }
 
     if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
@@ -1090,8 +1087,10 @@ inline void Density::generate_valence(K_set& ks__)
             kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(0, nbnd, kp->gkvec().partition(),
                                                                       ctx_.mpi_grid_fft().communicator(1 << 1));
             if (ctx_.full_potential()) {
-                STOP();
-                //kp->spinor_wave_functions(ispn).mt_coeffs().remap_forward(0, nbnd);
+                //kp->spinor_wave_functions(ispn).mt_coeffs(remap_forward(unit_cell_.mt_basis_size(),
+                //                                                        0,
+                //                                                        nbnd,
+                //                                                        kp->comm());
             } else {
                 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
@@ -1249,8 +1248,6 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
     ctx_.fft().prepare(kp__->gkvec().partition());
 
-    //int wf_pw_offset = kp__->wf_pw_offset();
-        
     /* non-magnetic or collinear case */
     if (ctx_.num_mag_dims() != 3) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -1266,10 +1263,10 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 /* transform to real space; in case of GPU wave-function stays in GPU memory */
                 if (ctx_.fft().gpu_only()) {
                     ctx_.fft().transform<1>(kp__->gkvec().partition(),
-                                            kp__->spinor_wave_functions(ispn).pw_coeffs().spare().template at<GPU>(0, i));
+                                            kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<GPU>(0, i));
                 } else {
                     ctx_.fft().transform<1>(kp__->gkvec().partition(),
-                                            kp__->spinor_wave_functions(ispn).pw_coeffs().spare().template at<CPU>(0, i));
+                                            kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<CPU>(0, i));
                 }
 
                 if (ctx_.fft().hybrid()) {
@@ -1300,11 +1297,11 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             double w = kp__->band_occupancy(j) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(0).pw_coeffs().spare().template at<CPU>(0, i));
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(0).pw_coeffs().extra().template at<CPU>(0, i));
             /* save in auxiliary buffer */
             ctx_.fft().output(&psi_r[0]);
             /* transform dn- component of spinor wave function */
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(1).pw_coeffs().spare().template at<CPU>(0, i));
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(1).pw_coeffs().extra().template at<CPU>(0, i));
 
             if (ctx_.fft().hybrid())
             {

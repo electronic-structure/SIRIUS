@@ -40,7 +40,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp  \
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
-       K_point/num_occupied_bands.cpp
 
 OBJ = $(SRC:.cpp=.o)
 

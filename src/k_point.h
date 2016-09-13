@@ -157,14 +157,6 @@ class K_point
         /// Test orthonormalization of first-variational states.
         void test_fv_states();
 
-        block_data_descriptor mt_coeffs_distr_;
-        std::vector<int> offset_mt_coeffs_;
-
-        block_data_descriptor lo_coeffs_distr_;
-        std::vector<int> offset_lo_coeffs_;
-
-        splindex<block> spl_num_atoms_;
-
     public:
 
         /// Constructor
@@ -221,7 +213,31 @@ class K_point
         void test_spinor_wave_functions(int use_fft);
 
         /// Get the number of occupied bands for each spin channel.
-        int num_occupied_bands(int ispn__ = -1);
+        int num_occupied_bands(int ispn__ = -1)
+        {
+            int nbnd{0};
+
+            if (ctx_.num_mag_dims() == 3) {
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    if (band_occupancy(j) * weight() > 1e-14) {
+                        nbnd++;
+                    }
+                }
+                return nbnd;
+            }
+
+            if (!(ispn__ == 0 || ispn__ == 1)) {
+                TERMINATE("wrong spin channel");
+            }
+
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                int j = i + ispn__ * ctx_.num_fv_states();
+                if (band_occupancy(j) * weight() > 1e-14) {
+                    nbnd++;
+                }
+            }
+            return nbnd;
+        }
 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const

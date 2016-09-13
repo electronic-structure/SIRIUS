@@ -177,23 +177,6 @@ void K_point::initialize()
         }
     }
 
-    spl_num_atoms_ = splindex<block>(unit_cell_.num_atoms(), comm().size(), comm().rank());
-    mt_coeffs_distr_ = block_data_descriptor(comm().size());
-    lo_coeffs_distr_ = block_data_descriptor(comm().size());
-
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        int rank = spl_num_atoms_.local_rank(ia);
-        if (rank == comm_.rank()) {
-            offset_mt_coeffs_.push_back(mt_coeffs_distr_.counts[rank]);
-            offset_lo_coeffs_.push_back(lo_coeffs_distr_.counts[rank]);
-        }
-        mt_coeffs_distr_.counts[rank] += unit_cell_.atom(ia).mt_basis_size();
-        lo_coeffs_distr_.counts[rank] += unit_cell_.atom(ia).mt_lo_basis_size();
-        
-    }
-    mt_coeffs_distr_.calc_offsets();
-    lo_coeffs_distr_.calc_offsets();
-
     if (ctx_.full_potential()) {
         if (use_second_variation) {
             fv_eigen_vectors_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>>(
@@ -209,10 +192,26 @@ void K_point::initialize()
                 fv_eigen_vectors_->prime().set(i + 2, i, double_complex(0.25, 0));
             }
 
-            fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_, comm(), gkvec(), mt_coeffs_distr_, ctx_.num_fv_states()));
+            fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
+                                                                            comm(),
+                                                                            gkvec(),
+                                                                            unit_cell_.num_atoms(),
+                                                                            [this](int ia)
+                                                                            {
+                                                                                return unit_cell_.atom(ia).mt_basis_size();
+                                                                            },
+                                                                            ctx_.num_fv_states()));
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_, comm(), gkvec(), mt_coeffs_distr_, nst));
+                spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
+                                                                                                  comm(),
+                                                                                                  gkvec(),
+                                                                                                  unit_cell_.num_atoms(),
+                                                                                                  [this](int ia)
+                                                                                                  {
+                                                                                                      return unit_cell_.atom(ia).mt_basis_size();
+                                                                                                  },
+                                                                                                  nst));
             }
         } else {
             TERMINATE_NOT_IMPLEMENTED

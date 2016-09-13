@@ -273,9 +273,10 @@ class dmatrix: public matrix<T>
             return bs_col_;
         }
 
-        inline BLACS_grid const* blacs_grid() const
+        inline BLACS_grid const& blacs_grid() const
         {
-            return blacs_grid_;
+            assert(blacs_grid_ != nullptr);
+            return *blacs_grid_;
         }
 };
 

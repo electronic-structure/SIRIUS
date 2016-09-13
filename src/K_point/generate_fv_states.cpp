@@ -48,12 +48,10 @@ void K_point::generate_fv_states()
     }
     #endif
 
-    Gvec_partition gkvec_tot(gkvec(), mpi_comm_self());
+    fv_states().prepare_full_column_distr(ctx_.num_fv_states());
 
-    fv_states().pw_coeffs().set_num_spare(ctx_.num_fv_states(), gkvec_tot, comm());
-    fv_states().mt_coeffs().set_num_spare(ctx_.num_fv_states());
-
-    assert(nbnd_loc == fv_states<true>().spl_num_col().local_size());
+    assert(nbnd_loc == fv_states().pw_coeffs().spl_num_col().local_size());
+    assert(nbnd_loc == fv_states().mt_coeffs().spl_num_col().local_size());
 
     //if (ctx_.processing_unit() == GPU)
     //{
@@ -258,8 +256,8 @@ void K_point::generate_fv_states()
                     /* multiply eigen-vectors and matching coefficients */
                     linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
                                       alm.at<CPU>(), alm.ld(),
-                                      (*fv_eigen_vectors_)[0], gklo_basis_size(),
-                                      &fv_states<true>()[0][offset_wf], wf_size());
+                                      fv_eigen_vectors_->extra().at<CPU>(), fv_eigen_vectors_->extra().ld(),
+                                      fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld());
                     break;
                 }
                 case GPU: {
@@ -277,16 +275,16 @@ void K_point::generate_fv_states()
 
             for (int i = 0; i < nbnd_loc; i++) {
                 /* lo block */
-                std::memcpy(&fv_states<true>()[i][offset_wf + mt_aw_size],
-                            &(*fv_eigen_vectors_)[i][num_gkvec() + unit_cell_.atom(ia).offset_lo()],
+                std::memcpy(fv_states().mt_coeffs().extra().at<CPU>(offset_wf + mt_aw_size, i),
+                            fv_eigen_vectors_->extra().at<CPU>(num_gkvec() + unit_cell_.atom(ia).offset_lo(), i),
                             unit_cell_.atom(ia).mt_lo_basis_size() * sizeof(double_complex));
             }
         }
         #pragma omp for
         for (int i = 0; i < nbnd_loc; i++) {
             /* G+k block */
-            std::memcpy(&fv_states<true>()[i][wf_pw_offset()],
-                        (*fv_eigen_vectors_)[i], num_gkvec() * sizeof(double_complex));
+            std::memcpy(fv_states().pw_coeffs().extra().at<CPU>(0, i),
+                        fv_eigen_vectors_->extra().at<CPU>(0, i), num_gkvec() * sizeof(double_complex));
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -302,7 +300,7 @@ void K_point::generate_fv_states()
     }
     #endif
 
-    fv_states<true>().swap_backward(0, ctx_.num_fv_states());
+    fv_states().remap_to_prime_distr(ctx_.num_fv_states());
 }
 
 };

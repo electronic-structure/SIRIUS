@@ -218,8 +218,8 @@ class Hloc_operator
                 for (int i = 0; i < npairs; i++) {
                     /* phi(G) -> phi(r) */
                     fft_.transform<1>(gkvec_,
-                                      hphi__.pw_coeffs().spare().at<CPU>(0, 2 * i),
-                                      hphi__.pw_coeffs().spare().at<CPU>(0, 2 * i + 1));
+                                      hphi__.pw_coeffs().extra().at<CPU>(0, 2 * i),
+                                      hphi__.pw_coeffs().extra().at<CPU>(0, 2 * i + 1));
                     /* multiply by effective potential */
                     if (fft_.hybrid()) {
                         #ifdef __GPU
@@ -239,8 +239,8 @@ class Hloc_operator
                     /* add kinetic energy */
                     #pragma omp parallel for
                     for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
-                        hphi__.pw_coeffs().spare()(ig, 2 * i)     = hphi__.pw_coeffs().spare()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig];
-                        hphi__.pw_coeffs().spare()(ig, 2 * i + 1) = hphi__.pw_coeffs().spare()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig];
+                        hphi__.pw_coeffs().extra()(ig, 2 * i)     = hphi__.pw_coeffs().extra()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig];
+                        hphi__.pw_coeffs().extra()(ig, 2 * i + 1) = hphi__.pw_coeffs().extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig];
                     }
                 }
                 
@@ -257,7 +257,7 @@ class Hloc_operator
                     fft_.transform<1>(gkvec_, hphi__.coeffs_swapped().at<GPU>(0, i));
                     #endif
                 } else {
-                    fft_.transform<1>(gkvec_, hphi__.pw_coeffs().spare().at<CPU>(0, i));
+                    fft_.transform<1>(gkvec_, hphi__.pw_coeffs().extra().at<CPU>(0, i));
                 }
                 /* multiply by effective potential */
                 if (fft_.hybrid()) {
@@ -289,7 +289,7 @@ class Hloc_operator
                 } else {
                     #pragma omp parallel for
                     for (int ig = 0; ig < gkvec_.gvec_count_fft(); ig++) {
-                        hphi__.pw_coeffs().spare()(ig, i) = hphi__.pw_coeffs().spare()(ig, i) * pw_ekin_[ig] + vphi1_[ig];
+                        hphi__.pw_coeffs().extra()(ig, i) = hphi__.pw_coeffs().extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig];
                     }
                 }
                 //acc::sync_stream(-1);

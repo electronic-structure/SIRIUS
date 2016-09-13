@@ -46,7 +46,15 @@ class wave_functions
 
         Gvec const& gkvec_;
 
-        block_data_descriptor mt_distr_;
+        Gvec_partition gkvec_full_;
+
+        splindex<block> spl_num_atoms_;
+
+        block_data_descriptor mt_coeffs_distr_;
+
+        std::vector<int> offset_mt_coeffs_;
+
+        int num_mt_coeffs_{0};
 
         int num_wf_{0};
 
@@ -64,54 +72,87 @@ class wave_functions
             : params_(params__),
               comm_(comm__),
               gkvec_(gkvec__),
+              gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::fft_slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::fft_slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, params_.processing_unit()));
+                new matrix_storage<double_complex, matrix_storage_t::fft_slab>(gkvec_.gvec_count(comm_.rank()),
+                                                                               num_wf_,
+                                                                               params_.processing_unit()));
         }
 
         /// Constructor for LAPW wave-functions.
         wave_functions(Simulation_parameters const& params__,
                        Communicator const& comm__,
                        Gvec const& gkvec__,
-                       block_data_descriptor const& mt_distr__,
+                       int num_atoms__,
+                       std::function<int(int)> mt_size__,
                        int num_wf__)
             : params_(params__),
               comm_(comm__),
               gkvec_(gkvec__),
-              mt_distr_(mt_distr__),
+              gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::fft_slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::fft_slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, params_.processing_unit()));
+                new matrix_storage<double_complex, matrix_storage_t::fft_slab>(gkvec_.gvec_count(comm_.rank()),
+                                                                               num_wf_,
+                                                                               params_.processing_unit()));
+
+            spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
+            mt_coeffs_distr_ = block_data_descriptor(comm_.size());
+            
+            for (int ia = 0; ia < num_atoms__; ia++) {
+                int rank = spl_num_atoms_.local_rank(ia);
+                if (rank == comm_.rank()) {
+                    offset_mt_coeffs_.push_back(mt_coeffs_distr_.counts[rank]);
+                }
+                mt_coeffs_distr_.counts[rank] += mt_size__(ia);
+                
+            }
+            mt_coeffs_distr_.calc_offsets();
+
+            num_mt_coeffs_ = mt_coeffs_distr_.offsets.back() + mt_coeffs_distr_.counts.back();
             
             mt_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(mt_distr_.counts[comm_.rank()], num_wf_, params_.processing_unit()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()],
+                                                                           num_wf_,
+                                                                           params_.processing_unit()));
         }
 
-        matrix_storage<double_complex, matrix_storage_t::fft_slab>& pw_coeffs()
+        inline matrix_storage<double_complex, matrix_storage_t::fft_slab>& pw_coeffs()
         {
             return *pw_coeffs_;
         }
 
-        matrix_storage<double_complex, matrix_storage_t::fft_slab> const& pw_coeffs() const
+        inline matrix_storage<double_complex, matrix_storage_t::fft_slab> const& pw_coeffs() const
         {
             return *pw_coeffs_;
         }
 
-        matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs()
+        inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs()
         {
             return *mt_coeffs_;
         }
 
-        matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs() const
+        inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs() const
         {
             return *mt_coeffs_;
         }
 
-        Simulation_parameters const& params() const
+        inline Simulation_parameters const& params() const
         {
             return params_;
+        }
+
+        inline splindex<block> const& spl_num_atoms() const
+        {
+            return spl_num_atoms_;
+        }
+
+        inline int offset_mt_coeffs(int ialoc__) const
+        {
+            return offset_mt_coeffs_[ialoc__];
         }
 
         inline void copy_from(wave_functions const& src__,
@@ -148,10 +189,32 @@ class wave_functions
             copy_from(src__, i0__, n__, i0__);
         }
 
+        inline void prepare_full_column_distr(int n__)
+        {
+            pw_coeffs().set_num_extra(n__, gkvec_full_, comm_);
+            if (params_.full_potential()) {
+                mt_coeffs().set_num_extra(n__, num_mt_coeffs_, comm_);
+            }
+        }
+
+        inline void remap_to_prime_distr(int n__)
+        {
+            pw_coeffs().remap_backward(0, n__, gkvec_full_, comm_);
+            if (params_.full_potential()) {
+                mt_coeffs().remap_backward(0, n__, comm_);
+            }
+        }
+
         template <typename T>
         inline void transform_from(wave_functions& wf__,
                                    int nwf__,
                                    matrix<T>& mtrx__,
+                                   int n__);
+
+        inline void transform_from(wave_functions& wf__,
+                                   int nwf__,
+                                   dmatrix<double_complex>& mtrx__,
+                                   int irow0__,
                                    int n__);
 };
 
@@ -214,6 +277,31 @@ inline void wave_functions::transform_from<double>(wave_functions& wf__,
                           mtrx__.at<GPU>(), mtrx__.ld(), (double*)prime_.at<GPU>(), 2 * prime_.ld());
     }
     #endif
+}
+
+inline void wave_functions::transform_from(wave_functions& wf__,
+                           int nwf__,
+                           dmatrix<double_complex>& mtrx__,
+                           int irow0__,
+                           int n__)
+{
+    matrix<double_complex> z(nwf__, n__);
+    z.zero();
+
+    for (int icol = 0; icol < n__; icol++) {
+        auto location_col = mtrx__.spl_col().location(icol);
+        if (location_col.second == mtrx__.rank_col()) {
+            for (int irow = 0; irow < nwf__; irow++) {
+                auto location_row = mtrx__.spl_row().location(irow0__ + irow);
+                if (location_row.second == mtrx__.rank_row()) {
+                    z(irow, icol) = mtrx__(location_row.first, location_col.first);
+                }
+            }
+        }
+    }
+    mtrx__.blacs_grid().comm().allreduce(z.at<CPU>(), static_cast<int>(z.size()));
+
+    this->transform_from<double_complex>(wf__, nwf__, z, n__);
 }
 
 inline mdarray<double, 1>& inner_prod_buf(size_t new_size__)
