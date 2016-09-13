@@ -2007,6 +2007,7 @@ void sirius_set_atom_type_beta_rf(char* label__,
     type.uspp().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
     beta_rf >> type.uspp().beta_radial_functions;
     type.uspp().augmentation_ = true;
+    type.uspp().is_initialized = true;
 }
 
 void sirius_set_atom_type_q_rf(char* label__,
@@ -2712,5 +2713,123 @@ void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
     sim_ctx->set_mpi_grid_dims(dims);
 }
 
+
+//----------------------------------------------------------------------
+//---- PAW API ----------------------------------------------------------
+//----------------------------------------------------------------------
+void sirius_set_atom_type_paw_data(char* label__,
+                                   double* ae_wfc_rf__,
+                                   double* ps_wfc_rf__,
+                                   int32_t* num_wfc__,
+                                   int32_t* ld__,
+                                   int32_t* cutoff_radius_index__,
+                                   double* core_energy__,
+                                   double* ae_core_charge__,
+                                   int32_t* num_ae_core_charge__,
+                                   double* occupations__,
+                                   int32_t* num_occ__)
+{
+    PROFILE();
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+
+    auto& paw = type.get_PAW_descriptor_unsafe();
+
+    // check for corectness
+    if( !type.uspp().is_initialized )
+    {
+        TERMINATE("PAW error: USPP part is not initialized!");
+    }
+
+    if(*num_wfc__ != type.uspp().num_beta_radial_functions)
+    {
+        TERMINATE("PAW error: different number of projectors and wave functions!");
+    }
+
+    if(*ld__ != type.num_mt_points())
+    {
+        TERMINATE("PAW error: different number of grid points of projectors and wave functions!");
+    }
+
+    if(*num_ae_core_charge__ != type.num_mt_points())
+    {
+        TERMINATE("PAW error: different number of grid points of core charge and wave functions!");
+    }
+
+    if(*num_occ__ != type.uspp().num_beta_radial_functions)
+    {
+        TERMINATE("PAW error: different number of occupations and wave functions!");
+    }
+
+    std::cout<<"curly1"<<std::endl;
+
+    // load parameters
+    paw.core_energy = *core_energy__;
+
+    paw.cutoff_radius_index = *cutoff_radius_index__;
+
+    std::cout<<"curly2"<<std::endl;
+
+    // load ae and ps wave functions
+    mdarray<double, 2> aewfcs(ae_wfc_rf__, type.num_mt_points(), type.uspp().num_beta_radial_functions);
+    mdarray<double, 2> pswfcs(ps_wfc_rf__, type.num_mt_points(), type.uspp().num_beta_radial_functions);
+
+    paw.all_elec_wfc = mdarray<double, 2>(type.num_mt_points(), type.uspp().num_beta_radial_functions);
+    paw.pseudo_wfc   = mdarray<double, 2>(type.num_mt_points(), type.uspp().num_beta_radial_functions);
+
+    paw.all_elec_wfc.zero();
+    paw.pseudo_wfc.zero();
+
+    std::cout<<"curly3"<<std::endl;
+
+    aewfcs >> paw.all_elec_wfc;
+    pswfcs >> paw.pseudo_wfc;
+
+    for(int i=0;i<type.uspp().num_beta_radial_functions;i++)
+    {
+        std::memcpy( &paw.all_elec_wfc(0, i), &aewfcs(0, i), (paw.cutoff_radius_index) * sizeof(double));
+        std::memcpy( &paw.pseudo_wfc(0, i),   &pswfcs(0, i), (paw.cutoff_radius_index) * sizeof(double));
+    }
+
+    // read ae core charge
+    paw.all_elec_core_charge.resize(type.num_mt_points());
+
+    std::memcpy( paw.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
+
+    // read occupations
+    paw.occupations.resize(type.uspp().num_beta_radial_functions);
+
+    std::memcpy( paw.occupations.data(), occupations__, type.uspp().num_beta_radial_functions * sizeof(double));
+
+    // finita
+    paw.is_initialized = true;
+
+}
+
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+void sirius_get_paw_total_energy(double* tot_en__)
+{
+    if( potential )
+    {
+        *tot_en__ = potential->PAW_total_energy();
+    }
+    else
+    {
+        TERMINATE("ERROR: ");
+    }
+}
+
+void sirius_get_paw_one_elec_energy(double* one_elec_en__)
+{
+    if( potential )
+    {
+        *one_elec_en__ = potential->PAW_one_elec_energy();
+    }
+    else
+    {
+        TERMINATE("ERROR: ");
+    }
+}
 
 } // extern "C"

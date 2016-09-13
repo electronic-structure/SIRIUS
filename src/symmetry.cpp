@@ -441,15 +441,38 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
+//            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
             double_complex z = fz_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t))) * S(2, 2);
             
-            #pragma omp atomic update
-            ptr[2 * ig_rot] += real(z);
+//            #pragma omp atomic update
+//            ptr[2 * ig_rot] += real(z);
+//
+//            #pragma omp atomic update
+//            ptr[2 * ig_rot + 1] += imag(z);
 
-            #pragma omp atomic update
-            ptr[2 * ig_rot + 1] += imag(z);
+            // test
+            if (gvec__.reduced() && ig_rot == -1)
+            {
+                gv_rot = gv_rot * (-1);
+                int ig_rot = gvec__.index_by_gvec(gv_rot);
+
+                #pragma omp atomic update
+                ptr[2 * ig_rot] += z.real();
+
+                #pragma omp atomic update
+                ptr[2 * ig_rot + 1] -= z.imag();
+            }
+            else
+            {
+                assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
+
+                #pragma omp atomic update
+                ptr[2 * ig_rot] += z.real();
+
+                #pragma omp atomic update
+                ptr[2 * ig_rot + 1] += z.imag();
+            }
         }
     }
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());

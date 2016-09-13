@@ -583,8 +583,7 @@ void Atom_type::read_pseudo_paw(json const& parser)
             TERMINATE(s);
         }
 
-        // TODO: check if this is OK
-        std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index + 100) * sizeof(double));
+        std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index) * sizeof(double));
 
         /* read ps wave func */
         wfc.clear();
@@ -598,8 +597,7 @@ void Atom_type::read_pseudo_paw(json const& parser)
               << "radial grid size: " << num_mt_points_;
             TERMINATE(s);
         }
-
-        std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index + 100) * sizeof(double));
+        std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index) * sizeof(double));
     }
 }
 

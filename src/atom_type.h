@@ -759,7 +759,12 @@ class Atom_type
             return uspp_;
         }
 
-        inline const PAW_descriptor& get_PAW_descriptor() const
+        inline PAW_descriptor const& get_PAW_descriptor() const
+        {
+            return paw_;
+        }
+
+        inline PAW_descriptor& get_PAW_descriptor_unsafe()
         {
             return paw_;
         }

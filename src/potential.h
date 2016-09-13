@@ -101,7 +101,10 @@ class Potential
         //------------------------------------------------
         std::vector< mdarray<double,3> > ae_paw_local_potential_;
         std::vector< mdarray<double,3> > ps_paw_local_potential_;
-        std::vector< mdarray<double_complex,3> > paw_dij_;
+
+
+        // because one need to call allreduce for a whole matrix
+        mdarray<double_complex,4>  paw_dij_;
 
         std::vector< double > paw_hartree_energies_;
         std::vector< double > paw_xc_energies_;
@@ -131,14 +134,15 @@ class Potential
         // TODO DO
         void xc_mt_PAW_noncollinear(    )   {     };
 
-        void calc_PAW_local_potential(int atom_index,
+        void calc_PAW_local_potential(int spl_atom_index,
                                       mdarray<double, 2> &ae_full_density,
                                       mdarray<double, 2> &ps_full_density,
                                       mdarray<double, 3> &ae_local_magnetization,
                                       mdarray<double, 3> &ps_local_magnetization);
 
 
-        void calc_PAW_local_Dij(int atom_index);
+
+        void calc_PAW_local_Dij(int spl_atom_index, mdarray<double_complex,4>& paw_dij);
 
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
                                              mdarray<double, 2> &full_density,
@@ -146,9 +150,10 @@ class Potential
 
         double calc_PAW_one_elec_energy(int atom_index,
                                         const mdarray<double_complex,4>& density_matrix,
-                                        const mdarray<double_complex,3>& atom_paw_dij);
+                                        const mdarray<double_complex,4>& paw_dij);
 
 
+        void add_paw_Dij_to_atom_Dmtrx();
 
         //------------------------------------------------
         //------------------------------------------------
