@@ -87,6 +87,7 @@ void Simulation_context::initialize()
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
         control_input_section_.reduce_gvec_ = false;
+        iterative_solver_input_section_.type_ = "exact";
     }
 
     /* setup MPI grid */

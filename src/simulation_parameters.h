@@ -201,10 +201,9 @@ class Simulation_parameters
             xc_functionals_.push_back(name__);
         }
 
-        inline void set_esm_type(electronic_structure_method_t esm_type)
+        inline void set_esm_type(electronic_structure_method_t esm_type__)
         {
-
-            esm_type_ = esm_type;
+            esm_type_ = esm_type__;
         }
 
         inline void set_esm_type(std::string name__)

@@ -73,12 +73,6 @@
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 
-//== #if defined(__LIBSCI_ACC) || defined(__MAGMA)
-//== const int alloc_mode = 1;
-//== #else
-//== const int alloc_mode = 0;
-//== #endif
-
 const bool test_spinor_wf = false;
 
 const bool hdf5_trace_errors = false;

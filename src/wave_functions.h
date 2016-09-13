@@ -33,9 +33,6 @@
 
 namespace sirius {
 
-// pw wave-functions, lapwlo eigen vectors (pw + lo coeffs), lapwlo wave functions (mt+lo+pw)
-// for mt part: split between atoms, provide counts + offsets
-// local size is counts[r], total size is offsets[r] + counts[r]
 class wave_functions
 {
     private:

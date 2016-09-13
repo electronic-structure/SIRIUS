@@ -117,10 +117,10 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
             }
         }
 
-        void remap_forward(int idx0__,
-                           int n__,
-                           Gvec_partition const& gvec__,
-                           Communicator const& comm_col__)
+        inline void remap_forward(int idx0__,
+                                  int n__,
+                                  Gvec_partition const& gvec__,
+                                  Communicator const& comm_col__)
         {
             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
 
@@ -157,7 +157,10 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
             }
         }
 
-        void remap_backward(int idx0__, int n__, Gvec_partition const& gvec__, Communicator const& comm_col__)
+        inline void remap_backward(int idx0__,
+                                   int n__,
+                                   Gvec_partition const& gvec__,
+                                   Communicator const& comm_col__)
         {
             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_backward");
 
