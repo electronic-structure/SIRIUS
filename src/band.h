@@ -39,7 +39,7 @@ namespace sirius
 //       We can do first- and second-variation or a full variation. We can do iterative or exact diagonalization.
 //       This has to be organized. 
 
-/// Setup and solve eigen value problem.
+/// Setup and solve the eigen value problem.
 class Band
 {
     private:
