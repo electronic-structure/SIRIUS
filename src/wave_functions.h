@@ -202,6 +202,43 @@ class wave_functions
             }
         }
 
+        /// Compute L2 norm of first n wave-functions.
+        inline mdarray<double,1> l2norm(int n__) const
+        {
+            mdarray<double, 1> norm(n__);
+            norm.zero();
+            
+            #pragma omp parallel for
+            for (int i = 0; i < n__; i++) {
+                for (int ig = 0; ig < pw_coeffs().num_rows_loc(); ig++) {
+                    norm[i] += (std::pow(pw_coeffs().prime(ig, i).real(), 2) + std::pow(pw_coeffs().prime(ig, i).imag(), 2));
+                }
+                if (gkvec_.reduced()) {
+                    if (comm_.rank() == 0) {
+                        norm[i] = 2 * norm[i] - std::pow(pw_coeffs().prime(0, i).real(), 2);
+                    } else {
+                        norm[i] *= 2;
+                    }
+                }
+                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
+                        norm[i] += (std::pow(mt_coeffs().prime(j, i).real(), 2) + std::pow(mt_coeffs().prime(j, i).imag(), 2));
+                    }
+                }
+            }
+            comm_.allreduce(norm.at<CPU>(), n__);
+            for (int i = 0; i < n__; i++) {
+                norm[i] = std::sqrt(norm[i]);
+            }
+
+            return std::move(norm);
+        }
+
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
+
         template <typename T>
         inline void transform_from(wave_functions& wf__,
                                    int nwf__,
@@ -232,7 +269,7 @@ inline void wave_functions::transform_from<double_complex>(wave_functions& wf__,
                           wf__.pw_coeffs().prime().at<CPU>(), wf__.pw_coeffs().prime().ld(),
                           mtrx__.at<CPU>(), mtrx__.ld(),
                           pw_coeffs().prime().at<CPU>(), pw_coeffs().prime().ld());
-        if (params_.full_potential()) {
+        if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
             linalg<CPU>::gemm(0, 0, mt_coeffs().num_rows_loc(), n__, nwf__,
                               wf__.mt_coeffs().prime().at<CPU>(), wf__.mt_coeffs().prime().ld(),
                               mtrx__.at<CPU>(), mtrx__.ld(),
@@ -318,25 +355,27 @@ inline void inner(wave_functions& bra__,
                   int n__,
                   mdarray<double_complex, 2>& result__,
                   int irow__,
-                  int icol__,
-                  Communicator const& comm__,
-                  device_t pu__)
+                  int icol__)
 {
     PROFILE_WITH_TIMER("sirius::wave_functions::inner");
     
     assert(&bra__.params() == &ket__.params());
+    assert(&bra__.comm() == &ket__.comm());
     assert(bra__.pw_coeffs().num_rows_loc() == ket__.pw_coeffs().num_rows_loc());
     if (bra__.params().full_potential()) {
         assert(bra__.mt_coeffs().num_rows_loc() == ket__.mt_coeffs().num_rows_loc());
     }
 
+    auto& comm = bra__.comm();
+    auto pu = bra__.params().processing_unit();
+
     /* single rank, CPU: store result directly in the output matrix */
-    if (comm__.size() == 1 && pu__ == CPU) {
+    if (comm.size() == 1 && pu == CPU) {
         linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
                           bra__.pw_coeffs().prime().at<CPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                           ket__.pw_coeffs().prime().at<CPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
                           result__.at<CPU>(irow__, icol__), result__.ld());
-        if (bra__.params().full_potential()) {
+        if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
             double_complex alpha(1, 0);
             linalg<CPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
                               alpha,
@@ -347,13 +386,13 @@ inline void inner(wave_functions& bra__,
         }
     } else {
         auto& buf = inner_prod_buf(2 * m__ * n__);
-        switch (pu__) {
+        switch (pu) {
             case CPU: {
                 linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
                                   bra__.pw_coeffs().prime().at<CPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                                   ket__.pw_coeffs().prime().at<CPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
                                   (double_complex*)buf.at<CPU>(), m__);
-                if (bra__.params().full_potential()) {
+                if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
                     double_complex alpha(1, 0);
                     linalg<CPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
                                       alpha,
@@ -380,7 +419,7 @@ inline void inner(wave_functions& bra__,
             }
         }
 
-        comm__.allreduce(&buf[0], 2 * m__ * n__);
+        comm.allreduce(&buf[0], 2 * m__ * n__);
 
         for (int i = 0; i < n__; i++) {
             std::memcpy(&result__(irow__, icol__ + i), &buf[2 * i * m__], m__ * sizeof(double_complex));
@@ -396,20 +435,22 @@ inline void inner(wave_functions& bra__,
                   int n__,
                   mdarray<double, 2>& result__,
                   int irow__,
-                  int icol__,
-                  Communicator const& comm__,
-                  device_t pu__)
+                  int icol__)
 {
     PROFILE_WITH_TIMER("sirius::wave_functions::inner");
 
     assert(&bra__.params() == &ket__.params());
+    assert(&bra__.comm() == &ket__.comm());
     assert(bra__.pw_coeffs().num_rows_loc() == ket__.pw_coeffs().num_rows_loc());
     if (bra__.params().full_potential()) {
         TERMINATE_NOT_IMPLEMENTED;
     }
 
+    auto& comm = bra__.comm();
+    auto pu = bra__.params().processing_unit();
+
     /* single rank, CPU: store result directly in the output matrix */
-    if (comm__.size() == 1 && pu__ == CPU) {
+    if (comm.size() == 1 && pu == CPU) {
         linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
                           (double*)bra__.pw_coeffs().prime().at<CPU>(0, i0__), 2 * bra__.pw_coeffs().prime().ld(),
                           (double*)ket__.pw_coeffs().prime().at<CPU>(0, j0__), 2 * ket__.pw_coeffs().prime().ld(),
@@ -425,7 +466,7 @@ inline void inner(wave_functions& bra__,
         auto& buf = inner_prod_buf(m__ * n__);
         double alpha = 2;
         double beta = 0;
-        switch (pu__) {
+        switch (pu) {
             case CPU: {
                 linalg<CPU>::gemm(1, 0, m__, n__, 2 * bra__.pw_coeffs().num_rows_loc(),
                                   alpha,
@@ -433,7 +474,7 @@ inline void inner(wave_functions& bra__,
                                   (double*)ket__.pw_coeffs().prime().at<CPU>(0, j0__), 2 * ket__.pw_coeffs().prime().ld(),
                                   beta,
                                   buf.at<CPU>(), m__);
-                if (comm__.rank() == 0) {
+                if (comm.rank() == 0) {
                     /* subtract one extra G=0 contribution */
                     linalg<CPU>::ger(m__, n__, -1.0,
                                     (double*)bra__.pw_coeffs().prime().at<CPU>(0, i0__), 2 * bra__.pw_coeffs().prime().ld(),
@@ -452,7 +493,7 @@ inline void inner(wave_functions& bra__,
                                   &beta,
                                   buf.at<GPU>(), m__);
                 double alpha1 = -1;
-                if (comm__.rank() == 0) {
+                if (comm.rank() == 0) {
                     /* subtract one extra G=0 contribution */
                     linalg<GPU>::ger(m__, n__, &alpha1,
                                     (double*)bra__.pw_coeffs().prime().at<GPU>(0, i0__), 2 * bra__.pw_coeffs().prime().ld(),
@@ -468,7 +509,7 @@ inline void inner(wave_functions& bra__,
             }
         }
 
-        comm__.allreduce(&buf[0], m__ * n__);
+        comm.allreduce(&buf[0], m__ * n__);
 
         for (int i = 0; i < n__; i++) {
             std::memcpy(&result__(irow__, icol__ + i), &buf[i * m__], m__ * sizeof(double));

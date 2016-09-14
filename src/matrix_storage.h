@@ -203,6 +203,11 @@ class matrix_storage<T, matrix_storage_t::fft_slab>
             return prime_(irow__, icol__);
         }
 
+        inline T const& prime(int irow__, int icol__) const
+        {
+            return prime_(irow__, icol__);
+        }
+
         mdarray<T, 2>& prime()
         {
             return prime_;
@@ -419,6 +424,11 @@ class matrix_storage<T, matrix_storage_t::slab>
             return prime_(irow__, icol__);
         }
 
+        inline T const& prime(int irow__, int icol__) const
+        {
+            return prime_(irow__, icol__);
+        }
+
         mdarray<T, 2>& extra()
         {
             return extra_;
@@ -460,16 +470,16 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         }
 
-        inline void remap_forward(int num_rows__, int idx0__, int n__, Communicator const& comm__)
-        {
-            set_num_extra(n__, num_rows__, comm__, idx0__);
+        //= inline void remap_forward(int num_rows__, int idx0__, int n__, Communicator const& comm__)
+        //= {
+        //=     set_num_extra(n__, num_rows__, comm__, idx0__);
 
-            /* trivial case */
-            if (comm__.size() == 1) {
-                return;
-            }
+        //=     /* trivial case */
+        //=     if (comm__.size() == 1) {
+        //=         return;
+        //=     }
 
-        }
+        //= }
 
         inline void remap_backward(int idx0__, int n__, Communicator const& comm__)
         {

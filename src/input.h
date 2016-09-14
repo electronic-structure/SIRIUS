@@ -160,7 +160,7 @@ struct Mixer_input_section
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
-    std::string type_{"davidson"};
+    std::string type_{""};
     int num_steps_{20};
     int subspace_size_{4};
     double energy_tolerance_{1e-6};
