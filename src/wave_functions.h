@@ -33,6 +33,7 @@
 
 namespace sirius {
 
+/// Wave-functions representation.
 class wave_functions
 {
     private:
@@ -50,13 +51,17 @@ class wave_functions
         block_data_descriptor mt_coeffs_distr_;
 
         std::vector<int> offset_mt_coeffs_;
-
+        
+        /// Total number of muffin-tin coefficients.
         int num_mt_coeffs_{0};
 
+        /// Total number of wave-functions.
         int num_wf_{0};
 
+        /// Plane-wave part of wave-functions.
         std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::fft_slab>> pw_coeffs_{nullptr};
 
+        /// Muffin-tin part of wave-functions.
         std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>> mt_coeffs_{nullptr};
 
     public:
@@ -190,7 +195,15 @@ class wave_functions
         {
             pw_coeffs().set_num_extra(n__, gkvec_full_, comm_);
             if (params_.full_potential()) {
-                mt_coeffs().set_num_extra(n__, num_mt_coeffs_, comm_);
+                mt_coeffs().set_num_extra(num_mt_coeffs_, comm_, n__);
+            }
+        }
+
+        inline void remap_to_full_column_distr(int n__)
+        {
+            pw_coeffs().remap_forward(0, n__, gkvec_full_, comm_);
+            if (params_.full_potential()) {
+                mt_coeffs().remap_forward(num_mt_coeffs_, comm_, n__);
             }
         }
 
@@ -198,7 +211,7 @@ class wave_functions
         {
             pw_coeffs().remap_backward(0, n__, gkvec_full_, comm_);
             if (params_.full_potential()) {
-                mt_coeffs().remap_backward(0, n__, comm_);
+                mt_coeffs().remap_backward(num_mt_coeffs_, comm_, n__);
             }
         }
 

@@ -730,6 +730,7 @@ class Band
 #include "Band/set_fv_h_o.hpp"
 #include "Band/residuals.hpp"
 #include "Band/orthogonalize.hpp"
+#include "band.hpp"
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
  *  \param [in] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
@@ -1171,27 +1172,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
     auto& itso = ctx_.iterative_solver_input_section();
 
     /* short notation for target wave-functions */
-    //Wave_functions<false> psi(kp->gklo_basis_size(), num_bands, CPU);
-    //kp->fv_eigen_vectors().prime() >> psi.prime();
-
-    wave_functions psi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
-    
-    psi.pw_coeffs().prime().zero();
-    psi.mt_coeffs().prime().zero();
-    for (int i = 0; i < num_bands; i++) {
-        for (int ig = 0; ig < kp->gkvec().gvec_count(kp->comm().rank()); ig++) {
-            if (ig + kp->gkvec().gvec_offset(kp->comm().rank()) == i) {
-                psi.pw_coeffs().prime(ig, i) = 1.0;
-            }
-            if (ig + kp->gkvec().gvec_offset(kp->comm().rank()) == i + 1) {
-                psi.pw_coeffs().prime(ig, i) = 0.5;
-            }
-            if (ig + kp->gkvec().gvec_offset(kp->comm().rank()) == i + 2) {
-                psi.pw_coeffs().prime(ig, i) = 0.25;
-            }
-        }
-    }
+    auto& psi = kp->fv_eigen_vectors_slab();
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
@@ -1347,14 +1328,8 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
     }
 
     kp->set_fv_eigen_values(&eval[0]);
-    //psi.prime() >> kp->fv_eigen_vectors().prime();
-
-    STOP();
-
     kp->comm().barrier();
 }
-
-#include "band.hpp"
 
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -63,6 +63,9 @@ class K_point
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
         std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>> fv_eigen_vectors_;
+
+        /// First-variational eigen vectors, distributed in slabs.
+        std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -93,10 +96,10 @@ class K_point
 
         std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
-        /// number of G+k vectors distributed along rows of MPI grid
+        /// Number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_{0};
         
-        /// number of G+k vectors distributed along columns of MPI grid
+        /// Number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_{0};
 
         /// Short information about each G+k or lo basis function.
@@ -506,6 +509,11 @@ class K_point
         inline matrix_storage<double_complex, matrix_storage_t::block_cyclic>& fv_eigen_vectors()
         {
             return *fv_eigen_vectors_;
+        }
+
+        inline wave_functions& fv_eigen_vectors_slab()
+        {
+            return *fv_eigen_vectors_slab_;
         }
         
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)

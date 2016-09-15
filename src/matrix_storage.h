@@ -439,7 +439,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             return extra_;
         }
 
-        inline void set_num_extra(int n__, int num_rows__, Communicator const& comm__, int idx0__ = 0)
+        inline void set_num_extra(int num_rows__, Communicator const& comm__, int n__, int idx0__ = 0)
         {
             /* this is how n wave-functions will be distributed between MPI ranks */
             spl_num_col_ = splindex<block>(n__, comm__.size(), comm__.rank());
@@ -470,18 +470,18 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         }
 
-        //= inline void remap_forward(int num_rows__, int idx0__, int n__, Communicator const& comm__)
-        //= {
-        //=     set_num_extra(n__, num_rows__, comm__, idx0__);
+        inline void remap_forward(int num_rows__, Communicator const& comm__, int n__, int idx0__ = 0)
+        {
+            set_num_extra(num_rows__, comm__, n__, idx0__);
 
-        //=     /* trivial case */
-        //=     if (comm__.size() == 1) {
-        //=         return;
-        //=     }
+            /* trivial case */
+            if (comm__.size() == 1) {
+                return;
+            }
 
-        //= }
+        }
 
-        inline void remap_backward(int idx0__, int n__, Communicator const& comm__)
+        inline void remap_backward(int num_rows__, Communicator const& comm__, int n__, int idx0__ = 0)
         {
             if (comm__.size() > 1) {
                 STOP();

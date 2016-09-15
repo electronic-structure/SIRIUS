@@ -179,17 +179,34 @@ void K_point::initialize()
 
     if (ctx_.full_potential()) {
         if (use_second_variation) {
-            fv_eigen_vectors_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>>(
-                new matrix_storage<double_complex, matrix_storage_t::block_cyclic>(gklo_basis_size(),
-                                                                                   ctx_.num_fv_states(),
-                                                                                   bs,
-                                                                                   ctx_.blacs_grid(),
-                                                                                   ctx_.blacs_grid_slice()));
-            fv_eigen_vectors_->prime().zero();
-            for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                fv_eigen_vectors_->prime().set(i,     i, double_complex(1, 0));
-                fv_eigen_vectors_->prime().set(i + 1, i, double_complex(0.5, 0));
-                fv_eigen_vectors_->prime().set(i + 2, i, double_complex(0.25, 0));
+            if (ctx_.iterative_solver_input_section().type_ == "exact") {
+                fv_eigen_vectors_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>>(
+                    new matrix_storage<double_complex, matrix_storage_t::block_cyclic>(gklo_basis_size(),
+                                                                                       ctx_.num_fv_states(),
+                                                                                       bs,
+                                                                                       ctx_.blacs_grid(),
+                                                                                       ctx_.blacs_grid_slice()));
+            } else {
+                fv_eigen_vectors_slab_ = std::unique_ptr<wave_functions>(
+                    new wave_functions(ctx_, comm(), gkvec(), unit_cell_.num_atoms(),
+                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
+
+                fv_eigen_vectors_slab_->pw_coeffs().prime().zero();
+                fv_eigen_vectors_slab_->mt_coeffs().prime().zero();
+                /* starting guess for wave-functions */
+                for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                    for (int ig = 0; ig < gkvec().gvec_count(comm().rank()); ig++) {
+                        if (ig + gkvec().gvec_offset(comm().rank()) == i) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 1.0;
+                        }
+                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 1) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.5;
+                        }
+                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 2) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.25;
+                        }
+                    }
+                }
             }
 
             fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
