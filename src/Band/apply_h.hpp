@@ -271,7 +271,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         auto& type = atom.type(); 
         int nmt = atom.mt_aw_basis_size();
         kp__->alm_coeffs_loc().generate(ia, alm);
-        apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec(), alm, halm);
+        apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_loc(), alm, halm);
         
         /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
         linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),

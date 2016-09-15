@@ -79,7 +79,7 @@ Band::get_o_diag(K_point* kp__,
         kp__->alm_coeffs_loc().generate(ia, alm);
 
         for (int xi = 0; xi < nmt; xi++) {
-            for (int igloc = 0; igloc < kp__->num_gkvec(); igloc++) {
+            for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
                 o_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * alm(igloc, xi));
             }
         }

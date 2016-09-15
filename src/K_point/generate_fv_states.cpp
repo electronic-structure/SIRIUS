@@ -43,9 +43,11 @@ void K_point::generate_fv_states()
         fv_eigen_vectors_->remap_forward(0, ctx_.num_fv_states());
         /* local number of bands */
         nbnd_loc = fv_eigen_vectors_->spl_num_col().local_size();
-
-        pw_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_->extra().at<CPU>(), gklo_basis_size(), nbnd_loc);
-        mt_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_->extra().at<CPU>(num_gkvec(), 0), gklo_basis_size(), nbnd_loc);
+        
+        if (nbnd_loc) {
+            pw_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_->extra().at<CPU>(), gklo_basis_size(), nbnd_loc);
+            mt_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_->extra().at<CPU>(num_gkvec(), 0), gklo_basis_size(), nbnd_loc);
+        }
 
     } else {
         fv_eigen_vectors_slab_->remap_to_full_column_distr(ctx_.num_fv_states());
@@ -53,8 +55,10 @@ void K_point::generate_fv_states()
                fv_eigen_vectors_slab_->mt_coeffs().spl_num_col().local_size());
         /* local number of bands */
         nbnd_loc = fv_eigen_vectors_slab_->pw_coeffs().spl_num_col().local_size();
-        pw_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_slab_->pw_coeffs().extra().at<CPU>(), num_gkvec(), nbnd_loc);
-        mt_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_slab_->mt_coeffs().extra().at<CPU>(), unit_cell_.mt_lo_basis_size(), nbnd_loc);
+        if (nbnd_loc) {
+            pw_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_slab_->pw_coeffs().extra().at<CPU>(), num_gkvec(), nbnd_loc);
+            mt_coeffs = mdarray<double_complex, 2>(fv_eigen_vectors_slab_->mt_coeffs().extra().at<CPU>(), unit_cell_.mt_lo_basis_size(), nbnd_loc);
+        }
     }
 
     #ifdef __GPU
@@ -275,10 +279,6 @@ void K_point::generate_fv_states()
             switch (ctx_.processing_unit()) {
                 case CPU: {
                     /* multiply eigen-vectors and matching coefficients */
-                    //linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
-                    //                  alm.at<CPU>(), alm.ld(),
-                    //                  fv_eigen_vectors_->extra().at<CPU>(), fv_eigen_vectors_->extra().ld(),
-                    //                  fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld());
                     linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
                                       alm.at<CPU>(), alm.ld(),
                                       pw_coeffs.at<CPU>(), pw_coeffs.ld(),
@@ -300,9 +300,6 @@ void K_point::generate_fv_states()
 
             for (int i = 0; i < nbnd_loc; i++) {
                 /* lo block */
-                //std::memcpy(fv_states().mt_coeffs().extra().at<CPU>(offset_wf + mt_aw_size, i),
-                //            fv_eigen_vectors_->extra().at<CPU>(num_gkvec() + unit_cell_.atom(ia).offset_lo(), i),
-                //            unit_cell_.atom(ia).mt_lo_basis_size() * sizeof(double_complex));
                 std::memcpy(fv_states().mt_coeffs().extra().at<CPU>(offset_wf + mt_aw_size, i),
                             mt_coeffs.at<CPU>(unit_cell_.atom(ia).offset_lo(), i),
                             unit_cell_.atom(ia).mt_lo_basis_size() * sizeof(double_complex));
@@ -311,8 +308,6 @@ void K_point::generate_fv_states()
         #pragma omp for
         for (int i = 0; i < nbnd_loc; i++) {
             /* G+k block */
-            //std::memcpy(fv_states().pw_coeffs().extra().at<CPU>(0, i),
-            //            fv_eigen_vectors_->extra().at<CPU>(0, i), num_gkvec() * sizeof(double_complex));
             std::memcpy(fv_states().pw_coeffs().extra().at<CPU>(0, i),
                         pw_coeffs.at<CPU>(0, i), num_gkvec() * sizeof(double_complex));
         }

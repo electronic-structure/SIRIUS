@@ -167,7 +167,7 @@ class wave_functions
                     std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
                                 src__.pw_coeffs().prime().at<CPU>(0, i0__),
                                 pw_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
-                    if (params_.full_potential()) {
+                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
                         std::memcpy(mt_coeffs().prime().at<CPU>(0, j0__),
                                     src__.mt_coeffs().prime().at<CPU>(0, i0__),
                                     mt_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
@@ -203,7 +203,7 @@ class wave_functions
         {
             pw_coeffs().remap_forward(0, n__, gkvec_full_, comm_);
             if (params_.full_potential()) {
-                mt_coeffs().remap_forward(num_mt_coeffs_, comm_, n__);
+                mt_coeffs().remap_forward(mt_coeffs_distr_, comm_, n__);
             }
         }
 
@@ -211,7 +211,7 @@ class wave_functions
         {
             pw_coeffs().remap_backward(0, n__, gkvec_full_, comm_);
             if (params_.full_potential()) {
-                mt_coeffs().remap_backward(num_mt_coeffs_, comm_, n__);
+                mt_coeffs().remap_backward(mt_coeffs_distr_, comm_, n__);
             }
         }
 
