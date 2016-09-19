@@ -105,13 +105,6 @@ void Band::initialize_subspace(K_point* kp__,
     wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
     wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
 
-    /* allocate Hamiltonian and overlap */
-    matrix<T> hmlt(num_phi, num_phi);
-    matrix<T> ovlp(num_phi, num_phi);
-
-    matrix<T> hmlt_old(num_phi, num_phi);
-    matrix<T> ovlp_old(num_phi, num_phi);
-
     //#ifdef __GPU
     //if (gen_evp_solver_->type() == ev_magma)
     //{
@@ -120,25 +113,12 @@ void Band::initialize_subspace(K_point* kp__,
     //}
     //#endif
 
-    matrix<T> evec(num_phi, num_phi);
-
     int bs = ctx_.cyclic_block_size();
-
-    dmatrix<T> hmlt_dist;
-    dmatrix<T> ovlp_dist;
-    dmatrix<T> evec_dist;
-    if (kp__->comm().size() == 1)
-    {
-        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
-    else
-    {
-        hmlt_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt_old;
+    dmatrix<T> ovlp_old;
 
     std::vector<double> eval(num_bands);
     
@@ -179,7 +159,7 @@ void Band::initialize_subspace(K_point* kp__,
         set_h_o<T>(kp__, 0, num_phi, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
 
         /* solve generalized eigen-value problem with the size N */
-        diag_h_o<T>(kp__, num_phi, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
+        diag_h_o<T>(kp__, num_phi, num_bands, hmlt, ovlp, evec, eval);
 
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0) {
@@ -192,11 +172,12 @@ void Band::initialize_subspace(K_point* kp__,
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
         #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
+        if (ctx_.processing_unit() == GPU) {
+            kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
+        }
         #endif
 
-        //kp__->spinor_wave_functions(ispn).transform_from<T>(phi, num_phi, evec, num_bands);
-        transform<T>(phi, 0, num_phi, evec_dist, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
+        transform<T>(phi, 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU)
