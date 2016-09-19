@@ -35,7 +35,8 @@ void K_point::generate_spinor_wave_functions()
             ///* multiply consecutively up and dn blocks */
             //linalg<CPU>::gemm(0, 0, wf_size(), nbnd, nfv, double_complex(1, 0), fv_states<true>().prime(), 0, 0,
             //                  sv_eigen_vectors_[s], o, 0, double_complex(0, 0), spinor_wave_functions<true>(ispn).prime(), 0, 0);
-            spinor_wave_functions(ispn).transform_from(fv_states(), nfv, sv_eigen_vectors_[s], o, nbnd);
+            STOP();
+            //spinor_wave_functions(ispn).transform_from(fv_states(), nfv, sv_eigen_vectors_[s], o, nbnd);
         }
  
         ///* serial version */

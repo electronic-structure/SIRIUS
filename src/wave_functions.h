@@ -31,7 +31,7 @@
 
 #include "matrix_storage.h"
 
-const int sddk_block_size = 256;
+const int sddk_block_size = 11;
 
 namespace sirius {
 
@@ -260,11 +260,11 @@ class wave_functions
                                    matrix<T>& mtrx__,
                                    int n__);
 
-        inline void transform_from(wave_functions& wf__,
-                                   int nwf__,
-                                   dmatrix<double_complex>& mtrx__,
-                                   int irow0__,
-                                   int n__);
+        ///== inline void transform_from(wave_functions& wf__,
+        ///==                            int nwf__,
+        ///==                            dmatrix<double_complex>& mtrx__,
+        ///==                            int irow0__,
+        ///==                            int n__);
 };
 
 template<>
@@ -328,30 +328,30 @@ inline void wave_functions::transform_from<double>(wave_functions& wf__,
     #endif
 }
 
-inline void wave_functions::transform_from(wave_functions& wf__,
-                           int nwf__,
-                           dmatrix<double_complex>& mtrx__,
-                           int irow0__,
-                           int n__)
-{
-    matrix<double_complex> z(nwf__, n__);
-    z.zero();
-
-    for (int icol = 0; icol < n__; icol++) {
-        auto location_col = mtrx__.spl_col().location(icol);
-        if (location_col.second == mtrx__.rank_col()) {
-            for (int irow = 0; irow < nwf__; irow++) {
-                auto location_row = mtrx__.spl_row().location(irow0__ + irow);
-                if (location_row.second == mtrx__.rank_row()) {
-                    z(irow, icol) = mtrx__(location_row.first, location_col.first);
-                }
-            }
-        }
-    }
-    mtrx__.blacs_grid().comm().allreduce(z.at<CPU>(), static_cast<int>(z.size()));
-
-    this->transform_from<double_complex>(wf__, nwf__, z, n__);
-}
+//==inline void wave_functions::transform_from(wave_functions& wf__,
+//==                           int nwf__,
+//==                           dmatrix<double_complex>& mtrx__,
+//==                           int irow0__,
+//==                           int n__)
+//=={
+//==    matrix<double_complex> z(nwf__, n__);
+//==    z.zero();
+//==
+//==    for (int icol = 0; icol < n__; icol++) {
+//==        auto location_col = mtrx__.spl_col().location(icol);
+//==        if (location_col.second == mtrx__.rank_col()) {
+//==            for (int irow = 0; irow < nwf__; irow++) {
+//==                auto location_row = mtrx__.spl_row().location(irow0__ + irow);
+//==                if (location_row.second == mtrx__.rank_row()) {
+//==                    z(irow, icol) = mtrx__(location_row.first, location_col.first);
+//==                }
+//==            }
+//==        }
+//==    }
+//==    mtrx__.blacs_grid().comm().allreduce(z.at<CPU>(), static_cast<int>(z.size()));
+//==
+//==    this->transform_from<double_complex>(wf__, nwf__, z, n__);
+//==}
 
 inline mdarray<double, 1>& inner_prod_buf(size_t new_size__)
 {
