@@ -1290,7 +1290,8 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            psi.transform_from<double_complex>(phi, N, evec, num_bands);
+            //psi.transform_from<double_complex>(phi, N, evec, num_bands);
+            transform<double_complex>(phi, 0, N, evec_dist, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
@@ -1311,8 +1312,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
                 if (converge_by_energy) {
-                    hpsi.transform_from<double_complex>(hphi, N, evec, num_bands);
-                    opsi.transform_from<double_complex>(ophi, N, evec, num_bands);
+                    transform<double_complex>({&hphi, &ophi}, 0, N, evec_dist, 0, 0, {&hpsi, &opsi}, 0, num_bands);
+                    //hpsi.transform_from<double_complex>(hphi, N, evec, num_bands);
+                    //opsi.transform_from<double_complex>(ophi, N, evec, num_bands);
                 }
  
                 /* update basis functions */

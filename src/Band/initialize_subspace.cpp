@@ -195,7 +195,8 @@ void Band::initialize_subspace(K_point* kp__,
         if (ctx_.processing_unit() == GPU) kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
         #endif
 
-        kp__->spinor_wave_functions(ispn).transform_from<T>(phi, num_phi, evec, num_bands);
+        //kp__->spinor_wave_functions(ispn).transform_from<T>(phi, num_phi, evec, num_bands);
+        transform<T>(phi, 0, num_phi, evec_dist, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU)
