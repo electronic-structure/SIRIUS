@@ -426,12 +426,14 @@ class wave_functions
 //== }
 
 template <typename T>
-inline void transform(std::vector<wave_functions*> wf_in__,
+inline void transform(double alpha__,
+                      std::vector<wave_functions*> wf_in__,
                       int i0__,
                       int m__,
                       dmatrix<T>& mtrx__,
                       int irow0__,
                       int icol0__,
+                      double beta__,
                       std::vector<wave_functions*> wf_out__,
                       int j0__,
                       int n__)
@@ -457,16 +459,17 @@ inline void transform(std::vector<wave_functions*> wf_in__,
         TERMINATE_NOT_IMPLEMENTED
     }
 
-    auto local_transform = [](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
-                              wave_functions* wf_out__, int j0__, int n__)
+    auto local_transform = [alpha__](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
+                                     wave_functions* wf_out__, int j0__, int n__)
     {
         if (std::is_same<T, double_complex>::value) {
-            double_complex alpha(1, 0);
+            double_complex alpha(alpha__, 0);
+            double_complex beta(1, 0);
             linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                               alpha,
                               wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
                               (double_complex*)mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(),
-                              alpha,
+                              beta,
                               wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
 
             if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
@@ -479,12 +482,12 @@ inline void transform(std::vector<wave_functions*> wf_in__,
         }
 
         if (std::is_same<T, double>::value) {
-            double alpha{1};
+            double beta{1};
             linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
-                              alpha,
+                              alpha__,
                               (double*)wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), 2 * wf_in__->pw_coeffs().prime().ld(),
                               (double*)mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(),
-                              alpha,
+                              beta,
                               (double*)wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), 2 * wf_out__->pw_coeffs().prime().ld());
             if (wf_in__->params().full_potential()) {
                 TERMINATE_NOT_IMPLEMENTED;
@@ -496,11 +499,11 @@ inline void transform(std::vector<wave_functions*> wf_in__,
     for (int iv = 0; iv < nwf; iv++) {
         for (int j = 0; j < n__; j++) {
             for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
-                wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) = 0;
+                wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
             }
             if (wf_out__[iv]->params().full_potential()) {
                 for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
-                    wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) = 0;
+                    wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
                 }
             }
         }
@@ -594,12 +597,42 @@ inline void transform(std::vector<wave_functions*> wf_in__,
     }
 }
 
+template <typename T>
+inline void transform(std::vector<wave_functions*> wf_in__,
+                      int i0__,
+                      int m__,
+                      dmatrix<T>& mtrx__,
+                      int irow0__,
+                      int icol0__,
+                      std::vector<wave_functions*> wf_out__,
+                      int j0__,
+                      int n__)
+{
+    transform<T>(1.0, wf_in__, i0__, m__, mtrx__, irow0__, icol0__, 0.0, wf_out__, j0__, n__);
+}
+
 /// Linear transformation of wave-functions.
 /** The following operation is performed:
  *  \f[
- *     \psi^{out}_{j} = \sum_{i} \psi^{in}_{i} Z_{ij}
+ *     \psi^{out}_{j} = \alpha \sum_{i} \psi^{in}_{i} Z_{ij} + \beta \psi^{out}_{j}
  *  \f]
  */
+template <typename T>
+inline void transform(double alpha__,
+                      wave_functions& wf_in__,
+                      int i0__,
+                      int m__,
+                      dmatrix<T>& mtrx__,
+                      int irow0__,
+                      int icol0__,
+                      double beta__,
+                      wave_functions& wf_out__,
+                      int j0__,
+                      int n__)
+{
+    transform<T>(alpha__, {&wf_in__}, i0__, m__, mtrx__, irow0__, icol0__, beta__, {&wf_out__}, j0__, n__);
+}
+
 template <typename T>
 inline void transform(wave_functions& wf_in__,
                       int i0__,
@@ -611,7 +644,7 @@ inline void transform(wave_functions& wf_in__,
                       int j0__,
                       int n__)
 {
-    transform({&wf_in__}, i0__, m__, mtrx__, irow0__, icol0__, {&wf_out__}, j0__, n__);
+    transform<T>(1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, icol0__, 0.0, {&wf_out__}, j0__, n__);
 }
 
 template <typename T>
