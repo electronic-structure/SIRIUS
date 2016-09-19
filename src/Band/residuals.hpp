@@ -183,6 +183,7 @@ inline int Band::residuals(K_point* kp__,
                            std::vector<double>& eval__,
                            std::vector<double>& eval_old__,
                            matrix<T>& evec__,
+                           dmatrix<T>& evec_dist__,
                            wave_functions& hphi__,
                            wave_functions& ophi__,
                            wave_functions& hpsi__,
@@ -196,14 +197,10 @@ inline int Band::residuals(K_point* kp__,
     auto& itso = ctx_.iterative_solver_input_section();
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
-    /* norm of residuals */
-    //std::vector<double> res_norm(num_bands__);
-
-    int n = 0;
+    int n{0};
     if (converge_by_energy) {
-        std::vector<double> eval_tmp(num_bands__);
 
-        /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
+        std::vector<int> ev_idx;
         for (int i = 0; i < num_bands__; i++) {
             bool take_res = true;
             if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) {
@@ -211,9 +208,18 @@ inline int Band::residuals(K_point* kp__,
             }
 
             if (take_res && std::abs(eval__[i] - eval_old__[i]) > itso.energy_tolerance_) {
-                std::memcpy(&evec__(0, num_bands__ + n), &evec__(0, i), N__ * sizeof(T));
-                eval_tmp[n++] = eval__[i];
+                ev_idx.push_back(i);
             }
+        }
+        n = static_cast<int>(ev_idx.size());
+        
+
+        std::vector<double> eval_tmp(n);
+
+        /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
+        for (int j = 0; j < n; j++) {
+            std::memcpy(&evec__(0, num_bands__ + j), &evec__(0, ev_idx[j]), N__ * sizeof(T));
+            eval_tmp[j] = eval__[ev_idx[j]];
         }
         // TODO: do this on GPU
 
@@ -230,10 +236,25 @@ inline int Band::residuals(K_point* kp__,
         }
         #endif
 
+        int bs = ctx_.cyclic_block_size();
+        dmatrix<T> evec1(N__, n, ctx_.blacs_grid(), bs, bs);
+        for (int j = 0; j < n; j++) {
+            auto pos_src = evec_dist__.spl_col().location(ev_idx[j]);
+            auto pos_dest = evec1.spl_col().location(j);
+
+            if (pos_src.second == kp__->comm_col().rank()) {
+                kp__->comm_col().isend(&evec_dist__(0, pos_src.first), evec1.num_rows_local(), pos_dest.second, ev_idx[j]);
+            }
+            if (pos_dest.second == kp__->comm_col().rank()) {
+               kp__->comm_col().recv(&evec1(0, pos_dest.first), evec1.num_rows_local(), pos_src.second, ev_idx[j]); 
+            }
+        }
+
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        hpsi__.transform_from<T>(hphi__, N__, evec_tmp, n);
+        //hpsi__.transform_from<T>(hphi__, N__, evec_tmp, n);
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        opsi__.transform_from<T>(ophi__, N__, evec_tmp, n);
+        //opsi__.transform_from<T>(ophi__, N__, evec_tmp, n);
+        transform<T>({&hphi__, &ophi__}, 0, N__, evec1, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
         auto res_norm = residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 

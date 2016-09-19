@@ -265,6 +265,7 @@ class Band
                              std::vector<double>& eval__,
                              std::vector<double>& eval_old__,
                              matrix<T>& evec__,
+                             dmatrix<T>& evec_dist__,
                              wave_functions& hphi__,
                              wave_functions& ophi__,
                              wave_functions& hpsi__,
@@ -1281,7 +1282,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(kp, 0, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals(kp, 0, N, num_bands, eval, eval_old, evec, evec_dist, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */

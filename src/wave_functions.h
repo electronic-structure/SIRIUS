@@ -31,6 +31,8 @@
 
 #include "matrix_storage.h"
 
+const int sddk_block_size = 256;
+
 namespace sirius {
 
 /// Wave-functions representation.
@@ -528,6 +530,194 @@ inline void inner(wave_functions& bra__,
             std::memcpy(&result__(irow__, icol__ + i), &buf[i * m__], m__ * sizeof(double));
         }
     }
+}
+
+template <typename T>
+inline void transform(std::vector<wave_functions*> wf_in__,
+                      int i0__,
+                      int m__,
+                      dmatrix<T>& mtrx__,
+                      int irow0__,
+                      int icol0__,
+                      std::vector<wave_functions*> wf_out__,
+                      int j0__,
+                      int n__)
+{
+    PROFILE_WITH_TIMER("sirius::wave_functions::transform");
+
+    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
+
+    assert(wf_in__.size() == wf_out__.size());
+    int nwf = static_cast<int>(wf_in__.size()); 
+    auto& comm = mtrx__.blacs_grid().comm();
+    for (int i = 0; i < nwf; i++) { 
+        assert(&wf_in__[i]->params() == &wf_out__[i]->params());
+        assert(wf_in__[i]->pw_coeffs().num_rows_loc() == wf_out__[i]->pw_coeffs().num_rows_loc());
+        if (wf_in__[i]->params().full_potential()) {
+            assert(wf_in__[i]->mt_coeffs().num_rows_loc() == wf_out__[i]->mt_coeffs().num_rows_loc());
+        }
+        assert(wf_in__[i]->comm().size() == comm.size());
+        assert(wf_out__[i]->comm().size() == comm.size());
+    }
+
+    if (wf_in__[0]->params().processing_unit() == GPU) {
+        TERMINATE_NOT_IMPLEMENTED
+    }
+
+    auto local_transform = [](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
+                              wave_functions* wf_out__, int j0__, int n__)
+    {
+        if (std::is_same<T, double_complex>::value) {
+            double_complex alpha(1, 0);
+            linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
+                              alpha,
+                              wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
+                              (double_complex*)mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(),
+                              alpha,
+                              wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
+
+            if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
+                STOP();
+                //linalg<CPU>::gemm(0, 0, mt_coeffs().num_rows_loc(), n__, nwf__,
+                //                  wf__.mt_coeffs().prime().at<CPU>(), wf__.mt_coeffs().prime().ld(),
+                //                  mtrx__.at<CPU>(), mtrx__.ld(),
+                //                  mt_coeffs().prime().at<CPU>(), mt_coeffs().prime().ld());
+            }
+        }
+
+        if (std::is_same<T, double>::value) {
+            double alpha{1};
+            linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
+                              alpha,
+                              (double*)wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), 2 * wf_in__->pw_coeffs().prime().ld(),
+                              (double*)mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(),
+                              alpha,
+                              (double*)wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), 2 * wf_out__->pw_coeffs().prime().ld());
+            if (wf_in__->params().full_potential()) {
+                TERMINATE_NOT_IMPLEMENTED;
+            }
+        }
+    };
+
+
+    if (comm.size() == 1) {
+        for (int iv = 0; iv < nwf; iv++) {
+            local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, icol0__, wf_out__[iv], j0__, n__);
+        }
+        return;
+    }
+
+    for (int iv = 0; iv < nwf; iv++) {
+        for (int j = 0; j < n__; j++) {
+            for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
+                wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) = 0;
+            }
+            if (wf_out__[iv]->params().full_potential()) {
+                for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
+                    wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) = 0;
+                }
+            }
+        }
+    }
+
+    const int BS = sddk_block_size;
+
+    mdarray<T, 1> buf(BS * BS);
+    matrix<T> submatrix(BS, BS);
+
+    /* cache cartesian ranks */
+    mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());
+    for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
+        for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
+            cart_rank(j, i) = mtrx__.blacs_grid().cart_rank(j, i);
+        }
+    }
+
+    int nbr = m__ / BS + std::min(1, m__ % BS);
+    int nbc = n__ / BS + std::min(1, n__ % BS);
+
+    block_data_descriptor sd(comm.size());
+
+    for (int ibc = 0; ibc < nbc; ibc++) {
+        /* global index of column */
+        int j0 = ibc * BS;
+        /* actual number of columns in the submatrix */
+        int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+        
+        splindex<block_cyclic> spl_col_begin(icol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+        splindex<block_cyclic>   spl_col_end(icol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+
+        int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
+
+        for (int ibr = 0; ibr < nbr; ibr++) {
+            /* global index of column */
+            int i0 = ibr * BS;
+            /* actual number of rows in the submatrix */
+            int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+
+            splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+            splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+
+            int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
+
+            sd.counts[comm.rank()] = local_size_row * local_size_col;
+
+            comm.allgather(sd.counts.data(), comm.rank(), 1);
+
+            sd.calc_offsets();
+
+            assert(sd.offsets.back() + sd.counts.back() <= (int)buf.size());
+            
+            if (local_size_row) {
+                for (int j = 0; j < local_size_col; j++) {
+                    std::memcpy(&buf[sd.offsets[comm.rank()] + local_size_row * j],
+                                &mtrx__(spl_row_begin.local_size(), spl_col_begin.local_size() + j),
+                                local_size_row * sizeof(T));
+                }
+            }
+
+            comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
+            
+            /* unpack data */
+            std::vector<int> counts(comm.size(), 0);
+            for (int icol = 0; icol < ncol; icol++) {
+                auto pos_icol = mtrx__.spl_col().location(icol0__ + j0 + icol);
+                for (int irow = 0; irow < nrow; irow++) {
+                    auto pos_irow = mtrx__.spl_row().location(irow0__ + i0 + irow);
+                    int rank = cart_rank(pos_irow.second, pos_icol.second);
+
+                    submatrix(irow, icol) = buf[sd.offsets[rank] + counts[rank]];
+                    counts[rank]++;
+                }
+            }
+            for (int rank = 0; rank < comm.size(); rank++) {
+                assert(sd.counts[rank] == counts[rank]);
+            }
+            for (int iv = 0; iv < nwf; iv++) {
+                local_transform(wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
+            }
+        }
+    }
+}
+
+/// Linear transformation of wave-functions.
+/** The following operation is performed:
+ *  \f[
+ *     \psi^{out}_{j} = \sum_{i} \psi^{in}_{i} Z_{ij}
+ *  \f]
+ */
+template <typename T>
+inline void transform(wave_functions& wf_in__,
+                      int i0__,
+                      int m__,
+                      dmatrix<T>& mtrx__,
+                      int irow0__,
+                      int icol0__,
+                      wave_functions& wf_out__,
+                      int j0__,
+                      int n__)
+{
+    transform({&wf_in__}, i0__, m__, mtrx__, irow0__, icol0__, {&wf_out__}, j0__, n__);
 }
 
 }

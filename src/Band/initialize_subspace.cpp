@@ -169,7 +169,9 @@ void Band::initialize_subspace(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, hloc, d_op, q_op);
         
-        orthogonalize<T>(kp__, 0, num_phi, phi, hphi, ophi, ovlp);
+        if (typeid(T) == typeid(double)) {
+            orthogonalize<T>(kp__, 0, num_phi, phi, hphi, ophi, ovlp);
+        }
 
         /* setup eigen-value problem
          * N is the number of previous basis functions

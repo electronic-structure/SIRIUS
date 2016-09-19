@@ -665,9 +665,9 @@ class Eigenproblem_scalapack: public Eigenproblem
                              &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
-            lwork = static_cast<int32_t>(work[0].real()) + 1;
-            lrwork = static_cast<int32_t>(rwork[0]) + 1;
-            liwork = iwork[0];
+            lwork = static_cast<int32_t>(work[0].real()) + 4096;
+            lrwork = static_cast<int32_t>(rwork[0]) + 4096;
+            liwork = iwork[0] + 4096;
 
             work = std::vector<double_complex>(lwork);
             rwork = std::vector<double>(lrwork);

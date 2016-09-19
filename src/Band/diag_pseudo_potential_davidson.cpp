@@ -195,7 +195,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1 && !occ_band_converged) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, evec_dist, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -203,7 +203,8 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            psi.transform_from<T>(phi, N, evec, num_bands);
+            //psi.transform_from<T>(phi, N, evec, num_bands);
+            transform<T>(phi, 0, N, evec_dist, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {
@@ -224,8 +225,9 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
                 if (converge_by_energy) {
-                    hpsi.transform_from<T>(hphi, N, evec, num_bands);
-                    opsi.transform_from<T>(ophi, N, evec, num_bands);
+                    transform<T>({&hphi, &ophi}, 0, N, evec_dist, 0, 0, {&hpsi, &opsi}, 0, num_bands);
+                    //hpsi.transform_from<T>(hphi, N, evec, num_bands);
+                    //opsi.transform_from<T>(ophi, N, evec, num_bands);
                 }
  
                 /* update basis functions */
