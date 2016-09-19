@@ -73,35 +73,19 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
-    /* allocate Hamiltonian and overlap */
-    matrix<T> hmlt(num_phi, num_phi, mem_type);
-    matrix<T> ovlp(num_phi, num_phi, mem_type);
-    matrix<T> hmlt_old(num_phi, num_phi, mem_type);
-    matrix<T> ovlp_old(num_phi, num_phi, mem_type);
-
-    //= #ifdef __GPU
-    //= if (gen_evp_solver_->type() == ev_magma) {
-    //=     hmlt.pin_memory();
-    //=     ovlp.pin_memory();
-    //= }
-    //= #endif
-
-    matrix<T> evec(num_phi, num_phi);
+    #ifdef __GPU
+    if (gen_evp_solver_->type() == ev_magma) {
+        TERMINATE("remember to pin memory in dmatrix");
+    }
+    #endif
 
     int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt_dist;
-    dmatrix<T> ovlp_dist;
-    dmatrix<T> evec_dist;
-    if (kp__->comm().size() == 1) {
-        hmlt_dist = dmatrix<T>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    } else {
-        hmlt_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<T>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) {
@@ -160,7 +144,8 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
         if (typeid(T) == typeid(double)) {
-            orthogonalize<T>(kp__, N, n, phi, hphi, ophi, ovlp);
+            STOP();
+            //orthogonalize<T>(kp__, N, n, phi, hphi, ophi, ovlp);
         }
 
         /* setup eigen-value problem
@@ -174,12 +159,14 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         eval_old = eval;
 
         /* solve generalized eigen-value problem with the size N */
-        diag_h_o<T>(kp__, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
+        diag_h_o<T>(kp__, N, num_bands, hmlt, ovlp, evec, eval);
         
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            for (int i = 0; i < num_bands; i++) {
+                DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            }
         }
         #endif
 
@@ -195,7 +182,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1 && !occ_band_converged) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, evec_dist, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -203,8 +190,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            //psi.transform_from<T>(phi, N, evec, num_bands);
-            transform<T>(phi, 0, N, evec_dist, 0, 0, psi, 0, num_bands);
+            transform<T>(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {
@@ -225,9 +211,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
                 if (converge_by_energy) {
-                    transform<T>({&hphi, &ophi}, 0, N, evec_dist, 0, 0, {&hpsi, &opsi}, 0, num_bands);
-                    //hpsi.transform_from<T>(hphi, N, evec, num_bands);
-                    //opsi.transform_from<T>(ophi, N, evec, num_bands);
+                    transform<T>({&hphi, &ophi}, 0, N, evec, 0, 0, {&hpsi, &opsi}, 0, num_bands);
                 }
  
                 /* update basis functions */

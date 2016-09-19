@@ -13,7 +13,8 @@ Band::orthogonalize<double_complex>(K_point*        kp__,
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
-        inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0);
+        STOP();
+        //inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0);
 
         if (ctx_.processing_unit() == CPU) {
             for (auto& e: wfs) {
@@ -60,7 +61,8 @@ Band::orthogonalize<double_complex>(K_point*        kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0);
+    //inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0);
+    STOP();
     
     if (ctx_.processing_unit() == CPU) {
         int info;
@@ -133,7 +135,8 @@ Band::orthogonalize<double>(K_point*        kp__,
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
-        inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0);
+        //inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0);
+        STOP();
 
         if (ctx_.processing_unit() == CPU) {
             for (auto& e: wfs) {
@@ -168,7 +171,8 @@ Band::orthogonalize<double>(K_point*        kp__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0);
+    //inner(phi__, N__, n__, ophi__, N__, n__, o__, 0, 0);
+    STOP();
 
     if (ctx_.processing_unit() == CPU) {
         int info;
