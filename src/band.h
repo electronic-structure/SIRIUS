@@ -111,43 +111,43 @@ class Band
                           Periodic_function<double>* effective_magnetic_field[3],
                           mdarray<double_complex, 2>& h);
        
-        void diag_fv_full_potential_exact(K_point* kp__,
-                                          Periodic_function<double>* effective_potential__) const;
-
-        void diag_fv_full_potential_davidson(K_point* kp__,
-                                             Periodic_function<double>* effective_potential__) const;
+        inline void diag_fv_full_potential_exact(K_point* kp__,
+                                                Periodic_function<double>* effective_potential__) const;
+        
+        inline void diag_fv_full_potential_davidson(K_point* kp__,
+                                                    Periodic_function<double>* effective_potential__) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         template <typename T>
-        void diag_pseudo_potential_exact(K_point* kp__,
-                                         int ispn__,
-                                         Hloc_operator& h_op__,
-                                         D_operator<T>& d_op__,
-                                         Q_operator<T>& q_op__) const;
+        inline void diag_pseudo_potential_exact(K_point* kp__,
+                                                int ispn__,
+                                                Hloc_operator& h_op__,
+                                                D_operator<T>& d_op__,
+                                                Q_operator<T>& q_op__) const;
 
         /// Iterative Davidson diagonalization.
         template <typename T>
-        void diag_pseudo_potential_davidson(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__) const;
+        inline void diag_pseudo_potential_davidson(K_point* kp__,
+                                                   int ispn__,
+                                                   Hloc_operator& h_op__,
+                                                   D_operator<T>& d_op__,
+                                                   Q_operator<T>& q_op__) const;
 
         /// RMM-DIIS diagonalization.
         template <typename T>
-        void diag_pseudo_potential_rmm_diis(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__) const;
+        inline void diag_pseudo_potential_rmm_diis(K_point* kp__,
+                                                   int ispn__,
+                                                   Hloc_operator& h_op__,
+                                                   D_operator<T>& d_op__,
+                                                   Q_operator<T>& q_op__) const;
 
         template <typename T>
-        void diag_pseudo_potential_chebyshev(K_point* kp__,
-                                             int ispn__,
-                                             Hloc_operator& h_op__,
-                                             D_operator<T>& d_op__,
-                                             Q_operator<T>& q_op__,
-                                             P_operator<T>& p_op__) const;
+        inline void diag_pseudo_potential_chebyshev(K_point* kp__,
+                                                    int ispn__,
+                                                    Hloc_operator& h_op__,
+                                                    D_operator<T>& d_op__,
+                                                    Q_operator<T>& q_op__,
+                                                    P_operator<T>& p_op__) const;
 
         template <typename T>
         inline void apply_h(K_point* kp__,
@@ -755,6 +755,7 @@ class Band
 #include "Band/set_lapw_h_o.hpp"
 #include "Band/residuals.hpp"
 #include "Band/diagonalize.hpp"
+#include "Band/initialize_subspace.hpp"
 #include "Band/solve.hpp"
 
 }

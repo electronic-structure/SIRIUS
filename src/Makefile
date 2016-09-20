@@ -13,11 +13,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp  \
        Density/symmetrize_density_matrix.cpp \
        Density/generate_valence_density_mt.cpp \
        Density/check_density_continuity_at_mt.cpp \
-       Band/diag_pseudo_potential_exact.cpp \
-       Band/diag_pseudo_potential_davidson.cpp \
-       Band/diag_pseudo_potential_rmm_diis.cpp \
-       Band/diag_pseudo_potential_chebyshev.cpp \
-       Band/initialize_subspace.cpp \
        Potential/potential.cpp \
        Potential/init.cpp \
        Potential/poisson.cpp \

@@ -1,16 +1,12 @@
-#include "band.h"
-
-namespace sirius {
-
 template <typename T>
-void Band::initialize_subspace(K_point* kp__,
-                               Periodic_function<double>* effective_potential__,
-                               Periodic_function<double>* effective_magnetic_field__[3],
-                               int num_ao__,
-                               int lmax__,
-                               std::vector< std::vector< Spline<double> > >& rad_int__) const
+inline void Band::initialize_subspace(K_point* kp__,
+                                      Periodic_function<double>* effective_potential__,
+                                      Periodic_function<double>* effective_magnetic_field__[3],
+                                      int num_ao__,
+                                      int lmax__,
+                                      std::vector< std::vector< Spline<double> > >& rad_int__) const
 {
-    PROFILE();
+    PROFILE_WITH_TIMER("sirius::Band::initialize_subspace");
 
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
@@ -204,18 +200,3 @@ void Band::initialize_subspace(K_point* kp__,
 
     ctx_.fft_coarse().dismiss();
 }
-
-template void Band::initialize_subspace<double>(K_point* kp__,
-                                                Periodic_function<double>* effective_potential__,
-                                                Periodic_function<double>* effective_magnetic_field__[3],
-                                                int num_ao__,
-                                                int lmax__,
-                                                std::vector< std::vector< Spline<double> > >& rad_int__) const;
-
-template void Band::initialize_subspace<double_complex>(K_point* kp__,
-                                                        Periodic_function<double>* effective_potential__,
-                                                        Periodic_function<double>* effective_magnetic_field__[3],
-                                                        int num_ao__,
-                                                        int lmax__,
-                                                        std::vector< std::vector< Spline<double> > >& rad_int__) const;
-};
