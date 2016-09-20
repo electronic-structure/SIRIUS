@@ -623,3 +623,86 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 //==     alm.deallocate();
 //==     halm.deallocate();
 //== }
+
+//void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+//                        mdarray<double_complex, 2>& o)
+//{
+//    Timer t("sirius::Band::set_o_apw_lo");
+//    
+//    int apw_offset_col = kp->apw_offset_col();
+//    
+//    // apw-lo block
+//    for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
+//    {
+//        int icol = kp->lo_col(ia, i);
+//
+//        int l = kp->gklo_basis_descriptor_col(icol).l;
+//        int lm = kp->gklo_basis_descriptor_col(icol).lm;
+//        int order = kp->gklo_basis_descriptor_col(icol).order;
+//        
+//        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+//        {
+//            for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
+//            {
+//                o(igkloc, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order) * 
+//                                   alm(igkloc, type->indexb_by_lm_order(lm, order1));
+//            }
+//        }
+//    }
+//
+//    std::vector<double_complex> ztmp(kp->num_gkvec_col());
+//    // lo-apw block
+//    for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
+//    {
+//        int irow = kp->lo_row(ia, i);
+//
+//        int l = kp->gklo_basis_descriptor_row(irow).l;
+//        int lm = kp->gklo_basis_descriptor_row(irow).lm;
+//        int order = kp->gklo_basis_descriptor_row(irow).order;
+//
+//        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+//        {
+//            for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
+//            {
+//                o(irow, igkloc) += atom->symmetry_class()->o_radial_integral(l, order, order1) * 
+//                                   conj(alm(apw_offset_col + igkloc, type->indexb_by_lm_order(lm, order1)));
+//            }
+//        }
+//    }
+//}
+
+//== void Band::set_o(K_point* kp, mdarray<double_complex, 2>& o)
+//== {
+//==     Timer t("sirius::Band::set_o");
+//==    
+//==     // index of column apw coefficients in apw array
+//==     int apw_offset_col = kp->apw_offset_col();
+//==     
+//==     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+//==     o.zero();
+//== 
+//==     double_complex zone(1, 0);
+//==     
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+//==     {
+//==         Atom* atom = unit_cell_.atom(ia);
+//==         Atom_type* type = atom->type();
+//==        
+//==         // generate conjugated coefficients
+//==         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
+//==         
+//==         // generate <apw|apw> block; |ket> is conjugated, so it is "unconjugated" back
+//==         blas<CPU>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), zone, 
+//==                         &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, &o(0, 0), o.ld()); 
+//==             
+//==         // setup apw-lo blocks
+//==         set_o_apw_lo(kp, type, atom, ia, alm, o);
+//==     } //ia
+//== 
+//==     set_o_it(kp, o);
+//== 
+//==     set_o_lo_lo(kp, o);
+//== 
+//==     alm.deallocate();
+//== }
+

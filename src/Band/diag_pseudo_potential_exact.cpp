@@ -42,14 +42,14 @@ void Band::diag_pseudo_potential_exact(K_point* kp__,
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
     #endif
 
-    if (gen_evp_solver()->solve(ngk, num_bands,
-                                hphi.pw_coeffs().prime().at<CPU>(),
-                                hphi.pw_coeffs().prime().ld(),
-                                ophi.pw_coeffs().prime().at<CPU>(),
-                                ophi.pw_coeffs().prime().ld(), 
-                                &eval[0],
-                                psi.pw_coeffs().prime().at<CPU>(),
-                                psi.pw_coeffs().prime().ld()))
+    if (gen_evp_solver().solve(ngk, num_bands,
+                               hphi.pw_coeffs().prime().at<CPU>(),
+                               hphi.pw_coeffs().prime().ld(),
+                               ophi.pw_coeffs().prime().at<CPU>(),
+                               ophi.pw_coeffs().prime().ld(), 
+                               &eval[0],
+                               psi.pw_coeffs().prime().at<CPU>(),
+                               psi.pw_coeffs().prime().ld()))
     {
         TERMINATE("error in evp solve");
     }

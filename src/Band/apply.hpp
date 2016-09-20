@@ -583,3 +583,50 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 //==     }
 //== }
 
+//== void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
+//== {
+//==     Timer t("sirius::Band::apply_so_correction");
+//== 
+//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+//==     {
+//==         Atom_type* type = unit_cell_.atom(ia)->type();
+//== 
+//==         int offset = unit_cell_.atom(ia)->offset_wf();
+//== 
+//==         for (int l = 0; l <= parameters_.lmax_apw(); l++)
+//==         {
+//==             int nrf = type->indexr().num_rf(l);
+//== 
+//==             for (int order1 = 0; order1 < nrf; order1++)
+//==             {
+//==                 for (int order2 = 0; order2 < nrf; order2++)
+//==                 {
+//==                     double sori = unit_cell_.atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
+//==                     
+//==                     for (int m = -l; m <= l; m++)
+//==                     {
+//==                         int idx1 = type->indexb_by_l_m_order(l, m, order1);
+//==                         int idx2 = type->indexb_by_l_m_order(l, m, order2);
+//==                         int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
+//==                         int idx4 = (m - l != 0) ? type->indexb_by_l_m_order(l, m + 1, order2) : 0;
+//== 
+//==                         for (int ist = 0; ist < (int)parameters_.spl_fv_states().local_size(); ist++)
+//==                         {
+//==                             double_complex z1 = fv_states(offset + idx2, ist) * double(m) * sori;
+//==                             hpsi(offset + idx1, ist, 0) += z1;
+//==                             hpsi(offset + idx1, ist, 1) -= z1;
+//==                             // apply L_{-} operator
+//==                             if (m + l) hpsi(offset + idx1, ist, 2) += fv_states(offset + idx3, ist) * sori * 
+//==                                                                       sqrt(double(l * (l + 1) - m * (m - 1)));
+//==                             // apply L_{+} operator
+//==                             if (m - l) hpsi(offset + idx1, ist, 3) += fv_states(offset + idx4, ist) * sori * 
+//==                                                                       sqrt(double(l * (l + 1) - m * (m + 1)));
+//==                         }
+//==                     }
+//==                 }
+//==             }
+//==         }
+//==     }
+//== }
+
+

@@ -1498,17 +1498,17 @@ void sirius_solve_fv(int32_t const* kset_id__,
     {
         auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
 
-        dft_ground_state->band().gen_evp_solver()->solve(kp->gklo_basis_size(),
-                                                         sim_ctx->num_fv_states(),
-                                                         h__,
-                                                         kp->gklo_basis_size_row(),
-                                                         o__,
-                                                         kp->gklo_basis_size_row(),
-                                                         eval__,
-                                                         evec__,
-                                                         *evec_ld__,
-                                                         kp->gklo_basis_size_row(),
-                                                         kp->gklo_basis_size_col());
+        dft_ground_state->band().gen_evp_solver().solve(kp->gklo_basis_size(),
+                                                        sim_ctx->num_fv_states(),
+                                                        h__,
+                                                        kp->gklo_basis_size_row(),
+                                                        o__,
+                                                        kp->gklo_basis_size_row(),
+                                                        eval__,
+                                                        evec__,
+                                                        *evec_ld__,
+                                                        kp->gklo_basis_size_row(),
+                                                        kp->gklo_basis_size_col());
     }
 }
 

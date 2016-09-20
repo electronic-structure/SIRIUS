@@ -54,13 +54,13 @@ class Band
         BLACS_grid const& blacs_grid_;
 
         /// Non-zero Gaunt coefficients
-        Gaunt_coefficients<double_complex>* gaunt_coefs_;
+        std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
         
         /// Interface to a standard eigen-value solver.
-        Eigenproblem* std_evp_solver_; 
+        std::unique_ptr<Eigenproblem> std_evp_solver_; 
 
         /// Interface to a generalized eigen-value solver.
-        Eigenproblem* gen_evp_solver_;
+        std::unique_ptr<Eigenproblem> gen_evp_solver_;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
@@ -111,23 +111,196 @@ class Band
                           Periodic_function<double>* effective_magnetic_field[3],
                           mdarray<double_complex, 2>& h);
        
+        void diag_fv_full_potential_exact(K_point* kp__,
+                                          Periodic_function<double>* effective_potential__) const;
+
+        void diag_fv_full_potential_davidson(K_point* kp__,
+                                             Periodic_function<double>* effective_potential__) const;
+
+        /// Exact (not iterative) diagonalization of the Hamiltonian.
+        template <typename T>
+        void diag_pseudo_potential_exact(K_point* kp__,
+                                         int ispn__,
+                                         Hloc_operator& h_op__,
+                                         D_operator<T>& d_op__,
+                                         Q_operator<T>& q_op__) const;
+
+        /// Iterative Davidson diagonalization.
+        template <typename T>
+        void diag_pseudo_potential_davidson(K_point* kp__,
+                                            int ispn__,
+                                            Hloc_operator& h_op__,
+                                            D_operator<T>& d_op__,
+                                            Q_operator<T>& q_op__) const;
+
+        /// RMM-DIIS diagonalization.
+        template <typename T>
+        void diag_pseudo_potential_rmm_diis(K_point* kp__,
+                                            int ispn__,
+                                            Hloc_operator& h_op__,
+                                            D_operator<T>& d_op__,
+                                            Q_operator<T>& q_op__) const;
+
+        template <typename T>
+        void diag_pseudo_potential_chebyshev(K_point* kp__,
+                                             int ispn__,
+                                             Hloc_operator& h_op__,
+                                             D_operator<T>& d_op__,
+                                             Q_operator<T>& q_op__,
+                                             P_operator<T>& p_op__) const;
+
+        template <typename T>
+        inline void apply_h(K_point* kp__,
+                            int ispn__, 
+                            int N__,
+                            int n__,
+                            wave_functions& phi__,
+                            wave_functions& hphi__,
+                            Hloc_operator &h_op,
+                            D_operator<T>& d_op) const;
+
+        template <typename T>
+        void apply_h_o(K_point* kp__,
+                       int ispn__, 
+                       int N__,
+                       int n__,
+                       wave_functions& phi__,
+                       wave_functions& hphi__,
+                       wave_functions& ophi__,
+                       Hloc_operator &h_op,
+                       D_operator<T>& d_op,
+                       Q_operator<T>& q_op) const;
+
+        inline mdarray<double,1> residuals_aux(K_point* kp__,
+                                               int num_bands__,
+                                               std::vector<double>& eval__,
+                                               wave_functions& hpsi__,
+                                               wave_functions& opsi__,
+                                               wave_functions& res__,
+                                               std::vector<double>& h_diag__,
+                                               std::vector<double>& o_diag__) const;
+        
+        template <typename T>
+        inline int residuals(K_point* kp__,
+                             int ispn__,
+                             int N__,
+                             int num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             dmatrix<T>& evec__,
+                             wave_functions& hphi__,
+                             wave_functions& ophi__,
+                             wave_functions& hpsi__,
+                             wave_functions& opsi__,
+                             wave_functions& res__,
+                             std::vector<double>& h_diag__,
+                             std::vector<double>& o_diag__) const;
+
+        template <typename T>
+        inline void set_subspace_mtrx(int N__,
+                                      int n__,
+                                      wave_functions& phi__,
+                                      wave_functions& op_phi__,
+                                      dmatrix<T>& mtrx__,
+                                      dmatrix<T>& mtrx_old__) const
+        {
+            PROFILE_WITH_TIMER("sirius::Band::set_subspace_mtrx");
+            
+            assert(n__ != 0);
+            if (mtrx_old__.size()) {
+                assert(&mtrx__.blacs_grid() == &mtrx_old__.blacs_grid());
+            }
+
+            if (N__ > 0) {
+                splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+                /* copy old N x N matrix */
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
+                }
+            }
+
+            /* <{phi,phi_new}|Op|phi_new> */
+            inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+
+            //== #ifdef __PRINT_OBJECT_CHECKSUM
+            //== double_complex cs1(0, 0);
+            //== double_complex cs2(0, 0);
+            //== for (int i = 0; i < N__ + n__; i++)
+            //== {
+            //==     for (int j = 0; j <= i; j++) 
+            //==     {
+            //==         cs1 += h__(j, i);
+            //==         cs2 += o__(j, i);
+            //==     }
+            //== }
+            //== DUMP("checksum(h): %18.10f %18.10f", cs1.real(), cs1.imag());
+            //== DUMP("checksum(o): %18.10f %18.10f", cs2.real(), cs2.imag());
+            //== #endif
+            
+            /* restore lower part */
+            if (N__ > 0) {
+                if (mtrx__.blacs_grid().comm().size() == 1) {
+                    #pragma omp parallel for
+                    for (int i = 0; i < N__; i++) {
+                        for (int j = N__; j < N__ + n__; j++) {
+                            mtrx__(j, i) = std::conj(mtrx__(i, j));
+                        }
+                    }
+                } else {
+                    linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
+                }
+            }
+
+            if (mtrx_old__.size()) {
+                splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+                /* save matrix */
+                #pragma omp parallel for
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
+                }
+            }
+        }
+                
+        template <typename T>
+        inline void diag_subspace_mtrx(int N__,
+                                       int num_bands__,
+                                       dmatrix<T>& mtrx_dist__,
+                                       dmatrix<T>& evec_dist__,
+                                       std::vector<double>& eval__) const
+        {
+            PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
+
+            int result = std_evp_solver().solve(N__,  num_bands__, mtrx_dist__.template at<CPU>(), mtrx_dist__.ld(),
+                                                &eval__[0], evec_dist__.template at<CPU>(), evec_dist__.ld(),
+                                                mtrx_dist__.num_rows_local(), mtrx_dist__.num_cols_local());
+            if (result) {
+                std::stringstream s;
+                s << "error in diagonalziation";
+                TERMINATE(s);
+            }
+
+            ///* copy eigen-vectors to GPU */
+            //#ifdef __GPU
+            //if (ctx_.processing_unit() == GPU)
+            //    acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
+            //#endif
+        }
+
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
                                     Periodic_function<double>* effective_potential__) const
         {
             auto& itso = ctx_.iterative_solver_input_section();
             if (itso.type_ == "exact") {
-                diag_fv_full_potential_exact(kp, effective_potential);
+                diag_fv_full_potential_exact(kp__, effective_potential__);
             } else if (itso.type_ == "davidson") {
-                diag_fv_full_potential_davidson(kp, effective_potential);
+                diag_fv_full_potential_davidson(kp__, effective_potential__);
             }
         }
-
-        void diag_fv_full_potential_exact(K_point* kp__,
-                                          Periodic_function<double>* effective_potential__) const;
-
-        void diag_fv_full_potential_davidson(K_point* kp__,
-                                             Periodic_function<double>* effective_potential__) const;
 
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
@@ -187,128 +360,6 @@ class Band
             ctx_.fft_coarse().dismiss();
         }
 
-        /// Exact (not iterative) diagonalization of the Hamiltonian.
-        template <typename T>
-        void diag_pseudo_potential_exact(K_point* kp__,
-                                         int ispn__,
-                                         Hloc_operator& h_op__,
-                                         D_operator<T>& d_op__,
-                                         Q_operator<T>& q_op__) const;
-
-        /// Iterative Davidson diagonalization.
-        template <typename T>
-        void diag_pseudo_potential_davidson(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__) const;
-
-        /// RMM-DIIS diagonalization.
-        template <typename T>
-        void diag_pseudo_potential_rmm_diis(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__) const;
-
-        template <typename T>
-        void diag_pseudo_potential_chebyshev(K_point* kp__,
-                                             int ispn__,
-                                             Hloc_operator& h_op__,
-                                             D_operator<T>& d_op__,
-                                             Q_operator<T>& q_op__,
-                                             P_operator<T>& p_op__) const;
-
-        template <typename T>
-        inline void apply_h(K_point* kp__,
-                            int ispn__, 
-                            int N__,
-                            int n__,
-                            wave_functions& phi__,
-                            wave_functions& hphi__,
-                            Hloc_operator &h_op,
-                            D_operator<T>& d_op) const;
-
-        template <typename T>
-        void apply_h_o(K_point* kp__,
-                       int ispn__, 
-                       int N__,
-                       int n__,
-                       wave_functions& phi__,
-                       wave_functions& hphi__,
-                       wave_functions& ophi__,
-                       Hloc_operator &h_op,
-                       D_operator<T>& d_op,
-                       Q_operator<T>& q_op) const;
-        
-        template <typename T>
-        inline void set_subspace_mtrx(int N__,
-                                      int n__,
-                                      wave_functions& phi__,
-                                      wave_functions& op_phi__,
-                                      dmatrix<T>& mtrx__,
-                                      dmatrix<T>& mtrx_old__) const;
-        
-        template <typename T>
-        inline void diag_subspace_mtrx(int N__,
-                                       int num_bands__,
-                                       dmatrix<T>& mtrx_dist__,
-                                       dmatrix<T>& evec_dist__,
-                                       std::vector<double>& eval__) const
-        {
-            PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
-
-            int result = std_evp_solver()->solve(N__,  num_bands__, mtrx_dist__.template at<CPU>(), mtrx_dist__.ld(),
-                                                 &eval__[0], evec_dist__.template at<CPU>(), evec_dist__.ld(),
-                                                 mtrx_dist__.num_rows_local(), mtrx_dist__.num_cols_local());
-            if (result) {
-                std::stringstream s;
-                s << "error in diagonalziation";
-                TERMINATE(s);
-            }
-
-            ///* copy eigen-vectors to GPU */
-            //#ifdef __GPU
-            //if (ctx_.processing_unit() == GPU)
-            //    acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
-            //#endif
-        }
-
-        template <typename T>
-        inline int residuals(K_point* kp__,
-                             int ispn__,
-                             int N__,
-                             int num_bands__,
-                             std::vector<double>& eval__,
-                             std::vector<double>& eval_old__,
-                             dmatrix<T>& evec__,
-                             wave_functions& hphi__,
-                             wave_functions& ophi__,
-                             wave_functions& hpsi__,
-                             wave_functions& opsi__,
-                             wave_functions& res__,
-                             std::vector<double>& h_diag__,
-                             std::vector<double>& o_diag__) const;
-
-        inline mdarray<double,1> residuals_aux(K_point* kp__,
-                                               int num_bands__,
-                                               std::vector<double>& eval__,
-                                               wave_functions& hpsi__,
-                                               wave_functions& opsi__,
-                                               wave_functions& res__,
-                                               std::vector<double>& h_diag__,
-                                               std::vector<double>& o_diag__) const;
-
-        //== void add_nl_h_o_rs(K_point* kp__,
-        //==                    int n__,
-        //==                    matrix<double_complex>& phi__,
-        //==                    matrix<double_complex>& hphi__,
-        //==                    matrix<double_complex>& ophi__,
-        //==                    mdarray<int, 1>& packed_mtrx_offset__,
-        //==                    mdarray<double_complex, 1>& d_mtrx_packed__,
-        //==                    mdarray<double_complex, 1>& q_mtrx_packed__,
-        //==                    mdarray<double_complex, 1>& kappa__);
-
     public:
         
         /// Constructor
@@ -319,105 +370,84 @@ class Band
         {
             PROFILE();
 
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 
-                                                                  ctx_.lmax_pot(), 
-                                                                  ctx_.lmax_apw(),
-                                                                  SHT::gaunt_hybrid);
-
+            gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double_complex>>(
+                new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 
+                                                       ctx_.lmax_pot(), 
+                                                       ctx_.lmax_apw(),
+                                                       SHT::gaunt_hybrid));
+            
+            Eigenproblem* ptr;
             /* create standard eigen-value solver */
-            switch (ctx_.std_evp_solver_type())
-            {
-                case ev_lapack:
-                {
-                    std_evp_solver_ = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
+            switch (ctx_.std_evp_solver_type()) {
+                case ev_lapack: {
+                    ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
-                case ev_scalapack:
-                {
-                    std_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
+                case ev_scalapack: {
+                    ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
-                case ev_plasma:
-                {
-                    std_evp_solver_ = new Eigenproblem_plasma();
+                case ev_plasma: {
+                    ptr = new Eigenproblem_plasma();
                     break;
                 }
-                case ev_magma:
-                {
-                    std_evp_solver_ = new Eigenproblem_magma();
+                case ev_magma: {
+                    ptr = new Eigenproblem_magma();
                     break;
                 }
-                case ev_elpa1:
-                {
-                    std_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa1: {
+                    ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_elpa2:
-                {
-                    std_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa2: {
+                    ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong standard eigen-value solver");
                 }
             }
+            std_evp_solver_ = std::unique_ptr<Eigenproblem>(ptr);
             
             /* create generalized eign-value solver */
-            switch (ctx_.gen_evp_solver_type())
-            {
-                case ev_lapack:
-                {
-                    gen_evp_solver_ = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
+            switch (ctx_.gen_evp_solver_type()) {
+                case ev_lapack: {
+                    ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
-                case ev_scalapack:
-                {
-                    gen_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
+                case ev_scalapack: {
+                    ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
-                case ev_elpa1:
-                {
-                    gen_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa1: {
+                    ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_elpa2:
-                {
-                    gen_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa2: {
+                    ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_magma:
-                {
-                    gen_evp_solver_ = new Eigenproblem_magma();
+                case ev_magma: {
+                    ptr = new Eigenproblem_magma();
                     break;
                 }
-                case ev_rs_gpu:
-                {
-                    gen_evp_solver_ = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                case ev_rs_gpu: {
+                    ptr = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_rs_cpu:
-                {
-                    gen_evp_solver_ = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                case ev_rs_cpu: {
+                    ptr = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong generalized eigen-value solver");
                 }
             }
+            gen_evp_solver_ = std::unique_ptr<Eigenproblem>(ptr);
 
-            if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
+            if (std_evp_solver_->parallel() != gen_evp_solver_->parallel()) {
                 TERMINATE("both eigen-value solvers must be serial or parallel");
-        }
-
-        ~Band()
-        {
-            PROFILE();
-
-            delete gaunt_coefs_;
-            delete std_evp_solver_;
-            delete gen_evp_solver_;
+            }
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -666,43 +696,29 @@ class Band
                                  wave_functions& ophi__) const;
 
         /// Solve first-variational (non-magnetic) problem
-        inline void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const
-        {
-
-            if (kp__->gklo_basis_size() < ctx_.num_fv_states()) {
-                TERMINATE("basis size is too small");
-            }
-
-            switch (ctx_.esm_type()) {
-                case electronic_structure_method_t::full_potential_pwlo:
-                case electronic_structure_method_t::full_potential_lapwlo: {
-                    diag_fv_full_potential(kp__, effective_potential__);
-                    break;
-                }
-                default: {
-                    TERMINATE_NOT_IMPLEMENTED
-                }
-            }
-        }
+        inline void solve_fv(K_point* kp__,
+                             Periodic_function<double>* effective_potential__) const;
 
         /// Solve second-variational problem
         inline void solve_sv(K_point* kp,
                              Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_fd(K_point* kp,
-                      Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void solve_fd(K_point* kp,
+                             Periodic_function<double>* effective_potential, 
+                             Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_for_kset(K_set& kset, Potential& potential, bool precompute) const;
+        inline void solve_for_kset(K_set& kset,
+                                   Potential& potential,
+                                   bool precompute) const;
 
-        inline Eigenproblem* std_evp_solver() const
+        inline Eigenproblem const& std_evp_solver() const
         {
-            return std_evp_solver_;
+            return *std_evp_solver_;
         }
 
-        inline Eigenproblem const* gen_evp_solver() const
+        inline Eigenproblem const& gen_evp_solver() const
         {
-            return gen_evp_solver_;
+            return *gen_evp_solver_;
         }
 
         /// Get diagonal elements of LAPW Hamiltonian.
@@ -738,363 +754,8 @@ class Band
 #include "Band/apply.hpp"
 #include "Band/set_lapw_h_o.hpp"
 #include "Band/residuals.hpp"
-#include "Band/solve_sv.hpp"
-#include "band.hpp"
-
-template <typename T>
-inline void Band::set_subspace_mtrx(int N__,
-                                    int n__,
-                                    wave_functions& phi__,
-                                    wave_functions& op_phi__,
-                                    dmatrix<T>& mtrx__,
-                                    dmatrix<T>& mtrx_old__) const
-{
-    PROFILE_WITH_TIMER("sirius::Band::set_subspace_mtrx");
-    
-    assert(n__ != 0);
-    if (mtrx_old__.size()) {
-        assert(&mtrx__.blacs_grid() == &mtrx_old__.blacs_grid());
-    }
-
-    if (N__ > 0) {
-        splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
-        /* copy old N x N matrix */
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
-        }
-    }
-
-    /* <{phi,phi_new}|Op|phi_new> */
-    inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
-
-    //== #ifdef __PRINT_OBJECT_CHECKSUM
-    //== double_complex cs1(0, 0);
-    //== double_complex cs2(0, 0);
-    //== for (int i = 0; i < N__ + n__; i++)
-    //== {
-    //==     for (int j = 0; j <= i; j++) 
-    //==     {
-    //==         cs1 += h__(j, i);
-    //==         cs2 += o__(j, i);
-    //==     }
-    //== }
-    //== DUMP("checksum(h): %18.10f %18.10f", cs1.real(), cs1.imag());
-    //== DUMP("checksum(o): %18.10f %18.10f", cs2.real(), cs2.imag());
-    //== #endif
-    
-    /* restore lower part */
-    if (N__ > 0) {
-        if (mtrx__.blacs_grid().comm().size() == 1) {
-            #pragma omp parallel for
-            for (int i = 0; i < N__; i++) {
-                for (int j = N__; j < N__ + n__; j++) {
-                    mtrx__(j, i) = std::conj(mtrx__(i, j));
-                }
-            }
-        } else {
-            linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
-
-        }
-    }
-
-    if (mtrx_old__.size()) {
-        splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
-        /* save matrix */
-        #pragma omp parallel for
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
-        }
-    }
-}
-
-inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<double>* effective_potential) const
-{
-    PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_exact");
-
-    if (kp->num_ranks() > 1 && !gen_evp_solver()->parallel()) {
-        TERMINATE("eigen-value solver is not parallel");
-    }
-
-    int ngklo = kp->gklo_basis_size();
-    int bs = ctx_.cyclic_block_size();
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    
-    /* setup Hamiltonian and overlap */
-    switch (ctx_.processing_unit()) {
-        case CPU: {
-            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
-            break;
-        }
-        #ifdef __GPU
-        case GPU: {
-            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
-            break;
-        }
-        #endif
-        default: {
-            TERMINATE("wrong processing unit");
-        }
-    }
-
-    // TODO: move debug code to a separate function
-    #if (__VERIFICATION > 0)
-    if (!gen_evp_solver()->parallel())
-    {
-        Utils::check_hermitian("h", h.panel());
-        Utils::check_hermitian("o", o.panel());
-    }
-    #endif
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = h.checksum();
-    auto z2 = o.checksum();
-    DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
-    DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
-    #endif
-
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(h): %16llX", h.panel().hash());
-    DUMP("hash(o): %16llX", o.panel().hash());
-    #endif
-
-    assert(kp->gklo_basis_size() > ctx_.num_fv_states());
-    
-    std::vector<double> eval(ctx_.num_fv_states());
-    
-    runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
-    
-    if (gen_evp_solver()->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                                &eval[0], kp->fv_eigen_vectors().prime().at<CPU>(), kp->fv_eigen_vectors().prime().ld(),
-                                kp->gklo_basis_size_row(), kp->gklo_basis_size_col()))
-
-    {
-        TERMINATE("error in generalized eigen-value problem");
-    }
-    kp->set_fv_eigen_values(&eval[0]);
-
-    //== wave_functions phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-    //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-    //== wave_functions hphi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-    //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-    //== wave_functions ophi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-    //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-    //== 
-    //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
-    //==     std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().prime().at<CPU>(0, i),
-    //==                 kp->num_gkvec() * sizeof(double_complex));
-
-    //==     std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().prime().at<CPU>(kp->num_gkvec(), i),
-    //==                 unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
-
-    //== }
-    //== apply_fv_h_o(kp, effective_potential, 0, ctx_.num_fv_states(), phi, hphi, ophi);
-
-    //== matrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states());
-    //== matrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states());
-
-    //== inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0, kp->comm(), ctx_.processing_unit());
-    //== inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0, kp->comm(), ctx_.processing_unit());
-
-    //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
-    //==     for (int j = 0; j < ctx_.num_fv_states(); j++) {
-    //==         double_complex z = (i == j) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-    //==         double_complex z1 = (i == j) ? hmlt(i, j) - eval[i] : hmlt(i, j);
-    //==         if (std::abs(z) > 1e-10) {
-    //==             printf("ovlp(%i, %i) = %f %f\n", i, j, z.real(), z.imag());
-    //==         }
-    //==         if (std::abs(z1) > 1e-10) {
-    //==             printf("hmlt(%i, %i) = %f %f\n", i, j, z1.real(), z1.imag());
-    //==         }
-    //==     }
-    //== }
-    //== STOP();
-}
-
-inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double>* effective_potential) const
-{
-    PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_davidson");
-
-    auto h_diag = get_h_diag(kp, effective_potential->f_pw(0).real(), ctx_.step_function().theta_pw(0).real());
-    auto o_diag = get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
-
-    /* short notation for number of target wave-functions */
-    int num_bands = ctx_.num_fv_states();
-
-    auto& itso = ctx_.iterative_solver_input_section();
-
-    /* short notation for target wave-functions */
-    auto& psi = kp->fv_eigen_vectors_slab();
-
-    bool converge_by_energy = (itso.converge_by_energy_ == 1);
-    
-    assert(num_bands * 2 < kp->num_gkvec()); // iterative subspace size can't be smaller than this
-
-    /* number of auxiliary basis functions */
-    int num_phi = std::min(itso.subspace_size_ * num_bands, kp->num_gkvec());
-
-    /* allocate wave-functions */
-    wave_functions  phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    wave_functions hphi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    wave_functions ophi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    wave_functions hpsi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
-    wave_functions opsi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
-
-    /* residuals */
-    wave_functions res(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
-
-    auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-
-    /* allocate Hamiltonian and overlap */
-    matrix<double_complex> hmlt(num_phi, num_phi, mem_type);
-    matrix<double_complex> ovlp(num_phi, num_phi, mem_type);
-    //matrix<double_complex> hmlt_old(num_phi, num_phi, mem_type);
-    //matrix<double_complex> ovlp_old(num_phi, num_phi, mem_type);
-
-    matrix<double_complex> evec(num_phi, num_phi);
-
-    int bs = ctx_.cyclic_block_size();
-
-    dmatrix<double_complex> hmlt_dist;
-    dmatrix<double_complex> ovlp_dist;
-    dmatrix<double_complex> evec_dist;
-    if (kp->comm().size() == 1) {
-        hmlt_dist = dmatrix<double_complex>(&hmlt(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(&ovlp(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(&evec(0, 0), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    } else {
-        hmlt_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        ovlp_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-        evec_dist = dmatrix<double_complex>(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    }
-
-    dmatrix<double_complex> hmlt_old_dist(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<double_complex> ovlp_old_dist(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-
-    std::vector<double> eval(num_bands);
-    for (int i = 0; i < num_bands; i++) {
-        eval[i] = kp->band_energy(i);
-    }
-    std::vector<double> eval_old(num_bands);
-    
-    /* trial basis functions */
-    phi.copy_from(psi, 0, num_bands);
-    
-    /* current subspace size */
-    int N = 0;
-
-    /* number of newly added basis functions */
-    int n = num_bands;
-
-    #if (__VERBOSITY > 2)
-    if (kp->comm().rank() == 0) {
-        DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
-    }
-    #endif
-
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #ifdef __GPU
-    gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
-    #endif
-    #endif
-    
-    /* start iterative diagonalization */
-    for (int k = 0; k < itso.num_steps_; k++) {
-        /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, effective_potential, N, n, phi, hphi, ophi);
-        
-        orthogonalize(N, n, phi, hphi, ophi, ovlp_dist, res);
-
-        /* setup eigen-value problem
-         * N is the number of previous basis functions
-         * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, hphi, hmlt_dist, hmlt_old_dist);
-
-        /* increase size of the variation space */
-        N += n;
-
-        eval_old = eval;
-
-        /* solve generalized eigen-value problem with the size N */
-        //diag_h_o<double_complex>(kp, N, num_bands, hmlt, ovlp, evec, hmlt_dist, ovlp_dist, evec_dist, eval);
-        STOP();
-        
-        #if (__VERBOSITY > 2)
-        if (kp->comm().rank() == 0) {
-            DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < num_bands; i++) DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
-        }
-        #endif
-
-        /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1) {
-            /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(kp, 0, N, num_bands, eval, eval_old, evec_dist, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
-        }
-
-        /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {   
-            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
-            /* recompute wave-functions */
-            /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            //psi.transform_from<double_complex>(phi, N, evec, num_bands);
-            transform<double_complex>(phi, 0, N, evec_dist, 0, 0, psi, 0, num_bands);
-
-            /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-                break;
-            }
-            else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp->comm().rank() == 0) {
-                    DUMP("subspace size limit reached");
-                }
-                #endif
-                STOP();
-                //hmlt_old.zero();
-                //ovlp_old.zero();
-                //for (int i = 0; i < num_bands; i++) {
-                //    hmlt_old(i, i) = eval[i];
-                //    ovlp_old(i, i) = 1.0;
-                //}
-
-                /* need to compute all hpsi and opsi states (not only unconverged) */
-                if (converge_by_energy) {
-                    transform<double_complex>({&hphi, &ophi}, 0, N, evec_dist, 0, 0, {&hpsi, &opsi}, 0, num_bands);
-                    //hpsi.transform_from<double_complex>(hphi, N, evec, num_bands);
-                    //opsi.transform_from<double_complex>(ophi, N, evec, num_bands);
-                }
- 
-                /* update basis functions */
-                phi.copy_from(psi, 0, num_bands);
-                /* update hphi and ophi */
-                hphi.copy_from(hpsi, 0, num_bands);
-                ophi.copy_from(opsi, 0, num_bands);
-                /* number of basis functions that we already have */
-                N = num_bands;
-            }
-        }
-        /* expand variational subspace with new basis vectors obtatined from residuals */
-        phi.copy_from(res, 0, n, N);
-    }
-
-    kp->set_fv_eigen_values(&eval[0]);
-    kp->comm().barrier();
-}
+#include "Band/diagonalize.hpp"
+#include "Band/solve.hpp"
 
 }
 
