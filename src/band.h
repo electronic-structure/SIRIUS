@@ -729,8 +729,8 @@ class Band
 };
 
 #include "Band/get_h_o_diag.hpp"
-#include "Band/apply_h.hpp"
-#include "Band/set_fv_h_o.hpp"
+#include "Band/apply.hpp"
+#include "Band/set_lapw_h_o.hpp"
 #include "Band/residuals.hpp"
 #include "band.hpp"
 

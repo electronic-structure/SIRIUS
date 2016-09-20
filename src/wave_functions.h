@@ -61,7 +61,7 @@ class wave_functions
         int num_wf_{0};
 
         /// Plane-wave part of wave-functions.
-        std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::fft_slab>> pw_coeffs_{nullptr};
+        std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>> pw_coeffs_{nullptr};
 
         /// Muffin-tin part of wave-functions.
         std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>> mt_coeffs_{nullptr};
@@ -79,10 +79,10 @@ class wave_functions
               gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__)
         {
-            pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::fft_slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::fft_slab>(gkvec_.gvec_count(comm_.rank()),
-                                                                               num_wf_,
-                                                                               params_.processing_unit()));
+            pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()),
+                                                                           num_wf_,
+                                                                           params_.processing_unit()));
         }
 
         /// Constructor for LAPW wave-functions.
@@ -98,10 +98,10 @@ class wave_functions
               gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__)
         {
-            pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::fft_slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::fft_slab>(gkvec_.gvec_count(comm_.rank()),
-                                                                               num_wf_,
-                                                                               params_.processing_unit()));
+            pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()),
+                                                                           num_wf_,
+                                                                           params_.processing_unit()));
 
             spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
             mt_coeffs_distr_ = block_data_descriptor(comm_.size());
@@ -124,12 +124,12 @@ class wave_functions
                                                                            params_.processing_unit()));
         }
 
-        inline matrix_storage<double_complex, matrix_storage_t::fft_slab>& pw_coeffs()
+        inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs()
         {
             return *pw_coeffs_;
         }
 
-        inline matrix_storage<double_complex, matrix_storage_t::fft_slab> const& pw_coeffs() const
+        inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs() const
         {
             return *pw_coeffs_;
         }
