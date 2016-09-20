@@ -104,6 +104,7 @@ void Band::initialize_subspace(K_point* kp__,
     /* allocate wave-functions */
     wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
     wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions wf_tmp(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
 
     //#ifdef __GPU
     //if (gen_evp_solver_->type() == ev_magma)
@@ -118,7 +119,6 @@ void Band::initialize_subspace(K_point* kp__,
     dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> hmlt_old;
-    dmatrix<T> ovlp_old;
 
     std::vector<double> eval(num_bands);
     
@@ -149,17 +149,15 @@ void Band::initialize_subspace(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, hloc, d_op, q_op);
         
-        if (typeid(T) == typeid(double)) {
-            orthogonalize<T>(kp__, 0, num_phi, phi, hphi, ophi, ovlp);
-        }
+        orthogonalize<T>(0, num_phi, phi, hphi, ophi, ovlp, wf_tmp);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_h_o<T>(kp__, 0, num_phi, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);
 
         /* solve generalized eigen-value problem with the size N */
-        diag_h_o<T>(kp__, num_phi, num_bands, hmlt, ovlp, evec, eval);
+        diag_subspace_mtrx<T>(num_phi, num_bands, hmlt, evec, eval);
 
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0) {

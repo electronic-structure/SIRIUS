@@ -65,49 +65,88 @@ class Eigenproblem
         }
         
         /// Complex generalized Hermitian-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec,
-                          double_complex* A, int32_t lda,
-                          double_complex* B, int32_t ldb,
-                          double* eval,
-                          double_complex* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+        virtual int solve(int32_t         matrix_size,
+                          int32_t         nevec,
+                          double_complex* A,
+                          int32_t         lda,
+                          double_complex* B,
+                          int32_t         ldb,
+                          double*         eval,
+                          double_complex* Z,
+                          int32_t         ldz,
+                          int32_t         num_rows_loc = 0,
+                          int32_t         num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
 
         /// Real generalized symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec,
-                          double* A, int32_t lda,
-                          double* B, int32_t ldb,
+        virtual int solve(int32_t matrix_size,
+                          int32_t nevec,
+                          double* A,
+                          int32_t lda,
+                          double* B,
+                          int32_t ldb,
                           double* eval,
-                          double* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                          double* Z,
+                          int32_t ldz,
+                          int32_t num_rows_loc = 0,
+                          int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
 
-        /// Real standard symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec,
-                          double* A, int32_t lda,
+        /// Complex standard Hermitian-definite eigenproblem with with N lowest eigen-vectors.
+        virtual int solve(int32_t         matrix_size,
+                          int32_t         nevec,
+                          double_complex* A,
+                          int32_t         lda,
+                          double*         eval,
+                          double_complex* Z,
+                          int32_t         ldz,
+                          int32_t         num_rows_loc = 0,
+                          int32_t         num_cols_loc = 0) const
+        {
+            TERMINATE("solver is not implemented");
+            return -1;
+        }
+
+        /// Real standard symmetric-definite eigenproblem with N lowest eigen-vectors.
+        virtual int solve(int32_t matrix_size,
+                          int32_t nevec,
+                          double* A,
+                          int32_t lda,
                           double* eval,
-                          double* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                          double* Z,
+                          int32_t ldz,
+                          int32_t num_rows_loc = 0,
+                          int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
         
-        /// Complex standard Hermitian-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
+        /// Complex standard Hermitian-definite eigenproblem with all eigen-vectors.
+        virtual int solve(int32_t         matrix_size,
+                          double_complex* A,
+                          int32_t         lda,
+                          double*         eval,
+                          double_complex* Z,
+                          int32_t         ldz) const
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
         }
 
-        /// Real standard symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz) const
+        /// Real standard symmetric-definite eigenproblem with all eigen-vectors.
+        virtual int solve(int32_t matrix_size,
+                          double* A,
+                          int32_t lda,
+                          double* eval,
+                          double* Z,
+                          int32_t ldz) const
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
@@ -573,7 +612,12 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 
         #ifdef __SCALAPACK
-        int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
+        int solve(int32_t         matrix_size,
+                  double_complex* A,
+                  int32_t         lda,
+                  double*         eval,
+                  double_complex* Z,
+                  int32_t         ldz) const
         {
 
             int desca[9];
@@ -801,11 +845,15 @@ class Eigenproblem_scalapack: public Eigenproblem
             return 0;
         }
 
-        int solve(int32_t matrix_size,  int32_t nevec, 
-                  double* A, int32_t lda,
+        int solve(int32_t matrix_size,
+                  int32_t nevec, 
+                  double* A,
+                  int32_t lda,
                   double* eval, 
-                  double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  double* Z,
+                  int32_t ldz,
+                  int32_t num_rows_loc = 0,
+                  int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
             
@@ -873,6 +921,98 @@ class Eigenproblem_scalapack: public Eigenproblem
 
                 std::stringstream s;
                 s << "pdsyevx returned " << info; 
+                TERMINATE(s);
+            }
+
+            if ((m != nevec) || (nz != nevec))
+                TERMINATE("Not all eigen-vectors or eigen-values are found.");
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
+        }
+
+        int solve(int32_t         matrix_size,
+                  int32_t         nevec, 
+                  double_complex* A,
+                  int32_t         lda,
+                  double*         eval, 
+                  double_complex* Z,
+                  int32_t         ldz,
+                  int32_t         num_rows_loc = 0,
+                  int32_t         num_cols_loc = 0) const
+        {
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
+
+            int32_t descz[9];
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
+            
+            double orfac = 1e-6;
+            int32_t ione = 1;
+            
+            int32_t m;
+            int32_t nz;
+            double d1;
+            int32_t info;
+
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
+            std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
+            std::vector<double> w(matrix_size);
+
+            /* work size query */
+            std::vector<double_complex> work(3);
+            std::vector<double> rwork(3);
+            std::vector<int32_t> iwork(1);
+            int32_t lwork = -1;
+            int32_t lrwork = -1;
+            int32_t liwork = -1;
+            FORTRAN(pzheevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+            
+            lwork = static_cast<int32_t>(work[0].real()) + (1 << 16);
+            lrwork = static_cast<int32_t>(rwork[0]) + (1 << 16);
+            liwork = iwork[0];
+
+            work = std::vector<double_complex>(lwork);
+            rwork = std::vector<double>(lrwork);
+            iwork = std::vector<int32_t>(liwork);
+
+            FORTRAN(pzheevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+
+            if (info)
+            {
+                if ((info / 2) % 2)
+                {
+                    std::stringstream s;
+                    s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                      << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                    int k = num_ranks_row_ * num_ranks_col_;
+                    for (int i = 0; i < num_ranks_row_ * num_ranks_col_ - 1; i++)
+                    {
+                        if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
+                        {
+                            k = i + 1;
+                            break;
+                        }
+                    }
+                   
+                    s << "number of eigenvalue clusters : " << k << std::endl;
+                    for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
+                    TERMINATE(s);
+                }
+
+                std::stringstream s;
+                s << "pzheevx returned " << info; 
                 TERMINATE(s);
             }
 

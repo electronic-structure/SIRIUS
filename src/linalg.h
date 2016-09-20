@@ -145,10 +145,16 @@ class linalg<CPU>: public linalg_base
         /// Cholesky factorization
         template <typename T>
         static ftn_int potrf(ftn_int n, T* A, ftn_int lda);
+
+        template <typename T>
+        static ftn_int potrf(ftn_int n, dmatrix<T>& A);
         
         /// Inversion of triangular matrix.
         template <typename T>
         static ftn_int trtri(ftn_int n, T* A, ftn_int lda);
+
+        template <typename T>
+        static ftn_int trtri(ftn_int n, dmatrix<T>& A);
 
         template <typename T>
         static void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T aplha, T* A, ftn_int lda, T* B, ftn_int ldb);

@@ -71,7 +71,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* residuals */
     wave_functions res(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
 
-    auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
     #ifdef __GPU
     if (gen_evp_solver_->type() == ev_magma) {
@@ -143,15 +143,12 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
-        if (typeid(T) == typeid(double)) {
-            STOP();
-            //orthogonalize<T>(kp__, N, n, phi, hphi, ophi, ovlp);
-        }
+        orthogonalize<T>(N, n, phi, hphi, ophi, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_h_o<T>(kp__, N, n, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
 
         /* increase size of the variation space */
         N += n;
@@ -159,7 +156,7 @@ void Band::diag_pseudo_potential_davidson(K_point* kp__,
         eval_old = eval;
 
         /* solve generalized eigen-value problem with the size N */
-        diag_h_o<T>(kp__, N, num_bands, hmlt, ovlp, evec, eval);
+        diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
         
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0) {
