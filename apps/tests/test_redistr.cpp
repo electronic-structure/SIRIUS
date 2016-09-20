@@ -215,10 +215,10 @@ void test_redistr4(std::vector<int> mpi_grid_dims, int M, int N)
     }
     
     /* cache cartesian ranks */
-    mdarray<int, 2> cart_rank(mtrx.blacs_grid()->num_ranks_row(), mtrx.blacs_grid()->num_ranks_col());
-    for (int i = 0; i < mtrx.blacs_grid()->num_ranks_col(); i++) {
-        for (int j = 0; j < mtrx.blacs_grid()->num_ranks_row(); j++) {
-            cart_rank(j, i) = mtrx.blacs_grid()->cart_rank(j, i);
+    mdarray<int, 2> cart_rank(mtrx.blacs_grid().num_ranks_row(), mtrx.blacs_grid().num_ranks_col());
+    for (int i = 0; i < mtrx.blacs_grid().num_ranks_col(); i++) {
+        for (int j = 0; j < mtrx.blacs_grid().num_ranks_row(); j++) {
+            cart_rank(j, i) = mtrx.blacs_grid().cart_rank(j, i);
         }
     }
 
@@ -305,6 +305,170 @@ void test_redistr4(std::vector<int> mpi_grid_dims, int M, int N)
 
 }
 
+void test_redistr5(std::vector<int> mpi_grid_dims, int M, int N)
+{
+    if (mpi_grid_dims.size() != 2) {
+        TERMINATE("2d MPI grid is expected");
+    }
+
+    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims[0], mpi_grid_dims[1]);
+
+    dmatrix<double> mtrx(M, N, blacs_grid, 2, 2);
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < M; j++) {
+            mtrx.set(j, i, double((j + 1) * (i + 1)));
+        }
+    }
+    
+    /* cache cartesian ranks */
+    mdarray<int, 2> cart_rank(mtrx.blacs_grid().num_ranks_row(), mtrx.blacs_grid().num_ranks_col());
+    for (int i = 0; i < mtrx.blacs_grid().num_ranks_col(); i++) {
+        for (int j = 0; j < mtrx.blacs_grid().num_ranks_row(); j++) {
+            cart_rank(j, i) = mtrx.blacs_grid().cart_rank(j, i);
+        }
+    }
+
+    const int BS = 4;
+
+    mdarray<double, 1> buf(BS * BS);
+
+    block_data_descriptor sd(mpi_comm_world().size());
+
+    for (int icol = 0; icol < BS; icol++) {
+        auto pos_icol = mtrx.spl_col().location(icol);
+        for (int irow = 0; irow < BS; irow++) {
+            auto pos_irow = mtrx.spl_row().location(irow);
+            sd.counts[cart_rank(pos_icol.second, pos_irow.second)]++;
+        }
+    }
+    if (mpi_comm_world().rank() == 0) {
+        for (int i = 0; i < mpi_comm_world().size(); i++) {
+            printf("%i\n", sd.counts[i]);
+        }
+    }
+
+    sd.calc_offsets();
+    buf.zero();
+    int k{0};
+    for (int icol = 0; icol < BS; icol++) {
+        auto pos_icol = mtrx.spl_col().location(icol);
+        for (int irow = 0; irow < BS; irow++) {
+            auto pos_irow = mtrx.spl_row().location(irow);
+            if (pos_icol.second == mtrx.rank_col() && pos_irow.second == mtrx.rank_row()) {
+                buf[sd.offsets[cart_rank(pos_irow.second, pos_icol.second)] + k] = mtrx(pos_irow.first, pos_icol.first);
+                k++;
+            }
+        }
+    }
+
+    mpi_comm_world().allgather(&buf[0], sd.counts.data(), sd.offsets.data());
+
+    mdarray<double, 1> buf1(BS * BS);
+
+    sd.counts = std::vector<int>(mpi_comm_world().size(), 0);
+
+    for (int icol = 0; icol < BS; icol++) {
+        auto pos_icol = mtrx.spl_col().location(icol);
+        for (int irow = 0; irow < BS; irow++) {
+            auto pos_irow = mtrx.spl_row().location(irow);
+            int rank = cart_rank(pos_irow.second, pos_icol.second);
+
+            buf1[irow + icol * BS] = buf[sd.offsets[rank] + sd.counts[rank]];
+            sd.counts[rank]++;
+        }
+    }
+
+    if (mpi_comm_world().rank() == 0) {
+        for (int i = 0; i < BS; i++) {
+            for (int j = 0; j < BS; j++) {
+                printf("%4.2f ", buf1[i + j * BS]);
+            }
+            printf("\n");
+        }
+    }
+    //splindex<block> spl_row(M, mpi_comm_world().size(), mpi_comm_world().rank());
+    //matrix<double> mtrx2(spl_row.local_size(), N);
+
+    //block_data_descriptor sd(mpi_comm_world().size());
+    //block_data_descriptor rd(mpi_comm_world().size());
+    //std::vector<double> sbuf(mtrx.size());
+    //std::vector<double> rbuf(mtrx2.size());
+
+    //std::vector<int> recv_row_rank(spl_row.local_size());
+    //for (int irow = 0; irow < spl_row.local_size(); irow++) {
+    //    recv_row_rank[irow] = mtrx.spl_row().local_rank(spl_row[irow]);
+    //}
+
+    //auto pack = [&mtrx, &cart_rank, &spl_row, &recv_row_rank, &sd, &rd, &sbuf]()
+    //{
+    //    std::vector<int> row_rank(mtrx.num_rows_local());
+    //    /* cache receiving ranks */
+    //    for (int irow = 0; irow < mtrx.num_rows_local(); irow++) {
+    //        int rank = spl_row.local_rank(mtrx.irow(irow));
+    //        row_rank[irow] = rank;
+    //        sd.counts[rank] += mtrx.num_cols_local();
+    //    }
+    //    sd.calc_offsets();
+    //    sd.counts = std::vector<int>(mpi_comm_world().size(), 0);
+    //    /* pack for all rank */
+    //    for (int icol = 0; icol < mtrx.num_cols_local(); icol++) {
+    //        for (int irow = 0; irow < mtrx.num_rows_local(); irow++) {
+    //            int rank = row_rank[irow];
+    //            sbuf[sd.offsets[rank] + sd.counts[rank]] = mtrx(irow, icol);
+    //            sd.counts[rank]++;
+    //        }
+    //    }
+    //    
+    //    /* compute receiving counts and offsets */
+    //    for (int icol = 0; icol < mtrx.num_cols(); icol++) {
+    //        auto location_col = mtrx.spl_col().location(icol);
+    //        for (int irow = 0; irow < spl_row.local_size(); irow++) {
+    //            rd.counts[cart_rank(recv_row_rank[irow], location_col.second)]++;
+    //        }
+    //    }
+    //    rd.calc_offsets();
+    //};
+    //
+    //runtime::Timer t1("pack");
+    //pack();
+    //t1.stop();
+
+
+    //runtime::Timer t2("a2a");
+    //mpi_comm_world().alltoall(sbuf.data(), sd.counts.data(), sd.offsets.data(),
+    //                          rbuf.data(), rd.counts.data(), rd.offsets.data());
+    //t2.stop();
+
+    //runtime::Timer t3("unpack");
+    //rd.counts = std::vector<int>(mpi_comm_world().size(), 0);
+
+    //for (int icol = 0; icol < N; icol++) {
+    //    auto location_col = mtrx.spl_col().location(icol);
+    //    for (int irow = 0; irow < spl_row.local_size(); irow++) {
+    //        int rank = cart_rank(recv_row_rank[irow], location_col.second);
+    //        mtrx2(irow, icol) = rbuf[rd.offsets[rank] + rd.counts[rank]];
+    //        rd.counts[rank]++;
+    //    }
+    //}
+    //t3.stop();
+
+
+
+
+    //for (int i = 0; i < N; i++) {
+    //    for (int j = 0; j < spl_row.local_size(); j++) {
+    //        int jglob = spl_row[j];
+    //        if (std::abs(mtrx2(j, i) - double((jglob + 1) * (i + 1))) > 1e-14) {
+    //            TERMINATE("error");
+    //        }
+    //        //pout.printf("%4i ", mtrx2(j, i));
+    //    }
+    //    //pout.printf("\n");
+    //}
+
+
+}
+
 int main(int argn, char** argv)
 {
     cmd_args args;
@@ -326,7 +490,7 @@ int main(int argn, char** argv)
     sirius::initialize(1);
     //test_redistr(mpi_grid_dims, M, N);
     //test_redistr3();
-    test_redistr4(mpi_grid_dims, M, N);
+    test_redistr5(mpi_grid_dims, M, N);
     runtime::Timer::print();
     sirius::finalize();
 }
