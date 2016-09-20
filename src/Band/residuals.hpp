@@ -209,8 +209,11 @@ inline int Band::residuals(K_point* kp__,
                 ev_idx.push_back(i);
             }
         }
-        n = static_cast<int>(ev_idx.size());
-        
+
+        if ((n = static_cast<int>(ev_idx.size())) == 0) {
+            return 0;
+        }
+
         std::vector<double> eval_tmp(n);
 
         int bs = ctx_.cyclic_block_size();

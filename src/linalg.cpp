@@ -579,12 +579,32 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 }
 
 template<>
+ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
+{
+    ftn_int ia{1};
+    ftn_int ja{1};
+    ftn_int info;
+    FORTRAN(pdpotrf)("U", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1);
+    return info;
+}
+
+template<>
 ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
     FORTRAN(pzpotrf)("U", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1);
+    return info;
+}
+
+template<>
+ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
+{
+    ftn_int ia{1};
+    ftn_int ja{1};
+    ftn_int info;
+    FORTRAN(pdtrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
 

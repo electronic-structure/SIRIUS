@@ -382,6 +382,59 @@ class Eigenproblem_lapack: public Eigenproblem
             return 0;
         }
 
+        int solve(int32_t         matrix_size,
+                  int             nevec,
+                  double_complex* A,
+                  int32_t         lda,
+                  double*         eval,
+                  double_complex* Z,
+                  int32_t         ldz,
+                  int32_t         num_rows_loc = 0,
+                  int32_t         num_cols_loc = 0) const
+        {
+            int32_t lwork = -1;
+            double vl, vu;
+            int32_t il, iu, m, info;
+            std::vector<double> w(matrix_size);
+            std::vector<int32_t> iwork(5 * matrix_size);
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<double> rwork(7 * matrix_size);
+            std::vector<double_complex> work(3);
+
+            il = 1;
+            iu = nevec;
+
+            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info,
+                            (int32_t)1, (int32_t)1, (int32_t)1);
+
+            lwork = static_cast<int32_t>(work[0].real()) + 1;
+            work.resize(lwork);
+
+            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info,
+                            (int32_t)1, (int32_t)1, (int32_t)1);
+            
+            if (m != nevec) {
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                WARNING(s);
+                return 1;
+            }
+
+            if (info) {
+                std::stringstream s;
+                s << "dsyevx returned " << info; 
+                TERMINATE(s);
+            }
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
+            return 0;
+        }
+
         bool parallel() const
         {
             return false;

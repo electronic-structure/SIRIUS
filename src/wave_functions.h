@@ -446,6 +446,9 @@ inline void transform(double alpha__,
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
 
+    assert(n__ != 0);
+    assert(m__ != 0);
+
     assert(wf_in__.size() == wf_out__.size());
     int nwf = static_cast<int>(wf_in__.size()); 
     auto& comm = mtrx__.blacs_grid().comm();
@@ -472,16 +475,17 @@ inline void transform(double alpha__,
             linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                               alpha,
                               wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                              (double_complex*)mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(),
+                              reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
                               beta,
                               wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
 
             if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
-                STOP();
-                //linalg<CPU>::gemm(0, 0, mt_coeffs().num_rows_loc(), n__, nwf__,
-                //                  wf__.mt_coeffs().prime().at<CPU>(), wf__.mt_coeffs().prime().ld(),
-                //                  mtrx__.at<CPU>(), mtrx__.ld(),
-                //                  mt_coeffs().prime().at<CPU>(), mt_coeffs().prime().ld());
+                linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
+                                  alpha,
+                                  wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
+                                  reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
+                                  beta,
+                                  wf_out__->mt_coeffs().prime().at<CPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
             }
         }
 
@@ -489,10 +493,10 @@ inline void transform(double alpha__,
             double beta{1};
             linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                               alpha__,
-                              (double*)wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), 2 * wf_in__->pw_coeffs().prime().ld(),
-                              (double*)mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(),
+                              reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
+                              reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
                               beta,
-                              (double*)wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), 2 * wf_out__->pw_coeffs().prime().ld());
+                              reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
             if (wf_in__->params().full_potential()) {
                 TERMINATE_NOT_IMPLEMENTED;
             }
@@ -523,8 +527,8 @@ inline void transform(double alpha__,
 
     const int BS = sddk_block_size;
 
-    mdarray<T, 1> buf(BS * BS);
-    matrix<T> submatrix(BS, BS);
+    mdarray<T, 1> buf(BS * BS, memory_t::host, "buf");
+    matrix<T> submatrix(BS, BS, memory_t::host, "submatrix");
 
     /* cache cartesian ranks */
     mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());
@@ -544,6 +548,8 @@ inline void transform(double alpha__,
         int j0 = ibc * BS;
         /* actual number of columns in the submatrix */
         int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+
+        assert(ncol != 0);
         
         splindex<block_cyclic> spl_col_begin(icol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
         splindex<block_cyclic>   spl_col_end(icol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
@@ -555,6 +561,8 @@ inline void transform(double alpha__,
             int i0 = ibr * BS;
             /* actual number of rows in the submatrix */
             int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+
+            assert(nrow != 0);
 
             splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
             splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());

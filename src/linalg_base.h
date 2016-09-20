@@ -357,6 +357,15 @@ void FORTRAN(pzgemr2d)(ftn_int*            m,
                        ftn_int const*      descb,
                        ftn_int*            gcontext);
 
+void FORTRAN(pdpotrf)(ftn_char       uplo,
+                      ftn_int*       n,
+                      ftn_double*    A,
+                      ftn_int*       ia,
+                      ftn_int*       ja,
+                      ftn_int const* desca,
+                      ftn_int*       info,
+                      ftn_len        uplo_len);
+
 void FORTRAN(pzpotrf)(ftn_char            uplo,
                       ftn_int*            n,
                       ftn_double_complex* A,
@@ -376,6 +385,17 @@ void FORTRAN(pztrtri)(ftn_char            uplo,
                       ftn_int*            info,
                       ftn_len             uplo_len,
                       ftn_len             diag_len);
+
+void FORTRAN(pdtrtri)(ftn_char       uplo,
+                      ftn_char       diag,
+                      ftn_int*       n,
+                      ftn_double*    A,
+                      ftn_int*       ia,
+                      ftn_int*       ja,
+                      ftn_int const* desca,
+                      ftn_int*       info,
+                      ftn_len        uplo_len,
+                      ftn_len        diag_len);
 #endif
 
 /*
@@ -410,6 +430,35 @@ void FORTRAN(dsyevx)(ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n, f
                      ftn_double* vl, ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m,
                      ftn_double* w, ftn_double* z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork,
                      ftn_int* ifail, ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
+
+/* ZHEEVX computes selected eigenvalues and, optionally, eigenvectors
+ * of a complex Hermitian matrix A.  Eigenvalues and eigenvectors can
+ * be selected by specifying either a range of values or a range of
+ * indices for the desired eigenvalues. */
+void FORTRAN(zheevx)(ftn_char            jobz,
+                     ftn_char            range,
+                     ftn_char            uplo,
+                     ftn_int*            n,
+                     ftn_double_complex* A,
+                     ftn_int*            lda,
+                     ftn_double*         vl,
+                     ftn_double*         vu,
+                     ftn_int*            il,
+                     ftn_int*            iu,
+                     ftn_double const*   abstol,
+                     ftn_int*            m,
+                     ftn_double*         w,
+                     ftn_double_complex* z,
+                     ftn_int*            ldz,
+                     ftn_double_complex* work,
+                     ftn_int*            lwork,
+                     ftn_double*         rwork,
+                     ftn_int*            iwork,
+                     ftn_int*            ifail,
+                     ftn_int*            info,
+                     ftn_len             jobzlen,
+                     ftn_len             rangelen,
+                     ftn_len             uplolen);
 
 }
 
