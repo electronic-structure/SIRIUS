@@ -295,7 +295,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
                     DUMP("subspace size limit reached");
                 }
                 #endif
-                hmlt.zero();
+                hmlt_old.zero();
                 for (int i = 0; i < num_bands; i++) {
                     hmlt_old.set(i, i, eval[i]);
                 }
