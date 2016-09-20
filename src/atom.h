@@ -72,7 +72,7 @@ class Atom
         int offset_lo_{-1}; // TODO: better name for this
 
         /// Offset in the wave-function array.
-        int offset_wf_{-1}; // TODO: better name for this
+        int offset_mt_coeffs_{-1};
 
         /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
         mdarray<double_complex, 4> occupation_matrix_;
@@ -107,13 +107,13 @@ class Atom
         }
 
         /// Initialize atom.
-        void init(int offset_aw__, int offset_lo__, int offset_wf__)
+        void init(int offset_aw__, int offset_lo__, int offset_mt_coeffs__)
         {
             assert(offset_aw__ >= 0);
 
             offset_aw_ = offset_aw__;
             offset_lo_ = offset_lo__;
-            offset_wf_ = offset_wf__;
+            offset_mt_coeffs_ = offset_mt_coeffs__;
 
             lmax_pot_ = type().parameters().lmax_pot();
 
@@ -258,10 +258,10 @@ class Atom
             return offset_lo_;  
         }
         
-        inline int offset_wf() const
+        inline int offset_mt_coeffs() const
         {
-            assert(offset_wf_ >= 0);
-            return offset_wf_;  
+            assert(offset_mt_coeffs_ >= 0);
+            return offset_mt_coeffs_;  
         }
 
         inline double const* h_radial_integrals(int idxrf1, int idxrf2) const

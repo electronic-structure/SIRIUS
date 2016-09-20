@@ -1321,7 +1321,7 @@ void sirius_get_basis_functions_index(int32_t* mt_basis_size, int32_t* offset_wf
     for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
     {
         mt_basis_size[ia] = sim_ctx->unit_cell().atom(ia).type().mt_basis_size();
-        offset_wf[ia] = sim_ctx->unit_cell().atom(ia).offset_wf();
+        offset_wf[ia] = sim_ctx->unit_cell().atom(ia).offset_mt_coeffs();
 
         for (int j = 0; j < sim_ctx->unit_cell().atom(ia).type().mt_basis_size(); j++)
         {

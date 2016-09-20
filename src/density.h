@@ -1287,8 +1287,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
         std::vector<double_complex> psi_r(ctx_.fft().local_size());
 
         #pragma omp for schedule(dynamic, 1)
-        for (int i = 0; i < kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col().local_size(); i++)
-        {
+        for (int i = 0; i < kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col().local_size(); i++) {
             int j = kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col()[i];
             double w = kp__->band_occupancy(j) * kp__->weight() / omega;
 
@@ -1299,8 +1298,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             /* transform dn- component of spinor wave function */
             ctx_.fft().transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(1).pw_coeffs().extra().template at<CPU>(0, i));
 
-            if (ctx_.fft().hybrid())
-            {
+            if (ctx_.fft().hybrid()) {
                 STOP();
                 //#ifdef __GPU
                 //update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
@@ -1308,12 +1306,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 //#else
                 //TERMINATE_NO_GPU
                 //#endif
-            }
-            else
-            {
+            } else {
                 #pragma omp parallel for
-                for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
-                {
+                for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
                     auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
                     auto r1 = (std::pow(ctx_.fft().buffer(ir).real(), 2) +
                                std::pow(ctx_.fft().buffer(ir).imag(), 2)) * w;
