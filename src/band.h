@@ -113,7 +113,15 @@ class Band
        
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
-                                    Periodic_function<double>* effective_potential__) const;
+                                    Periodic_function<double>* effective_potential__) const
+        {
+            auto& itso = ctx_.iterative_solver_input_section();
+            if (itso.type_ == "exact") {
+                diag_fv_full_potential_exact(kp, effective_potential);
+            } else if (itso.type_ == "davidson") {
+                diag_fv_full_potential_davidson(kp, effective_potential);
+            }
+        }
 
         void diag_fv_full_potential_exact(K_point* kp__,
                                           Periodic_function<double>* effective_potential__) const;
@@ -211,15 +219,6 @@ class Band
                                              Q_operator<T>& q_op__,
                                              P_operator<T>& p_op__) const;
 
-        //== template <typename T>
-        //== inline void diag_h_o(K_point* kp__,
-        //==                      int N__,
-        //==                      int num_bands__,
-        //==                      dmatrix<T>& hmlt_dist__,
-        //==                      dmatrix<T>& ovlp_dist__,
-        //==                      dmatrix<T>& evec_dist__,
-        //==                      std::vector<double>& eval__) const;
-
         template <typename T>
         inline void apply_h(K_point* kp__,
                             int ispn__, 
@@ -242,18 +241,6 @@ class Band
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
         
-        //== template <typename T>
-        //== inline void set_h_o(K_point* kp__,
-        //==                     int N__,
-        //==                     int n__,
-        //==                     wave_functions& phi__,
-        //==                     wave_functions& hphi__,
-        //==                     wave_functions& ophi__,
-        //==                     dmatrix<T>& h__,
-        //==                     dmatrix<T>& o__,
-        //==                     dmatrix<T>& h_old__,
-        //==                     dmatrix<T>& o_old__) const;
-
         template <typename T>
         inline void set_subspace_mtrx(int N__,
                                       int n__,
@@ -267,7 +254,25 @@ class Band
                                        int num_bands__,
                                        dmatrix<T>& mtrx_dist__,
                                        dmatrix<T>& evec_dist__,
-                                       std::vector<double>& eval__) const;
+                                       std::vector<double>& eval__) const
+        {
+            PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
+
+            int result = std_evp_solver()->solve(N__,  num_bands__, mtrx_dist__.template at<CPU>(), mtrx_dist__.ld(),
+                                                 &eval__[0], evec_dist__.template at<CPU>(), evec_dist__.ld(),
+                                                 mtrx_dist__.num_rows_local(), mtrx_dist__.num_cols_local());
+            if (result) {
+                std::stringstream s;
+                s << "error in diagonalziation";
+                TERMINATE(s);
+            }
+
+            ///* copy eigen-vectors to GPU */
+            //#ifdef __GPU
+            //if (ctx_.processing_unit() == GPU)
+            //    acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
+            //#endif
+        }
 
         template <typename T>
         inline int residuals(K_point* kp__,
@@ -681,7 +686,8 @@ class Band
         }
 
         /// Solve second-variational problem
-        void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void solve_sv(K_point* kp,
+                             Periodic_function<double>* effective_magnetic_field[3]) const;
 
         void solve_fd(K_point* kp,
                       Periodic_function<double>* effective_potential, 
@@ -732,181 +738,8 @@ class Band
 #include "Band/apply.hpp"
 #include "Band/set_lapw_h_o.hpp"
 #include "Band/residuals.hpp"
+#include "Band/solve_sv.hpp"
 #include "band.hpp"
-
-//== /** \param [in] phi Input wave-functions [storage: CPU && GPU].
-//==  *  \param [in] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
-//==  *  \param [in] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
-//==  */
-//== template <>
-//== inline void Band::set_h_o<double_complex>(K_point* kp__,
-//==                                           int N__,
-//==                                           int n__,
-//==                                           wave_functions& phi__,
-//==                                           wave_functions& hphi__,
-//==                                           wave_functions& ophi__,
-//==                                           dmatrix<double_complex>& h__,
-//==                                           dmatrix<double_complex>& o__,
-//==                                           dmatrix<double_complex>& h_old__,
-//==                                           dmatrix<double_complex>& o_old__) const
-//== {
-//==     PROFILE_WITH_TIMER("sirius::Band::set_h_o");
-//==     
-//==     assert(n__ != 0);
-//== 
-//==     if (N__ > 0) {
-//==         splindex<block_cyclic> spl_row(N__, h__.blacs_grid().num_ranks_row(), h__.blacs_grid().rank_row(), h__.bs_row());
-//==         splindex<block_cyclic> spl_col(N__, h__.blacs_grid().num_ranks_col(), h__.blacs_grid().rank_col(), h__.bs_col());
-//== 
-//==         /* copy old Hamiltonian and overlap */
-//==         for (int i = 0; i < spl_col.local_size(); i++) {
-//==             std::memcpy(&h__(0, i), &h_old__(0, i), spl_row.local_size() * sizeof(double_complex));
-//==             //std::memcpy(&o__(0, i), &o_old__(0, i), spl_row.local_size() * sizeof(double_complex));
-//==         }
-//==     }
-//== 
-//==     /* <{phi,res}|H|res> */
-//==     inner(phi__, 0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
-//==     /* <{phi,res}|O|res> */
-//==     //inner(phi__, 0, N__ + n__, ophi__, N__, n__, o__, 0, N__);
-//== 
-//==     //== #ifdef __PRINT_OBJECT_CHECKSUM
-//==     //== double_complex cs1(0, 0);
-//==     //== double_complex cs2(0, 0);
-//==     //== for (int i = 0; i < N__ + n__; i++)
-//==     //== {
-//==     //==     for (int j = 0; j <= i; j++) 
-//==     //==     {
-//==     //==         cs1 += h__(j, i);
-//==     //==         cs2 += o__(j, i);
-//==     //==     }
-//==     //== }
-//==     //== DUMP("checksum(h): %18.10f %18.10f", cs1.real(), cs1.imag());
-//==     //== DUMP("checksum(o): %18.10f %18.10f", cs2.real(), cs2.imag());
-//==     //== #endif
-//== 
-//==     //for (int i = 0; i < N__ + n__; i++)
-//==     //{
-//==     //    //= if (h__(i, i).imag() > 1e-12)
-//==     //    //= {
-//==     //    //=     std::stringstream s;
-//==     //    //=     s << "wrong diagonal of H: " << h__(i, i);
-//==     //    //=     TERMINATE(s);
-//==     //    //= }
-//==     //    //= if (o__(i, i).imag() > 1e-12)
-//==     //    //= {
-//==     //    //=     std::stringstream s;
-//==     //    //=     s << "wrong diagonal of O: " << o__(i, i);
-//==     //    //=     TERMINATE(s);
-//==     //    //= }
-//==     //    h__(i, i) = h__(i, i).real();
-//==     //    o__(i, i) = o__(i, i).real();
-//==     //}
-//== 
-//==     //#if (__VERIFICATION > 0)
-//==     ///* check n__ * n__ block */
-//==     //for (int i = N__; i < N__ + n__; i++) {
-//==     //    for (int j = N__; j < N__ + n__; j++) {
-//==     //        if (std::abs(h__(i, j) - std::conj(h__(j, i))) > 1e-10 ||
-//==     //            std::abs(o__(i, j) - std::conj(o__(j, i))) > 1e-10) {
-//==     //            double_complex z1, z2;
-//==     //            z1 = h__(i, j);
-//==     //            z2 = h__(j, i);
-//== 
-//==     //            std::cout << "h(" << i << "," << j << ")=" << z1 << " "
-//==     //                      << "h(" << j << "," << i << ")=" << z2 << ", diff=" << std::abs(z1 - std::conj(z2)) << std::endl;
-//==     //            
-//==     //            z1 = o__(i, j);
-//==     //            z2 = o__(j, i);
-//== 
-//==     //            std::cout << "o(" << i << "," << j << ")=" << z1 << " "
-//==     //                      << "o(" << j << "," << i << ")=" << z2 << ", diff=" << std::abs(z1 - std::conj(z2)) << std::endl;
-//==     //            
-//==     //        }
-//==     //    }
-//==     //}
-//==     //#endif
-//== 
-//==     if (N__ > 0) {
-//==         linalg<CPU>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
-//==         //linalg<CPU>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
-//==     }
-//==     
-//==     //int i0 = N__;
-//==     //if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2) {
-//==     //    /* restore the lower part */
-//==     //    #pragma omp parallel for
-//==     //    for (int i = 0; i < N__; i++) {
-//==     //        for (int j = N__; j < N__ + n__; j++) {
-//==     //            h__(j, i) = std::conj(h__(i, j));
-//==     //            o__(j, i) = std::conj(o__(i, j));
-//==     //        }
-//==     //    }
-//==     //    i0 = 0;
-//==     //}
-//== 
-//==     splindex<block_cyclic> spl_row(N__ + n__, h__.blacs_grid().num_ranks_row(), h__.blacs_grid().rank_row(), h__.bs_row());
-//==     splindex<block_cyclic> spl_col(N__ + n__, h__.blacs_grid().num_ranks_col(), h__.blacs_grid().rank_col(), h__.bs_col());
-//== 
-//==     /* save Hamiltonian and overlap */
-//==     #pragma omp parallel for
-//==     for (int i = 0; i < spl_col.local_size(); i++) {
-//==         if (h_old__.size()) {
-//==             std::memcpy(&h_old__(0, i), &h__(0, i), spl_row.local_size() * sizeof(double_complex));
-//==         }
-//==         //if (o_old__.size()) {
-//==         //    std::memcpy(&o_old__(0, i), &o__(0, i), spl_row.local_size() * sizeof(double_complex));
-//==         //}
-//==     }
-//== }
-//== 
-//== template <>
-//== inline void Band::set_h_o<double>(K_point* kp__,
-//==                                   int N__,
-//==                                   int n__,
-//==                                   wave_functions& phi__,
-//==                                   wave_functions& hphi__,
-//==                                   wave_functions& ophi__,
-//==                                   dmatrix<double>& h__,
-//==                                   dmatrix<double>& o__,
-//==                                   dmatrix<double>& h_old__,
-//==                                   dmatrix<double>& o_old__) const
-//== {
-//==     PROFILE_WITH_TIMER("sirius::Band::set_h_o");
-//==     
-//==     assert(n__ != 0);
-//== 
-//==     STOP();
-//== 
-//==     ///* copy old Hamiltonian */
-//==     //for (int i = 0; i < N__; i++) {
-//==     //    std::memcpy(&h__(0, i), &h_old__(0, i), N__ * sizeof(double));
-//==     //}
-//== 
-//==     ///* <{phi,res}|H|res> */
-//==     //inner(phi__, 0, N__ + n__, hphi__, N__, n__, h__, 0, N__);
-//== 
-//==     //int i0 = N__;
-//==     //if (gen_evp_solver_->type() == ev_magma || gen_evp_solver_->type() == ev_elpa1 || gen_evp_solver_->type() == ev_elpa2) {
-//==     //    /* restore the lower part */
-//==     //    #pragma omp parallel for
-//==     //    for (int i = 0; i < N__; i++) {
-//==     //        for (int j = N__; j < N__ + n__; j++) {
-//==     //            h__(j, i) = h__(i, j);
-//==     //        }
-//==     //    }
-//==     //    i0 = 0;
-//==     //}
-//== 
-//==     ///* save Hamiltonian */
-//==     //if (h_old__.size()) {
-//==     //    #pragma omp parallel for
-//==     //    for (int i = i0; i < N__ + n__; i++) {
-//==     //        std::memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double));
-//==     //    }
-//==     //}
-//== }
-
 
 template <typename T>
 inline void Band::set_subspace_mtrx(int N__,
@@ -975,146 +808,6 @@ inline void Band::set_subspace_mtrx(int N__,
         for (int i = 0; i < spl_col.local_size(); i++) {
             std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
         }
-    }
-}
-
-template <typename T>
-inline void Band::diag_subspace_mtrx(int N__,
-                                     int num_bands__,
-                                     dmatrix<T>& mtrx_dist__,
-                                     dmatrix<T>& evec_dist__,
-                                     std::vector<double>& eval__) const
-{
-    PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
-
-    int result = std_evp_solver()->solve(N__,  num_bands__, mtrx_dist__.template at<CPU>(), mtrx_dist__.ld(),
-                                         &eval__[0], evec_dist__.template at<CPU>(), evec_dist__.ld(),
-                                         mtrx_dist__.num_rows_local(), mtrx_dist__.num_cols_local());
-    if (result) {
-        std::stringstream s;
-        s << "error in diagonalziation";
-        TERMINATE(s);
-    }
-
-    ///* copy eigen-vectors to GPU */
-    //#ifdef __GPU
-    //if (ctx_.processing_unit() == GPU)
-    //    acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
-    //#endif
-}
-
-//== template <>
-//== inline void Band::diag_h_o<double_complex>(K_point* kp__,
-//==                                            int N__,
-//==                                            int num_bands__,
-//==                                            dmatrix<double_complex>& hmlt_dist__,
-//==                                            dmatrix<double_complex>& ovlp_dist__,
-//==                                            dmatrix<double_complex>& evec_dist__,
-//==                                            std::vector<double>& eval__) const
-//== {
-//==     PROFILE_WITH_TIMER("sirius::Band::diag_h_o");
-//== 
-//==     //runtime::Timer t1("sirius::Band::diag_h_o|load");
-//==     //if (kp__->comm().size() > 1 && gen_evp_solver()->parallel())
-//==     //{
-//==     //    for (int jloc = 0; jloc < hmlt_dist__.num_cols_local(); jloc++)
-//==     //    {
-//==     //        int j = hmlt_dist__.icol(jloc);
-//==     //        for (int iloc = 0; iloc < hmlt_dist__.num_rows_local(); iloc++)
-//==     //        {
-//==     //            int i = hmlt_dist__.irow(iloc);
-//==     //            hmlt_dist__(iloc, jloc) = (i > j) ? std::conj(hmlt__(j, i)) : hmlt__(i, j);
-//==     //            ovlp_dist__(iloc, jloc) = (i > j) ? std::conj(ovlp__(j, i)) : ovlp__(i, j);
-//==     //        }
-//==     //    }
-//==     //}
-//==     //t1.stop();
-//== 
-//==     runtime::Timer t2("sirius::Band::diag_h_o|diag");
-//==     //int result = gen_evp_solver()->solve(N__,  num_bands__, hmlt_dist__.at<CPU>(), hmlt_dist__.ld(),
-//==     //                                     ovlp_dist__.at<CPU>(), ovlp_dist__.ld(), &eval__[0], evec_dist__.at<CPU>(),
-//==     //                                     evec_dist__.ld(), hmlt_dist__.num_rows_local(), hmlt_dist__.num_cols_local());
-//==     int result = std_evp_solver()->solve(N__,  num_bands__, hmlt_dist__.at<CPU>(), hmlt_dist__.ld(),
-//==                                          &eval__[0], evec_dist__.at<CPU>(), evec_dist__.ld(),
-//==                                          hmlt_dist__.num_rows_local(), hmlt_dist__.num_cols_local());
-//==     if (result) {
-//==         std::stringstream s;
-//==         s << "error in diagonalziation for k-point (" << kp__->vk()[0] << " " << kp__->vk()[1] << " " << kp__->vk()[2] << ")";
-//==         TERMINATE(s);
-//==     }
-//==     t2.stop();
-//== 
-//==     //// --== DEBUG ==--
-//==     //printf("checking evec\n");
-//==     //for (int i = 0; i < num_bands__; i++)
-//==     //{
-//==     //    for (int j = 0; j < N__; j++)
-//==     //    {
-//==     //        if (std::abs(evec__(j, i).imag()) > 1e-12)
-//==     //        {
-//==     //            printf("evec(%i, %i) = %20.16f %20.16f\n", i, j, evec__(j, i).real(), evec__(j, i).real());
-//==     //        }
-//==     //    }
-//==     //}
-//==     //printf("done.\n");
-//== 
-//==     /* copy eigen-vectors to GPU */
-//==     #ifdef __GPU
-//==     if (ctx_.processing_unit() == GPU)
-//==         acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
-//==     #endif
-//== }
-//== 
-//== template <>
-//== inline void Band::diag_h_o<double>(K_point* kp__,
-//==                                    int N__,
-//==                                    int num_bands__,
-//==                                    dmatrix<double>& hmlt_dist__,
-//==                                    dmatrix<double>& ovlp_dist__,
-//==                                    dmatrix<double>& evec_dist__,
-//==                                    std::vector<double>& eval__) const
-//== {
-//==     PROFILE_WITH_TIMER("sirius::Band::diag_h_o");
-//== 
-//==     //runtime::Timer t1("sirius::Band::diag_h_o|load");
-//==     //if (kp__->comm().size() > 1 && std_evp_solver()->parallel())
-//==     //{
-//==     //    for (int jloc = 0; jloc < hmlt_dist__.num_cols_local(); jloc++)
-//==     //    {
-//==     //        int j = hmlt_dist__.icol(jloc);
-//==     //        for (int iloc = 0; iloc < hmlt_dist__.num_rows_local(); iloc++)
-//==     //        {
-//==     //            int i = hmlt_dist__.irow(iloc);
-//==     //            hmlt_dist__(iloc, jloc) = (i > j) ? hmlt__(j, i) : hmlt__(i, j);
-//==     //        }
-//==     //    }
-//==     //}
-//==     //t1.stop();
-//== 
-//==     runtime::Timer t2("sirius::Band::diag_h_o|diag");
-//==     int result = std_evp_solver()->solve(N__,  num_bands__, hmlt_dist__.at<CPU>(), hmlt_dist__.ld(),
-//==                                          &eval__[0], evec_dist__.at<CPU>(), evec_dist__.ld(),
-//==                                          hmlt_dist__.num_rows_local(), hmlt_dist__.num_cols_local());
-//==     if (result) {
-//==         TERMINATE("error in diagonalziation");
-//==     }
-//==     t2.stop();
-//== 
-//==     /* copy eigen-vectors to GPU */
-//==     #ifdef __GPU
-//==     if (ctx_.processing_unit() == GPU)
-//==         acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
-//==     #endif
-//== }
-
-
-inline void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential) const
-{
-    auto& itso = ctx_.iterative_solver_input_section();
-    if (itso.type_ == "exact") {
-        Band::diag_fv_full_potential_exact(kp, effective_potential);
-    } else if (itso.type_ == "davidson") {
-        Band::diag_fv_full_potential_davidson(kp, effective_potential);
     }
 }
 

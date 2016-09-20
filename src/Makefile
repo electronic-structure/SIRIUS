@@ -17,7 +17,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp  \
        Band/diag_pseudo_potential_davidson.cpp \
        Band/diag_pseudo_potential_rmm_diis.cpp \
        Band/diag_pseudo_potential_chebyshev.cpp \
-       Band/solve_sv.cpp \
        Band/initialize_subspace.cpp \
        Potential/potential.cpp \
        Potential/init.cpp \
