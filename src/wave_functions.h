@@ -31,7 +31,7 @@
 
 #include "matrix_storage.h"
 
-const int sddk_block_size = 11;
+const int sddk_block_size = 256;
 
 namespace sirius {
 
