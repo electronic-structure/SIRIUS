@@ -126,21 +126,25 @@ class wave_functions
 
         inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs()
         {
+            assert(pw_coeffs_ != nullptr);
             return *pw_coeffs_;
         }
 
         inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs() const
         {
+            assert(pw_coeffs_ != nullptr);
             return *pw_coeffs_;
         }
 
         inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs()
         {
+            assert(mt_coeffs_ != nullptr);
             return *mt_coeffs_;
         }
 
         inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs() const
         {
+            assert(mt_coeffs_ != nullptr);
             return *mt_coeffs_;
         }
 
@@ -195,7 +199,7 @@ class wave_functions
 
         inline void prepare_full_column_distr(int n__)
         {
-            pw_coeffs().set_num_extra(n__, gkvec_full_, comm_);
+            pw_coeffs().set_num_extra(gkvec_.num_gvec(), comm_, n__);
             if (params_.full_potential()) {
                 mt_coeffs().set_num_extra(num_mt_coeffs_, comm_, n__);
             }
@@ -203,7 +207,7 @@ class wave_functions
 
         inline void remap_to_full_column_distr(int n__)
         {
-            pw_coeffs().remap_forward(0, n__, gkvec_full_, comm_);
+            pw_coeffs().remap_forward(gkvec_full_.gvec_fft_slab(), comm_, n__);
             if (params_.full_potential()) {
                 mt_coeffs().remap_forward(mt_coeffs_distr_, comm_, n__);
             }
@@ -211,7 +215,7 @@ class wave_functions
 
         inline void remap_to_prime_distr(int n__)
         {
-            pw_coeffs().remap_backward(0, n__, gkvec_full_, comm_);
+            pw_coeffs().remap_backward(gkvec_full_.gvec_fft_slab(), comm_, n__);
             if (params_.full_potential()) {
                 mt_coeffs().remap_backward(mt_coeffs_distr_, comm_, n__);
             }
