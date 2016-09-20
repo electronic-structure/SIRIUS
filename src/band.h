@@ -67,7 +67,7 @@ class Band
         void apply_magnetic_field(wave_functions& fv_states__,
                                   Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
-                                  std::vector<wave_functions*>& hpsi__) const;
+                                  std::vector<wave_functions>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:

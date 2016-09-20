@@ -1084,14 +1084,10 @@ inline void Density::generate_valence(K_set& ks__)
         /* swap wave functions */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(0, nbnd, kp->gkvec().partition(),
-                                                                      ctx_.mpi_grid_fft().communicator(1 << 1));
-            if (ctx_.full_potential()) {
-                //kp->spinor_wave_functions(ispn).mt_coeffs(remap_forward(unit_cell_.mt_basis_size(),
-                //                                                        0,
-                //                                                        nbnd,
-                //                                                        kp->comm());
-            } else {
+            kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
+                                                                      ctx_.mpi_grid_fft().communicator(1 << 1),
+                                                                      nbnd);
+            if (!ctx_.full_potential()) {
                 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
                     kp->spinor_wave_functions<false>(ispn).allocate_on_device();

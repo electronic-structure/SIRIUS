@@ -207,7 +207,7 @@ class Hloc_operator
         {
             PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
 
-            hphi__.pw_coeffs().remap_forward(idx0__, n__, gkvec_, comm_col_);
+            hphi__.pw_coeffs().remap_forward(gkvec_.gvec_fft_slab(), comm_col_, n__, idx0__);
 
             int first{0};
             /* if G-vectors are reduced, wave-functions are real and 
@@ -295,7 +295,7 @@ class Hloc_operator
                 //acc::sync_stream(-1);
             }
 
-            hphi__.pw_coeffs().remap_backward(idx0__, n__, gkvec_, comm_col_);
+            hphi__.pw_coeffs().remap_backward(gkvec_.gvec_fft_slab(), comm_col_, n__, idx0__);
         }
 
         inline double v0(int ispn__)
