@@ -65,6 +65,19 @@ void f3()
     }
 }
 
+void f4()
+{
+    mdarray<int, 1> buf;
+
+    buf = mdarray<int, 1>(100, memory_t::host | memory_t::device, "buf");
+
+    buf = mdarray<int, 1>(200, memory_t::host | memory_t::device, "buf");
+    
+    //buf = mdarray<int, 1>(300, memory_t::host | memory_t::device, "buf");
+
+
+}
+
 int main(int argn, char **argv)
 {
     sirius::initialize(1);
@@ -72,6 +85,8 @@ int main(int argn, char **argv)
     f2();
 
     f3();
+
+    f4();
 
     #ifndef NDEBUG
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;

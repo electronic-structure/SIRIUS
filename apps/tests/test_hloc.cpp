@@ -6,6 +6,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
                int use_gpu__, double gpu_workload__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
+    Simulation_parameters params;
+    params.set_processing_unit(pu);
+    params.set_esm_type("ultrasoft_pseudopotential");
 
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
@@ -35,20 +38,19 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     Hloc_operator hloc(fft, gvec.partition(), mpi_grid.communicator(1 << 1), veff);
 
-    int num_gvec_loc = gvec.gvec_count(mpi_grid.communicator().rank());
-
-    Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, pu);
+    wave_functions phi(params, mpi_comm_world(), gvec, 4 * num_bands__);
     for (int i = 0; i < 4 * num_bands__; i++) {
-        for (int j = 0; j < phi.num_gvec_loc(); j++) {
-            phi(j, i) = type_wrapper<double_complex>::random();
+        for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
+            phi.pw_coeffs().prime(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    Wave_functions<false> hphi(num_gvec_loc, 4 * num_bands__, pu);
+    wave_functions hphi(params, mpi_comm_world(), gvec, 4 * num_bands__);
+
     #ifdef __GPU
     if (pu == GPU) {
-        phi.allocate_on_device();
-        phi.copy_to_device(0, 4 * num_bands__);
-        hphi.allocate_on_device();
+        phi.pw_coeffs().allocate_on_device();
+        phi.pw_coeffs().copy_to_device(0, 4 * num_bands__);
+        hphi.pw_coeffs().allocate_on_device();
     }
     #endif
     
@@ -59,7 +61,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         hphi.copy_from(phi, i * num_bands__, num_bands__);
         #ifdef __GPU
         if (pu == GPU && !fft.gpu_only()) {
-            hphi.copy_to_host(i * num_bands__, num_bands__);
+            hphi.pw_coeffs().copy_to_host(i * num_bands__, num_bands__);
         }
         #endif
         hloc.apply(0, hphi, i * num_bands__, num_bands__);
@@ -69,16 +71,14 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     #ifdef __GPU
     if (pu == GPU && fft.gpu_only()) {
-        hphi.copy_to_host(0, 4 * num_bands__);
+        hphi.pw_coeffs().copy_to_host(0, 4 * num_bands__);
     }
     #endif
 
-    double diff = 0;
-    for (int i = 0; i < 4 * num_bands__; i++)
-    {
-        for (int j = 0; j < phi.num_gvec_loc(); j++)
-        {
-            diff += std::abs(2.0 * phi(j, i) - hphi(j, i));
+    double diff{0};
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
+            diff += std::abs(2.0 * phi.pw_coeffs().prime(j, i) - hphi.pw_coeffs().prime(j, i));
         }
     }
     if (diff != diff) {
