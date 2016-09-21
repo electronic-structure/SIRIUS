@@ -127,13 +127,14 @@ class Beta_projectors
         matrix<T> beta_phi(int chunk__, int n__)
         {
             int nbeta = beta_chunk(chunk__).num_beta_;
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                return std::move(matrix<T>((T*)beta_phi_.at<CPU>(), (T*)beta_phi_.at<GPU>(), nbeta, n__));
+            if (pu_ == GPU) {
+                return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()),
+                                           reinterpret_cast<T*>(beta_phi_.at<GPU>()),
+                                           nbeta, n__));
+            } else {
+                return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()),
+                                           nbeta, n__));
             }
-            #endif
-            return std::move(matrix<T>((T*)beta_phi_.at<CPU>(), nbeta, n__));
         }
 
         Unit_cell const& unit_cell() const

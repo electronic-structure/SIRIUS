@@ -254,7 +254,7 @@ class Hloc_operator
                 /* phi(G) -> phi(r) */
                 if (fft_.gpu_only()) {
                     #ifdef __GPU
-                    fft_.transform<1>(gkvec_, hphi__.coeffs_swapped().at<GPU>(0, i));
+                    fft_.transform<1>(gkvec_, hphi__.pw_coeffs().extra().at<GPU>(0, i));
                     #endif
                 } else {
                     fft_.transform<1>(gkvec_, hphi__.pw_coeffs().extra().at<CPU>(0, i));
@@ -284,7 +284,7 @@ class Hloc_operator
                 if (fft_.gpu_only()) {
                     #ifdef __GPU
                     add_pw_ekin_gpu(gkvec_.gvec_count_fft(), pw_ekin_.at<GPU>(), vphi1_.at<GPU>(),
-                                    hphi__.coeffs_swapped().at<GPU>(0, i));
+                                    hphi__.pw_coeffs().extra().at<GPU>(0, i));
                     #endif
                 } else {
                     #pragma omp parallel for

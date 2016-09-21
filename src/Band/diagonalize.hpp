@@ -393,20 +393,19 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        psi.allocate_on_device();
-        psi.copy_to_device(0, num_bands);
+        psi.pw_coeffs().allocate_on_device();
+        psi.pw_coeffs().copy_to_device(0, num_bands);
 
-        phi.allocate_on_device();
-        res.allocate_on_device();
+        phi.pw_coeffs().allocate_on_device();
+        res.pw_coeffs().allocate_on_device();
 
-        hphi.allocate_on_device();
-        ophi.allocate_on_device();
+        hphi.pw_coeffs().allocate_on_device();
+        ophi.pw_coeffs().allocate_on_device();
 
-        hpsi.allocate_on_device();
-        opsi.allocate_on_device();
+        hpsi.pw_coeffs().allocate_on_device();
+        opsi.pw_coeffs().allocate_on_device();
 
         evec.allocate(memory_t::device);
-
         ovlp.allocate(memory_t::device);
     }
     #endif
@@ -415,7 +414,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     phi.copy_from(psi, 0, num_bands);
 
     /* current subspace size */
-    int N = 0;
+    int N{0};
 
     /* number of newly added basis functions */
     int n = num_bands;
@@ -526,8 +525,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        psi.copy_to_host(0, num_bands);
-        psi.deallocate_on_device();
+        psi.pw_coeffs().copy_to_host(0, num_bands);
+        psi.pw_coeffs().deallocate_on_device();
     }
     #endif
     kp__->comm().barrier();

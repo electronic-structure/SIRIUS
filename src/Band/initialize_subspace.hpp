@@ -121,17 +121,16 @@ inline void Band::initialize_subspace(K_point* kp__,
     kp__->beta_projectors().prepare();
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU)
-    {
-        phi.allocate_on_device();
-        phi.copy_to_device(0, num_phi);
-        hphi.allocate_on_device();
-        ophi.allocate_on_device();
+    if (ctx_.processing_unit() == GPU) {
+        phi.pw_coeffs().allocate_on_device();
+        phi.pw_coeffs().copy_to_device(0, num_phi);
+        hphi.pw_coeffs().allocate_on_device();
+        ophi.pw_coeffs().allocate_on_device();
         evec.allocate(memory_t::device);
         ovlp.allocate(memory_t::device);
     }
     #endif
-
+    
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         auto cs = mdarray<double_complex, 1>(&phi(0, 0), kp__->num_gkvec_loc() * num_phi).checksum();
@@ -151,7 +150,7 @@ inline void Band::initialize_subspace(K_point* kp__,
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);
-
+        
         /* solve generalized eigen-value problem with the size N */
         diag_subspace_mtrx<T>(num_phi, num_bands, hmlt, evec, eval);
 
@@ -167,17 +166,16 @@ inline void Band::initialize_subspace(K_point* kp__,
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
-            kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
+            kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
         }
         #endif
 
         transform<T>(phi, 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
 
         #ifdef __GPU
-        if (ctx_.processing_unit() == GPU)
-        {
-            kp__->spinor_wave_functions(ispn).copy_to_host(0, num_bands);
-            kp__->spinor_wave_functions(ispn).deallocate_on_device();
+        if (ctx_.processing_unit() == GPU) {
+            kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
         }
         #endif
 

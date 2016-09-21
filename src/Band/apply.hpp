@@ -12,53 +12,62 @@ void Band::apply_h(K_point* kp__,
                    D_operator<T>& d_op) const
 {
     PROFILE_WITH_TIMER("sirius::Band::apply_h");
-
-    /* set initial hphi */
-    hphi__.copy_from(phi__, N__, n__);
-
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) hphi__.copy_to_host(N__, n__);
-    #endif
-    /* apply local part of Hamiltonian */
-    h_op.apply(ispn__, hphi__, N__, n__);
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) hphi__.copy_to_device(N__, n__);
+    STOP();
     #endif
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) phi__.copy_to_host(N__, n__);
-        #endif
-        auto cs1 = mdarray<double_complex, 1>(&phi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
-        auto cs2 = mdarray<double_complex, 1>(&hphi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
-        kp__->comm().allreduce(&cs1, 1);
-        kp__->comm().allreduce(&cs2, 1);
-        DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
-    }
-    #endif
+    STOP();
 
-    if (!ctx_.unit_cell().mt_lo_basis_size()) {
-        return;
-    }
+    //==/* set initial hphi */
+    //==hphi__.copy_from(phi__, N__, n__);
 
-    for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++)
-    {
-        kp__->beta_projectors().generate(i);
+    //==#ifdef __GPU
+    //==if (ctx_.processing_unit() == GPU) {
+    //==    hphi__.copy_to_host(N__, n__);
+    //==}
+    //==#endif
+    //==/* apply local part of Hamiltonian */
+    //==h_op.apply(ispn__, hphi__, N__, n__);
+    //==#ifdef __GPU
+    //==if (ctx_.processing_unit() == GPU) {
+    //==    hphi__.copy_to_device(N__, n__);
+    //==}
+    //==#endif
 
-        kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
+    //==#ifdef __PRINT_OBJECT_CHECKSUM
+    //=={
+    //==    #ifdef __GPU
+    //==    if (ctx_.processing_unit() == GPU) phi__.copy_to_host(N__, n__);
+    //==    #endif
+    //==    auto cs1 = mdarray<double_complex, 1>(&phi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
+    //==    auto cs2 = mdarray<double_complex, 1>(&hphi__(0, N__), kp__->num_gkvec_loc() * n__).checksum();
+    //==    kp__->comm().allreduce(&cs1, 1);
+    //==    kp__->comm().allreduce(&cs2, 1);
+    //==    DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
+    //==    DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    //==}
+    //==#endif
 
-        if (!ctx_.iterative_solver_input_section().real_space_prj_)
-        {
-            d_op.apply(i, ispn__, hphi__, N__, n__);
-        }
-        else
-        {
-            STOP();
-            //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
-        }
-    }
+    //==if (!ctx_.unit_cell().mt_lo_basis_size()) {
+    //==    return;
+    //==}
+
+    //==for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++)
+    //=={
+    //==    kp__->beta_projectors().generate(i);
+
+    //==    kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
+
+    //==    if (!ctx_.iterative_solver_input_section().real_space_prj_)
+    //==    {
+    //==        d_op.apply(i, ispn__, hphi__, N__, n__);
+    //==    }
+    //==    else
+    //==    {
+    //==        STOP();
+    //==        //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
+    //==    }
+    //==}
 }
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
@@ -84,15 +93,19 @@ void Band::apply_h_o(K_point* kp__,
     hphi__.copy_from(phi__, N__, n__);
 
     #ifdef __GPU
+    /* if we run on GPU, but the FFT driver is hybrid (it expects a CPU pointer),
+     * copy wave-functions to CPU */
     if (ctx_.processing_unit() == GPU && !ctx_.fft_coarse().gpu_only()) {
-        hphi__.copy_to_host(N__, n__);
+        hphi__.pw_coeffs().copy_to_host(N__, n__);
     }
     #endif
     /* apply local part of Hamiltonian */
     h_op.apply(ispn__, hphi__, N__, n__);
     #ifdef __GPU
+    /* if we run on GPU, but the FFT driver is CPU-GPU hybrid, the result of h_op is stored on CPU
+     * and has to be copied back to GPU */
     if (ctx_.processing_unit() == GPU && !ctx_.fft_coarse().gpu_only()) {
-        hphi__.copy_to_device(N__, n__);
+        hphi__.pw_coeffs().copy_to_device(N__, n__);
     }
     #endif
     t1 += runtime::wtime();

@@ -472,6 +472,42 @@ extern "C" void cublas_dtrmm(char side__, char uplo__, char transa__, char diag_
     CALL_CUBLAS(cublasDtrmm, (cublas_null_stream_handle, side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
+extern "C" void cublas_ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
+                             cuDoubleComplex* alpha__, cuDoubleComplex* A__, int lda__, cuDoubleComplex* B__, int ldb__)
+{
+    if (!(side__ == 'L' || side__ == 'R'))
+    {
+        printf("cublas_ztrmm: wrong side\n");
+        exit(-1);
+    }
+    cublasSideMode_t side = (side__ == 'L') ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
+
+    if (!(uplo__ == 'U' || uplo__ == 'L'))
+    {
+        printf("cublas_ztrmm: wrong uplo\n");
+        exit(-1);
+    }
+    cublasFillMode_t uplo = (uplo__ == 'U') ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+
+    if (!(transa__ == 'N' || transa__ == 'T' || transa__ == 'C'))
+    {
+        printf("cublas_ztrmm: wrong transa\n");
+        exit(-1);
+    }
+    cublasOperation_t transa = CUBLAS_OP_N;
+    if (transa__ == 'T') transa = CUBLAS_OP_T;
+    if (transa__ == 'C') transa = CUBLAS_OP_C;
+
+    if (!(diag__ == 'N' || diag__ == 'U'))
+    {
+        printf("cublas_ztrmm: wrong diag\n");
+        exit(-1);
+    }
+    cublasDiagType_t diag = (diag__ == 'N') ? CUBLAS_DIAG_NON_UNIT : CUBLAS_DIAG_UNIT;
+
+    CALL_CUBLAS(cublasZtrmm, (cublas_null_stream_handle, side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+}
+
 extern "C" void cublas_dger(int m, int n, double* alpha, double* x, int incx, double* y, int incy, double* A, int lda)
 {
     CALL_CUBLAS(cublasDger, (cublas_null_stream_handle, m, n, alpha, x, incx, y, incy, A, lda));

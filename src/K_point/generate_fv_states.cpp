@@ -62,14 +62,15 @@ void K_point::generate_fv_states()
     }
 
     #ifdef __GPU
-    auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
+    STOP();
+    //auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
     #endif
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         STOP(); // reimplement
-        fv_ev_swp.allocate(memory_t::device);
-        fv_ev_swp.copy_to_device();
+        //fv_ev_swp.allocate(memory_t::device);
+        //fv_ev_swp.copy_to_device();
     }
     #endif
 
@@ -117,12 +118,13 @@ void K_point::generate_fv_states()
                 }
                 case GPU: {
                     #ifdef __GPU
-                    alm.async_copy_to_device(tid);
-                    linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
-                                      alm.at<GPU>(), alm.ld(),
-                                      fv_ev_swp.at<GPU>(), gklo_basis_size(),
-                                      tmp.at<GPU>(), tmp.ld(), tid);
-                    acc::copyout(&fv_states<true>()[0][offset_wf], wf_size(), tmp.at<GPU>(), tmp.ld(), mt_aw_size, nbnd_loc, tid);
+                    STOP();
+                    //alm.async_copy_to_device(tid);
+                    //linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                    //                  alm.at<GPU>(), alm.ld(),
+                    //                  fv_ev_swp.at<GPU>(), gklo_basis_size(),
+                    //                  tmp.at<GPU>(), tmp.ld(), tid);
+                    //acc::copyout(&fv_states<true>()[0][offset_wf], wf_size(), tmp.at<GPU>(), tmp.ld(), mt_aw_size, nbnd_loc, tid);
                     #endif
                     break;
                 }
@@ -150,7 +152,8 @@ void K_point::generate_fv_states()
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        fv_ev_swp.deallocate_on_device();
+        STOP();
+        //fv_ev_swp.deallocate_on_device();
     }
     #endif
 

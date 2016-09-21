@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -101,6 +101,9 @@ void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k,
 void cublas_dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
                   double* alpha__, double* A__, int lda__, double* B__, int ldb__);
 
+void cublas_ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
+                  cuDoubleComplex* alpha__, cuDoubleComplex* A__, int lda__, cuDoubleComplex* B__, int ldb__);
+
 void cublas_dger(int m, int n, double* alpha, double* x, int incx, double* y, int incy, double* A, int lda);
 
 
@@ -139,7 +142,11 @@ void magma_finalize_wrapper();
 
 int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda);
 
+int magma_zpotrf_wrapper(char uplo, int n, cuDoubleComplex* A, int lda);
+
 int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda);
+
+int magma_ztrtri_wrapper(char uplo, int n, cuDoubleComplex* A, int lda);
 #endif
 
 void cuda_label_event_gpu(const char* label__);
@@ -148,12 +155,14 @@ void cuda_label_event_gpu(const char* label__);
 
 namespace acc {
 
+/// Copy memory inside device.
 template <typename T>
 inline void copy(T* target__, T const* source__, size_t n__)
 {
     cuda_copy_device_to_device(target__, source__, n__ * sizeof(T));
 }
 
+/// Copy memory to device.
 template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__)
 {

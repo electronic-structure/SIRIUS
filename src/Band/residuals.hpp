@@ -135,12 +135,13 @@ Band::residuals_aux(K_point* kp__,
     #ifdef __GPU
     if (pu == GPU)
     {
-        residuals_aux_gpu(res__.num_rows_loc(), num_bands__, res_idx.at<GPU>(), eval.at<GPU>(),
-                          hpsi__.coeffs().at<GPU>(), opsi__.coeffs().at<GPU>(),
-                          h_diag.at<GPU>(), o_diag.at<GPU>(), res__.coeffs().at<GPU>(),
-                          res_norm.at<GPU>(), p_norm.at<GPU>(), kp__->gkvec().reduced(), kp__->comm().rank());
-        res_norm.copy_to_host();
-        p_norm.copy_to_host();
+        STOP();
+        //residuals_aux_gpu(res__.num_rows_loc(), num_bands__, res_idx.at<GPU>(), eval.at<GPU>(),
+        //                  hpsi__.coeffs().at<GPU>(), opsi__.coeffs().at<GPU>(),
+        //                  h_diag.at<GPU>(), o_diag.at<GPU>(), res__.coeffs().at<GPU>(),
+        //                  res_norm.at<GPU>(), p_norm.at<GPU>(), kp__->gkvec().reduced(), kp__->comm().rank());
+        //res_norm.copy_to_host();
+        //p_norm.copy_to_host();
     }
     #endif
 
@@ -167,8 +168,9 @@ Band::residuals_aux(K_point* kp__,
     }
     #ifdef __GPU
     if (pu == GPU) {
-        p_norm.copy_to_device();
-        scale_matrix_columns_gpu(res__.num_gvec_loc(), num_bands__, res__.coeffs().at<GPU>(), p_norm.at<GPU>());
+        STOP();
+        //p_norm.copy_to_device();
+        //scale_matrix_columns_gpu(res__.num_gvec_loc(), num_bands__, res__.coeffs().at<GPU>(), p_norm.at<GPU>());
     }
     #endif
 

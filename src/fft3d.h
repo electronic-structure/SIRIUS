@@ -963,10 +963,6 @@ class FFT3D
                 fft_buffer_aux1_.allocate(memory_t::device);
                 fft_buffer_aux2_.allocate(memory_t::device);
                 
-                ///* we will do async transfers between cpu and gpu */
-                //if (!gpu_only_impl_) {
-                //    fft_buffer_.pin_memory();
-                //}
                 fft_buffer_.allocate(memory_t::device);
 
                 z_col_pos_.allocate(memory_t::device);
@@ -984,7 +980,6 @@ class FFT3D
                 fft_buffer_aux1_.deallocate_on_device();
                 fft_buffer_aux2_.deallocate_on_device();
                 z_col_pos_.deallocate_on_device();
-                //fft_buffer_.unpin_memory();
                 fft_buffer_.deallocate_on_device();
                 cufft_work_buf_.deallocate_on_device();
             }
@@ -1006,7 +1001,7 @@ class FFT3D
             if (comm_.size() > 1) {
                 int rank = comm_.rank();
                 int num_zcol_local = gvec__.zcol_distr_fft().counts[rank];
-                /* we need this buffer for mpi_alltoall */
+                /* we need this buffer size for mpi_alltoall */
                 sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
             } else {
                 sz_max = grid_.size(2) * gvec__.num_zcol();
@@ -1022,7 +1017,6 @@ class FFT3D
 
             #ifdef __GPU
             if (comm_.size() == 1 && gpu_only_impl_ && cuda_check_device_ptr(data__)) {
-            //if (comm_.size() == 1 && gpu_only_impl_) {
                 if (gvec__.reduced()) {
                     TERMINATE_NOT_IMPLEMENTED
                 } else {

@@ -226,27 +226,23 @@ class mdarray_base
 {
     protected:
         
-        //memory_t memory_{memory_t::host};
-        
         /// Optional array label.
         std::string label_;
     
         /// Unique pointer to the allocated memory.
-        mutable std::unique_ptr< T[], mdarray_mem_mgr<T> > unique_ptr_{nullptr};
+        mutable std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_{nullptr};
         
         /// Raw pointer.
         mutable T* raw_ptr_{nullptr};
         
         #ifdef __GPU
         /// Unique pointer to the allocated GPU memory.
-        mutable std::unique_ptr< T[], mdarray_mem_mgr<T> > unique_ptr_device_{nullptr};
+        mutable std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_device_{nullptr};
         
         /// Raw pointer to GPU memory
         mutable T* raw_ptr_device_{nullptr};
         #endif
 
-        //mutable bool pinned_;
-        
         /// Array dimensions.
         std::array<mdarray_index_descriptor, N> dims_;
         
@@ -424,8 +420,6 @@ class mdarray_base
         /// Allocate memory for array.
         void allocate(memory_t memory__) const
         {
-            //deallocate();
-
             if ((memory__ & memory_t::host) != memory_t::none && (memory__ & memory_t::host_pinned) != memory_t::none) {
                 printf("error at line %i of file %s: host memory can only be of one type\n", __LINE__, __FILE__);
                 exit(0);
@@ -438,30 +432,34 @@ class mdarray_base
             #endif
 
             size_t sz = size();
-
-            if ((memory__ & memory_t::host) != memory_t::none) {
-                raw_ptr_ = static_cast<T*>(malloc(sz * sizeof(T)));
-                unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(raw_ptr_, mdarray_mem_mgr<T>(sz, memory__));
-            }
-
-            if ((memory__ & memory_t::host_pinned) != memory_t::none) {
-                #ifdef __GPU
-                raw_ptr_ = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
-                unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(raw_ptr_, mdarray_mem_mgr<T>(sz, memory__));
-                #endif
-            }
             
-            /* call constructor on non-trivial data */
-            if (raw_ptr_ != nullptr && !std::is_pod<T>::value) {
-                for (size_t i = 0; i < sz; i++) {
-                    new(raw_ptr_ + i)T();
+            /* host allocation */
+            if ((memory__ & memory_t::host) != memory_t::none || (memory__ & memory_t::host_pinned) != memory_t::none) {
+                if ((memory__ & memory_t::host) != memory_t::none) {
+                    raw_ptr_ = static_cast<T*>(malloc(sz * sizeof(T)));
+                    unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host));
+                }
+
+                if ((memory__ & memory_t::host_pinned) != memory_t::none) {
+                    #ifdef __GPU
+                    raw_ptr_ = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
+                    unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host_pinned));
+                    #endif
+                }
+                
+                /* call constructor on non-trivial data */
+                if (raw_ptr_ != nullptr && !std::is_pod<T>::value) {
+                    for (size_t i = 0; i < sz; i++) {
+                        new(raw_ptr_ + i)T();
+                    }
                 }
             }
-
+            
+            /* device allocation */
             if ((memory__ & memory_t::device) != memory_t::none) {
                 #ifdef __GPU
                 raw_ptr_device_ = static_cast<T*>(cuda_malloc(sz * sizeof(T)));
-                unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T> >(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory__));
+                unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory_t::device));
                 #endif
             }
         }

@@ -169,7 +169,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
                           beta_gk.at<GPU>(), beta_gk.ld(), work_.at<GPU>(), nbeta, &alpha, 
-                          op_phi__.coeffs().at<GPU>(0, idx0__), op_phi__.coeffs().ld());
+                          op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
         
         cuda_device_synchronize();
     }
@@ -249,7 +249,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &alpha,
                           (double*)beta_gk.at<GPU>(), 2 * num_gkvec_loc, work_.at<GPU>(), nbeta, &alpha, 
-                          (double*)op_phi__.coeffs().at<GPU>(0, idx0__), 2 * num_gkvec_loc);
+                          (double*)op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__), 2 * num_gkvec_loc);
         acc::sync_stream(-1); 
         //cuda_device_synchronize();
     }

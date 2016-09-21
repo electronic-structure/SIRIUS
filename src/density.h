@@ -804,19 +804,18 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
 
         kp__->beta_projectors().prepare();
 
-        #ifdef __GPU
-        bool allocate_on_gpu[] = {false, false};
-        if (ctx_.processing_unit() == GPU) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                int nbnd = kp__->num_occupied_bands(ispn);
-                if (!kp__->spinor_wave_functions<false>(ispn).coeffs().on_device()) {
-                    allocate_on_gpu[ispn] = true;
-                    kp__->spinor_wave_functions<false>(ispn).allocate_on_device();
-                    kp__->spinor_wave_functions<false>(ispn).copy_to_device(0, nbnd);
-                }
-            }
-        }
-        #endif
+        //== #ifdef __GPU
+        //== bool allocate_on_gpu[] = {false, false};
+        //== if (ctx_.processing_unit() == GPU) {
+        //==     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        //==         int nbnd = kp__->num_occupied_bands(ispn);
+        //==         if (!kp__->spinor_wave_functions(ispn).pw_coeffs().prime().on_device()) {
+        //==             allocate_on_gpu[ispn] = true;
+        //==             kp__->spinor_wave_functions(ispn).copy_to_device(nbnd);
+        //==         }
+        //==     }
+        //== }
+        //== #endif
 
         if (ctx_.num_mag_dims() != 3) {
             for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++) {
@@ -870,15 +869,15 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
             STOP();
         }
 
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                if (allocate_on_gpu[ispn]) {
-                    kp__->spinor_wave_functions<false>(ispn).deallocate_on_device();
-                }
-            }
-        }
-        #endif
+        //#ifdef __GPU
+        //if (ctx_.processing_unit() == GPU) {
+        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        //        if (allocate_on_gpu[ispn]) {
+        //            kp__->spinor_wave_functions<false>(ispn).deallocate_on_device();
+        //        }
+        //    }
+        //}
+        //#endif
 
         kp__->beta_projectors().dismiss();
     }
@@ -1087,11 +1086,13 @@ inline void Density::generate_valence(K_set& ks__)
             kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
                                                                       ctx_.mpi_grid_fft().communicator(1 << 1),
                                                                       nbnd);
+
+            /* copy wave-functions to GPU */
             if (!ctx_.full_potential()) {
                 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
-                    kp->spinor_wave_functions<false>(ispn).allocate_on_device();
-                    kp->spinor_wave_functions<false>(ispn).copy_to_device(0, nbnd);
+                    kp->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
+                    kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
                 }
                 #endif
             }
@@ -1116,7 +1117,7 @@ inline void Density::generate_valence(K_set& ks__)
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             #ifdef __GPU
             if (ctx_.processing_unit() == GPU) {
-                kp->spinor_wave_functions<false>(ispn).deallocate_on_device();
+                kp->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
             }
             #endif
         }

@@ -755,6 +755,20 @@ ftn_int linalg<GPU>::potrf<ftn_double>(ftn_int n,
     return -1;
 }
 
+template<>
+ftn_int linalg<GPU>::potrf<ftn_double_complex>(ftn_int n,
+                                               ftn_double_complex* A,
+                                               ftn_int lda)
+{
+    #ifdef __MAGMA
+    return magma_zpotrf_wrapper('U', n, A, lda);
+    #else
+    printf("not compiled with MAGMA support\n");
+    raise(SIGTERM);
+    #endif
+    return -1;
+}
+
 template <>
 ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
                                        ftn_double* A,
@@ -762,6 +776,20 @@ ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
 {
     #ifdef __MAGMA
     return magma_dtrtri_wrapper('U', n, A, lda);
+    #else
+    printf("not compiled with MAGMA support\n");
+    raise(SIGTERM);
+    #endif
+    return -1;
+}
+
+template <>
+ftn_int linalg<GPU>::trtri<ftn_double_complex>(ftn_int n,
+                                               ftn_double_complex* A,
+                                               ftn_int lda)
+{
+    #ifdef __MAGMA
+    return magma_ztrtri_wrapper('U', n, A, lda);
     #else
     printf("not compiled with MAGMA support\n");
     raise(SIGTERM);
@@ -782,6 +810,21 @@ void linalg<GPU>::trmm<ftn_double>(char side,
                                    ftn_int ldb)
 {
     cublas_dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+}
+
+template <>
+void linalg<GPU>::trmm<ftn_double_complex>(char side,
+                                           char uplo,
+                                           char transa,
+                                           ftn_int m,
+                                           ftn_int n,
+                                           ftn_double_complex* alpha,
+                                           ftn_double_complex* A,
+                                           ftn_int lda,
+                                           ftn_double_complex* B,
+                                           ftn_int ldb)
+{
+    cublas_ztrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 }
 
 template<>

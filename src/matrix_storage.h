@@ -247,27 +247,31 @@ class matrix_storage<T, matrix_storage_t::slab>
             return spl_num_col_;
         }
 
-        //#ifdef __GPU
-        //void allocate_on_device()
-        //{
-        //    wf_coeffs_.allocate(memory_t::device);
-        //}
+        #ifdef __GPU
+        void allocate_on_device()
+        {
+            prime_.allocate(memory_t::device);
+        }
 
-        //void deallocate_on_device()
-        //{
-        //    wf_coeffs_.deallocate_on_device();
-        //}
+        void deallocate_on_device()
+        {
+            prime_.deallocate_on_device();
+        }
 
-        //void copy_to_device(int i0__, int n__)
-        //{
-        //    acc::copyin(wf_coeffs_.at<GPU>(0, i0__), wf_coeffs_.at<CPU>(0, i0__), n__ * num_gvec_loc());
-        //}
+        void copy_to_device(int i0__, int n__)
+        {
+            if (num_rows_loc()) {
+                acc::copyin(prime_.template at<GPU>(0, i0__), prime_.template at<CPU>(0, i0__), n__ * num_rows_loc());
+            }
+        }
 
-        //void copy_to_host(int i0__, int n__)
-        //{
-        //    acc::copyout(wf_coeffs_.at<CPU>(0, i0__), wf_coeffs_.at<GPU>(0, i0__), n__ * num_gvec_loc());
-        //}
-        //#endif
+        void copy_to_host(int i0__, int n__)
+        {
+            if (num_rows_loc()) {
+                acc::copyout(prime_.template at<CPU>(0, i0__), prime_.template at<GPU>(0, i0__), n__ * num_rows_loc());
+            }
+        }
+        #endif
 
 };
 
