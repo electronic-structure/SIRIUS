@@ -177,8 +177,8 @@ class Band
                                                wave_functions& hpsi__,
                                                wave_functions& opsi__,
                                                wave_functions& res__,
-                                               std::vector<double>& h_diag__,
-                                               std::vector<double>& o_diag__) const;
+                                               mdarray<double, 1>& h_diag__,
+                                               mdarray<double, 1>& o_diag__) const;
         
         template <typename T>
         inline int residuals(K_point* kp__,
@@ -193,9 +193,11 @@ class Band
                              wave_functions& hpsi__,
                              wave_functions& opsi__,
                              wave_functions& res__,
-                             std::vector<double>& h_diag__,
-                             std::vector<double>& o_diag__) const;
-
+                             mdarray<double, 1>& h_diag__,
+                             mdarray<double, 1>& o_diag__) const;
+        
+        /// Compute <phi|Op|phi> kind of matrix.
+        /** The matrix is returned in the CPU pointer because eigen-value solvers start from the CPU. */
         template <typename T>
         inline void set_subspace_mtrx(int N__,
                                       int n__,
@@ -216,6 +218,7 @@ class Band
                 splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
                 /* copy old N x N matrix */
+                #pragma omp parallel for
                 for (int i = 0; i < spl_col.local_size(); i++) {
                     std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
                 }
@@ -223,22 +226,19 @@ class Band
 
             /* <{phi,phi_new}|Op|phi_new> */
             inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
-
-            //== #ifdef __PRINT_OBJECT_CHECKSUM
-            //== double_complex cs1(0, 0);
-            //== double_complex cs2(0, 0);
-            //== for (int i = 0; i < N__ + n__; i++)
-            //== {
-            //==     for (int j = 0; j <= i; j++) 
-            //==     {
-            //==         cs1 += h__(j, i);
-            //==         cs2 += o__(j, i);
-            //==     }
-            //== }
-            //== DUMP("checksum(h): %18.10f %18.10f", cs1.real(), cs1.imag());
-            //== DUMP("checksum(o): %18.10f %18.10f", cs2.real(), cs2.imag());
-            //== #endif
             
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                /* copy N x n distributed panel to CPU */
+                splindex<block_cyclic>  spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col0(N__,       mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+                splindex<block_cyclic> spl_col1(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+                acc::copyout(mtrx__.template at<CPU>(0, spl_col0.local_size()), mtrx__.ld(),
+                             mtrx__.template at<GPU>(0, spl_col0.local_size()), mtrx__.ld(),
+                             spl_row.local_size(), spl_col1.local_size() - spl_col0.local_size());
+            }
+            #endif
+
             /* restore lower part */
             if (N__ > 0) {
                 if (mtrx__.blacs_grid().comm().size() == 1) {
@@ -252,6 +252,21 @@ class Band
                     linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
                 }
             }
+
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            {
+                splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+                double_complex cs(0, 0);
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    for (int j = 0; j < spl_row.local_size(); j++) {
+                        cs += mtrx__(j, i);
+                    }
+                }
+                mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
+            }
+            #endif
 
             if (mtrx_old__.size()) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
@@ -722,25 +737,27 @@ class Band
         }
 
         /// Get diagonal elements of LAPW Hamiltonian.
-        inline std::vector<double> get_h_diag(K_point* kp__,
-                                              double v0__,
-                                              double theta0__) const;
+        inline mdarray<double, 1> get_h_diag(K_point* kp__,
+                                             double v0__,
+                                             double theta0__) const;
 
         /// Get diagonal elements of LAPW overlap.
-        inline std::vector<double> get_o_diag(K_point* kp__,
-                                              double theta0__) const;
+        inline mdarray<double, 1> get_o_diag(K_point* kp__,
+                                             double theta0__) const;
 
+        /// Get diagonal elements of pseudopotential Hamiltonian.
         template <typename T>
-        inline std::vector<double> get_h_diag(K_point* kp__,
-                                              int ispn__,
-                                              double v0__,
-                                              D_operator<T>& d_op__) const;
+        inline mdarray<double, 1> get_h_diag(K_point* kp__,
+                                             int ispn__,
+                                             double v0__,
+                                             D_operator<T>& d_op__) const;
 
-        /// Get diagonal elements of overlap matrix.
+        /// Get diagonal elements of pseudopotential overlap matrix.
         template <typename T>
-        inline std::vector<double> get_o_diag(K_point* kp__,
-                                              Q_operator<T>& q_op__) const;
-
+        inline mdarray<double, 1> get_o_diag(K_point* kp__,
+                                             Q_operator<T>& q_op__) const;
+        
+        /// Initialize the wave-functions subspace.
         template <typename T>
         void initialize_subspace(K_point* kp__,
                                  Periodic_function<double>* effective_potential__,

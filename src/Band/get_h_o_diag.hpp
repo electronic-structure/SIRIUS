@@ -1,4 +1,4 @@
-inline std::vector<double>
+inline mdarray<double, 1>
 Band::get_h_diag(K_point* kp__,
                  double v0__,
                  double theta0__) const
@@ -11,7 +11,7 @@ Band::get_h_diag(K_point* kp__,
         nlo += unit_cell_.atom(ia).mt_lo_basis_size();
     }
 
-    std::vector<double> h_diag(kp__->num_gkvec_loc() + nlo);
+    mdarray<double, 1> h_diag(kp__->num_gkvec_loc() + nlo);
     for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
         int ig = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igloc;
 
@@ -51,10 +51,16 @@ Band::get_h_diag(K_point* kp__,
             nlo++;
         }
     }
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        h_diag.allocate(memory_t::device);
+        h_diag.copy_to_device();
+    }
+    #endif
     return std::move(h_diag);
 }
 
-inline std::vector<double>
+inline mdarray<double, 1>
 Band::get_o_diag(K_point* kp__,
                  double theta0__) const
 {
@@ -65,9 +71,12 @@ Band::get_o_diag(K_point* kp__,
         nlo += unit_cell_.atom(ia).mt_lo_basis_size();
     }
     
-    std::vector<double> o_diag(kp__->num_gkvec_loc() + nlo, 1);
+    mdarray<double, 1> o_diag(kp__->num_gkvec_loc() + nlo);
     for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
         o_diag[igloc] = theta0__;
+    }
+    for (size_t i = kp__->num_gkvec_loc(); i < o_diag.size(); i++) {
+        o_diag[i] = 1;
     }
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
@@ -84,11 +93,17 @@ Band::get_o_diag(K_point* kp__,
             }
         }
     }
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        o_diag.allocate(memory_t::device);
+        o_diag.copy_to_device();
+    }
+    #endif
     return std::move(o_diag);
 }
 
 template <typename T>
-inline std::vector<double>
+inline mdarray<double, 1>
 Band::get_h_diag(K_point* kp__,
                  int ispn__,
                  double v0__,
@@ -96,11 +111,10 @@ Band::get_h_diag(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
 
-    std::vector<double> h_diag(kp__->num_gkvec_loc());
+    mdarray<double, 1> h_diag(kp__->num_gkvec_loc());
 
     /* local H contribution */
-    for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
-    {
+    for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
         int ig = kp__->gklo_basis_descriptor_loc(ig_loc).ig;
         auto vgk = kp__->gkvec().gkvec_cart(ig);
         h_diag[ig_loc] = 0.5 * (vgk * vgk) + v0__;
@@ -110,34 +124,33 @@ Band::get_h_diag(K_point* kp__,
     auto& beta_gk_t = kp__->beta_projectors().beta_gk_t();
     matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type.mt_basis_size();
         matrix<double_complex> d_sum(nbf, nbf);
         d_sum.zero();
 
-        for (int i = 0; i < atom_type.num_atoms(); i++)
-        {
+        for (int i = 0; i < atom_type.num_atoms(); i++) {
             int ia = atom_type.atom_id(i);
         
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-                for (int xi1 = 0; xi1 < nbf; xi1++) 
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 < nbf; xi1++) { 
                     d_sum(xi1, xi2) += d_op__(xi1, xi2, ispn__, ia);
+                }
+            }
         }
 
         int offs = unit_cell_.atom_type(iat).offset_lo();
-        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
-            for (int xi = 0; xi < nbf; xi++)
+        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
+            for (int xi = 0; xi < nbf; xi++) {
                 beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);
+            }
+        }
 
         #pragma omp parallel for schedule(static)
-        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
-        {
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
+        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
                     /* compute <G+k|beta_xi1> D_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
                     auto z = beta_gk_tmp(xi1, ig_loc) * d_sum(xi1, xi2) * std::conj(beta_gk_tmp(xi2, ig_loc));
                     h_diag[ig_loc] += z.real();
@@ -145,27 +158,32 @@ Band::get_h_diag(K_point* kp__,
             }
         }
     }
-    return h_diag;
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        h_diag.allocate(memory_t::device);
+        h_diag.copy_to_device();
+    }
+    #endif
+    return std::move(h_diag);
 }
 
 template <typename T>
-inline std::vector<double> 
+inline mdarray<double, 1>
 Band::get_o_diag(K_point* kp__,
                  Q_operator<T>& q_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
 
-    std::vector<double> o_diag(kp__->num_gkvec_loc(), 1.0);
-    if (ctx_.esm_type() == electronic_structure_method_t::norm_conserving_pseudopotential) {
-        return o_diag;
+    mdarray<double, 1> o_diag(kp__->num_gkvec_loc());
+    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+        o_diag[ig] = 1;
     }
 
     /* non-local O contribution */
     auto& beta_gk_t = kp__->beta_projectors().beta_gk_t();
     matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         if (!atom_type.uspp().augmentation_) {
             continue;
@@ -176,27 +194,27 @@ Band::get_o_diag(K_point* kp__,
         matrix<double_complex> q_sum(nbf, nbf);
         q_sum.zero();
         
-        for (int i = 0; i < atom_type.num_atoms(); i++)
-        {
+        for (int i = 0; i < atom_type.num_atoms(); i++) {
             int ia = atom_type.atom_id(i);
         
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-                for (int xi1 = 0; xi1 < nbf; xi1++) 
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 < nbf; xi1++) { 
                     q_sum(xi1, xi2) += q_op__(xi1, xi2, ia);
+                }
+            }
         }
 
         int offs = unit_cell_.atom_type(iat).offset_lo();
-        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
-            for (int xi = 0; xi < nbf; xi++)
+        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
+            for (int xi = 0; xi < nbf; xi++) {
                 beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);
+            }
+        }
 
         #pragma omp parallel for
-        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++)
-        {
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
+        for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
                     /* compute <G+k|beta_xi1> Q_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
                     auto z = beta_gk_tmp(xi1, ig_loc) * q_sum(xi1, xi2) * std::conj(beta_gk_tmp(xi2, ig_loc));
                     o_diag[ig_loc] += z.real();
@@ -204,6 +222,11 @@ Band::get_o_diag(K_point* kp__,
             }
         }
     }
-
-    return o_diag;
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        o_diag.allocate(memory_t::device);
+        o_diag.copy_to_device();
+    }
+    #endif
+    return std::move(o_diag);
 }

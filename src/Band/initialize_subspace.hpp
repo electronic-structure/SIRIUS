@@ -128,12 +128,13 @@ inline void Band::initialize_subspace(K_point* kp__,
         ophi.pw_coeffs().allocate_on_device();
         evec.allocate(memory_t::device);
         ovlp.allocate(memory_t::device);
+        hmlt.allocate(memory_t::device);
     }
     #endif
     
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
-        auto cs = mdarray<double_complex, 1>(&phi(0, 0), kp__->num_gkvec_loc() * num_phi).checksum();
+        auto cs = mdarray<double_complex, 1>(phi.pw_coeffs().prime().at<CPU>(), kp__->num_gkvec_loc() * num_phi).checksum();
         kp__->comm().allreduce(&cs, 1);
         DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
     }
@@ -146,11 +147,9 @@ inline void Band::initialize_subspace(K_point* kp__,
         
         orthogonalize<T>(0, num_phi, phi, hphi, ophi, ovlp, wf_tmp);
 
-        /* setup eigen-value problem
-         * N is the number of previous basis functions
-         * n is the number of new basis functions */
+        /* setup eigen-value problem */
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);
-        
+
         /* solve generalized eigen-value problem with the size N */
         diag_subspace_mtrx<T>(num_phi, num_bands, hmlt, evec, eval);
 

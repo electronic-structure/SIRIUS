@@ -28,8 +28,16 @@
 #include "gvec.h"
 #include "mpi_grid.h"
 #include "linalg.h"
-
 #include "matrix_storage.h"
+
+#ifdef __GPU
+extern "C" void add_square_sum_gpu(cuDoubleComplex const* wf__,
+                                   int num_rows_loc__,
+                                   int nwf__,
+                                   int reduced__,
+                                   int mpi_rank__,
+                                   double* result__);
+#endif
 
 const int sddk_block_size = 256;
 
@@ -228,35 +236,57 @@ class wave_functions
         /// Compute L2 norm of first n wave-functions.
         inline mdarray<double,1> l2norm(int n__) const
         {
-            if (params_.processing_unit() == GPU) {
-                STOP();
-            }
-
             mdarray<double, 1> norm(n__);
             norm.zero();
-            
-            #pragma omp parallel for
-            for (int i = 0; i < n__; i++) {
-                for (int ig = 0; ig < pw_coeffs().num_rows_loc(); ig++) {
-                    norm[i] += (std::pow(pw_coeffs().prime(ig, i).real(), 2) + std::pow(pw_coeffs().prime(ig, i).imag(), 2));
-                }
-                if (gkvec_.reduced()) {
-                    if (comm_.rank() == 0) {
-                        norm[i] = 2 * norm[i] - std::pow(pw_coeffs().prime(0, i).real(), 2);
-                    } else {
-                        norm[i] *= 2;
+            #ifdef __GPU
+            if (params_.processing_unit() == GPU) {
+                norm.allocate(memory_t::device);
+                norm.zero_on_device();
+            }
+            #endif
+             
+            if (params_.processing_unit() == CPU) {
+                #pragma omp parallel for
+                for (int i = 0; i < n__; i++) {
+                    for (int ig = 0; ig < pw_coeffs().num_rows_loc(); ig++) {
+                        norm[i] += (std::pow(pw_coeffs().prime(ig, i).real(), 2) + std::pow(pw_coeffs().prime(ig, i).imag(), 2));
                     }
-                }
-                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
-                    for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
-                        norm[i] += (std::pow(mt_coeffs().prime(j, i).real(), 2) + std::pow(mt_coeffs().prime(j, i).imag(), 2));
+                    if (gkvec_.reduced()) {
+                        if (comm_.rank() == 0) {
+                            norm[i] = 2 * norm[i] - std::pow(pw_coeffs().prime(0, i).real(), 2);
+                        } else {
+                            norm[i] *= 2;
+                        }
+                    }
+                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                        for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
+                            norm[i] += (std::pow(mt_coeffs().prime(j, i).real(), 2) + std::pow(mt_coeffs().prime(j, i).imag(), 2));
+                        }
                     }
                 }
             }
+            #ifdef __GPU
+            if (params_.processing_unit() == GPU) {
+                add_square_sum_gpu(pw_coeffs().prime().at<GPU>(), pw_coeffs().num_rows_loc(), n__,
+                                   gkvec_.reduced(), comm_.rank(), norm.at<GPU>());
+                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    add_square_sum_gpu(mt_coeffs().prime().at<GPU>(), mt_coeffs().num_rows_loc(), n__,
+                                       0, comm_.rank(), norm.at<GPU>());
+                }
+                norm.copy_to_host();
+            }
+            #endif
+
             comm_.allreduce(norm.at<CPU>(), n__);
             for (int i = 0; i < n__; i++) {
                 norm[i] = std::sqrt(norm[i]);
             }
+
+            #ifdef __GPU
+            if (params_.processing_unit() == GPU) {
+                norm.copy_to_device();
+            }
+            #endif
 
             return std::move(norm);
         }
@@ -505,69 +535,135 @@ inline void transform(double alpha__,
         assert(wf_in__[i]->comm().size() == comm.size());
         assert(wf_out__[i]->comm().size() == comm.size());
     }
+    
+    auto pu = wf_in__[0]->params().processing_unit();
 
-    if (wf_in__[0]->params().processing_unit() == GPU) {
-        TERMINATE_NOT_IMPLEMENTED
-    }
-
-    auto local_transform = [alpha__](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
-                                     wave_functions* wf_out__, int j0__, int n__)
+    auto local_transform = [pu, alpha__](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
+                                         wave_functions* wf_out__, int j0__, int n__)
     {
-        if (std::is_same<T, double_complex>::value) {
-            double_complex alpha(alpha__, 0);
-            double_complex beta(1, 0);
-            linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
-                              alpha,
-                              wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                              reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
-                              beta,
-                              wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
-
-            if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
-                linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
+        if (pu == CPU) {
+            if (std::is_same<T, double_complex>::value) {
+                double_complex alpha(alpha__, 0);
+                double_complex beta(1, 0);
+                linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   alpha,
-                                  wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
+                                  wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
                                   reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
                                   beta,
-                                  wf_out__->mt_coeffs().prime().at<CPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
-            }
-        }
+                                  wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
 
-        if (std::is_same<T, double>::value) {
-            double beta{1};
-            linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
-                              alpha__,
-                              reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                              reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
-                              beta,
-                              reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
-            if (wf_in__->params().full_potential()) {
-                TERMINATE_NOT_IMPLEMENTED;
+                if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
+                    linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
+                                      alpha,
+                                      wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
+                                      reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
+                                      beta,
+                                      wf_out__->mt_coeffs().prime().at<CPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
+                }
+            }
+
+            if (std::is_same<T, double>::value) {
+                double beta{1};
+                linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
+                                  alpha__,
+                                  reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
+                                  reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
+                                  beta,
+                                  reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
+                if (wf_in__->params().full_potential()) {
+                    TERMINATE_NOT_IMPLEMENTED;
+                }
             }
         }
+        #ifdef __GPU
+        if (pu == GPU) {
+            if (std::is_same<T, double_complex>::value) {
+                double_complex alpha(alpha__, 0);
+                double_complex beta(1, 0);
+                linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
+                                  &alpha,
+                                  wf_in__->pw_coeffs().prime().at<GPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
+                                  reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, icol0__)), mtrx__.ld(),
+                                  &beta,
+                                  wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
+
+                if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
+                    linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
+                                      &alpha,
+                                      wf_in__->mt_coeffs().prime().at<GPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
+                                      reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, icol0__)), mtrx__.ld(),
+                                      &beta,
+                                      wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
+                }
+            }
+
+            if (std::is_same<T, double>::value) {
+                double beta{1};
+                double alpha = alpha__;
+                linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
+                                  &alpha,
+                                  reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
+                                  reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, icol0__)), mtrx__.ld(),
+                                  &beta,
+                                  reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
+                if (wf_in__->params().full_potential()) {
+                    TERMINATE_NOT_IMPLEMENTED;
+                }
+            }
+            acc::sync_stream(-1);
+        }
+        #endif
     };
 
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
-        for (int j = 0; j < n__; j++) {
-            for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
-                wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
-            }
-            if (wf_out__[iv]->params().full_potential()) {
-                for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
-                    wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
+        if (pu == CPU) {
+            for (int j = 0; j < n__; j++) {
+                for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
+                    wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
+                }
+                if (wf_out__[iv]->params().full_potential()) {
+                    for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
+                        wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
+                    }
                 }
             }
         }
+        #ifdef __GPU
+        if (pu == GPU) {
+            scale_matrix_elements_gpu(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
+                                      wf_out__[iv]->pw_coeffs().prime().ld(),
+                                      wf_out__[iv]->pw_coeffs().num_rows_loc(),
+                                      n__,
+                                      beta__);
+            if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                scale_matrix_elements_gpu(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
+                                          wf_out__[iv]->mt_coeffs().prime().ld(),
+                                          wf_out__[iv]->mt_coeffs().num_rows_loc(),
+                                          n__,
+                                          beta__);
+            }
+        }
+        #endif
     }
     
     /* trivial case */
     if (comm.size() == 1) {
+        #ifdef __GPU
+        if (pu == GPU) {
+            mtrx__.copy_to_device(); // TODO: copy only necessary part
+        }
+        #endif
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, icol0__, wf_out__[iv], j0__, n__);
         }
         return;
     }
+
+    if (pu == GPU) {
+        TERMINATE_NOT_IMPLEMENTED
+    }
+
 
     const int BS = sddk_block_size;
 

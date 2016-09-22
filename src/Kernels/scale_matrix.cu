@@ -68,3 +68,36 @@ extern "C" void scale_matrix_rows_gpu(int nrow__,
     );
 }
 
+__global__ void scale_matrix_elements_gpu_kernel
+(
+    cuDoubleComplex* mtrx__,
+    int ld__,
+    int nrow__,
+    double beta__
+)
+{
+    int icol = blockIdx.y;
+    int irow = blockDim.x * blockIdx.x + threadIdx.x;
+    if (irow < nrow__) {
+        cuDoubleComplex z = mtrx__[array2D_offset(irow, icol, nrow__)];
+        mtrx__[array2D_offset(irow, icol, nrow__)] = make_cuDoubleComplex(z.x * beta__, z.y * beta__);
+    }
+}
+
+extern "C" void scale_matrix_elements_gpu(cuDoubleComplex* ptr__,
+                                          int ld__,
+                                          int nrow__,
+                                          int ncol__,
+                                          double beta__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nrow__, grid_t.x), ncol__);
+
+    scale_matrix_elements_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        ptr__,
+        ld__,
+        nrow__,
+        beta__
+    );
+}

@@ -135,6 +135,12 @@ void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 
 void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
 
+void scale_matrix_elements_gpu(cuDoubleComplex* ptr__,
+                               int ld__,
+                               int nrow__,
+                               int ncol__,
+                               double beta__);
+
 #ifdef __MAGMA
 void magma_init_wrapper();
 

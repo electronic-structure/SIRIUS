@@ -146,8 +146,8 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     //Utils::check_hermitian("o", ophi.coeffs(), ngk);
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = hphi.coeffs().checksum();
-    auto z2 = ophi.coeffs().checksum();
+    auto z1 = hphi.pw_coeffs().prime().checksum();
+    auto z2 = ophi.pw_coeffs().prime().checksum();
     printf("checksum(h): %18.10f %18.10f\n", z1.real(), z1.imag());
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
     #endif
@@ -407,6 +407,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
         evec.allocate(memory_t::device);
         ovlp.allocate(memory_t::device);
+        hmlt.allocate(memory_t::device);
     }
     #endif
 
