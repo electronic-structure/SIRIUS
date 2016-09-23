@@ -910,7 +910,7 @@ inline void inner(wave_functions& bra__,
     auto& comm = bra__.comm();
     auto pu = bra__.params().processing_unit();
 
-    auto local_inner = [pu](wave_functions& bra__, int i0__, int m__, wave_functions& ket__, int j0__, int n__, T* buf__, int ld__){
+    auto local_inner = [pu, &comm](wave_functions& bra__, int i0__, int m__, wave_functions& ket__, int j0__, int n__, T* buf__, int ld__){
         if (std::is_same<T, double_complex>::value) {
             if (pu == CPU) {
                 linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
@@ -947,8 +947,31 @@ inline void inner(wave_functions& bra__,
             }
             #endif
         }
+        /* wave-functions are real and inner product is also real */
         if (std::is_same<T, double>::value) {
-            TERMINATE_NOT_IMPLEMENTED;
+            if (pu == CPU) {
+                linalg<CPU>::gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs().num_rows_loc(),
+                                  2.0,
+                                  reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
+                                  reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
+                                  0.0,
+                                  reinterpret_cast<double*>(buf__), ld__);
+                /* subtract one extra G=0 contribution */
+                if (comm.rank() == 0) {
+                    linalg<CPU>::ger(m__, n__, -1.0,
+                                    reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
+                                    reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
+                                    reinterpret_cast<double*>(buf__), ld__); 
+
+                }
+                if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
+                    TERMINATE_NOT_IMPLEMENTED;
+                }
+            }
+
+            if (pu == GPU) {
+                TERMINATE_NOT_IMPLEMENTED;
+            }
         }
     };
 
@@ -1042,10 +1065,6 @@ inline void orthogonalize(int N__,
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
     
-    if (std::is_same<T, double>::value) {
-        TERMINATE_NOT_IMPLEMENTED
-    }
-
     PROFILE_WITH_TIMER("sirius::wave_functions::orthogonalize");
 
     assert(&phi__.params() == &hphi__.params());
@@ -1058,7 +1077,6 @@ inline void orthogonalize(int N__,
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
         inner(phi__, 0, N__, ophi__, N__, n__, o__, 0, 0);
-
         transform(-1, wfs, 0, N__, o__, 0, 0, 1, wfs, N__, n__);
     }
 
@@ -1081,6 +1099,7 @@ inline void orthogonalize(int N__,
             }
             /* multiplication by triangular matrix */
             for (auto& e: wfs) {
+                /* wave functions are complex, transformation matrix is complex */
                 if (std::is_same<T, double_complex>::value) {
                     linalg<CPU>::trmm('R', 'U', 'N', e->pw_coeffs().num_rows_loc(), n__, double_complex(1, 0),
                                       reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
@@ -1090,6 +1109,18 @@ inline void orthogonalize(int N__,
                         linalg<CPU>::trmm('R', 'U', 'N', e->mt_coeffs().num_rows_loc(), n__, double_complex(1, 0),
                                           reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
                                           e->mt_coeffs().prime().at<CPU>(0, N__), e->mt_coeffs().prime().ld());
+                    }
+                }
+                /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
+                if (std::is_same<T, double>::value) {
+                    linalg<CPU>::trmm('R', 'U', 'N', 2 * e->pw_coeffs().num_rows_loc(), n__, 1.0,
+                                      reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
+                                      reinterpret_cast<double*>(e->pw_coeffs().prime().at<CPU>(0, N__)), 2 * e->pw_coeffs().prime().ld());
+
+                    if (phi__.params().full_potential() && e->mt_coeffs().num_rows_loc()) {
+                        linalg<CPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs().num_rows_loc(), n__, 1.0,
+                                          reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
+                                          reinterpret_cast<double*>(e->mt_coeffs().prime().at<CPU>(0, N__)), 2 * e->mt_coeffs().prime().ld());
                     }
                 }
             }
@@ -1121,6 +1152,9 @@ inline void orthogonalize(int N__,
                                           e->mt_coeffs().prime().at<GPU>(0, N__), e->mt_coeffs().prime().ld());
                     }
                     acc::sync_stream(-1);
+                }
+                if (std::is_same<T, double>::value) {
+                    TERMINATE_NOT_IMPLEMENTED;
                 }
             }
             acc::sync_stream(-1);

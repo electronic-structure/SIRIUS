@@ -368,7 +368,7 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
             if (comm_.rank() == 0) {
                 /* subtract one extra G=0 contribution */
                 linalg<CPU>::ger(nbeta, n__, a1, (double*)&beta_gk_(0, 0), 2 * num_gkvec_loc_,
-                                (double*)phi__.pw_coeffs().prime().at<CPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
+                                (double*)phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * phi__.pw_coeffs().prime().ld(),
                                 &beta_phi_[0], nbeta); 
             }
             break;

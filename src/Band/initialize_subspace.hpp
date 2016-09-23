@@ -43,45 +43,76 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
-    #pragma omp parallel for
-    for (int i = num_ao__; i < num_phi; i++) {
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-            phi.pw_coeffs().prime(igk_loc, i) = 0;
-        }
-    }
+    //#pragma omp parallel for
+    //for (int i = num_ao__; i < num_phi; i++) {
+    //    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+    //        phi.pw_coeffs().prime(igk_loc, i) = 0;
+    //    }
+    //}
 
-    std::vector< vector3d<int> > gkv;
-    for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
-        gkv.push_back(kp__->gkvec().gvec(igk));
-    }
-    std::sort(gkv.begin(), gkv.end(), [](vector3d<int>& a, vector3d<int>& b) {
-        int la = a.l1norm();
-        int lb = b.l1norm();
-        if (la < lb) {
-            return true;
-        }
-        if (la > lb) {
-            return false;
-        }
-        for (int x: {0, 1, 2}) {
-            if (a[x] < b[x]) {
-                return true;
-            }
-            if (a[x] > b[x]) {
-                return false;
-            }
-        }
-        return false;
-    });
-    
-    for (int i = 0; i < num_phi - num_ao__; i++) {
-        auto v1 = gkv[i];
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-            /* global index of G+k vector */
-            int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
-            auto v2 = kp__->gkvec().gvec(igk);
-            if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
-                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+    //std::vector<vector3d<int>> gkv;
+    //for (int igk = 0; igk < kp__->num_gkvec(); igk++) {
+    //    gkv.push_back(kp__->gkvec().gvec(igk));
+    //}
+    //std::sort(gkv.begin(), gkv.end(), [](vector3d<int>& a, vector3d<int>& b) {
+    //    int la = a.l1norm();
+    //    int lb = b.l1norm();
+    //    if (la < lb) {
+    //        return true;
+    //    }
+    //    if (la > lb) {
+    //        return false;
+    //    }
+    //    for (int x: {0, 1, 2}) {
+    //        if (a[x] < b[x]) {
+    //            return true;
+    //        }
+    //        if (a[x] > b[x]) {
+    //            return false;
+    //        }
+    //    }
+    //    return false;
+    //});
+    //
+    //for (int i = 0; i < num_phi - num_ao__; i++) {
+    //    auto v1 = gkv[i];
+    //    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+    //        /* global index of G+k vector */
+    //        int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
+    //        auto v2 = kp__->gkvec().gvec(igk);
+    //        if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
+    //            phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+    //        }
+    //    }
+    //}
+    //for (int i = 0; i < num_phi - num_ao__; i++) {
+    //    auto v1 = gkv[i];
+    //    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+    //        /* global index of G+k vector */
+    //        int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
+    //        auto v2 = kp__->gkvec().gvec(igk);
+    //        if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
+    //            phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+    //        }
+    //    }
+    //}
+    double norm = std::sqrt(1.0 / kp__->num_gkvec()); 
+    #pragma omp parallel
+    {
+        std::vector<double_complex> v(kp__->num_gkvec());
+        #pragma omp for
+        for (int i = 0; i < num_phi - num_ao__; i++) {
+            std::generate(v.begin(), v.end(), []{return type_wrapper<double_complex>::random();});
+            v[0] = 1.0;
+            //auto v1 = gkv[i];
+            for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+                /* global index of G+k vector */
+                int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
+                //auto v2 = kp__->gkvec().gvec(igk);
+                //if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
+                //    phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+                //}
+                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = v[igk] * norm;
             }
         }
     }

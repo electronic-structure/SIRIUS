@@ -460,7 +460,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         eval_old = eval;
 
         /* solve standard eigen-value problem with the size N */
-        //diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
         if (std_evp_solver().solve(N,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
                                    eval.data(), evec.template at<CPU>(), evec.ld(),
                                    hmlt.num_rows_local(), hmlt.num_cols_local())) {
