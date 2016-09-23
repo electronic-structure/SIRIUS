@@ -290,3 +290,55 @@ extern "C" void compute_inner_product_gpu(int num_gkvec_row,
 }
 
 
+__global__ void add_checksum_gpu_kernel
+(
+    cuDoubleComplex const* wf__,
+    int num_rows_loc__,
+    cuDoubleComplex* result__
+)
+{
+    int N = num_blocks(num_rows_loc__, blockDim.x);
+
+    extern __shared__ char sdata_ptr[];
+    double* sdata_x = (double*)&sdata_ptr[0];
+    double* sdata_y = (double*)&sdata_ptr[blockDim.x * sizeof(double)];
+
+    sdata_x[threadIdx.x] = 0.0;
+    sdata_y[threadIdx.x] = 0.0;
+
+    for (int n = 0; n < N; n++) {
+        int j = n * blockDim.x + threadIdx.x;
+        if (j < num_rows_loc__) {
+            int k = array2D_offset(j, blockIdx.x, num_rows_loc__);
+            sdata_x[threadIdx.x] += wf__[k].x;
+            sdata_y[threadIdx.x] += wf__[k].y;
+        }
+    }
+    __syncthreads();
+
+    for (int s = 1; s < blockDim.x; s *= 2) {
+        if (threadIdx.x % (2 * s) == 0) {
+            sdata_x[threadIdx.x] = sdata_x[threadIdx.x] + sdata_x[threadIdx.x + s];
+            sdata_y[threadIdx.x] = sdata_y[threadIdx.x] + sdata_y[threadIdx.x + s];
+        }
+        __syncthreads();
+    }
+
+    result__[blockIdx.x] = cuCadd(result__[blockIdx.x], make_cuDoubleComplex(sdata_x[0], sdata_y[0]));
+}
+
+extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+                                 int num_rows_loc__,
+                                 int nwf__,
+                                 cuDoubleComplex* result__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(nwf__);
+
+    add_checksum_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double)>>>
+    (
+        wf__,
+        num_rows_loc__,
+        result__
+    );
+}

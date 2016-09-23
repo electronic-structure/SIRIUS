@@ -196,8 +196,10 @@ class Band
                              mdarray<double, 1>& h_diag__,
                              mdarray<double, 1>& o_diag__) const;
         
-        /// Compute <phi|Op|phi> kind of matrix.
-        /** The matrix is returned in the CPU pointer because eigen-value solvers start from the CPU. */
+        /// Setup the subspace matrix.
+        /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
+         *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
+         *  in the CPU pointer because the eigen-value solvers start from the CPU. */
         template <typename T>
         inline void set_subspace_mtrx(int N__,
                                       int n__,
@@ -213,11 +215,11 @@ class Band
                 assert(&mtrx__.blacs_grid() == &mtrx_old__.blacs_grid());
             }
 
+            /* copy old N x N distributed matrix */
             if (N__ > 0) {
                 splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-                /* copy old N x N matrix */
                 #pragma omp parallel for
                 for (int i = 0; i < spl_col.local_size(); i++) {
                     std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
@@ -227,17 +229,17 @@ class Band
             /* <{phi,phi_new}|Op|phi_new> */
             inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
             
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                /* copy N x n distributed panel to CPU */
-                splindex<block_cyclic>  spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-                splindex<block_cyclic> spl_col0(N__,       mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-                splindex<block_cyclic> spl_col1(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-                acc::copyout(mtrx__.template at<CPU>(0, spl_col0.local_size()), mtrx__.ld(),
-                             mtrx__.template at<GPU>(0, spl_col0.local_size()), mtrx__.ld(),
-                             spl_row.local_size(), spl_col1.local_size() - spl_col0.local_size());
-            }
-            #endif
+            //== #ifdef __GPU
+            //== if (ctx_.processing_unit() == GPU) {
+            //==     /* copy N x n distributed panel to CPU */
+            //==     splindex<block_cyclic>  spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            //==     splindex<block_cyclic> spl_col0(N__,       mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //==     splindex<block_cyclic> spl_col1(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //==     acc::copyout(mtrx__.template at<CPU>(0, spl_col0.local_size()), mtrx__.ld(),
+            //==                  mtrx__.template at<GPU>(0, spl_col0.local_size()), mtrx__.ld(),
+            //==                  spl_row.local_size(), spl_col1.local_size() - spl_col0.local_size());
+            //== }
+            //== #endif
 
             /* restore lower part */
             if (N__ > 0) {
@@ -268,11 +270,11 @@ class Band
             }
             #endif
 
+            /* save new matrix */
             if (mtrx_old__.size()) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-                /* save matrix */
                 #pragma omp parallel for
                 for (int i = 0; i < spl_col.local_size(); i++) {
                     std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
@@ -280,30 +282,32 @@ class Band
             }
         }
                 
-        template <typename T>
-        inline void diag_subspace_mtrx(int N__,
-                                       int num_bands__,
-                                       dmatrix<T>& mtrx_dist__,
-                                       dmatrix<T>& evec_dist__,
-                                       std::vector<double>& eval__) const
-        {
-            PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
+        //== template <typename T>
+        //== inline void diag_subspace_mtrx(int N__,
+        //==                                int num_bands__,
+        //==                                dmatrix<T>& mtrx__,
+        //==                                dmatrix<T>& evec__,
+        //==                                std::vector<double>& eval__) const
+        //== {
+        //==     PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
 
-            int result = std_evp_solver().solve(N__,  num_bands__, mtrx_dist__.template at<CPU>(), mtrx_dist__.ld(),
-                                                &eval__[0], evec_dist__.template at<CPU>(), evec_dist__.ld(),
-                                                mtrx_dist__.num_rows_local(), mtrx_dist__.num_cols_local());
-            if (result) {
-                std::stringstream s;
-                s << "error in diagonalziation";
-                TERMINATE(s);
-            }
+        //==     int result = std_evp_solver().solve(N__,  num_bands__, mtrx__.template at<CPU>(), mtrx__.ld(),
+        //==                                         &eval__[0], evec__.template at<CPU>(), evec__.ld(),
+        //==                                         mtrx__.num_rows_local(), mtrx__.num_cols_local());
+        //==     if (result) {
+        //==         std::stringstream s;
+        //==         s << "error in diagonalziation";
+        //==         TERMINATE(s);
+        //==     }
 
-            ///* copy eigen-vectors to GPU */
-            //#ifdef __GPU
-            //if (ctx_.processing_unit() == GPU)
-            //    acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
-            //#endif
-        }
+        //==     /* copy eigen-vectors to GPU */
+        //==     #ifdef __GPU
+        //==     if (ctx_.processing_unit() == GPU) {
+        //==         //acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
+        //==         evec__.copy_to_device(); // TODO: copy only necessary elements
+        //==     }
+        //==     #endif
+        //== }
 
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,

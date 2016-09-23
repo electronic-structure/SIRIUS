@@ -90,6 +90,8 @@ void cuda_check_last_error();
 
 bool cuda_check_device_ptr(void const* ptr__);
 
+void cuda_memset2d(void* ptr__, int ld__, int nrow__, int ncol__, int elem_size__, int value__);
+
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                   cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                   int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
@@ -226,6 +228,12 @@ template <typename T>
 inline void zero(T* target__, size_t n__)
 {
     cuda_memset(target__, 0, n__ * sizeof(T));
+}
+
+template <typename T>
+inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
+{
+    cuda_memset2d(ptr__, ld__, nrow__, ncol__, sizeof(T), 0);
 }
 
 };

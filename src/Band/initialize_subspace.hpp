@@ -134,8 +134,7 @@ inline void Band::initialize_subspace(K_point* kp__,
     
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
-        auto cs = mdarray<double_complex, 1>(phi.pw_coeffs().prime().at<CPU>(), kp__->num_gkvec_loc() * num_phi).checksum();
-        kp__->comm().allreduce(&cs, 1);
+        auto cs = phi.checksum(0, num_phi);
         DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
     }
     #endif
@@ -151,7 +150,28 @@ inline void Band::initialize_subspace(K_point* kp__,
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);
 
         /* solve generalized eigen-value problem with the size N */
-        diag_subspace_mtrx<T>(num_phi, num_bands, hmlt, evec, eval);
+        //diag_subspace_mtrx<T>(num_phi, num_bands, hmlt, evec, eval);
+
+        if (std_evp_solver().solve(num_phi,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                   eval.data(), evec.template at<CPU>(), evec.ld(),
+                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+            std::stringstream s;
+            s << "error in diagonalziation";
+            TERMINATE(s);
+        }
+
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        {
+            auto cs = evec.checksum();
+            kp__->comm().allreduce(&cs, 1);
+            DUMP("checksum(evec): %18.10f", std::abs(cs));
+            double cs1{0};
+            for (int i = 0; i < num_bands; i++) {
+                cs1 += eval[i];
+            }
+            DUMP("checksum(eval): %18.10f", cs1);
+        }
+        #endif
 
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0) {
@@ -166,10 +186,18 @@ inline void Band::initialize_subspace(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
+            evec.copy_to_device();
         }
         #endif
 
         transform<T>(phi, 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
+
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        {
+            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
+            DUMP("checksum(spinor_wave_functions): %18.10f %18.10f", cs.real(), cs.imag());
+        }
+        #endif
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -181,16 +209,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         for (int j = 0; j < ctx_.num_fv_states(); j++) {
             kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
         }
-
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        {
-            double cs{0};
-            for (int i = 0; i < num_bands; i++) {
-                cs += eval[i];
-            }
-            DUMP("checksum(eval): %18.10f", cs);
-        }
-        #endif
     }
 
     kp__->beta_projectors().dismiss();

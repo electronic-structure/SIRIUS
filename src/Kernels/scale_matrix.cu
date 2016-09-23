@@ -79,8 +79,8 @@ __global__ void scale_matrix_elements_gpu_kernel
     int icol = blockIdx.y;
     int irow = blockDim.x * blockIdx.x + threadIdx.x;
     if (irow < nrow__) {
-        cuDoubleComplex z = mtrx__[array2D_offset(irow, icol, nrow__)];
-        mtrx__[array2D_offset(irow, icol, nrow__)] = make_cuDoubleComplex(z.x * beta__, z.y * beta__);
+        cuDoubleComplex z = mtrx__[array2D_offset(irow, icol, ld__)];
+        mtrx__[array2D_offset(irow, icol, ld__)] = make_cuDoubleComplex(z.x * beta__, z.y * beta__);
     }
 }
 

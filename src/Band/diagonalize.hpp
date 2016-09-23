@@ -263,7 +263,17 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
         eval_old = eval;
 
         /* solve standard eigen-value problem with the size N */
-        diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
+        //diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
+
+        /* solve standard eigen-value problem with the size N */
+        //diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
+        if (std_evp_solver().solve(N,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                   eval.data(), evec.template at<CPU>(), evec.ld(),
+                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+            std::stringstream s;
+            s << "error in diagonalziation";
+            TERMINATE(s);
+        }
 
         #if (__VERBOSITY > 2)
         if (kp->comm().rank() == 0) {
@@ -404,10 +414,12 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
         hpsi.pw_coeffs().allocate_on_device();
         opsi.pw_coeffs().allocate_on_device();
-
-        evec.allocate(memory_t::device);
-        ovlp.allocate(memory_t::device);
-        hmlt.allocate(memory_t::device);
+    
+        if (kp__->comm().size() == 1) {
+            evec.allocate(memory_t::device);
+            ovlp.allocate(memory_t::device);
+            hmlt.allocate(memory_t::device);
+        }
     }
     #endif
 
@@ -452,7 +464,14 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         eval_old = eval;
 
         /* solve standard eigen-value problem with the size N */
-        diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
+        //diag_subspace_mtrx(N, num_bands, hmlt, evec, eval);
+        if (std_evp_solver().solve(N,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                   eval.data(), evec.template at<CPU>(), evec.ld(),
+                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+            std::stringstream s;
+            s << "error in diagonalziation";
+            TERMINATE(s);
+        }
         
         #if (__VERBOSITY > 2)
         if (kp__->comm().rank() == 0) {
@@ -481,6 +500,14 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {   
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU && kp__->comm().size() == 1) {
+                /* copy N x n distributed panel to CPU */
+                acc::copyin(evec.template at<GPU>(), evec.ld(),
+                            evec.template at<CPU>(), evec.ld(),
+                            N, num_bands);
+            }
+            #endif
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform<T>(phi, 0, N, evec, 0, 0, psi, 0, num_bands);

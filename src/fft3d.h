@@ -188,6 +188,7 @@ class FFT3D
                     cufft_batch_load_gpu(gvec__.num_zcol() * grid_.size(2), gvec__.num_gvec(), 1, 
                                          z_col_map_.at<GPU>(), data__, fft_buffer_aux1_.at<GPU>());
                     if (use_reduction) {
+                        STOP();
                         /* add stuff */
                     }
                     /* transform all columns */

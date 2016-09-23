@@ -292,6 +292,13 @@ bool cuda_check_device_ptr(void const* ptr__)
     return false;
 }
 
+void cuda_memset2d(void* ptr__, int ld__, int nrow__, int ncol__, int elem_size__, int value__)
+{
+    CALL_CUDA(cudaMemset2D, (ptr__, ld__ * elem_size__, value__, nrow__ * elem_size__, ncol__));
+}
+
+
+
 //int cuda_check_device_ptr(void *ptr__) 
 //{
 //    int data;

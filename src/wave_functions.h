@@ -37,6 +37,11 @@ extern "C" void add_square_sum_gpu(cuDoubleComplex const* wf__,
                                    int reduced__,
                                    int mpi_rank__,
                                    double* result__);
+
+extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+                                 int num_rows_loc__,
+                                 int nwf__,
+                                 cuDoubleComplex* result__);
 #endif
 
 const int sddk_block_size = 256;
@@ -296,6 +301,39 @@ class wave_functions
             return comm_;
         }
 
+        inline double_complex checksum(int i0__, int n__)
+        {
+            double_complex cs(0, 0);
+            #ifdef __GPU
+            if (params_.processing_unit() == GPU) {
+                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device);
+                cs1.zero_on_device();
+                add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
+                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    add_checksum_gpu(mt_coeffs().prime().at<GPU>(0, i0__), mt_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
+                }
+                cs1.copy_to_host();
+                cs = cs1.checksum();
+            }
+            #endif
+            if (params_.processing_unit() == CPU) {
+                for (int i = 0; i < n__; i++) {
+                    for (int j = 0; j < pw_coeffs().num_rows_loc(); j++) {
+                        cs += pw_coeffs().prime(j, i0__ + i);
+                    }
+                }
+                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    for (int i = 0; i < n__; i++) {
+                        for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
+                            cs += mt_coeffs().prime(j, i0__ + i);
+                        }
+                    }
+                }
+            }
+            comm_.allreduce(&cs, 1);
+            return cs;
+        }
+
         //#ifdef __GPU
         //inline void copy_to_device(int n__)
         //{
@@ -503,6 +541,7 @@ class wave_functions
 //==     }
 //== }
 
+/// Transform the wave-functions.
 template <typename T>
 inline void transform(double alpha__,
                       std::vector<wave_functions*> wf_in__,
@@ -595,6 +634,8 @@ inline void transform(double alpha__,
                                       &beta,
                                       wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
                 }
+                /* alpha and beta should not go out of the scope, so we sync here */
+                acc::sync_stream(-1);
             }
 
             if (std::is_same<T, double>::value) {
@@ -609,8 +650,8 @@ inline void transform(double alpha__,
                 if (wf_in__->params().full_potential()) {
                     TERMINATE_NOT_IMPLEMENTED;
                 }
+                acc::sync_stream(-1);
             }
-            acc::sync_stream(-1);
         }
         #endif
     };
@@ -618,30 +659,59 @@ inline void transform(double alpha__,
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu == CPU) {
-            for (int j = 0; j < n__; j++) {
-                for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
-                    wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
+            if (beta__ == 0) {
+                for (int j = 0; j < n__; j++) {
+                    std::memset(wf_out__[iv]->pw_coeffs().prime().at<CPU>(0, j0__ + j),
+                                0,
+                                wf_out__[iv]->pw_coeffs().num_rows_loc() * sizeof(double_complex));
                 }
-                if (wf_out__[iv]->params().full_potential()) {
-                    for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
-                        wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
+                if (wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                    for (int j = 0; j < n__; j++) {
+                        std::memset(wf_out__[iv]->mt_coeffs().prime().at<CPU>(0, j0__ + j),
+                                    0,
+                                    wf_out__[iv]->mt_coeffs().num_rows_loc() * sizeof(double_complex));
+                    }
+                }
+
+            } else {
+                for (int j = 0; j < n__; j++) {
+                    for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
+                        wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
+                    }
+                    if (wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                        for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
+                            wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
+                        }
                     }
                 }
             }
         }
         #ifdef __GPU
         if (pu == GPU) {
-            scale_matrix_elements_gpu(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
-                                      wf_out__[iv]->pw_coeffs().prime().ld(),
-                                      wf_out__[iv]->pw_coeffs().num_rows_loc(),
-                                      n__,
-                                      beta__);
-            if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
-                scale_matrix_elements_gpu(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
-                                          wf_out__[iv]->mt_coeffs().prime().ld(),
-                                          wf_out__[iv]->mt_coeffs().num_rows_loc(),
+            if (beta__ == 0) {
+                acc::zero(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
+                          wf_out__[iv]->pw_coeffs().prime().ld(),
+                          wf_out__[iv]->pw_coeffs().num_rows_loc(),
+                          n__);
+                if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                    acc::zero(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
+                              wf_out__[iv]->mt_coeffs().prime().ld(),
+                              wf_out__[iv]->mt_coeffs().num_rows_loc(),
+                              n__);
+                }
+            } else {
+                scale_matrix_elements_gpu(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
+                                          wf_out__[iv]->pw_coeffs().prime().ld(),
+                                          wf_out__[iv]->pw_coeffs().num_rows_loc(),
                                           n__,
                                           beta__);
+                if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                    scale_matrix_elements_gpu(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
+                                              wf_out__[iv]->mt_coeffs().prime().ld(),
+                                              wf_out__[iv]->mt_coeffs().num_rows_loc(),
+                                              n__,
+                                              beta__);
+                }
             }
         }
         #endif
@@ -649,11 +719,6 @@ inline void transform(double alpha__,
     
     /* trivial case */
     if (comm.size() == 1) {
-        #ifdef __GPU
-        if (pu == GPU) {
-            mtrx__.copy_to_device(); // TODO: copy only necessary part
-        }
-        #endif
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, icol0__, wf_out__[iv], j0__, n__);
         }
@@ -663,7 +728,6 @@ inline void transform(double alpha__,
     if (pu == GPU) {
         TERMINATE_NOT_IMPLEMENTED
     }
-
 
     const int BS = sddk_block_size;
 
@@ -799,6 +863,9 @@ inline void transform(wave_functions& wf_in__,
     transform<T>(1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, icol0__, 0.0, {&wf_out__}, j0__, n__);
 }
 
+/// Inner product between wave-functions.
+/** The result is always returned in CPU pointer. In case of single MPI rank the CPU and GPU parts of 
+ *  result are identical */
 template <typename T>
 inline void inner(wave_functions& bra__,
                   int i0__,
@@ -855,7 +922,9 @@ inline void inner(wave_functions& bra__,
                                       ket__.mt_coeffs().prime().at<GPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
                                       &alpha,
                                       reinterpret_cast<double_complex*>(buf__), ld__);
+                    acc::sync_stream(-1);
                 }
+                acc::sync_stream(-1);
             }
             #endif
         }
@@ -867,6 +936,13 @@ inline void inner(wave_functions& bra__,
     if (comm.size() == 1) {
         T* buf = (pu == CPU) ? result__.template at<CPU>(irow0__, icol0__) : result__.template at<GPU>(irow0__, icol0__);
         local_inner(bra__, i0__, m__, ket__, j0__, n__, buf, result__.ld());
+        #ifdef __GPU
+        if (pu == GPU) {
+            acc::copyout(result__.template at<CPU>(irow0__, icol0__), result__.ld(),
+                         result__.template at<GPU>(irow0__, icol0__), result__.ld(),
+                         m__, n__);
+        }
+        #endif
         return;
     }
 
@@ -972,14 +1048,17 @@ inline void orthogonalize(int N__,
     if (o__.blacs_grid().comm().size() == 1) {
         /* CPU version */
         if (phi__.params().processing_unit() == CPU) {
+            /* Cholesky factorization */
             if (int info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())) {
                 std::stringstream s;
                 s << "error in factorization, info = " << info;
                 TERMINATE(s);
             }
+            /* inversion of triangular matrix */
             if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld())) {
                 TERMINATE("error in inversion");
             }
+            /* multiplication by triangular matrix */
             for (auto& e: wfs) {
                 if (std::is_same<T, double_complex>::value) {
                     linalg<CPU>::trmm('R', 'U', 'N', e->pw_coeffs().num_rows_loc(), n__, double_complex(1, 0),
@@ -996,17 +1075,17 @@ inline void orthogonalize(int N__,
         }
         #ifdef __GPU
         if (phi__.params().processing_unit() == GPU) {
-
+            /* Cholesky factorization */
             if (int info = linalg<GPU>::potrf(n__, o__.template at<GPU>(), o__.ld())) {
                 std::stringstream s;
                 s << "error in factorization, info = " << info;
                 TERMINATE(s);
             }
-
+            /* inversion of triangular matrix */
             if (linalg<GPU>::trtri(n__, o__.template at<GPU>(), o__.ld())) {
                 TERMINATE("error in inversion");
             }
-
+            /* multiplication by triangular matrix */
             for (auto& e: wfs) {
                 if (std::is_same<T, double_complex>::value) {
                     double_complex alpha(1, 0);
@@ -1020,6 +1099,7 @@ inline void orthogonalize(int N__,
                                           reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
                                           e->mt_coeffs().prime().at<GPU>(0, N__), e->mt_coeffs().prime().ld());
                     }
+                    acc::sync_stream(-1);
                 }
             }
             acc::sync_stream(-1);
@@ -1051,6 +1131,13 @@ inline void orthogonalize(int N__,
             e->copy_from(tmp__, 0, n__, N__);
         }
     }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    for (auto& e: wfs) {
+        auto cs = e->checksum(N__, n__);
+        DUMP("checksum(orthogonalize(wf)): %18.10f %18.10f", cs.real(), cs.imag());
+    }
+    #endif
 }
 
 }

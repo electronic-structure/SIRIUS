@@ -253,9 +253,7 @@ class Hloc_operator
             for (int i = first; i < hphi__.pw_coeffs().spl_num_col().local_size(); i++) {
                 /* phi(G) -> phi(r) */
                 if (fft_.gpu_only()) {
-                    #ifdef __GPU
                     fft_.transform<1>(gkvec_, hphi__.pw_coeffs().extra().at<GPU>(0, i));
-                    #endif
                 } else {
                     fft_.transform<1>(gkvec_, hphi__.pw_coeffs().extra().at<CPU>(0, i));
                 }
@@ -274,9 +272,7 @@ class Hloc_operator
                 }
                 /* V(r)phi(r) -> [V*phi](G) */
                 if (fft_.gpu_only()) {
-                    #ifdef __GPU
                     fft_.transform<-1>(gkvec_, vphi1_.at<GPU>());
-                    #endif
                 } else {
                     fft_.transform<-1>(gkvec_, vphi1_.at<CPU>());
                 }

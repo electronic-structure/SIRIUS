@@ -99,7 +99,8 @@ class matrix_storage<T, matrix_storage_t::slab>
             if (comm_col__.size() == 1) {
                 assert(num_rows_loc_ == num_rows__);
                 if (pu_ == GPU && prime_.on_device()) {
-                    extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), prime_.template at<GPU>(0, idx0__),
+                    extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__),
+                                           prime_.template at<GPU>(0, idx0__),
                                            num_rows__, n__);
                 } else {
                     extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__),

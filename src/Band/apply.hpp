@@ -116,18 +116,8 @@ void Band::apply_h_o(K_point* kp__,
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            phi__.pw_coeffs().copy_to_host(N__, n__);
-            if (ctx_.fft_coarse().gpu_only()) {
-                hphi__.pw_coeffs().copy_to_host(N__, n__);
-            }
-        }
-        #endif
-        auto cs1 = mdarray<double_complex, 1>(&phi__.pw_coeffs().prime(0, N__), kp__->num_gkvec_loc() * n__).checksum();
-        auto cs2 = mdarray<double_complex, 1>(&hphi__.pw_coeffs().prime(0, N__), kp__->num_gkvec_loc() * n__).checksum();
-        kp__->comm().allreduce(&cs1, 1);
-        kp__->comm().allreduce(&cs2, 1);
+        auto cs1 = phi__.checksum(N__, n__);
+        auto cs2 = hphi__.checksum(N__, n__);
         DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
         DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
     }
@@ -153,6 +143,15 @@ void Band::apply_h_o(K_point* kp__,
             //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
         }
     }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs1 = hphi__.checksum(N__, n__);
+        auto cs2 = ophi__.checksum(N__, n__);
+        DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
+        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
+    #endif
 
     //== if (!kp__->gkvec().reduced())
     //== {
