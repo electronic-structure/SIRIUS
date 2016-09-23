@@ -232,7 +232,6 @@ inline int Band::residuals(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU && kp__->comm().size() == 1) {
             evec_tmp.allocate(memory_t::device);
-            evec_tmp.copy_to_device();
         }
         #endif
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */

@@ -334,41 +334,36 @@ class wave_functions
             return cs;
         }
 
-        //#ifdef __GPU
-        //inline void copy_to_device(int n__)
-        //{
-        //    pw_coeffs().prime().allocate(memory_t::device);
-        //    acc::copyin(pw_coeffs().prime().at<GPU>(),
-        //                pw_coeffs().prime().at<CPU>(),
-        //                pw_coeffs().num_rows_loc() * n__);
-        //    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
-        //        mt_coeffs().prime().allocate(memory_t::device);
-        //        acc::copyin(mt_coeffs().prime().at<GPU>(),
-        //                    mt_coeffs().prime().at<CPU>(),
-        //                    mt_coeffs().num_rows_loc() * n__);
-        //    }
-        //}
+        #ifdef __GPU
+        void allocate_on_device() {
+            pw_coeffs().allocate_on_device();
+            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                mt_coeffs().allocate_on_device();
+            }
+        }
 
-        //inline void copy_to_host(int n__)
-        //{
-        //    acc::copyout(pw_coeffs().prime().at<CPU>(),
-        //                 pw_coeffs().prime().at<GPU>(),
-        //                 pw_coeffs().num_rows_loc() * n__);
-        //    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
-        //        acc::copyout(mt_coeffs().prime().at<CPU>(),
-        //                     mt_coeffs().prime().at<GPU>(),
-        //                     mt_coeffs().num_rows_loc() * n__);
-        //    }
-        //}
+        void deallocate_on_device() {
+            pw_coeffs().deallocate_on_device();
+            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                mt_coeffs().deallocate_on_device();
+            }
+        }
 
-        //inline void deallocate_on_device()
-        //{
-        //    pw_coeffs().prime().deallocate_on_device();
-        //    if (params_.full_potential()) {
-        //        mt_coeffs().prime().deallocate_on_device();
-        //    }
-        //}
-        //#endif
+        void copy_to_device(int i0__, int n__) {
+            pw_coeffs().copy_to_device(i0__, n__);
+            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                mt_coeffs().copy_to_device(i0__, n__);
+            }
+        }
+
+        void copy_to_host(int i0__, int n__) {
+            pw_coeffs().copy_to_host(i0__, n__);
+            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                mt_coeffs().copy_to_host(i0__, n__);
+            }
+        }
+        #endif
+
 };
 
 //== inline void inner(wave_functions& bra__,
@@ -541,7 +536,7 @@ class wave_functions
 //==     }
 //== }
 
-/// Transform the wave-functions.
+/// Linear transformation of the wave-functions.
 template <typename T>
 inline void transform(double alpha__,
                       std::vector<wave_functions*> wf_in__,
@@ -584,13 +579,14 @@ inline void transform(double alpha__,
             if (std::is_same<T, double_complex>::value) {
                 double_complex alpha(alpha__, 0);
                 double_complex beta(1, 0);
+                /* transform plane-wave part */
                 linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   alpha,
                                   wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
                                   reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
                                   beta,
                                   wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
-
+                /* transform muffin-tin part */
                 if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
                     linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       alpha,
@@ -660,12 +656,14 @@ inline void transform(double alpha__,
     for (int iv = 0; iv < nwf; iv++) {
         if (pu == CPU) {
             if (beta__ == 0) {
+                /* zero PW part */
                 for (int j = 0; j < n__; j++) {
                     std::memset(wf_out__[iv]->pw_coeffs().prime().at<CPU>(0, j0__ + j),
                                 0,
                                 wf_out__[iv]->pw_coeffs().num_rows_loc() * sizeof(double_complex));
                 }
-                if (wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                /* zero MT part */
+                if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                     for (int j = 0; j < n__; j++) {
                         std::memset(wf_out__[iv]->mt_coeffs().prime().at<CPU>(0, j0__ + j),
                                     0,
@@ -674,11 +672,13 @@ inline void transform(double alpha__,
                 }
 
             } else {
+                /* scale PW part */
                 for (int j = 0; j < n__; j++) {
                     for (int k = 0; k < wf_out__[iv]->pw_coeffs().num_rows_loc(); k++) {
                         wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
                     }
-                    if (wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                    /* scale MT part */
+                    if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                         for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
                             wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
                         }
@@ -689,10 +689,12 @@ inline void transform(double alpha__,
         #ifdef __GPU
         if (pu == GPU) {
             if (beta__ == 0) {
+                /* zero PW part */
                 acc::zero(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
                           wf_out__[iv]->pw_coeffs().prime().ld(),
                           wf_out__[iv]->pw_coeffs().num_rows_loc(),
                           n__);
+                /* zero MT part */
                 if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                     acc::zero(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
                               wf_out__[iv]->mt_coeffs().prime().ld(),
@@ -700,11 +702,13 @@ inline void transform(double alpha__,
                               n__);
                 }
             } else {
+                /* scale PW part */
                 scale_matrix_elements_gpu(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
                                           wf_out__[iv]->pw_coeffs().prime().ld(),
                                           wf_out__[iv]->pw_coeffs().num_rows_loc(),
                                           n__,
                                           beta__);
+                /* scale MT part */
                 if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                     scale_matrix_elements_gpu(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
                                               wf_out__[iv]->mt_coeffs().prime().ld(),
@@ -719,20 +723,28 @@ inline void transform(double alpha__,
     
     /* trivial case */
     if (comm.size() == 1) {
+        #ifdef __GPU
+        if (pu == GPU) {
+            acc::copyin(mtrx__.template at<GPU>(irow0__, icol0__), mtrx__.ld(),
+                        mtrx__.template at<CPU>(irow0__, icol0__), mtrx__.ld(), m__, n__);
+        }
+        #endif
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, icol0__, wf_out__[iv], j0__, n__);
         }
         return;
     }
 
-    if (pu == GPU) {
-        TERMINATE_NOT_IMPLEMENTED
-    }
-
     const int BS = sddk_block_size;
 
     mdarray<T, 1> buf(BS * BS, memory_t::host, "buf");
     matrix<T> submatrix(BS, BS, memory_t::host, "submatrix");
+
+    #ifdef __GPU
+    if (pu == GPU) {
+        submatrix.allocate(memory_t::device);
+    }
+    #endif
 
     /* cache cartesian ranks */
     mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());
@@ -780,7 +792,7 @@ inline void transform(double alpha__,
             sd.calc_offsets();
 
             assert(sd.offsets.back() + sd.counts.back() <= (int)buf.size());
-            
+            /* fetch elements of sub-matrix matrix */
             if (local_size_row) {
                 for (int j = 0; j < local_size_col; j++) {
                     std::memcpy(&buf[sd.offsets[comm.rank()] + local_size_row * j],
@@ -788,7 +800,7 @@ inline void transform(double alpha__,
                                 local_size_row * sizeof(T));
                 }
             }
-
+            /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
             
             /* unpack data */
@@ -806,6 +818,13 @@ inline void transform(double alpha__,
             for (int rank = 0; rank < comm.size(); rank++) {
                 assert(sd.counts[rank] == counts[rank]);
             }
+            #ifdef __GPU
+            if (pu == GPU) {
+                acc::copyin(submatrix.template at<GPU>(), submatrix.ld(),
+                            submatrix.template at<CPU>(), submatrix.ld(),
+                            nrow, ncol);
+            }
+            #endif
             for (int iv = 0; iv < nwf; iv++) {
                 local_transform(wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
             }
@@ -946,10 +965,6 @@ inline void inner(wave_functions& bra__,
         return;
     }
 
-    if (pu == GPU) {
-        TERMINATE_NOT_IMPLEMENTED
-    }
-
     const int BS = sddk_block_size;
 
     mdarray<T, 2> c_tmp(BS * BS, 2);
@@ -996,6 +1011,12 @@ inline void inner(wave_functions& bra__,
 
             T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
             local_inner(bra__, i0__ + i0, nrow, ket__, j0__ + j0, ncol, buf, nrow);
+
+            #ifdef __GPU
+            if (pu == GPU) {
+                acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol);
+            }
+            #endif
 
             comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
             
@@ -1106,10 +1127,6 @@ inline void orthogonalize(int N__,
         }
         #endif
     } else { /* parallel transformation */
-        if (phi__.params().processing_unit() == GPU) {
-            STOP();
-        }
-
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in factorization, info = " << info;

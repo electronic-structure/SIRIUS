@@ -122,10 +122,11 @@ inline void Band::initialize_subspace(K_point* kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        phi.pw_coeffs().allocate_on_device();
-        phi.pw_coeffs().copy_to_device(0, num_phi);
-        hphi.pw_coeffs().allocate_on_device();
-        ophi.pw_coeffs().allocate_on_device();
+        phi.allocate_on_device();
+        phi.copy_to_device(0, num_phi);
+        hphi.allocate_on_device();
+        ophi.allocate_on_device();
+        wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
         ovlp.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
@@ -150,8 +151,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);
 
         /* solve generalized eigen-value problem with the size N */
-        //diag_subspace_mtrx<T>(num_phi, num_bands, hmlt, evec, eval);
-
         if (std_evp_solver().solve(num_phi,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
                                    eval.data(), evec.template at<CPU>(), evec.ld(),
                                    hmlt.num_rows_local(), hmlt.num_cols_local())) {
@@ -186,7 +185,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
-            evec.copy_to_device();
         }
         #endif
 
