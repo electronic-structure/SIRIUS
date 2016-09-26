@@ -550,15 +550,16 @@ class FFT3D
                 switch (direction) {
                     case 1: {
                         /* srteam #0 copies packed columns to GPU */
-                        acc::copyin(fft_buffer_aux1__.at<GPU>(), cufft_nbatch_xy_, fft_buffer_aux1__.at<CPU>(), local_size_z_,
+                        acc::copyin(fft_buffer_aux1__.at<GPU>(), cufft_nbatch_xy_,
+                                    fft_buffer_aux1__.at<CPU>(), local_size_z_,
                                     cufft_nbatch_xy_, gvec__.num_zcol(), 0);
-                        acc::copyin(fft_buffer_aux2__.at<GPU>(), cufft_nbatch_xy_, fft_buffer_aux2__.at<CPU>(), local_size_z_,
+                        acc::copyin(fft_buffer_aux2__.at<GPU>(), cufft_nbatch_xy_,
+                                    fft_buffer_aux2__.at<CPU>(), local_size_z_,
                                     cufft_nbatch_xy_, gvec__.num_zcol(), 0);
                         /* srteam #0 unpacks z-columns into proper position of FFT buffer */
-                        STOP();
-                        //unpack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
-                        //                    grid_.size(0), grid_.size(1), cufft_nbatch_xy_,
-                        //                    gvec.num_zcols(), gvec.z_columns_pos().at<GPU>(), 0);
+                        unpack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
+                                            grid_.size(0), grid_.size(1), cufft_nbatch_xy_,
+                                            gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
                         /* stream #0 executes FFT */
                         cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                         break;
@@ -570,14 +571,15 @@ class FFT3D
                         /* stream #0 executes FFT */
                         cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
-                        STOP();
-                        //pack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
-                        //                  grid_.size(0), grid_.size(1), cufft_nbatch_xy_,
-                        //                  gvec.num_zcols(), gvec.z_columns_pos().at<GPU>(), 0);
+                        pack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
+                                          grid_.size(0), grid_.size(1), cufft_nbatch_xy_,
+                                          gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
                         /* srteam #0 copies packed columns to CPU */
-                        acc::copyout(fft_buffer_aux1__.at<CPU>(), local_size_z_, fft_buffer_aux1__.at<GPU>(), cufft_nbatch_xy_, 
+                        acc::copyout(fft_buffer_aux1__.at<CPU>(), local_size_z_,
+                                     fft_buffer_aux1__.at<GPU>(), cufft_nbatch_xy_, 
                                      cufft_nbatch_xy_, gvec__.num_zcol(), 0);
-                        acc::copyout(fft_buffer_aux2__.at<CPU>(), local_size_z_, fft_buffer_aux2__.at<GPU>(), cufft_nbatch_xy_, 
+                        acc::copyout(fft_buffer_aux2__.at<CPU>(), local_size_z_,
+                                     fft_buffer_aux2__.at<GPU>(), cufft_nbatch_xy_, 
                                      cufft_nbatch_xy_, gvec__.num_zcol(), 0);
                         /* stream #1 waits to complete memory copy */
                         acc::sync_stream(1);
@@ -764,7 +766,6 @@ class FFT3D
             #endif
         }
 
-
         //template<typename T>
         //inline void input(int n__, int const* map__, T const* data__)
         //{
@@ -775,9 +776,13 @@ class FFT3D
         template <typename T>
         inline void input(T* data__)
         {
-            for (int i = 0; i < local_size(); i++) fft_buffer_[i] = data__[i];
+            for (int i = 0; i < local_size(); i++) {
+                fft_buffer_[i] = data__[i];
+            }
             #ifdef __GPU
-            if (pu_ == GPU) fft_buffer_.copy_to_device();
+            if (pu_ == GPU) {
+                fft_buffer_.copy_to_device();
+            }
             #endif
         }
         
@@ -795,15 +800,12 @@ class FFT3D
         
         inline void output(double_complex* data__)
         {
-            switch (pu_)
-            {
-                case CPU:
-                {
+            switch (pu_) {
+                case CPU: {
                     std::memcpy(data__, fft_buffer_.at<CPU>(), local_size() * sizeof(double_complex));
                     break;
                 }
-                case GPU:
-                {
+                case GPU: {
                     #ifdef __GPU
                     acc::copyout(data__, fft_buffer_.at<GPU>(), local_size());
                     #endif

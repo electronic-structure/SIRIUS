@@ -97,23 +97,19 @@ inline void Band::initialize_subspace(K_point* kp__,
     //    }
     //}
     double norm = std::sqrt(1.0 / kp__->num_gkvec()); 
-    #pragma omp parallel
-    {
-        std::vector<double_complex> v(kp__->num_gkvec());
-        #pragma omp for
-        for (int i = 0; i < num_phi - num_ao__; i++) {
-            std::generate(v.begin(), v.end(), []{return type_wrapper<double_complex>::random();});
-            v[0] = 1.0;
-            //auto v1 = gkv[i];
-            for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-                /* global index of G+k vector */
-                int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
-                //auto v2 = kp__->gkvec().gvec(igk);
-                //if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
-                //    phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
-                //}
-                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = v[igk] * norm;
-            }
+    std::vector<double_complex> v(kp__->num_gkvec());
+    for (int i = 0; i < num_phi - num_ao__; i++) {
+        std::generate(v.begin(), v.end(), []{return type_wrapper<double_complex>::random();});
+        v[0] = 1.0;
+        //auto v1 = gkv[i];
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+            /* global index of G+k vector */
+            int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
+            //auto v2 = kp__->gkvec().gvec(igk);
+            //if (v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]) {
+            //    phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+            //}
+            phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = v[igk] * norm;
         }
     }
 
