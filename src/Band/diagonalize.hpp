@@ -216,6 +216,28 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        psi.allocate_on_device();
+        psi.copy_to_device(0, num_bands);
+
+        phi.allocate_on_device();
+        res.allocate_on_device();
+
+        hphi.allocate_on_device();
+        ophi.allocate_on_device();
+
+        hpsi.allocate_on_device();
+        opsi.allocate_on_device();
+    
+        if (kp->comm().size() == 1) {
+            evec.allocate(memory_t::device);
+            ovlp.allocate(memory_t::device);
+            hmlt.allocate(memory_t::device);
+        }
+    }
+    #endif
+
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) {
         eval[i] = kp->band_energy(i);
@@ -323,6 +345,13 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
         /* expand variational subspace with new basis vectors obtatined from residuals */
         phi.copy_from(res, 0, n, N);
     }
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        psi.copy_to_host(0, num_bands);
+        psi.deallocate_on_device();
+    }
+    #endif
 
     kp->set_fv_eigen_values(&eval[0]);
     kp->comm().barrier();

@@ -205,15 +205,15 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
     ctx_.fft().prepare(kp__->gkvec().partition());
 
+    /* use second dimension of FFT processor grid to parallelize over bands */
+    auto& comm_col = ctx_.mpi_grid_fft().communicator(1 << 1);
+
     mdarray<double_complex, 1> buf_rg(ctx_.fft().local_size());
     mdarray<double_complex, 1> buf_pw(kp__->gkvec().partition().gvec_count_fft());
 
-    hphi__.copy_from(phi__, N__, n__);
-    ophi__.copy_from(phi__, N__, n__);
-
-     phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  ctx_.mpi_grid_fft().communicator(1 << 1), n__, N__);
-    hphi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), ctx_.mpi_grid_fft().communicator(1 << 1), n__, N__);
-    ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), ctx_.mpi_grid_fft().communicator(1 << 1), n__, N__);
+     phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  comm_col, n__, N__);
+    hphi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col, n__, N__);
+    ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col, n__, N__);
     
     for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
         /* phi(G) -> phi(r) */
@@ -234,7 +234,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         }
         /* phi(r) * Theta(r) * V(r) -> ophi(G) */
         ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.pw_coeffs().extra().at<CPU>(0, j));
-        
+        /* add kinetic energy */
         for (int x: {0, 1, 2}) {
             for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
                 /* global index of G-vector */
@@ -257,10 +257,20 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         }
     }
 
-    hphi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(),  ctx_.mpi_grid_fft().communicator(1 << 1), n__, N__);
-    ophi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(),  ctx_.mpi_grid_fft().communicator(1 << 1), n__, N__);
+    hphi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col, n__, N__);
+    ophi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col, n__, N__);
 
     ctx_.fft().dismiss();
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs1 = hphi__.checksum(N__, n__);
+        auto cs2 = ophi__.checksum(N__, n__);
+        DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
+        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
+    #endif
+    STOP();
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());

@@ -40,6 +40,7 @@ OBJ = $(SRC:.cpp=.o)
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	Kernels/cuda_interface.o \
+	Kernels/cufft_interface.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
