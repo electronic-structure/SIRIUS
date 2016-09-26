@@ -58,6 +58,8 @@
 
 //== #define __GPU_DIRECT
 
+//== #define __GPU_NVTX
+
 //== #define __RS_GEN_EIG
 
 //== #if !defined(NDEBUG)

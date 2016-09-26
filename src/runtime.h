@@ -17,6 +17,9 @@
 #include "config.h"
 #include "communicator.h"
 #include "json.hpp"
+#ifdef __GPU
+#include "gpu.h"
+#endif
 
 using json = nlohmann::json;
 
@@ -265,22 +268,26 @@ class Timer
 
         void start()
         {
+            #if defined (__GPU) && defined (__GPU_NVTX)
+            cuda_begin_range_marker(label_.c_str());
+            #endif
+
             #ifdef __TIMER
             #ifndef NDEBUG
-            if (omp_get_num_threads() != 1)
-            {
+            if (omp_get_num_threads() != 1) {
                 printf("std::map used by Timer is not thread-safe\n");
                 printf("timer name: %s\n", label_.c_str());
                 exit(-1);
             }
             #endif
 
-            if (active_)
-            {
+            if (active_) {
                 printf("timer %s is already running\n", label_.c_str());
                 exit(-2);
             }
-            if (comm_ != nullptr) comm_->barrier();
+            if (comm_ != nullptr) {
+                comm_->barrier();
+            }
             #if defined(__TIMER_TIMEOFDAY)
             gettimeofday(&starting_time_, NULL);
             #elif defined(__TIMER_MPI_WTIME)
@@ -294,6 +301,10 @@ class Timer
 
         double stop()
         {
+            #if defined (__GPU) && defined(__GPU_NVTX)
+            cuda_end_range_marker();
+            #endif
+
             #ifdef __TIMER
             if (!active_)
             {

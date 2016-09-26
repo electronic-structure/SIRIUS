@@ -92,6 +92,10 @@ bool cuda_check_device_ptr(void const* ptr__);
 
 void cuda_memset2d(void* ptr__, int ld__, int nrow__, int ncol__, int elem_size__, int value__);
 
+void cuda_begin_range_marker(const char* label__);
+
+void cuda_end_range_marker();
+
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                   cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                   int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
@@ -157,9 +161,7 @@ int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda);
 int magma_ztrtri_wrapper(char uplo, int n, cuDoubleComplex* A, int lda);
 #endif
 
-void cuda_label_event_gpu(const char* label__);
-
-}
+}; // extern "C"
 
 namespace acc {
 
@@ -236,6 +238,6 @@ inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
     cuda_memset2d(ptr__, ld__, nrow__, ncol__, sizeof(T), 0);
 }
 
-};
+}; // namespace acc
 
 #endif

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <assert.h>
+#include <nvToolsExt.h>
 #include "kernels_common.h"
 
 inline void stack_backtrace()
@@ -548,18 +549,13 @@ extern "C" void cublas_dger(int m, int n, double* alpha, double* x, int incx, do
 //==     );
 //== }
 
-__global__ void cuda_label_event_gpu_kernel(const char* label__)
+extern "C" void cuda_begin_range_marker(const char* label__)
 {
+    nvtxRangePushA(label__);
 }
 
-extern "C" void cuda_label_event_gpu(const char* label__)
+extern "C" void cuda_end_range_marker()
 {
-    dim3 grid_t(32);
-    dim3 grid_b(1);
-    cuda_label_event_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        label__
-    );
+    nvtxRangePop();
 }
-
 
