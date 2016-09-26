@@ -398,7 +398,9 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
     comm_.allreduce(beta_phi_.at<CPU>(), nbeta * n__);
 
     #ifdef __GPU
-    if (pu_ == GPU) beta_phi_.copy_to_device(nbeta * n__);
+    if (pu_ == GPU) {
+        beta_phi_.copy_to_device(nbeta * n__);
+    }
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM

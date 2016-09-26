@@ -241,7 +241,9 @@ class wave_functions
         /// Compute L2 norm of first n wave-functions.
         inline mdarray<double,1> l2norm(int n__) const
         {
-            mdarray<double, 1> norm(n__);
+            assert(n__ != 0);
+
+            mdarray<double, 1> norm(n__, memory_t::host, "l2norm");
             norm.zero();
             #ifdef __GPU
             if (params_.processing_unit() == GPU) {
@@ -303,10 +305,11 @@ class wave_functions
 
         inline double_complex checksum(int i0__, int n__)
         {
+            assert(n__ != 0);
             double_complex cs(0, 0);
             #ifdef __GPU
             if (params_.processing_unit() == GPU) {
-                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device);
+                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
                 cs1.zero_on_device();
                 add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
                 if (params_.full_potential() && mt_coeffs().num_rows_loc()) {

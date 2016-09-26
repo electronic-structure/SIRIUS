@@ -47,11 +47,12 @@ Band::residuals_aux(K_point* kp__,
         assert(res__.mt_coeffs().num_rows_loc() == hpsi__.mt_coeffs().num_rows_loc());
         assert(res__.mt_coeffs().num_rows_loc() == opsi__.mt_coeffs().num_rows_loc());
     }
+    assert(num_bands__ != 0);
 
     auto pu = ctx_.processing_unit();
 
     #ifdef __GPU
-    mdarray<double, 1> eval(eval__.data(), num_bands__);
+    mdarray<double, 1> eval(eval__.data(), num_bands__, "residuals_aux::eval");
     if (pu == GPU) {
         eval.allocate(memory_t::device);
         eval.copy_to_device();
@@ -191,6 +192,8 @@ inline int Band::residuals(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::residuals");
 
+    assert(N__ != 0);
+
     auto& itso = ctx_.iterative_solver_input_section();
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
@@ -280,7 +283,7 @@ inline int Band::residuals(K_point* kp__,
     }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+    if (n != 0) {
         auto cs = res__.checksum(0, n);
         auto cs1 = hpsi__.checksum(0, n);
         auto cs2 = opsi__.checksum(0, n);
