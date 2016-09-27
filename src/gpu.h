@@ -97,29 +97,36 @@ void cuda_begin_range_marker(const char* label__);
 void cuda_end_range_marker();
 
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
-                  int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
+                  cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
+                  int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
 
 void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  double* alpha, double const* a, int32_t lda, double const* b, 
-                  int32_t ldb, double* beta, double* c, int32_t ldc, int stream_id);
+                  double const* alpha, double const* a, int32_t lda, double const* b, 
+                  int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id);
 
 void cublas_dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
-                  double* alpha__, double* A__, int lda__, double* B__, int ldb__);
+                  double const* alpha__, double* A__, int lda__, double* B__, int ldb__);
 
 void cublas_ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
-                  cuDoubleComplex* alpha__, cuDoubleComplex* A__, int lda__, cuDoubleComplex* B__, int ldb__);
+                  cuDoubleComplex const* alpha__, cuDoubleComplex* A__, int lda__, cuDoubleComplex* B__, int ldb__);
 
-void cublas_dger(int m, int n, double* alpha, double* x, int incx, double* y, int incy, double* A, int lda);
+void cublas_dger(int m, int n, double const* alpha, double* x, int incx, double* y, int incy, double* A, int lda);
 
 
 void cublas_create_handles(int num_handles);
 
 void cublas_destroy_handles(int num_handles);
 
-void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
-                  cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 
+void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex const* alpha, cuDoubleComplex* a, int32_t lda, 
+                  cuDoubleComplex* x, int32_t incx, cuDoubleComplex const* beta, cuDoubleComplex* y, int32_t incy, 
                   int stream_id);
+
+void cublas_zaxpy(int n__,
+                  cuDoubleComplex const* alpha__,
+                  cuDoubleComplex const* x__,
+                  int incx__,
+                  cuDoubleComplex* y__,
+                  int incy__);
 
 void cufft_create_plan_handle(cufftHandle* plan);
 

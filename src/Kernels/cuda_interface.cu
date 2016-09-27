@@ -1,5 +1,4 @@
 #include <cuda.h>
-#include <cublas.h>
 #include <cublas_v2.h>
 #include <execinfo.h>
 #include <unistd.h>
@@ -519,6 +518,17 @@ extern "C" void cublas_dger(int m, int n, double* alpha, double* x, int incx, do
 {
     CALL_CUBLAS(cublasDger, (cublas_null_stream_handle, m, n, alpha, x, incx, y, incy, A, lda));
 }
+
+extern "C" void cublas_zaxpy(int n__,
+                             const cuDoubleComplex* alpha__,
+                             const cuDoubleComplex* x__,
+                             int incx__,
+                             cuDoubleComplex* y__,
+                             int incy__)
+{
+    CALL_CUBLAS(cublasZaxpy, (cublas_null_stream_handle, n__, alpha__, x__, incx__, y__, incy__));
+}
+
 
 //== inline __device__ uint32_t random(size_t seed)
 //== {

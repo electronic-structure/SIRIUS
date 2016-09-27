@@ -841,5 +841,15 @@ void linalg<GPU>::ger<ftn_double>(ftn_int     m,
     cublas_dger(m, n, alpha, x, incx, y, incy, A, lda);
 }
 
+template <>
+void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
+                                           ftn_double_complex const* alpha__,
+                                           ftn_double_complex const* x__,
+                                           ftn_int incx__, 
+                                           ftn_double_complex* y__,
+                                           ftn_int incy__)
+{
+    cublas_zaxpy(n__, alpha__, x__, incx__, y__, incy__);
+}
 
 #endif

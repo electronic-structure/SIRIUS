@@ -247,8 +247,16 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
     /* trial basis functions */
     phi.copy_from(psi, 0, num_bands);
     
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs1 = psi.checksum(0, num_bands);
+        auto cs2 = phi.checksum(0, num_bands);
+        DUMP("checksum(psi): %18.10f %18.10f", cs1.real(), cs1.imag());
+        DUMP("checksum(phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
+    #endif
     /* current subspace size */
-    int N = 0;
+    int N{0};
 
     /* number of newly added basis functions */
     int n = num_bands;

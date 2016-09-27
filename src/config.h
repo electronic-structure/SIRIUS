@@ -58,6 +58,7 @@
 
 //== #define __GPU_DIRECT
 
+/* link with -lnvToolsExt if you use NVIDIA Tools Extension Library (NVTX) */
 //== #define __GPU_NVTX
 
 //== #define __RS_GEN_EIG

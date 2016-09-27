@@ -203,6 +203,27 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 {
     PROFILE_WITH_TIMER("sirius::Band::apply_fv_h_o");
 
+    assert(ophi__.mt_coeffs().num_rows_loc() == hphi__.mt_coeffs().num_rows_loc());
+
+    /* zero the local-orbital part */
+    if (ctx_.processing_unit() == CPU) {
+        for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
+            for (int ilo = 0; ilo < hphi__.mt_coeffs().num_rows_loc(); ilo++) {
+                hphi__.mt_coeffs().prime(ilo, ibnd) = 0;
+                ophi__.mt_coeffs().prime(ilo, ibnd) = 0;
+            }
+        }
+    }
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        acc::zero(hphi__.mt_coeffs().prime().at<GPU>(0, N__), hphi__.mt_coeffs().prime().ld(),
+                  hphi__.mt_coeffs().num_rows_loc(), n__);
+        acc::zero(ophi__.mt_coeffs().prime().at<GPU>(0, N__), ophi__.mt_coeffs().prime().ld(),
+                  ophi__.mt_coeffs().num_rows_loc(), n__);
+
+    }
+    #endif
+
     ctx_.fft().prepare(kp__->gkvec().partition());
 
     /* use second dimension of FFT processor grid to parallelize over bands */
@@ -211,44 +232,104 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     mdarray<double_complex, 1> buf_rg(ctx_.fft().local_size());
     mdarray<double_complex, 1> buf_pw(kp__->gkvec().partition().gvec_count_fft());
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi__.pw_coeffs().copy_to_host(N__, n__);
+    }
+    #endif
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs = phi__.checksum(N__, n__);
+        DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
+    }
+    #endif
+
      phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  comm_col, n__, N__);
     hphi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col, n__, N__);
     ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col, n__, N__);
+
+    #ifdef __GPU
+    mdarray<double, 1> theta;
+    mdarray<double, 1> veff;
+    if (ctx_.processing_unit() == GPU) {
+        theta = mdarray<double, 1>(ctx_.fft().local_size(), memory_t::host | memory_t::device, "theta");
+        veff  = mdarray<double, 1>(ctx_.fft().local_size(), memory_t::host | memory_t::device, "veff");
+        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+            theta[ir] = ctx_.step_function().theta_r(ir);
+            veff[ir]  = effective_potential__->f_rg(ir);
+        }
+        theta.copy_to_device();
+        veff.copy_to_device();
+        buf_rg.allocate(memory_t::device);
+    }
+    #endif
     
+    // TODO: seprate H_{istl}, O_{istl} into a class
     for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
-        /* phi(G) -> phi(r) */
-        ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
-        #pragma omp parallel for
-        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        if (ctx_.processing_unit() == CPU) {
+            /* phi(G) -> phi(r) */
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+            #pragma omp parallel for
+            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+                /* multiply by step function */
+                ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+                /* save phi(r) * Theta(r) */
+                buf_rg[ir] = ctx_.fft().buffer(ir);
+            }
+            /* phi(r) * Theta(r) -> ophi(G) */
+            ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+            #pragma omp parallel for
+            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+                /* multiply be effective potential */
+                ctx_.fft().buffer(ir) = buf_rg[ir] * effective_potential__->f_rg(ir);
+            }
+            /* phi(r) * Theta(r) * V(r) -> ophi(G) */
+            ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.pw_coeffs().extra().at<CPU>(0, j));
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            /* phi(G) -> phi(r) */
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
             /* multiply by step function */
-            ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+            scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, ctx_.fft().buffer<GPU>(), theta.at<GPU>());
             /* save phi(r) * Theta(r) */
-            buf_rg[ir] = ctx_.fft().buffer(ir);
+            acc::copy(buf_rg.at<GPU>(), ctx_.fft().buffer<GPU>(), ctx_.fft().local_size());
+            /* phi(r) * Theta(r) -> ophi(G) */
+            ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+            /* multiply by effective potential */
+            scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, buf_rg.at<GPU>(), veff.at<GPU>());
+            /* copy to GPU buffer */
+            acc::copy(ctx_.fft().buffer<GPU>(), buf_rg.at<GPU>(), ctx_.fft().local_size());
+            /* phi(r) * Theta(r) * V(r) -> ophi(G) */
+            ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.pw_coeffs().extra().at<CPU>(0, j));
         }
-        /* phi(r) * Theta(r) -> ophi(G) */
-        ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
-        #pragma omp parallel for
-        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-            /* multiply be effective potential */
-            ctx_.fft().buffer(ir) = buf_rg[ir] * effective_potential__->f_rg(ir);
-        }
-        /* phi(r) * Theta(r) * V(r) -> ophi(G) */
-        ctx_.fft().transform<-1>(kp__->gkvec().partition(), hphi__.pw_coeffs().extra().at<CPU>(0, j));
+        #endif
+
         /* add kinetic energy */
         for (int x: {0, 1, 2}) {
             for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
                 /* global index of G-vector */
                 int ig = kp__->gkvec().partition().gvec_offset_fft() + igloc;
+                /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */ 
                 buf_pw[igloc] = phi__.pw_coeffs().extra()(igloc, j) * kp__->gkvec().gkvec_cart(ig)[x];
             }
             /* transform Cartesian component of wave-function gradient to real space */
             ctx_.fft().transform<1>(kp__->gkvec().partition(), &buf_pw[0]);
-            #pragma omp parallel for
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                /* multiply be step function */
-                ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+            if (ctx_.processing_unit() == CPU) {
+                #pragma omp parallel for
+                for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+                    /* multiply be step function */
+                    ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+                }
             }
-            /* transform back to pw domain */
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                /* multiply by step function */
+                scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, ctx_.fft().buffer<GPU>(), theta.at<GPU>());
+            }
+            #endif
+            /* transform back to PW domain */
             ctx_.fft().transform<-1>(kp__->gkvec().partition(), &buf_pw[0]);
             for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
                 int ig = kp__->gkvec().partition().gvec_offset_fft() + igloc;
@@ -262,15 +343,21 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
     ctx_.fft().dismiss();
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        hphi__.pw_coeffs().copy_to_device(N__, n__);
+        ophi__.pw_coeffs().copy_to_device(N__, n__);
+    }
+    #endif
+
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         auto cs1 = hphi__.checksum(N__, n__);
         auto cs2 = ophi__.checksum(N__, n__);
-        DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        DUMP("checksum(hphi_istl): %18.10f %18.10f", cs1.real(), cs1.imag());
+        DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
     }
     #endif
-    STOP();
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
@@ -279,56 +366,119 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
     double_complex zone(1, 0);
 
-    assert(ophi__.mt_coeffs().num_rows_loc() == hphi__.mt_coeffs().num_rows_loc());
-    /* zero the local-orbital part */
-    for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
-        for (int ilo = 0; ilo < hphi__.mt_coeffs().num_rows_loc(); ilo++) {
-            ophi__.mt_coeffs().prime(ilo, ibnd) = 0;
-            hphi__.mt_coeffs().prime(ilo, ibnd) = 0;
-        }
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi__.mt_coeffs().copy_to_host(N__, n__);
+        alm.allocate(memory_t::device);
+        tmp.allocate(memory_t::device);
+        halm.allocate(memory_t::device);
+        htmp.allocate(memory_t::device);
     }
-    
+    #endif
+
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom = unit_cell_.atom(ia);
         auto& type = atom.type(); 
         int nmt = atom.mt_aw_basis_size();
         kp__->alm_coeffs_loc().generate(ia, alm);
         apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_loc(), alm, halm);
-        
-        /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
-        linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
-                          alm.at<CPU>(), alm.ld(),
-                          phi__.pw_coeffs().prime().at<CPU>(0, N__), phi__.pw_coeffs().prime().ld(),
-                          tmp.at<CPU>(), tmp.ld());
-        kp__->comm().allreduce(tmp.at<CPU>(), static_cast<int>(tmp.size()));
 
-        /* htmp(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-        linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
-                          halm.at<CPU>(), halm.ld(),
-                          phi__.pw_coeffs().prime().at<CPU>(0, N__), phi__.pw_coeffs().prime().ld(),
-                          htmp.at<CPU>(), htmp.ld());
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            alm.copy_to_device();
+            halm.copy_to_device();
+        }
+        #endif
+
+        if (ctx_.processing_unit() == CPU) {
+            /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
+            linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+                              alm.at<CPU>(), alm.ld(),
+                              phi__.pw_coeffs().prime().at<CPU>(0, N__), phi__.pw_coeffs().prime().ld(),
+                              tmp.at<CPU>(), tmp.ld());
+            /* htmp(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
+            linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+                              halm.at<CPU>(), halm.ld(),
+                              phi__.pw_coeffs().prime().at<CPU>(0, N__), phi__.pw_coeffs().prime().ld(),
+                              htmp.at<CPU>(), htmp.ld());
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
+            linalg<GPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+                              alm.at<GPU>(), alm.ld(),
+                              phi__.pw_coeffs().prime().at<GPU>(0, N__), phi__.pw_coeffs().prime().ld(),
+                              tmp.at<GPU>(), tmp.ld());
+            /* htmp(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
+            linalg<GPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+                              halm.at<GPU>(), halm.ld(),
+                              phi__.pw_coeffs().prime().at<GPU>(0, N__), phi__.pw_coeffs().prime().ld(),
+                              htmp.at<GPU>(), htmp.ld());
+            tmp.copy_to_host(nmt * n__);
+            htmp.copy_to_host(nmt * n__);
+        }
+        #endif
+
+        kp__->comm().allreduce(tmp.at<CPU>(), static_cast<int>(tmp.size()));
         kp__->comm().allreduce(htmp.at<CPU>(), static_cast<int>(tmp.size()));
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            tmp.copy_to_device(nmt * n__);
+            htmp.copy_to_device(nmt * n__);
+        }
+        #endif
 
         for (int xi = 0; xi < nmt; xi++) {
             for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
                 alm(ig, xi) = std::conj(alm(ig, xi));
             }
         }
-        /* APW-APW contribution to overlap */
-        linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt, zone,
-                          alm.at<CPU>(), alm.ld(),
-                          tmp.at<CPU>(), tmp.ld(),
-                          zone,
-                          ophi__.pw_coeffs().prime().at<CPU>(0, N__),
-                          ophi__.pw_coeffs().prime().ld());
-        /* APW-APW contribution to Hamiltonian */
-        linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt, zone,
-                          alm.at<CPU>(), alm.ld(),
-                          htmp.at<CPU>(), htmp.ld(),
-                          zone,
-                          hphi__.pw_coeffs().prime().at<CPU>(0, N__),
-                          hphi__.pw_coeffs().prime().ld());
-        
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            alm.copy_to_device();
+        }
+        #endif
+
+        if (ctx_.processing_unit() == CPU) {
+            /* APW-APW contribution to overlap */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt,
+                              zone,
+                              alm.at<CPU>(), alm.ld(),
+                              tmp.at<CPU>(), tmp.ld(),
+                              zone,
+                              ophi__.pw_coeffs().prime().at<CPU>(0, N__),
+                              ophi__.pw_coeffs().prime().ld());
+            /* APW-APW contribution to Hamiltonian */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt,
+                              zone,
+                              alm.at<CPU>(), alm.ld(),
+                              htmp.at<CPU>(), htmp.ld(),
+                              zone,
+                              hphi__.pw_coeffs().prime().at<CPU>(0, N__),
+                              hphi__.pw_coeffs().prime().ld());
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            /* APW-APW contribution to overlap */
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt,
+                              &zone,
+                              alm.at<GPU>(), alm.ld(),
+                              tmp.at<GPU>(), tmp.ld(),
+                              &zone,
+                              ophi__.pw_coeffs().prime().at<GPU>(0, N__),
+                              ophi__.pw_coeffs().prime().ld());
+            /* APW-APW contribution to Hamiltonian */
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt, 
+                              &zone,
+                              alm.at<GPU>(), alm.ld(),
+                              htmp.at<GPU>(), htmp.ld(),
+                              &zone,
+                              hphi__.pw_coeffs().prime().at<GPU>(0, N__),
+                              hphi__.pw_coeffs().prime().ld());
+        }
+        #endif
+            
         /* local orbital coefficients of atom ia for all states */
         matrix<double_complex> phi_lo_ia(atom.mt_lo_basis_size(), n__);
         auto ia_location = phi__.spl_num_atoms().location(ia);
@@ -354,9 +504,19 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                 for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                     /* APW-lo contribution */
                     auto z = phi_lo_ia(ilo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
-                    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
-                        ophi__.pw_coeffs().prime(ig, N__ + i) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
+                    if (ctx_.processing_unit() == CPU) {
+                        for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+                            ophi__.pw_coeffs().prime(ig, N__ + i) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
+                        }
                     }
+                    #ifdef __GPU
+                    if (ctx_.processing_unit() == GPU) {
+                        linalg<GPU>::axpy(kp__->num_gkvec_loc(), &z,
+                                          alm.at<GPU>(0, type.indexb_by_lm_order(lm_lo, order_aw)), 1,
+                                          ophi__.pw_coeffs().prime().at<GPU>(0, N__ + i), 1);
+                        acc::sync_stream(-1);
+                    }
+                    #endif
                 }
 
                 for (int xi = 0; xi < nmt; xi++) {
@@ -366,9 +526,19 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
                     auto z = phi_lo_ia(ilo, i) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
                     /* APW-lo contribution */
-                    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
-                        hphi__.pw_coeffs().prime(ig, N__ + i) += alm(ig, xi) * z; 
+                    if (ctx_.processing_unit() == CPU) {
+                        for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+                            hphi__.pw_coeffs().prime(ig, N__ + i) += alm(ig, xi) * z; 
+                        }
                     }
+                    #ifdef __GPU
+                    if (ctx_.processing_unit() == GPU) {
+                        linalg<GPU>::axpy(kp__->num_gkvec_loc(), &z,
+                                          alm.at<GPU>(0, xi), 1,
+                                          hphi__.pw_coeffs().prime().at<GPU>(0, N__ + i), 1);
+                        acc::sync_stream(-1);
+                    }
+                    #endif
                 }
                 
                 if (ia_location.second == kp__->comm().rank()) {
@@ -407,6 +577,22 @@ inline void Band::apply_fv_h_o(K_point* kp__,
             }
         }
     }
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        hphi__.mt_coeffs().copy_to_device(N__, n__);
+        ophi__.mt_coeffs().copy_to_device(N__, n__);
+    }
+    #endif
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs1 = hphi__.checksum(N__, n__);
+        auto cs2 = ophi__.checksum(N__, n__);
+        DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
+        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
+    #endif
 }
 
 inline void Band::apply_magnetic_field(wave_functions& fv_states__,

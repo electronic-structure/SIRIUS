@@ -223,6 +223,9 @@ class linalg<GPU>: public linalg_base
 
         template<typename T>
         static void ger(ftn_int m, ftn_int n, T* alpha, T* x, ftn_int incx, T* y, ftn_int incy, T* A, ftn_int lda);
+
+        template <typename T>
+        static void axpy(int n__, T const* alpha__, T const* x__, int incx__, T* y__, int incy__);
 };
 #endif
 
