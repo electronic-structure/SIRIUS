@@ -208,6 +208,40 @@ class wave_functions
                 }
             }
         }
+
+        template <device_t pu>
+        inline void copy_from(wave_functions const& src__,
+                              int i0__,
+                              int n__,
+                              int j0__)
+        {
+            switch (pu) {
+                case CPU: {
+                    std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
+                                src__.pw_coeffs().prime().at<CPU>(0, i0__),
+                                pw_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
+                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                        std::memcpy(mt_coeffs().prime().at<CPU>(0, j0__),
+                                    src__.mt_coeffs().prime().at<CPU>(0, i0__),
+                                    mt_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
+                    }
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    acc::copy(pw_coeffs().prime().at<GPU>(0, j0__),
+                              src__.pw_coeffs().prime().at<GPU>(0, i0__),
+                              pw_coeffs().num_rows_loc() * n__);
+                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                        acc::copy(mt_coeffs().prime().at<GPU>(0, j0__),
+                                  src__.mt_coeffs().prime().at<GPU>(0, i0__),
+                                  mt_coeffs().num_rows_loc() * n__);
+                    }
+                    #endif
+                    break;
+                }
+            }
+        }
         
         inline void copy_from(wave_functions const& src__, int i0__, int n__)
         {

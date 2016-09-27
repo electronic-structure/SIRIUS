@@ -17,16 +17,12 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file generate_fv_states.cpp
+/** \file generate_fv_states.hpp
  *   
  *  \brief Contains implementation of sirius::K_point::generate_fv_states method.
  */
 
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::generate_fv_states()
+inline void K_point::generate_fv_states()
 {
     PROFILE_WITH_TIMER("sirius::K_point::generate_fv_states");
     
@@ -62,15 +58,9 @@ void K_point::generate_fv_states()
     }
 
     #ifdef __GPU
-    STOP();
-    //auto& fv_ev_swp = fv_eigen_vectors_->coeffs_swapped();
-    #endif
-
-    #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        STOP(); // reimplement
-        //fv_ev_swp.allocate(memory_t::device);
-        //fv_ev_swp.copy_to_device();
+        pw_coeffs.allocate(memory_t::device);
+        pw_coeffs.copy_to_device();
     }
     #endif
 
@@ -92,8 +82,6 @@ void K_point::generate_fv_states()
         if (ctx_.processing_unit() == GPU) {
             alm.allocate(memory_t::device);
             tmp = mdarray<double_complex, 2>(unit_cell_.max_mt_aw_basis_size(), nbnd_loc, memory_t::device);
-
-            // TODO: pin memory for fv_states (output buffer), otherwise async copy won't work
         }
         #endif
         
@@ -107,28 +95,28 @@ void K_point::generate_fv_states()
             alm_coeffs_->generate(ia, alm);
             
             /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-            switch (ctx_.processing_unit()) {
-                case CPU: {
-                    /* multiply eigen-vectors and matching coefficients */
-                    linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
-                                      alm.at<CPU>(), alm.ld(),
-                                      pw_coeffs.at<CPU>(), pw_coeffs.ld(),
-                                      fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld());
-                    break;
-                }
-                case GPU: {
-                    #ifdef __GPU
-                    STOP();
-                    //alm.async_copy_to_device(tid);
-                    //linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
-                    //                  alm.at<GPU>(), alm.ld(),
-                    //                  fv_ev_swp.at<GPU>(), gklo_basis_size(),
-                    //                  tmp.at<GPU>(), tmp.ld(), tid);
-                    //acc::copyout(&fv_states<true>()[0][offset_wf], wf_size(), tmp.at<GPU>(), tmp.ld(), mt_aw_size, nbnd_loc, tid);
-                    #endif
-                    break;
-                }
+            if (ctx_.processing_unit() == CPU) {
+                /* multiply eigen-vectors and matching coefficients */
+                linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                                  alm.at<CPU>(), alm.ld(),
+                                  pw_coeffs.at<CPU>(), pw_coeffs.ld(),
+                                  fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld());
             }
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                /* multiply eigen-vectors and matching coefficients */
+                alm.async_copy_to_device(tid);
+                linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                                  alm.at<GPU>(), alm.ld(),
+                                  pw_coeffs.at<GPU>(), pw_coeffs.ld(),
+                                  tmp.at<GPU>(), tmp.ld(),
+                                  tid);
+                acc::copyout(fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld(),
+                             tmp.at<GPU>(), tmp.ld(),
+                             mt_aw_size, nbnd_loc, tid);
+                acc::sync_stream(tid);
+            }
+            #endif
 
             for (int i = 0; i < nbnd_loc; i++) {
                 /* lo block */
@@ -143,21 +131,7 @@ void K_point::generate_fv_states()
             std::memcpy(fv_states().pw_coeffs().extra().at<CPU>(0, i),
                         pw_coeffs.at<CPU>(0, i), num_gkvec() * sizeof(double_complex));
         }
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            acc::sync_stream(tid);
-        }
-        #endif
     }
-
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        STOP();
-        //fv_ev_swp.deallocate_on_device();
-    }
-    #endif
 
     fv_states().remap_to_prime_distr(ctx_.num_fv_states());
 }
-
-};

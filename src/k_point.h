@@ -196,7 +196,7 @@ class K_point
         #endif
 
         /// Generate two-component spinor wave functions 
-        void generate_spinor_wave_functions();
+        inline void generate_spinor_wave_functions();
 
         Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
 
@@ -596,6 +596,9 @@ class K_point
             return *beta_projectors_;
         }
 };
+
+#include "K_point/generate_fv_states.hpp"
+#include "K_point/generate_spinor_wave_functions.hpp"
 
 }
 

@@ -24,8 +24,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp  \
        Potential/generate_pw_coefs.cpp \
        K_point/distribute_basis_index.cpp \
        K_point/build_gklo_basis_descriptors.cpp \
-       K_point/generate_fv_states.cpp \
-       K_point/generate_spinor_wave_functions.cpp \
        K_point/generate_gkvec.cpp \
        K_point/initialize.cpp \
        K_point/k_point.cpp \

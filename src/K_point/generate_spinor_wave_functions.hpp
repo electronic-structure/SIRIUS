@@ -1,15 +1,11 @@
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::generate_spinor_wave_functions()
+inline void K_point::generate_spinor_wave_functions()
 {
     PROFILE_WITH_TIMER("sirius::K_point::generate_spinor_wave_functions");
 
     if (use_second_variation) {
         if (!ctx_.need_sv()) {
             /* copy eigen-states and exit */
-            spinor_wave_functions(0).copy_from(fv_states(), 0, ctx_.num_fv_states());
+            spinor_wave_functions(0).copy_from<CPU>(fv_states(), 0, ctx_.num_fv_states(), 0);
             return;
         }
 
@@ -35,5 +31,3 @@ void K_point::generate_spinor_wave_functions()
         TERMINATE_NOT_IMPLEMENTED;
     }
 }
-
-};
