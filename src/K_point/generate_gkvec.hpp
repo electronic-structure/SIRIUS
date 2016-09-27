@@ -1,8 +1,4 @@
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::generate_gkvec(double gk_cutoff)
+inline void K_point::generate_gkvec(double gk_cutoff)
 {
     PROFILE();
 
@@ -33,5 +29,3 @@ void K_point::generate_gkvec(double gk_cutoff)
         gkvec_vloc_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(gkvec_, ctx_.mpi_grid_fft_vloc().communicator(1 << 0)));
     }
 }
-
-};

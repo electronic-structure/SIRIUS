@@ -836,9 +836,25 @@ void linalg<GPU>::ger<ftn_double>(ftn_int     m,
                                   ftn_double* y,
                                   ftn_int     incy,
                                   ftn_double* A,
-                                  ftn_int     lda)
+                                  ftn_int     lda,
+                                  int         stream_id)
 {
-    cublas_dger(m, n, alpha, x, incx, y, incy, A, lda);
+    cublas_dger(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
+}
+
+template<>
+void linalg<GPU>::ger<ftn_double_complex>(ftn_int             m,
+                                          ftn_int             n,
+                                          ftn_double_complex* alpha,
+                                          ftn_double_complex* x,
+                                          ftn_int             incx,
+                                          ftn_double_complex* y,
+                                          ftn_int             incy,
+                                          ftn_double_complex* A,
+                                          ftn_int             lda,
+                                          int                 stream_id)
+{
+    cublas_zgeru(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
 }
 
 template <>

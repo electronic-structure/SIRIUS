@@ -1021,9 +1021,17 @@ inline void orthogonalize(int N__,
             /* Cholesky factorization */
             if (int info = linalg<GPU>::potrf(n__, o__.template at<GPU>(), o__.ld())) {
                 std::stringstream s;
-                s << "error in factorization, info = " << info;
+                s << "error in GPU factorization, info = " << info;
                 TERMINATE(s);
+                
+                //if (int info1 = linalg<CPU>::potrf(n__, o__.template at<CPU>(), o__.ld())) {
+                //    std::stringstream s;
+                //    s << "error in CPU factorization, info = " << info;
+                //    TERMINATE(s);
+                //}
+                //o__.copy_to_device();
             }
+
             /* inversion of triangular matrix */
             if (linalg<GPU>::trtri(n__, o__.template at<GPU>(), o__.ld())) {
                 TERMINATE("error in inversion");

@@ -24,7 +24,6 @@ SRC =  LebedevLaikov.cpp linalg.cpp  \
        Potential/generate_pw_coefs.cpp \
        K_point/distribute_basis_index.cpp \
        K_point/build_gklo_basis_descriptors.cpp \
-       K_point/generate_gkvec.cpp \
        K_point/initialize.cpp \
        K_point/k_point.cpp \
        K_point/test_fv_states.cpp \
@@ -39,6 +38,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	Kernels/cuda_interface.o \
 	Kernels/cufft_interface.o \
+	Kernels/cublas_interface.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \

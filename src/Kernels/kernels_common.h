@@ -1,3 +1,6 @@
+#include <execinfo.h>
+#include <signal.h>
+#include <assert.h>
 #include <cuComplex.h>
 #include <map>
 #include <vector>
@@ -120,4 +123,15 @@ class CUDA_timer
             return cuda_timers_wrapper_;
         }
 };
+
+inline void stack_backtrace()
+{
+    void *array[10];
+    char **strings;
+    int size = backtrace(array, 10);
+    strings = backtrace_symbols(array, size);
+    printf ("Stack backtrace:\n");
+    for (size_t i = 0; i < size; i++) printf ("%s\n", strings[i]);
+    raise(SIGQUIT);
+}
 

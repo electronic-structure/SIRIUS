@@ -110,9 +110,6 @@ void cublas_dtrmm(char side__, char uplo__, char transa__, char diag__, int m__,
 void cublas_ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
                   cuDoubleComplex const* alpha__, cuDoubleComplex* A__, int lda__, cuDoubleComplex* B__, int ldb__);
 
-void cublas_dger(int m, int n, double const* alpha, double* x, int incx, double* y, int incy, double* A, int lda);
-
-
 void cublas_create_handles(int num_handles);
 
 void cublas_destroy_handles(int num_handles);
@@ -127,6 +124,28 @@ void cublas_zaxpy(int n__,
                   int incx__,
                   cuDoubleComplex* y__,
                   int incy__);
+
+void cublas_dger(int           m,
+                 int           n,
+                 double const* alpha,
+                 double*       x,
+                 int           incx,
+                 double*       y,
+                 int           incy,
+                 double*       A,
+                 int           lda,
+                 int           stream_id);
+
+void cublas_zgeru(int                    m,
+                  int                    n,
+                  cuDoubleComplex const* alpha,
+                  cuDoubleComplex const* x,
+                  int                    incx,
+                  cuDoubleComplex const* y,
+                  int                    incy,
+                  cuDoubleComplex*       A,
+                  int                    lda, 
+                  int                    stream_id);
 
 void cufft_create_plan_handle(cufftHandle* plan);
 

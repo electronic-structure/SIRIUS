@@ -180,7 +180,7 @@ class K_point
         void initialize();
 
         /// Find G+k vectors within the cutoff
-        void generate_gkvec(double gk_cutoff);
+        inline void generate_gkvec(double gk_cutoff__);
 
         /// Generate first-variational states from eigen-vectors
         /** First-variational states are obtained from the first-variational eigen-vectors and 
@@ -599,6 +599,7 @@ class K_point
 
 #include "K_point/generate_fv_states.hpp"
 #include "K_point/generate_spinor_wave_functions.hpp"
+#include "K_point/generate_gkvec.hpp"
 
 }
 
