@@ -225,11 +225,11 @@ inline int Band::residuals(K_point* kp__,
             auto pos_src = evec__.spl_col().location(ev_idx[j]);
             auto pos_dest = evec_tmp.spl_col().location(j);
 
-            if (pos_src.second == kp__->comm_col().rank()) {
-                kp__->comm_col().isend(&evec__(0, pos_src.first), num_rows_local, pos_dest.second, ev_idx[j]);
+            if (pos_src.rank == kp__->comm_col().rank()) {
+                kp__->comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
             }
-            if (pos_dest.second == kp__->comm_col().rank()) {
-               kp__->comm_col().recv(&evec_tmp(0, pos_dest.first), num_rows_local, pos_src.second, ev_idx[j]);
+            if (pos_dest.rank == kp__->comm_col().rank()) {
+               kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
             }
         }
         #ifdef __GPU

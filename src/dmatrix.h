@@ -214,10 +214,10 @@ class dmatrix: public matrix<T>
         inline void set(const int irow_glob, const int icol_glob, T val)
         {
             auto r = spl_row_.location(irow_glob);
-            if (blacs_grid_->rank_row() == r.second) {
+            if (blacs_grid_->rank_row() == r.rank) {
                 auto c = spl_col_.location(icol_glob);
-                if (blacs_grid_->rank_col() == c.second) {
-                    (*this)(r.first, c.first) = val;
+                if (blacs_grid_->rank_col() == c.rank) {
+                    (*this)(r.local_index, c.local_index) = val;
                 }
             }
         }
@@ -225,10 +225,10 @@ class dmatrix: public matrix<T>
         inline void add(const int irow_glob, const int icol_glob, T val)
         {
             auto r = spl_row_.location(irow_glob);
-            if (blacs_grid_->rank_row() == r.second) {
+            if (blacs_grid_->rank_row() == r.rank) {
                 auto c = spl_col_.location(icol_glob);
-                if (blacs_grid_->rank_col() == c.second) {
-                    (*this)(r.first, c.first) += val;
+                if (blacs_grid_->rank_col() == c.rank) {
+                    (*this)(r.local_index, c.local_index) += val;
                 }
             }
         }

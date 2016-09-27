@@ -1,8 +1,4 @@
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::build_gklo_basis_descriptors()
+inline void K_point::build_gklo_basis_descriptors()
 {
     PROFILE();
 
@@ -61,5 +57,3 @@ void K_point::build_gklo_basis_descriptors()
         }
     }
 }
-
-};

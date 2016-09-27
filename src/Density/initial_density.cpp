@@ -421,13 +421,13 @@ void Density::initial_density_full_pot()
     {
         auto p = unit_cell_.spl_num_atoms().location(ia);
         
-        if (p.second == ctx_.comm().rank())
+        if (p.rank == ctx_.comm().rank())
         {
             /* add density of a free atom */
             for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
             {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho_->f_mt<index_domain_t::local>(0, ir, p.first) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
+                rho_->f_mt<index_domain_t::local>(0, ir, p.local_index) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
             }
         }
     }

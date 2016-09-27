@@ -583,10 +583,10 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
         for (int ia = 0; ia < num_atoms_; ia++) {
             int ja = sym_table_(ia, isym);
             auto location = spl_atoms.location(ja);
-            if (location.second == comm__.rank()) {
+            if (location.rank == comm__.rank()) {
                 linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(), 
                                   frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
-                                  fsym.at<CPU>(0, 0, location.first), fsym.ld());
+                                  fsym.at<CPU>(0, 0, location.local_index), fsym.ld());
             }
         }
     }
@@ -628,10 +628,10 @@ void Symmetry::symmetrize_vector(mdarray<double, 3>& vz_rlm__,
         for (int ia = 0; ia < num_atoms_; ia++) {
             int ja = sym_table_(ia, isym);
             auto location = spl_atoms.location(ja);
-            if (location.second == comm__.rank()) {
+            if (location.rank == comm__.rank()) {
                 linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at<CPU>(), rotm.ld(), 
                                   vz_rlm__.at<CPU>(0, 0, ia), vz_rlm__.ld(), 1.0,
-                                  fsym.at<CPU>(0, 0, location.first), fsym.ld());
+                                  fsym.at<CPU>(0, 0, location.local_index), fsym.ld());
             }
         }
     }
@@ -678,7 +678,7 @@ void Symmetry::symmetrize_vector(mdarray<double, 3>& vx_rlm__,
         for (int ia = 0; ia < num_atoms_; ia++) {
             int ja = sym_table_(ia, isym);
             auto location = spl_atoms.location(ja);
-            if (location.second == comm__.rank()) {
+            if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {
                     linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(), 
                                       vrlm[k]->at<CPU>(0, 0, ia), vrlm[k]->ld(), 0.0,
@@ -690,7 +690,7 @@ void Symmetry::symmetrize_vector(mdarray<double, 3>& vx_rlm__,
                         #pragma omp for
                         for (int ir = 0; ir < nrmax; ir++) {
                             for (int lm = 0; lm < lmmax; lm++) {
-                                v_sym(lm, ir, location.first, k) += S(k, j) * vtmp(lm, ir, j);
+                                v_sym(lm, ir, location.local_index, k) += S(k, j) * vtmp(lm, ir, j);
                             }
                         }
                     }

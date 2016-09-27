@@ -152,7 +152,7 @@ class K_point
         Communicator const& comm_col_;
 
         /// Build G+k and lo basis descriptors.
-        void build_gklo_basis_descriptors();
+        inline void build_gklo_basis_descriptors();
 
         /// Distribute basis function index between rows and columns of MPI grid.
         void distribute_basis_index();
@@ -600,6 +600,7 @@ class K_point
 #include "K_point/generate_fv_states.hpp"
 #include "K_point/generate_spinor_wave_functions.hpp"
 #include "K_point/generate_gkvec.hpp"
+#include "K_point/build_gklo_basis_descriptors.hpp"
 
 }
 

@@ -677,7 +677,7 @@ inline void transform(double alpha__,
                 auto pos_icol = mtrx__.spl_col().location(icol0__ + j0 + icol);
                 for (int irow = 0; irow < nrow; irow++) {
                     auto pos_irow = mtrx__.spl_row().location(irow0__ + i0 + irow);
-                    int rank = cart_rank(pos_irow.second, pos_icol.second);
+                    int rank = cart_rank(pos_irow.rank, pos_icol.rank);
 
                     submatrix(irow, icol) = buf[sd.offsets[rank] + counts[rank]];
                     counts[rank]++;

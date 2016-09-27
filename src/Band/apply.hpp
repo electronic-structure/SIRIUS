@@ -474,14 +474,14 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         /* local orbital coefficients of atom ia for all states */
         matrix<double_complex> phi_lo_ia(atom.mt_lo_basis_size(), n__);
         auto ia_location = phi__.spl_num_atoms().location(ia);
-        if (ia_location.second == kp__->comm().rank()) {
+        if (ia_location.rank == kp__->comm().rank()) {
             for (int i = 0; i < n__; i++) {
                 std::memcpy(&phi_lo_ia(0, i),
-                            phi__.mt_coeffs().prime().at<CPU>(phi__.offset_mt_coeffs(ia_location.first), N__ + i),
+                            phi__.mt_coeffs().prime().at<CPU>(phi__.offset_mt_coeffs(ia_location.local_index), N__ + i),
                             atom.mt_lo_basis_size() * sizeof(double_complex));
             }
         }
-        kp__->comm().bcast(phi_lo_ia.at<CPU>(), static_cast<int>(phi_lo_ia.size()), ia_location.second);
+        kp__->comm().bcast(phi_lo_ia.at<CPU>(), static_cast<int>(phi_lo_ia.size()), ia_location.rank);
 
         /* APW-lo contribution */
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
@@ -571,7 +571,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                 int order_lo = type.indexb(xi_lo).order;
                 int idxrf_lo = type.indexb(xi_lo).idxrf;
                 
-                if (ia_location.second == kp__->comm().rank()) {
+                if (ia_location.rank == kp__->comm().rank()) {
                     /* lo-lo contribution */
                     for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
                         int xi_lo1 = type.mt_aw_basis_size() + jlo;
@@ -580,16 +580,16 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                         int idxrf1 = type.indexb(xi_lo1).idxrf;
                         auto& gc = gaunt_coefs_->gaunt_vector(lm_lo, lm1);
                         if (lm_lo == lm1) {
-                            ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.first) + ilo, N__ + i) +=
+                            ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) +=
                                 phi_lo_ia(jlo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
                         }
-                        hphi__.mt_coeffs().prime(hphi__.offset_mt_coeffs(ia_location.first) + ilo, N__ + i) +=
+                        hphi__.mt_coeffs().prime(hphi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) +=
                             phi_lo_ia(jlo, i) * atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc);
                     }
 
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                         /* lo-APW contribution */
-                        ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.first) + ilo, N__ + i) += 
+                        ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) += 
                             atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
                             tmp(type.indexb_by_lm_order(lm_lo, order_aw), i);
                     }
@@ -602,7 +602,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                         z += atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc) * tmp(xi, i);
                     }
                     /* lo-APW contribution */
-                    hphi__.mt_coeffs().prime(hphi__.offset_mt_coeffs(ia_location.first) + ilo, N__ + i) += z;
+                    hphi__.mt_coeffs().prime(hphi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) += z;
                 }
             }
         }
