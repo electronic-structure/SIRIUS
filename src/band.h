@@ -31,6 +31,7 @@
 #include "hloc_operator.h"
 #include "potential.h"
 #include "k_set.h"
+#include "interstitial_operator.h"
 
 namespace sirius
 {
@@ -115,7 +116,8 @@ class Band
                                                 Periodic_function<double>* effective_potential__) const;
         
         inline void diag_fv_full_potential_davidson(K_point* kp__,
-                                                    Periodic_function<double>* effective_potential__) const;
+                                                    Periodic_function<double>* effective_potential__,
+                                                    Interstitial_operator& istl_op__) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         template <typename T>
@@ -317,7 +319,8 @@ class Band
             if (itso.type_ == "exact") {
                 diag_fv_full_potential_exact(kp__, effective_potential__);
             } else if (itso.type_ == "davidson") {
-                diag_fv_full_potential_davidson(kp__, effective_potential__);
+                Interstitial_operator istl_op(ctx_, effective_potential__);
+                diag_fv_full_potential_davidson(kp__, effective_potential__, istl_op);
             }
         }
 
@@ -707,6 +710,7 @@ class Band
          *  \f]
          */
         inline void apply_fv_h_o(K_point* kp__,
+                                 Interstitial_operator& istl_op__,
                                  Periodic_function<double>* effective_potential__,
                                  int N,
                                  int n,

@@ -168,7 +168,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     }
 }
 
-inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function<double>* effective_potential) const
+inline void Band::diag_fv_full_potential_davidson(K_point* kp,
+                                                  Periodic_function<double>* effective_potential,
+                                                  Interstitial_operator& istl_op) const
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_davidson");
 
@@ -278,7 +280,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, effective_potential, N, n, phi, hphi, ophi);
+        apply_fv_h_o(kp, istl_op, effective_potential, N, n, phi, hphi, ophi);
         
         orthogonalize(N, n, phi, hphi, ophi, ovlp, res);
 
@@ -316,7 +318,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp, Periodic_function
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {   
-            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
+            runtime::Timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform<double_complex>(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
