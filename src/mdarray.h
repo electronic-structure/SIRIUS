@@ -39,6 +39,13 @@
 #include "gpu.h"
 #endif
 
+#ifdef __GPU
+extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+                                 int num_rows_loc__,
+                                 int nwf__,
+                                 cuDoubleComplex* result__);
+#endif
+
 #ifdef NDEBUG
   #define mdarray_assert(condition__)
 #else
@@ -628,6 +635,25 @@ class mdarray_base
             }
             return cs;
         }
+
+        //== template <device_t pu>
+        //== inline T checksum() const
+        //== {
+        //==     switch (pu) {
+        //==         case CPU: {
+        //==             return checksum();
+        //==         }
+        //==         case GPU: {
+        //==            auto cs = acc::allocate<T>(1);
+        //==            acc::zero(cs, 1);
+        //==            add_checksum_gpu(raw_ptr_device_, (int)size(), 1, cs);
+        //==            T cs1;
+        //==            acc::copyout(&cs1, cs, 1);
+        //==            acc::deallocate(cs);
+        //==            return cs1;
+        //==         }
+        //==     }
+        //== }
         
         /// Copy the content of the array to dest
         void operator>>(mdarray_base<T, N>& dest__) const

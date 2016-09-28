@@ -861,6 +861,11 @@ class FFT3D
         {
             return fft_buffer_.at<pu>();
         }
+
+        inline mdarray<double_complex, 1>& buffer()
+        {
+            return fft_buffer_;
+        }
         
         Communicator const& comm() const
         {

@@ -55,9 +55,17 @@ class Interstitial_operator
                    wave_functions& hphi__,
                    wave_functions& ophi__)
         {
+            PROFILE_WITH_TIMER("sirius::Interstitial_operator::apply");
+
             fft_.prepare(kp__->gkvec().partition());
 
             mdarray<double_complex, 1> buf_pw(kp__->gkvec().partition().gvec_count_fft());
+
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                phi__.pw_coeffs().copy_to_host(N__, n__);
+            }
+            #endif
 
             #ifdef __PRINT_OBJECT_CHECKSUM
             {

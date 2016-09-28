@@ -28,16 +28,24 @@
 #define FORTRAN(x) x##_
 
 // Assume a 32-bit integer BLAS/LAPACK etc.
-typedef int32_t ftn_int;
+using ftn_int = int32_t;
 
 // Assume a 32-bit integer for implicit string length arguments
-typedef int32_t ftn_len;
+using ftn_len = int32_t;
 
-typedef double ftn_double;
+using ftn_double = double;
 
-typedef std::complex<double> ftn_double_complex;
+using ftn_double_complex = std::complex<double>;
 
-typedef char const* ftn_char;
+using ftn_char = char const*;
+
+const ftn_double double_one = 1;
+
+const ftn_double double_zero = 0;
+
+const ftn_double_complex double_complex_one = double_complex(1, 0);
+
+const ftn_double_complex double_complex_zero = double_complex(0, 0);
 
 extern "C" {
 
@@ -465,16 +473,6 @@ void FORTRAN(zheevx)(ftn_char            jobz,
 /// Base class for linear algebra interface.
 class linalg_base
 {
-    protected:
-
-        static ftn_double double_one;
-
-        static ftn_double double_zero;
-
-        static ftn_double_complex double_complex_one;
-
-        static ftn_double_complex double_complex_zero;
-
     public:
 
         static ftn_int ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2,

@@ -40,11 +40,11 @@ void cuda_device_info();
 
 void* cuda_malloc(size_t size);
 
+void cuda_free(void* ptr);
+
 void* cuda_malloc_host(size_t size);
 
 void cuda_free_host(void* ptr);
-
-void cuda_free(void* ptr);
 
 void cuda_memset(void *ptr, int value, size_t size);
 
@@ -262,6 +262,16 @@ template <typename T>
 inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
 {
     cuda_memset2d(ptr__, ld__, nrow__, ncol__, sizeof(T), 0);
+}
+
+template <typename T>
+inline T* allocate(size_t size__) {
+    return reinterpret_cast<T*>(cuda_malloc(size__ * sizeof(T)));
+}
+
+inline void deallocate(void* ptr__)
+{
+    cuda_free(ptr__);
 }
 
 }; // namespace acc
