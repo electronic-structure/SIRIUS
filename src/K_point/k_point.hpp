@@ -1,62 +1,3 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
-// the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-/** \file k_point.cpp
- *   
- *  \brief Contains remaining implementation of sirius::K_point class.
- */
-
-#include "k_point.h"
-
-namespace sirius {
-
-K_point::K_point(Simulation_context& ctx__,
-                 double* vk__,
-                 double weight__)
-    : ctx_(ctx__),
-      unit_cell_(ctx_.unit_cell()),
-      weight_(weight__),
-      spinor_wave_functions_{nullptr, nullptr},
-      comm_(ctx_.blacs_grid().comm()),
-      comm_row_(ctx_.blacs_grid().comm_row()),
-      comm_col_(ctx_.blacs_grid().comm_col())
-{
-    PROFILE();
-
-    for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
-    
-    band_occupancies_ = std::vector<double>(ctx_.num_bands(), 1);
-    band_energies_    = std::vector<double>(ctx_.num_bands(), 0);
-    
-    num_ranks_row_ = comm_row_.size();
-    num_ranks_col_ = comm_col_.size();
-    
-    rank_row_ = comm_row_.rank();
-    rank_col_ = comm_col_.rank();
-
-    if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) TERMINATE("ranks don't match");
-    
-    #ifndef __GPU
-    if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
-    #endif
-}
-
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 //== {
 //==     static SHT* sht = NULL;
@@ -271,7 +212,7 @@ K_point::K_point(Simulation_context& ctx__,
 //==     }
 //== }
 
-void K_point::test_spinor_wave_functions(int use_fft)
+inline void K_point::test_spinor_wave_functions(int use_fft)
 {
     STOP();
 
@@ -401,7 +342,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
 //==     std :: cout << "maximum error = " << maxerr << std::endl;
 }
 
-void K_point::save(int id)
+inline void K_point::save(int id)
 {
     if (num_ranks() > 1) TERMINATE("writing of distributed eigen-vectors is not implemented");
 
@@ -440,7 +381,7 @@ void K_point::save(int id)
     //}
 }
 
-void K_point::load(HDF5_tree h5in, int id)
+inline void K_point::load(HDF5_tree h5in, int id)
 {
     STOP();
     //== band_energies_.resize(ctx_.num_bands());
@@ -511,7 +452,7 @@ void K_point::load(HDF5_tree h5in, int id)
 //==     }
 //== }
 
-void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
+inline void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
 {
     assert((int)fv_evec.size(0) >= gklo_basis_size());
     assert((int)fv_evec.size(1) == ctx_.num_fv_states());
@@ -531,7 +472,7 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
     //comm_.allreduce(fv_evec.at<CPU>(), (int)fv_evec.size());
 }
 
-void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
+inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
 {
     assert((int)sv_evec.size(0) == ctx_.num_bands());
     assert((int)sv_evec.size(1) == ctx_.num_bands());
@@ -561,7 +502,5 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
     }
 
     comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
-}
-
 }
 

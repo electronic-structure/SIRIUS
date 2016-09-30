@@ -1,8 +1,4 @@
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::test_fv_states()
+inline void K_point::test_fv_states()
 {
     PROFILE();
 
@@ -66,6 +62,4 @@ void K_point::test_fv_states()
     //    printf("k-point: %f %f %f, maximum error of fv_states overlap : %18.10e\n", 
     //        vk_[0], vk_[1], vk_[2], max_err);
     //}
-}
-
 }

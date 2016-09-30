@@ -21,9 +21,7 @@ SRC =  LebedevLaikov.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
        Potential/paw_potential.cpp \
-       Potential/generate_pw_coefs.cpp \
-       K_point/k_point.cpp \
-       K_point/test_fv_states.cpp \
+       Potential/generate_pw_coefs.cpp
 
 OBJ = $(SRC:.cpp=.o)
 

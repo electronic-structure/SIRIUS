@@ -158,14 +158,41 @@ class K_point
         inline void distribute_basis_index();
         
         /// Test orthonormalization of first-variational states.
-        void test_fv_states();
+        inline void test_fv_states();
 
     public:
 
         /// Constructor
         K_point(Simulation_context& ctx__,
                 double* vk__,
-                double weight__);
+                double weight__)
+            : ctx_(ctx__),
+              unit_cell_(ctx_.unit_cell()),
+              weight_(weight__),
+              spinor_wave_functions_{nullptr, nullptr},
+              comm_(ctx_.blacs_grid().comm()),
+              comm_row_(ctx_.blacs_grid().comm_row()),
+              comm_col_(ctx_.blacs_grid().comm_col())
+        {
+            PROFILE();
+
+            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+            
+            band_occupancies_ = std::vector<double>(ctx_.num_bands(), 1);
+            band_energies_    = std::vector<double>(ctx_.num_bands(), 0);
+            
+            num_ranks_row_ = comm_row_.size();
+            num_ranks_col_ = comm_col_.size();
+            
+            rank_row_ = comm_row_.rank();
+            rank_col_ = comm_col_.rank();
+
+            if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) TERMINATE("ranks don't match");
+            
+            #ifndef __GPU
+            if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
+            #endif
+        }
 
         ~K_point()
         {
@@ -603,6 +630,8 @@ class K_point
 #include "K_point/build_gklo_basis_descriptors.hpp"
 #include "K_point/distribute_basis_index.hpp"
 #include "K_point/initialize.hpp"
+#include "K_point/k_point.hpp"
+#include "K_point/test_fv_states.hpp"
 
 }
 
