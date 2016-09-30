@@ -25,27 +25,23 @@
 #ifndef __LINALG_BASE_H__
 #define __LINALG_BASE_H__
 
-#define FORTRAN(x) x##_
+#include "blas_lapack.h"
 
-// Assume a 32-bit integer BLAS/LAPACK etc.
-using ftn_int = int32_t;
+template <typename T>
+struct linalg_const
+{
+    static T const& one()
+    {
+        static const T a = 1;
+        return a;
+    }
 
-// Assume a 32-bit integer for implicit string length arguments
-using ftn_len = int32_t;
-
-using ftn_double = double;
-
-using ftn_double_complex = std::complex<double>;
-
-using ftn_char = char const*;
-
-const ftn_double double_one = 1;
-
-const ftn_double double_zero = 0;
-
-const ftn_double_complex double_complex_one = double_complex(1, 0);
-
-const ftn_double_complex double_complex_zero = double_complex(0, 0);
+    static T const& zero()
+    {
+        static const T a = 0;
+        return a;
+    }
+};
 
 extern "C" {
 
@@ -54,142 +50,6 @@ ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n
 
 ftn_double FORTRAN(dlamch)(ftn_char cmach, ftn_len cmach_len);
 
-/*
- *  matrix-vector operations
- */
-
-void FORTRAN(zgemv)(ftn_char trans, ftn_int const* m, ftn_int const* n, ftn_double_complex const* alpha,
-                    ftn_double_complex const* A, ftn_int const* lda, ftn_double_complex const* X, ftn_int const* incx,
-                    ftn_double_complex const* beta, ftn_double_complex* Y, ftn_int const* incy, ftn_len trans_len);
-
-void FORTRAN(dgemv)(ftn_char trans, ftn_int const* m, ftn_int const* n, ftn_double const* alpha,
-                    ftn_double const* A, ftn_int const* lda, ftn_double const* X, ftn_int const* incx,
-                    ftn_double const* beta, ftn_double* Y, ftn_int const* incy, ftn_len trans_len);
-
-void FORTRAN(dger)(ftn_int*    m,
-                   ftn_int*    n,
-                   ftn_double* alpha,
-                   ftn_double* x,
-                   ftn_int*    incx,
-                   ftn_double* y,
-                   ftn_int*    incy,
-                   ftn_double* A,
-                   ftn_int*    lda);
-
-/*
- *  matrix-matrix operations
- */
-void FORTRAN(zhemm)(ftn_char side, ftn_char uplo, ftn_int* m, ftn_int* n,
-                    ftn_double_complex* alpha, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B,
-                    ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc,
-                    ftn_len side_len, ftn_len uplo_len);
-
-void FORTRAN(dgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k,
-                    ftn_double* alpha, ftn_double const* A, ftn_int* lda, ftn_double const* B, ftn_int* ldb,
-                    ftn_double* beta, ftn_double* C, ftn_int* ldc, ftn_len transa_len, ftn_len transb_len);
-
-void FORTRAN(zgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k,
-                    ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int* lda, ftn_double_complex const* B,
-                    ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc, ftn_len transa_len,
-                    ftn_len transb_len);
-
-void FORTRAN(dsytrf)(ftn_char uplo, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work,
-                     ftn_int* lwork, ftn_int* info, ftn_len uplo_len);
-
-void FORTRAN(dsytri)(ftn_char uplo, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work,
-                     ftn_int* info, ftn_len uplo_len);
-
-void FORTRAN(dgetrf)(ftn_int* m, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_int* info);
-
-void FORTRAN(dgetri)(ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work, ftn_int* lwork,
-                     ftn_int* info);
-
-void FORTRAN(zhetrf)(ftn_char uplo, ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv,
-                     ftn_double_complex* work, ftn_int* lwork, ftn_int* info, ftn_len uplo_len);
-
-void FORTRAN(zgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_int* info);
-
-void FORTRAN(zhetri)(ftn_char uplo, ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv,
-                     ftn_double_complex* work, ftn_int* info, ftn_len uplo_len);
-
-void FORTRAN(zgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* work,
-                     ftn_int* lwork, ftn_int* info);
-
-void FORTRAN(dgtsv)(ftn_int* n, ftn_int* nrhs, ftn_double* dl, ftn_double* d, ftn_double* du, ftn_double* b,
-                    ftn_int* ldb, ftn_int* info);
-
-void FORTRAN(zgtsv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* dl, ftn_double_complex* d, ftn_double_complex* du,
-                    ftn_double_complex* b, ftn_int* ldb, ftn_int* info);
-
-void FORTRAN(dgesv)(ftn_int* n, ftn_int* nrhs, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* B, ftn_int* ldb,
-                    ftn_int* info);
-
-void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* B,
-                    ftn_int* ldb, ftn_int* info);
-
-void FORTRAN(dpotrf)(ftn_char    uplo,
-                     ftn_int*    n,
-                     ftn_double* A,
-                     ftn_int*    lda,
-                     ftn_int*    info,
-                     ftn_len     uplolen);
-
-void FORTRAN(zpotrf)(ftn_char            uplo,
-                     ftn_int*            n,
-                     ftn_double_complex* A,
-                     ftn_int*            lda,
-                     ftn_int*            info,
-                     ftn_len             uplolen);
-
-void FORTRAN(dtrtri)(ftn_char    uplo,
-                     ftn_char    diag,
-                     ftn_int*    n,
-                     ftn_double* A,
-                     ftn_int*    lda,
-                     ftn_int*    info,
-                     ftn_len     uplolen,
-                     ftn_len     diaglen);
-
-void FORTRAN(ztrtri)(ftn_char            uplo,
-                     ftn_char            diag,
-                     ftn_int*            n,
-                     ftn_double_complex* A,
-                     ftn_int*            lda,
-                     ftn_int*            info,
-                     ftn_len             uplolen,
-                     ftn_len             diaglen);
-
-void FORTRAN(dtrmm)(ftn_char    side,
-                    ftn_char    uplo,
-                    ftn_char    transa,
-                    ftn_char    diag,
-                    ftn_int*    m,
-                    ftn_int*    n,
-                    ftn_double* aplha,
-                    ftn_double* A,
-                    ftn_int*    lda,
-                    ftn_double* B,
-                    ftn_int*    ldb,
-                    ftn_len     sidelen,
-                    ftn_len     uplolen,
-                    ftn_len     transalen,
-                    ftn_len     diaglen);
-
-void FORTRAN(ztrmm)(ftn_char            side,
-                    ftn_char            uplo,
-                    ftn_char            transa,
-                    ftn_char            diag,
-                    ftn_int*            m,
-                    ftn_int*            n,
-                    ftn_double_complex* aplha,
-                    ftn_double_complex* A,
-                    ftn_int*            lda,
-                    ftn_double_complex* B,
-                    ftn_int*            ldb,
-                    ftn_len             sidelen,
-                    ftn_len             uplolen,
-                    ftn_len             transalen,
-                    ftn_len             diaglen);
 
 #ifdef __SCALAPACK
 int Csys2blacs_handle(MPI_Comm SysCtxt);
@@ -405,68 +265,6 @@ void FORTRAN(pdtrtri)(ftn_char       uplo,
                       ftn_len        uplo_len,
                       ftn_len        diag_len);
 #endif
-
-/*
- *  eigen-value problem
- */
-void FORTRAN(zhegvx)(ftn_int* itype, ftn_char jobz, ftn_char range, ftn_char uplo,
-                     ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B, ftn_int* ldb, ftn_double* vl,
-                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m, ftn_double* w,
-                     ftn_double_complex* Z, ftn_int* ldz, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork,
-                     ftn_int* iwork, ftn_int* ifail, ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
-
-
-void FORTRAN(zheev)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double_complex* A,
-                    ftn_int* lda, ftn_double* w, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork,
-                    ftn_int* info, ftn_len jobzlen, ftn_len uplolen);
-
-void FORTRAN(zheevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double_complex* a,
-                     ftn_int* lda, ftn_double* w, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork,
-                     ftn_int* lrwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info, ftn_len jobzlen, ftn_len uplolen);
-
-void FORTRAN(dsygvx)(ftn_int* itype, ftn_char jobz, ftn_char range, ftn_char uplo,
-                     ftn_int* n, ftn_double* A, ftn_int* lda, ftn_double* B, ftn_int* ldb, ftn_double* vl,
-                     ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m, ftn_double* w,
-                     ftn_double* Z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork, ftn_int* ifail,
-                     ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
-
-void FORTRAN(dsyevd)(ftn_char jobz, ftn_char uplo, ftn_int* n, ftn_double* a, ftn_int* lda, ftn_double* w,
-                     ftn_double* work, ftn_int* lwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info,
-                     ftn_len jobzlen, ftn_len uplolen);
-
-void FORTRAN(dsyevx)(ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n, ftn_double* a, ftn_int* lda,
-                     ftn_double* vl, ftn_double* vu, ftn_int* il, ftn_int* iu, ftn_double const* abstol, ftn_int* m,
-                     ftn_double* w, ftn_double* z, ftn_int* ldz, ftn_double* work, ftn_int* lwork, ftn_int* iwork,
-                     ftn_int* ifail, ftn_int* info, ftn_len jobzlen, ftn_len rangelen, ftn_len uplolen);
-
-/* ZHEEVX computes selected eigenvalues and, optionally, eigenvectors
- * of a complex Hermitian matrix A.  Eigenvalues and eigenvectors can
- * be selected by specifying either a range of values or a range of
- * indices for the desired eigenvalues. */
-void FORTRAN(zheevx)(ftn_char            jobz,
-                     ftn_char            range,
-                     ftn_char            uplo,
-                     ftn_int*            n,
-                     ftn_double_complex* A,
-                     ftn_int*            lda,
-                     ftn_double*         vl,
-                     ftn_double*         vu,
-                     ftn_int*            il,
-                     ftn_int*            iu,
-                     ftn_double const*   abstol,
-                     ftn_int*            m,
-                     ftn_double*         w,
-                     ftn_double_complex* z,
-                     ftn_int*            ldz,
-                     ftn_double_complex* work,
-                     ftn_int*            lwork,
-                     ftn_double*         rwork,
-                     ftn_int*            iwork,
-                     ftn_int*            ifail,
-                     ftn_int*            info,
-                     ftn_len             jobzlen,
-                     ftn_len             rangelen,
-                     ftn_len             uplolen);
 
 }
 

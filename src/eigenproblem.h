@@ -205,7 +205,7 @@ class Eigenproblem_lapack: public Eigenproblem
             int32_t info;
        
             int32_t ione = 1;
-            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
                             (int32_t)1, (int32_t)1);
 
@@ -255,7 +255,7 @@ class Eigenproblem_lapack: public Eigenproblem
             int32_t info;
        
             int32_t ione = 1;
-            FORTRAN(dsygvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+            FORTRAN(dsygvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, 
                             (int32_t)1, (int32_t)1);
 
@@ -351,13 +351,13 @@ class Eigenproblem_lapack: public Eigenproblem
             il = 1;
             iu = nevec;
 
-            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &lwork1, &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, (int32_t)1, (int32_t)1);
 
             lwork = static_cast<int32_t>(lwork1 + 1);
             std::vector<double> work(lwork);
 
-            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, (int32_t)1, (int32_t)1);
             
             if (m != nevec)
@@ -404,14 +404,14 @@ class Eigenproblem_lapack: public Eigenproblem
             il = 1;
             iu = nevec;
 
-            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info,
                             (int32_t)1, (int32_t)1, (int32_t)1);
 
             lwork = static_cast<int32_t>(work[0].real()) + 1;
             work.resize(lwork);
 
-            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info,
                             (int32_t)1, (int32_t)1, (int32_t)1);
             
