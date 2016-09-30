@@ -1,8 +1,4 @@
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::distribute_basis_index()
+inline void K_point::distribute_basis_index()
 {
     PROFILE();
 
@@ -57,5 +53,3 @@ void K_point::distribute_basis_index()
         gklo_basis_descriptors_loc_[i] = gklo_basis_descriptors_[gkvec().gvec_offset(comm_.rank()) + i];
     }
 }
-
-};

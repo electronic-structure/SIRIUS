@@ -155,7 +155,7 @@ class K_point
         inline void build_gklo_basis_descriptors();
 
         /// Distribute basis function index between rows and columns of MPI grid.
-        void distribute_basis_index();
+        inline void distribute_basis_index();
         
         /// Test orthonormalization of first-variational states.
         void test_fv_states();
@@ -177,7 +177,7 @@ class K_point
         }
 
         /// Initialize the k-point related arrays and data
-        void initialize();
+        inline void initialize();
 
         /// Find G+k vectors within the cutoff
         inline void generate_gkvec(double gk_cutoff__);
@@ -601,6 +601,8 @@ class K_point
 #include "K_point/generate_spinor_wave_functions.hpp"
 #include "K_point/generate_gkvec.hpp"
 #include "K_point/build_gklo_basis_descriptors.hpp"
+#include "K_point/distribute_basis_index.hpp"
+#include "K_point/initialize.hpp"
 
 }
 

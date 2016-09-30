@@ -1,8 +1,4 @@
-#include "k_point.h"
-
-namespace sirius {
-
-void K_point::initialize()
+inline void K_point::initialize()
 {
     PROFILE_WITH_TIMER("sirius::K_point::initialize");
     
@@ -241,5 +237,3 @@ void K_point::initialize()
         }
     }
 }
-
-};
