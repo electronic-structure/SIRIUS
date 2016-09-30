@@ -1,5 +1,4 @@
-
-//void Density::check_density_continuity_at_mt()
+//inline void Density::check_density_continuity_at_mt()
 //{
 //    // generate plane-wave coefficients of the potential in the interstitial region
 //    ctx_.fft().input(&rho_->f_it<global>(0));

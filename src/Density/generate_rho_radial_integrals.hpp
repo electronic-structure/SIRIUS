@@ -1,13 +1,8 @@
-#include "density.h"
-
-namespace sirius
-{
-
 /** type = 0: full-potential radial integrals \n
  *  type = 1: pseudopotential valence density integrals \n
  *  type = 2: pseudopotential code density integrals
  */
-mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
+inline mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 {
     runtime::Timer t("sirius::Density::generate_rho_radial_integrals");
 
@@ -103,5 +98,3 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 
     return std::move(rho_radial_integrals);
 }
-
-};

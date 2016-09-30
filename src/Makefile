@@ -7,10 +7,6 @@ SRC =  LebedevLaikov.cpp \
        spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
        beta_projectors.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
-       Density/density.cpp \
-       Density/generate_rho_radial_integrals.cpp \
-       Density/generate_valence_density_mt.cpp \
-       Density/check_density_continuity_at_mt.cpp \
        Potential/potential.cpp \
        Potential/init.cpp \
        Potential/poisson.cpp \
