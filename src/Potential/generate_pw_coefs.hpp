@@ -1,8 +1,4 @@
-#include "potential.h"
-
-namespace sirius {
-
-void Potential::generate_pw_coefs()
+inline void Potential::generate_pw_coefs()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_pw_coefs");
 
@@ -64,5 +60,3 @@ void Potential::generate_pw_coefs()
 
     ctx_.fft().dismiss();
 }
-
-};

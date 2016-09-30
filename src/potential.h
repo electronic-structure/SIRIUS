@@ -651,6 +651,10 @@ class Potential
         //}
 };
 
+#include "Potential/init.hpp"
+#include "Potential/generate_d_operator_matrix.hpp"
+#include "Potential/generate_pw_coefs.hpp"
+
 };
 
 #endif // __POTENTIAL_H__

@@ -17,15 +17,10 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file generate_d_operator_matrix.h
+/** \file generate_d_operator_matrix.hpp
  *   
  *  \brief Contains implementation of sirius::Potential::generate_D_operator_matrix method.
  */
-#include <fstream>
-
-#include "potential.h"
-
-namespace sirius {
 
 #ifdef __GPU
 extern "C" void mul_veff_with_phase_factors_gpu(int                   num_atoms__,
@@ -37,7 +32,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int                   num_atoms_
                                                 int                   stream_id__);
 #endif
 
-void Potential::generate_D_operator_matrix()
+inline void Potential::generate_D_operator_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
 
@@ -48,12 +43,6 @@ void Potential::generate_D_operator_matrix()
         veff_vec[1 + j] = effective_magnetic_field_[j];
     }
    
-    ///* allocate on device if necessary */ 
-    //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-    //    ctx_.augmentation_op(iat).prepare(-1);
-    //    acc::sync_stream(-1);
-    //}
-
     #ifdef __GPU
     mdarray<double_complex, 1> veff_tmp(nullptr, spl_num_gvec_.local_size());
     if (ctx_.processing_unit() == GPU) {
@@ -197,10 +186,4 @@ void Potential::generate_D_operator_matrix()
             }
         }
     }
-
-    //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-    //    ctx_.augmentation_op(iat).dismiss();
-    //}
 }
-
-};

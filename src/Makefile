@@ -8,14 +8,11 @@ SRC =  LebedevLaikov.cpp \
        beta_projectors.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Potential/potential.cpp \
-       Potential/init.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
-       Potential/generate_d_operator_matrix.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
-       Potential/paw_potential.cpp \
-       Potential/generate_pw_coefs.cpp
+       Potential/paw_potential.cpp
 
 OBJ = $(SRC:.cpp=.o)
 

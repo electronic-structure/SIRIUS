@@ -1,8 +1,4 @@
-#include "potential.h"
-
-namespace sirius {
-
-void Potential::init()
+inline void Potential::init()
 {
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo)
     {
@@ -81,5 +77,3 @@ void Potential::init()
     }
 }
 
-
-};
