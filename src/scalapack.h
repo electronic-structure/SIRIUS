@@ -5,16 +5,16 @@
 
 extern "C" {
 
-ftn_int  FORTRAN(pjlaenv)(ftn_int*            ICTXT,
-                          ftn_int*            ISPEC,
-                          ftn_char            NAME,
-                          ftn_char            OPTS,
-                          ftn_int*            N1,
-                          ftn_int*            N2,
-                          ftn_int*            N3,
-                          ftn_int*            N4,
-                          ftn_len             NAME_len,
-                          ftn_len             OPTS_len);
+ftn_int FORTRAN(pjlaenv)(ftn_int*            ICTXT,
+                         ftn_int*            ISPEC,
+                         ftn_char            NAME,
+                         ftn_char            OPTS,
+                         ftn_int*            N1,
+                         ftn_int*            N2,
+                         ftn_int*            N3,
+                         ftn_int*            N4,
+                         ftn_len             NAME_len,
+                         ftn_len             OPTS_len);
 
 void FORTRAN(psgetrf)(ftn_int*            M,
                       ftn_int*            N,
