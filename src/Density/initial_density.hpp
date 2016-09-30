@@ -1,11 +1,4 @@
-#include "density.h"
-#include <fstream>
-
-using namespace std;
-
-namespace sirius {
-
-void Density::initial_density()
+inline void Density::initial_density()
 {
     PROFILE_WITH_TIMER("sirius::Density::initial_density");
 
@@ -28,7 +21,7 @@ void Density::initial_density()
     ctx_.fft().dismiss();
 }
 
-void Density::initial_density_pseudo()
+inline void Density::initial_density_pseudo()
 {
     auto rho_radial_integrals = generate_rho_radial_integrals(1);
     auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
@@ -246,7 +239,7 @@ void Density::initial_density_pseudo()
 
 //----------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------
-void Density::initial_density_full_pot()
+inline void Density::initial_density_full_pot()
 {
     splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
     
@@ -480,7 +473,7 @@ void Density::initial_density_full_pot()
     }
 }
 
-void Density::initialize_beta_density_matrix()
+inline void Density::initialize_beta_density_matrix()
 {
     density_matrix_.zero();
 
@@ -538,5 +531,3 @@ void Density::initialize_beta_density_matrix()
         }
     }
 }
-
-};

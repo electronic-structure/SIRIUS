@@ -1,8 +1,4 @@
-#include "density.h"
-
-namespace sirius {
-
-void Density::symmetrize_density_matrix()
+inline void Density::symmetrize_density_matrix()
 {
     PROFILE_WITH_TIMER("sirius::Density::symmetrize_density_matrix");
 
@@ -72,4 +68,3 @@ void Density::symmetrize_density_matrix()
     #endif
 }
 
-};
