@@ -26,6 +26,7 @@
 #define __LINALG_BASE_H__
 
 #include "blas_lapack.h"
+#include "scalapack.h"
 
 template <typename T>
 struct linalg_const
@@ -81,12 +82,6 @@ void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, f
                      ftn_double_complex* C, ftn_int* ic, ftn_int* jc, ftn_int const* descc,
                      ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
-                      ftn_int* ipiv, ftn_int* info);
-
-void FORTRAN(pzgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_int* ipiv,
-                      ftn_double_complex* work, ftn_int* lwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info);
-
 void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc, ftn_int* icsrc,
                        ftn_int* ictxt, ftn_int* lld, ftn_int* info);
 
@@ -102,114 +97,9 @@ void FORTRAN(pdtran)(ftn_int* m, ftn_int* n, ftn_double* alpha,
                      ftn_double* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
                      ftn_double* beta, ftn_double* c, ftn_int* ic, ftn_int* jc, ftn_int const* descc);
 
-void FORTRAN(pzhegvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n,
-                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
-                      ftn_double_complex* b, ftn_int* ib, ftn_int* jb, ftn_int const* descb,
-                      ftn_double* vl, ftn_double* vu,
-                      ftn_int* il, ftn_int* iu,
-                      ftn_double const* abstol,
-                      ftn_int* m, ftn_int* nz, ftn_double* w, ftn_double* orfac,
-                      ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz,
-                      ftn_double_complex* work, ftn_int* lwork,
-                      ftn_double* rwork, ftn_int* lrwork,
-                      ftn_int* iwork, ftn_int* liwork,
-                      ftn_int* ifail, ftn_int* iclustr, ftn_double* gap, ftn_int* info,
-                      ftn_len jobz_len, ftn_len range_len, ftn_len uplo_len);
-
-void FORTRAN(pdsygvx)(ftn_int* ibtype, ftn_char jobz, ftn_char range, ftn_char uplo, ftn_int* n,
-                      ftn_double* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
-                      ftn_double* b, ftn_int* ib, ftn_int* jb, ftn_int const* descb,
-                      ftn_double* vl, ftn_double* vu,
-                      ftn_int* il, ftn_int* iu,
-                      ftn_double const* abstol,
-                      ftn_int* m, ftn_int* nz, ftn_double* w, ftn_double* orfac,
-                      ftn_double* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz,
-                      ftn_double* work, ftn_int* lwork,
-                      ftn_int* iwork, ftn_int* liwork,
-                      ftn_int* ifail, ftn_int* iclustr, ftn_double* gap, ftn_int* info,
-                      ftn_len jobz_len, ftn_len range_len, ftn_len uplo_len);
-
-void FORTRAN(pdsyevx)(ftn_char       jobz,
-                      ftn_char       range,
-                      ftn_char       uplo,
-                      ftn_int*       n,
-                      ftn_double*    A,
-                      ftn_int*       ia,
-                      ftn_int*       ja,
-                      ftn_int const* desca,
-                      ftn_double*    vl,
-                      ftn_double*    vu,
-                      ftn_int*       il,
-                      ftn_int*       iu,
-                      ftn_double const* abstol,
-                      ftn_int*       m,
-                      ftn_int*       nz,
-                      ftn_double*    w,
-                      ftn_double*    orfac,
-                      ftn_double*    Z,
-                      ftn_int*       iz,
-                      ftn_int*       jz,
-                      ftn_int const* descz,
-                      ftn_double*    work,
-                      ftn_int*       lwork,
-                      ftn_int*       iwork,
-                      ftn_int*       liwork,
-                      ftn_int*       ifail,
-                      ftn_int*       iclustr,
-                      ftn_double*    gap,
-                      ftn_int*       info,
-                      ftn_len        jobz_len,
-                      ftn_len        range_len,
-                      ftn_len        uplo_len);
-
-void FORTRAN(pzheevx)(ftn_char            jobz,
-                      ftn_char            range,
-                      ftn_char            uplo,
-                      ftn_int*            n,
-                      ftn_double_complex* A,
-                      ftn_int*            ia,
-                      ftn_int*            ja,
-                      ftn_int const*      desca,
-                      ftn_double*         vl,
-                      ftn_double*         vu,
-                      ftn_int*            il,
-                      ftn_int*            iu,
-                      ftn_double const*   abstol,
-                      ftn_int*            m,
-                      ftn_int*            nz,
-                      ftn_double*         w,
-                      ftn_double*         orfac,
-                      ftn_double_complex* Z,
-                      ftn_int*            iz,
-                      ftn_int*            jz,
-                      ftn_int const*      descz,
-                      ftn_double_complex* work,
-                      ftn_int*            lwork,
-                      ftn_double*         rwork,
-                      ftn_int*            lrwork,
-                      ftn_int*            iwork,
-                      ftn_int*            liwork,
-                      ftn_int*            ifail,
-                      ftn_int*            iclustr,
-                      ftn_double*         gap,
-                      ftn_int*            info,
-                      ftn_len             jobz_len,
-                      ftn_len             range_len,
-                      ftn_len             uplo_len);
-
-void FORTRAN(pzheevd)(ftn_char jobz, ftn_char uplo, ftn_int* n,
-                      ftn_double_complex* a, ftn_int* ia, ftn_int* ja, ftn_int const* desca,
-                      ftn_double* w,
-                      ftn_double_complex* z, ftn_int* iz, ftn_int* jz, ftn_int const* descz,
-                      ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork, ftn_int* lrwork, ftn_int* iwork,
-                      ftn_int* liwork, ftn_int* info, ftn_len jobz_len, ftn_len uplo_len);
-
 ftn_int FORTRAN(numroc)(ftn_int* n, ftn_int* nb, ftn_int* iproc, ftn_int* isrcproc, ftn_int* nprocs);
 
 ftn_int FORTRAN(indxl2g)(ftn_int* indxloc, ftn_int* nb, ftn_int* iproc, ftn_int* isrcproc, ftn_int* nprocs);
-
-ftn_int FORTRAN(pjlaenv)(ftn_int* ictxt, ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2,
-                         ftn_int* n3, ftn_int* n4, ftn_len name_len, ftn_len opts_len);
 
 ftn_len FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
 
@@ -224,46 +114,6 @@ void FORTRAN(pzgemr2d)(ftn_int*            m,
                        ftn_int*            jb,
                        ftn_int const*      descb,
                        ftn_int*            gcontext);
-
-void FORTRAN(pdpotrf)(ftn_char       uplo,
-                      ftn_int*       n,
-                      ftn_double*    A,
-                      ftn_int*       ia,
-                      ftn_int*       ja,
-                      ftn_int const* desca,
-                      ftn_int*       info,
-                      ftn_len        uplo_len);
-
-void FORTRAN(pzpotrf)(ftn_char            uplo,
-                      ftn_int*            n,
-                      ftn_double_complex* A,
-                      ftn_int*            ia,
-                      ftn_int*            ja,
-                      ftn_int const*      desca,
-                      ftn_int*            info,
-                      ftn_len             uplo_len);
-
-void FORTRAN(pztrtri)(ftn_char            uplo,
-                      ftn_char            diag,
-                      ftn_int*            n,
-                      ftn_double_complex* A,
-                      ftn_int*            ia,
-                      ftn_int*            ja,
-                      ftn_int const*      desca,
-                      ftn_int*            info,
-                      ftn_len             uplo_len,
-                      ftn_len             diag_len);
-
-void FORTRAN(pdtrtri)(ftn_char       uplo,
-                      ftn_char       diag,
-                      ftn_int*       n,
-                      ftn_double*    A,
-                      ftn_int*       ia,
-                      ftn_int*       ja,
-                      ftn_int const* desca,
-                      ftn_int*       info,
-                      ftn_len        uplo_len,
-                      ftn_len        diag_len);
 #endif
 
 }

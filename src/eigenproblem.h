@@ -759,7 +759,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             std::vector<int32_t> iwork(1);
             /* work size query */
             FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
             lwork = static_cast<int32_t>(work[0].real()) + 4096;
@@ -771,7 +771,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             iwork = std::vector<int32_t>(liwork);
             
             FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
@@ -849,7 +849,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             
             /* work size query */
             FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
                              &liwork, &lwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
             
             lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
@@ -858,7 +858,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             std::vector<int32_t> iwork(liwork);
             
             FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
@@ -935,7 +935,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             int32_t lwork = -1;
             int32_t liwork = -1;
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
             
             lwork = static_cast<int32_t>(work[0]) + 4 * (1 << 20);
@@ -945,7 +945,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             iwork = std::vector<int32_t>(liwork);
 
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
@@ -1024,7 +1024,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             int32_t lrwork = -1;
             int32_t liwork = -1;
             FORTRAN(pzheevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
             
@@ -1037,7 +1037,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             iwork = std::vector<int32_t>(liwork);
 
             FORTRAN(pzheevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 

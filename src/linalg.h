@@ -586,7 +586,7 @@ inline ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmat
     ftn_int info;
     ia++;
     ja++;
-    FORTRAN(pzgetrf)(&m, &n, A.at<CPU>(), &ia, &ja, A.descriptor(), ipiv, &info);
+    FORTRAN(pzgetrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
     return info;
 }
 
@@ -603,13 +603,13 @@ inline ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     ftn_double_complex z;
     i = -1;
     /* query work sizes */
-    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &z, &i, &liwork, &i, &info);
+    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &z, &i, &liwork, &i, &info);
 
     lwork = (int)real(z) + 1;
     std::vector<ftn_double_complex> work(lwork);
     std::vector<ftn_int> iwork(liwork);
 
-    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
+    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
 
     return info;
 }
@@ -738,7 +738,7 @@ inline ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pdpotrf)("U", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1);
+    FORTRAN(pdpotrf)("U", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1);
     return info;
 }
 
@@ -748,7 +748,7 @@ inline ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pzpotrf)("U", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1);
+    FORTRAN(pzpotrf)("U", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1);
     return info;
 }
 
@@ -758,7 +758,7 @@ inline ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pdtrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1, (ftn_len)1);
+    FORTRAN(pdtrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
 
@@ -768,7 +768,7 @@ inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pztrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, A.descriptor(), &info, (ftn_len)1, (ftn_len)1);
+    FORTRAN(pztrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
 #else

@@ -11,7 +11,7 @@ using ftn_single = float;
 using ftn_double = double;
 using ftn_complex = std::complex<float>;
 using ftn_double_complex = std::complex<double>;
-using ftn_char = char const *;
+using ftn_char = char const*;
 
 extern "C" {
 
