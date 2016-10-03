@@ -127,7 +127,7 @@ void test3()
     {
         for (int j = 0; j < N; j++) A.set(j, i, type_wrapper<T>::random());
     }
-    A.panel() >> B.panel();
+    A >> B;
 
     T alpha = 1.0;
     T beta = 0.0;

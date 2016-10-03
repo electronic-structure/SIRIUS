@@ -4,14 +4,15 @@
 
 using namespace sirius;
 
-void test1(vector3d<int> const& dims__, double cutoff__)
+void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 {
+    printf("test1\n");
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
     FFT3D_grid fft_grid(cutoff__, M);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+    FFT3D fft(fft_grid, mpi_comm_world(), pu__);
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), false);
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
@@ -59,14 +60,15 @@ void test1(vector3d<int> const& dims__, double cutoff__)
     fft.dismiss();
 }
 
-void test2(vector3d<int> const& dims__, double cutoff__)
+void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 {
+    printf("test2\n");
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
     FFT3D_grid fft_grid(cutoff__, M);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+    FFT3D fft(fft_grid, mpi_comm_world(), pu__);
 
     Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
 
@@ -93,10 +95,11 @@ void test2(vector3d<int> const& dims__, double cutoff__)
 
     fft.transform<1>(gvec_r.partition(), &phi1(0), &phi2(0));
 
-    for (int i = 0; i < fft.local_size(); i++)
-    {
-        if (std::abs(double_complex(phi1_rg(i), phi2_rg(i)) - fft.buffer(i)) > 1e-10)
-        {
+    mdarray<double_complex, 1> phi12_rg(fft.local_size());
+    fft.output(&phi12_rg(0));
+
+    for (int i = 0; i < fft.local_size(); i++) {
+        if (std::abs(double_complex(phi1_rg(i), phi2_rg(i)) - phi12_rg(i)) > 1e-10) {
             printf("functions don't match\n");
             printf("phi1: %18.10f\n", phi1_rg(i));
             printf("phi2: %18.10f\n", phi2_rg(i));
@@ -110,12 +113,16 @@ void test2(vector3d<int> const& dims__, double cutoff__)
     fft.transform<-1>(gvec_r.partition(), &phi1_bt(0), &phi2_bt(0));
 
     double diff = 0;
-    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++)
-    {
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
         diff += std::abs(phi1(i) - phi1_bt(i));
         diff += std::abs(phi2(i) - phi2_bt(i));
     }
+    diff /= gvec_r.partition().gvec_count_fft();
     printf("diff: %18.10f\n", diff);
+    if (diff > 1e-13) {
+        printf("functions are different\n");
+        exit(1);
+    }
 
     fft.dismiss();
 }
@@ -140,8 +147,12 @@ int main(int argn, char **argv)
 
     sirius::initialize(1);
 
-    test1(dims, cutoff);
-    test2(dims, cutoff);
+    test1(dims, cutoff, CPU);
+    test2(dims, cutoff, CPU);
+    #ifdef __GPU
+    test1(dims, cutoff, GPU);
+    test2(dims, cutoff, GPU);
+    #endif
     
     sirius::finalize();
 

@@ -78,6 +78,15 @@ void f4()
 
 }
 
+void f5()
+{
+    mdarray<double, 3> a;
+
+    if (a.size(0) != 0 || a.size(1) != 0 || a.size(2) != 0) {
+        printf("wrong sizes\n");
+    }
+}
+
 int main(int argn, char **argv)
 {
     sirius::initialize(1);
@@ -87,6 +96,8 @@ int main(int argn, char **argv)
     f3();
 
     f4();
+
+    f5();
 
     #ifndef NDEBUG
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
