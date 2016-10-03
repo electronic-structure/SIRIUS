@@ -114,6 +114,8 @@ class Gvec_partition
         inline bool reduced() const;
 };
 
+// TODO: G-vector partitioning is not part of G-vector class because we can have several G-vector partitions
+
 /// Store list of G-vectors for FFTs and G+k basis functions.
 class Gvec
 {
