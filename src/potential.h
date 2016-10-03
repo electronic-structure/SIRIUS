@@ -51,9 +51,6 @@ class Potential
 
         Communicator const& comm_;
 
-        /// Alias for FFT driver.
-        FFT3D& fft_;
-
         Periodic_function<double>* effective_potential_;
 
         Periodic_function<double>* effective_magnetic_field_[3];
@@ -455,7 +452,7 @@ class Potential
         
         void update_atomic_potential();
         
-        template <processing_unit_t pu> 
+        template <device_t pu> 
         void add_mt_contribution_to_pw();
 
         /// Generate plane-wave coefficients of the potential in the interstitial region
@@ -653,6 +650,10 @@ class Potential
         //    DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
         //}
 };
+
+#include "Potential/init.hpp"
+#include "Potential/generate_d_operator_matrix.hpp"
+#include "Potential/generate_pw_coefs.hpp"
 
 };
 

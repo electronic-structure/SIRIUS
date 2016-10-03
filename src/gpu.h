@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -40,12 +40,11 @@ void cuda_device_info();
 
 void* cuda_malloc(size_t size);
 
+void cuda_free(void* ptr);
+
 void* cuda_malloc_host(size_t size);
 
 void cuda_free_host(void* ptr);
-
-void cuda_free(void* ptr);
-
 
 void cuda_memset(void *ptr, int value, size_t size);
 
@@ -89,56 +88,76 @@ void cuda_device_reset();
 
 void cuda_check_last_error();
 
+bool cuda_check_device_ptr(void const* ptr__);
+
+void cuda_memset2d(void* ptr__, int ld__, int nrow__, int ncol__, int elem_size__, int value__);
+
+void cuda_begin_range_marker(const char* label__);
+
+void cuda_end_range_marker();
+
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
-                  int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
+                  cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
+                  int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
 
 void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  double* alpha, double const* a, int32_t lda, double const* b, 
-                  int32_t ldb, double* beta, double* c, int32_t ldc, int stream_id);
+                  double const* alpha, double const* a, int32_t lda, double const* b, 
+                  int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id);
 
 void cublas_dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
-                  double* alpha__, double* A__, int lda__, double* B__, int ldb__);
+                  double const* alpha__, double* A__, int lda__, double* B__, int ldb__);
 
-void cublas_dger(int m, int n, double* alpha, double* x, int incx, double* y, int incy, double* A, int lda);
-
+void cublas_ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
+                  cuDoubleComplex const* alpha__, cuDoubleComplex* A__, int lda__, cuDoubleComplex* B__, int ldb__);
 
 void cublas_create_handles(int num_handles);
 
 void cublas_destroy_handles(int num_handles);
 
-void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
-                  cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 
+void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex const* alpha, cuDoubleComplex* a, int32_t lda, 
+                  cuDoubleComplex* x, int32_t incx, cuDoubleComplex const* beta, cuDoubleComplex* y, int32_t incy, 
                   int stream_id);
+
+void cublas_zaxpy(int n__,
+                  cuDoubleComplex const* alpha__,
+                  cuDoubleComplex const* x__,
+                  int incx__,
+                  cuDoubleComplex* y__,
+                  int incy__);
+
+void cublas_dger(int           m,
+                 int           n,
+                 double const* alpha,
+                 double*       x,
+                 int           incx,
+                 double*       y,
+                 int           incy,
+                 double*       A,
+                 int           lda,
+                 int           stream_id);
+
+void cublas_zgeru(int                    m,
+                  int                    n,
+                  cuDoubleComplex const* alpha,
+                  cuDoubleComplex const* x,
+                  int                    incx,
+                  cuDoubleComplex const* y,
+                  int                    incy,
+                  cuDoubleComplex*       A,
+                  int                    lda, 
+                  int                    stream_id);
 
 void cufft_create_plan_handle(cufftHandle* plan);
 
 void cufft_destroy_plan_handle(cufftHandle plan);
 
-size_t cufft_get_size_3d(int nx, int ny, int nz, int nfft);
-
-size_t cufft_get_size_2d(int nx, int ny, int nfft);
+size_t cufft_get_work_size(int ndim, int* dims, int nfft);
 
 size_t cufft_create_batch_plan(cufftHandle plan, int rank, int* dims, int* embed, int stride, int dist, int nfft, int auto_alloc);
 
 void cufft_set_work_area(cufftHandle plan, void* work_area);
 
 void cufft_set_stream(cufftHandle plan__, int stream_id__);
-
-void cufft_batch_load_gpu(int fft_size,
-                          int num_pw_components, 
-                          int num_fft,
-                          int const* map, 
-                          cuDoubleComplex* data, 
-                          cuDoubleComplex* fft_buffer);
-
-void cufft_batch_unload_gpu(int fft_size,
-                            int num_pw_components,
-                            int num_fft,
-                            int const* map, 
-                            cuDoubleComplex* fft_buffer, 
-                            cuDoubleComplex* data,
-                            double beta);
 
 void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
@@ -148,6 +167,12 @@ void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 
 void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
 
+void scale_matrix_elements_gpu(cuDoubleComplex* ptr__,
+                               int ld__,
+                               int nrow__,
+                               int ncol__,
+                               double beta__);
+
 #ifdef __MAGMA
 void magma_init_wrapper();
 
@@ -155,19 +180,25 @@ void magma_finalize_wrapper();
 
 int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda);
 
+int magma_zpotrf_wrapper(char uplo, int n, cuDoubleComplex* A, int lda);
+
 int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda);
+
+int magma_ztrtri_wrapper(char uplo, int n, cuDoubleComplex* A, int lda);
 #endif
 
-}
+}; // extern "C"
 
 namespace acc {
 
+/// Copy memory inside device.
 template <typename T>
 inline void copy(T* target__, T const* source__, size_t n__)
 {
     cuda_copy_device_to_device(target__, source__, n__ * sizeof(T));
 }
 
+/// Copy memory to device.
 template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__)
 {
@@ -221,6 +252,28 @@ inline void sync_stream(int stream_id__)
     cuda_stream_synchronize(stream_id__);
 }
 
-};
+template <typename T>
+inline void zero(T* target__, size_t n__)
+{
+    cuda_memset(target__, 0, n__ * sizeof(T));
+}
+
+template <typename T>
+inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
+{
+    cuda_memset2d(ptr__, ld__, nrow__, ncol__, sizeof(T), 0);
+}
+
+template <typename T>
+inline T* allocate(size_t size__) {
+    return reinterpret_cast<T*>(cuda_malloc(size__ * sizeof(T)));
+}
+
+inline void deallocate(void* ptr__)
+{
+    cuda_free(ptr__);
+}
+
+}; // namespace acc
 
 #endif

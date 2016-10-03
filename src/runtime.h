@@ -12,10 +12,14 @@
 #include <chrono>
 #include <omp.h>
 #include <unistd.h>
+#include <cstring>
 #include <cstdarg>
 #include "config.h"
 #include "communicator.h"
 #include "json.hpp"
+#ifdef __GPU
+#include "gpu.h"
+#endif
 
 using json = nlohmann::json;
 
@@ -29,15 +33,15 @@ class pstdout
         
         std::vector<char> buffer_;
 
-        int fill_;
+        int count_{0};
 
         Communicator const& comm_;
 
     public:
 
-        pstdout(Communicator const& comm__) : fill_(0), comm_(comm__)
+        pstdout(Communicator const& comm__) : comm_(comm__)
         {
-            buffer_.resize(8129);
+            buffer_.resize(10240);
         }
 
         ~pstdout()
@@ -56,32 +60,37 @@ class pstdout
 
             n = std::min(n, (int)str.size());
             
-            if ((int)buffer_.size() - fill_ < n) buffer_.resize(buffer_.size() + str.size());
-            memcpy(&buffer_[fill_], &str[0], n);
-            fill_ += n;
+            if ((int)buffer_.size() - count_ < n) {
+                buffer_.resize(buffer_.size() + str.size());
+            }
+            std::memcpy(&buffer_[count_], &str[0], n);
+            count_ += n;
         }
 
         void flush()
         {
-            std::vector<int> local_fills(comm_.size());
-            comm_.allgather(&fill_, &local_fills[0], comm_.rank(), 1); 
+            std::vector<int> counts(comm_.size());
+            comm_.allgather(&count_, &counts[0], comm_.rank(), 1); 
             
-            int offset = 0;
-            for (int i = 0; i < comm_.rank(); i++) offset += local_fills[i];
+            int offset{0};
+            for (int i = 0; i < comm_.rank(); i++) {
+                offset += counts[i];
+            }
             
             /* total size of the output buffer */
-            int sz = fill_;
+            int sz = count_;
             comm_.allreduce(&sz, 1);
             
-            if (sz != 0)
-            {
+            if (sz != 0) {
                 std::vector<char> outb(sz + 1);
-                comm_.allgather(&buffer_[0], &outb[0], offset, fill_);
+                comm_.allgather(&buffer_[0], &outb[0], offset, count_);
                 outb[sz] = 0;
 
-                if (comm_.rank() == 0) std::printf("%s", &outb[0]);
+                if (comm_.rank() == 0) {
+                    std::printf("%s", &outb[0]);
+                }
             }
-            fill_ = 0;
+            count_ = 0;
         }
 };
 
@@ -259,22 +268,26 @@ class Timer
 
         void start()
         {
+            #if defined (__GPU) && defined (__GPU_NVTX)
+            cuda_begin_range_marker(label_.c_str());
+            #endif
+
             #ifdef __TIMER
             #ifndef NDEBUG
-            if (omp_get_num_threads() != 1)
-            {
+            if (omp_get_num_threads() != 1) {
                 printf("std::map used by Timer is not thread-safe\n");
                 printf("timer name: %s\n", label_.c_str());
                 exit(-1);
             }
             #endif
 
-            if (active_)
-            {
+            if (active_) {
                 printf("timer %s is already running\n", label_.c_str());
                 exit(-2);
             }
-            if (comm_ != nullptr) comm_->barrier();
+            if (comm_ != nullptr) {
+                comm_->barrier();
+            }
             #if defined(__TIMER_TIMEOFDAY)
             gettimeofday(&starting_time_, NULL);
             #elif defined(__TIMER_MPI_WTIME)
@@ -288,6 +301,10 @@ class Timer
 
         double stop()
         {
+            #if defined (__GPU) && defined(__GPU_NVTX)
+            cuda_end_range_marker();
+            #endif
+
             #ifdef __TIMER
             if (!active_)
             {

@@ -58,6 +58,9 @@
 
 //== #define __GPU_DIRECT
 
+/* link with -lnvToolsExt if you use NVIDIA Tools Extension Library (NVTX) */
+//== #define __GPU_NVTX
+
 //== #define __RS_GEN_EIG
 
 //== #if !defined(NDEBUG)
@@ -73,20 +76,11 @@
 #error "GPU interface must be enabled for libsci_acc"
 #endif
 
-#if defined(__LIBSCI_ACC) || defined(__MAGMA)
-const int alloc_mode = 1;
-#else
-const int alloc_mode = 0;
-#endif
-
 const bool test_spinor_wf = false;
 
 const bool hdf5_trace_errors = false;
 
 const bool check_pseudo_charge = false;
-
-//** const bool full_relativistic_core = false;
-
 
 /// Level of internal verification
 /** __VERIFICATION = 0 : nothing to do \n
@@ -109,8 +103,6 @@ const bool check_pseudo_charge = false;
 #ifndef __VERBOSITY
 #define __VERBOSITY 2
 #endif
-
-const bool fix_apwlo_linear_dependence = false;
 
 const bool use_second_variation = true;
 

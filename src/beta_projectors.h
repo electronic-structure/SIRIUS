@@ -63,7 +63,7 @@ class Beta_projectors
 
         int lmax_beta_;
 
-        processing_unit_t pu_;
+        device_t pu_;
 
         int num_gkvec_loc_;
 
@@ -111,7 +111,7 @@ class Beta_projectors
         Beta_projectors(Communicator const& comm__,
                         Unit_cell const& unit_cell__,
                         Gvec const& gkvec__,
-                        processing_unit_t pu__);
+                        device_t pu__);
 
         matrix<double_complex>& beta_gk_t()
         {
@@ -127,13 +127,14 @@ class Beta_projectors
         matrix<T> beta_phi(int chunk__, int n__)
         {
             int nbeta = beta_chunk(chunk__).num_beta_;
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                return std::move(matrix<T>((T*)beta_phi_.at<CPU>(), (T*)beta_phi_.at<GPU>(), nbeta, n__));
+            if (pu_ == GPU) {
+                return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()),
+                                           reinterpret_cast<T*>(beta_phi_.at<GPU>()),
+                                           nbeta, n__));
+            } else {
+                return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()),
+                                           nbeta, n__));
             }
-            #endif
-            return std::move(matrix<T>((T*)beta_phi_.at<CPU>(), nbeta, n__));
         }
 
         Unit_cell const& unit_cell() const
@@ -159,15 +160,14 @@ class Beta_projectors
         void generate(int chunk__);
 
         template <typename T>
-        void inner(int chunk__, Wave_functions<false>& phi__, int idx0__, int n__);
+        void inner(int chunk__, wave_functions& phi__, int idx0__, int n__);
 
         void prepare()
         {
             #ifdef __GPU
-            if (pu_ == GPU)
-            {
-                beta_gk_gpu_.allocate_on_device();
-                beta_phi_.allocate_on_device();
+            if (pu_ == GPU) {
+                beta_gk_gpu_.allocate(memory_t::device);
+                beta_phi_.allocate(memory_t::device);
             }
             #endif
         }
@@ -175,8 +175,7 @@ class Beta_projectors
         void dismiss()
         {
             #ifdef __GPU
-            if (pu_ == GPU)
-            {
+            if (pu_ == GPU) {
                 beta_gk_gpu_.deallocate_on_device();
                 beta_phi_.deallocate_on_device();
             }

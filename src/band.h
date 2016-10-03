@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -31,6 +31,7 @@
 #include "hloc_operator.h"
 #include "potential.h"
 #include "k_set.h"
+#include "interstitial_operator.h"
 
 namespace sirius
 {
@@ -39,7 +40,7 @@ namespace sirius
 //       We can do first- and second-variation or a full variation. We can do iterative or exact diagonalization.
 //       This has to be organized. 
 
-/// Setup and solve eigen value problem.
+/// Setup and solve the eigen value problem.
 class Band
 {
     private:
@@ -54,20 +55,20 @@ class Band
         BLACS_grid const& blacs_grid_;
 
         /// Non-zero Gaunt coefficients
-        Gaunt_coefficients<double_complex>* gaunt_coefs_;
+        std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
         
         /// Interface to a standard eigen-value solver.
-        Eigenproblem* std_evp_solver_; 
+        std::unique_ptr<Eigenproblem> std_evp_solver_; 
 
         /// Interface to a generalized eigen-value solver.
-        Eigenproblem* gen_evp_solver_;
+        std::unique_ptr<Eigenproblem> gen_evp_solver_;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(Wave_functions<true>& fv_states__,
-                                  Gvec_FFT_distribution const& gkvec_fft_distr__,
+        void apply_magnetic_field(wave_functions& fv_states__,
+                                  Gvec const& gkvec__,
                                   Periodic_function<double>* effective_magnetic_field__[3],
-                                  std::vector<Wave_functions<true>*>& hpsi__) const;
+                                  std::vector<wave_functions>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -82,171 +83,304 @@ class Band
         void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
 
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
-        void set_fv_h_o_it(K_point* kp,
-                           Periodic_function<double>* effective_potential, 
-                           matrix<double_complex>& h,
-                           matrix<double_complex>& o) const;
+        inline void set_fv_h_o_it(K_point* kp,
+                                  Periodic_function<double>* effective_potential, 
+                                  matrix<double_complex>& h,
+                                  matrix<double_complex>& o) const;
 
-        void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
+        inline void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
 
         template <spin_block_t sblock>
-        void set_h_it(K_point* kp,
-                      Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3],
-                      matrix<double_complex>& h) const;
+        inline void set_h_it(K_point* kp,
+                             Periodic_function<double>* effective_potential, 
+                             Periodic_function<double>* effective_magnetic_field[3],
+                             matrix<double_complex>& h) const;
         
         /// Setup lo-lo block of Hamiltonian and overlap matrices
-        void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
+        inline void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
 
         template <spin_block_t sblock>
-        void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
+        inline void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
         
-        void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
+        inline void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
        
-        void set_o(K_point* kp, mdarray<double_complex, 2>& o);
+        inline void set_o(K_point* kp, mdarray<double_complex, 2>& o);
     
         template <spin_block_t sblock> 
-        void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
-                   Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
+        inline void set_h(K_point* kp,
+                          Periodic_function<double>* effective_potential, 
+                          Periodic_function<double>* effective_magnetic_field[3],
+                          mdarray<double_complex, 2>& h);
        
-        /// Diagonalize a full-potential Hamiltonian.
-        void diag_fv_full_potential(K_point* kp__,
-                                    Periodic_function<double>* effective_potential__) const;
-
-        /// Diagonalize a pseudo-potential Hamiltonian.
-        template <typename T>
-        void diag_pseudo_potential(K_point* kp__, 
-                                   Periodic_function<double>* effective_potential__,
-                                   Periodic_function<double>* effective_magnetic_field__[3]) const;
+        inline void diag_fv_full_potential_exact(K_point* kp__,
+                                                Periodic_function<double>* effective_potential__) const;
+        
+        inline void diag_fv_full_potential_davidson(K_point* kp__,
+                                                    Periodic_function<double>* effective_potential__,
+                                                    Interstitial_operator& istl_op__) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         template <typename T>
-        void diag_pseudo_potential_exact(K_point* kp__,
-                                         int ispn__,
-                                         Hloc_operator& h_op__,
-                                         D_operator<T>& d_op__,
-                                         Q_operator<T>& q_op__) const;
+        inline void diag_pseudo_potential_exact(K_point* kp__,
+                                                int ispn__,
+                                                Hloc_operator& h_op__,
+                                                D_operator<T>& d_op__,
+                                                Q_operator<T>& q_op__) const;
 
         /// Iterative Davidson diagonalization.
         template <typename T>
-        void diag_pseudo_potential_davidson(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__) const;
+        inline void diag_pseudo_potential_davidson(K_point* kp__,
+                                                   int ispn__,
+                                                   Hloc_operator& h_op__,
+                                                   D_operator<T>& d_op__,
+                                                   Q_operator<T>& q_op__) const;
 
         /// RMM-DIIS diagonalization.
         template <typename T>
-        void diag_pseudo_potential_rmm_diis(K_point* kp__,
-                                            int ispn__,
-                                            Hloc_operator& h_op__,
-                                            D_operator<T>& d_op__,
-                                            Q_operator<T>& q_op__) const;
-
-        //void diag_fv_pseudo_potential_chebyshev_serial(K_point* kp__,
-        //                                               std::vector<double> const& veff_it_coarse__);
-
-        void apply_h_serial(K_point* kp__, 
-                            std::vector<double> const& effective_potential__, 
-                            std::vector<double> const& pw_ekin__, 
-                            int N__,
-                            int n__,
-                            matrix<double_complex>& phi__,
-                            matrix<double_complex>& hphi__,
-                            mdarray<double_complex, 1>& kappa__,
-                            mdarray<int, 1>& packed_mtrx_offset__,
-                            mdarray<double_complex, 1>& d_mtrx_packed__) const;
+        inline void diag_pseudo_potential_rmm_diis(K_point* kp__,
+                                                   int ispn__,
+                                                   Hloc_operator& h_op__,
+                                                   D_operator<T>& d_op__,
+                                                   Q_operator<T>& q_op__) const;
 
         template <typename T>
-        void diag_h_o(K_point* kp__,
-                      int N__,
-                      int num_bands__,
-                      matrix<T>& hmlt__,
-                      matrix<T>& ovlp__,
-                      matrix<T>& evec__,
-                      dmatrix<T>& hmlt_dist__,
-                      dmatrix<T>& ovlp_dist__,
-                      dmatrix<T>& evec_dist__,
-                      std::vector<double>& eval__) const;
+        inline void diag_pseudo_potential_chebyshev(K_point* kp__,
+                                                    int ispn__,
+                                                    Hloc_operator& h_op__,
+                                                    D_operator<T>& d_op__,
+                                                    Q_operator<T>& q_op__,
+                                                    P_operator<T>& p_op__) const;
+
+        template <typename T>
+        inline void apply_h(K_point* kp__,
+                            int ispn__, 
+                            int N__,
+                            int n__,
+                            wave_functions& phi__,
+                            wave_functions& hphi__,
+                            Hloc_operator &h_op,
+                            D_operator<T>& d_op) const;
 
         template <typename T>
         void apply_h_o(K_point* kp__,
                        int ispn__, 
                        int N__,
                        int n__,
-                       Wave_functions<false>& phi__,
-                       Wave_functions<false>& hphi__,
-                       Wave_functions<false>& ophi__,
+                       wave_functions& phi__,
+                       wave_functions& hphi__,
+                       wave_functions& ophi__,
                        Hloc_operator &h_op,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
+
+        inline mdarray<double,1> residuals_aux(K_point* kp__,
+                                               int num_bands__,
+                                               std::vector<double>& eval__,
+                                               wave_functions& hpsi__,
+                                               wave_functions& opsi__,
+                                               wave_functions& res__,
+                                               mdarray<double, 1>& h_diag__,
+                                               mdarray<double, 1>& o_diag__) const;
         
         template <typename T>
-        void set_h_o(K_point* kp__,
-                     int N__,
-                     int n__,
-                     Wave_functions<false>& phi__,
-                     Wave_functions<false>& hphi__,
-                     Wave_functions<false>& ophi__,
-                     matrix<T>& h__,
-                     matrix<T>& o__,
-                     matrix<T>& h_old__,
-                     matrix<T>& o_old__) const;
+        inline int residuals(K_point* kp__,
+                             int ispn__,
+                             int N__,
+                             int num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             dmatrix<T>& evec__,
+                             wave_functions& hphi__,
+                             wave_functions& ophi__,
+                             wave_functions& hpsi__,
+                             wave_functions& opsi__,
+                             wave_functions& res__,
+                             mdarray<double, 1>& h_diag__,
+                             mdarray<double, 1>& o_diag__) const;
         
+        /// Setup the subspace matrix.
+        /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
+         *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
+         *  in the CPU pointer because the eigen-value solvers start from the CPU. */
         template <typename T>
-        int residuals(K_point* kp__,
-                      int ispn__,
-                      int N__,
-                      int num_bands__,
-                      std::vector<double>& eval__,
-                      std::vector<double>& eval_old__,
-                      matrix<T>& evec__,
-                      Wave_functions<false>& hphi__,
-                      Wave_functions<false>& ophi__,
-                      Wave_functions<false>& hpsi__,
-                      Wave_functions<false>& opsi__,
-                      Wave_functions<false>& res__,
-                      std::vector<double>& h_diag__,
-                      std::vector<double>& o_diag__) const;
+        inline void set_subspace_mtrx(int N__,
+                                      int n__,
+                                      wave_functions& phi__,
+                                      wave_functions& op_phi__,
+                                      dmatrix<T>& mtrx__,
+                                      dmatrix<T>& mtrx_old__) const
+        {
+            PROFILE_WITH_TIMER("sirius::Band::set_subspace_mtrx");
+            
+            assert(n__ != 0);
+            if (mtrx_old__.size()) {
+                assert(&mtrx__.blacs_grid() == &mtrx_old__.blacs_grid());
+            }
 
+            /* copy old N x N distributed matrix */
+            if (N__ > 0) {
+                splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+                #pragma omp parallel for
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
+                }
+            }
+
+            /* <{phi,phi_new}|Op|phi_new> */
+            inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+            
+            //== #ifdef __GPU
+            //== if (ctx_.processing_unit() == GPU) {
+            //==     /* copy N x n distributed panel to CPU */
+            //==     splindex<block_cyclic>  spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            //==     splindex<block_cyclic> spl_col0(N__,       mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //==     splindex<block_cyclic> spl_col1(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //==     acc::copyout(mtrx__.template at<CPU>(0, spl_col0.local_size()), mtrx__.ld(),
+            //==                  mtrx__.template at<GPU>(0, spl_col0.local_size()), mtrx__.ld(),
+            //==                  spl_row.local_size(), spl_col1.local_size() - spl_col0.local_size());
+            //== }
+            //== #endif
+
+            /* restore lower part */
+            if (N__ > 0) {
+                if (mtrx__.blacs_grid().comm().size() == 1) {
+                    #pragma omp parallel for
+                    for (int i = 0; i < N__; i++) {
+                        for (int j = N__; j < N__ + n__; j++) {
+                            mtrx__(j, i) = std::conj(mtrx__(i, j));
+                        }
+                    }
+                } else {
+                    linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
+                }
+            }
+
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            {
+                splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+                double_complex cs(0, 0);
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    for (int j = 0; j < spl_row.local_size(); j++) {
+                        cs += mtrx__(j, i);
+                    }
+                }
+                mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
+            }
+            #endif
+
+            /* save new matrix */
+            if (mtrx_old__.size()) {
+                splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+                #pragma omp parallel for
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
+                }
+            }
+        }
+                
+        //== template <typename T>
+        //== inline void diag_subspace_mtrx(int N__,
+        //==                                int num_bands__,
+        //==                                dmatrix<T>& mtrx__,
+        //==                                dmatrix<T>& evec__,
+        //==                                std::vector<double>& eval__) const
+        //== {
+        //==     PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
+
+        //==     int result = std_evp_solver().solve(N__,  num_bands__, mtrx__.template at<CPU>(), mtrx__.ld(),
+        //==                                         &eval__[0], evec__.template at<CPU>(), evec__.ld(),
+        //==                                         mtrx__.num_rows_local(), mtrx__.num_cols_local());
+        //==     if (result) {
+        //==         std::stringstream s;
+        //==         s << "error in diagonalziation";
+        //==         TERMINATE(s);
+        //==     }
+
+        //==     /* copy eigen-vectors to GPU */
+        //==     #ifdef __GPU
+        //==     if (ctx_.processing_unit() == GPU) {
+        //==         //acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
+        //==         evec__.copy_to_device(); // TODO: copy only necessary elements
+        //==     }
+        //==     #endif
+        //== }
+
+        /// Diagonalize a full-potential Hamiltonian.
+        void diag_fv_full_potential(K_point* kp__,
+                                    Periodic_function<double>* effective_potential__) const
+        {
+            auto& itso = ctx_.iterative_solver_input_section();
+            if (itso.type_ == "exact") {
+                diag_fv_full_potential_exact(kp__, effective_potential__);
+            } else if (itso.type_ == "davidson") {
+                Interstitial_operator istl_op(ctx_, effective_potential__);
+                diag_fv_full_potential_davidson(kp__, effective_potential__, istl_op);
+            }
+        }
+
+        /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-        void orthogonalize(K_point* kp__,
-                           int N__,
-                           int n__,
-                           Wave_functions<false>& phi__,
-                           Wave_functions<false>& hphi__,
-                           Wave_functions<false>& ophi__,
-                           matrix<T>& o__) const;
+        void diag_pseudo_potential(K_point* kp__, 
+                                   Periodic_function<double>* effective_potential__,
+                                   Periodic_function<double>* effective_magnetic_field__[3]) const
+        {
+            PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
 
-        void residuals_aux(K_point* kp__,
-                           int num_bands__,
-                           std::vector<double>& eval__,
-                           Wave_functions<false>& hpsi__,
-                           Wave_functions<false>& opsi__,
-                           Wave_functions<false>& res__,
-                           std::vector<double>& h_diag__,
-                           std::vector<double>& o_diag__,
-                           std::vector<double>& res_norm__) const;
+            Hloc_operator hloc(ctx_.fft_coarse(), kp__->gkvec_vloc(), ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
+                               ctx_.num_mag_dims(), ctx_.gvec_coarse(), effective_potential__, effective_magnetic_field__);
+            
+            ctx_.fft_coarse().prepare(kp__->gkvec().partition());
 
-        void add_nl_h_o_pw(K_point* kp__,
-                           int n__,
-                           matrix<double_complex>& phi__,
-                           matrix<double_complex>& hphi__,
-                           matrix<double_complex>& ophi__,
-                           matrix<double_complex>& beta_gk__,
-                           mdarray<int, 1>& packed_mtrx_offset__,
-                           mdarray<double_complex, 1>& d_mtrx_packed__,
-                           mdarray<double_complex, 1>& q_mtrx_packed__);
+            D_operator<T> d_op(ctx_, kp__->beta_projectors());
+            Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
-        void add_nl_h_o_rs(K_point* kp__,
-                           int n__,
-                           matrix<double_complex>& phi__,
-                           matrix<double_complex>& hphi__,
-                           matrix<double_complex>& ophi__,
-                           mdarray<int, 1>& packed_mtrx_offset__,
-                           mdarray<double_complex, 1>& d_mtrx_packed__,
-                           mdarray<double_complex, 1>& q_mtrx_packed__,
-                           mdarray<double_complex, 1>& kappa__);
+            auto& itso = ctx_.iterative_solver_input_section();
+            if (itso.type_ == "exact") {
+                if (ctx_.num_mag_dims() != 3) {
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        diag_pseudo_potential_exact(kp__, ispn, hloc, d_op, q_op);
+                    }
+                } else {
+                    STOP();
+                }
+            } else if (itso.type_ == "davidson") {
+                if (ctx_.num_mag_dims() != 3) {
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        diag_pseudo_potential_davidson(kp__, ispn, hloc, d_op, q_op);
+                    }
+                } else {
+                    STOP();
+                }
+            } else if (itso.type_ == "rmm-diis") {
+                if (ctx_.num_mag_dims() != 3) {
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        diag_pseudo_potential_rmm_diis(kp__, ispn, hloc, d_op, q_op);
+                    }
+                } else {
+                    STOP();
+                }
+            } else if (itso.type_ == "chebyshev") {
+                P_operator<T> p_op(ctx_, kp__->beta_projectors(), kp__->p_mtrx());
+                if (ctx_.num_mag_dims() != 3) {
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        diag_pseudo_potential_chebyshev(kp__, ispn, hloc, d_op, q_op, p_op);
+
+                    }
+                } else {
+                    STOP();
+                }
+            } else {
+                TERMINATE("unknown iterative solver type");
+            }
+
+            ctx_.fft_coarse().dismiss();
+        }
 
     public:
         
@@ -258,105 +392,84 @@ class Band
         {
             PROFILE();
 
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 
-                                                                  ctx_.lmax_pot(), 
-                                                                  ctx_.lmax_apw(),
-                                                                  SHT::gaunt_hybrid);
-
+            gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double_complex>>(
+                new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 
+                                                       ctx_.lmax_pot(), 
+                                                       ctx_.lmax_apw(),
+                                                       SHT::gaunt_hybrid));
+            
+            Eigenproblem* ptr;
             /* create standard eigen-value solver */
-            switch (ctx_.std_evp_solver_type())
-            {
-                case ev_lapack:
-                {
-                    std_evp_solver_ = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
+            switch (ctx_.std_evp_solver_type()) {
+                case ev_lapack: {
+                    ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
-                case ev_scalapack:
-                {
-                    std_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
+                case ev_scalapack: {
+                    ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
-                case ev_plasma:
-                {
-                    std_evp_solver_ = new Eigenproblem_plasma();
+                case ev_plasma: {
+                    ptr = new Eigenproblem_plasma();
                     break;
                 }
-                case ev_magma:
-                {
-                    std_evp_solver_ = new Eigenproblem_magma();
+                case ev_magma: {
+                    ptr = new Eigenproblem_magma();
                     break;
                 }
-                case ev_elpa1:
-                {
-                    std_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa1: {
+                    ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_elpa2:
-                {
-                    std_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa2: {
+                    ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong standard eigen-value solver");
                 }
             }
+            std_evp_solver_ = std::unique_ptr<Eigenproblem>(ptr);
             
             /* create generalized eign-value solver */
-            switch (ctx_.gen_evp_solver_type())
-            {
-                case ev_lapack:
-                {
-                    gen_evp_solver_ = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
+            switch (ctx_.gen_evp_solver_type()) {
+                case ev_lapack: {
+                    ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
-                case ev_scalapack:
-                {
-                    gen_evp_solver_ = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
+                case ev_scalapack: {
+                    ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
-                case ev_elpa1:
-                {
-                    gen_evp_solver_ = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa1: {
+                    ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_elpa2:
-                {
-                    gen_evp_solver_ = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
+                case ev_elpa2: {
+                    ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_magma:
-                {
-                    gen_evp_solver_ = new Eigenproblem_magma();
+                case ev_magma: {
+                    ptr = new Eigenproblem_magma();
                     break;
                 }
-                case ev_rs_gpu:
-                {
-                    gen_evp_solver_ = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                case ev_rs_gpu: {
+                    ptr = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
-                case ev_rs_cpu:
-                {
-                    gen_evp_solver_ = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                case ev_rs_cpu: {
+                    ptr = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong generalized eigen-value solver");
                 }
             }
+            gen_evp_solver_ = std::unique_ptr<Eigenproblem>(ptr);
 
-            if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
+            if (std_evp_solver_->parallel() != gen_evp_solver_->parallel()) {
                 TERMINATE("both eigen-value solvers must be serial or parallel");
-        }
-
-        ~Band()
-        {
-            PROFILE();
-
-            delete gaunt_coefs_;
-            delete std_evp_solver_;
-            delete gen_evp_solver_;
+            }
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -377,7 +490,7 @@ class Band
             auto& type = atom__.type();
 
             // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is available
-            // TODO: check that hmt is Hermitian; compute  upper triangular part and use zhemm
+            // TODO: check that hmt is indeed Hermitian; compute  upper triangular part and use zhemm
             mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
             /* compute the muffin-tin Hamiltonian */
             for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
@@ -473,9 +586,11 @@ class Band
          *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
          *  \f]
          */
-        template <processing_unit_t pu, electronic_structure_method_t basis>
-        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, dmatrix<double_complex>& h, 
-                        dmatrix<double_complex>& o) const;
+        template <device_t pu, electronic_structure_method_t basis>
+        inline void set_fv_h_o(K_point* kp,
+                               Periodic_function<double>* effective_potential,
+                               dmatrix<double_complex>& h,
+                               dmatrix<double_complex>& o) const;
         
         /// Apply LAPW Hamiltonain and overlap to the trial wave-functions.
         /** Check the documentation of Band::set_fv_h_o() for the expressions of Hamiltonian and overlap
@@ -581,7 +696,7 @@ class Band
          *     o_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} |  \phi_{\bf G} \rangle C_{{\bf G} i} = 
          *      \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} 
          *          | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) = 
-         *      \sum_{\bf G} C_{{\bf G} i} \sum_{\nu} o_{\nu \zeta_{j'} \ell_{j'}}^{\alpha_{j'}} a_{\ell_{j'} m_{j'} \nu}^{\alpha_{j'}}({\bf G})
+         *      \sum_{\bf G} C_{{\bf G} i} \sum_{\nu} o_{\zeta_{j'} \nu \ell_{j'}}^{\alpha_{j'}} a_{\ell_{j'} m_{j'} \nu}^{\alpha_{j'}}({\bf G})
          *  \f]
          *  lo-lo contribution:
          *  \f[
@@ -594,44 +709,63 @@ class Band
          *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
          *  \f]
          */
-        void apply_fv_h_o();
+        inline void apply_fv_h_o(K_point* kp__,
+                                 Interstitial_operator& istl_op__,
+                                 Periodic_function<double>* effective_potential__,
+                                 int N,
+                                 int n,
+                                 wave_functions& phi__,
+                                 wave_functions& hphi__,
+                                 wave_functions& ophi__) const;
 
         /// Solve first-variational (non-magnetic) problem
-        void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__) const;
+        inline void solve_fv(K_point* kp__,
+                             Periodic_function<double>* effective_potential__) const;
 
         /// Solve second-variational problem
-        void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void solve_sv(K_point* kp,
+                             Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_sv_pp(K_point* kp,
-                         Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void solve_fd(K_point* kp,
+                             Periodic_function<double>* effective_potential, 
+                             Periodic_function<double>* effective_magnetic_field[3]) const;
 
-        void solve_fd(K_point* kp,
-                      Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void solve_for_kset(K_set& kset,
+                                   Potential& potential,
+                                   bool precompute) const;
 
-        void solve_for_kset(K_set& kset, Potential& potential, bool precompute) const;
-
-        inline Eigenproblem* std_evp_solver() const
+        inline Eigenproblem const& std_evp_solver() const
         {
-            return std_evp_solver_;
+            return *std_evp_solver_;
         }
 
-        inline Eigenproblem const* gen_evp_solver() const
+        inline Eigenproblem const& gen_evp_solver() const
         {
-            return gen_evp_solver_;
+            return *gen_evp_solver_;
         }
 
-        /// Get diagonal elements of Hamiltonian.
-        template <typename T>
-        std::vector<double> get_h_diag(K_point* kp__,
-                                       int ispn__,
-                                       double v0__,
-                                       D_operator<T>& d_op__) const;
+        /// Get diagonal elements of LAPW Hamiltonian.
+        inline mdarray<double, 1> get_h_diag(K_point* kp__,
+                                             double v0__,
+                                             double theta0__) const;
 
-        /// Get diagonal elements of overlap matrix.
+        /// Get diagonal elements of LAPW overlap.
+        inline mdarray<double, 1> get_o_diag(K_point* kp__,
+                                             double theta0__) const;
+
+        /// Get diagonal elements of pseudopotential Hamiltonian.
         template <typename T>
-        std::vector<double> get_o_diag(K_point* kp__,
-                                       Q_operator<T>& q_op__) const;
+        inline mdarray<double, 1> get_h_diag(K_point* kp__,
+                                             int ispn__,
+                                             double v0__,
+                                             D_operator<T>& d_op__) const;
+
+        /// Get diagonal elements of pseudopotential overlap matrix.
+        template <typename T>
+        inline mdarray<double, 1> get_o_diag(K_point* kp__,
+                                             Q_operator<T>& q_op__) const;
+        
+        /// Initialize the wave-functions subspace.
         template <typename T>
         void initialize_subspace(K_point* kp__,
                                  Periodic_function<double>* effective_potential__,
@@ -641,7 +775,13 @@ class Band
                                  std::vector< std::vector< Spline<double> > >& rad_int__) const;
 };
 
-#include "band.hpp"
+#include "Band/get_h_o_diag.hpp"
+#include "Band/apply.hpp"
+#include "Band/set_lapw_h_o.hpp"
+#include "Band/residuals.hpp"
+#include "Band/diagonalize.hpp"
+#include "Band/initialize_subspace.hpp"
+#include "Band/solve.hpp"
 
 }
 

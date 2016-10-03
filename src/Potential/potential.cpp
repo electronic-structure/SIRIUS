@@ -30,7 +30,6 @@ Potential::Potential(Simulation_context& ctx__)
     : ctx_(ctx__),
       unit_cell_(ctx__.unit_cell()),
       comm_(ctx__.comm()),
-      fft_(ctx__.fft()),
       pseudo_density_order(9),
       mixer_(nullptr)
 {
@@ -41,7 +40,7 @@ Potential::Potential(Simulation_context& ctx__)
         sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
     }
 
-    if (ctx_.esm_type() == full_potential_lapwlo) {
+    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */
@@ -60,7 +59,8 @@ Potential::Potential(Simulation_context& ctx__)
 
     effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
     
-    int need_gvec = (ctx_.full_potential()) ? 0 : 1;
+    //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
+    int need_gvec{1};
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
     }
@@ -94,7 +94,7 @@ Potential::Potential(Simulation_context& ctx__)
         for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
         {
             int ig = spl_num_gvec_[igloc];
-            auto rtp = SHT::spherical_coordinates(ctx_.gvec().cart(ig));
+            auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
             SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
     }
@@ -106,7 +106,7 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     // if PAW calc
-    if(ctx_.esm_type() == paw_pseudopotential)
+    if(ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential)
     {
         init_PAW();
     }

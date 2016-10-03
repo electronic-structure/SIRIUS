@@ -16,7 +16,15 @@ void test_gpu(int N)
     buf.zero();
     buf.copy_to_host();
 
+    void* ptr = cuda_malloc_host(N);
+    void* ptr1 = std::malloc(N);
+
     DUMP("hash(buf): %llX", buf.hash());
+
+    printf("test of GPU pointer: %i\n", cuda_check_device_ptr(buf.at<GPU>()));
+    printf("test of CPU pointer: %i\n", cuda_check_device_ptr(ptr));
+    printf("test of CPU pointer: %i\n", cuda_check_device_ptr(ptr1));
+    printf("test of CPU pointer: %i\n", cuda_check_device_ptr(buf.at<CPU>()));
 }
 #endif
 
@@ -35,12 +43,12 @@ int main(int argn, char** argv)
 
     int N = args.value<int>("N");
 
-    Platform::initialize(1);
+    sirius::initialize(1);
     cuda_device_info();
     
     #ifdef __GPU
     test_gpu(N);
     #endif
 
-    Platform::finalize();
+    sirius::finalize();
 }

@@ -168,8 +168,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
-        band_.solve_for_kset(kset_,potential_,true);
-        //kset_.find_eigen_states(&potential_, band_, true);
+        band_.solve_for_kset(kset_, potential_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -191,7 +190,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        if (ctx_.esm_type() == paw_pseudopotential) {
+        if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
             density_.generate_paw_loc_density();
         }
 
@@ -250,6 +249,11 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 
         if (ctx_.full_potential()) {
             rms = potential_.mix();
+            double tol = std::max(1e-12, rms);
+            if (ctx_.comm().rank() == 0) {
+                printf("tol: %18.10f\n", tol);
+            }
+            ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
         /* write some information */
@@ -306,8 +310,7 @@ void DFT_ground_state::print_info()
 
     double one_elec_en = evalsum1 - (evxc + evha);
 
-    if(ctx_.esm_type() == paw_pseudopotential)
-    {
+    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         one_elec_en -= potential_.PAW_one_elec_energy();
     }
 

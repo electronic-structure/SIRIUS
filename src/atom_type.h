@@ -32,7 +32,6 @@
 #include "utils.h"
 #include "radial_grid.h"
 #include "radial_solver.h"
-#include "json_tree.h"
 #include "xc_functional.h"
 #include "simulation_parameters.h"
 
@@ -361,15 +360,15 @@ class Atom_type
 
         bool initialized_{false};
        
-        void read_input_core(JSON_tree& parser);
+        void read_input_core(json const& parser);
 
-        void read_input_aw(JSON_tree& parser);
+        void read_input_aw(json const& parser);
 
-        void read_input_lo(JSON_tree& parser);
+        void read_input_lo(json const& parser);
 
-        void read_pseudo_uspp(JSON_tree& parser);
+        void read_pseudo_uspp(json const& parser);
 
-        void read_pseudo_paw(JSON_tree& parser);
+        void read_pseudo_paw(json const& parser);
 
         void read_input(const std::string& fname);
     

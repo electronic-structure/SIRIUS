@@ -25,6 +25,9 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
+#include "mdarray.h"
+#include "typedefs.h"
+#include "utils.h"
 #include "sirius_internal.h"
 #include "input.h"
 
@@ -79,7 +82,7 @@ class Simulation_parameters
         bool gamma_point_{false};
 
         /// Type of the processing unit.
-        processing_unit_t processing_unit_{CPU};
+        device_t processing_unit_{CPU};
     
         /// Smearing function width.
         double smearing_width_{0.001};
@@ -94,7 +97,7 @@ class Simulation_parameters
         relativity_t core_relativity_{relativity_t::dirac};
         
         /// Type of electronic structure method.
-        electronic_structure_method_t esm_type_{full_potential_lapwlo};
+        electronic_structure_method_t esm_type_{electronic_structure_method_t::full_potential_lapwlo};
 
         Iterative_solver_input_section iterative_solver_input_section_;
         
@@ -109,15 +112,17 @@ class Simulation_parameters
         {
             PROFILE();
 
-            JSON_tree parser(fname__);
+            json dict;
+            std::ifstream(fname__) >> dict;
+
             /* read unit cell */
-            unit_cell_input_section_.read(parser);
+            unit_cell_input_section_.read(dict);
             /* read parameters of mixer */
-            mixer_input_section_.read(parser);
+            mixer_input_section_.read(dict);
             /* read parameters of iterative solver */
-            iterative_solver_input_section_.read(parser);
+            iterative_solver_input_section_.read(dict);
             /* read controls */
-            control_input_section_.read(parser);
+            control_input_section_.read(dict);
         }
 
     public:
@@ -196,21 +201,20 @@ class Simulation_parameters
             xc_functionals_.push_back(name__);
         }
 
-        inline void set_esm_type(electronic_structure_method_t esm_type)
+        inline void set_esm_type(electronic_structure_method_t esm_type__)
         {
-
-            esm_type_ = esm_type;
+            esm_type_ = esm_type__;
         }
 
         inline void set_esm_type(std::string name__)
         {
             std::map<std::string, electronic_structure_method_t> m;
 
-            m["full_potential_lapwlo"]           = full_potential_lapwlo;
-            m["full_potential_pwlo"]             = full_potential_pwlo;
-            m["ultrasoft_pseudopotential"]       = ultrasoft_pseudopotential;
-            m["norm_conserving_pseudopotential"] = norm_conserving_pseudopotential;
-            m["paw_pseudopotential"]             = paw_pseudopotential;
+            m["full_potential_lapwlo"]           = electronic_structure_method_t::full_potential_lapwlo;
+            m["full_potential_pwlo"]             = electronic_structure_method_t::full_potential_pwlo;
+            m["ultrasoft_pseudopotential"]       = electronic_structure_method_t::ultrasoft_pseudopotential;
+            m["norm_conserving_pseudopotential"] = electronic_structure_method_t::norm_conserving_pseudopotential;
+            m["paw_pseudopotential"]             = electronic_structure_method_t::paw_pseudopotential;
 
             if (m.count(name__) == 0)
             {
@@ -252,7 +256,7 @@ class Simulation_parameters
             valence_relativity_ = m[name__];
         }
 
-        inline void set_processing_unit(processing_unit_t pu__)
+        inline void set_processing_unit(device_t pu__)
         {
             processing_unit_ = pu__;
         }
@@ -326,10 +330,12 @@ class Simulation_parameters
             
             return num_mag_dims_;
         }
-    
+        
+        /// Number of components in the complex density matrix.
+        /** In case of non-collinear magnetism only one out of two non-diagonal components is stored. */
         inline int num_mag_comp() const
         {
-            return num_mag_dims_ == 3 ? num_mag_dims_ : num_spins_;
+            return num_mag_dims_ == 3 ? 3 : num_spins_;
         }
 
         inline int max_occupancy() const
@@ -352,7 +358,7 @@ class Simulation_parameters
             return gamma_point_;
         }
     
-        inline processing_unit_t processing_unit() const
+        inline device_t processing_unit() const
         {
             return processing_unit_;
         }
@@ -410,7 +416,8 @@ class Simulation_parameters
 
         inline bool full_potential() const
         {
-            return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
+            return (esm_type_ == electronic_structure_method_t::full_potential_lapwlo ||
+                    esm_type_ == electronic_structure_method_t::full_potential_pwlo);
         }
 
         inline std::vector<std::string> const& xc_functionals() const

@@ -7,7 +7,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
 
-    ctx_.fft().prepare();
+    ctx_.fft().prepare(ctx_.gvec().partition());
 
     /* zero effective potential and magnetic field */
     zero();
@@ -45,7 +45,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
 
-    ctx_.fft().prepare();
+    ctx_.fft().prepare(ctx_.gvec().partition());
 
     /* zero effective potential and magnetic field */
     zero();
@@ -82,7 +82,8 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 
     ctx_.fft().dismiss();
 
-    if (ctx_.esm_type() == ultrasoft_pseudopotential || ctx_.esm_type() == paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
+        ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         generate_D_operator_matrix();
     }
 }

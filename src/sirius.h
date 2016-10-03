@@ -38,7 +38,6 @@ using json = nlohmann::json;
 #include "sht.h"
 #include "gaunt.h"
 #include "splindex.h"
-#include "json_tree.h"
 #include "hdf5_tree.h" 
 #include "xc_functional.h"
 #include "mpi_grid.h"

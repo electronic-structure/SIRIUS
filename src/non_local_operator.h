@@ -37,7 +37,7 @@ class Non_local_operator
 
         Beta_projectors& beta_;
 
-        processing_unit_t pu_;
+        device_t pu_;
         
         int packed_mtrx_size_;
 
@@ -55,7 +55,7 @@ class Non_local_operator
 
     public:
 
-        Non_local_operator(Beta_projectors& beta__, processing_unit_t pu__) : beta_(beta__), pu_(pu__)
+        Non_local_operator(Beta_projectors& beta__, device_t pu__) : beta_(beta__), pu_(pu__)
         {
             PROFILE();
 
@@ -72,7 +72,7 @@ class Non_local_operator
             #ifdef __GPU
             if (pu_ == GPU)
             {
-                packed_mtrx_offset_.allocate_on_device();
+                packed_mtrx_offset_.allocate(memory_t::device);
                 packed_mtrx_offset_.copy_to_device();
             }
             #endif
@@ -82,7 +82,7 @@ class Non_local_operator
         {
         }
         
-        void apply(int chunk__, int ispn__, Wave_functions<false>& op_phi__, int idx0__, int n__);
+        inline void apply(int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__);
 
         inline T operator()(int xi1__, int xi2__, int ia__)
         {
@@ -95,6 +95,166 @@ class Non_local_operator
             return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
         }
 };
+
+template<>
+inline void Non_local_operator<double_complex>::apply(int chunk__,
+                                                      int ispn__,
+                                                      wave_functions& op_phi__,
+                                                      int idx0__,
+                                                      int n__)
+{
+    PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+
+    if (is_null_) return;
+
+    assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
+
+    auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
+    auto& beta_gk = beta_.beta_gk();
+    int num_gkvec_loc = beta_.num_gkvec_loc();
+    int nbeta = beta_.beta_chunk(chunk__).num_beta_;
+
+    if (static_cast<size_t>(nbeta * n__) > work_.size())
+    {
+        work_ = mdarray<double_complex, 1>(nbeta * n__);
+        #ifdef __GPU
+        if (pu_ == GPU) work_.allocate(memory_t::device);
+        #endif
+    }
+
+    if (pu_ == CPU)
+    {
+        #pragma omp parallel for
+        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        {
+            /* number of beta functions for a given atom */
+            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+
+            /* compute O * <beta|phi> */
+            linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
+                              op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                              beta_phi.at<CPU>(offs, 0), nbeta,
+                              work_.at<CPU>(offs), nbeta);
+        }
+        
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, double_complex(1, 0),
+                          beta_gk.at<CPU>(), num_gkvec_loc, work_.at<CPU>(), nbeta, double_complex(1, 0),
+                          op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
+    }
+    #ifdef __GPU
+    if (pu_ == GPU)
+    {
+        #pragma omp parallel for
+        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        {
+            /* number of beta functions for a given atom */
+            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+
+            /* compute O * <beta|phi> */
+            linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
+                              op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
+                              beta_phi.at<GPU>(offs, 0), nbeta,
+                              work_.at<GPU>(offs), nbeta,
+                              omp_get_thread_num());
+
+        }
+        cuda_device_synchronize();
+        double_complex alpha(1, 0);
+        
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &alpha,
+                          beta_gk.at<GPU>(), beta_gk.ld(), work_.at<GPU>(), nbeta, &alpha, 
+                          op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
+        
+        cuda_device_synchronize();
+    }
+    #endif
+}
+
+template<>
+inline void Non_local_operator<double>::apply(int chunk__,
+                                              int ispn__,
+                                              wave_functions& op_phi__,
+                                              int idx0__,
+                                              int n__)
+{
+    PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+
+    if (is_null_) return;
+
+    assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
+
+    auto beta_phi = beta_.beta_phi<double>(chunk__, n__);
+    auto& beta_gk = beta_.beta_gk();
+    int num_gkvec_loc = beta_.num_gkvec_loc();
+    int nbeta = beta_.beta_chunk(chunk__).num_beta_;
+
+    if (static_cast<size_t>(nbeta * n__) > work_.size())
+    {
+        work_ = mdarray<double, 1>(nbeta * n__);
+        #ifdef __GPU
+        if (pu_ == GPU) work_.allocate(memory_t::device);
+        #endif
+    }
+
+    if (pu_ == CPU)
+    {
+        #pragma omp parallel for
+        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        {
+            /* number of beta functions for a given atom */
+            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+
+            /* compute O * <beta|phi> */
+            linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
+                              op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                              beta_phi.at<CPU>(offs, 0), nbeta,
+                              work_.at<CPU>(offs), nbeta);
+        }
+        
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0,
+                          (double*)beta_gk.at<CPU>(), 2 * num_gkvec_loc, work_.at<CPU>(), nbeta, 1.0,
+                          (double*)op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * op_phi__.pw_coeffs().prime().ld());
+    }
+    #ifdef __GPU
+    if (pu_ == GPU)
+    {
+        #pragma omp parallel for
+        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        {
+            /* number of beta functions for a given atom */
+            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
+            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
+            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+
+            /* compute O * <beta|phi> */
+            linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
+                              op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
+                              beta_phi.at<GPU>(offs, 0), nbeta,
+                              work_.at<GPU>(offs), nbeta,
+                              omp_get_thread_num());
+
+        }
+        //cuda_device_synchronize();
+        double alpha = 1.0;
+        
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &alpha,
+                          (double*)beta_gk.at<GPU>(), 2 * num_gkvec_loc, work_.at<GPU>(), nbeta, &alpha, 
+                          (double*)op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__), 2 * num_gkvec_loc);
+        acc::sync_stream(-1); 
+        //cuda_device_synchronize();
+    }
+    #endif
+}
 
 template <typename T>
 class D_operator: public Non_local_operator<T>
@@ -141,9 +301,8 @@ class D_operator: public Non_local_operator<T>
                 }
             }
             #ifdef __GPU
-            if (this->pu_ == GPU)
-            {
-                this->op_.allocate_on_device();
+            if (this->pu_ == GPU) {
+                this->op_.allocate(memory_t::device);
                 this->op_.copy_to_device();
             }
             #endif
@@ -157,43 +316,68 @@ class Q_operator: public Non_local_operator<T>
         
         Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-//            if (ctx__.esm_type() == ultrasoft_pseudopotential)
-//            {
-                /* Q-operator is independent of spin */
-                this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
-                this->op_.zero();
+            /* Q-operator is independent of spin */
+            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+            this->op_.zero();
 
-                auto& uc = this->beta_.unit_cell();
-                for (int ia = 0; ia < uc.num_atoms(); ia++)
+            auto& uc = this->beta_.unit_cell();
+            for (int ia = 0; ia < uc.num_atoms(); ia++)
+            {
+                int iat = uc.atom(ia).type().id();
+                if (!uc.atom_type(iat).uspp().augmentation_) {
+                    continue;
+                }
+                int nbf = uc.atom(ia).mt_basis_size();
+                for (int xi2 = 0; xi2 < nbf; xi2++)
                 {
-                    int iat = uc.atom(ia).type().id();
-                    if (!uc.atom_type(iat).uspp().augmentation_) {
-                        continue;
-                    }
-                    int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++)
+                    for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        for (int xi1 = 0; xi1 < nbf; xi1++)
-                        {
-                            if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
-                                assert(ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).imag() < 1e-10);
-                                this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2).real();
-                            }
+                        if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                         }
                     }
                 }
-                #ifdef __GPU
-                if (this->pu_ == GPU)
-                {
-                    this->op_.allocate_on_device();
-                    this->op_.copy_to_device();
+            }
+            #ifdef __GPU
+            if (this->pu_ == GPU) {
+                this->op_.allocate(memory_t::device);
+                this->op_.copy_to_device();
+            }
+            #endif
+        }
+};
+
+template <typename T>
+class P_operator: public Non_local_operator<T>
+{
+    public:
+        
+        P_operator(Simulation_context const& ctx__, Beta_projectors& beta__, mdarray<double_complex, 3>& p_mtrx__) 
+            : Non_local_operator<T>(beta__, ctx__.processing_unit())
+        {
+            /* Q-operator is independent of spin */
+            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+            this->op_.zero();
+
+            auto& uc = this->beta_.unit_cell();
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                int iat = uc.atom(ia).type().id();
+                if (!uc.atom_type(iat).uspp().augmentation_) {
+                    continue;
                 }
-                #endif
-//            }
-//            else
-//            {
-//                this->is_null_ = true;
-//            }
+                int nbf = uc.atom(ia).mt_basis_size();
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = -p_mtrx__(xi1, xi2, iat).real();
+                    }
+                }
+            }
+            #ifdef __GPU
+            if (this->pu_ == GPU) {
+                this->op_.allocate(memory_t::device);
+                this->op_.copy_to_device();
+            }
+            #endif
         }
 };
 

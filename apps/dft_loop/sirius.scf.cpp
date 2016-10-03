@@ -174,7 +174,7 @@ Simulation_context* create_sim_ctx(std::string                     fname__,
     ctx.set_pw_cutoff(inp__.pw_cutoff_);
     ctx.set_aw_cutoff(inp__.aw_cutoff_);
     ctx.set_gk_cutoff(inp__.gk_cutoff_);
-    if (ctx.esm_type() == full_potential_lapwlo) {
+    if (ctx.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         ctx.set_lmax_apw(inp__.lmax_apw_);
         ctx.set_lmax_pot(inp__.lmax_pot_);
         ctx.set_lmax_rho(inp__.lmax_rho_);
@@ -469,10 +469,12 @@ void run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
+    /* read json file */
+    json dict;
+    std::ifstream(fname) >> dict;
     /* read input section */
-    JSON_tree parser(fname);
     Parameters_input_section inp;
-    inp.read(parser);
+    inp.read(dict);
 
     if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")

@@ -131,7 +131,7 @@ class Mixer
             assert(idx >= 0 && idx < size_);
 
             auto offs_and_rank = spl_size_.location(idx);
-            if (offs_and_rank.second == comm_.rank()) input_buffer_(offs_and_rank.first) = value;
+            if (offs_and_rank.rank == comm_.rank()) input_buffer_(offs_and_rank.local_index) = value;
         }
 
         inline T const* output_buffer() const

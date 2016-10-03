@@ -214,6 +214,19 @@ extern "C" int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda)
     return info;
 }
 
+extern "C" int magma_zpotrf_wrapper(char uplo, int n, magmaDoubleComplex* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L'))
+    {
+        printf("magma_zpotrf_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_zpotrf_gpu(magma_uplo, n, A, lda, &info);
+    return info;
+}
+
 extern "C" int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda)
 {
     if (!(uplo == 'U' || uplo == 'L'))
@@ -224,6 +237,19 @@ extern "C" int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda)
     magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
     magma_int_t info;
     magma_dtrtri_gpu(magma_uplo, MagmaNonUnit, n, A, lda, &info);
+    return info;
+}
+
+extern "C" int magma_ztrtri_wrapper(char uplo, int n, magmaDoubleComplex* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L'))
+    {
+        printf("magma_ztrtri_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_ztrtri_gpu(magma_uplo, MagmaNonUnit, n, A, lda, &info);
     return info;
 }
 

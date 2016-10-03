@@ -2,69 +2,17 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp radial_grid.cpp \
-       sht.cpp step_function.cpp band.cpp potential.cpp k_set.cpp symmetry.cpp \
-       xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp fft3d.cpp \
-       simulation_context.cpp wave_functions.cpp beta_projectors.cpp non_local_operator.cpp \
-       Atom_type/init.cpp \
-       Atom_type/init_free_atom.cpp \
-       Atom_type/print_info.cpp \
-       Atom_type/read_input.cpp \
-       Atom/generate_radial_integrals.cpp \
-       atom_symmetry_class.cpp \
-       unit_cell.cpp \
-       Density/density.cpp \
-       Density/initial_density.cpp \
-       Density/add_k_point_contribution.cpp \
-       Density/add_k_point_contribution_rg.cpp \
-       Density/generate_rho_radial_integrals.cpp \
-       Density/generate.cpp \
-       Density/generate_density_matrix.cpp \
-       Density/symmetrize_density_matrix.cpp \
-       Density/generate_valence.cpp \
-       Density/generate_valence_density_mt.cpp \
-       Density/generate_valence_density_it.cpp \
-       Density/augment.cpp \
-       Density/set_magnetization_ptr.cpp \
-       Density/check_density_continuity_at_mt.cpp \
-       Band/set_fv_h_o.cpp \
-       Band/set_h_o.cpp \
-       Band/add_nl_h_o_pw.cpp \
-       Band/add_nl_h_o_rs.cpp \
-       Band/apply_h_o.cpp \
-       Band/apply_h_serial.cpp \
-       Band/apply_h_o_fast_parallel_rs.cpp \
-       Band/get_h_o_diag.cpp \
-       Band/diag_pseudo_potential.cpp \
-       Band/diag_pseudo_potential_exact.cpp \
-       Band/diag_pseudo_potential_davidson.cpp \
-       Band/diag_pseudo_potential_rmm_diis.cpp \
-       Band/diag_h_o.cpp \
-       Band/apply_magnetic_field.cpp \
-       Band/residuals_aux.cpp \
-       Band/solve_sv.cpp \
-       Band/residuals.cpp \
-       Band/diag_fv_full_potential.cpp \
-       Band/orthogonalize.cpp \
-       Band/initialize_subspace.cpp \
+SRC =  LebedevLaikov.cpp \
+       potential.cpp symmetry.cpp \
+       spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
+       beta_projectors.cpp \
+       atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Potential/potential.cpp \
-       Potential/init.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
-       Potential/generate_d_operator_matrix.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
-       Potential/paw_potential.cpp \
-       Potential/generate_pw_coefs.cpp \
-       K_point/distribute_basis_index.cpp \
-       K_point/build_gklo_basis_descriptors.cpp \
-       K_point/generate_fv_states.cpp \
-       K_point/generate_spinor_wave_functions.cpp \
-       K_point/generate_gkvec.cpp \
-       K_point/initialize.cpp \
-       K_point/k_point.cpp \
-       K_point/test_fv_states.cpp \
-       K_point/num_occupied_bands.cpp
+       Potential/paw_potential.cpp
 
 OBJ = $(SRC:.cpp=.o)
 
@@ -75,6 +23,8 @@ OBJ = $(SRC:.cpp=.o)
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	Kernels/cuda_interface.o \
+	Kernels/cufft_interface.o \
+	Kernels/cublas_interface.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
@@ -85,7 +35,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \
 	Kernels/sum_q_pw_dm_pw.o \
-	Kernels/generate_phase_factors.o
+	Kernels/generate_phase_factors.o \
+    Kernels/add_pw_ekin.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
