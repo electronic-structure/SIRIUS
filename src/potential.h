@@ -82,10 +82,6 @@ class Potential
 
         mdarray<double_complex, 2> gvec_ylm_;
 
-        splindex<block> spl_num_gvec_;
-
-        //mdarray<double_complex, 2> gvec_phase_factors_;
-
         double energy_vha_;
         
         /// Electronic part of Hartree potential.

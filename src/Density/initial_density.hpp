@@ -241,8 +241,6 @@ inline void Density::initial_density_pseudo()
 //----------------------------------------------------------------------------------------------------
 inline void Density::initial_density_full_pot()
 {
-    splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-    
     /* initialize smooth density of free atoms */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(true);
     
@@ -277,15 +275,12 @@ inline void Density::initial_density_full_pot()
         if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
     }
     
-    int ngv_loc = spl_num_gvec.local_size();
-    
     /* mapping between G-shell (global index) and a list of G-vectors (local index) */
     std::map<int, std::vector<int> > gsh_map;
     
-    for (int igloc = 0; igloc < ngv_loc; igloc++)
-    {
+    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
         /* global index of the G-vector */
-        int ig = spl_num_gvec[igloc];
+        int ig = ctx_.gvec_offset() + igloc;
         /* index of the G-vector shell */
         int igsh = ctx_.gvec().shell(ig);
         if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
@@ -318,34 +313,29 @@ inline void Density::initial_density_full_pot()
     mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
     znulm.zero();
     
-    auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ngv_loc);
-    for (int igloc = 0; igloc < ngv_loc; igloc++)
-    {
-        int ig = spl_num_gvec[igloc];
+    auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ctx_.gvec_count());
+    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+        int ig = ctx_.gvec_offset() + igloc;
         auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     
     #pragma omp parallel for
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         int iat = unit_cell_.atom(ia).type_id();
         
         /* loop over local fraction of G-shells */
-        for (int i = 0; i < static_cast<int>(gsh_list.size()); i++)
-        {
+        for (int i = 0; i < static_cast<int>(gsh_list.size()); i++) {
             auto& gv = gsh_list[i].second;
             
             /* loop over G-vectors */
-            for (int igloc: gv)
-            {
+            for (int igloc: gv) {
                 /* global index of the G-vector */
-                int ig = spl_num_gvec[igloc];
+                int ig = ctx_.gvec_offset() + igloc;
                 
                 auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[ig] * fourpi;
                 
-                for (int lm = 0; lm < lmmax; lm++)
-                {
+                for (int lm = 0; lm < lmmax; lm++) {
                     int l = l_by_lm[lm];
                     
                     /* number of expansion coefficients */
@@ -370,30 +360,25 @@ inline void Density::initial_density_full_pot()
     
     SHT sht(lmax);
     
-    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-    {
+    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
         int ia = unit_cell_.spl_num_atoms(ialoc);
         int iat = unit_cell_.atom(ia).type_id();
         
         Spheric_function<spectral, double_complex> rhoylm(lmmax, unit_cell_.atom(ia).radial_grid());
         rhoylm.zero();
         #pragma omp parallel for
-        for (int lm = 0; lm < lmmax; lm++)
-        {
+        for (int lm = 0; lm < lmmax; lm++) {
             int l = l_by_lm[lm];
-            for (int iq = 0; iq < sba.nqnu(l, iat); iq++)
-            {
+            for (int iq = 0; iq < sba.nqnu(l, iat); iq++) {
                 double qnu = sba.qnu(iq, l, iat);
                 
-                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
-                {
+                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
                     double x = unit_cell_.atom(ia).radial_grid(ir);
                     rhoylm(lm, ir) += znulm(iq, lm, ia) * gsl_sf_bessel_jl(l, x * qnu);
                 }
             }
         }
-        for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
-        {
+        for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
             double x = unit_cell_.atom(ia).radial_grid(ir);
             rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
         }
@@ -408,17 +393,16 @@ inline void Density::initial_density_full_pot()
     t4.stop();
     
     /* initialize density of free atoms (not smoothed) */
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(false);
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        unit_cell_.atom_type(iat).init_free_atom(false);
+    }
     
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto p = unit_cell_.spl_num_atoms().location(ia);
         
-        if (p.rank == ctx_.comm().rank())
-        {
+        if (p.rank == ctx_.comm().rank()) {
             /* add density of a free atom */
-            for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++)
-            {
+            for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
                 rho_->f_mt<index_domain_t::local>(0, ir, p.local_index) += unit_cell_.atom(ia).type().free_atom_density(x) / y00;
             }
@@ -426,10 +410,8 @@ inline void Density::initial_density_full_pot()
     }
     
     /* initialize the magnetization */
-    if (ctx_.num_mag_dims())
-    {
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-        {
+    if (ctx_.num_mag_dims()) {
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             vector3d<double> v = unit_cell_.atom(ia).vector_field();
             double len = v.length();
@@ -437,8 +419,7 @@ inline void Density::initial_density_full_pot()
             int nmtp = unit_cell_.atom(ia).num_mt_points();
             Spline<double> rho(unit_cell_.atom(ia).type().radial_grid());
             double R = unit_cell_.atom(ia).mt_radius();
-            for (int ir = 0; ir < nmtp; ir++)
-            {
+            for (int ir = 0; ir < nmtp; ir++) {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
                 rho[ir] = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
             }
@@ -447,23 +428,21 @@ inline void Density::initial_density_full_pot()
             double q = fourpi * rho.interpolate().integrate(2);
             
             /* if very strong initial magnetization is given */
-            if (q < len)
-            {
+            if (q < len) {
                 /* renormalize starting magnetization */
-                for (int x: {0, 1, 2}) v[x] *= (q / len);
-                
+                for (int x: {0, 1, 2}) {
+                    v[x] *= (q / len);
+                }
                 len = q;
             }
             
-            if (len > 1e-8)
-            {
-                for (int ir = 0; ir < nmtp; ir++)
+            if (len > 1e-8) {
+                for (int ir = 0; ir < nmtp; ir++) {
                     magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+                }
                 
-                if (ctx_.num_mag_dims() == 3)
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
+                if (ctx_.num_mag_dims() == 3) {
+                    for (int ir = 0; ir < nmtp; ir++) {
                         magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
                         magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
                     }

@@ -37,38 +37,33 @@ double DFT_ground_state::ewald_energy()
     
     double ewald_g = 0;
 
-    splindex<block> spl_num_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-
     #pragma omp parallel
     {
         double ewald_g_pt = 0;
 
         #pragma omp for
-        for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
-        {
-            int ig = spl_num_gvec[igloc];
+        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
 
             double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
 
             double_complex rho(0, 0);
 
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(unit_cell_.atom(ia).zn());
-
-            if (ig)
-            {
-                ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
             }
-            else
-            {
+
+            if (ig) {
+                ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
+            } else {
                 ewald_g_pt -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4; // constant term in QE comments
             }
 
-            if (ctx_.gvec().reduced() && ig)
-            {
+            if (ctx_.gvec().reduced() && ig) {
                 rho = 0;
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     rho += std::conj(ctx_.gvec_phase_factor(ig, ia)) * static_cast<double>(unit_cell_.atom(ia).zn());
+                }
 
                 ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
             }
@@ -91,10 +86,8 @@ double DFT_ground_state::ewald_energy()
         double ewald_r_pt = 0;
 
         #pragma omp for
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
-            for (int i = 1; i < unit_cell_.num_nearest_neighbours(ia); i++)
-            {
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            for (int i = 1; i < unit_cell_.num_nearest_neighbours(ia); i++) {
                 int ja = unit_cell_.nearest_neighbour(i, ia).atom_id;
                 double d = unit_cell_.nearest_neighbour(i, ia).distance;
                 ewald_r_pt += 0.5 * unit_cell_.atom(ia).zn() * unit_cell_.atom(ja).zn() *
