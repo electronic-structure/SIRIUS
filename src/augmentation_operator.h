@@ -51,6 +51,9 @@ class Augmentation_operator
             // TODO: this can be distributed over G-shells (each mpi rank holds radial integrals only for
             //       G-shells of local fraction of G-vectors
 
+            // TODO: test spline interpolation of radial integrals
+            //       as a function of |q|
+
             /* number of radial beta-functions */
             int nbrf = atom_type_.mt_radial_basis_size();
             /* maximum l of beta-projectors */
@@ -106,7 +109,7 @@ class Augmentation_operator
             }
 
             int ld = (int)(qri.size(0) * qri.size(1));
-            comm_.allgather(&qri(0, 0, 0), ld * (int)spl_num_gvec_shells.global_offset(), ld * (int)spl_num_gvec_shells.local_size());
+            comm_.allgather(&qri(0, 0, 0), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
 
             return std::move(qri);
         }
@@ -126,22 +129,23 @@ class Augmentation_operator
             std::vector<int> l_by_lm = Utils::l_by_lm(2 * lmax_beta);
         
             std::vector<double_complex> zilm(lmmax);
-            for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++)
-            {
-                for (int m = -l; m <= l; m++, lm++) zilm[lm] = std::pow(double_complex(0, 1), l);
+            for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
+                for (int m = -l; m <= l; m++, lm++) {
+                    zilm[lm] = std::pow(double_complex(0, 1), l);
+                }
             }
 
             /* Gaunt coefficients of three real spherical harmonics */
             Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rlm);
             
             /* split G-vectors between ranks */
-            splindex<block> spl_num_gvec(gvec__.num_gvec(), comm_.size(), comm_.rank());
+            int gvec_count = gvec__.gvec_count(comm_.rank());
+            int gvec_offset = gvec__.gvec_offset(comm_.rank());
             
             /* array of real spherical harmonics for each G-vector */
-            mdarray<double, 2> gvec_rlm(Utils::lmmax(2 * lmax_beta), spl_num_gvec.local_size());
-            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
-            {
-                int ig = spl_num_gvec[igloc];
+            mdarray<double, 2> gvec_rlm(Utils::lmmax(2 * lmax_beta), gvec_count);
+            for (int igloc = 0; igloc < gvec_count; igloc++) {
+                int ig = gvec_offset + igloc;
                 auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
                 SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
             }
@@ -153,10 +157,10 @@ class Augmentation_operator
             q_mtrx_.zero();
 
             /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * spl_num_gvec.local_size(), memory_t::host_pinned);
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned);
             #pragma omp parallel for
-            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
-                int ig = spl_num_gvec[igloc];
+            for (int igloc = 0; igloc < gvec_count; igloc++) {
+                int ig = gvec_offset + igloc;
                 int igs = gvec__.shell(ig);
 
                 std::vector<double_complex> v(lmmax);

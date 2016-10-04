@@ -44,7 +44,7 @@ inline void Potential::generate_D_operator_matrix()
     }
    
     #ifdef __GPU
-    mdarray<double_complex, 1> veff_tmp(nullptr, spl_num_gvec_.local_size());
+    mdarray<double_complex, 1> veff_tmp(nullptr, ctx_.gvec_count());
     if (ctx_.processing_unit() == GPU) {
         veff_tmp.allocate(memory_t::device);
     }
@@ -74,14 +74,14 @@ inline void Potential::generate_D_operator_matrix()
         matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms()); 
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             if (ctx_.processing_unit() == CPU) {
-                matrix<double> veff_a(2 * spl_num_gvec_.local_size(), atom_type.num_atoms());
+                matrix<double> veff_a(2 * ctx_.gvec_count(), atom_type.num_atoms());
 
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
 
-                    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) {
-                        int ig = spl_num_gvec_[igloc];
+                    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                        int ig = ctx_.gvec_offset() + igloc;
                         /* conjugate V(G) * exp(i * G * r_{alpha}) */
                         auto z = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
                         veff_a(2 * igloc,     i) = z.real();
@@ -89,7 +89,7 @@ inline void Potential::generate_D_operator_matrix()
                     }
                 }
 
-                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_num_gvec_.local_size(),
+                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec_count(),
                                   ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
             }
 
@@ -98,11 +98,11 @@ inline void Potential::generate_D_operator_matrix()
             mdarray<double_complex, 1> veff;
             if (ctx_.processing_unit() == GPU) {
 
-                veff = mdarray<double_complex, 1>(&veff_vec[iv]->f_pw(spl_num_gvec_.global_offset()), veff_tmp.at<GPU>(),
-                                                  spl_num_gvec_.local_size());
+                veff = mdarray<double_complex, 1>(&veff_vec[iv]->f_pw(ctx_.gvec_offset()), veff_tmp.at<GPU>(),
+                                                  ctx_.gvec_count());
                 veff.copy_to_device();
 
-                matrix<double> veff_a(2 * spl_num_gvec_.local_size(), atom_type.num_atoms(), memory_t::device);
+                matrix<double> veff_a(2 * ctx_.gvec_count(), atom_type.num_atoms(), memory_t::device);
                 
                 d_tmp.allocate(memory_t::device);
 
@@ -112,13 +112,13 @@ inline void Potential::generate_D_operator_matrix()
                 }
 
                 mul_veff_with_phase_factors_gpu(atom_type.num_atoms(),
-                                                spl_num_gvec_.local_size(),
+                                                ctx_.gvec_count(),
                                                 veff.at<GPU>(),
                                                 ctx_.gvec_coord().at<GPU>(),
                                                 ctx_.atom_coord(iat).at<GPU>(),
                                                 veff_a.at<GPU>(), 1);
 
-                linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_num_gvec_.local_size(),
+                linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec_count(),
                                   ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp, 1);
 
                 d_tmp.copy_to_host();

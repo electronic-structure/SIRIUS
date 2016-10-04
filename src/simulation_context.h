@@ -295,6 +295,16 @@ class Simulation_context: public Simulation_parameters
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 
+        inline int gvec_count() const
+        {
+            return gvec_.gvec_count(comm_.rank());
+        }
+
+        inline int gvec_offset() const
+        {
+            return gvec_.gvec_offset(comm_.rank());
+        }
+
         #ifdef __GPU
         inline mdarray<int, 2> const& gvec_coord() const
         {
@@ -342,7 +352,7 @@ inline void Simulation_context::init_fft()
 
     /* create a list of G-vectors for dense FFT grid */
     gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
-                 mpi_grid_fft_->size(), mpi_grid_fft_->communicator(1 << 0), control_input_section_.reduce_gvec_);
+                 comm_.size(), fft_->comm(), control_input_section_.reduce_gvec_);
 
     if (!full_potential()) {
         /* create FFT driver for coarse mesh */
@@ -352,7 +362,7 @@ inline void Simulation_context::init_fft()
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            mpi_grid_fft_vloc_->size(), mpi_grid_fft_vloc_->communicator(1 << 0),
+                            mpi_grid_fft_vloc_->size(), fft_coarse_->comm(),
                             control_input_section_.reduce_gvec_);
     }
 }
@@ -537,10 +547,9 @@ inline void Simulation_context::initialize()
     
     if (processing_unit() == GPU) {
         #ifdef __GPU
-        splindex<block> spl_num_gvec(gvec_.num_gvec(), comm_.size(), comm_.rank());
-        gvec_coord_ = mdarray<int, 2>(spl_num_gvec.local_size(), 3, memory_t::host | memory_t::device, "gvec_coord_");
-        for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
-            int ig = spl_num_gvec[igloc];
+        gvec_coord_ = mdarray<int, 2>(gvec_count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
+        for (int igloc = 0; igloc < gvec_count(); igloc++) {
+            int ig = gvec_offset() + igloc;
             auto G = gvec_.gvec(ig);
             for (int x: {0, 1, 2}) {
                 gvec_coord_(igloc, x) = G[x];
@@ -597,6 +606,7 @@ inline void Simulation_context::print_info()
                                                                                 fft_grid.limits(2).first,
                                                                                 fft_grid.limits(2).second);
     printf("  number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
+    printf("  local number of G-vectors             : %i\n", gvec_.gvec_count(0));
     printf("  number of G-shells                    : %i\n", gvec_.num_shells());
     printf("\n");
     if (!full_potential())

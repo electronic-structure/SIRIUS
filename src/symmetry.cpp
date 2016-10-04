@@ -346,22 +346,22 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
 {
     runtime::Timer t("sirius::Symmetry::symmetrize_function_pw", comm__);
 
-    splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
+    int gvec_count = gvec__.gvec_count(comm__.rank());
+    int gvec_offset = gvec__.gvec_offset(comm__.rank());
+
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
     sym_f_pw.zero();
     
     double* ptr = (double*)&sym_f_pw(0);
 
     #pragma omp parallel for
-    for (int i = 0; i < num_mag_sym(); i++)
-    {
+    for (int i = 0; i < num_mag_sym(); i++) {
         /* full space-group symmetry operation is {R|t} */
         auto R = magnetic_group_symmetry(i).spg_op.R;
         auto t = magnetic_group_symmetry(i).spg_op.t;
 
-        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-        {
-            int ig = spl_gvec[igloc];
+        for (int igloc = 0; igloc < gvec_count; igloc++) {
+            int ig = gvec_offset + igloc;
             
             double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t)));
 
@@ -377,8 +377,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            if (gvec__.reduced() && ig_rot == -1)
-            {
+            if (gvec__.reduced() && ig_rot == -1) {
                 gv_rot = gv_rot * (-1);
                 int ig_rot = gvec__.index_by_gvec(gv_rot);
               
@@ -387,9 +386,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
 
                 #pragma omp atomic update
                 ptr[2 * ig_rot + 1] -= z.imag();
-            }
-            else
-            {
+            } else {
                 assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
               
                 #pragma omp atomic update
@@ -404,7 +401,9 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
     
     double nrm = 1 / double(num_mag_sym());
     #pragma omp parallel for
-    for (int ig = 0; ig < gvec__.num_gvec(); ig++) f_pw__[ig] = sym_f_pw(ig) * nrm;
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) {
+        f_pw__[ig] = sym_f_pw(ig) * nrm;
+    }
 }
 
 void Symmetry::symmetrize_vector(double_complex* fz_pw__,
@@ -413,7 +412,9 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
 {
     runtime::Timer t("sirius::Symmetry::symmetrize_vector_pw");
     
-    splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
+    int gvec_count = gvec__.gvec_count(comm__.rank());
+    int gvec_offset = gvec__.gvec_offset(comm__.rank());
+    
     mdarray<double_complex, 1> sym_f_pw(gvec__.num_gvec());
     sym_f_pw.zero();
 
@@ -427,28 +428,17 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
         auto t = magnetic_group_symmetry(i).spg_op.t;
         auto S = magnetic_group_symmetry(i).spin_rotation;
 
-        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++)
-        {
-            int ig = spl_gvec[igloc];
+        for (int igloc = 0; igloc < gvec_count; igloc++) {
+            int ig = gvec_offset + igloc;
 
             auto gv_rot = transpose(R) * gvec__.gvec(ig);
 
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-//            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
-
             double_complex z = fz_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t))) * S(2, 2);
             
-//            #pragma omp atomic update
-//            ptr[2 * ig_rot] += real(z);
-//
-//            #pragma omp atomic update
-//            ptr[2 * ig_rot + 1] += imag(z);
-
-            // test
-            if (gvec__.reduced() && ig_rot == -1)
-            {
+            if (gvec__.reduced() && ig_rot == -1) {
                 gv_rot = gv_rot * (-1);
                 int ig_rot = gvec__.index_by_gvec(gv_rot);
 
@@ -457,9 +447,7 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
 
                 #pragma omp atomic update
                 ptr[2 * ig_rot + 1] -= z.imag();
-            }
-            else
-            {
+            } else {
                 assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
                 #pragma omp atomic update
@@ -472,8 +460,9 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
     }
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 
-    for (int ig = 0; ig < gvec__.num_gvec(); ig++) fz_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
-
+    for (int ig = 0; ig < gvec__.num_gvec(); ig++) {
+        fz_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
+    }
 }
 
 void Symmetry::symmetrize_vector(double_complex* fx_pw__,
@@ -484,7 +473,8 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
 {
     runtime::Timer t("sirius::Symmetry::symmetrize_vector_pw");
     
-    splindex<block> spl_gvec(gvec__.num_gvec(), comm__.size(), comm__.rank());
+    int gvec_count = gvec__.gvec_count(comm__.rank());
+    int gvec_offset = gvec__.gvec_offset(comm__.rank());
     mdarray<double_complex, 1> sym_fx_pw(gvec__.num_gvec());
     mdarray<double_complex, 1> sym_fy_pw(gvec__.num_gvec());
     mdarray<double_complex, 1> sym_fz_pw(gvec__.num_gvec());
@@ -505,8 +495,8 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
         auto t = magnetic_group_symmetry(i).spg_op.t;
         auto S = magnetic_group_symmetry(i).spin_rotation;
 
-        for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
-            int ig = spl_gvec[igloc];
+        for (int igloc = 0; igloc < gvec_count; igloc++) {
+            int ig = gvec_offset + igloc;
 
             auto gv_rot = transpose(R) * gvec__.gvec(ig);
 

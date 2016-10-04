@@ -648,9 +648,6 @@ class Density
         {
             PROFILE_WITH_TIMER("sirius::Density::augment");
 
-            /* split G-vectors between ranks */
-            splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-            
             /* collect density and magnetization into single array */
             std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
             rho_vec[0] = rho_;
@@ -665,7 +662,7 @@ class Density
             }
             #endif
 
-            mdarray<double_complex, 2> rho_aug(spl_gvec.local_size(), ctx_.num_mag_dims() + 1);
+            mdarray<double_complex, 2> rho_aug(ctx_.gvec_count(), ctx_.num_mag_dims() + 1);
 
             #ifdef __GPU
             if (ctx_.processing_unit() == GPU) {
@@ -686,14 +683,15 @@ class Density
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 #pragma omp parallel for
-                for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
-                    rho_vec[iv]->f_pw(spl_gvec[igloc]) += rho_aug(igloc, iv);
+                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                    int ig = ctx_.gvec_offset() + igloc;
+                    rho_vec[iv]->f_pw(ig) += rho_aug(igloc, iv);
                 }
             }
 
             runtime::Timer t5("sirius::Density::augment|mpi");
             for (auto e: rho_vec) {
-                ctx_.comm().allgather(&e->f_pw(0), spl_gvec.global_offset(), spl_gvec.local_size());
+                ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
 
                 #ifdef __PRINT_OBJECT_CHECKSUM
                 {
