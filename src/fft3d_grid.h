@@ -37,6 +37,14 @@ class FFT3D_grid
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
+
+            for (int i = 0; i < 3; i++) {
+                for (int x = 0; x < size(i); x++) {
+                    if (coord_by_gvec(gvec_by_coord(x, i), i) != x) {
+                        throw std::runtime_error("find_grid_size: wrong mapping of coordinates");
+                    }
+                }
+            }
         }
 
     public:
