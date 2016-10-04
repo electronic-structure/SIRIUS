@@ -77,6 +77,7 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
                 int igk = gkvec_.offset_gvec(comm_.rank()) + igk_loc;
                 double phase = twopi * (gkvec_.gvec_shifted(igk) * unit_cell_.atom(ia).position());
 
+                //TODO may be calculate offset_lo right here instead to store it in atom(ia), since it has meaning only for beta_gk
                 beta_gk_a_(igk_loc, unit_cell_.atom(ia).offset_lo() + xi) =
                     beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * std::exp(double_complex(0.0, -phase));
             }

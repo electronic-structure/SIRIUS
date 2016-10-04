@@ -680,7 +680,7 @@ double Potential::calc_PAW_one_elec_energy(int atom_index,
     if(std::abs(energy.imag()) > 1.0E-10)
     {
         std::stringstream s;
-        s << "energy has to big real part: "<< energy.imag();
+        s << "paw one elec energy has to big real part: "<< energy.imag();
         TERMINATE(s.str());
     }
 
