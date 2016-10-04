@@ -25,8 +25,8 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include <omp.h>
-#include "json_tree.h"
+#include "vector3d.h"
+#include "runtime.h"
 
 namespace sirius {
 
@@ -77,22 +77,21 @@ struct Unit_cell_input_section
 
     bool exist_{false};
 
-    void read(JSON_tree const& parser)
+    void read(json const& parser)
     {
-        if (parser.exist("unit_cell")) {
+        if (parser.count("unit_cell")) {
             exist_ = true;
 
             auto section = parser["unit_cell"];
-            std::vector<double> a0, a1, a2;
-            section["lattice_vectors"][0] >> a0;
-            section["lattice_vectors"][1] >> a1;
-            section["lattice_vectors"][2] >> a2;
+            auto a0 = section["lattice_vectors"][0].get<std::vector<double>>();
+            auto a1 = section["lattice_vectors"][1].get<std::vector<double>>();
+            auto a2 = section["lattice_vectors"][2].get<std::vector<double>>();
 
             if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3) {
                 TERMINATE("wrong lattice vectors");
             }
 
-            double scale = section["lattice_vectors_scale"].get(1.0);
+            double scale = section.value("lattice_vectors_scale", 1.0);
 
             for (int x: {0, 1, 2}) {
                 a0_[x] = a0[x] * scale;
@@ -103,28 +102,23 @@ struct Unit_cell_input_section
             labels_.clear();
             coordinates_.clear();
             
-            for (int iat = 0; iat < (int)section["atom_types"].size(); iat++) {
-                std::string label;
-                section["atom_types"][iat] >> label;
-                for (int i = 0; i < (int)labels_.size(); i++) {
-                    if (labels_[i] == label) {
-                        TERMINATE("atom type with such label is already in list");
-                    }
+            for (auto& label: section["atom_types"]) {
+                if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
+                    TERMINATE("duplicate atom type label");
                 }
                 labels_.push_back(label);
             }
             
-            if (section.exist("atom_files")) {
-                for (int iat = 0; iat < (int)labels_.size(); iat++) {
-                    atom_files_[labels_[iat]] = section["atom_files"][labels_[iat]].get(std::string(""));
+            if (section.count("atom_files")) {
+                for (auto& label: labels_) {
+                    atom_files_[label] = section["atom_files"].value(label, "");
                 }
             }
             
             for (int iat = 0; iat < (int)labels_.size(); iat++) {
                 coordinates_.push_back(std::vector< std::vector<double> >());
-                for (int ia = 0; ia < section["atoms"][labels_[iat]].size(); ia++) {
-                    std::vector<double> v;
-                    section["atoms"][labels_[iat]][ia] >> v;
+                for (size_t ia = 0; ia < section["atoms"][labels_[iat]].size(); ia++) {
+                    auto v = section["atoms"][labels_[iat]][ia].get<std::vector<double>>();
 
                     if (!(v.size() == 3 || v.size() == 6)) {
                         TERMINATE("wrong coordinates size");
@@ -149,17 +143,16 @@ struct Mixer_input_section
     int max_history_{8};
     bool exist_{false};
 
-    void read(JSON_tree const& parser)
+    void read(json const& parser)
     {
-        if (parser.exist("mixer"))
-        {
+        if (parser.count("mixer")) {
             exist_ = true;
             auto section = parser["mixer"];
-            beta_               = section["beta"].get(beta_);
-            beta0_              = section["beta0"].get(beta0_);
-            linear_mix_rms_tol_ = section["linear_mix_rms_tol"].get(linear_mix_rms_tol_);
-            max_history_        = section["max_history"].get(max_history_);
-            type_               = section["type"].get(type_);
+            beta_               = section.value("beta", beta_);
+            beta0_              = section.value("beta0", beta0_);
+            linear_mix_rms_tol_ = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
+            max_history_        = section.value("max_history", max_history_);
+            type_               = section.value("type", type_);
         }
     }
 };
@@ -167,7 +160,7 @@ struct Mixer_input_section
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
-    std::string type_{"davidson"};
+    std::string type_{""};
     int num_steps_{20};
     int subspace_size_{4};
     double energy_tolerance_{1e-6};
@@ -179,19 +172,21 @@ struct Iterative_solver_input_section
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
 
-    void read(JSON_tree const& parser)
+    void read(json const& parser)
     {
-        type_               = parser["iterative_solver"]["type"].get(type_);
-        num_steps_          = parser["iterative_solver"]["num_steps"].get(num_steps_);
-        subspace_size_      = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
-        energy_tolerance_   = parser["iterative_solver"]["energy_tolerance"].get(energy_tolerance_);
-        residual_tolerance_ = parser["iterative_solver"]["residual_tolerance"].get(residual_tolerance_);
-        converge_by_energy_ = parser["iterative_solver"]["converge_by_energy"].get(converge_by_energy_);
-        converge_occupied_  = parser["iterative_solver"]["converge_occupied"].get(converge_occupied_);
-        min_num_res_        = parser["iterative_solver"]["min_num_res"].get(min_num_res_);
-        real_space_prj_     = parser["iterative_solver"]["real_space_prj"].get(real_space_prj_);
-        R_mask_scale_       = parser["iterative_solver"]["R_mask_scale"].get(R_mask_scale_);
-        mask_alpha_         = parser["iterative_solver"]["mask_alpha"].get(mask_alpha_);
+        if (parser.count("iterative_solver")) {
+            type_               = parser["iterative_solver"].value("type", type_);
+            num_steps_          = parser["iterative_solver"].value("num_steps", num_steps_);
+            subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
+            energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
+            residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
+            converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
+            converge_occupied_  = parser["iterative_solver"].value("converge_occupied", converge_occupied_);
+            min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
+            real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
+            R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
+            mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+        }
     }
 };
 
@@ -201,7 +196,7 @@ struct Iterative_solver_input_section
  *    "control" : {
  *      "mpi_grid_dims" : (1- 2- or 3-dimensional vector<int>) MPI grid layout
  *      "cyclic_block_size" : (int) PBLAS / ScaLAPACK block size
- *      "reduce_gvec" : (int) use reduced G-vector set (reduce_gvec = 1) or full set (reduce_gvec = 0)
+ *      "reduce_gvec" : (bool) use reduced G-vector set (reduce_gvec = true) or full set (reduce_gvec = false)
  *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
  *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
  *      "electronic_structure_method" : (string) electronic structure method
@@ -222,21 +217,19 @@ struct Control_input_section
     double rmt_max_{2.2};
     double spglib_tolerance_{1e-4};
 
-    void read(JSON_tree const& parser)
+    void read(json const& parser)
     {
-        mpi_grid_dims_       = parser["control"]["mpi_grid_dims"].get(mpi_grid_dims_); 
-        cyclic_block_size_   = parser["control"]["cyclic_block_size"].get(cyclic_block_size_);
-        std_evp_solver_name_ = parser["control"]["std_evp_solver_type"].get(std_evp_solver_name_);
-        gen_evp_solver_name_ = parser["control"]["gen_evp_solver_type"].get(gen_evp_solver_name_);
+        mpi_grid_dims_       = parser["control"].value("mpi_grid_dims", mpi_grid_dims_); 
+        cyclic_block_size_   = parser["control"].value("cyclic_block_size", cyclic_block_size_);
+        std_evp_solver_name_ = parser["control"].value("std_evp_solver_type", std_evp_solver_name_);
+        gen_evp_solver_name_ = parser["control"].value("gen_evp_solver_type", gen_evp_solver_name_);
+        processing_unit_     = parser["control"].value("processing_unit", processing_unit_);
+        fft_mode_            = parser["control"].value("fft_mode", fft_mode_);
+        reduce_gvec_         = parser["control"].value("reduce_gvec", reduce_gvec_);
+        rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
+        spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
 
-        processing_unit_ = parser["control"]["processing_unit"].get(processing_unit_);
         std::transform(processing_unit_.begin(), processing_unit_.end(), processing_unit_.begin(), ::tolower);
-
-        fft_mode_ = parser["control"]["fft_mode"].get(fft_mode_);
-        reduce_gvec_ = parser["control"]["reduce_gvec"].get<int>(reduce_gvec_);
-
-        rmt_max_ = parser["control"]["rmt_max"].get(rmt_max_);
-        spglib_tolerance_ = parser["control"]["spglib_tolerance"].get(spglib_tolerance_);
     }
 };
 
@@ -258,50 +251,48 @@ struct Parameters_input_section
     int auto_rmt_{1};
     int use_symmetry_{1};
     int gamma_point_{0};
-    vector3d<int> ngridk_{1, 1, 1};
-    vector3d<int> shiftk_{0, 0, 0};
+    std::vector<int> ngridk_{1, 1, 1};
+    std::vector<int> shiftk_{0, 0, 0};
     int num_dft_iter_{100};
     double energy_tol_{1e-5};
     double potential_tol_{1e-5};
 
-    void read(JSON_tree const& parser)
+    void read(json const& parser)
     {
-        esm_ = parser["parameters"]["electronic_structure_method"].get(esm_);
+        esm_ = parser["parameters"].value("electronic_structure_method", esm_);
         std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
 
         /* read list of XC functionals */
-        if (parser["parameters"].exist("xc_functionals")) {
+        if (parser["parameters"].count("xc_functionals")) {
             xc_functionals_.clear();
-            for (int i = 0; i < parser["parameters"]["xc_functionals"].size(); i++) {
-                std::string s;
-                parser["parameters"]["xc_functionals"][i] >> s;
-                xc_functionals_.push_back(s);
+            for (auto& label: parser["parameters"]["xc_functionals"]) {
+                xc_functionals_.push_back(label);
             }
         }
 
-        core_relativity_ = parser["parameters"]["core_relativity"].get(core_relativity_);
+        core_relativity_ = parser["parameters"].value("core_relativity", core_relativity_);
         std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
 
-        valence_relativity_ = parser["parameters"]["valence_relativity"].get(valence_relativity_);
+        valence_relativity_ = parser["parameters"].value("valence_relativity", valence_relativity_);
         std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(), ::tolower);
 
-        num_fv_states_  = parser["parameters"]["num_fv_states"].get(num_fv_states_);
-        smearing_width_ = parser["parameters"]["smearing_width"].get(smearing_width_);
-        pw_cutoff_      = parser["parameters"]["pw_cutoff"].get(pw_cutoff_);
-        aw_cutoff_      = parser["parameters"]["aw_cutoff"].get(aw_cutoff_);
-        gk_cutoff_      = parser["parameters"]["gk_cutoff"].get(gk_cutoff_);
-        lmax_apw_       = parser["parameters"]["lmax_apw"].get(lmax_apw_);
-        lmax_rho_       = parser["parameters"]["lmax_rho"].get(lmax_rho_);
-        lmax_pot_       = parser["parameters"]["lmax_pot"].get(lmax_pot_);
-        num_mag_dims_   = parser["parameters"]["num_mag_dims"].get(num_mag_dims_);
-        auto_rmt_       = parser["parameters"]["auto_rmt"].get(auto_rmt_);
-        use_symmetry_   = parser["parameters"]["use_symmetry"].get(use_symmetry_);
-        gamma_point_    = parser["parameters"]["gamma_point"].get(gamma_point_);
-        ngridk_         = parser["parameters"]["ngridk"].get(ngridk_);
-        shiftk_         = parser["parameters"]["shiftk"].get(shiftk_);
-        num_dft_iter_   = parser["parameters"]["num_dft_iter"].get(num_dft_iter_);
-        energy_tol_     = parser["parameters"]["energy_tol"].get(energy_tol_);
-        potential_tol_  = parser["parameters"]["potential_tol"].get(potential_tol_);
+        num_fv_states_  = parser["parameters"].value("num_fv_states", num_fv_states_);
+        smearing_width_ = parser["parameters"].value("smearing_width", smearing_width_);
+        pw_cutoff_      = parser["parameters"].value("pw_cutoff", pw_cutoff_);
+        aw_cutoff_      = parser["parameters"].value("aw_cutoff", aw_cutoff_);
+        gk_cutoff_      = parser["parameters"].value("gk_cutoff", gk_cutoff_);
+        lmax_apw_       = parser["parameters"].value("lmax_apw", lmax_apw_);
+        lmax_rho_       = parser["parameters"].value("lmax_rho", lmax_rho_);
+        lmax_pot_       = parser["parameters"].value("lmax_pot", lmax_pot_);
+        num_mag_dims_   = parser["parameters"].value("num_mag_dims", num_mag_dims_);
+        auto_rmt_       = parser["parameters"].value("auto_rmt", auto_rmt_);
+        use_symmetry_   = parser["parameters"].value("use_symmetry", use_symmetry_);
+        gamma_point_    = parser["parameters"].value("gamma_point", gamma_point_);
+        ngridk_         = parser["parameters"].value("ngridk", ngridk_);
+        shiftk_         = parser["parameters"].value("shiftk", shiftk_);
+        num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
+        energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
+        potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
     }
 };
 

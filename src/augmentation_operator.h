@@ -37,15 +37,17 @@ class Augmentation_operator
 
         Atom_type const& atom_type_;
 
-        mdarray<double_complex, 2> q_mtrx_;
+        mdarray<double, 2> q_mtrx_;
 
-        mdarray<double_complex, 2> q_pw_;
+        mdarray<double, 2> q_pw_;
 
-        mdarray<double, 2> q_pw_real_t_;
+        mdarray<double, 1> sym_weight_;
         
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
         {
+            PROFILE_WITH_TIMER("sirius::Augmentation_operator::get_radial_integrals");
+
             // TODO: this can be distributed over G-shells (each mpi rank holds radial integrals only for
             //       G-shells of local fraction of G-vectors
 
@@ -63,8 +65,9 @@ class Augmentation_operator
                 {
                     qrf_spline(l3, idx) = Spline<double>(atom_type_.radial_grid());
 
-                    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++)
+                    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
                         qrf_spline(l3, idx)[ir] = atom_type_.uspp().q_radial_functions_l(ir, idx, l3); //= qrf(ir, l3, idx);
+                    }
 
                     qrf_spline(l3, idx).interpolate();
                 }
@@ -139,34 +142,30 @@ class Augmentation_operator
             for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
             {
                 int ig = spl_num_gvec[igloc];
-                auto rtp = SHT::spherical_coordinates(gvec__.cart(ig));
+                auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
                 SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
             }
         
             /* number of beta-projectors */
             int nbf = atom_type_.mt_basis_size();
             
-            q_mtrx_ = mdarray<double_complex, 2>(nbf, nbf);
+            q_mtrx_ = mdarray<double, 2>(nbf, nbf);
             q_mtrx_.zero();
 
             /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double_complex, 2>(nbf * (nbf + 1) / 2, spl_num_gvec.local_size());
-            q_pw_real_t_ = mdarray<double, 2>(2 * spl_num_gvec.local_size(), nbf * (nbf + 1) / 2);
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * spl_num_gvec.local_size(), memory_t::host_pinned);
             #pragma omp parallel for
-            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++)
-            {
+            for (int igloc = 0; igloc < spl_num_gvec.local_size(); igloc++) {
                 int ig = spl_num_gvec[igloc];
                 int igs = gvec__.shell(ig);
 
                 std::vector<double_complex> v(lmmax);
 
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
                     int lm2 = atom_type_.indexb(xi2).lm;
                     int idxrf2 = atom_type_.indexb(xi2).idxrf;
         
-                    for (int xi1 = 0; xi1 <= xi2; xi1++)
-                    {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int lm1 = atom_type_.indexb(xi1).lm;
                         int idxrf1 = atom_type_.indexb(xi1).idxrf;
                         
@@ -175,26 +174,32 @@ class Augmentation_operator
                         /* packed radial-function index */
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
-                        for (int lm3 = 0; lm3 < lmmax; lm3++)
+                        for (int lm3 = 0; lm3 < lmmax; lm3++) {
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], igs);
-        
-                        q_pw_(idx12, igloc) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
-                        q_pw_real_t_(2 * igloc,     idx12) = q_pw_(idx12, igloc).real();
-                        q_pw_real_t_(2 * igloc + 1, idx12) = q_pw_(idx12, igloc).imag();
+                        }
+
+                        double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                        q_pw_(idx12, 2 * igloc)     = z.real();
+                        q_pw_(idx12, 2 * igloc + 1) = z.imag();
                     }
                 }
             }
+
+            sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned);
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                    /* packed orbital index */
+                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                    sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
+                }
+            }
     
-            if (comm_.rank() == 0)
-            {
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 <= xi2; xi1++)
-                    {
+            if (comm_.rank() == 0) {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         /* packed orbital index */
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                        q_mtrx_(xi1, xi2) = omega__ * q_pw_(idx12, 0);
-                        q_mtrx_(xi2, xi1) = std::conj(q_mtrx_(xi1, xi2));
+                        q_mtrx_(xi1, xi2) = q_mtrx_(xi2, xi1) = omega__ * q_pw_(idx12, 0);
                     }
                 }
             }
@@ -202,9 +207,9 @@ class Augmentation_operator
             comm_.bcast(&q_mtrx_(0, 0), nbf * nbf , 0);
 
             #ifdef __PRINT_OBJECT_CHECKSUM
-            auto z = q_pw_.checksum();
-            comm_.allreduce(&z, 1);
-            DUMP("checksum(q_pw) : %18.10f %18.10f", z.real(), z.imag());
+            double cs = q_pw_.checksum();
+            comm_.allreduce(&cs, 1);
+            DUMP("checksum(q_pw) : %18.10f", cs);
             #endif
         }
 
@@ -225,70 +230,52 @@ class Augmentation_operator
             }
         }
 
-        void prepare(int what__) const
+        void prepare(int stream_id__) const
         {
             #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU)
-            {
-                switch (what__)
-                {
-                    case 0:
-                    {
-                        q_pw_.allocate_on_device();
-                        q_pw_.copy_to_device();
-                        break;
-                    }
-                    case 1:
-                    {
-                        q_pw_real_t_.allocate_on_device();
-                        q_pw_real_t_.copy_to_device();
-                        break;
-                    }
-                }
+            if (atom_type_.parameters().processing_unit() == GPU) {
+                sym_weight_.allocate(memory_t::device);
+                sym_weight_.async_copy_to_device(stream_id__);
+
+                q_pw_.allocate(memory_t::device);
+                q_pw_.async_copy_to_device(stream_id__);
             }
             #endif
         }
 
-        void dismiss(int what__) const
+        void dismiss() const
         {
             #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU)
-            {
-                switch (what__)
-                {
-                    case 0:
-                    {
-                        q_pw_.deallocate_on_device();
-                        break;
-                    }
-                    case 1:
-                    {
-                        q_pw_real_t_.deallocate_on_device();
-                        break;
-                    }
-                }
+            if (atom_type_.parameters().processing_unit() == GPU) {
+                q_pw_.deallocate_on_device();
+                sym_weight_.deallocate_on_device();
             }
             #endif
         }
 
-        mdarray<double_complex, 2> const& q_pw() const
+        mdarray<double, 2> const& q_pw() const
         {
             return q_pw_;
         }
 
-        mdarray<double, 2> const& q_pw_real_t() const
+        double q_pw(int i__, int ig__) const
         {
-            return q_pw_real_t_;
+            return q_pw_(i__, ig__);
         }
 
-        double_complex const& q_pw(int idx__, int ig__) const
-        { 
-            return q_pw_(idx__, ig__);
-        }
-
-        double_complex const& q_mtrx(int xi1__, int xi2__) const
+        double const& q_mtrx(int xi1__, int xi2__) const
         {
             return q_mtrx_(xi1__, xi2__);
+        }
+
+        inline mdarray<double, 1> const& sym_weight() const
+        {
+            return sym_weight_;
+        }
+
+        inline double sym_weight(int idx__) const
+        {
+            return sym_weight_(idx__);
         }
 };
 

@@ -30,107 +30,83 @@
 #include "communicator.h"
 #include "blacs_grid.h"
 
-/// Distribued matrix.
+/// Distributed matrix.
 template <typename T>
-class dmatrix
+class dmatrix: public matrix<T>
 {
     private:
 
         /// Global number of matrix rows.
-        int num_rows_;
+        int num_rows_{0};
 
         /// Global number of matrix columns.
-        int num_cols_;
+        int num_cols_{0};
 
-        int num_ranks_row_;
+        int bs_row_{0};
 
-        int rank_row_;
+        int bs_col_{0};
 
-        int num_ranks_col_;
-
-        int rank_col_;
-
-        int bs_row_;
-
-        int bs_col_;
-
-        BLACS_grid const* blacs_grid_;
+        BLACS_grid const* blacs_grid_{nullptr};
 
         splindex<block_cyclic> spl_row_;
 
         splindex<block_cyclic> spl_col_;
-
-        /// Local part of the distributed matrix.
-        matrix<T> matrix_local_;
 
         /// Matrix descriptor.
         ftn_int descriptor_[9];
 
         void init()
         {
-            spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_row_);
-            spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs_col_);
-
-            matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
-
             #ifdef __SCALAPACK
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0,
-                                  blacs_grid_->context(), matrix_local_.ld());
+                                  blacs_grid_->context(), spl_row_.local_size());
             #endif
         }
+
+        /* forbid copy constructor */
+        dmatrix(dmatrix<T> const& src) = delete;
+        /* forbid assigment operator */
+        dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
 
     public:
         
         // Default constructor
         dmatrix()
-            : num_rows_(0),
-              num_cols_(0),
-              num_ranks_row_(1), 
-              rank_row_(0), 
-              num_ranks_col_(1), 
-              rank_col_(0),
-              bs_row_(1),
-              bs_col_(1),
-              blacs_grid_(nullptr)
         {
         }
         
         dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__)
-            : num_rows_(num_rows__),
+            : matrix<T>(splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
+                        splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size()),
+              num_rows_(num_rows__),
               num_cols_(num_cols__),
-              num_ranks_row_(blacs_grid__.num_ranks_row()), 
-              rank_row_(blacs_grid__.rank_row()), 
-              num_ranks_col_(blacs_grid__.num_ranks_col()), 
-              rank_col_(blacs_grid__.rank_col()),
               bs_row_(bs_row__),
               bs_col_(bs_col__),
-              blacs_grid_(&blacs_grid__)
+              blacs_grid_(&blacs_grid__),
+              spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_),
+              spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
         {
             init();
-            matrix_local_.allocate();
         }
 
         dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__) 
-            : num_rows_(num_rows__),
+            : matrix<T>(ptr__,
+                        splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
+                        splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size()),
+              num_rows_(num_rows__),
               num_cols_(num_cols__),
-              num_ranks_row_(blacs_grid__.num_ranks_row()), 
-              rank_row_(blacs_grid__.rank_row()), 
-              num_ranks_col_(blacs_grid__.num_ranks_col()), 
-              rank_col_(blacs_grid__.rank_col()),
               bs_row_(bs_row__),
               bs_col_(bs_col__),
-              blacs_grid_(&blacs_grid__)
+              blacs_grid_(&blacs_grid__),
+              spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_),
+              spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
         {
             init();
-            matrix_local_ = matrix<T>(ptr__, spl_row_.local_size(), spl_col_.local_size());
         }
 
-        /* forbid copy constructor */
-        dmatrix(dmatrix<T> const& src) = delete;
-        /* forbid move constructor */
-        //dmatrix(dmatrix<T>&& src) = delete;
-        /* forbid assigment operator */
-        dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
+        dmatrix(dmatrix<T>&& src) = default;
+
+        dmatrix<T>& operator=(dmatrix<T>&& src) = default;
 
         /* This is a correct declaration of default move assigment operator:        
 
@@ -139,38 +115,28 @@ class dmatrix
            however Intel compiler refuses to recognize it and explicit definition must be introduced.
            There is no such problem with GCC.
         */
-        dmatrix<T>& operator=(dmatrix<T>&& src)
-        {
-            if (this != &src)
-            {
-                num_rows_      = src.num_rows_;
-                num_cols_      = src.num_cols_;
-                num_ranks_row_ = src.num_ranks_row_;
-                rank_row_      = src.rank_row_;
-                num_ranks_col_ = src.num_ranks_col_;
-                rank_col_      = src.rank_col_;
-                bs_row_        = src.bs_row_;
-                bs_col_        = src.bs_col_;
-                blacs_grid_    = src.blacs_grid_;
-                spl_row_       = src.spl_row_;
-                spl_col_       = src.spl_col_;
-                matrix_local_  = std::move(src.matrix_local_);
-                for (int i = 0; i < 9; i++) {
-                    descriptor_[i] = src.descriptor_[i];
-                }
-            }
-            return *this;
-        }
-
-        inline void allocate(int mode__ = 0)
-        {
-            matrix_local_.allocate(mode__);
-        }
-
-        inline void deallocate()
-        {
-            matrix_local_.deallocate();
-        }
+        //== dmatrix<T>& operator=(dmatrix<T>&& src)
+        //== {
+        //==     if (this != &src)
+        //==     {
+        //==         num_rows_      = src.num_rows_;
+        //==         num_cols_      = src.num_cols_;
+        //==         //num_ranks_row_ = src.num_ranks_row_;
+        //==         //rank_row_      = src.rank_row_;
+        //==         //num_ranks_col_ = src.num_ranks_col_;
+        //==         //rank_col_      = src.rank_col_;
+        //==         bs_row_        = src.bs_row_;
+        //==         bs_col_        = src.bs_col_;
+        //==         blacs_grid_    = src.blacs_grid_;
+        //==         spl_row_       = src.spl_row_;
+        //==         spl_col_       = src.spl_col_;
+        //==         //matrix_local_  = std::move(src.matrix_local_);
+        //==         for (int i = 0; i < 9; i++) {
+        //==             descriptor_[i] = src.descriptor_[i];
+        //==         }
+        //==     }
+        //==     return *this;
+        //== }
 
         inline int num_rows() const
         {
@@ -219,52 +185,7 @@ class dmatrix
             return descriptor_;
         }
 
-        T* ptr()
-        {
-            return matrix_local_.ptr();
-        }
-
-        int ld() const
-        {
-            return matrix_local_.ld();
-        }
-
         #ifdef __GPU
-        inline void allocate_on_device()
-        {
-            matrix_local_.allocate_on_device();
-        }
-
-        inline void deallocate_on_device()
-        {
-            matrix_local_.deallocate_on_device();
-        }
-
-        inline void pin_memory()
-        {
-            matrix_local_.pin_memory();
-        }
-
-        inline void unpin_memory()
-        {
-            matrix_local_.unpin_memory();
-        }
-
-        inline void zero_on_device()
-        {
-            matrix_local_.zero_on_device();
-        }
-
-        inline void copy_to_device()
-        {
-            matrix_local_.copy_to_device();
-        }
-
-        inline void copy_to_host()
-        {
-            matrix_local_.copy_to_host();
-        }
-
         //== inline void copy_cols_to_device(int icol_fisrt, int icol_last)
         //== {
         //==     splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
@@ -290,38 +211,13 @@ class dmatrix
         //== }
         #endif
 
-        inline T& operator()(const int64_t irow_loc, const int64_t icol_loc) 
-        {
-            return matrix_local_(irow_loc, icol_loc);
-        }
-        
-        template <processing_unit_t pu>
-        inline T* at() 
-        {
-            return matrix_local_.at<pu>();
-        }
-
-        template <processing_unit_t pu>
-        inline T const* at() const
-        {
-            return matrix_local_.at<pu>();
-        }
-
-        template <processing_unit_t pu>
-        inline T* at(int64_t const irow_loc, int64_t const icol_loc) 
-        {
-            return matrix_local_.at<pu>(irow_loc, icol_loc);
-        }
-
         inline void set(const int irow_glob, const int icol_glob, T val)
         {
             auto r = spl_row_.location(irow_glob);
-            if (rank_row_ == r.second)
-            {
+            if (blacs_grid_->rank_row() == r.rank) {
                 auto c = spl_col_.location(icol_glob);
-                if (rank_col_ == c.second)
-                {
-                    matrix_local_(r.first, c.first) = val;
+                if (blacs_grid_->rank_col() == c.rank) {
+                    (*this)(r.local_index, c.local_index) = val;
                 }
             }
         }
@@ -329,24 +225,12 @@ class dmatrix
         inline void add(const int irow_glob, const int icol_glob, T val)
         {
             auto r = spl_row_.location(irow_glob);
-            if (rank_row_ == r.second)
-            {
+            if (blacs_grid_->rank_row() == r.rank) {
                 auto c = spl_col_.location(icol_glob);
-                if (rank_col_ == c.second)
-                {
-                    matrix_local_(r.first, c.first) += val;
+                if (blacs_grid_->rank_col() == c.rank) {
+                    (*this)(r.local_index, c.local_index) += val;
                 }
             }
-        }
-
-        void zero()
-        {
-            matrix_local_.zero();
-        }
-
-        inline matrix<T>& panel()
-        {
-            return matrix_local_;
         }
 
         inline splindex<block_cyclic> const& spl_col() const
@@ -361,50 +245,24 @@ class dmatrix
 
         inline int rank_row() const
         {
-            return rank_row_;
+            return blacs_grid_->rank_row();
         }
 
         inline int num_ranks_row() const
         {
-            return num_ranks_row_;
+            return blacs_grid_->num_ranks_row();
         }
 
         inline int rank_col() const
         {
-            return rank_col_;
+            return blacs_grid_->rank_col();
         }
 
         inline int num_ranks_col() const
         {
-            return num_ranks_col_;
+            return blacs_grid_->num_ranks_col();
         }
         
-        template <processing_unit_t pu>
-        static void copy_col(dmatrix<T> const& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__)
-        {
-            assert(src__.num_rows_local() == dest__.num_rows_local());
-            assert(src__.blacs_grid_ == dest__.blacs_grid_);
-
-            auto src_location = src__.spl_col().location(icol_src__);
-            auto dest_location = dest__.spl_col().location(icol_dest__);
-
-            /* non-blocking send */
-            if (src_location.second == src__.rank_col()) 
-            {
-                int tag = icol_src__;
-                src__.blacs_grid_->comm_col().isend(src__.matrix_local_.at<pu>(0, src_location.first), src__.num_rows_local(), 
-                                                    dest_location.second, tag);
-            }
-
-            /* blocking receive */
-            if (dest_location.second == dest__.rank_col())
-            {
-                int tag = icol_src__;
-                src__.blacs_grid_->comm_col().recv(dest__.matrix_local_.at<pu>(0, dest_location.first), dest__.num_rows_local(),
-                                                   src_location.second, tag);
-            }
-        }
-
         inline int bs_row() const
         {
             return bs_row_;
@@ -415,9 +273,10 @@ class dmatrix
             return bs_col_;
         }
 
-        inline BLACS_grid const* blacs_grid() const
+        inline BLACS_grid const& blacs_grid() const
         {
-            return blacs_grid_;
+            assert(blacs_grid_ != nullptr);
+            return *blacs_grid_;
         }
 };
 

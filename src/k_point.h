@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -35,7 +35,8 @@ namespace sirius
 {
 
 /// K-point related variables and methods.
-/** \image html wf_storage.png "Wave-function storage" */ // TODO: replace with proper image
+/** \image html wf_storage.png "Wave-function storage"
+ *  \image html fv_eigen_vectors.png "First-variational eigen vectors" */
 class K_point
 {
     private:
@@ -55,15 +56,16 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
-        std::unique_ptr<Gvec_FFT_distribution> gkvec_fft_distr_;
-
-        std::unique_ptr<Gvec_FFT_distribution> gkvec_fft_distr_vloc_;
+        std::unique_ptr<Gvec_partition> gkvec_vloc_;
 
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
-        Wave_functions<true>* fv_eigen_vectors_;
+        std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>> fv_eigen_vectors_;
+
+        /// First-variational eigen vectors, distributed in slabs.
+        std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -75,10 +77,10 @@ class K_point
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// First-variational states.
-        void* fv_states_;
+        std::unique_ptr<wave_functions> fv_states_{nullptr};
 
         /// Two-component (spinor) wave functions describing the bands.
-        void* spinor_wave_functions_[2];
+        std::unique_ptr<wave_functions> spinor_wave_functions_[2] = {nullptr, nullptr};
 
         /// Band occupation numbers.
         std::vector<double> band_occupancies_;
@@ -86,17 +88,19 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_; 
 
-        Matching_coefficients* alm_coeffs_row_;
+        Matching_coefficients* alm_coeffs_row_{nullptr};
 
-        Matching_coefficients* alm_coeffs_col_;
+        Matching_coefficients* alm_coeffs_col_{nullptr};
 
-        Matching_coefficients* alm_coeffs_;
+        Matching_coefficients* alm_coeffs_{nullptr};
 
-        /// number of G+k vectors distributed along rows of MPI grid
-        int num_gkvec_row_;
+        std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
+
+        /// Number of G+k vectors distributed along rows of MPI grid
+        int num_gkvec_row_{0};
         
-        /// number of G+k vectors distributed along columns of MPI grid
-        int num_gkvec_col_;
+        /// Number of G+k vectors distributed along columns of MPI grid
+        int num_gkvec_col_{0};
 
         /// Short information about each G+k or lo basis function.
         /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
@@ -109,6 +113,8 @@ class K_point
         /// Basis descriptors distributed between columns of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
+
+        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_loc_;
 
         /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
         std::vector< std::vector<int> > atom_lo_cols_;
@@ -132,11 +138,10 @@ class K_point
 
         int num_ranks_row_;
 
-        Beta_projectors* beta_projectors_;
-        
+        Beta_projectors* beta_projectors_{nullptr};
+       
+        /// Preconditioner matrix for Chebyshev solver.  
         mdarray<double_complex, 3> p_mtrx_;
-
-        mdarray<double, 2> gkvec_row_;
 
         Communicator const& comm_;
 
@@ -147,20 +152,47 @@ class K_point
         Communicator const& comm_col_;
 
         /// Build G+k and lo basis descriptors.
-        void build_gklo_basis_descriptors();
+        inline void build_gklo_basis_descriptors();
 
         /// Distribute basis function index between rows and columns of MPI grid.
-        void distribute_basis_index();
+        inline void distribute_basis_index();
         
         /// Test orthonormalization of first-variational states.
-        void test_fv_states();
+        inline void test_fv_states();
 
     public:
 
         /// Constructor
         K_point(Simulation_context& ctx__,
                 double* vk__,
-                double weight__);
+                double weight__)
+            : ctx_(ctx__),
+              unit_cell_(ctx_.unit_cell()),
+              weight_(weight__),
+              spinor_wave_functions_{nullptr, nullptr},
+              comm_(ctx_.blacs_grid().comm()),
+              comm_row_(ctx_.blacs_grid().comm_row()),
+              comm_col_(ctx_.blacs_grid().comm_col())
+        {
+            PROFILE();
+
+            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+            
+            band_occupancies_ = std::vector<double>(ctx_.num_bands(), 1);
+            band_energies_    = std::vector<double>(ctx_.num_bands(), 0);
+            
+            num_ranks_row_ = comm_row_.size();
+            num_ranks_col_ = comm_col_.size();
+            
+            rank_row_ = comm_row_.rank();
+            rank_col_ = comm_col_.rank();
+
+            if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) TERMINATE("ranks don't match");
+            
+            #ifndef __GPU
+            if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
+            #endif
+        }
 
         ~K_point()
         {
@@ -169,39 +201,13 @@ class K_point
             if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
             if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
-            if (fv_eigen_vectors_ != nullptr) delete fv_eigen_vectors_;
-            if (fv_states_ != nullptr)
-            {
-                if (ctx_.full_potential())
-                {
-                    delete reinterpret_cast<Wave_functions<true>*>(fv_states_);
-                }
-                else 
-                {
-                    delete reinterpret_cast<Wave_functions<false>*>(fv_states_);
-                }
-            }
-            for (int ispn: {0, 1})
-            {
-                if (spinor_wave_functions_[ispn] != nullptr)
-                {   
-                    if (ctx_.full_potential())
-                    {
-                        delete reinterpret_cast<Wave_functions<true>*>(spinor_wave_functions_[ispn]);
-                    }
-                    else
-                    {
-                        delete reinterpret_cast<Wave_functions<false>*>(spinor_wave_functions_[ispn]);
-                    }
-                }
-            }
         }
 
         /// Initialize the k-point related arrays and data
-        void initialize();
+        inline void initialize();
 
         /// Find G+k vectors within the cutoff
-        void generate_gkvec(double gk_cutoff);
+        inline void generate_gkvec(double gk_cutoff__);
 
         /// Generate first-variational states from eigen-vectors
         /** First-variational states are obtained from the first-variational eigen-vectors and 
@@ -217,7 +223,7 @@ class K_point
         #endif
 
         /// Generate two-component spinor wave functions 
-        void generate_spinor_wave_functions();
+        inline void generate_spinor_wave_functions();
 
         Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
 
@@ -237,7 +243,31 @@ class K_point
         void test_spinor_wave_functions(int use_fft);
 
         /// Get the number of occupied bands for each spin channel.
-        int num_occupied_bands(int ispn__ = -1);
+        int num_occupied_bands(int ispn__ = -1)
+        {
+            int nbnd{0};
+
+            if (ctx_.num_mag_dims() == 3) {
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    if (band_occupancy(j) * weight() > 1e-14) {
+                        nbnd++;
+                    }
+                }
+                return nbnd;
+            }
+
+            if (!(ispn__ == 0 || ispn__ == 1)) {
+                TERMINATE("wrong spin channel");
+            }
+
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                int j = i + ispn__ * ctx_.num_fv_states();
+                if (band_occupancy(j) * weight() > 1e-14) {
+                    nbnd++;
+                }
+            }
+            return nbnd;
+        }
 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec() const
@@ -270,17 +300,17 @@ class K_point
         {
             switch (ctx_.esm_type())
             {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
+                case electronic_structure_method_t::full_potential_lapwlo:
+                case electronic_structure_method_t::full_potential_pwlo:
                 {
                     return unit_cell_.mt_basis_size() + num_gkvec();
                     break;
                 }
 
                 //TODO case paw_pseudopotential think about
-                case paw_pseudopotential:
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
+                case electronic_structure_method_t::paw_pseudopotential:
+                case electronic_structure_method_t::ultrasoft_pseudopotential:
+                case electronic_structure_method_t::norm_conserving_pseudopotential:
                 {
                     return num_gkvec();
                     break;
@@ -293,15 +323,15 @@ class K_point
         {
             switch (ctx_.esm_type())
             {
-                case full_potential_lapwlo:
-                case full_potential_pwlo:
+                case electronic_structure_method_t::full_potential_lapwlo:
+                case electronic_structure_method_t::full_potential_pwlo:
                 {
                     return unit_cell_.mt_basis_size();
                     break;
                 }
-                case paw_pseudopotential:
-                case ultrasoft_pseudopotential:
-                case norm_conserving_pseudopotential:
+                case electronic_structure_method_t::paw_pseudopotential:
+                case electronic_structure_method_t::ultrasoft_pseudopotential:
+                case electronic_structure_method_t::norm_conserving_pseudopotential:
                 {
                     return 0;
                     break;
@@ -369,16 +399,14 @@ class K_point
             return weight_;
         }
 
-        template <bool mt_spheres>
-        inline Wave_functions<mt_spheres>& fv_states()
+        inline wave_functions& fv_states()
         {
-            return *reinterpret_cast<Wave_functions<mt_spheres>*>(fv_states_);
+            return *fv_states_;
         }
 
-        template <bool mt_spheres>
-        inline Wave_functions<mt_spheres>& spinor_wave_functions(int ispn__)
+        inline wave_functions& spinor_wave_functions(int ispn__)
         {
-            return *reinterpret_cast<Wave_functions<mt_spheres>*>(spinor_wave_functions_[ispn__]);
+            return *(spinor_wave_functions_[ispn__]);
         }
 
         inline vector3d<double> vk() const
@@ -444,6 +472,12 @@ class K_point
             return gklo_basis_descriptors_row_[idx];
         }
 
+        inline gklo_basis_descriptor const& gklo_basis_descriptor_loc(int idx__) const
+        {
+            assert(idx__ >= 0 && idx__ < (int)gklo_basis_descriptors_loc_.size());
+            return gklo_basis_descriptors_loc_[idx__];
+        }
+
         inline int num_ranks_row() const
         {
             return num_ranks_row_;
@@ -499,9 +533,14 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline Wave_functions<true>& fv_eigen_vectors()
+        inline matrix_storage<double_complex, matrix_storage_t::block_cyclic>& fv_eigen_vectors()
         {
             return *fv_eigen_vectors_;
+        }
+
+        inline wave_functions& fv_eigen_vectors_slab()
+        {
+            return *fv_eigen_vectors_slab_;
         }
         
         inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
@@ -519,30 +558,14 @@ class K_point
             std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(double));
         }
 
-        std::vector<double> get_pw_ekin() const
-        {
-            std::vector<double> pw_ekin(num_gkvec());
-            for (int igk = 0; igk < num_gkvec(); igk++)
-            {
-                auto gv = unit_cell_.reciprocal_lattice_vectors() * gkvec_.gvec_shifted(igk);
-                pw_ekin[igk] = 0.5 * (gv * gv);
-            }
-            return pw_ekin; 
-        }
-
         inline Gvec const& gkvec() const
         {
             return gkvec_;
         }
 
-        inline Gvec_FFT_distribution const& gkvec_fft_distr() const
+        inline Gvec_partition const& gkvec_vloc() const
         {
-            return *gkvec_fft_distr_;
-        }
-
-        inline Gvec_FFT_distribution const& gkvec_fft_distr_vloc() const
-        {
-            return *gkvec_fft_distr_vloc_;
+            return *gkvec_vloc_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()
@@ -553,6 +576,16 @@ class K_point
         inline Matching_coefficients* alm_coeffs_col()
         {
             return alm_coeffs_col_;
+        }
+
+        inline Matching_coefficients const& alm_coeffs() const
+        {
+            return *alm_coeffs_;
+        }
+
+        inline Matching_coefficients const& alm_coeffs_loc() const
+        {
+            return *alm_coeffs_loc_;
         }
 
         inline Communicator const& comm() const
@@ -575,9 +608,14 @@ class K_point
             return p_mtrx_(xi1, xi2, iat);
         }
 
+        inline mdarray<double_complex, 3>& p_mtrx()
+        {
+            return p_mtrx_;
+        }
+
         inline int num_gkvec_loc() const
         {
-            return gkvec_.num_gvec(comm_.rank());
+            return gkvec_.gvec_count(comm_.rank());
         }
 
         Beta_projectors& beta_projectors()
@@ -585,6 +623,15 @@ class K_point
             return *beta_projectors_;
         }
 };
+
+#include "K_point/generate_fv_states.hpp"
+#include "K_point/generate_spinor_wave_functions.hpp"
+#include "K_point/generate_gkvec.hpp"
+#include "K_point/build_gklo_basis_descriptors.hpp"
+#include "K_point/distribute_basis_index.hpp"
+#include "K_point/initialize.hpp"
+#include "K_point/k_point.hpp"
+#include "K_point/test_fv_states.hpp"
 
 }
 

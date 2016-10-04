@@ -5,66 +5,84 @@ using namespace sirius;
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
                int use_gpu__, double gpu_workload__)
 {
+    device_t pu = static_cast<device_t>(use_gpu__);
+    Simulation_parameters params;
+    params.set_processing_unit(pu);
+    params.set_esm_type("ultrasoft_pseudopotential");
+
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     FFT3D_grid fft_box(2.01 * cutoff__, M);
 
-    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), static_cast<processing_unit_t>(use_gpu__), gpu_workload__);
+    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu, gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), mpi_grid.communicator(1 << 0), false);
 
-    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
-
-    std::vector<double> pw_ekin(gvec.num_gvec(), 0);
     std::vector<double> veff(fft.local_size(), 2.0);
 
     if (mpi_comm_world().rank() == 0)
     {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
-        printf("local number of G-vectors: %i\n", gvec.num_gvec(0));
+        printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
         printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
-        printf("number of z-columns: %i\n", gvec.num_z_cols());
+        printf("number of z-columns: %i\n", gvec.num_zcol());
         if (use_gpu__) printf("GPU workload: %f\n", gpu_workload__);
     }
 
-    fft.prepare();
+    fft.prepare(gvec.partition());
     
-    Hloc_operator hloc(fft, gvec_fft_distr, veff);
+    Hloc_operator hloc(fft, gvec.partition(), mpi_grid.communicator(1 << 1), veff);
 
-    int num_gvec_loc = gvec.num_gvec(mpi_grid.communicator().rank());
-
-    Wave_functions<false> phi(num_gvec_loc, 4 * num_bands__, CPU);
-    for (int i = 0; i < 4 * num_bands__; i++)
-    {
-        for (int j = 0; j < phi.num_gvec_loc(); j++)
-        {
-            phi(j, i) = type_wrapper<double_complex>::random();
+    wave_functions phi(params, mpi_comm_world(), gvec, 4 * num_bands__);
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
+            phi.pw_coeffs().prime(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    Wave_functions<false> hphi(num_gvec_loc, 4 * num_bands__, CPU);
+    wave_functions hphi(params, mpi_comm_world(), gvec, 4 * num_bands__);
+
+    #ifdef __GPU
+    if (pu == GPU) {
+        phi.pw_coeffs().allocate_on_device();
+        phi.pw_coeffs().copy_to_device(0, 4 * num_bands__);
+        hphi.pw_coeffs().allocate_on_device();
+    }
+    #endif
     
     mpi_comm_world().barrier();
     runtime::Timer t1("h_loc");
     for (int i = 0; i < 4; i++)
     {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
+        #ifdef __GPU
+        if (pu == GPU && !fft.gpu_only()) {
+            hphi.pw_coeffs().copy_to_host(i * num_bands__, num_bands__);
+        }
+        #endif
         hloc.apply(0, hphi, i * num_bands__, num_bands__);
     }
     mpi_comm_world().barrier();
     t1.stop();
 
-    double diff = 0;
-    for (int i = 0; i < 4 * num_bands__; i++)
-    {
-        for (int j = 0; j < phi.num_gvec_loc(); j++)
-        {
-            diff += std::abs(2.0 * phi(j, i) - hphi(j, i));
+    #ifdef __GPU
+    if (pu == GPU && fft.gpu_only()) {
+        hphi.pw_coeffs().copy_to_host(0, 4 * num_bands__);
+    }
+    #endif
+
+    double diff{0};
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
+            diff += std::abs(2.0 * phi.pw_coeffs().prime(j, i) - hphi.pw_coeffs().prime(j, i));
         }
+    }
+    if (diff != diff) {
+        TERMINATE("NaN");
     }
     mpi_comm_world().allreduce(&diff, 1);
     if (mpi_comm_world().rank() == 0)
@@ -85,8 +103,7 @@ int main(int argn, char** argv)
     args.register_key("--gpu_workload=", "{double} worload of GPU");
 
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
@@ -98,7 +115,9 @@ int main(int argn, char** argv)
     auto gpu_workload = args.value<double>("gpu_workload", 0.8);
 
     sirius::initialize(1);
-    test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
+    for (int i = 0; i < 10; i++) {
+        test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
+    }
     mpi_comm_world().barrier();
     runtime::Timer::print();
     runtime::Timer::print_all();

@@ -240,23 +240,25 @@ struct mt_basis_descriptor
 
 struct block_data_descriptor
 {
-    int num_ranks;
+    int num_ranks{-1};
     std::vector<int> counts;
     std::vector<int> offsets;
 
-    block_data_descriptor() : num_ranks(-1)
+    block_data_descriptor()
     {
     }
 
     block_data_descriptor(int num_ranks__) : num_ranks(num_ranks__)
     {
-        counts = std::vector<int>(num_ranks, 0);
+        counts  = std::vector<int>(num_ranks, 0);
         offsets = std::vector<int>(num_ranks, 0);
     }
 
     void calc_offsets()
     {
-        for (int i = 1; i < num_ranks; i++) offsets[i] = offsets[i - 1] + counts[i - 1];
+        for (int i = 1; i < num_ranks; i++) {
+            offsets[i] = offsets[i - 1] + counts[i - 1];
+        }
     }
 };
 
@@ -264,6 +266,8 @@ struct z_column_descriptor
 {
     int x;
     int y;
+
+    /// Z-coordinates of the column.
     std::vector<int> z;
 
     z_column_descriptor()

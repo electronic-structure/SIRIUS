@@ -10,9 +10,7 @@ void test_fft(double cutoff__)
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
 
-    fft.prepare();
-    
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), false, false);
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), mpi_comm_world(), false);
 
     if (mpi_comm_world().rank() == 0)
     {
@@ -20,18 +18,20 @@ void test_fft(double cutoff__)
     }
     MPI_grid mpi_grid(mpi_comm_world());
 
-    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_grid);
-    printf("num_gvec_fft: %i\n", gvec_fft_distr.num_gvec_fft());
-    printf("offset_gvec_fft: %i\n", gvec_fft_distr.offset_gvec_fft());
+    printf("num_gvec_fft: %i\n", gvec.partition().gvec_count_fft());
+    printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
+
+    fft.prepare(gvec.partition());
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
-    for (int ig = 0; ig < gvec.num_gvec(); ig++)
-    {
-        auto v = gvec[ig];
-        if (mpi_comm_world().rank() == 0) printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+    for (int ig = 0; ig < gvec.num_gvec(); ig++) {
+        auto v = gvec.gvec(ig);
+        if (mpi_comm_world().rank() == 0) {
+            printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+        }
         f.zero();
         f[ig] = 1.0;
-        fft.transform<1>(gvec_fft_distr, &f[gvec_fft_distr.offset_gvec_fft()]);
+        fft.transform<1>(gvec.partition(), &f[gvec.partition().gvec_offset_fft()]);
 
         double diff = 0;
         /* loop over 3D array (real space) */

@@ -101,7 +101,7 @@ void Force::ibs_force(Simulation_context& ctx__,
     dmatrix<double_complex> dm(ctx__.num_fv_states(), ctx__.num_fv_states(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
-    auto& fv_evec = kp__->fv_eigen_vectors().coeffs();
+    auto& fv_evec = kp__->fv_eigen_vectors().prime();
 
     dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
@@ -129,7 +129,7 @@ void Force::ibs_force(Simulation_context& ctx__,
         kp__->alm_coeffs_col()->generate(ia, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
-        band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h.panel(), o.panel());
+        band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
 
         /* apply MT Hamiltonian to column coefficients */
         band__->apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
@@ -178,7 +178,7 @@ void Force::ibs_force(Simulation_context& ctx__,
                     int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
                                                       kp__->gklo_basis_descriptor_col(igk_col).gvec);
 
-                    vector3d<double> vg = ctx__.gvec().cart(ig12);
+                    vector3d<double> vg = ctx__.gvec().gvec_cart(ig12);
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
                     o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                 }

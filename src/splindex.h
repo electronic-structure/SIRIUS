@@ -25,6 +25,9 @@
 #ifndef __SPLINDEX_H__
 #define __SPLINDEX_H__
 
+#include <algorithm>
+#include <vector>
+#include <sstream>
 #include <limits>
 
 enum splindex_t {block, block_cyclic};
@@ -48,6 +51,17 @@ class splindex_base
         splindex_base()
         {
         }
+
+        struct location_t
+        {
+            T local_index;
+            int rank;
+            location_t(T local_index__, int rank__)
+                : local_index(local_index__),
+                  rank(rank__)
+            {
+            }
+        };
 
     public:
 
@@ -89,16 +103,14 @@ class splindex<block, T>: public splindex_base<T>
         {
             this->global_index_size_ = global_index_size__;
 
-            if (num_ranks__ < 0)
-            {
+            if (num_ranks__ < 0) {
                 std::stringstream s;
                 s << "wrong number of ranks: " << num_ranks__;
                 throw std::runtime_error(s.str());
             }
             this->num_ranks_ = num_ranks__;
 
-            if (rank__ < 0 || rank__ >= num_ranks__)
-            {
+            if (rank__ < 0 || rank__ >= num_ranks__) {
                 std::stringstream s;
                 s << "wrong rank: " << rank__;
                 throw std::runtime_error(s.str());
@@ -122,14 +134,15 @@ class splindex<block, T>: public splindex_base<T>
         }
 
         /// Return "local index, rank" pair for a global index.
-        inline std::pair<T, int> location(T idxglob__) const
+        inline typename splindex_base<T>::location_t location(T idxglob__) const
         {
             assert(idxglob__ < this->global_index_size_);
 
             int rank = int(idxglob__ / block_size_);
             T idxloc = idxglob__ - rank * block_size_;
 
-            return std::pair<T, int>(idxloc, rank);
+            //return std::pair<T, int>(idxloc, rank);
+            return typename splindex_base<T>::location_t(idxloc, rank);
         }
 
         /// Return local size of the split index for an arbitrary rank.
@@ -138,15 +151,15 @@ class splindex<block, T>: public splindex_base<T>
             assert(rank__ >= 0 && rank__ < this->num_ranks_);
             
             int n = static_cast<int>(this->global_index_size_ / block_size_);
-            if (rank__ < n)
-            {
+            if (rank__ < n) {
                 return block_size_;
             }
-            else if (rank__ == n)
-            {
+            else if (rank__ == n) {
                 return this->global_index_size_ - rank__ * block_size_;
             }
-            else return 0;
+            else {
+                return 0;
+            }
         }
 
         /// Return local size of the split index for a current rank.
@@ -158,13 +171,13 @@ class splindex<block, T>: public splindex_base<T>
         /// Return rank which holds the element with the given global index.
         inline int local_rank(T idxglob__) const
         {
-            return location(idxglob__).second;
+            return location(idxglob__).rank;
         }
         
         /// Return local index of the element for the rank which handles the given global index.
         inline T local_index(T idxglob__) const
         {
-            return location(idxglob__).first;
+            return location(idxglob__).local_index;
         }
         
         /// Return global index of an element by local index and rank.
@@ -197,15 +210,19 @@ class splindex<block, T>: public splindex_base<T>
         inline std::vector<T> offsets() const
         {
             std::vector<T> v(this->num_ranks_);
-            for (int i = 0; i < this->num_ranks_; i++) v[i] = global_offset(i);
-            return v;
+            for (int i = 0; i < this->num_ranks_; i++) {
+                v[i] = global_offset(i);
+            }
+            return std::move(v);
         }
 
         inline std::vector<T> counts() const
         {
             std::vector<T> v(this->num_ranks_);
-            for (int i = 0; i < this->num_ranks_; i++) v[i] = local_size(i);
-            return v;
+            for (int i = 0; i < this->num_ranks_; i++) {
+                v[i] = local_size(i);
+            }
+            return std::move(v);
         }
 };
 
@@ -223,24 +240,21 @@ class splindex<block_cyclic, T>: public splindex_base<T>
         {
             this->global_index_size_ = global_index_size__;
 
-            if (num_ranks__ < 0)
-            {
+            if (num_ranks__ < 0) {
                 std::stringstream s;
                 s << "wrong number of ranks: " << num_ranks__;
                 throw std::runtime_error(s.str());
             }
             this->num_ranks_ = num_ranks__;
 
-            if (rank__ < 0 || rank__ >= num_ranks__)
-            {
+            if (rank__ < 0 || rank__ >= num_ranks__) {
                 std::stringstream s;
                 s << "wrong rank: " << rank__;
                 throw std::runtime_error(s.str());
             }
             this->rank_ = rank__;
 
-            if (block_size__ <= 0)
-            {
+            if (block_size__ <= 0) {
                 std::stringstream s;
                 s << "wrong block size: " << block_size__;
                 throw std::runtime_error(s.str());
@@ -262,7 +276,7 @@ class splindex<block_cyclic, T>: public splindex_base<T>
         }
 
         /// Return "local index, rank" pair for a global index.
-        inline std::pair<T, int> location(T idxglob__) const
+        inline typename splindex_base<T>::location_t location(T idxglob__) const
         {
             assert(idxglob__ < this->global_index_size_);
             
@@ -275,7 +289,7 @@ class splindex<block_cyclic, T>: public splindex_base<T>
             /* corresponding rank */
             int rank = static_cast<int>(num_blocks % this->num_ranks_);
 
-            return std::pair<T, int>(idxloc, rank);
+            return typename splindex_base<T>::location_t(idxloc, rank);
         }
 
         /// Return local size of the split index for an arbitrary rank.
@@ -290,12 +304,10 @@ class splindex<block_cyclic, T>: public splindex_base<T>
 
             int rank_offs = static_cast<int>(num_blocks % this->num_ranks_);
 
-            if (rank__ < rank_offs) 
-            {
+            if (rank__ < rank_offs) {
                 n += block_size_;
             }
-            else if (rank__ == rank_offs)
-            {
+            else if (rank__ == rank_offs) {
                 n += this->global_index_size_ % block_size_;
             }
             return n;
@@ -310,13 +322,13 @@ class splindex<block_cyclic, T>: public splindex_base<T>
         /// Return rank which holds the element with the given global index.
         inline int local_rank(T idxglob__) const
         {
-            return location(idxglob__).second;
+            return location(idxglob__).rank;
         }
         
         /// Return local index of the element for the rank which handles the given global index.
         inline T local_index(T idxglob__) const
         {
-            return location(idxglob__).first;
+            return location(idxglob__).local_index;
         }
 
         inline T global_index(T idxloc__, int rank__) const

@@ -50,9 +50,11 @@ class BLACS_grid
             blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
             
             std::vector<int> map_ranks(num_ranks_row__ * num_ranks_col__);
-            for (int j = 0; j < num_ranks_col__; j++) 
-                for (int i = 0; i < num_ranks_row__; i++)
+            for (int j = 0; j < num_ranks_col__; j++) {
+                for (int i = 0; i < num_ranks_row__; i++) {
                     map_ranks[i + j * num_ranks_row__] = mpi_grid_->communicator().cart_rank({i, j});
+                }
+            }
 
             /* create context */
             blacs_context_ = blacs_handler_;
@@ -62,8 +64,7 @@ class BLACS_grid
             int nrow1, ncol1, irow1, icol1;
             linalg_base::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
 
-            if (rank_row_ != irow1 || rank_col_ != icol1 || num_ranks_row__ != nrow1 || num_ranks_col__ != ncol1) 
-            {
+            if (rank_row_ != irow1 || rank_col_ != icol1 || num_ranks_row__ != nrow1 || num_ranks_col__ != ncol1) {
                 std::stringstream s;
                 s << "wrong grid" << std::endl
                   << "            row | col | nrow | ncol " << std::endl

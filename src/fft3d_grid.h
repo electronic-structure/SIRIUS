@@ -14,19 +14,16 @@ class FFT3D_grid
         /// Find smallest optimal grid size starting from n.
         int find_grid_size(int n)
         {
-            while (true)
-            {
+            while (true) {
                 int m = n;
-                for (int k = 2; k <= 5; k++)
-                {
-                    while (m % k == 0) m /= k;
+                for (int k = 2; k <= 5; k++) {
+                    while (m % k == 0) {
+                        m /= k;
+                    }
                 }
-                if (m == 1) 
-                {
+                if (m == 1) {
                     return n;
-                }
-                else 
-                {
+                } else {
                     n++;
                 }
             }
@@ -34,8 +31,7 @@ class FFT3D_grid
 
         void find_grid_size(vector3d<int> initial_dims__)
         {
-            for (int i = 0; i < 3; i++)
-            {
+            for (int i = 0; i < 3; i++) {
                 grid_size_[i] = find_grid_size(initial_dims__[i]);
                 
                 grid_limits_[i].second = grid_size_[i] / 2;
@@ -89,6 +85,12 @@ class FFT3D_grid
             return vector3d<int>(i0__, i1__, i2__);
         }
 
+        inline int coord_by_gvec(int i__, int idim__) const
+        {
+            if (i__ < 0) i__ += grid_size_[idim__];
+            return i__;
+        }
+
         inline vector3d<int> gvec_by_coord(int x__, int y__, int z__) const
         {
             if (x__ > grid_limits_[0].second) x__ -= grid_size_[0];
@@ -96,6 +98,14 @@ class FFT3D_grid
             if (z__ > grid_limits_[2].second) z__ -= grid_size_[2];
 
             return vector3d<int>(x__, y__, z__);
+        }
+
+        inline int gvec_by_coord(int x__, int idim__) const
+        {
+            if (x__ > limits(idim__).second) {
+                x__ -= size(idim__);
+            }
+            return x__;
         }
         
         /// Linear index inside FFT buffer by grid coordinates.
@@ -110,7 +120,6 @@ class FFT3D_grid
             auto coord = coord_by_gvec(i0__, i1__, i2__);
             return index_by_coord(coord[0], coord[1], coord[2]);
         }
-
 };
 
 #endif

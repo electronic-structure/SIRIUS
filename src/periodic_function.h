@@ -102,7 +102,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         Periodic_function(Simulation_context& ctx__,
                           int angular_domain_size__,
                           int allocate_pw__)
-            : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec_fft_distr()),
+            : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec()),
               parameters_(ctx__),
               unit_cell_(ctx__.unit_cell()), 
               step_function_(ctx__.step_function()),
@@ -118,7 +118,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
             if (allocate_pw__) {
                 f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
-                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec_fft_distr().offset_gvec_fft()],
+                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
                                                                this->fft_->local_size());
             }
 
@@ -367,7 +367,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         inline complex_t& f_pw(vector3d<int> const& G__)
         {
-            return f_pw_(this->gvec_fft_distr().gvec().index_by_gvec(G__));
+            return f_pw_(this->gvec().index_by_gvec(G__));
         }
 
         double value(vector3d<double>& vc)
@@ -389,7 +389,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             } else {
                 double p = 0.0;
                 for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                    vector3d<double> vgc = gvec_.cart(ig);
+                    vector3d<double> vgc = gvec_.gvec_cart(ig);
                     p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
                 }
                 return p;
@@ -423,7 +423,8 @@ class Periodic_function: public Smooth_periodic_function<T>
             /* collect all PW coefficients */
             if (direction__ == -1) {
                 runtime::Timer t("sirius::Periodic_function::fft_transform|comm");
-                this->fft_->comm().allgather(&f_pw_(0), this->gvec_fft_distr().offset_gvec_fft(), this->gvec_fft_distr().num_gvec_fft());
+                this->fft_->comm().allgather(&f_pw_(0), this->gvec().partition().gvec_offset_fft(),
+                                             this->gvec().partition().gvec_count_fft());
             }
         }
         

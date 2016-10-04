@@ -50,11 +50,54 @@ void f2()
     #endif
 }
 
+void f3()
+{   
+    for (int i = 0; i < 100; i++) {
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            mdarray<double_complex, 2> a(100, 100);
+            a(0, 0) = double_complex(tid, tid);
+        }
+        if (mdarray_mem_count::allocated().load() != 0) {
+            printf("oops! mdarray_mem_count class is not thread safe\n");
+        }
+    }
+}
+
+void f4()
+{
+    mdarray<int, 1> buf;
+
+    buf = mdarray<int, 1>(100, memory_t::host | memory_t::device, "buf");
+
+    buf = mdarray<int, 1>(200, memory_t::host | memory_t::device, "buf");
+    
+    //buf = mdarray<int, 1>(300, memory_t::host | memory_t::device, "buf");
+
+
+}
+
+void f5()
+{
+    mdarray<double, 3> a;
+
+    if (a.size(0) != 0 || a.size(1) != 0 || a.size(2) != 0) {
+        printf("wrong sizes\n");
+    }
+}
+
 int main(int argn, char **argv)
 {
     sirius::initialize(1);
 
     f2();
+
+    f3();
+
+    f4();
+
+    f5();
 
     #ifndef NDEBUG
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;

@@ -65,17 +65,16 @@ void Potential::poisson_sum_G(int lmmax__,
     if (ctx_.processing_unit() == GPU)
     {
         #ifdef __GPU
-        auto gvec = mdarray<int, 2>(3, ngv_loc);
+        auto gvec = mdarray<int, 2>(3, ngv_loc, memory_t::host | memory_t::device);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec()[spl_num_gvec_[igloc]][x];
+            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec().gvec(spl_num_gvec_[igloc])[x];
         }
-        gvec.allocate_on_device();
         gvec.copy_to_device();
 
-        phase_factors.allocate_on_device();
-        zm.allocate_on_device();
-        tmp.allocate_on_device();
+        phase_factors.allocate(memory_t::device);
+        zm.allocate(memory_t::device);
+        tmp.allocate(memory_t::device);
 
         double_complex alpha(1, 0);
         double_complex beta(0, 0);
@@ -91,7 +90,7 @@ void Potential::poisson_sum_G(int lmmax__,
                 auto pos = unit_cell_.atom(ia).position();
                 for (int x = 0; x < 3; x++) atom_pos(x, i) = pos[x];
             }
-            atom_pos.allocate_on_device();
+            atom_pos.allocate(memory_t::device);
             atom_pos.copy_to_device();
 
             generate_phase_factors_gpu(ngv_loc, na, gvec.at<GPU>(), atom_pos.at<GPU>(), phase_factors.at<GPU>());

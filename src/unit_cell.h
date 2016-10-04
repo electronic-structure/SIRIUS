@@ -141,27 +141,25 @@ class Unit_cell
         std::vector<mt_basis_descriptor> mt_lo_basis_descriptors_; 
         
         /// Total number of local orbital basis functions.
-        int mt_lo_basis_size_;
+        int mt_lo_basis_size_{0};
 
         /// Maximum AW basis size across all atoms.
-        int max_mt_aw_basis_size_;
+        int max_mt_aw_basis_size_{0};
 
         /// List of nearest neighbours for each atom.
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
 
         /// Minimum muffin-tin radius.
-        double min_mt_radius_;
+        double min_mt_radius_{0};
         
         /// Maximum muffin-tin radius.
-        double max_mt_radius_;
+        double max_mt_radius_{0};
         
         /// Maximum orbital quantum number of radial functions between all atom types.
         int lmax_{-1};
 
         Communicator_bundle comm_bundle_atoms_;
         
-        mdarray<double, 2> atom_pos_;
-
         std::unique_ptr<Symmetry> symmetry_;
 
         Communicator const& comm_;
@@ -530,11 +528,6 @@ class Unit_cell
         inline nearest_neighbour_descriptor const& nearest_neighbour(int i, int ia) const
         {
             return nearest_neighbours_[ia][i];
-        }
-
-        inline mdarray<double, 2>& atom_pos()
-        {
-            return atom_pos_;
         }
 
         inline mt_basis_descriptor const& mt_aw_basis_descriptor(int idx) const

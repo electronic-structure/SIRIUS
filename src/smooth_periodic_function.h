@@ -41,7 +41,7 @@ class Smooth_periodic_function
         FFT3D* fft_{nullptr};
 
         /// Distribution of G-vectors.
-        Gvec_FFT_distribution const* gvec_fft_distr_{nullptr};
+        Gvec const* gvec_{nullptr};
         
         /// Function on the regular real-space grid.
         mdarray<T, 1> f_rg_;
@@ -61,12 +61,12 @@ class Smooth_periodic_function
             f_rg_ = mdarray<T, 1>(fft_->local_size());
         }
 
-        Smooth_periodic_function(FFT3D& fft__, Gvec_FFT_distribution const& gvec_fft_distr__)
+        Smooth_periodic_function(FFT3D& fft__, Gvec const& gvec__)
             : fft_(&fft__),
-              gvec_fft_distr_(&gvec_fft_distr__)
+              gvec_(&gvec__)
         {
             f_rg_ = mdarray<T, 1>(fft_->local_size());
-            f_pw_local_ = mdarray<double_complex, 1>(gvec_fft_distr_->num_gvec_fft());
+            f_pw_local_ = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft());
         }
 
         inline T& f_rg(int ir__)
@@ -96,30 +96,30 @@ class Smooth_periodic_function
             return *fft_;
         }
 
-        Gvec_FFT_distribution const& gvec_fft_distr() const
+        Gvec const& gvec() const
         {
-            assert(gvec_fft_distr_ != nullptr);
-            return *gvec_fft_distr_;
+            assert(gvec_ != nullptr);
+            return *gvec_;
         }
 
         void fft_transform(int direction__)
         {
             runtime::Timer t("sirius::Smooth_periodic_function::fft_transform");
 
-            assert(gvec_fft_distr_ != nullptr);
+            assert(gvec_ != nullptr);
 
             switch (direction__)
             {
                 case 1:
                 {
-                    fft_->transform<1>(gvec_fft_distr(), &f_pw_local_(0));
+                    fft_->transform<1>(gvec_->partition(), &f_pw_local_(0));
                     fft_->output(&f_rg_(0));
                     break;
                 }
                 case -1:
                 {
                     fft_->input(&f_rg_(0));
-                    fft_->transform<-1>(gvec_fft_distr(), &f_pw_local_(0));
+                    fft_->transform<-1>(gvec_->partition(), &f_pw_local_(0));
                     break;
                 }
                 default:
@@ -148,7 +148,7 @@ class Smooth_periodic_function_gradient
 
         Smooth_periodic_function_gradient(Smooth_periodic_function<T>& f__) : f_(&f__)
         {
-            for (int x: {0, 1, 2}) grad_f_[x] = Smooth_periodic_function<T>(f_->fft(), f_->gvec_fft_distr());
+            for (int x: {0, 1, 2}) grad_f_[x] = Smooth_periodic_function<T>(f_->fft(), f_->gvec());
         }
 
         Smooth_periodic_function<T>& operator[](const int idx__)
@@ -170,11 +170,11 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
     Smooth_periodic_function_gradient<double> g(f__);
 
     #pragma omp parallel for
-    for (int igloc = 0; igloc < f__.gvec_fft_distr().num_gvec_fft(); igloc++)
+    for (int igloc = 0; igloc < f__.gvec().partition().gvec_count_fft(); igloc++)
     {
-        int ig = f__.gvec_fft_distr().offset_gvec_fft() + igloc;
+        int ig = f__.gvec().partition().gvec_offset_fft() + igloc;
 
-        auto G = f__.gvec_fft_distr().gvec().cart(ig);
+        auto G = f__.gvec().gvec_cart(ig);
         for (int x: {0, 1, 2}) g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
     }
     return std::move(g);
@@ -183,14 +183,14 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 /// Laplacian of the function in the plane-wave domain.
 inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
 {
-    Smooth_periodic_function<double> g(f__.fft(), f__.gvec_fft_distr());
+    Smooth_periodic_function<double> g(f__.fft(), f__.gvec());
     
     #pragma omp parallel for
-    for (int igloc = 0; igloc < f__.gvec_fft_distr().num_gvec_fft(); igloc++)
+    for (int igloc = 0; igloc < f__.gvec().partition().gvec_count_fft(); igloc++)
     {
-        int ig = f__.gvec_fft_distr().offset_gvec_fft() + igloc;
+        int ig = f__.gvec().partition().gvec_offset_fft() + igloc;
 
-        auto G = f__.gvec_fft_distr().gvec().cart(ig);
+        auto G = f__.gvec().gvec_cart(ig);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
     }
 
@@ -203,7 +203,7 @@ Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad
 
 {
     assert(&grad_f__.f().fft() == &grad_g__.f().fft());
-    assert(&grad_f__.f().gvec_fft_distr() == &grad_g__.f().gvec_fft_distr());
+    assert(&grad_f__.f().gvec() == &grad_g__.f().gvec());
     
     Smooth_periodic_function<T> result(grad_f__.f().fft());
 
@@ -219,6 +219,140 @@ Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad
     }
 
     return std::move(result);
+}
+
+namespace experimental {
+template <typename T>
+class Smooth_periodic_function
+{
+    protected:
+
+        /// FFT driver.
+        FFT3D* fft_{nullptr};
+
+        /// Distribution of G-vectors.
+        Gvec const* gvec_{nullptr};
+
+        Communicator const* comm_{nullptr};
+
+        std::unique_ptr<Communicator> comm_local_{nullptr};
+        
+        /// Function on the regular real-space grid.
+        mdarray<T, 1> f_rg_;
+        
+        /// Local set of plane-wave expansion coefficients.
+        mdarray<double_complex, 1> f_pw_local_;
+
+        /// Storage of the PW coefficients for the FFT transformation.
+        mdarray<double_complex, 1> f_pw_fft_;
+
+        /// Distribution of G-vectors inside FFT slab.
+        block_data_descriptor gvec_fft_slab_;
+
+    public:
+        
+        /// Default constructor.
+        Smooth_periodic_function() 
+        {
+        }
+
+        Smooth_periodic_function(FFT3D& fft__, Gvec const& gvec__, Communicator const& comm__)
+            : fft_(&fft__),
+              gvec_(&gvec__),
+              comm_(&comm__)
+        {
+            f_rg_ = mdarray<T, 1>(fft_->local_size());
+            f_pw_fft_ = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft());
+            f_pw_local_ = mdarray<double_complex, 1>(gvec_->gvec_count(comm_->rank()));
+
+            /* find orthogonal communicator to the FFT communicator */
+            int n = comm_->size() / fft_->comm().size();
+
+            comm_local_ = std::unique_ptr<Communicator>(new Communicator());
+
+            MPI_Comm_split(comm_->mpi_comm(), fft_->comm().rank(), comm_->rank() % n, &comm_local_->mpi_comm());
+
+            assert(comm_local_->size() == n);
+
+            gvec_fft_slab_ = block_data_descriptor(comm_local_->size());
+            for (int i = 0; i < comm_local_->size(); i++) {
+                gvec_fft_slab_.counts[i] = gvec_->gvec_count(fft_->comm().rank() * comm_local_->size() + i);
+            }
+            gvec_fft_slab_.calc_offsets();
+        }
+
+        inline T& f_rg(int ir__)
+        {
+            return f_rg_(ir__);
+        }
+
+        inline T const& f_rg(int ir__) const
+        {
+            return f_rg_(ir__);
+        }
+        
+        inline double_complex& f_pw_local(int ig__)
+        {
+            return f_pw_local_(ig__);
+        }
+
+        inline double_complex& f_pw_fft(int ig__)
+        {
+            return f_pw_fft_(ig__);
+        }
+
+        FFT3D& fft()
+        {
+            assert(fft_ != nullptr);
+            return *fft_;
+        }
+
+        FFT3D const& fft() const
+        {
+            assert(fft_ != nullptr);
+            return *fft_;
+        }
+
+        Gvec const& gvec() const
+        {
+            assert(gvec_ != nullptr);
+            return *gvec_;
+        }
+
+        void fft_transform(int direction__)
+        {
+            runtime::Timer t("sirius::Smooth_periodic_function::fft_transform");
+
+            assert(gvec_ != nullptr);
+
+            switch (direction__) {
+                case 1: {
+                    int rank = fft_->comm().rank() * comm_local_->size() + comm_local_->rank();
+                    /* collect scattered PW coefficients */
+                    comm_local_->allgather(f_pw_local_.at<CPU>(),
+                                           gvec_->gvec_count(rank),
+                                           f_pw_fft_.at<CPU>(),
+                                           gvec_fft_slab_.counts.data(), 
+                                           gvec_fft_slab_.offsets.data());
+
+                    fft_->transform<1>(gvec_->partition(), f_pw_fft_.at<CPU>());
+                    fft_->output(f_rg_.template at<CPU>());
+                    break;
+                }
+                case -1: {
+                    fft_->input(f_rg_.template at<CPU>());
+                    fft_->transform<-1>(gvec_->partition(), f_pw_fft_.at<CPU>());
+                    int count = gvec_fft_slab_.counts[comm_local_->rank()];
+                    int offset = gvec_fft_slab_.offsets[comm_local_->rank()];
+                    std::memcpy(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>(offset), count * sizeof(T));
+                    break;
+                }
+                default: {
+                    TERMINATE("wrong fft direction");
+                }
+            }
+        }
+};
 }
 
 }

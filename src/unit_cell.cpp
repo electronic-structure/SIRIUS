@@ -34,29 +34,19 @@ void Unit_cell::initialize()
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
 
     /* initialize atom types */
-    max_num_mt_points_        = 0;
-    max_mt_basis_size_        = 0;
-    max_mt_radial_basis_size_ = 0;
-    max_mt_aw_basis_size_     = 0;
-    lmax_ = -1;
-    int offs_lo = 0;
-    for (int iat = 0; iat < num_atom_types(); iat++)
-    {
+    int offs_lo{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
         atom_type(iat).init(offs_lo);
         max_num_mt_points_        = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
         max_mt_basis_size_        = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
         max_mt_aw_basis_size_     = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
-        lmax_ = std::max(lmax_, atom_type(iat).indexr().lmax());
+        lmax_                     = std::max(lmax_, atom_type(iat).indexr().lmax());
         offs_lo += atom_type(iat).mt_lo_basis_size(); 
     }
     
     /* find the charges */
-    total_nuclear_charge_ = 0;
-    num_core_electrons_ = 0;
-    num_valence_electrons_ = 0;
-    for (int i = 0; i < num_atoms(); i++)
-    {
+    for (int i = 0; i < num_atoms(); i++) {
         total_nuclear_charge_ += atom(i).zn();
         num_core_electrons_ += atom(i).type().num_core_electrons();
         num_valence_electrons_ += atom(i).type().num_valence_electrons();
@@ -64,11 +54,7 @@ void Unit_cell::initialize()
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
     
     /* initialize atoms */
-    mt_basis_size_ = 0;
-    mt_aw_basis_size_ = 0;
-    mt_lo_basis_size_ = 0;
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < num_atoms(); ia++) {
         atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
@@ -793,7 +779,8 @@ std::string Unit_cell::chemical_formula()
     return name;
 }
 
-std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const
+std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__,
+                                                              Gvec const& gvec__) const
 {
     PROFILE_WITH_TIMER("sirius::Unit_cell::make_periodic_function");
 
@@ -806,15 +793,13 @@ std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>
     splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
 
     #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
-    {
+    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++) {
         int ig = spl_ngv[igloc];
         int igs = gvec__.shell(ig);
 
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
+        for (int ia = 0; ia < num_atoms(); ia++) {
             int iat = atom(ia).type_id();
-            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__[ig] * atom(ia).position())));
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
             f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
         }
     }

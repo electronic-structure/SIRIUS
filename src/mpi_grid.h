@@ -186,7 +186,7 @@ class MPI_grid
 
     public:
 
-        MPI_grid(std::vector<int> const& dimensions__,
+        MPI_grid(std::vector<int> dimensions__,
                  Communicator const& parent_communicator__) 
             : dimensions_(dimensions__),
               parent_communicator_(parent_communicator__)

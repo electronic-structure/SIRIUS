@@ -40,7 +40,7 @@ enum class spin_block_t {nm, uu, ud, dd, du};
 //enum coordinates_t {cartesian, fractional};
 
 /// Type of electronic structure methods.
-enum electronic_structure_method_t 
+enum class electronic_structure_method_t 
 {
     /// Full potential linearized augmented plane waves with local orbitals.
     full_potential_lapwlo, 

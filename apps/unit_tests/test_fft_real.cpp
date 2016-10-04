@@ -4,22 +4,20 @@
 
 using namespace sirius;
 
-void test1(vector3d<int> const& dims__, double cutoff__)
+void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 {
+    printf("test1\n");
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
     FFT3D_grid fft_grid(cutoff__, M);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+    FFT3D fft(fft_grid, mpi_comm_world(), pu__);
 
-    fft.prepare();
+    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), false);
+    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, false);
-    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, true);
-
-    Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_comm_world());
-    Gvec_FFT_distribution gvec_r_fft_distr(gvec_r, mpi_comm_world());
+    //Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_comm_world());
 
     if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1)
     {
@@ -27,14 +25,16 @@ void test1(vector3d<int> const& dims__, double cutoff__)
         exit(1);
     }
 
-    printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
-    printf("num_gvec_loc: %i %i\n", gvec.num_gvec(mpi_comm_world().rank()), gvec_r.num_gvec(mpi_comm_world().rank()));
-    printf("num_z_col: %i, num_z_col_reduced: %i\n", gvec.num_z_cols(), gvec_r.num_z_cols());
+    fft.prepare(gvec_r.partition());
 
-    mdarray<double_complex, 1> phi(gvec_r_fft_distr.num_gvec_fft());
-    for (int i = 0; i < gvec_r_fft_distr.num_gvec_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
+    printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
+    printf("num_gvec_loc: %i %i\n", gvec.gvec_count(mpi_comm_world().rank()), gvec_r.gvec_count(mpi_comm_world().rank()));
+    printf("num_z_col: %i, num_z_col_reduced: %i\n", gvec.num_zcol(), gvec_r.num_zcol());
+
+    mdarray<double_complex, 1> phi(gvec_r.partition().gvec_count_fft());
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
     phi(0) = 1.0;
-    fft.transform<1>(gvec_r_fft_distr, &phi[0]);
+    fft.transform<1>(gvec_r.partition(), &phi[0]);
 
     for (int i = 0; i < fft.local_size(); i++)
     {
@@ -44,12 +44,12 @@ void test1(vector3d<int> const& dims__, double cutoff__)
             exit(1);
         }
     }
-    mdarray<double_complex, 1> phi1(gvec_r_fft_distr.num_gvec_fft());
-    fft.transform<-1>(gvec_r_fft_distr, &phi1[0]);
+    mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft());
+    fft.transform<-1>(gvec_r.partition(), &phi1[0]);
 
     double rms = 0;
-    for (int i = 0; i < gvec_r_fft_distr.num_gvec_fft(); i++) rms += std::pow(std::abs(phi(i) - phi1(i)), 2);
-    rms = std::sqrt(rms / gvec_r_fft_distr.num_gvec_fft());
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) rms += std::pow(std::abs(phi(i) - phi1(i)), 2);
+    rms = std::sqrt(rms / gvec_r.partition().gvec_count_fft());
     printf("rms: %18.12f\n", rms);
     if (rms > 1e-13)
     {
@@ -60,27 +60,26 @@ void test1(vector3d<int> const& dims__, double cutoff__)
     fft.dismiss();
 }
 
-void test2(vector3d<int> const& dims__, double cutoff__)
+void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 {
+    printf("test2\n");
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
     FFT3D_grid fft_grid(cutoff__, M);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
+    FFT3D fft(fft_grid, mpi_comm_world(), pu__);
 
-    fft.prepare();
+    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
 
-    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), false, true);
+    fft.prepare(gvec_r.partition());
 
-    Gvec_FFT_distribution gvec_r_fft_distr(gvec_r, mpi_comm_world());
-
-    mdarray<double_complex, 1> phi1(gvec_r_fft_distr.num_gvec_fft());
-    mdarray<double_complex, 1> phi2(gvec_r_fft_distr.num_gvec_fft());
+    mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft());
+    mdarray<double_complex, 1> phi2(gvec_r.partition().gvec_count_fft());
     mdarray<double, 1> phi1_rg(fft.local_size());
     mdarray<double, 1> phi2_rg(fft.local_size());
 
-    for (int i = 0; i < gvec_r_fft_distr.num_gvec_fft(); i++)
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++)
     {
         phi1(i) = type_wrapper<double_complex>::random();
         phi2(i) = type_wrapper<double_complex>::random();
@@ -88,18 +87,19 @@ void test2(vector3d<int> const& dims__, double cutoff__)
     phi1(0) = 1.0;
     phi2(0) = 1.0;
 
-    fft.transform<1>(gvec_r_fft_distr, &phi1(0));
+    fft.transform<1>(gvec_r.partition(), &phi1(0));
     fft.output(&phi1_rg(0));
 
-    fft.transform<1>(gvec_r_fft_distr, &phi2(0));
+    fft.transform<1>(gvec_r.partition(), &phi2(0));
     fft.output(&phi2_rg(0));
 
-    fft.transform<1>(gvec_r_fft_distr, &phi1(0), &phi2(0));
+    fft.transform<1>(gvec_r.partition(), &phi1(0), &phi2(0));
 
-    for (int i = 0; i < fft.local_size(); i++)
-    {
-        if (std::abs(double_complex(phi1_rg(i), phi2_rg(i)) - fft.buffer(i)) > 1e-10)
-        {
+    mdarray<double_complex, 1> phi12_rg(fft.local_size());
+    fft.output(&phi12_rg(0));
+
+    for (int i = 0; i < fft.local_size(); i++) {
+        if (std::abs(double_complex(phi1_rg(i), phi2_rg(i)) - phi12_rg(i)) > 1e-10) {
             printf("functions don't match\n");
             printf("phi1: %18.10f\n", phi1_rg(i));
             printf("phi2: %18.10f\n", phi2_rg(i));
@@ -108,17 +108,21 @@ void test2(vector3d<int> const& dims__, double cutoff__)
         }
     }
 
-    mdarray<double_complex, 1> phi1_bt(gvec_r_fft_distr.num_gvec_fft());
-    mdarray<double_complex, 1> phi2_bt(gvec_r_fft_distr.num_gvec_fft());
-    fft.transform<-1>(gvec_r_fft_distr, &phi1_bt(0), &phi2_bt(0));
+    mdarray<double_complex, 1> phi1_bt(gvec_r.partition().gvec_count_fft());
+    mdarray<double_complex, 1> phi2_bt(gvec_r.partition().gvec_count_fft());
+    fft.transform<-1>(gvec_r.partition(), &phi1_bt(0), &phi2_bt(0));
 
     double diff = 0;
-    for (int i = 0; i < gvec_r_fft_distr.num_gvec_fft(); i++)
-    {
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
         diff += std::abs(phi1(i) - phi1_bt(i));
         diff += std::abs(phi2(i) - phi2_bt(i));
     }
+    diff /= gvec_r.partition().gvec_count_fft();
     printf("diff: %18.10f\n", diff);
+    if (diff > 1e-13) {
+        printf("functions are different\n");
+        exit(1);
+    }
 
     fft.dismiss();
 }
@@ -143,8 +147,12 @@ int main(int argn, char **argv)
 
     sirius::initialize(1);
 
-    test1(dims, cutoff);
-    test2(dims, cutoff);
+    test1(dims, cutoff, CPU);
+    test2(dims, cutoff, CPU);
+    #ifdef __GPU
+    test1(dims, cutoff, GPU);
+    test2(dims, cutoff, GPU);
+    #endif
     
     sirius::finalize();
 

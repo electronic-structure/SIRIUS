@@ -18,7 +18,7 @@ all: test_hdf5 test_allgather mt_function mt_kinetic splindex hydrogen read_atom
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 test_gemm: test_gemm.cpp $(LIB_SIRIUS)
-	$(CXX) $(CXX_OPT) -D_TEST_REAL_ $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o test_dgemm
+	$(CXX) $(CXX_OPT) -D__TEST_REAL $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o test_dgemm
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o test_zgemm
 
 test_mpi_omp: test_mpi_omp.cpp $(LIB_SIRIUS)
