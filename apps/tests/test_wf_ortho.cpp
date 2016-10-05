@@ -57,6 +57,7 @@ int main(int argn, char** argv)
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--num_bands=", "{int} number of bands");
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
+    args.register_key("--repeat=", "{int} number of repeats");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -68,9 +69,10 @@ int main(int argn, char** argv)
     auto cutoff = args.value<double>("cutoff", 2.0);
     auto num_bands = args.value<int>("num_bands", 10);
     auto use_gpu = args.value<int>("use_gpu", 0);
+    auto repeat = args.value<int>("repeat", 1);
 
     sirius::initialize(1);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < repeat; i++) {
         test_wf_ortho(mpi_grid_dims, cutoff, num_bands, use_gpu);
     }
     mpi_comm_world().barrier();
