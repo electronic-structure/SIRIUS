@@ -440,6 +440,16 @@ inline void transform(double alpha__,
     
     auto pu = wf_in__[0]->params().processing_unit();
 
+    #ifdef __PRINT_PERFORMANCE
+    double ngop{0};
+    if (std::is_same<T, double>::value) {
+        ngop = 2e-9;
+    }
+    if (std::is_same<T, double_complex>::value) {
+        ngop = 8e-9;
+    }
+    #endif
+
     auto local_transform = [pu, alpha__](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
                                          wave_functions* wf_out__, int j0__, int n__)
     {
@@ -519,7 +529,8 @@ inline void transform(double alpha__,
         }
         #endif
     };
-
+    
+    runtime::Timer t1("sirius::wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu == CPU) {
@@ -588,9 +599,13 @@ inline void transform(double alpha__,
         }
         #endif
     }
+    t1.stop();
     
     /* trivial case */
     if (comm.size() == 1) {
+        #ifdef __PRINT_PERFORMANCE
+        double time = -runtime::wtime();
+        #endif
         #ifdef __GPU
         if (pu == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, icol0__), mtrx__.ld(),
@@ -600,8 +615,22 @@ inline void transform(double alpha__,
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, icol0__, wf_out__[iv], j0__, n__);
         }
+        #ifdef __PRINT_PERFORMANCE
+        time += runtime::wtime();
+        int k = wf_in__[0]->pw_coeffs().num_rows_loc();
+        if (wf_in__[0]->params().full_potential()) {
+            k += wf_in__[0]->mt_coeffs().num_rows_loc();
+        }
+        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i]\n",
+               ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf);
+        #endif
         return;
     }
+
+    #ifdef __PRINT_PERFORMANCE
+    comm.barrier();
+    double time = -runtime::wtime();
+    #endif
 
     const int BS = sddk_block_size;
 
@@ -698,6 +727,20 @@ inline void transform(double alpha__,
             }
         }
     }
+
+    #ifdef __PRINT_PERFORMANCE
+    comm.barrier();
+    time += runtime::wtime();
+    int k = wf_in__[0]->pw_coeffs().num_rows_loc();
+    if (wf_in__[0]->params().full_potential()) {
+        k += wf_in__[0]->mt_coeffs().num_rows_loc();
+    }
+    comm.allreduce(&k, 1);
+    if (comm.rank() == 0) {
+        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+               ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time);
+    }
+    #endif
 }
 
 template <typename T>
@@ -777,6 +820,16 @@ inline void inner(wave_functions& bra__,
 
     auto& comm = bra__.comm();
     auto pu = bra__.params().processing_unit();
+
+    #ifdef __PRINT_PERFORMANCE
+    double ngop{0};
+    if (std::is_same<T, double>::value) {
+        ngop = 2e-9;
+    }
+    if (std::is_same<T, double_complex>::value) {
+        ngop = 8e-9;
+    }
+    #endif
 
     auto local_inner = [pu, &comm](wave_functions& bra__, int i0__, int m__, wave_functions& ket__, int j0__, int n__, T* buf__, int ld__){
         if (std::is_same<T, double_complex>::value) {
@@ -867,6 +920,9 @@ inline void inner(wave_functions& bra__,
     };
 
     if (comm.size() == 1) {
+        #ifdef __PRINT_PERFORMANCE
+        double time = -runtime::wtime();
+        #endif
         T* buf = (pu == CPU) ? result__.template at<CPU>(irow0__, icol0__) : result__.template at<GPU>(irow0__, icol0__);
         local_inner(bra__, i0__, m__, ket__, j0__, n__, buf, result__.ld());
         #ifdef __GPU
@@ -876,8 +932,20 @@ inline void inner(wave_functions& bra__,
                          m__, n__);
         }
         #endif
+        #ifdef __PRINT_PERFORMANCE
+        time += runtime::wtime();
+        int k = bra__.pw_coeffs().num_rows_loc();
+        if (bra__.params().full_potential()) {
+            k += bra__.mt_coeffs().num_rows_loc();
+        }
+        printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i]\n", ngop * m__ * n__ * k / time, m__, n__, k);
+        #endif
         return;
     }
+
+    #ifdef __PRINT_PERFORMANCE
+    double time = -runtime::wtime();
+    #endif
 
     const int BS = sddk_block_size;
 
@@ -943,6 +1011,18 @@ inline void inner(wave_functions& bra__,
             store_panel(s);
         }
     }
+
+    #ifdef __PRINT_PERFORMANCE
+    time += runtime::wtime();
+    int k = bra__.pw_coeffs().num_rows_loc();
+    if (bra__.params().full_potential()) {
+        k += bra__.mt_coeffs().num_rows_loc();
+    }
+    comm.allreduce(&k, 1);
+    if (comm.rank() == 0) {
+        printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k);
+    }
+    #endif
 }
 
 template <typename T>
@@ -1072,15 +1152,20 @@ inline void orthogonalize(int N__,
         }
         #endif
     } else { /* parallel transformation */
+        runtime::Timer t1("sirius::wave_functions::orthogonalize|potrf");
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in factorization, info = " << info;
             TERMINATE(s);
         }
+        t1.stop();
 
+        runtime::Timer t2("sirius::wave_functions::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }
+        t2.stop();
+
         /* o is upper triangular matrix */
         for (int i = 0; i < n__; i++) {
             for (int j = i + 1; j < n__; j++) {
@@ -1088,6 +1173,7 @@ inline void orthogonalize(int N__,
             }
         }
 
+        /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
         for (auto& e: wfs) {
             transform(*e, N__, n__, o__, 0, 0, tmp__, 0, n__);
             e->copy_from(tmp__, 0, n__, N__);
