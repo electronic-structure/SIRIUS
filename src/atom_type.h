@@ -341,9 +341,11 @@ class Atom_type
         
         basis_functions_index indexb_;
 
-        uspp_descriptor uspp_;
+        pseudopotential_descriptor pp_desc_;
 
-        PAW_descriptor paw_;
+        //uspp_descriptor uspp_;
+
+        //PAW_descriptor paw_;
 
         /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
         /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -748,26 +750,36 @@ class Atom_type
             return -1;
         }
 
-        //TODO rename these two methods, unsafe method is needed?
-        inline uspp_descriptor& uspp()
+        inline pseudopotential_descriptor const& pp_desc() const
         {
-            return uspp_;
+            return pp_desc_;
         }
 
-        inline uspp_descriptor const& uspp() const
+        inline pseudopotential_descriptor& pp_desc()
         {
-            return uspp_;
+            return pp_desc_;
         }
 
-        inline PAW_descriptor const& get_PAW_descriptor() const
-        {
-            return paw_;
-        }
+        ////TODO rename these two methods, unsafe method is needed?
+        //inline uspp_descriptor& uspp()
+        //{
+        //    return uspp_;
+        //}
 
-        inline PAW_descriptor& get_PAW_descriptor_unsafe()
-        {
-            return paw_;
-        }
+        //inline uspp_descriptor const& uspp() const
+        //{
+        //    return uspp_;
+        //}
+
+        //inline PAW_descriptor const& get_PAW_descriptor() const
+        //{
+        //    return paw_;
+        //}
+
+        //inline PAW_descriptor& get_PAW_descriptor_unsafe()
+        //{
+        //    return paw_;
+        //}
 
         inline void set_symbol(const std::string symbol__)
         {
@@ -849,8 +861,8 @@ class Atom_type
 
         inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
         {
-            uspp_.d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
-            d_mtrx_ion__ >> uspp_.d_mtrx_ion;
+            pp_desc_.d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
+            d_mtrx_ion__ >> pp_desc_.d_mtrx_ion;
         }
 
         inline mdarray<int, 2> const& idx_radial_integrals() const

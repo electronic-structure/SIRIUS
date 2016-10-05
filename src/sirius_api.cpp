@@ -1994,20 +1994,20 @@ void sirius_set_atom_type_beta_rf(char* label__,
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
 
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
-    type.uspp().lmax_beta_ = 0;
-    type.uspp().num_beta_radial_functions = *num_beta__;
-    type.uspp().beta_l = std::vector<int>(*num_beta__);
-    type.uspp().num_beta_radial_points = std::vector<int>(*num_beta__);
+    type.pp_desc().lmax_beta_ = 0;
+    type.pp_desc().num_beta_radial_functions = *num_beta__;
+    type.pp_desc().beta_l = std::vector<int>(*num_beta__);
+    type.pp_desc().num_beta_radial_points = std::vector<int>(*num_beta__);
     for (int i = 0; i < *num_beta__; i++)
     {
-        type.uspp().beta_l[i] = beta_l__[i];
-        type.uspp().lmax_beta_ = std::max(type.uspp().lmax_beta_, beta_l__[i]);
-        type.uspp().num_beta_radial_points[i] = num_mesh_points__[i];
+        type.pp_desc().beta_l[i] = beta_l__[i];
+        type.pp_desc().lmax_beta_ = std::max(type.pp_desc().lmax_beta_, beta_l__[i]);
+        type.pp_desc().num_beta_radial_points[i] = num_mesh_points__[i];
     }
-    type.uspp().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
-    beta_rf >> type.uspp().beta_radial_functions;
-    type.uspp().augmentation_ = true;
-    type.uspp().is_initialized = true;
+    type.pp_desc().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
+    beta_rf >> type.pp_desc().beta_radial_functions;
+    //type.pp_desc().augmentation_ = true;
+    //type.pp_desc().is_initialized = true;
 }
 
 void sirius_set_atom_type_q_rf(char* label__,
@@ -2017,13 +2017,13 @@ void sirius_set_atom_type_q_rf(char* label__,
     PROFILE();
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
 
-    int nbeta = type.uspp().num_beta_radial_functions;
+    int nbeta = type.pp_desc().num_beta_radial_functions;
 
     /* temporary wrapper */
     mdarray<double, 3> q_rf(q_rf__, type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * (*lmax__) + 1);
 
     /* allocate space for radial functions of Q operator */
-    type.uspp().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.uspp().lmax_beta_ + 1);
+    type.pp_desc().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.pp_desc().lmax_beta_ + 1);
 
     for (int nb = 0; nb < nbeta; nb++)
     {
@@ -2032,17 +2032,17 @@ void sirius_set_atom_type_q_rf(char* label__,
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
 
-            if (*lmax__ ==  type.uspp().lmax_beta_)
+            if (*lmax__ ==  type.pp_desc().lmax_beta_)
             {
-                for (int l = 0; l <= 2 * type.uspp().lmax_beta_; l++)
-                    std::memcpy(&type.uspp().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type.num_mt_points() * sizeof(double));
+                for (int l = 0; l <= 2 * type.pp_desc().lmax_beta_; l++)
+                    std::memcpy(&type.pp_desc().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type.num_mt_points() * sizeof(double));
             }
             else
             {
                 std::stringstream s;
                 s << "wrong lmax for " << std::string(label__) << " " << std::endl
                   << "lmax: " << *lmax__ << std::endl
-                  << "lmax_beta: " << type.uspp().lmax_beta_;
+                  << "lmax_beta: " << type.pp_desc().lmax_beta_;
                 TERMINATE(s);
             }
         }
@@ -2054,8 +2054,8 @@ void sirius_set_atom_type_rho_core(char const* label__,
                                    double* rho_core__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.uspp().core_charge_density = std::vector<double>(*num_points__);
-    for (int i = 0; i < *num_points__; i++) type.uspp().core_charge_density[i] = rho_core__[i];
+    type.pp_desc().core_charge_density = std::vector<double>(*num_points__);
+    for (int i = 0; i < *num_points__; i++) type.pp_desc().core_charge_density[i] = rho_core__[i];
 }
 
 void sirius_set_atom_type_rho_tot(char const* label__,
@@ -2063,8 +2063,8 @@ void sirius_set_atom_type_rho_tot(char const* label__,
                                   double* rho_tot__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.uspp().total_charge_density = std::vector<double>(*num_points__);
-    for (int i = 0; i < *num_points__; i++) type.uspp().total_charge_density[i] = rho_tot__[i];
+    type.pp_desc().total_charge_density = std::vector<double>(*num_points__);
+    for (int i = 0; i < *num_points__; i++) type.pp_desc().total_charge_density[i] = rho_tot__[i];
 }
 
 void sirius_set_atom_type_vloc(char const* label__,
@@ -2072,8 +2072,8 @@ void sirius_set_atom_type_vloc(char const* label__,
                                double* vloc__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.uspp().vloc = std::vector<double>(*num_points__);
-    for (int i = 0; i < *num_points__; i++) type.uspp().vloc[i] = vloc__[i];
+    type.pp_desc().vloc = std::vector<double>(*num_points__);
+    for (int i = 0; i < *num_points__; i++) type.pp_desc().vloc[i] = vloc__[i];
 }
 
 void sirius_symmetrize_density()
@@ -2437,7 +2437,7 @@ void sirius_get_q_mtrx_(int32_t* itype__, double* q_mtrx__, int32_t* ld__)
 
     //for (int xi1 = 0; xi1 < nbf; xi1++)
     //{
-    //    for (int xi2 = 0; xi2 < nbf; xi2++) z1(xi1, xi2) = atom_type.uspp().q_mtrx(xi1, xi2);
+    //    for (int xi2 = 0; xi2 < nbf; xi2++) z1(xi1, xi2) = atom_type.pp_desc().q_mtrx(xi1, xi2);
     //}
     //linalg<CPU>::gemm(0, 2, nbf, nbf, nbf, double_complex(1, 0), z1, sirius_Ylm_to_QE_Rlm, double_complex(0, 0), z2);
     //linalg<CPU>::gemm(0, 0, nbf, nbf, nbf, double_complex(1, 0), sirius_Ylm_to_QE_Rlm, z2, double_complex(0, 0), z1);
@@ -2621,7 +2621,7 @@ void sirius_get_q_pw_(int32_t* iat__, int32_t* num_gvec__, double_complex* q_pw_
     //        {
     //            int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-    //            z1(xi1, xi2) = atom_type.uspp().q_pw(ig, idx12);
+    //            z1(xi1, xi2) = atom_type.pp_desc().q_pw(ig, idx12);
     //            z1(xi2, xi1) = conj(z1(xi1, xi2));
     //        }
     //    }
@@ -2730,79 +2730,60 @@ void sirius_set_atom_type_paw_data(char* label__,
                                    int32_t* num_occ__)
 {
     PROFILE();
+
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
 
-    auto& paw = type.get_PAW_descriptor_unsafe();
+    auto& pp_desc = type.pp_desc();
 
-    // check for corectness
-    if( !type.uspp().is_initialized )
-    {
-        TERMINATE("PAW error: USPP part is not initialized!");
-    }
-
-    if(*num_wfc__ != type.uspp().num_beta_radial_functions)
-    {
+    if (*num_wfc__ != type.pp_desc().num_beta_radial_functions) {
         TERMINATE("PAW error: different number of projectors and wave functions!");
     }
 
-    if(*ld__ != type.num_mt_points())
-    {
+    if (*ld__ != type.num_mt_points()) {
         TERMINATE("PAW error: different number of grid points of projectors and wave functions!");
     }
 
-    if(*num_ae_core_charge__ != type.num_mt_points())
-    {
+    if (*num_ae_core_charge__ != type.num_mt_points()) {
         TERMINATE("PAW error: different number of grid points of core charge and wave functions!");
     }
 
-    if(*num_occ__ != type.uspp().num_beta_radial_functions)
-    {
+    if (*num_occ__ != type.pp_desc().num_beta_radial_functions) {
         TERMINATE("PAW error: different number of occupations and wave functions!");
     }
 
-    std::cout<<"curly1"<<std::endl;
-
     // load parameters
-    paw.core_energy = *core_energy__;
+    pp_desc.core_energy = *core_energy__;
 
-    paw.cutoff_radius_index = *cutoff_radius_index__;
-
-    std::cout<<"curly2"<<std::endl;
+    pp_desc.cutoff_radius_index = *cutoff_radius_index__;
 
     // load ae and ps wave functions
-    mdarray<double, 2> aewfcs(ae_wfc_rf__, type.num_mt_points(), type.uspp().num_beta_radial_functions);
-    mdarray<double, 2> pswfcs(ps_wfc_rf__, type.num_mt_points(), type.uspp().num_beta_radial_functions);
+    mdarray<double, 2> aewfcs(ae_wfc_rf__, type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
+    mdarray<double, 2> pswfcs(ps_wfc_rf__, type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
 
-    paw.all_elec_wfc = mdarray<double, 2>(type.num_mt_points(), type.uspp().num_beta_radial_functions);
-    paw.pseudo_wfc   = mdarray<double, 2>(type.num_mt_points(), type.uspp().num_beta_radial_functions);
+    pp_desc.all_elec_wfc = mdarray<double, 2>(type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
+    pp_desc.pseudo_wfc   = mdarray<double, 2>(type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
 
-    paw.all_elec_wfc.zero();
-    paw.pseudo_wfc.zero();
+    pp_desc.all_elec_wfc.zero();
+    pp_desc.pseudo_wfc.zero();
 
-    std::cout<<"curly3"<<std::endl;
+    aewfcs >> pp_desc.all_elec_wfc;
+    pswfcs >> pp_desc.pseudo_wfc;
 
-    aewfcs >> paw.all_elec_wfc;
-    pswfcs >> paw.pseudo_wfc;
-
-    for(int i=0;i<type.uspp().num_beta_radial_functions;i++)
+    for(int i=0;i<type.pp_desc().num_beta_radial_functions;i++)
     {
-        std::memcpy( &paw.all_elec_wfc(0, i), &aewfcs(0, i), (paw.cutoff_radius_index) * sizeof(double));
-        std::memcpy( &paw.pseudo_wfc(0, i),   &pswfcs(0, i), (paw.cutoff_radius_index) * sizeof(double));
+        std::memcpy( &pp_desc.all_elec_wfc(0, i), &aewfcs(0, i), (pp_desc.cutoff_radius_index) * sizeof(double));
+        std::memcpy( &pp_desc.pseudo_wfc(0, i),   &pswfcs(0, i), (pp_desc.cutoff_radius_index) * sizeof(double));
     }
 
     // read ae core charge
-    paw.all_elec_core_charge.resize(type.num_mt_points());
+    pp_desc.all_elec_core_charge.resize(type.num_mt_points());
 
-    std::memcpy( paw.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
+    std::memcpy( pp_desc.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
 
     // read occupations
-    paw.occupations.resize(type.uspp().num_beta_radial_functions);
+    pp_desc.occupations.resize(type.pp_desc().num_beta_radial_functions);
 
-    std::memcpy( paw.occupations.data(), occupations__, type.uspp().num_beta_radial_functions * sizeof(double));
-
-    // finita
-    paw.is_initialized = true;
-
+    std::memcpy( pp_desc.occupations.data(), occupations__, type.pp_desc().num_beta_radial_functions * sizeof(double));
 }
 
 

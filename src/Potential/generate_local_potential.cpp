@@ -33,7 +33,7 @@ void Potential::generate_local_potential()
                     for (int ir = 0; ir < atom_type.num_mt_points(); ir++) 
                     {
                         double x = atom_type.radial_grid(ir);
-                        sa[iat][ir] = (x * atom_type.uspp().vloc[ir] + atom_type.zn()) * x;
+                        sa[iat][ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
                     }
                     vloc_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0);
                 }
@@ -44,7 +44,7 @@ void Potential::generate_local_potential()
                     for (int ir = 0; ir < atom_type.num_mt_points(); ir++) 
                     {
                         double x = atom_type.radial_grid(ir);
-                        sa[iat][ir] = (x * atom_type.uspp().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                        sa[iat][ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     }
                     vloc_radial_integrals(iat, igs) = (sa[iat].interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
                 }

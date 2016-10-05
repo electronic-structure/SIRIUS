@@ -61,15 +61,13 @@ class Augmentation_operator
             /* interpolate Q-operator radial functions */
             mdarray<Spline<double>, 2> qrf_spline(2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2);
             
-            for (int l3 = 0; l3 <= 2 * lmax_beta; l3++)
-            {
+            for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
                 #pragma omp parallel for
-                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++)
-                {
+                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
                     qrf_spline(l3, idx) = Spline<double>(atom_type_.radial_grid());
 
                     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-                        qrf_spline(l3, idx)[ir] = atom_type_.uspp().q_radial_functions_l(ir, idx, l3); //= qrf(ir, l3, idx);
+                        qrf_spline(l3, idx)[ir] = atom_type_.pp_desc().q_radial_functions_l(ir, idx, l3); //= qrf(ir, l3, idx);
                     }
 
                     qrf_spline(l3, idx).interpolate();
@@ -83,24 +81,19 @@ class Augmentation_operator
             splindex<block> spl_num_gvec_shells(gvec__.num_shells(), comm_.size(), comm_.rank());
         
             #pragma omp parallel for
-            for (int ishloc = 0; ishloc < spl_num_gvec_shells.local_size(); ishloc++)
-            {
+            for (int ishloc = 0; ishloc < spl_num_gvec_shells.local_size(); ishloc++) {
                 int igs = spl_num_gvec_shells[ishloc];
                 Spherical_Bessel_functions jl(2 * lmax_beta, atom_type_.radial_grid(), gvec__.shell_len(igs));
 
-                for (int l3 = 0; l3 <= 2 * lmax_beta; l3++)
-                {
-                    for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++)
-                    {
+                for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
+                    for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++) {
                         int l2 = atom_type_.indexr(idxrf2).l;
-                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-                        {
+                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
                             int l1 = atom_type_.indexr(idxrf1).l;
 
                             int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                             
-                            if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
-                            {
+                            if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0) {
                                 qri(idx, l3, igs) = inner(jl[l3], qrf_spline(l3, idx), 0, atom_type_.num_mt_points());
                             }
                         }
@@ -108,7 +101,7 @@ class Augmentation_operator
                 }
             }
 
-            int ld = (int)(qri.size(0) * qri.size(1));
+            int ld = static_cast<int>(qri.size(0) * qri.size(1));
             comm_.allgather(&qri(0, 0, 0), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
 
             return std::move(qri);
@@ -217,8 +210,6 @@ class Augmentation_operator
             #endif
         }
 
-        bool augmentation_{false};
-
     public:
        
         Augmentation_operator(Communicator const& comm__,
@@ -228,8 +219,7 @@ class Augmentation_operator
             : comm_(comm__),
               atom_type_(atom_type__)
         {
-            augmentation_ = atom_type__.uspp().augmentation_;
-            if (augmentation_) {
+            if (atom_type__.pp_desc().augment) {
                 generate_pw_coeffs(omega__, gvec__);
             }
         }

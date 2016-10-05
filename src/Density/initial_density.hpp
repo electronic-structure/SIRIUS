@@ -462,7 +462,7 @@ inline void Density::initialize_beta_density_matrix()
 
         int nbf = atom_type.mt_basis_size();
 
-        const std::vector<double> &occupations = atom_type.get_PAW_descriptor().occupations;
+        auto& occupations = atom_type.pp_desc().occupations;
 
         #pragma omp parallel for
         for (int i = 0; i < atom_type.num_atoms(); i++)

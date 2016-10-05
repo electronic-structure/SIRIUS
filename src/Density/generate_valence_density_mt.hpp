@@ -156,7 +156,6 @@ inline void Density::generate_paw_loc_density()
     
     #pragma omp parallel for
     for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
-//    tbb::parallel_for( size_t(0), (size_t)unit_cell_.spl_num_atoms().local_size(), [&]( size_t i )
     {
         int ia = unit_cell_.spl_num_atoms(i);
 
@@ -164,17 +163,19 @@ inline void Density::generate_paw_loc_density()
 
         auto& atom_type = atom.type();
 
-        auto& paw = atom_type.get_PAW_descriptor();
+        auto& pp_desc = atom_type.pp_desc();
 
-        auto& uspp = atom_type.uspp();
+        //auto& paw = atom_type.get_PAW_descriptor();
+
+        //auto& uspp = atom_type.uspp();
 
         std::vector<int> l_by_lm = Utils::l_by_lm( 2 * atom_type.indexr().lmax_lo() );
 
         //TODO calculate not for every atom but for every atom type
         Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(),
-                2*atom_type.indexr().lmax_lo(),
-                atom_type.indexr().lmax_lo(),
-                SHT::gaunt_rlm);
+                                      2 * atom_type.indexr().lmax_lo(),
+                                      atom_type.indexr().lmax_lo(),
+                                      SHT::gaunt_rlm);
 
         // get density for current atom
         mdarray<double,2> &ae_atom_density = paw_ae_local_density_[i];
@@ -229,9 +230,9 @@ inline void Density::generate_paw_loc_density()
                         // TODO for 3 spin dimensions 3th density spin component must be complex
                         // replace order of indices for density from {irad,lm} to {lm,irad}
                         // to be in according with ELK and other SIRIUS code
-                        double ae_part = inv_r2 * lm3coef.coef * paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
+                        double ae_part = inv_r2 * lm3coef.coef * pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
                         double ps_part = inv_r2 * lm3coef.coef *
-                                ( paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+                                ( pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2)  + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
 
                         // calculate UP density (or total in case of nonmagnetic)
                         double ae_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ae_part;
@@ -253,8 +254,8 @@ inline void Density::generate_paw_loc_density()
                                 ps_atom_density(lm3coef.lm3,irad) += ps_dens_d;
 
                                 // add magnetization to 2nd components (0th and 1st are always zero )
-                                ae_atom_magnetization(lm3coef.lm3,irad,0)= ae_dens_u - ae_dens_d;
-                                ps_atom_magnetization(lm3coef.lm3,irad,0)= ps_dens_u - ps_dens_d;
+                                ae_atom_magnetization(lm3coef.lm3,irad,0) = ae_dens_u - ae_dens_d;
+                                ps_atom_magnetization(lm3coef.lm3,irad,0) = ps_dens_u - ps_dens_d;
                             }break;
 
                             case 3:

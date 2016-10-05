@@ -123,20 +123,18 @@ inline void K_point::initialize()
                                                                                            gklo_basis_descriptors_loc_));
     }
 
-    /* compute |beta> projectors for atom types */
-    if (!ctx_.full_potential())
-    {
+    if (!ctx_.full_potential()) {
+        /* compute |beta> projectors for atom types */
         beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit());
         
-        if (true)
-        {
+        if (true) {
             p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
             p_mtrx_.zero();
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 auto& atom_type = unit_cell_.atom_type(iat);
                 
-                if (!atom_type.uspp().augmentation_) {
+                if (!atom_type.pp_desc().augment) {
                     continue;
                 }
                 int nbf = atom_type.mt_basis_size();
