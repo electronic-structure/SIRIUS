@@ -90,7 +90,7 @@ class matrix3d
         }
         
         /// Multiply two matrices.
-        inline matrix3d<T> operator*(matrix3d<T> b) const
+        inline matrix3d<T> operator*(matrix3d<T> const& b) const
         {
             matrix3d<T> c;
             for (int i = 0; i < 3; i++) {

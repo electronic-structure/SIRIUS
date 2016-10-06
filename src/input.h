@@ -104,9 +104,9 @@ struct Unit_cell_input_section
 
             matrix3d<double> lv;
             for (int x: {0, 1, 2}) {
-                lv(x, 0) = a0[x];
-                lv(x, 1) = a1[x];
-                lv(x, 2) = a2[x];
+                lv(x, 0) = a0_[x];
+                lv(x, 1) = a1_[x];
+                lv(x, 2) = a2_[x];
             }
             auto ilv = inverse(lv);
             
@@ -145,9 +145,8 @@ struct Unit_cell_input_section
                         for (int x: {0, 1, 2}) {
                             v1[x] /= bohr_radius;
                         }
-                        units = "au";
                     }
-                    if (units == "au") {
+                    if (units == "au" || units == "A") {
                         v1 = ilv * v1;
                         auto rv1 = Utils::reduce_coordinates(v1);
                         for (int x: {0, 1, 2}) {
