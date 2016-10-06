@@ -38,6 +38,9 @@ const double speed_of_light = 137.035999139;
 // This value reproduces NIST ScRLDA total energy much better.
 //const double speed_of_light = 137.0359895;
 
+/// Bohr radius in angstroms.
+const double bohr_radius = 0.52917721067;
+
 /// \f$ \pi \f$
 const double pi = 3.1415926535897932385;
 

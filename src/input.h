@@ -26,7 +26,10 @@
 #define __INPUT_H__
 
 #include "vector3d.h"
+#include "matrix3d.h"
 #include "runtime.h"
+#include "constants.h"
+#include "utils.h"
 
 namespace sirius {
 
@@ -99,8 +102,18 @@ struct Unit_cell_input_section
                 a2_[x] = a2[x] * scale;
             }
 
+            matrix3d<double> lv;
+            for (int x: {0, 1, 2}) {
+                lv(x, 0) = a0[x];
+                lv(x, 1) = a1[x];
+                lv(x, 2) = a2[x];
+            }
+            auto ilv = inverse(lv);
+            
             labels_.clear();
             coordinates_.clear();
+
+            std::string units = section.value("atom_coordinate_units", "lattice");
             
             for (auto& label: section["atom_types"]) {
                 if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
@@ -125,6 +138,21 @@ struct Unit_cell_input_section
                     }
                     if (v.size() == 3) {
                         v.resize(6, 0.0);
+                    }
+
+                    vector3d<double> v1(v[0], v[1], v[2]);
+                    if (units == "A") {
+                        for (int x: {0, 1, 2}) {
+                            v1[x] /= bohr_radius;
+                        }
+                        units = "au";
+                    }
+                    if (units == "au") {
+                        v1 = ilv * v1;
+                        auto rv1 = Utils::reduce_coordinates(v1);
+                        for (int x: {0, 1, 2}) {
+                            v[x] = rv1.first[x];
+                        }
                     }
 
                     coordinates_[iat].push_back(v);

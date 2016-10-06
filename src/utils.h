@@ -346,11 +346,11 @@ class Utils
             return l_by_lm__;
         }
 
-        static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord)
+        static std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<double> coord)
         {
             const double eps{1e-6};
 
-            std::pair< vector3d<double>, vector3d<int> > v; 
+            std::pair<vector3d<double>, vector3d<int>> v; 
             
             v.first = coord;
             for (int i = 0; i < 3; i++) {
@@ -370,7 +370,11 @@ class Utils
                     v.second[i] += 1;
                 }
             }
-            // TODO: put a check here
+            for (int x: {0, 1, 2}) {
+                if (std::abs(coord[x] - (v.first[x] + v.second[x])) > 1e-12) {
+                    TERMINATE("wrong coordinate reduction");
+                }
+            }
             return v;
         }
 
