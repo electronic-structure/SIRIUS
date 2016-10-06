@@ -86,14 +86,10 @@ Potential::Potential(Simulation_context& ctx__)
 
     init();
 
-    spl_num_gvec_ = splindex<block>(ctx_.gvec().num_gvec(), comm_.size(), comm_.rank());
-    
-    if (ctx_.full_potential())
-    {
-        gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), spl_num_gvec_.local_size());
-        for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
-        {
-            int ig = spl_num_gvec_[igloc];
+    if (ctx_.full_potential()) {
+        gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec_count());
+        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
             auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
             SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }

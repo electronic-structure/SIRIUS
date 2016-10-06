@@ -82,10 +82,6 @@ class Potential
 
         mdarray<double_complex, 2> gvec_ylm_;
 
-        splindex<block> spl_num_gvec_;
-
-        //mdarray<double_complex, 2> gvec_phase_factors_;
-
         double energy_vha_;
         
         /// Electronic part of Hartree potential.
@@ -95,6 +91,9 @@ class Potential
         Mixer<double>* mixer_;
 
         std::vector<XC_functional*> xc_func_;
+
+        // Store form factors because it is needed by forces calculation
+        mdarray<double, 2> vloc_radial_integrals_;
 
         //------------------------------------------------
         //--- PAW parameters and functions -----------------------
@@ -515,8 +514,14 @@ class Potential
         double PAW_one_elec_energy(){ return paw_one_elec_energy_; }
 
         //------------------------------------------------
+        //--- For forces ------------------------------
         //------------------------------------------------
 
+        mdarray<double, 2> const& get_vloc_radial_integrals(){ return vloc_radial_integrals_; }
+
+        //------------------------------------------------
+        //--- next ------------------------------
+        //------------------------------------------------
 
         void check_potential_continuity_at_mt();
 

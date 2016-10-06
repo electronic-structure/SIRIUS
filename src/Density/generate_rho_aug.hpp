@@ -4,8 +4,6 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
 {
     PROFILE_WITH_TIMER("sirius::Density::generate_rho_aug");
 
-    splindex<block> spl_gvec(ctx_.gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
-
     if (pu == CPU) {
         rho_aug__.zero();
     }
@@ -53,11 +51,11 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
         if (pu == CPU) {
             runtime::Timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
-            mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_gvec.local_size() * 2);
+            mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec_count() * 2);
 
             #pragma omp parallel for
-            for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
-                int ig = spl_gvec[igloc];
+            for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                int ig = ctx_.gvec_offset() + igloc;
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
                     double_complex z = std::conj(ctx_.gvec_phase_factor(ig, ia));
@@ -68,11 +66,11 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
             t2.stop();
             
             /* treat auxiliary array as double with x2 size */
-            mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
+            mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 runtime::Timer t3("sirius::Density::generate_rho_aug|gemm");
-                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2, atom_type.num_atoms(), 
+                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec_count(), atom_type.num_atoms(), 
                                   &dm(0, 0, iv), dm.ld(),
                                   &phase_factors(0, 0), phase_factors.ld(), 
                                   &dm_pw(0, 0), dm_pw.ld());
@@ -88,7 +86,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
 
                 runtime::Timer t4("sirius::Density::generate_rho_aug|sum");
                 #pragma omp parallel for
-                for (int igloc = 0; igloc < spl_gvec.local_size(); igloc++) {
+                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
                     double_complex zsum(0, 0);
                     /* get contribution from non-diagonal terms */
                     for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
@@ -110,10 +108,10 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
             dm.copy_to_device();
 
             /* treat auxiliary array as double with x2 size */
-            mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, spl_gvec.local_size() * 2);
+            mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
             dm_pw.allocate(memory_t::device);
 
-            mdarray<double, 1> phase_factors(nullptr, atom_type.num_atoms() * spl_gvec.local_size() * 2);
+            mdarray<double, 1> phase_factors(nullptr, atom_type.num_atoms() * ctx_.gvec_count() * 2);
             phase_factors.allocate(memory_t::device);
 
             acc::sync_stream(0);
@@ -123,7 +121,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 generate_dm_pw_gpu(atom_type.num_atoms(),
-                                   spl_gvec.local_size(),
+                                   ctx_.gvec_count(),
                                    nbf,
                                    ctx_.atom_coord(iat).at<GPU>(),
                                    ctx_.gvec_coord().at<GPU>(),
@@ -131,7 +129,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
                                    dm.at<GPU>(0, 0, iv),
                                    dm_pw.at<GPU>(),
                                    1);
-                sum_q_pw_dm_pw_gpu(spl_gvec.local_size(), 
+                sum_q_pw_dm_pw_gpu(ctx_.gvec_count(), 
                                    nbf,
                                    ctx_.augmentation_op(iat).q_pw().at<GPU>(),
                                    dm_pw.at<GPU>(),

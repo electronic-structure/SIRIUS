@@ -22,7 +22,7 @@ void Potential::poisson_sum_G(int lmmax__,
 {
     PROFILE_WITH_TIMER("sirius::Potential::poisson_sum_G");
     
-    int ngv_loc = spl_num_gvec_.local_size();
+    int ngv_loc = ctx_.gvec_count();
 
     int na_max = 0;
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
@@ -39,7 +39,7 @@ void Potential::poisson_sum_G(int lmmax__,
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
-                int ig = spl_num_gvec_[igloc];
+                int ig = ctx_.gvec_offset() + igloc;
                 for (int i = 0; i < na; i++)
                 {
                     int ia = unit_cell_.atom_type(iat).atom_id(i);
@@ -68,7 +68,7 @@ void Potential::poisson_sum_G(int lmmax__,
         auto gvec = mdarray<int, 2>(3, ngv_loc, memory_t::host | memory_t::device);
         for (int igloc = 0; igloc < ngv_loc; igloc++)
         {
-            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec().gvec(spl_num_gvec_[igloc])[x];
+            for (int x = 0; x < 3; x++) gvec(x, igloc) = ctx_.gvec().gvec(ctx_.gvec_offset() + igloc)[x];
         }
         gvec.copy_to_device();
 
@@ -98,7 +98,7 @@ void Potential::poisson_sum_G(int lmmax__,
             #pragma omp parallel for
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
-                int ig = spl_num_gvec_[igloc];
+                int ig = ctx_.gvec_offset() + igloc;
                 for (int lm = 0; lm < lmmax__; lm++)
                 {
                     int l = l_by_lm_[lm];
@@ -138,7 +138,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     #pragma omp parallel default(shared)
     {
         int tid = omp_get_thread_num();
-        splindex<block> spl_gv_t(spl_num_gvec_.local_size(), omp_get_num_threads(), tid);
+        splindex<block> spl_gv_t(ctx_.gvec_count(), omp_get_num_threads(), tid);
         std::vector<double_complex> pseudo_pw_t(spl_gv_t.local_size(), complex_zero); 
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -157,8 +157,8 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
 
             for (int igloc_t = 0; igloc_t < (int)spl_gv_t.local_size(); igloc_t++)
             {
-                int igloc = (int)spl_gv_t[igloc_t];
-                int ig = (int)spl_num_gvec_[igloc];
+                int igloc = spl_gv_t[igloc_t];
+                int ig = ctx_.gvec_offset() + igloc;
 
                 double gR = ctx_.gvec().gvec_len(ig) * R;
                 
@@ -189,19 +189,14 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
         for (int igloc_t = 0; igloc_t < spl_gv_t.local_size(); igloc_t++)
         {
             int igloc = spl_gv_t[igloc_t];
-            int ig = spl_num_gvec_[igloc];
+            int ig = ctx_.gvec_offset() + igloc;
             rho_pw[ig] += pseudo_pw_t[igloc_t];
         }
     }
 
-    ctx_.comm().allgather(&rho_pw[0], (int)spl_num_gvec_.global_offset(), (int)spl_num_gvec_.local_size());
+    ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
 }
 
-
-
-
-//----------------------------------------------------------------------------
-//----------------------------------------------------------------------------
 void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,double> &rho_mt,
                             Spheric_function<function_domain_t::spectral,double> &vh_mt,
                             mdarray<double_complex, 1>& qmt_ext,
@@ -269,9 +264,6 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
 
 
 
-//TODO insert function above into this
-//----------------------------------------------------------------------------
-//----------------------------------------------------------------------------
 void Potential::poisson_vmt(Periodic_function<double>* rho__, 
                             Periodic_function<double>* vh__,
                             mdarray<double_complex, 2>& qmt__)

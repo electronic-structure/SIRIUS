@@ -183,25 +183,7 @@ class Gvec
             return vector3d<int>(x, y, z);
         }
 
-    public:
-        
-        /// Default constructor.
-        Gvec()
-        {
-        }
-        
-        /// Constructor.
-        Gvec(vector3d<double>        vk__,
-             matrix3d<double>        M__,
-             double                  Gmax__,
-             FFT3D_grid const&       fft_box__,
-             int                     num_ranks__,
-             Communicator const&     fft_comm__,
-             bool                    reduce_gvec__)
-            : vk_(vk__),
-              lattice_vectors_(M__),
-              reduce_gvec_(reduce_gvec__),
-              num_ranks_(num_ranks__)
+        inline void find_z_columns(double Gmax__, FFT3D_grid const& fft_box__)
         {
             mdarray<int, 2> non_zero_columns(fft_box__.limits(0), fft_box__.limits(1));
             non_zero_columns.zero();
@@ -222,7 +204,7 @@ class Gvec
                         /* get z-coordinate of G-vector */
                         int k = fft_box__.gvec_by_coord(iz, 2);
                         /* take G+k */
-                        auto vgk = lattice_vectors_ * (vector3d<double>(i, j, k) + vk__);
+                        auto vgk = lattice_vectors_ * (vector3d<double>(i, j, k) + vk_);
                         /* add z-coordinate of G-vector to the list */
                         if (vgk.length() <= Gmax__) {
                             zcol.push_back(k);
@@ -234,13 +216,13 @@ class Gvec
                         num_gvec_ += static_cast<int>(zcol.size());
 
                         non_zero_columns(i, j) = 1;
-                        if (reduce_gvec__) {
+                        if (reduce_gvec_) {
                             non_zero_columns(-i, -j) = 1;
                         }
                     }
                 }
             }
-            
+
             /* put column with {x, y} = {0, 0} to the beginning */
             for (size_t i = 0; i < z_columns_.size(); i++) {
                 if (z_columns_[i].x == 0 && z_columns_[i].y == 0) {
@@ -248,7 +230,10 @@ class Gvec
                     break;
                 }
             }
-            
+        }
+
+        inline void distribute_z_columns()
+        {
             /* sort z-columns starting from the second */
             std::sort(z_columns_.begin() + 1, z_columns_.end(),
                       [](z_column_descriptor const& a, z_column_descriptor const& b)
@@ -257,16 +242,16 @@ class Gvec
                       });
             
             /* distribute z-columns between N ranks */
-            gvec_distr_ = block_data_descriptor(num_ranks__);
-            zcol_distr_ = block_data_descriptor(num_ranks__);
+            gvec_distr_ = block_data_descriptor(num_ranks_);
+            zcol_distr_ = block_data_descriptor(num_ranks_);
             /* local number of z-columns for each rank */
-            std::vector< std::vector<z_column_descriptor> > zcols_local(num_ranks__);
+            std::vector<std::vector<z_column_descriptor>> zcols_local(num_ranks_);
 
             std::vector<int> ranks;
             for (size_t i = 0; i < z_columns_.size(); i++) {
                 /* initialize the list of ranks to 0,1,2,... */
                 if (ranks.empty()) {
-                    ranks.resize(num_ranks__);
+                    ranks.resize(num_ranks_);
                     std::iota(ranks.begin(), ranks.end(), 0);
                 }
                 /* find rank with minimum number of G-vectors */
@@ -289,32 +274,13 @@ class Gvec
 
             /* save new ordering of z-columns */
             z_columns_.clear();
-            for (int rank = 0; rank < num_ranks__; rank++) {
+            for (int rank = 0; rank < num_ranks_; rank++) {
                 z_columns_.insert(z_columns_.end(), zcols_local[rank].begin(), zcols_local[rank].end());
             }
+        }
 
-            gvec_index_by_xy_ = mdarray<int, 3>(2, fft_box__.limits(0), fft_box__.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
-            std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
-            
-            /* build the full G-vector index and reverse mapping */
-            gvec_full_index_ = mdarray<int, 1>(num_gvec_);
-            int ig{0};
-            for (size_t i = 0; i < z_columns_.size(); i++) {
-                /* starting G-vector index for a z-stick */
-                gvec_index_by_xy_(0, z_columns_[i].x, z_columns_[i].y) = ig;
-                /* size of a z-stick */
-                gvec_index_by_xy_(1, z_columns_[i].x, z_columns_[i].y) = static_cast<int>(z_columns_[i].z.size());
-                for (size_t j = 0; j < z_columns_[i].z.size(); j++) {
-                    gvec_full_index_[ig++] = static_cast<int>((i << 12) + j);
-                }
-            }
-            
-            /* first G-vector must be (0, 0, 0); never reomove this check!!! */
-            auto g0 = gvec_by_full_index(gvec_full_index_(0));
-            if (g0[0] || g0[1] || g0[2]) {
-                TERMINATE("first G-vector is not zero");
-            }
-        
+        inline void find_gvec_shells()
+        {
             /* find G-shells */
             std::map<size_t, std::vector<int> > gsh;
             for (int ig = 0; ig < num_gvec_; ig++) {
@@ -340,7 +306,67 @@ class Gvec
                 }
                 n++;
             }
+        }
+
+    public:
+        
+        /// Default constructor.
+        Gvec()
+        {
+        }
+        
+        /// Constructor.
+        Gvec(vector3d<double>        vk__,
+             matrix3d<double>        M__,
+             double                  Gmax__,
+             FFT3D_grid const&       fft_box__,
+             int                     num_ranks__,
+             Communicator const&     fft_comm__,
+             bool                    reduce_gvec__)
+            : vk_(vk__),
+              lattice_vectors_(M__),
+              reduce_gvec_(reduce_gvec__),
+              num_ranks_(num_ranks__)
+        {
+            find_z_columns(Gmax__, fft_box__);
+
+            distribute_z_columns();
+
+            gvec_index_by_xy_ = mdarray<int, 3>(2, fft_box__.limits(0), fft_box__.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
+            std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
+
+            /* build the full G-vector index and reverse mapping */
+            gvec_full_index_ = mdarray<int, 1>(num_gvec_);
+            int ig{0};
+            for (size_t i = 0; i < z_columns_.size(); i++) {
+                /* starting G-vector index for a z-stick */
+                gvec_index_by_xy_(0, z_columns_[i].x, z_columns_[i].y) = ig;
+                /* size of a z-stick */
+                gvec_index_by_xy_(1, z_columns_[i].x, z_columns_[i].y) = static_cast<int>((z_columns_[i].z.size() << 16) + i);
+                for (size_t j = 0; j < z_columns_[i].z.size(); j++) {
+                    gvec_full_index_[ig++] = static_cast<int>((i << 12) + j);
+                }
+            }
+            if (ig != num_gvec_) {
+                TERMINATE("wrong G-vector count");
+            }
+            for (int ig = 0; ig < num_gvec_; ig++) {
+                auto gv = gvec(ig);
+                if (index_by_gvec(gv) != ig) {
+                    std::stringstream s;
+                    s << "wrong G-vector index: ig=" << ig <<" gv=" << gv << " index_by_gvec(gv)=" << index_by_gvec(gv);
+                    TERMINATE(s);
+                }
+            }
             
+            /* first G-vector must be (0, 0, 0); never reomove this check!!! */
+            auto g0 = gvec_by_full_index(gvec_full_index_(0));
+            if (g0[0] || g0[1] || g0[2]) {
+                TERMINATE("first G-vector is not zero");
+            }
+
+            find_gvec_shells();
+        
             /* create default partition for G-vectors */
             gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*this, fft_comm__));
         }
@@ -459,9 +485,12 @@ class Gvec
             if (ig0 == -1) {
                 return -1;
             }
-            int offs = (G__[2] >= 0) ? G__[2] : G__[2] + gvec_index_by_xy_(1, G__[0], G__[1]);
+            int icol = gvec_index_by_xy_(1, G__[0], G__[1]) & 0xFFFF;
+            int col_size = gvec_index_by_xy_(1, G__[0], G__[1]) >> 16;
+            int z0 = G__[2] - z_columns_[icol].z[0];
+            int offs = (z0 >= 0) ? z0 : z0 + col_size;
             int ig = ig0 + offs;
-            assert(ig < num_gvec());
+            //assert(ig < num_gvec());
             return ig;
         }
 

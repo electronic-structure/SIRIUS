@@ -6,7 +6,7 @@ void Potential::generate_local_potential()
 {
     PROFILE_WITH_TIMER("sirius::Potential::generate_local_potential");
 
-    mdarray<double, 2> vloc_radial_integrals(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
+    vloc_radial_integrals_ = mdarray<double, 2>(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
 
     /* split G-shells between MPI ranks */
     splindex<block> spl_gshells(ctx_.gvec().num_shells(), comm_.size(), comm_.rank());
@@ -35,7 +35,7 @@ void Potential::generate_local_potential()
                         double x = atom_type.radial_grid(ir);
                         sa[iat][ir] = (x * atom_type.uspp().vloc[ir] + atom_type.zn()) * x;
                     }
-                    vloc_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0);
+                    vloc_radial_integrals_(iat, igs) = sa[iat].interpolate().integrate(0);
                 }
                 else
                 {
@@ -46,16 +46,16 @@ void Potential::generate_local_potential()
                         double x = atom_type.radial_grid(ir);
                         sa[iat][ir] = (x * atom_type.uspp().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     }
-                    vloc_radial_integrals(iat, igs) = (sa[iat].interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
+                    vloc_radial_integrals_(iat, igs) = (sa[iat].interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
                 }
             }
         }
     }
 
     int ld = unit_cell_.num_atom_types();
-    comm_.allgather(vloc_radial_integrals.at<CPU>(), ld * spl_gshells.global_offset(), ld * spl_gshells.local_size());
+    comm_.allgather(vloc_radial_integrals_.at<CPU>(), ld * spl_gshells.global_offset(), ld * spl_gshells.local_size());
 
-    auto v = unit_cell_.make_periodic_function(vloc_radial_integrals, ctx_.gvec());
+    auto v = unit_cell_.make_periodic_function(vloc_radial_integrals_, ctx_.gvec());
     ctx_.fft().prepare(ctx_.gvec().partition());
     ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
     ctx_.fft().output(&local_potential_->f_rg(0));
