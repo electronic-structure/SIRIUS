@@ -185,7 +185,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     /* short notation for target wave-functions */
     auto& psi = kp->fv_eigen_vectors_slab();
 
-    bool converge_by_energy = (itso.converge_by_energy_ == 1);
+    //bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
     int nlo = ctx_.unit_cell().mt_lo_basis_size();
 
@@ -209,7 +209,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 
     /* residuals */
     wave_functions res(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, std::max(nlo, num_bands));
+                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, nlo + 2 * num_bands);
 
     //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
@@ -360,27 +360,13 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
                     DUMP("subspace size limit reached");
                 }
                 #endif
-                //STOP();
-                //hmlt_old.zero();
-                //for (int i = 0; i < num_bands; i++) {
-                //    hmlt_old.set(i, i, eval[i]);
-                //}
-
-                ///* need to compute all hpsi and opsi states (not only unconverged) */
-                //if (converge_by_energy) {
-                //    transform<double_complex>({&hphi, &ophi}, 0, N, evec, 0, 0, {&hpsi, &opsi}, 0, num_bands);
-                //}
  
                 /* update basis functions */
                 phi.copy_from(psi, 0, num_bands, nlo);
-                ///* update hphi and ophi */
-                //hphi.copy_from(hpsi, 0, num_bands, nlo);
-                //ophi.copy_from(opsi, 0, num_bands, nlo);
-                /* number of basis functions that we already have */
-                //N = num_bands + nlo;
-                N = 0;
-                n = n + nlo + num_bands;
                 phi.copy_from(res, 0, n, nlo + num_bands);
+                /* number of basis functions that we already have */
+                N = 0;
+                n += (nlo + num_bands);
             }
         } else {
             /* expand variational subspace with new basis vectors obtatined from residuals */
