@@ -111,7 +111,10 @@ class linalg<CPU>: public linalg_base
         /// Compute C = alpha * op(A) * op(B) + beta * op(C), simple interface - matrices start from (0, 0) corner.
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
-                         T alpha, dmatrix<T>& A, dmatrix<T>& B, T beta, dmatrix<T>& C);
+                         T alpha, dmatrix<T>& A, dmatrix<T>& B, T beta, dmatrix<T>& C)
+        {
+            gemm(transa, transb, m, n, k, alpha, A, 0, 0, B, 0, 0, beta, C, 0, 0);
+        }
 
         /// Compute the solution to system of linear equations A * X = B for GT matrices.
         template <typename T> 
@@ -245,10 +248,17 @@ class linalg<GPU>: public linalg_base
 
 // C = alpha * op(A) * op(B) + beta * op(C), double
 template<>
-inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
-                                          ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb, ftn_double beta,
+inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                          ftn_double alpha,
+                                          ftn_double const* A, ftn_int lda,
+                                          ftn_double const* B, ftn_int ldb,
+                                          ftn_double beta,
                                           ftn_double* C, ftn_int ldc)
 {
+    assert(lda != 0);
+    assert(ldb != 0);
+    assert(ldc != 0);
+
     const char *trans[] = {"N", "T", "C"};
 
     FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, const_cast<ftn_double*>(A), &lda, const_cast<ftn_double*>(B), &ldb, &beta, C, &ldc,
@@ -258,10 +268,16 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
 // C = alpha * op(A) * op(B) + beta * op(C), double_complex
 template<>
 inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                                  ftn_double_complex alpha, ftn_double_complex const* A, ftn_int lda,
-                                                  ftn_double_complex const* B, ftn_int ldb, ftn_double_complex beta,
+                                                  ftn_double_complex alpha,
+                                                  ftn_double_complex const* A, ftn_int lda,
+                                                  ftn_double_complex const* B, ftn_int ldb,
+                                                  ftn_double_complex beta,
                                                   ftn_double_complex* C, ftn_int ldc)
 {
+    assert(lda != 0);
+    assert(ldb != 0);
+    assert(ldc != 0);
+
     const char *trans[] = {"N", "T", "C"};
 
     FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb, &beta, C, &ldc,
@@ -687,6 +703,10 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           dmatrix<ftn_double>& B, ftn_int ib, ftn_int jb, ftn_double beta,
                                           dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
 {
+    assert(A.ld() != 0);
+    assert(B.ld() != 0);
+    assert(C.ld() != 0);
+
     const char *trans[] = {"N", "T", "C"};
 
     ia++; ja++;
@@ -698,14 +718,6 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
-                                          dmatrix<ftn_double>& A, dmatrix<ftn_double>& B, ftn_double beta,
-                                          dmatrix<ftn_double>& C)
-{
-    gemm(transa, transb, m, n, k, alpha, A, 0, 0, B, 0, 0, beta, C, 0, 0);
-}
-
-template<>
 inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                                   ftn_double_complex alpha,
                                                   dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
@@ -713,6 +725,10 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex beta,
                                                   dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
 {
+    assert(A.ld() != 0);
+    assert(B.ld() != 0);
+    assert(C.ld() != 0);
+
     const char *trans[] = {"N", "T", "C"};
 
     ia++; ja++;
@@ -721,15 +737,6 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
     FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at<CPU>(), &ia, &ja, A.descriptor(),
                     B.at<CPU>(), &ib, &jb, B.descriptor(), &beta, C.at<CPU>(), &ic, &jc, C.descriptor(),
                     (ftn_len)1, (ftn_len)1);
-}
-
-template<>
-inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                                  ftn_double_complex alpha,
-                                                  dmatrix<ftn_double_complex>& A, dmatrix<ftn_double_complex>& B,
-                                                  ftn_double_complex beta, dmatrix<ftn_double_complex>& C)
-{
-    gemm(transa, transb, m, n, k, alpha, A, 0, 0, B, 0, 0, beta, C, 0, 0);
 }
 
 template<>
