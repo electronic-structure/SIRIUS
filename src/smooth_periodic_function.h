@@ -84,6 +84,11 @@ class Smooth_periodic_function
             return f_pw_local_(ig__);
         }
 
+        inline const double_complex& f_pw_local(int ig__) const
+        {
+            return f_pw_local_(ig__);
+        }
+
         FFT3D& fft()
         {
             assert(fft_ != nullptr);

@@ -30,6 +30,7 @@
 #include "k_set.h"
 #include "force.h"
 #include "json.hpp"
+#include "Geometry/Forces_PS.h"
 
 using json = nlohmann::json;
 
@@ -51,6 +52,8 @@ class DFT_ground_state
         K_set& kset_;
 
         Band band_;
+
+        std::unique_ptr<Forces_PS> forces_;
 
         int use_symmetry_;
 
@@ -74,11 +77,13 @@ class DFT_ground_state
               use_symmetry_(use_symmetry__)
         {
             if (!ctx_.full_potential()) ewald_energy_ = ewald_energy();
+
+            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_));
         }
 
         void move_atoms(int istep);
 
-        void forces(mdarray<double, 2>& atom_force);
+        mdarray<double, 2> forces();
 
         int find(double potential_tol, double energy_tol, int num_dft_iter);
 

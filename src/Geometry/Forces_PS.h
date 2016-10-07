@@ -18,15 +18,15 @@ namespace sirius
 class Forces_PS
 {
 private:
-    Simulation_context &sim_ctx_;
+    Simulation_context &ctx_;
 
 
 public:
-    Forces_PS(Simulation_context &sim_ctx)
-    : sim_ctx_(sim_ctx)
+    Forces_PS(Simulation_context &ctx)
+    : ctx_(ctx)
     {}
 
-    vector<vector3d> calc_local_forces(Periodic_function &valence_rho, mdarray<double, 2> &vloc_radial_integrals);
+    mdarray<double,2> calc_local_forces(const Periodic_function<double>& valence_rho, const mdarray<double, 2>& vloc_radial_integrals) const;
 
     //vector<vector3d> calc_local_forces(mdarray<double, 2> &rho_radial_integrals, mdarray<double, 2> &vloc_radial_integrals);
 };

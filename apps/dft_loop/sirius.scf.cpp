@@ -233,6 +233,8 @@ double ground_state(Simulation_context&       ctx,
     
     int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_);
     
+    dft.forces();
+
     if (write_output) {
         json dict;
         json_output_common(dict);
