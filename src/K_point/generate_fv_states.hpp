@@ -95,28 +95,30 @@ inline void K_point::generate_fv_states()
             alm_coeffs_->generate(ia, alm);
             
             /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-            if (ctx_.processing_unit() == CPU) {
-                /* multiply eigen-vectors and matching coefficients */
-                linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
-                                  alm.at<CPU>(), alm.ld(),
-                                  pw_coeffs.at<CPU>(), pw_coeffs.ld(),
-                                  fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld());
+            if (nbnd_loc) {
+                if (ctx_.processing_unit() == CPU) {
+                    /* multiply eigen-vectors and matching coefficients */
+                    linalg<CPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                                      alm.at<CPU>(), alm.ld(),
+                                      pw_coeffs.at<CPU>(), pw_coeffs.ld(),
+                                      fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld());
+                }
+                #ifdef __GPU
+                if (ctx_.processing_unit() == GPU) {
+                    /* multiply eigen-vectors and matching coefficients */
+                    alm.async_copy_to_device(tid);
+                    linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
+                                      alm.at<GPU>(), alm.ld(),
+                                      pw_coeffs.at<GPU>(), pw_coeffs.ld(),
+                                      tmp.at<GPU>(), tmp.ld(),
+                                      tid);
+                    acc::copyout(fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld(),
+                                 tmp.at<GPU>(), tmp.ld(),
+                                 mt_aw_size, nbnd_loc, tid);
+                    acc::sync_stream(tid);
+                }
+                #endif
             }
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                /* multiply eigen-vectors and matching coefficients */
-                alm.async_copy_to_device(tid);
-                linalg<GPU>::gemm(1, 0, mt_aw_size, nbnd_loc, num_gkvec(),
-                                  alm.at<GPU>(), alm.ld(),
-                                  pw_coeffs.at<GPU>(), pw_coeffs.ld(),
-                                  tmp.at<GPU>(), tmp.ld(),
-                                  tid);
-                acc::copyout(fv_states().mt_coeffs().extra().at<CPU>(offset_wf, 0), fv_states().mt_coeffs().extra().ld(),
-                             tmp.at<GPU>(), tmp.ld(),
-                             mt_aw_size, nbnd_loc, tid);
-                acc::sync_stream(tid);
-            }
-            #endif
 
             for (int i = 0; i < nbnd_loc; i++) {
                 /* lo block */
