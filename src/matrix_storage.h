@@ -114,9 +114,10 @@ class matrix_storage<T, matrix_storage_t::slab>
                 /* reallocate buffers if necessary */
                 if (extra_buf_.size() < sz) {
                     extra_buf_ = mdarray<T, 1>(sz);
-                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "send_recv_buf_");
+                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.send_recv_buf_");
                 }
-                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc);
+                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc,
+                                       "matrix_storage.extra_");
             }
         }
 

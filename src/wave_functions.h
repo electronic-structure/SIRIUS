@@ -634,8 +634,8 @@ inline void transform(double alpha__,
 
     const int BS = sddk_block_size;
 
-    mdarray<T, 1> buf(BS * BS, memory_t::host, "buf");
-    matrix<T> submatrix(BS, BS, memory_t::host, "submatrix");
+    mdarray<T, 1> buf(BS * BS, memory_t::host, "transform::buf");
+    matrix<T> submatrix(BS, BS, memory_t::host, "transform::submatrix");
 
     #ifdef __GPU
     if (pu == GPU) {
@@ -949,7 +949,7 @@ inline void inner(wave_functions& bra__,
 
     const int BS = sddk_block_size;
 
-    mdarray<T, 2> c_tmp(BS * BS, 2);
+    mdarray<T, 2> c_tmp(BS * BS, 2, memory_t::host, "inner::c_tmp");
     if (pu == GPU) {
         c_tmp.allocate(memory_t::device);
     }
