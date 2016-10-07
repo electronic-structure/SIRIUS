@@ -187,10 +187,13 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
     
-    assert(num_bands * 2 < kp->num_gkvec()); // iterative subspace size can't be smaller than this
+    int nlo = ctx_.unit_cell().mt_lo_basis_size();
 
     /* number of auxiliary basis functions */
-    int num_phi = std::min(itso.subspace_size_ * num_bands, kp->num_gkvec());
+    int num_phi = nlo + itso.subspace_size_ * num_bands;
+    if (num_phi >= kp->num_gkvec()) {
+        TERMINATE("subspace is too big");
+    }
 
     /* allocate wave-functions */
     wave_functions  phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
@@ -206,7 +209,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 
     /* residuals */
     wave_functions res(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
+                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, std::max(nlo, num_bands));
 
     //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
@@ -218,12 +221,36 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
+    if (nlo != 0) {
+        for (int j = 0; j < nlo; j++) {
+            std::memset(phi.pw_coeffs().prime().at<CPU>(0, j),
+                        0,
+                        phi.pw_coeffs().num_rows_loc() * sizeof(double_complex));
+        }
+        /* zero MT part */
+        if (phi.mt_coeffs().num_rows_loc()) {
+            for (int j = 0; j < nlo; j++) {
+                std::memset(phi.mt_coeffs().prime().at<CPU>(0, j),
+                            0,
+                            phi.mt_coeffs().num_rows_loc() * sizeof(double_complex));
+            }
+        }
+        for (int ialoc = 0; ialoc < phi.spl_num_atoms().local_size(); ialoc++) {
+            int ia = phi.spl_num_atoms()[ialoc];
+            for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
+                phi.mt_coeffs().prime(phi.offset_mt_coeffs(ialoc) + xi, unit_cell_.atom(ia).offset_lo() + xi) = 1.0;
+            }
+        }
+    }
+
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         psi.allocate_on_device();
         psi.copy_to_device(0, num_bands);
 
         phi.allocate_on_device();
+        phi.copy_to_device(0, nlo);
+
         res.allocate_on_device();
 
         hphi.allocate_on_device();
@@ -245,9 +272,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
         eval[i] = kp->band_energy(i);
     }
     std::vector<double> eval_old(num_bands);
-    
+
     /* trial basis functions */
-    phi.copy_from(psi, 0, num_bands);
+    phi.copy_from(psi, 0, num_bands, nlo);
     
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
@@ -258,10 +285,10 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     }
     #endif
     /* current subspace size */
-    int N{0};
+    int N = 0;
 
     /* number of newly added basis functions */
-    int n = num_bands;
+    int n = nlo + num_bands;
 
     #if (__VERBOSITY > 2)
     if (kp->comm().rank() == 0) {
@@ -333,27 +360,32 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
                     DUMP("subspace size limit reached");
                 }
                 #endif
-                hmlt_old.zero();
-                for (int i = 0; i < num_bands; i++) {
-                    hmlt_old.set(i, i, eval[i]);
-                }
+                //STOP();
+                //hmlt_old.zero();
+                //for (int i = 0; i < num_bands; i++) {
+                //    hmlt_old.set(i, i, eval[i]);
+                //}
 
-                /* need to compute all hpsi and opsi states (not only unconverged) */
-                if (converge_by_energy) {
-                    transform<double_complex>({&hphi, &ophi}, 0, N, evec, 0, 0, {&hpsi, &opsi}, 0, num_bands);
-                }
+                ///* need to compute all hpsi and opsi states (not only unconverged) */
+                //if (converge_by_energy) {
+                //    transform<double_complex>({&hphi, &ophi}, 0, N, evec, 0, 0, {&hpsi, &opsi}, 0, num_bands);
+                //}
  
                 /* update basis functions */
-                phi.copy_from(psi, 0, num_bands);
-                /* update hphi and ophi */
-                hphi.copy_from(hpsi, 0, num_bands);
-                ophi.copy_from(opsi, 0, num_bands);
+                phi.copy_from(psi, 0, num_bands, nlo);
+                ///* update hphi and ophi */
+                //hphi.copy_from(hpsi, 0, num_bands, nlo);
+                //ophi.copy_from(opsi, 0, num_bands, nlo);
                 /* number of basis functions that we already have */
-                N = num_bands;
+                //N = num_bands + nlo;
+                N = 0;
+                n = n + nlo + num_bands;
+                phi.copy_from(res, 0, n, nlo + num_bands);
             }
+        } else {
+            /* expand variational subspace with new basis vectors obtatined from residuals */
+            phi.copy_from(res, 0, n, N);
         }
-        /* expand variational subspace with new basis vectors obtatined from residuals */
-        phi.copy_from(res, 0, n, N);
     }
 
     #ifdef __GPU

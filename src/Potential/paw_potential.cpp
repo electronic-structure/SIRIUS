@@ -507,11 +507,9 @@ void Potential::calc_PAW_local_Dij(int spl_atom_index, mdarray<double_complex,4>
                 // create array for integration
                 std::vector<double> intdata(newgrid.num_points(),0);
 
-                for(int lm3 = 0; lm3 < lmsize_rho; lm3++ )
-                {
+                for (int lm3 = 0; lm3 < lmsize_rho; lm3++) {
                     // fill array
-                    for(int irad=0; irad< intdata.size(); irad++)
-                    {
+                    for (int irad = 0; irad < newgrid.num_points(); irad++) {
                         double ae_part = pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
                         double ps_part = pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2)  + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
 
@@ -695,8 +693,6 @@ void Potential::add_paw_Dij_to_atom_Dmtrx()
     for(int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     {
         auto& atom = unit_cell_.atom(ia);
-
-        auto& atype = atom.type();
 
         for(int is = 0; is< ctx_.num_mag_comp(); is++)
         {

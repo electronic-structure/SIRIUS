@@ -377,9 +377,11 @@ inline void Band::apply_fv_h_o(K_point* kp__,
             /* contribution to O|phi> */
             for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                 if (ctx_.processing_unit() == CPU) {
+                    #pragma omp parallel
                     for (int i = 0; i < n__; i++) {
                         /* APW-lo contribution */
                         auto z = phi_lo_ia(ilo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
+                        #pragma omp for
                         for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
                             ophi__.pw_coeffs().prime(ig, N__ + i) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
                         }
@@ -415,12 +417,12 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                               hmt.data(), 1, double_complex(0, 0), halm.at<CPU>(), 1);
 
             if (ctx_.processing_unit() == CPU) {
+                #pragma omp parallel
                 for (int i = 0; i < n__; i++) {
                     auto z = phi_lo_ia(ilo, i);
-                    if (ctx_.processing_unit() == CPU) {
-                        for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
-                            hphi__.pw_coeffs().prime(ig, N__ + i) += halm(ig, 0) * z; 
-                        }
+                    #pragma omp for
+                    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+                        hphi__.pw_coeffs().prime(ig, N__ + i) += halm(ig, 0) * z; 
                     }
                 }
             }

@@ -759,27 +759,6 @@ class Atom_type
             return pp_desc_;
         }
 
-        ////TODO rename these two methods, unsafe method is needed?
-        //inline uspp_descriptor& uspp()
-        //{
-        //    return uspp_;
-        //}
-
-        //inline uspp_descriptor const& uspp() const
-        //{
-        //    return uspp_;
-        //}
-
-        //inline PAW_descriptor const& get_PAW_descriptor() const
-        //{
-        //    return paw_;
-        //}
-
-        //inline PAW_descriptor& get_PAW_descriptor_unsafe()
-        //{
-        //    return paw_;
-        //}
-
         inline void set_symbol(const std::string symbol__)
         {
             symbol_ = symbol__;
