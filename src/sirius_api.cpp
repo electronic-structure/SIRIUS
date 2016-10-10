@@ -1879,8 +1879,8 @@ void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)
 void sirius_forces(double* forces__)
 {
     PROFILE();
-    mdarray<double, 2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms());
-    dft_ground_state->forces(forces);
+    //mdarray<double, 2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms());
+    //dft_ground_state->forces(forces);
 }
 
 void sirius_set_atom_pos(int32_t* atom_id, double* pos)
