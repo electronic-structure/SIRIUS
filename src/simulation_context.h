@@ -330,7 +330,9 @@ inline void Simulation_context::init_fft()
 
     if (full_potential()) {
         /* split bands between all ranks, use serial FFT */
-        mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
+        //mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
+        mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                                                mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
     } else {
         /* use parallel FFT for density and potential */
         mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
@@ -584,7 +586,9 @@ inline void Simulation_context::print_info()
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());
     printf("MPI grid                      :");
-    for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->dimension_size(i));
+    for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
+        printf(" %i", mpi_grid_->dimension_size(i));
+    }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
     printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(1));
@@ -609,8 +613,7 @@ inline void Simulation_context::print_info()
     printf("  local number of G-vectors             : %i\n", gvec_.gvec_count(0));
     printf("  number of G-shells                    : %i\n", gvec_.num_shells());
     printf("\n");
-    if (!full_potential())
-    {
+    if (!full_potential()) {
         printf("\n");
         printf("FFT context for applying Hloc\n");
         printf("=============================\n");
@@ -631,7 +634,9 @@ inline void Simulation_context::print_info()
     }
 
     unit_cell_.print_info();
-    for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
+    for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
+        unit_cell_.atom_type(i).print_info();
+    }
 
     printf("\n");
     printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
