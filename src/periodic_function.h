@@ -110,12 +110,6 @@ class Periodic_function: public Smooth_periodic_function<T>
               gvec_(ctx__.gvec()),
               angular_domain_size_(angular_domain_size__)
         {
-            if (parameters_.full_potential()) {
-                if (ctx__.fft().parallel()) {
-                    TERMINATE_NOT_IMPLEMENTED
-                }
-            }
-
             if (allocate_pw__) {
                 f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
                 this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
