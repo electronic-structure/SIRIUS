@@ -189,16 +189,41 @@ inline void K_point::initialize()
                 fv_eigen_vectors_slab_->mt_coeffs().prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                    for (int ig = 0; ig < gkvec().gvec_count(comm().rank()); ig++) {
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 1.0;
+                    for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                        int ig = igloc + gkvec().gvec_offset(comm().rank());
+                        if (ig == i) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 1.0;
                         }
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 1) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.5;
+                        if (ig == i + 1) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.5;
                         }
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 2) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.25;
+                        if (ig == i + 2) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.125;
                         }
+                    }
+                }
+
+                int ncomp = 10 * unit_cell_.num_atoms();
+
+                singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
+                                                                                          comm(),
+                                                                                          gkvec(),
+                                                                                          ncomp));
+                singular_components_->pw_coeffs().prime().zero();
+                /* starting guess for wave-functions */
+                for (int i = 0; i < ncomp; i++) {
+                    for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                        int ig = igloc + gkvec().gvec_offset(comm().rank());
+                        if (ig == i) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 1.0;
+                        }
+                        if (ig == i + 1) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 0.5;
+                        }
+                        if (ig == i + 2) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 0.125;
+                        }
+                        singular_components_->pw_coeffs().prime(igloc, i) += 0.01 * type_wrapper<double_complex>::random();
                     }
                 }
             }
