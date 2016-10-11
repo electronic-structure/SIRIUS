@@ -193,6 +193,165 @@ void Band::apply_h_o(K_point* kp__,
     //== }
 }
 
+inline void Band::apply_o(K_point* kp__,
+                          int N__,
+                          int n__,
+                          wave_functions& phi__,
+                          wave_functions& ophi__) const
+{
+    PROFILE_WITH_TIMER("sirius::Band::apply_o");
+
+    /* interstitial part */
+    auto& comm_col_ = ctx_.mpi_grid_fft().communicator(1 << 1);
+    ctx_.fft().prepare(kp__->gkvec().partition());
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi__.pw_coeffs().copy_to_host(N__, n__);
+    }
+    #endif
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs = phi__.checksum(N__, n__);
+        DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
+    }
+    #endif
+
+     phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  comm_col_, n__, N__);
+    ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col_, n__, N__);
+
+    for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
+        if (ctx_.processing_unit() == CPU) {
+            /* phi(G) -> phi(r) */
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+            #pragma omp parallel for
+            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+                /* multiply by step function */
+                ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
+            }
+            /* phi(r) * Theta(r) -> ophi(G) */
+            ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            /* phi(G) -> phi(r) */
+            ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+            /* multiply by step function */
+            scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, ctx_.fft().buffer<GPU>(), theta_.at<GPU>());
+            /* phi(r) * Theta(r) -> ophi(G) */
+            ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+        }
+        #endif
+    }
+
+    ophi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col_, n__, N__);
+
+    ctx_.fft().dismiss();
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        ophi__.pw_coeffs().copy_to_device(N__, n__);
+    }
+    #endif
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs2 = ophi__.checksum(N__, n__);
+        DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
+    #endif
+
+    matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+    matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
+
+    double_complex zone(1, 0);
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        alm.allocate(memory_t::device);
+        tmp.allocate(memory_t::device);
+    }
+    #endif
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom = unit_cell_.atom(ia);
+        int nmt = atom.mt_aw_basis_size();
+        kp__->alm_coeffs_loc().generate(ia, alm);
+
+        runtime::Timer t1("sirius::Band::apply_o|apw-apw");
+
+        if (ctx_.processing_unit() == CPU) {
+            /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
+            linalg<CPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+                              alm.at<CPU>(), alm.ld(),
+                              phi__.pw_coeffs().prime().at<CPU>(0, N__), phi__.pw_coeffs().prime().ld(),
+                              tmp.at<CPU>(), tmp.ld());
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
+            linalg<GPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
+                              alm.at<GPU>(), alm.ld(),
+                              phi__.pw_coeffs().prime().at<GPU>(0, N__), phi__.pw_coeffs().prime().ld(),
+                              tmp.at<GPU>(), tmp.ld());
+            tmp.copy_to_host(nmt * n__);
+        }
+        #endif
+
+        kp__->comm().allreduce(tmp.at<CPU>(), static_cast<int>(tmp.size()));
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            tmp.copy_to_device(nmt * n__);
+        }
+        #endif
+
+        for (int xi = 0; xi < nmt; xi++) {
+            for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+                alm(ig, xi) = std::conj(alm(ig, xi));
+            }
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            alm.copy_to_device();
+        }
+        #endif
+
+        if (ctx_.processing_unit() == CPU) {
+            /* APW-APW contribution to overlap */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt,
+                              zone,
+                              alm.at<CPU>(), alm.ld(),
+                              tmp.at<CPU>(), tmp.ld(),
+                              zone,
+                              ophi__.pw_coeffs().prime().at<CPU>(0, N__),
+                              ophi__.pw_coeffs().prime().ld());
+        }
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            /* APW-APW contribution to overlap */
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt,
+                              &zone,
+                              alm.at<GPU>(), alm.ld(),
+                              tmp.at<GPU>(), tmp.ld(),
+                              &zone,
+                              ophi__.pw_coeffs().prime().at<GPU>(0, N__),
+                              ophi__.pw_coeffs().prime().ld());
+        }
+        #endif
+
+        t1.stop();
+    }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    {
+        auto cs2 = ophi__.checksum(N__, n__);
+        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+    }
+    #endif
+}
+
 inline void Band::apply_fv_h_o(K_point* kp__,
                                Interstitial_operator& istl_op__, 
                                Periodic_function<double>* effective_potential__,
