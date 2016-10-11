@@ -280,7 +280,8 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         size_t size() const
         {
-            size_t size = this->fft_->local_size();
+            //size_t size = this->fft_->local_size();
+            size_t size = gvec_.num_gvec() * 2;
             if (parameters_.full_potential()) {
                 for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
                     size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points() * 
@@ -305,10 +306,16 @@ class Periodic_function: public Smooth_periodic_function<T>
                     }
                 }
             }
+            
+            double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
 
-            for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-                mixer__->input(offset__ + n++, this->f_rg_(ir));
+            for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
+                mixer__->input(offset__ + n++, pw[ig]);
             }
+
+            //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+            //    mixer__->input(offset__ + n++, this->f_rg_(ir));
+            //}
 
             return n;
         }
@@ -329,9 +336,16 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
             }
 
-            for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-                this->f_rg_(ir) = array__[n++];
+            double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
+            for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
+                pw[ig] = array__[n++];
             }
+            this->fft_->prepare(gvec_.partition());
+            this->fft_transform(1);
+            this->fft_->dismiss();
+            //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+            //    this->f_rg_(ir) = array__[n++];
+            //}
 
             return n;
         }
