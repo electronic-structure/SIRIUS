@@ -205,12 +205,19 @@ inline void Band::apply_o(K_point* kp__,
     auto& comm_col_ = ctx_.mpi_grid_fft().communicator(1 << 1);
     ctx_.fft().prepare(kp__->gkvec().partition());
 
+    mdarray<double, 1> theta;
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        theta = mdarray<double, 1>(ctx_.fft().local_size(), memory_t::host, "theta");
+        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+            theta[ir] = ctx_.step_function().theta_r(ir);
+        }
+        theta.allocate(memory_t::device);
+        theta.copy_to_device();
         phi__.pw_coeffs().copy_to_host(N__, n__);
     }
     #endif
-
+    
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         auto cs = phi__.checksum(N__, n__);
@@ -238,7 +245,7 @@ inline void Band::apply_o(K_point* kp__,
             /* phi(G) -> phi(r) */
             ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
             /* multiply by step function */
-            scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, ctx_.fft().buffer<GPU>(), theta_.at<GPU>());
+            scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, ctx_.fft().buffer<GPU>(), theta.at<GPU>());
             /* phi(r) * Theta(r) -> ophi(G) */
             ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
         }
@@ -290,6 +297,7 @@ inline void Band::apply_o(K_point* kp__,
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
+            alm.copy_to_device();
             /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
             linalg<GPU>::gemm(1, 0, nmt, n__, kp__->num_gkvec_loc(),
                               alm.at<GPU>(), alm.ld(),
@@ -301,22 +309,11 @@ inline void Band::apply_o(K_point* kp__,
 
         kp__->comm().allreduce(tmp.at<CPU>(), static_cast<int>(tmp.size()));
 
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            tmp.copy_to_device(nmt * n__);
-        }
-        #endif
-
         for (int xi = 0; xi < nmt; xi++) {
             for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
                 alm(ig, xi) = std::conj(alm(ig, xi));
             }
         }
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            alm.copy_to_device();
-        }
-        #endif
 
         if (ctx_.processing_unit() == CPU) {
             /* APW-APW contribution to overlap */
@@ -330,6 +327,8 @@ inline void Band::apply_o(K_point* kp__,
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
+            tmp.copy_to_device(nmt * n__);
+            alm.copy_to_device();
             /* APW-APW contribution to overlap */
             linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nmt,
                               &zone,

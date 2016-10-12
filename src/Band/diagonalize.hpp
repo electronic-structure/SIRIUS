@@ -171,12 +171,21 @@ inline void Band::get_singular_components(K_point* kp__) const
 
     auto o_diag_tmp = get_o_diag(kp__, ctx_.step_function().theta_pw(0).real());
     
-    mdarray<double, 1> o_diag(kp__->num_gkvec_loc());
-    mdarray<double, 1> diag1(kp__->num_gkvec_loc());
+    mdarray<double, 1> o_diag(kp__->num_gkvec_loc(), memory_t::host, "o_diag");
+    mdarray<double, 1> diag1(kp__->num_gkvec_loc(), memory_t::host, "diag1");
     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
         o_diag[ig] = o_diag_tmp[ig];
         diag1[ig] = 1;
     }
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        o_diag.allocate(memory_t::device);
+        o_diag.copy_to_device();
+        diag1.allocate(memory_t::device);
+        diag1.copy_to_device();
+    }
+    #endif
 
     auto& psi = kp__->singular_components();
 
@@ -202,12 +211,12 @@ inline void Band::get_singular_components(K_point* kp__) const
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         psi.allocate_on_device();
-        psi.copy_to_device();
+        psi.copy_to_device(0, ncomp);
         phi.allocate_on_device();
         res.allocate_on_device();
         ophi.allocate_on_device();
         opsi.allocate_on_device();
-        if (kp->comm().size() == 1) {
+        if (kp__->comm().size() == 1) {
             evec.allocate(memory_t::device);
             ovlp.allocate(memory_t::device);
         }
@@ -338,57 +347,6 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 
     get_singular_components(kp);
 
-
-    //{
-
-
-    //    int ngklo = kp->gklo_basis_size();
-    //    int bs1 = ctx_.cyclic_block_size();
-    //    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs1, bs1);
-    //    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs1, bs1);
-    //    dmatrix<double_complex> evec(ngklo, ngklo, ctx_.blacs_grid(), bs1, bs1);
-    //    
-    //    set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
-
-    //    std::vector<double> eval(10);
-    //    if (std_evp_solver().solve(kp->num_gkvec(), 10, o.template at<CPU>(), o.ld(),
-    //                               eval.data(), evec.template at<CPU>(), evec.ld(),
-    //                               o.num_rows_local(), o.num_cols_local())) {
-    //        std::stringstream s;
-    //        s << "error in diagonalziation";
-    //        TERMINATE(s);
-    //    }
-
-    //    for (int i = 0; i < 10; i++) {
-    //        printf("o[%i]=%18.12f\n", i, eval[i]);
-    //    }
-
-    //    wave_functions phi(ctx_, kp->comm(), kp->gkvec(), 10);
-    //    wave_functions ophi(ctx_, kp->comm(), kp->gkvec(), 10);
-    //    
-    //    for (int i = 0; i < 10; i++) {
-    //        std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
-    //                    evec.at<CPU>(0, i),
-    //                    kp->num_gkvec() * sizeof(double_complex));
-
-    //    }
-    //    apply_o(kp, 0, 10, phi, ophi);
-
-    //    dmatrix<double_complex> ovlp(10, 10, ctx_.blacs_grid(), bs1, bs1);
-    //    dmatrix<double_complex> ovlp_old;
-    //    set_subspace_mtrx(0, 10, phi, ophi, ovlp, ovlp_old);
-
-    //    for (int i = 0; i < 10; i++) {
-    //        for (int j = 0; j < 10; j++) {
-    //            double_complex z = (i == j) ? ovlp(i, j) - eval[i] : ovlp(i, j);
-    //            if (std::abs(z) > 1e-10) {
-    //                printf("ovlp(%i, %i) = %f %f\n", i, j, z.real(), z.imag());
-    //            }
-    //        }
-    //    }
-    //}
-
-
     auto h_diag = get_h_diag(kp, effective_potential->f_pw(0).real(), ctx_.step_function().theta_pw(0).real());
     auto o_diag = get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
 
@@ -402,8 +360,6 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 
     //bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
-    //get_singular_components(kp);
-    
     int nlo = ctx_.unit_cell().mt_lo_basis_size();
 
     int ncomp = kp->singular_components().num_wf();
@@ -483,7 +439,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
         psi.copy_to_device(0, num_bands);
 
         phi.allocate_on_device();
-        phi.copy_to_device(0, nlo);
+        phi.copy_to_device(0, nlo + ncomp);
 
         res.allocate_on_device();
 
@@ -513,7 +469,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
         auto cs1 = psi.checksum(0, num_bands);
-        auto cs2 = phi.checksum(0, num_bands);
+        auto cs2 = phi.checksum(0, nlo + ncomp + num_bands);
         DUMP("checksum(psi): %18.10f %18.10f", cs1.real(), cs1.imag());
         DUMP("checksum(phi): %18.10f %18.10f", cs2.real(), cs2.imag());
     }
@@ -601,8 +557,6 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
                 phi.copy_from(psi, 0, num_bands, nlo + ncomp);
                 phi.copy_from(res, 0, n, nlo + ncomp + num_bands);
                 /* number of basis functions that we already have */
-                //N = 0;
-                //n += (nlo + ncomp + num_bands);
                 N = nlo + ncomp;
                 n += num_bands;
             }
