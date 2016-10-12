@@ -4422,7 +4422,7 @@
     "number": 1,
     "rinf": 15.0697856389134,
     "rmin": 1e-07,
-    "rmt": 0.65,
+    "rmt": 1.0,
     "symbol": "H",
     "valence": [
         {
