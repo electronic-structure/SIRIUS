@@ -720,6 +720,7 @@ class Band
         inline void apply_fv_h_o(K_point* kp__,
                                  Interstitial_operator& istl_op__,
                                  Periodic_function<double>* effective_potential__,
+                                 int nlo,
                                  int N,
                                  int n,
                                  wave_functions& phi__,

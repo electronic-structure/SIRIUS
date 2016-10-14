@@ -354,6 +354,7 @@ inline void Band::apply_o(K_point* kp__,
 inline void Band::apply_fv_h_o(K_point* kp__,
                                Interstitial_operator& istl_op__, 
                                Periodic_function<double>* effective_potential__,
+                               int nlo__,
                                int N__,
                                int n__,
                                wave_functions& phi__,
@@ -363,6 +364,15 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     PROFILE_WITH_TIMER("sirius::Band::apply_fv_h_o");
 
     assert(ophi__.mt_coeffs().num_rows_loc() == hphi__.mt_coeffs().num_rows_loc());
+    
+    if (N__ == 0) {
+        for (int ibnd = 0; ibnd < nlo__; ibnd++) {
+            for (int j = 0; j < hphi__.pw_coeffs().num_rows_loc(); j++) {
+                hphi__.pw_coeffs().prime(j, ibnd) = 0;
+                ophi__.pw_coeffs().prime(j, ibnd) = 0;
+            }
+        }
+    }
 
     /* zero the local-orbital part */
     for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
@@ -371,8 +381,13 @@ inline void Band::apply_fv_h_o(K_point* kp__,
             ophi__.mt_coeffs().prime(ilo, ibnd) = 0;
         }
     }
+
     /* interstitial part */
-    istl_op__.apply(kp__, N__, n__, phi__, hphi__, ophi__);
+    if (N__ == 0) {
+        istl_op__.apply(kp__, nlo__, n__ - nlo__, phi__, hphi__, ophi__);
+    } else {
+        istl_op__.apply(kp__, N__, n__, phi__, hphi__, ophi__);
+    }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {

@@ -497,7 +497,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, istl_op, effective_potential, N, n, phi, hphi, ophi);
+        apply_fv_h_o(kp, istl_op, effective_potential, nlo, N, n, phi, hphi, ophi);
         
         orthogonalize(N, n, phi, hphi, ophi, ovlp, res);
 
