@@ -10,6 +10,10 @@
 
 #include "../simulation_context.h"
 #include "../periodic_function.h"
+#include "../augmentation_operator.h"
+#include "../potential.h"
+#include "../density.h"
+#include "../beta_projectors.h"
 
 namespace sirius
 {
@@ -19,14 +23,19 @@ class Forces_PS
 {
 private:
     Simulation_context &ctx_;
+    Density &density_;
+    Potential &potential_;
 
 
 public:
-    Forces_PS(Simulation_context &ctx)
-    : ctx_(ctx)
+    Forces_PS(Simulation_context &ctx, Density& density, Potential& potential)
+    : ctx_(ctx), density_(density), potential_(potential)
     {}
 
-    mdarray<double,2> calc_local_forces(const Periodic_function<double>& valence_rho, const mdarray<double, 2>& vloc_radial_integrals) const;
+    mdarray<double,2> calc_local_forces() const;
+
+    mdarray<double,2> calc_ultrasoft_forces() const;
+
 
     //vector<vector3d> calc_local_forces(mdarray<double, 2> &rho_radial_integrals, mdarray<double, 2> &vloc_radial_integrals);
 };

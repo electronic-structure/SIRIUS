@@ -51,7 +51,7 @@ const int _beta_desc_ia_ = 3;
 
 class Beta_projectors
 {
-    private:
+    protected:
 
         Communicator const& comm_;
 
@@ -88,7 +88,7 @@ class Beta_projectors
         /** Store as double to handle both gamma- and general k-point cases */
         mdarray<double, 1> beta_phi_;
 
-        struct beta_chunk
+        struct beta_chunk_t
         {
             int num_beta_;
             int num_atoms_;
@@ -97,7 +97,7 @@ class Beta_projectors
             mdarray<double, 2> atom_pos_;
         };
 
-        std::vector<beta_chunk> beta_chunks_;
+        mdarray<beta_chunk_t, 1> beta_chunks_;
 
         int max_num_beta_;
 
@@ -147,9 +147,9 @@ class Beta_projectors
             return static_cast<int>(beta_chunks_.size());
         }
 
-        inline beta_chunk const& beta_chunk(int idx__) const
+        inline beta_chunk_t const& beta_chunk(int idx__) const
         {
-            return beta_chunks_[idx__];
+            return beta_chunks_(idx__);
         }
 
         inline int num_gkvec_loc() const

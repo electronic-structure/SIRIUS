@@ -134,23 +134,37 @@ void DFT_ground_state::move_atoms(int istep)
     //}
 }
 
+
+
+
 mdarray<double,2 > DFT_ground_state::forces()
 {
     //STOP();
 
-    mdarray<double,2 > loc_forces = forces_->calc_local_forces( *density_.rho(), potential_.get_vloc_radial_integrals());
+    mdarray<double,2 > loc_forces = forces_->calc_local_forces( );
 
     //Force::total_force(ctx_, potential_, density_, kset_, forces__);
 
-    std::cout<<"===== Forces =====" << std::endl;
+    std::cout<<"===== Forces: local contribution =====" << std::endl;
 
     for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
     {
         std::cout<< loc_forces(0,ia) <<"   "<< loc_forces(1,ia) << "   " << loc_forces(2,ia) << std::endl;
     }
 
+    mdarray<double,2 > us_forces = forces_->calc_ultrasoft_forces();
+
+    std::cout<<"===== Forces: ultrasoft contribution =====" << std::endl;
+
+    for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+    {
+        std::cout<< us_forces(0,ia) <<"   "<< us_forces(1,ia) << "   " << us_forces(2,ia) << std::endl;
+    }
+
     return std::move(loc_forces);
 }
+
+
 
 int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
 {
@@ -285,6 +299,8 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
     return result;
 }
 
+
+
 void DFT_ground_state::relax_atom_positions()
 {
     STOP();
@@ -297,6 +313,8 @@ void DFT_ground_state::relax_atom_positions()
     //    //ctx_.print_info();
     //}
 }
+
+
 
 void DFT_ground_state::print_info()
 {
@@ -419,6 +437,8 @@ void DFT_ground_state::print_info()
         }
     }
 }
+
+
 
 void DFT_ground_state::initialize_subspace()
 {

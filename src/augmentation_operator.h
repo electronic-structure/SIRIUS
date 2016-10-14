@@ -267,6 +267,8 @@ class Augmentation_operator
             return q_pw_(i__, ig__);
         }
 
+        const mdarray<double, 2>& get_q_pw() const { return q_pw_; }
+
         double const& q_mtrx(int xi1__, int xi2__) const
         {
             return q_mtrx_(xi1__, xi2__);

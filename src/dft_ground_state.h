@@ -78,7 +78,7 @@ class DFT_ground_state
         {
             if (!ctx_.full_potential()) ewald_energy_ = ewald_energy();
 
-            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_));
+            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_));
         }
 
         void move_atoms(int istep);

@@ -26,6 +26,9 @@
 
 namespace sirius {
 
+
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
 Beta_projectors::Beta_projectors(Communicator const& comm__,
                                  Unit_cell const& unit_cell__,
                                  Gvec const& gkvec__,
@@ -83,6 +86,46 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     }
 }
 
+
+
+
+////--------------------------------------------------------------------------------------
+////--------------------------------------------------------------------------------------
+//Beta_projectors::Beta_projectors(Beta_projectors &beta_projector)
+//    : comm_(beta_projector.comm_),
+//      unit_cell_(beta_projector.unit_cell_),
+//      gkvec_(beta_projector.gkvec_),
+//      lmax_beta_(beta_projector.lmax_beta_),
+//      pu_(beta_projector.pu_),
+//      num_beta_t_(beta_projector.num_beta_t_),
+//      max_num_beta_(beta_projector.max_num_beta_)
+//{
+//    /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
+//    matrix<double_complex> beta_gk_t_;
+//
+//    /// Plane-wave coefficients of |beta> functions for all atoms.
+//    matrix<double_complex> beta_gk_a_;
+//
+//    /// Plane-wave coefficients of |beta> functions for a chunk of atoms.
+//    matrix<double_complex> beta_gk_;
+//
+//    #ifdef __GPU
+//    /// Explicit GPU buffer for beta-projectors.
+//    //matrix<double_complex> beta_gk_gpu_;
+//    #endif
+//
+//    /// Innter product between beta-projectors and wave-functions.
+//    /** Store as double to handle both gamma- and general k-point cases */
+//    mdarray<double, 1> beta_phi_;
+//
+//    std::vector<beta_chunk> beta_chunks_;
+//}
+
+
+
+
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
 void Beta_projectors::generate_beta_gk_t()
 {
     if (!num_beta_t_) {
@@ -190,7 +233,8 @@ void Beta_projectors::split_in_chunks()
     int num_atoms_in_chunk = (comm_.size() == 1) ? unit_cell_.num_atoms() : std::min(unit_cell_.num_atoms(), 256);
     int num_beta_chunks = unit_cell_.num_atoms() / num_atoms_in_chunk + std::min(1, unit_cell_.num_atoms() % num_atoms_in_chunk);
     splindex<block> spl_beta_chunks(unit_cell_.num_atoms(), num_beta_chunks, 0);
-    beta_chunks_.resize(num_beta_chunks);
+
+    beta_chunks_ = mdarray<beta_chunk_t, 1>(num_beta_chunks);
 
     int offset_in_beta_gk = 0;
 
@@ -198,9 +242,9 @@ void Beta_projectors::split_in_chunks()
     {
         /* number of atoms in chunk */
         int na = spl_beta_chunks.local_size(ib);
-        beta_chunks_[ib].num_atoms_ = na;
-        beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
-        beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
+        beta_chunks_(ib).num_atoms_ = na;
+        beta_chunks_(ib).desc_ = mdarray<int, 2>(4, na);
+        beta_chunks_(ib).atom_pos_ = mdarray<double, 2>(3, na);
 
         int num_beta = 0;
 
@@ -211,21 +255,21 @@ void Beta_projectors::split_in_chunks()
             auto pos = unit_cell_.atom(ia).position();
             auto& type = unit_cell_.atom(ia).type();
             /* atom fractional coordinates */
-            for (int x: {0, 1, 2}) beta_chunks_[ib].atom_pos_(x, i) = pos[x];
+            for (int x: {0, 1, 2}) beta_chunks_(ib).atom_pos_(x, i) = pos[x];
             /* number of beta functions for atom */
-            beta_chunks_[ib].desc_(_beta_desc_nbf_, i) = type.mt_basis_size();
+            beta_chunks_(ib).desc_(_beta_desc_nbf_, i) = type.mt_basis_size();
             /* offset in beta_gk*/
-            beta_chunks_[ib].desc_(_beta_desc_offset_, i) = num_beta;
+            beta_chunks_(ib).desc_(_beta_desc_offset_, i) = num_beta;
             /* offset in beta_gk_t */
-            beta_chunks_[ib].desc_(_beta_desc_offset_t_, i) = type.offset_lo();
+            beta_chunks_(ib).desc_(_beta_desc_offset_t_, i) = type.offset_lo();
             /* global index of atom */
-            beta_chunks_[ib].desc_(_beta_desc_ia_, i) = ia;
+            beta_chunks_(ib).desc_(_beta_desc_ia_, i) = ia;
 
             num_beta += type.mt_basis_size();
         }
         /* number of beta-projectors in this chunk */
-        beta_chunks_[ib].num_beta_ = num_beta;
-        beta_chunks_[ib].offset_ = offset_in_beta_gk;
+        beta_chunks_(ib).num_beta_ = num_beta;
+        beta_chunks_(ib).offset_ = offset_in_beta_gk;
         offset_in_beta_gk += num_beta;
 
         #ifdef __GPU
@@ -243,7 +287,7 @@ void Beta_projectors::split_in_chunks()
     max_num_beta_ = 0;
     for (int ib = 0; ib < num_beta_chunks; ib++)
     {
-        max_num_beta_ = std::max(max_num_beta_, beta_chunks_[ib].num_beta_);
+        max_num_beta_ = std::max(max_num_beta_, beta_chunks_(ib).num_beta_);
     }
 
     num_beta_t_ = 0;
@@ -411,5 +455,14 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
     }
     #endif
 }
+
+
+
+//
+//std::array<Beta_projectors, 3> Beta_projectors::gradient_atomic_pos()
+//{
+//    std::vector<>
+//}
+
 
 };

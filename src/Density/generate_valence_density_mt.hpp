@@ -150,6 +150,10 @@ inline void Density::generate_valence_density_mt(K_set& ks)
     }
 }
 
+
+
+//------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 inline void Density::generate_paw_loc_density()
 {
     PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
