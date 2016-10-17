@@ -46,33 +46,8 @@ inline void K_point::initialize()
         fv_eigen_values_.resize(ctx_.num_fv_states());
     }
 
-    /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
-     * form the input whereas for full-potential calculations this is derived 
-     * from rgkmax (aw_cutoff here) and minimal MT radius. */
-    double gk_cutoff = 0;
-    switch (ctx_.esm_type())
-    {
-        case electronic_structure_method_t::paw_pseudopotential:
-        case electronic_structure_method_t::ultrasoft_pseudopotential:
-        case electronic_structure_method_t::norm_conserving_pseudopotential:
-        {
-            gk_cutoff = ctx_.gk_cutoff();
-            break;
-        }
-        case electronic_structure_method_t::full_potential_lapwlo:
-        {
-            //gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
-            gk_cutoff = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
-            break;
-        }
-        default:
-        {
-            STOP();
-        }
-    }
-
     /* Build a full list of G+k vectors for all MPI ranks */
-    generate_gkvec(gk_cutoff);
+    generate_gkvec(ctx_.gk_cutoff());
     /* build a list of basis functions */
     build_gklo_basis_descriptors();
     /* distribute basis functions */
