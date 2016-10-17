@@ -22,7 +22,7 @@
  *  \brief Contains implementation of sirius::Beta_projectors class.
  */
 
-#include "beta_projectors.h"
+#include "Beta_projectors.h"
 
 namespace sirius {
 
@@ -87,39 +87,6 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
 }
 
 
-
-
-////--------------------------------------------------------------------------------------
-////--------------------------------------------------------------------------------------
-//Beta_projectors::Beta_projectors(Beta_projectors &beta_projector)
-//    : comm_(beta_projector.comm_),
-//      unit_cell_(beta_projector.unit_cell_),
-//      gkvec_(beta_projector.gkvec_),
-//      lmax_beta_(beta_projector.lmax_beta_),
-//      pu_(beta_projector.pu_),
-//      num_beta_t_(beta_projector.num_beta_t_),
-//      max_num_beta_(beta_projector.max_num_beta_)
-//{
-//    /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
-//    matrix<double_complex> beta_gk_t_;
-//
-//    /// Plane-wave coefficients of |beta> functions for all atoms.
-//    matrix<double_complex> beta_gk_a_;
-//
-//    /// Plane-wave coefficients of |beta> functions for a chunk of atoms.
-//    matrix<double_complex> beta_gk_;
-//
-//    #ifdef __GPU
-//    /// Explicit GPU buffer for beta-projectors.
-//    //matrix<double_complex> beta_gk_gpu_;
-//    #endif
-//
-//    /// Innter product between beta-projectors and wave-functions.
-//    /** Store as double to handle both gamma- and general k-point cases */
-//    mdarray<double, 1> beta_phi_;
-//
-//    std::vector<beta_chunk> beta_chunks_;
-//}
 
 
 
@@ -294,6 +261,34 @@ void Beta_projectors::split_in_chunks()
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) num_beta_t_ += unit_cell_.atom_type(iat).mt_lo_basis_size();
 }
 
+//
+//void Beta_projectors::generate(int chunk__, mdarray<double_complex, 2> &beta_gk_a, mdarray<double_complex, 2> &beta_gk )
+//{
+//    if (pu_ == CPU)
+//    {
+//        beta_gk = mdarray<double_complex, 2>(&beta_gk_a(0, beta_chunk(chunk__).offset_),
+//                                              num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
+//    }
+//    #ifdef __GPU
+//    if (pu_ == GPU)
+//    {
+//        beta_gk_ = mdarray<double_complex, 2>(&beta_gk_a_(0, beta_chunk(chunk__).offset_), beta_gk_gpu_.at<GPU>(),
+//                                              num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
+//
+//        auto& desc = beta_chunk(chunk__).desc_;
+//        create_beta_gk_gpu(beta_chunk(chunk__).num_atoms_,
+//                           num_gkvec_loc_,
+//                           desc.at<GPU>(),
+//                           beta_gk_t_.at<GPU>(),
+//                           gkvec_coord_.at<GPU>(),
+//                           beta_chunk(chunk__).atom_pos_.at<GPU>(),
+//                           beta_gk.at<GPU>());
+//    }
+//    #endif
+//}
+
+
+
 void Beta_projectors::generate(int chunk__)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::generate");
@@ -322,7 +317,8 @@ void Beta_projectors::generate(int chunk__)
 }
 
 template<>
-void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__, int idx0__, int n__)
+void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__,
+                                            int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 
@@ -330,11 +326,11 @@ void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__, 
 
     int nbeta = beta_chunk(chunk__).num_beta_;
 
-    if (static_cast<size_t>(nbeta * n__) > beta_phi_.size()) {
-        beta_phi_ = mdarray<double, 1>(2 * nbeta * n__);
+    if (static_cast<size_t>(nbeta * n__) > beta_phi.size()) {
+        beta_phi = mdarray<double, 1>(2 * nbeta * n__);
         #ifdef __GPU
         if (pu_ == GPU) {
-            beta_phi_.allocate(memory_t::device);
+            beta_phi.allocate(memory_t::device);
         }
         #endif
     }
@@ -343,17 +339,17 @@ void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__, 
         case CPU: {
             /* compute <beta|phi> */
             linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_,
-                              beta_gk_.at<CPU>(), num_gkvec_loc_,
+                              beta_gk.at<CPU>(), num_gkvec_loc_,
                               phi__.pw_coeffs().prime().at<CPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
-                              (double_complex*)beta_phi_.at<CPU>(), nbeta);
+                              (double_complex*)beta_phi.at<CPU>(), nbeta);
             break;
         }
         case GPU: {
             #ifdef __GPU
-            linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk_.at<GPU>(), num_gkvec_loc_,
+            linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk.at<GPU>(), num_gkvec_loc_,
                               phi__.pw_coeffs().prime().at<GPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
-                              (double_complex*)beta_phi_.at<GPU>(), nbeta);
-            beta_phi_.copy_to_host(2 * nbeta * n__);
+                              (double_complex*)beta_phi.at<GPU>(), nbeta);
+            beta_phi.copy_to_host(2 * nbeta * n__);
             #else
             TERMINATE_NO_GPU
             #endif
@@ -361,24 +357,25 @@ void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__, 
         }
     }
 
-    comm_.allreduce(beta_phi_.at<CPU>(), 2 * nbeta * n__);
+    comm_.allreduce(beta_phi.at<CPU>(), 2 * nbeta * n__);
 
     #ifdef __GPU
     if (pu_ == GPU) {
-        beta_phi_.copy_to_device(2 * nbeta * n__);
+        beta_phi.copy_to_device(2 * nbeta * n__);
     }
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
-        auto cs = mdarray<double, 1>(beta_phi_.at<CPU>(), 2 * nbeta * n__).checksum();
+        auto cs = mdarray<double, 1>(beta_phi.at<CPU>(), 2 * nbeta * n__).checksum();
         DUMP("checksum(beta_phi) : %18.10f", cs);
     }
     #endif
 }
 
 template<>
-void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0__, int n__)
+void Beta_projectors::inner<double>(int chunk__,  wave_functions& phi__,
+                                    int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi)
 {
     PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
 
@@ -386,12 +383,12 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
 
     int nbeta = beta_chunk(chunk__).num_beta_;
 
-    if (static_cast<size_t>(nbeta * n__) > beta_phi_.size())
+    if (static_cast<size_t>(nbeta * n__) > beta_phi.size())
     {
-        beta_phi_ = mdarray<double, 1>(nbeta * n__);
+        beta_phi = mdarray<double, 1>(nbeta * n__);
         #ifdef __GPU
         if (pu_ == GPU) {
-            beta_phi_.allocate(memory_t::device);
+            beta_phi.allocate(memory_t::device);
         }
         #endif
     }
@@ -405,16 +402,16 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
             /* compute <beta|phi> */
             linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
                               a,
-                              (double*)beta_gk_.at<CPU>(), 2 * num_gkvec_loc_,
+                              (double*)beta_gk.at<CPU>(), 2 * num_gkvec_loc_,
                               (double*)phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * phi__.pw_coeffs().prime().ld(),
                               b,
-                              beta_phi_.at<CPU>(), nbeta);
+                              beta_phi.at<CPU>(), nbeta);
 
             if (comm_.rank() == 0) {
                 /* subtract one extra G=0 contribution */
-                linalg<CPU>::ger(nbeta, n__, a1, (double*)&beta_gk_(0, 0), 2 * num_gkvec_loc_,
+                linalg<CPU>::ger(nbeta, n__, a1, (double*)&beta_gk(0, 0), 2 * num_gkvec_loc_,
                                 (double*)phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * phi__.pw_coeffs().prime().ld(),
-                                &beta_phi_[0], nbeta); 
+                                &beta_phi[0], nbeta);
             }
             break;
         }
@@ -422,17 +419,17 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
             #ifdef __GPU
             linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
                               &a,
-                              (double*)beta_gk_.at<GPU>(), 2 * num_gkvec_loc_,
+                              (double*)beta_gk.at<GPU>(), 2 * num_gkvec_loc_,
                               (double*)phi__.pw_coeffs().prime().at<GPU>(0, idx0__), 2 * phi__.pw_coeffs().prime().ld(),
                               &b,
-                              beta_phi_.at<GPU>(), nbeta);
+                              beta_phi.at<GPU>(), nbeta);
             if (comm_.rank() == 0) {
                 /* subtract one extra G=0 contribution */
-                linalg<GPU>::ger(nbeta, n__, &a1, (double*)beta_gk_.at<GPU>(0, 0), 2 * num_gkvec_loc_,
+                linalg<GPU>::ger(nbeta, n__, &a1, (double*)beta_gk.at<GPU>(0, 0), 2 * num_gkvec_loc_,
                                 (double*)phi__.pw_coeffs().prime().at<GPU>(0, idx0__), 2 * phi__.pw_coeffs().prime().ld(),
-                                beta_phi_.at<GPU>(), nbeta); 
+                                beta_phi.at<GPU>(), nbeta);
             }
-            beta_phi_.copy_to_host(nbeta * n__);
+            beta_phi.copy_to_host(nbeta * n__);
             #else
             TERMINATE_NO_GPU
             #endif
@@ -440,17 +437,17 @@ void Beta_projectors::inner<double>(int chunk__, wave_functions& phi__, int idx0
         }
     }
 
-    comm_.allreduce(beta_phi_.at<CPU>(), nbeta * n__);
+    comm_.allreduce(beta_phi.at<CPU>(), nbeta * n__);
 
     #ifdef __GPU
     if (pu_ == GPU) {
-        beta_phi_.copy_to_device(nbeta * n__);
+        beta_phi.copy_to_device(nbeta * n__);
     }
     #endif
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
-        auto cs = mdarray<double, 1>(beta_phi_.at<CPU>(), nbeta * n__).checksum();
+        auto cs = mdarray<double, 1>(beta_phi.at<CPU>(), nbeta * n__).checksum();
         DUMP("checksum(beta_phi) : %18.10f", cs);
     }
     #endif

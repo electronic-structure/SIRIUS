@@ -49,8 +49,12 @@ const int _beta_desc_offset_t_ = 2;
 const int _beta_desc_ia_ = 3;
 
 
+class Beta_projectors_gradient;
+
 class Beta_projectors
 {
+    friend class Beta_projectors_gradient;
+
     protected:
 
         Communicator const& comm_;
@@ -79,14 +83,18 @@ class Beta_projectors
         /// Plane-wave coefficients of |beta> functions for a chunk of atoms.
         matrix<double_complex> beta_gk_;
         
+        /// Inner product between beta-projectors and wave-functions.
+        /** Store as double to handle both gamma- and general k-point cases */
+        mdarray<double, 1> beta_phi_;
+
+
+
         #ifdef __GPU
         /// Explicit GPU buffer for beta-projectors.
         matrix<double_complex> beta_gk_gpu_;
         #endif
         
-        /// Innter product between beta-projectors and wave-functions.
-        /** Store as double to handle both gamma- and general k-point cases */
-        mdarray<double, 1> beta_phi_;
+
 
         struct beta_chunk_t
         {
@@ -106,7 +114,12 @@ class Beta_projectors
                     
         void split_in_chunks();
 
+        template <typename T>
+        void inner(int chunk__,  wave_functions& phi__, int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi);
+
     public:
+
+        //Beta_projectors(Beta_projectors& ) {}
 
         Beta_projectors(Communicator const& comm__,
                         Unit_cell const& unit_cell__,
@@ -116,6 +129,11 @@ class Beta_projectors
         matrix<double_complex>& beta_gk_t()
         {
             return beta_gk_t_;
+        }
+
+        matrix<double_complex> const& beta_gk_a()
+        {
+            return beta_gk_a_;
         }
 
         matrix<double_complex> const& beta_gk() const
@@ -142,6 +160,26 @@ class Beta_projectors
             return unit_cell_;
         }
 
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
+
+        Gvec const& gk_vectors() const
+        {
+            return gkvec_;
+        }
+
+        device_t proc_unit() const
+        {
+            return pu_;
+        }
+
+        int lmax_beta() const
+        {
+            return lmax_beta_;
+        }
+
         inline int num_beta_chunks() const
         {
             return static_cast<int>(beta_chunks_.size());
@@ -160,7 +198,10 @@ class Beta_projectors
         void generate(int chunk__);
 
         template <typename T>
-        void inner(int chunk__, wave_functions& phi__, int idx0__, int n__);
+        void inner(int chunk__, wave_functions& phi__, int idx0__, int n__)
+        {
+            inner<T>(chunk__, phi__, idx0__, n__, beta_gk_, beta_phi_);
+        }
 
         void prepare()
         {

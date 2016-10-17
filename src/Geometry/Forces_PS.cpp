@@ -7,6 +7,9 @@
 
 #include "Forces_PS.h"
 
+//#include "../Beta_gradient/Beta_projectors_gradient.h"
+
+#include "../k_set.h"
 
 namespace sirius
 {
@@ -165,4 +168,19 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
     return std::move(forces);
 }
 
+
+
+
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
+{
+    Unit_cell &unit_cell = ctx_.unit_cell();
+
+    mdarray<double,2> forces(3, unit_cell.num_atoms());
+
+    Beta_projectors_gradient grad(&kset.k_point(0)->beta_projectors());
+
+    return std::move(forces);
+}
 }

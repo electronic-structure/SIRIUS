@@ -11,9 +11,10 @@
 #include "../simulation_context.h"
 #include "../periodic_function.h"
 #include "../augmentation_operator.h"
+#include "../Beta_projectors/Beta_projectors.h"
+#include "../Beta_projectors/Beta_projectors_gradient.h"
 #include "../potential.h"
 #include "../density.h"
-#include "../beta_projectors.h"
 
 namespace sirius
 {
@@ -36,7 +37,7 @@ public:
 
     mdarray<double,2> calc_ultrasoft_forces() const;
 
-
+    mdarray<double,2> calc_nonlocal_forces(K_set& kset) const;
     //vector<vector3d> calc_local_forces(mdarray<double, 2> &rho_radial_integrals, mdarray<double, 2> &vloc_radial_integrals);
 };
 
