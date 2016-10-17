@@ -322,6 +322,20 @@ inline void linalg<CPU>::gemv<ftn_double>(int trans,
 }
 
 template<>
+inline void linalg<CPU>::ger<ftn_double_complex>(ftn_int             m,
+                                                 ftn_int             n,
+                                                 ftn_double_complex  alpha,
+                                                 ftn_double_complex* x,
+                                                 ftn_int             incx,
+                                                 ftn_double_complex* y,
+                                                 ftn_int             incy,
+                                                 ftn_double_complex* A,
+                                                 ftn_int             lda)
+{
+    FORTRAN(zgeru)(&m, &n, &alpha, x, &incx, y, &incy, A, &lda);
+}
+
+template<>
 inline void linalg<CPU>::ger<ftn_double>(ftn_int     m,
                                          ftn_int     n,
                                          ftn_double  alpha,
