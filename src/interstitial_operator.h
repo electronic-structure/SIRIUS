@@ -75,7 +75,7 @@ class Interstitial_operator
             #endif
         }
 
-        void apply(K_point* kp__,
+        void apply(Gvec_partition const& gkvec_par__,
                    int N__,
                    int n__,
                    wave_functions& phi__,
@@ -84,9 +84,9 @@ class Interstitial_operator
         {
             PROFILE_WITH_TIMER("sirius::Interstitial_operator::apply");
 
-            fft_.prepare(kp__->gkvec().partition());
+            fft_.prepare(gkvec_par__);
 
-            mdarray<double_complex, 1> buf_pw(kp__->gkvec().partition().gvec_count_fft());
+            mdarray<double_complex, 1> buf_pw(gkvec_par__.gvec_count_fft());
 
             #ifdef __GPU
             if (fft_.hybrid()) {
@@ -101,14 +101,14 @@ class Interstitial_operator
             }
             #endif
 
-             phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  comm_col_, n__, N__);
-            hphi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col_, n__, N__);
-            ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col_, n__, N__);
+             phi__.pw_coeffs().remap_forward(gkvec_par__.gvec_fft_slab(),  comm_col_, n__, N__);
+            hphi__.pw_coeffs().set_num_extra(gkvec_par__.gvec_count_fft(), comm_col_, n__, N__);
+            ophi__.pw_coeffs().set_num_extra(gkvec_par__.gvec_count_fft(), comm_col_, n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
                 if (!fft_.hybrid()) {
                     /* phi(G) -> phi(r) */
-                    fft_.transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
                     #pragma omp parallel for
                     for (int ir = 0; ir < fft_.local_size(); ir++) {
                         /* save phi(r) */
@@ -117,44 +117,44 @@ class Interstitial_operator
                         fft_.buffer(ir) *= theta_[ir];
                     }
                     /* phi(r) * Theta(r) -> ophi(G) */
-                    fft_.transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
                     #pragma omp parallel for
                     for (int ir = 0; ir < fft_.local_size(); ir++) {
                         /* multiply be effective potential, which itself was multiplied by the step function in constructor */
                         fft_.buffer(ir) = buf_rg_[ir] * veff_[ir];
                     }
                     /* phi(r) * Theta(r) * V(r) -> ophi(G) */
-                    fft_.transform<-1>(kp__->gkvec().partition(), hphi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<-1>(gkvec_par__, hphi__.pw_coeffs().extra().at<CPU>(0, j));
                 }
                 #ifdef __GPU
                 if (fft_.hybrid()) {
                     /* phi(G) -> phi(r) */
-                    fft_.transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
                     /* save phi(r) */
                     acc::copy(buf_rg_.at<GPU>(), fft_.buffer<GPU>(), fft_.local_size());
                     /* multiply by step function */
                     scale_matrix_rows_gpu(fft_.local_size(), 1, fft_.buffer<GPU>(), theta_.at<GPU>());
                     /* phi(r) * Theta(r) -> ophi(G) */
-                    fft_.transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
                     /* multiply by effective potential */
                     scale_matrix_rows_gpu(fft_.local_size(), 1, buf_rg_.at<GPU>(), veff_.at<GPU>());
                     /* copy to GPU buffer */
                     acc::copy(fft_.buffer<GPU>(), buf_rg_.at<GPU>(), fft_.local_size());
                     /* phi(r) * Theta(r) * V(r) -> ophi(G) */
-                    fft_.transform<-1>(kp__->gkvec().partition(), hphi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<-1>(gkvec_par__, hphi__.pw_coeffs().extra().at<CPU>(0, j));
                 }
                 #endif
 
                 /* add kinetic energy */
                 for (int x: {0, 1, 2}) {
-                    for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
+                    for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
                         /* global index of G-vector */
-                        int ig = kp__->gkvec().partition().gvec_offset_fft() + igloc;
+                        int ig = gkvec_par__.gvec_offset_fft() + igloc;
                         /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */ 
-                        buf_pw[igloc] = phi__.pw_coeffs().extra()(igloc, j) * kp__->gkvec().gkvec_cart(ig)[x];
+                        buf_pw[igloc] = phi__.pw_coeffs().extra()(igloc, j) * gkvec_par__.gvec().gkvec_cart(ig)[x];
                     }
                     /* transform Cartesian component of wave-function gradient to real space */
-                    fft_.transform<1>(kp__->gkvec().partition(), &buf_pw[0]);
+                    fft_.transform<1>(gkvec_par__, &buf_pw[0]);
                     if (!fft_.hybrid()) {
                         #pragma omp parallel for
                         for (int ir = 0; ir < fft_.local_size(); ir++) {
@@ -169,16 +169,16 @@ class Interstitial_operator
                     }
                     #endif
                     /* transform back to PW domain */
-                    fft_.transform<-1>(kp__->gkvec().partition(), &buf_pw[0]);
-                    for (int igloc = 0; igloc < kp__->gkvec().partition().gvec_count_fft(); igloc++) {
-                        int ig = kp__->gkvec().partition().gvec_offset_fft() + igloc;
-                        hphi__.pw_coeffs().extra()(igloc, j) += 0.5 * buf_pw[igloc] * kp__->gkvec().gkvec_cart(ig)[x];
+                    fft_.transform<-1>(gkvec_par__, &buf_pw[0]);
+                    for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
+                        int ig = gkvec_par__.gvec_offset_fft() + igloc;
+                        hphi__.pw_coeffs().extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_par__.gvec().gkvec_cart(ig)[x];
                     }
                 }
             }
 
-            hphi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col_, n__, N__);
-            ophi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col_, n__, N__);
+            hphi__.pw_coeffs().remap_backward(gkvec_par__.gvec_fft_slab(), comm_col_, n__, N__);
+            ophi__.pw_coeffs().remap_backward(gkvec_par__.gvec_fft_slab(), comm_col_, n__, N__);
 
             fft_.dismiss();
 
@@ -190,7 +190,7 @@ class Interstitial_operator
             #endif
         }
 
-        void apply_o(K_point* kp__,
+        void apply_o(Gvec_partition const& gkvec_par__,
                      int N__,
                      int n__,
                      wave_functions& phi__,
@@ -198,7 +198,7 @@ class Interstitial_operator
         {
             PROFILE_WITH_TIMER("sirius::Interstitial_operator::apply_o");
 
-            fft_.prepare(kp__->gkvec().partition());
+            fft_.prepare(gkvec_par__);
 
             #ifdef __GPU
             if (fft_.hybrid()) {
@@ -213,34 +213,34 @@ class Interstitial_operator
             }
             #endif
 
-             phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  comm_col_, n__, N__);
-            ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col_, n__, N__);
+             phi__.pw_coeffs().remap_forward(gkvec_par__.gvec_fft_slab(),  comm_col_, n__, N__);
+            ophi__.pw_coeffs().set_num_extra(gkvec_par__.gvec_count_fft(), comm_col_, n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
                 if (!fft_.hybrid()) {
                     /* phi(G) -> phi(r) */
-                    fft_.transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
                     #pragma omp parallel for
                     for (int ir = 0; ir < fft_.local_size(); ir++) {
                         /* multiply by step function */
                         fft_.buffer(ir) *= theta_[ir];
                     }
                     /* phi(r) * Theta(r) -> ophi(G) */
-                    fft_.transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
                 }
                 #ifdef __GPU
                 if (fft_.hybrid()) {
                     /* phi(G) -> phi(r) */
-                    fft_.transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
                     /* multiply by step function */
                     scale_matrix_rows_gpu(fft_.local_size(), 1, fft_.buffer<GPU>(), theta_.at<GPU>());
                     /* phi(r) * Theta(r) -> ophi(G) */
-                    fft_.transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
+                    fft_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
                 }
                 #endif
             }
 
-            ophi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col_, n__, N__);
+            ophi__.pw_coeffs().remap_backward(gkvec_par__.gvec_fft_slab(), comm_col_, n__, N__);
 
             fft_.dismiss();
 

@@ -203,7 +203,7 @@ inline void Band::apply_o(K_point* kp__,
     PROFILE_WITH_TIMER("sirius::Band::apply_o");
 
     /* interstitial part */
-    istl_op__.apply_o(kp__, N__, n__, phi__, ophi__);
+    istl_op__.apply_o(kp__->gkvec_vloc(), N__, n__, phi__, ophi__);
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
@@ -320,9 +320,9 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
     /* interstitial part */
     if (N__ == 0) {
-        istl_op__.apply(kp__, nlo__, n__ - nlo__, phi__, hphi__, ophi__);
+        istl_op__.apply(kp__->gkvec_vloc(), nlo__, n__ - nlo__, phi__, hphi__, ophi__);
     } else {
-        istl_op__.apply(kp__, N__, n__, phi__, hphi__, ophi__);
+        istl_op__.apply(kp__->gkvec_vloc(), N__, n__, phi__, hphi__, ophi__);
     }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
