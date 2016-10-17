@@ -198,6 +198,7 @@ struct Iterative_solver_input_section
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
+    int num_singular_{-1};
 
     void read(json const& parser)
     {
@@ -213,6 +214,7 @@ struct Iterative_solver_input_section
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
             R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
             mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+            num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
         }
     }
 };

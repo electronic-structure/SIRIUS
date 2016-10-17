@@ -178,7 +178,10 @@ inline void K_point::initialize()
                     }
                 }
 
-                int ncomp = 10 * unit_cell_.num_atoms();
+                int ncomp = ctx_.iterative_solver_input_section().num_singular_;
+                if (ncomp < 0) {
+                    ncomp = ctx_.num_fv_states();
+                }
 
                 singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
                                                                                           comm(),
