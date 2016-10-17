@@ -79,7 +79,7 @@ log:
 	@echo "#ifndef __VERSION_H__" > version.h
 	@echo "#define __VERSION_H__" >> version.h
 	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h
-	@echo "const char* const build_date = \"$(shell date)\";" >> version.h
+	@echo "const char* const build_date = \"$(shell date +"%a, %e %b %Y %H:%M:%S")\";" >> version.h
 	@echo "#endif" >> version.h
 
 clean:
