@@ -194,6 +194,7 @@ void Band::apply_h_o(K_point* kp__,
 }
 
 inline void Band::apply_o(K_point* kp__,
+                          Interstitial_operator& istl_op__, 
                           int N__,
                           int n__,
                           wave_functions& phi__,
@@ -202,72 +203,7 @@ inline void Band::apply_o(K_point* kp__,
     PROFILE_WITH_TIMER("sirius::Band::apply_o");
 
     /* interstitial part */
-    auto& comm_col_ = ctx_.mpi_grid_fft().communicator(1 << 1);
-    ctx_.fft().prepare(kp__->gkvec().partition());
-
-    mdarray<double, 1> theta;
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        theta = mdarray<double, 1>(ctx_.fft().local_size(), memory_t::host, "theta");
-        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-            theta[ir] = ctx_.step_function().theta_r(ir);
-        }
-        theta.allocate(memory_t::device);
-        theta.copy_to_device();
-        phi__.pw_coeffs().copy_to_host(N__, n__);
-    }
-    #endif
-    
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
-        auto cs = phi__.checksum(N__, n__);
-        DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
-    }
-    #endif
-
-     phi__.pw_coeffs().remap_forward(kp__->gkvec().partition().gvec_fft_slab(),  comm_col_, n__, N__);
-    ophi__.pw_coeffs().set_num_extra(kp__->gkvec().partition().gvec_count_fft(), comm_col_, n__, N__);
-
-    for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
-        if (ctx_.processing_unit() == CPU) {
-            /* phi(G) -> phi(r) */
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
-            #pragma omp parallel for
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                /* multiply by step function */
-                ctx_.fft().buffer(ir) *= ctx_.step_function().theta_r(ir);
-            }
-            /* phi(r) * Theta(r) -> ophi(G) */
-            ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
-        }
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            /* phi(G) -> phi(r) */
-            ctx_.fft().transform<1>(kp__->gkvec().partition(), phi__.pw_coeffs().extra().at<CPU>(0, j));
-            /* multiply by step function */
-            scale_matrix_rows_gpu(ctx_.fft().local_size(), 1, ctx_.fft().buffer<GPU>(), theta.at<GPU>());
-            /* phi(r) * Theta(r) -> ophi(G) */
-            ctx_.fft().transform<-1>(kp__->gkvec().partition(), ophi__.pw_coeffs().extra().at<CPU>(0, j));
-        }
-        #endif
-    }
-
-    ophi__.pw_coeffs().remap_backward(kp__->gkvec().partition().gvec_fft_slab(), comm_col_, n__, N__);
-
-    ctx_.fft().dismiss();
-
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        ophi__.pw_coeffs().copy_to_device(N__, n__);
-    }
-    #endif
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
-        auto cs2 = ophi__.checksum(N__, n__);
-        DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
-    }
-    #endif
+    istl_op__.apply_o(kp__, N__, n__, phi__, ophi__);
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);

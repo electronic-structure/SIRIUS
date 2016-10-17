@@ -165,7 +165,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     }
 }
 
-inline void Band::get_singular_components(K_point* kp__) const
+inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& istl_op__) const
 {
     PROFILE_WITH_TIMER("sirius::Band::get_singular_components");
 
@@ -258,7 +258,7 @@ inline void Band::get_singular_components(K_point* kp__) const
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_o(kp__, N, n, phi, ophi);
+        apply_o(kp__, istl_op__, N, n, phi, ophi);
 
         orthogonalize(N, n, phi, ophi, ovlp, res);
         
@@ -345,7 +345,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 {
     PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_davidson");
 
-    get_singular_components(kp);
+    get_singular_components(kp, istl_op);
 
     auto h_diag = get_h_diag(kp, effective_potential->f_pw(0).real(), ctx_.step_function().theta_pw(0).real());
     auto o_diag = get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
