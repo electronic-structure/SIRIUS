@@ -497,68 +497,67 @@ void sirius_get_fft_grid_limits(int32_t const* d, int32_t* lower, int32_t* upper
 /// Get mapping between G-vector index and FFT index
 void sirius_get_fft_index(int32_t* fft_index__)
 {
-    TERMINATE("fix thix");
-    //PROFILE();
-    //memcpy(fft_index__, sim_ctx->gvec()->index_map(), sim_ctx->fft().size() * sizeof(int32_t));
-    //for (int i = 0; i < sim_ctx->gvec()->size(); i++) fft_index__[i]++;
+    PROFILE();
+    for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
+        auto G = sim_ctx->gvec().gvec(ig);
+        fft_index__[ig] = sim_ctx->fft().grid().index_by_gvec(G[0], G[1], G[2]) + 1;
+    }
 }
 
 /// Get list of G-vectors in fractional corrdinates
 void sirius_get_gvec(int32_t* gvec__)
 {
-    TERMINATE("fix thix");
-    //PROFILE();
-    //mdarray<int, 2> gvec(gvec__, 3, sim_ctx->fft().size());
-    //for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++)
-    //{
-    //    vector3d<int> gv = sim_ctx->gvec()[ig];
-    //    for (int x = 0; x < 3; x++) gvec(x, ig) = gv[x];
-    //}
+    PROFILE();
+    mdarray<int, 2> gvec(gvec__, 3, sim_ctx->gvec().num_gvec());
+    for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
+        auto gv = sim_ctx->gvec().gvec(ig);
+        for (int x: {0, 1, 2}) {
+            gvec(x, ig) = gv[x];
+        }
+    }
 }
 
 /// Get list of G-vectors in Cartesian coordinates
 void sirius_get_gvec_cart(double* gvec_cart__)
 {
-    TERMINATE("fix thix");
-    //PROFILE();
-    //mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx->fft().size());
-    //for (int ig = 0; ig < sim_ctx->fft().size(); ig++)
-    //{
-    //    vector3d<double> gvc = sim_ctx->fft().gvec_cart(ig);
-    //    for (int x = 0; x < 3; x++) gvec_cart(x, ig) = gvc[x];
-    //}
+    PROFILE();
+    mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx->gvec().num_gvec());
+    for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
+        auto gvc = sim_ctx->gvec().gvec_cart(ig);
+        for (int x: {0, 1, 2}) {
+            gvec_cart(x, ig) = gvc[x];
+        }
+    }
 }
 
 /// Get lengh of G-vectors
 void sirius_get_gvec_len(double* gvec_len__)
 {
-    TERMINATE("fix thix");
-
-    //PROFILE();
-    //for (int ig = 0; ig < sim_ctx->fft().size(); ig++) gvec_len__[ig] = sim_ctx->fft().gvec_len(ig);
+    PROFILE();
+    for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
+        gvec_len__[ig] = sim_ctx->gvec().gvec_len(ig);
+    }
 }
 
 void sirius_get_index_by_gvec(int32_t* index_by_gvec__)
 {
-    TERMINATE("fix thix");
-    //PROFILE();
-    //auto fft = sim_ctx->fft();
-    //std::pair<int, int> d0 = fft->grid_limits(0);
-    //std::pair<int, int> d1 = fft->grid_limits(1);
-    //std::pair<int, int> d2 = fft->grid_limits(2);
+    PROFILE();
+    auto d0 = sim_ctx->fft().grid().limits(0);
+    auto d1 = sim_ctx->fft().grid().limits(1);
+    auto d2 = sim_ctx->fft().grid().limits(2);
 
-    //mdarray<int, 3> index_by_gvec(index_by_gvec__,
-    //                              mdarray_index_descriptor(d0.first, d0.second),
-    //                              mdarray_index_descriptor(d1.first, d1.second),
-    //                              mdarray_index_descriptor(d2.first, d2.second));
+    mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
+    std::fill(index_by_gvec.at<CPU>(), index_by_gvec.at<CPU>() + index_by_gvec.size(), -1);
 
-    //for (int i0 = d0.first; i0 <= d0.second; i0++)
-    //{
-    //    for (int i1 = d1.first; i1 <= d1.second; i1++)
-    //    {
-    //        for (int i2 = d2.first; i2 <= d2.second; i2++)
-    //        {
-    //            index_by_gvec(i0, i1, i2) = fft->gvec_index(vector3d<int>(i0, i1, i2)) + 1;
+    for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
+        auto G = sim_ctx->gvec().gvec(ig);
+        index_by_gvec(G[0], G[1], G[2]) = ig;
+    }
+
+    //for (int i0 = d0.first; i0 <= d0.second; i0++) {
+    //    for (int i1 = d1.first; i1 <= d1.second; i1++) {
+    //        for (int i2 = d2.first; i2 <= d2.second; i2++) {
+    //            index_by_gvec(i0, i1, i2) = sim_ctx->gvec().index_by_gvec({i0, i1, i2}); //fft->gvec_index(vector3d<int>(i0, i1, i2)) + 1;
     //        }
     //    }
     //}
