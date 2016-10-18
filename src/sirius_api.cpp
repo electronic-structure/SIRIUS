@@ -551,16 +551,8 @@ void sirius_get_index_by_gvec(int32_t* index_by_gvec__)
 
     for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
         auto G = sim_ctx->gvec().gvec(ig);
-        index_by_gvec(G[0], G[1], G[2]) = ig;
+        index_by_gvec(G[0], G[1], G[2]) = ig + 1;
     }
-
-    //for (int i0 = d0.first; i0 <= d0.second; i0++) {
-    //    for (int i1 = d1.first; i1 <= d1.second; i1++) {
-    //        for (int i2 = d2.first; i2 <= d2.second; i2++) {
-    //            index_by_gvec(i0, i1, i2) = sim_ctx->gvec().index_by_gvec({i0, i1, i2}); //fft->gvec_index(vector3d<int>(i0, i1, i2)) + 1;
-    //        }
-    //    }
-    //}
 }
 
 /// Get Ylm spherical harmonics of G-vectors.
