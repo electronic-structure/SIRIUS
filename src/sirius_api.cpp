@@ -1642,8 +1642,9 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
 void sirius_generate_coulomb_potential(double* vclmt__, double* vclit__)
 {
     PROFILE();
-
+    sim_ctx->fft().prepare(sim_ctx->gvec().partition());
     potential->poisson(density->rho(), potential->hartree_potential());
+    sim_ctx->fft().dismiss();
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 }
 
