@@ -581,6 +581,11 @@ module sirius
             integer,                 intent(in)  :: apwordmax
         end subroutine
 
+        subroutine sirius_get_fft_comm(fcomm)&
+            &bind(C, name="sirius_get_fft_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
+
         subroutine sirius_write_json_output()&
             &bind(C, name="sirius_write_json_output")
         end subroutine

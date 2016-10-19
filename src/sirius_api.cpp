@@ -1867,6 +1867,12 @@ void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)
     *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(*directions__).mpi_comm());
 }
 
+void sirius_get_fft_comm(int32_t* fcomm__)
+{
+    PROFILE();
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->fft().comm().mpi_comm());
+}
+
 void sirius_forces(double* forces__)
 {
     PROFILE();
