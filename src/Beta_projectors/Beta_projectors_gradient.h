@@ -19,7 +19,7 @@ class Beta_projectors_gradient
 protected:
 
     // local array of gradient components. dimensions: 0 - gk, 1-orbitals
-    matrix<double_complex> components_gk_a_;
+    std::array<matrix<double_complex>, 3> components_gk_a_;
 
     // the same but for one chunk
     std::array<matrix<double_complex>, 3> chunk_comp_gk_a_;
@@ -29,20 +29,18 @@ protected:
 
     Beta_projectors *bp_;
 
-    int calc_component_;
-
 public:
 
     Beta_projectors_gradient(Beta_projectors* bp)
     : bp_(bp)
     {
-        components_gk_a_ = matrix<double_complex>( bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1) );
-        calc_component_=0;
+        for(int comp: {0,1,2})
+        {
+            components_gk_a_[comp] = matrix<double_complex>( bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1) );
+            calc_gradient(comp);
+        }
     }
 
-    void set_component(int calc_component){ calc_component_ = calc_component; }
-
-    int current_component() { return calc_component_; }
 
     void calc_gradient(int calc_component)
     {
@@ -52,6 +50,8 @@ public:
 
         const matrix<double_complex> &beta_comps = bp_->beta_gk_a();
 
+        double_complex Im(0,1);
+
         #pragma omp parallel for
         for(int ibf=0; ibf< bp_->beta_gk_a().size(1); ibf++)
         {
@@ -59,18 +59,19 @@ public:
             {
                 int igk = gkvec.gvec_offset(bp_->comm().rank()) + igk_loc;
 
-                double gkvec_comp = gkvec.gkvec_cart(igk)[calc_component_];
+                double gkvec_comp = gkvec.gkvec_cart(igk)[calc_component];
 
-                components_gk_a_(igk, ibf) = - gkvec_comp * beta_comps(igk,ibf);
+                components_gk_a_[calc_component](igk_loc, ibf) = - Im * gkvec_comp * beta_comps(igk_loc,ibf);
             }
         }
     }
 
-    void generate(int chunk__)
+
+    void generate(int chunk__, int calc_component__)
     {
         if (bp_->proc_unit() == CPU)
         {
-            chunk_comp_gk_a_[calc_component_] = mdarray<double_complex, 2>(&components_gk_a_(0, bp_->beta_chunk(chunk__).offset_),
+            chunk_comp_gk_a_[calc_component__] = mdarray<double_complex, 2>(&components_gk_a_[calc_component__](0, bp_->beta_chunk(chunk__).offset_),
                                                   bp_->num_gkvec_loc(), bp_->beta_chunk(chunk__).num_beta_);
         }
         #ifdef __GPU
@@ -81,12 +82,51 @@ public:
         #endif
     }
 
-    template <typename T>
-    const matrix<double_complex>& inner(int chunk__, wave_functions& phi__, int idx0__, int n__)
-    {
-        bp_->inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[calc_component_], beta_phi_[calc_component_]);
 
-        return beta_phi_[calc_component_];
+    void generate(int chunk__)
+    {
+        for(comp: {0,1,2}) generate(chunk__, comp);
+    }
+
+
+    template <typename T>
+    const matrix<double_complex>& inner(int chunk__, wave_functions& phi__, int idx0__, int n__, int calc_component__)
+    {
+        bp_->inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[calc_component__], beta_phi_[calc_component__]);
+
+        return beta_phi_[calc_component__];
+    }
+
+
+    template <typename T>
+    void inner(int chunk__, wave_functions& phi__, int idx0__, int n__)
+    {
+        for(comp: {0,1,2}) inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[comp], beta_phi_[comp]);
+    }
+
+    template <typename T>
+    matrix<T> beta_phi(int chunk__, int n__, calc_component__)
+    {
+        int nbeta = bp_->beta_chunk(chunk__).num_beta_;
+
+        if (bp_->proc_unit() == GPU) {
+            return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_[calc_component__].at<CPU>()),
+                                       reinterpret_cast<T*>(beta_phi_[calc_component__].at<GPU>()),
+                                       nbeta, n__));
+        } else {
+            return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_[calc_component__].at<CPU>()),
+                                       nbeta, n__));
+        }
+    }
+
+    template <typename T>
+    std::array<matrix<T>,3> beta_phi(int chunk__, int n__)
+    {
+        std::array<matrix<T>,3> chunk_beta_phi;
+
+        for(comp: {0,1,2}) chunk_beta_phi[comp] = beta_phi(chunk__, n__, comp);
+
+        return std::move(chunk_beta_phi);
     }
 };
 

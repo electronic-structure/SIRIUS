@@ -181,6 +181,13 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
     Beta_projectors_gradient grad(&kset.k_point(0)->beta_projectors());
 
+    grad.calc_gradient(0);
+
+
     return std::move(forces);
 }
+
+
+
+
 }
