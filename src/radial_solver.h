@@ -299,18 +299,19 @@ class Radial_solver
                 }
 
                 /* check overflow */
-                if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10)
-                {
+                if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10) {
                     /* if we didn't expect the overflow and it happended, or it happended before the 
                      * classical turning point, it's bad */
-                    if (!prevent_overflow || (prevent_overflow && i < idx_ctp))
-                    {
+                    if (!prevent_overflow || (prevent_overflow && i < idx_ctp)) {
                         std::stringstream s;
-                        s << "overflow for atom type with zn = " << zn_ << ", l = " << l__ << ", enu = " << enu__;
+                        if (!prevent_overflow) {
+                            s << "unexpected overflow ";
+                        } else {
+                            s << "overflow before the classical turning point ";
+                        }
+                        s << "for atom type with zn = " << zn_ << ", l = " << l__ << ", enu = " << enu__;
                         TERMINATE(s);
-                    }
-                    else /* if overflow happened after the classical turning point, it's ok */
-                    {
+                    } else { /* if overflow happened after the classical turning point, it's ok */
                         last = i;
                         break;
                     }

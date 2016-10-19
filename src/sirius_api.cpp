@@ -584,10 +584,11 @@ void sirius_get_gvec_phase_factors(double_complex* sfacg__)
 void sirius_get_step_function(double_complex* cfunig__, double* cfunir__)
 {
     PROFILE();
-    for (int i = 0; i < sim_ctx->fft().size(); i++)
-    {
-        cfunig__[i] = sim_ctx->step_function().theta_pw(i);
+    for (int i = 0; i < sim_ctx->fft().local_size(); i++) {
         cfunir__[i] = sim_ctx->step_function().theta_r(i);
+    }
+    for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
+        cfunig__[ig] = sim_ctx->step_function().theta_pw(ig);
     }
 }
 
