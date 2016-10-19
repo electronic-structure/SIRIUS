@@ -256,7 +256,7 @@ void sirius_set_free_atom_density(char const* label__,
                                   double const* dens__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.set_free_atom_density(*num_points__, vs__);
+    type.set_free_atom_density(*num_points__, dens__);
 }
 
 /// Set the atomic level configuration of the atom type.
