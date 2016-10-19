@@ -164,23 +164,6 @@ void Atom_type::init(int offset_lo__)
 
 void Atom_type::init_free_atom(bool smooth)
 {
-    ///* check if atomic file exists */
-    //if (!Utils::file_exists(file_name_)) {
-    //    std::stringstream s;
-    //    //s << "file " + file_name_ + " doesn't exist";
-    //    s << "Free atom density and potential for atom " << label_ << " are not initialized";
-    //    WARNING(s);
-    //    return;
-    //}
-    //
-    //json parser;
-    //std::ifstream(file_name_) >> parser;
-
-    /* create free atom radial grid */
-    //auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
-    //free_atom_radial_grid_ = Radial_grid(fa_r);
-    /* read density and potential */
-    //auto v = free_atom_density_; //parser["free_atom"]["density"].get<std::vector<double>>();
     free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
@@ -624,6 +607,12 @@ void Atom_type::read_input(const std::string& fname)
         read_input_aw(parser);
 
         read_input_lo(parser);
+
+        /* create free atom radial grid */
+        auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
+        free_atom_radial_grid_ = Radial_grid(fa_r);
+        /* read density */
+        free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }
 }
         
