@@ -1616,21 +1616,20 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
 
     potential->xc_potential()->copy_to_global_ptr(vxcmt__, vxcit__);
 
-    if (sim_ctx->num_mag_dims() == 0) return;
+    if (sim_ctx->num_mag_dims() == 0) {
+        return;
+    }
     assert(sim_ctx->num_spins() == 2);
 
     /* set temporary array wrapper */
     mdarray<double, 4> bxcmt(bxcmt__, sim_ctx->lmmax_pot(), sim_ctx->unit_cell().max_num_mt_points(),
                              sim_ctx->unit_cell().num_atoms(), sim_ctx->num_mag_dims());
-    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft().size(), sim_ctx->num_mag_dims());
+    mdarray<double, 2> bxcit(bxcit__, sim_ctx->fft().local_size(), sim_ctx->num_mag_dims());
 
-    if (sim_ctx->num_mag_dims() == 1)
-    {
+    if (sim_ctx->num_mag_dims() == 1) {
         /* z component */
         potential->effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
-    }
-    else
-    {
+    } else {
         /* z component */
         potential->effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcit(0, 2));
         /* x component */
@@ -1646,7 +1645,6 @@ void sirius_generate_coulomb_potential(double* vclmt__, double* vclit__)
 
     potential->poisson(density->rho(), potential->hartree_potential());
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
-
 }
 
 void sirius_update_atomic_potential()

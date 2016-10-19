@@ -144,7 +144,9 @@ class Periodic_function: public Smooth_periodic_function<T>
             assert(f_mt_.size() != 0); 
 
             int ld = angular_domain_size_ * unit_cell_.max_num_mt_points(); 
-            comm_.allgather(&f_mt_(0, 0, 0), ld * unit_cell_.spl_num_atoms().global_offset(), ld * unit_cell_.spl_num_atoms().local_size());
+            comm_.allgather(&f_mt_(0, 0, 0),
+                            ld * unit_cell_.spl_num_atoms().global_offset(),
+                            ld * unit_cell_.spl_num_atoms().local_size());
         }
 
         /// Zero the function.
@@ -165,21 +167,19 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         inline void copy_to_global_ptr(T* f_mt__, T* f_it__) const
         {
-            STOP();
-            //comm_.allgather(f_it_local_.template at<CPU>(), f_it__, (int)spl_fft_size_.global_offset(), (int)spl_fft_size_.local_size());
+            std::memcpy(f_it__, this->f_rg_.template at<CPU>(), this->fft_->local_size() * sizeof(T));
 
-            //if (parameters_.full_potential()) 
-            //{
-            //    mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
-            //    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
-            //    {
-            //        int ia = unit_cell_.spl_num_atoms(ialoc);
-            //        memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
-            //    }
-            //    int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
-            //    comm_.allgather(f_mt__, static_cast<int>(ld * unit_cell_.spl_num_atoms().global_offset()),
-            //                    static_cast<int>(ld * unit_cell_.spl_num_atoms().local_size()));
-            //}
+            if (parameters_.full_potential()) {
+                mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    int ia = unit_cell_.spl_num_atoms(ialoc);
+                    std::memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
+                }
+                int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
+                comm_.allgather(f_mt__,
+                                ld * unit_cell_.spl_num_atoms().global_offset(),
+                                ld * unit_cell_.spl_num_atoms().local_size());
+            }
         }
 
         /// Add the function
