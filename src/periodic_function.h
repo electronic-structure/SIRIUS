@@ -357,7 +357,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             set_local_mt_ptr();
         }
 
-        /// Set the global pointer to the interstitial part
+        /// Set the pointer to the interstitial part
         void set_rg_ptr(T* rg_ptr__)
         {
             this->f_rg_ = mdarray<T, 1>(rg_ptr__, this->fft_->local_size());

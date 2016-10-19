@@ -285,6 +285,7 @@ struct Parameters_input_section
     int num_dft_iter_{100};
     double energy_tol_{1e-5};
     double potential_tol_{1e-5};
+    bool molecule_{false};
 
     void read(json const& parser)
     {
@@ -322,6 +323,7 @@ struct Parameters_input_section
         num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
         energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
         potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
+        molecule_       = parser["parameters"].value("molecule", molecule_);
     }
 };
 
