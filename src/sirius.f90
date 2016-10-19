@@ -121,11 +121,11 @@ module sirius
             real(8),                 intent(in) :: radial_points
         end subroutine
 
-        subroutine sirius_set_free_atom_potential(label, num_radial_points, vs)&
-            &bind(C, name="sirius_set_free_atom_potential")
+        subroutine sirius_set_free_atom_density(label, num_radial_points, dens)&
+            &bind(C, name="sirius_set_free_atom_density")
             character, dimension(*), intent(in) :: label
             integer,                 intent(in) :: num_radial_points
-            real(8),                 intent(in) :: vs
+            real(8),                 intent(in) :: dens
         end subroutine
 
         subroutine sirius_set_equivalent_atoms(eqatoms)&

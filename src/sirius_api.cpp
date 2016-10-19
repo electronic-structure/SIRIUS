@@ -251,13 +251,13 @@ void sirius_set_atom_type_radial_grid(char const* label__,
     type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
 
-//void sirius_set_free_atom_potential(char const* label__,
-//                                    int32_t const* num_points__,
-//                                    double const* vs__)
-//{
-//    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-//    type.set_free_atom_potential(*num_points__, vs__);
-//}
+void sirius_set_free_atom_density(char const* label__,
+                                  int32_t const* num_points__,
+                                  double const* dens__)
+{
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    type.set_free_atom_density(*num_points__, vs__);
+}
 
 /// Set the atomic level configuration of the atom type.
 /** With each call to the function new atomic level is added to the list of atomic levels of the atom type.

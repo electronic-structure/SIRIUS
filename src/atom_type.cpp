@@ -164,24 +164,24 @@ void Atom_type::init(int offset_lo__)
 
 void Atom_type::init_free_atom(bool smooth)
 {
-    /* check if atomic file exists */
-    if (!Utils::file_exists(file_name_)) {
-        std::stringstream s;
-        //s << "file " + file_name_ + " doesn't exist";
-        s << "Free atom density and potential for atom " << label_ << " are not initialized";
-        WARNING(s);
-        return;
-    }
-    
-    json parser;
-    std::ifstream(file_name_) >> parser;
+    ///* check if atomic file exists */
+    //if (!Utils::file_exists(file_name_)) {
+    //    std::stringstream s;
+    //    //s << "file " + file_name_ + " doesn't exist";
+    //    s << "Free atom density and potential for atom " << label_ << " are not initialized";
+    //    WARNING(s);
+    //    return;
+    //}
+    //
+    //json parser;
+    //std::ifstream(file_name_) >> parser;
 
     /* create free atom radial grid */
-    auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
-    free_atom_radial_grid_ = Radial_grid(fa_r);
+    //auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
+    //free_atom_radial_grid_ = Radial_grid(fa_r);
     /* read density and potential */
-    auto v = parser["free_atom"]["density"].get<std::vector<double>>();
-    free_atom_density_ = Spline<double>(free_atom_radial_grid_, v);
+    //auto v = free_atom_density_; //parser["free_atom"]["density"].get<std::vector<double>>();
+    free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
@@ -195,8 +195,8 @@ void Atom_type::init_free_atom(bool smooth)
         A(1, 0) = 2 * R;
         A(1, 1) = 3 * std::pow(R, 2);
         
-        b(0) = free_atom_density_[irmt];
-        b(1) = free_atom_density_.deriv(1, irmt);
+        b(0) = free_atom_density_spline_[irmt];
+        b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
        
@@ -213,12 +213,12 @@ void Atom_type::init_free_atom(bool smooth)
         
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
-            free_atom_density_[i] = b(0) * std::pow(free_atom_radial_grid(i), 2) + 
-                                    b(1) * std::pow(free_atom_radial_grid(i), 3);
+            free_atom_density_spline_[i] = b(0) * std::pow(free_atom_radial_grid(i), 2) + 
+                                           b(1) * std::pow(free_atom_radial_grid(i), 3);
         }
 
         /* interpolate new smooth density */
-        free_atom_density_.interpolate();
+        free_atom_density_spline_.interpolate();
 
         //== /* write smoothed density */
         //== sstr.str("");

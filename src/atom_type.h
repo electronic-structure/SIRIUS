@@ -410,8 +410,10 @@ class Atom_type
         Radial_grid radial_grid_;
 
         /// Density of a free atom.
-        Spline<double> free_atom_density_;
-        
+        Spline<double> free_atom_density_spline_;
+
+        std::vector<double> free_atom_density_;
+
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
 
@@ -628,12 +630,12 @@ class Atom_type
 
         inline double free_atom_density(const int idx) const
         {
-            return free_atom_density_[idx];
+            return free_atom_density_spline_[idx];
         }
 
         inline double free_atom_density(double x) const
         {
-            return free_atom_density_(x);
+            return free_atom_density_spline_(x);
         }
 
         //inline double free_atom_potential(const int idx) const
@@ -869,12 +871,11 @@ class Atom_type
             free_atom_radial_grid_ = Radial_grid(num_points__, points__);
         }
 
-        //void set_free_atom_potential(int num_points__, double const* vs__)
-        //{
-        //    free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
-        //    for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
-        //    free_atom_potential_.interpolate();
-        //}
+        void set_free_atom_density(int num_points__, double const* dens__)
+        {
+            free_atom_density_.resize(num_points__);
+            std::memcpy(free_atom_density_.data(), dens__, num_points__ * sizeof(double));
+        }
 };
 
 };
