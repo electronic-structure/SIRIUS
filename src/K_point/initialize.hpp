@@ -46,33 +46,8 @@ inline void K_point::initialize()
         fv_eigen_values_.resize(ctx_.num_fv_states());
     }
 
-    /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
-     * form the input whereas for full-potential calculations this is derived 
-     * from rgkmax (aw_cutoff here) and minimal MT radius. */
-    double gk_cutoff = 0;
-    switch (ctx_.esm_type())
-    {
-        case electronic_structure_method_t::paw_pseudopotential:
-        case electronic_structure_method_t::ultrasoft_pseudopotential:
-        case electronic_structure_method_t::norm_conserving_pseudopotential:
-        {
-            gk_cutoff = ctx_.gk_cutoff();
-            break;
-        }
-        case electronic_structure_method_t::full_potential_lapwlo:
-        {
-            //gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
-            gk_cutoff = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
-            break;
-        }
-        default:
-        {
-            STOP();
-        }
-    }
-
     /* Build a full list of G+k vectors for all MPI ranks */
-    generate_gkvec(gk_cutoff);
+    generate_gkvec(ctx_.gk_cutoff());
     /* build a list of basis functions */
     build_gklo_basis_descriptors();
     /* distribute basis functions */
@@ -123,20 +98,18 @@ inline void K_point::initialize()
                                                                                            gklo_basis_descriptors_loc_));
     }
 
-    /* compute |beta> projectors for atom types */
-    if (!ctx_.full_potential())
-    {
+    if (!ctx_.full_potential()) {
+        /* compute |beta> projectors for atom types */
         beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit());
         
-        if (true)
-        {
+        if (true) {
             p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
             p_mtrx_.zero();
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 auto& atom_type = unit_cell_.atom_type(iat);
                 
-                if (!atom_type.uspp().augmentation_) {
+                if (!atom_type.pp_desc().augment) {
                     continue;
                 }
                 int nbf = atom_type.mt_basis_size();
@@ -191,16 +164,44 @@ inline void K_point::initialize()
                 fv_eigen_vectors_slab_->mt_coeffs().prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                    for (int ig = 0; ig < gkvec().gvec_count(comm().rank()); ig++) {
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 1.0;
+                    for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                        int ig = igloc + gkvec().gvec_offset(comm().rank());
+                        if (ig == i) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 1.0;
                         }
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 1) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.5;
+                        if (ig == i + 1) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.5;
                         }
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 2) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.25;
+                        if (ig == i + 2) {
+                            fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.125;
                         }
+                    }
+                }
+
+                int ncomp = ctx_.iterative_solver_input_section().num_singular_;
+                if (ncomp < 0) {
+                    ncomp = ctx_.num_fv_states();
+                }
+
+                singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
+                                                                                          comm(),
+                                                                                          gkvec(),
+                                                                                          ncomp));
+                singular_components_->pw_coeffs().prime().zero();
+                /* starting guess for wave-functions */
+                for (int i = 0; i < ncomp; i++) {
+                    for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                        int ig = igloc + gkvec().gvec_offset(comm().rank());
+                        if (ig == i) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 1.0;
+                        }
+                        if (ig == i + 1) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 0.5;
+                        }
+                        if (ig == i + 2) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 0.125;
+                        }
+                        singular_components_->pw_coeffs().prime(igloc, i) += 0.01 * type_wrapper<double_complex>::random();
                     }
                 }
             }

@@ -121,11 +121,11 @@ module sirius
             real(8),                 intent(in) :: radial_points
         end subroutine
 
-        subroutine sirius_set_free_atom_potential(label, num_radial_points, vs)&
-            &bind(C, name="sirius_set_free_atom_potential")
+        subroutine sirius_set_free_atom_density(label, num_radial_points, dens)&
+            &bind(C, name="sirius_set_free_atom_density")
             character, dimension(*), intent(in) :: label
             integer,                 intent(in) :: num_radial_points
-            real(8),                 intent(in) :: vs
+            real(8),                 intent(in) :: dens
         end subroutine
 
         subroutine sirius_set_equivalent_atoms(eqatoms)&
@@ -581,6 +581,29 @@ module sirius
             integer,                 intent(in)  :: apwordmax
         end subroutine
 
+        subroutine sirius_get_fft_comm(fcomm)&
+            &bind(C, name="sirius_get_fft_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
+
+        subroutine sirius_radial_solver(solver_type, zn, dme, l, k, enu, nr, r, v, nn, p0, p1, q0, q1)&
+            &bind(C, name="sirius_radial_solver")
+            character, dimension(*), intent(in)  :: solver_type
+            integer,                 intent(in)  :: zn
+            integer,                 intent(in)  :: dme
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: k
+            real(8),                 intent(in)  :: enu
+            integer,                 intent(in)  :: nr
+            real(8),                 intent(in)  :: r
+            real(8),                 intent(in)  :: v
+            integer,                 intent(in)  :: nn
+            real(8),                 intent(in)  :: p0
+            real(8),                 intent(in)  :: p1
+            real(8),                 intent(in)  :: q0
+            real(8),                 intent(in)  :: q1
+        end subroutine
+
         subroutine sirius_write_json_output()&
             &bind(C, name="sirius_write_json_output")
         end subroutine
@@ -636,7 +659,7 @@ module sirius
 
             &bind(C, name="sirius_set_atom_type_paw_data")
 
-            character, dimension(*) , intent(in) :: label__
+            character, dimension(*),  intent(in) :: label__
             real(8),                  intent(in) :: ae_wfc_rf__
             real(8),                  intent(in) :: ps_wfc_rf__
             integer,                  intent(in) :: num_wfc__

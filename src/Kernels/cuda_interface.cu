@@ -318,6 +318,7 @@ void cuda_memset2d(void* ptr__, int ld__, int nrow__, int ncol__, int elem_size_
 //==     );
 //== }
 
+#ifdef __GPU_NVTX
 extern "C" void cuda_begin_range_marker(const char* label__)
 {
     nvtxRangePushA(label__);
@@ -327,4 +328,4 @@ extern "C" void cuda_end_range_marker()
 {
     nvtxRangePop();
 }
-
+#endif

@@ -335,8 +335,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     PROFILE_WITH_TIMER("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */
-    if (ctx_.full_potential())
-    {
+    if (ctx_.full_potential()) {
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         poisson_vmt(rho, vh, qmt);
@@ -388,9 +387,18 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 
     /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
-    #pragma omp parallel for
-    for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++) {
-        vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
+    if (!ctx_.molecule()) {
+        #pragma omp parallel for
+        for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++) {
+            vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
+        }
+    } else {
+        double R_cut = 0.5 * std::pow(unit_cell_.omega(), 1.0 / 3);
+        #pragma omp parallel for
+        for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++) {
+            vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *
+                           (1.0 - std::cos(ctx_.gvec().gvec_len(ig) * R_cut));
+        }
     }
 
     #ifdef __PRINT_OBJECT_CHECKSUM

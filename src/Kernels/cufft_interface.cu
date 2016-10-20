@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <cufft.h>
 #include <cuda.h>
 #include "kernels_common.h"

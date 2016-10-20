@@ -154,9 +154,9 @@ void json_output_common(json& dict__)
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-Simulation_context* create_sim_ctx(std::string                     fname__,
-                                   cmd_args const&                 args__,
-                                   Parameters_input_section const& inp__)
+std::unique_ptr<Simulation_context> create_sim_ctx(std::string                     fname__,
+                                                   cmd_args const&                 args__,
+                                                   Parameters_input_section const& inp__)
 {
     Simulation_context* ctx_ptr = new Simulation_context(fname__, mpi_comm_world());
     Simulation_context& ctx = *ctx_ptr;
@@ -184,8 +184,9 @@ Simulation_context* create_sim_ctx(std::string                     fname__,
     ctx.set_core_relativity(inp__.core_relativity_);
     ctx.set_valence_relativity(inp__.valence_relativity_);
     ctx.set_gamma_point(inp__.gamma_point_);
+    ctx.set_molecule(inp__.molecule_);
 
-    return ctx_ptr;
+    return std::move(std::unique_ptr<Simulation_context>(ctx_ptr));
 }
 
 double ground_state(Simulation_context&       ctx,
@@ -367,7 +368,7 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     std::map<double, double> etot;
 
     auto run_gs = [&etot, &fname, &args, &inp](double s) {
-        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
+        auto ctx0 = create_sim_ctx(fname, args, inp);
         auto lv = ctx0->unit_cell().lattice_vectors();
         ctx0->unit_cell().set_lattice_vectors(lv * s);
         ctx0->initialize();
@@ -443,7 +444,7 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     dict["etot"]["scale0"] = scale0;
 
     if (true) {
-        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
+        auto ctx0 = create_sim_ctx(fname, args, inp);
         auto lv = ctx0->unit_cell().lattice_vectors();
         ctx0->unit_cell().set_lattice_vectors(lv * scale0);
         dict["unit_cell"] = ctx0->unit_cell().serialize();
@@ -481,7 +482,7 @@ void run_tasks(cmd_args const& args)
     }
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
-        std::unique_ptr<Simulation_context> ctx(create_sim_ctx(fname, args, inp));
+        auto ctx = create_sim_ctx(fname, args, inp);
         ctx->initialize();
         ground_state(*ctx, task, args, inp, 1);
     }

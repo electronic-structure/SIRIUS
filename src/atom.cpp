@@ -108,8 +108,10 @@ void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
         spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(), rgrid.dx().at<GPU>(),
                                     rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
         cuda_device_synchronize();
+        #ifdef __PRINT_PERFORMANCE
         double tval = t2.stop();
         DUMP("spline GPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        #endif
         result.copy_to_host();
         result.deallocate_on_device();
         #else
@@ -146,8 +148,10 @@ void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
         {
             result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
         }
+        #ifdef __PRINT_PERFORMANCE
         double tval = t2.stop();
         DUMP("spline CPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        #endif
     }
     
     int n = 0;

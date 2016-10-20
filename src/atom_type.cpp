@@ -85,9 +85,9 @@ void Atom_type::init(int offset_lo__)
 
     if (!parameters_.full_potential()) {
         local_orbital_descriptor lod;
-        for (int i = 0; i < uspp_.num_beta_radial_functions; i++) {
+        for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
             /* think of |beta> functions as of local orbitals */
-            lod.l = uspp_.beta_l[i];
+            lod.l = pp_desc_.beta_l[i];
             lo_descriptors_.push_back(lod);
         }
     }
@@ -164,24 +164,7 @@ void Atom_type::init(int offset_lo__)
 
 void Atom_type::init_free_atom(bool smooth)
 {
-    /* check if atomic file exists */
-    if (!Utils::file_exists(file_name_)) {
-        std::stringstream s;
-        //s << "file " + file_name_ + " doesn't exist";
-        s << "Free atom density and potential for atom " << label_ << " are not initialized";
-        WARNING(s);
-        return;
-    }
-    
-    json parser;
-    std::ifstream(file_name_) >> parser;
-
-    /* create free atom radial grid */
-    auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
-    free_atom_radial_grid_ = Radial_grid(fa_r);
-    /* read density and potential */
-    auto v = parser["free_atom"]["density"].get<std::vector<double>>();
-    free_atom_density_ = Spline<double>(free_atom_radial_grid_, v);
+    free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
@@ -195,8 +178,8 @@ void Atom_type::init_free_atom(bool smooth)
         A(1, 0) = 2 * R;
         A(1, 1) = 3 * std::pow(R, 2);
         
-        b(0) = free_atom_density_[irmt];
-        b(1) = free_atom_density_.deriv(1, irmt);
+        b(0) = free_atom_density_spline_[irmt];
+        b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
        
@@ -213,12 +196,12 @@ void Atom_type::init_free_atom(bool smooth)
         
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
-            free_atom_density_[i] = b(0) * std::pow(free_atom_radial_grid(i), 2) + 
-                                    b(1) * std::pow(free_atom_radial_grid(i), 3);
+            free_atom_density_spline_[i] = b(0) * std::pow(free_atom_radial_grid(i), 2) + 
+                                           b(1) * std::pow(free_atom_radial_grid(i), 3);
         }
 
         /* interpolate new smooth density */
-        free_atom_density_.interpolate();
+        free_atom_density_spline_.interpolate();
 
         //== /* write smoothed density */
         //== sstr.str("");
@@ -432,69 +415,69 @@ void Atom_type::read_pseudo_uspp(json const& parser)
     int nmesh;
     nmesh = parser["pseudo_potential"]["header"]["mesh_size"];
 
-    uspp_.r = parser["pseudo_potential"]["radial_grid"].get<std::vector<double>>();
+    pp_desc_.r = parser["pseudo_potential"]["radial_grid"].get<std::vector<double>>();
 
-    uspp_.vloc = parser["pseudo_potential"]["local_potential"].get<std::vector<double>>();
+    pp_desc_.vloc = parser["pseudo_potential"]["local_potential"].get<std::vector<double>>();
 
-    uspp_.core_charge_density = parser["pseudo_potential"].value("core_charge_density", std::vector<double>(nmesh, 0));
+    pp_desc_.core_charge_density = parser["pseudo_potential"].value("core_charge_density", std::vector<double>(nmesh, 0));
 
-    uspp_.total_charge_density = parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>();
+    pp_desc_.total_charge_density = parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>();
 
-    if ((int)uspp_.r.size() != nmesh) {
+    if ((int)pp_desc_.r.size() != nmesh) {
         TERMINATE("wrong mesh size");
     }
-    if ((int)uspp_.vloc.size() != nmesh ||
-        (int)uspp_.core_charge_density.size() != nmesh ||
-        (int)uspp_.total_charge_density.size() != nmesh) {
-        std::cout << uspp_.vloc.size() << " " << uspp_.core_charge_density.size() << " " << uspp_.total_charge_density.size() << std::endl;
+    if ((int)pp_desc_.vloc.size() != nmesh ||
+        (int)pp_desc_.core_charge_density.size() != nmesh ||
+        (int)pp_desc_.total_charge_density.size() != nmesh) {
+        std::cout << pp_desc_.vloc.size() << " " << pp_desc_.core_charge_density.size() << " " << pp_desc_.total_charge_density.size() << std::endl;
         TERMINATE("wrong array size");
     }
 
     num_mt_points_ = nmesh;
-    mt_radius_     = uspp_.r[nmesh - 1];
+    mt_radius_     = pp_desc_.r[nmesh - 1];
 
-    set_radial_grid(nmesh, &uspp_.r[0]);
+    set_radial_grid(nmesh, &pp_desc_.r[0]);
 
-    uspp_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
+    pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
 
-    uspp_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions);
-    uspp_.beta_radial_functions.zero();
+    pp_desc_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, pp_desc_.num_beta_radial_functions);
+    pp_desc_.beta_radial_functions.zero();
 
-    uspp_.num_beta_radial_points.resize(uspp_.num_beta_radial_functions);
-    uspp_.beta_l.resize(uspp_.num_beta_radial_functions);
+    pp_desc_.num_beta_radial_points.resize(pp_desc_.num_beta_radial_functions);
+    pp_desc_.beta_l.resize(pp_desc_.num_beta_radial_functions);
 
-    int lmax_beta = 0;
+    int lmax_beta{0};
     local_orbital_descriptor lod;
-    for (int i = 0; i < uspp_.num_beta_radial_functions; i++) {
+    for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
         auto beta = parser["pseudo_potential"]["beta_projectors"][i]["radial_function"].get<std::vector<double>>();
-        if ((int)beta.size() > num_mt_points_) {
+        if (static_cast<int>(beta.size()) > num_mt_points_) {
             std::stringstream s;
             s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of beta radial functions in the file: " << beta.size() << std::endl
               << "radial grid size: " << num_mt_points_;
             TERMINATE(s);
         }
-        uspp_.num_beta_radial_points[i] = static_cast<int>(beta.size());
-        std::memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], uspp_.num_beta_radial_points[i] * sizeof(double));
+        pp_desc_.num_beta_radial_points[i] = static_cast<int>(beta.size());
+        std::memcpy(&pp_desc_.beta_radial_functions(0, i), &beta[0], pp_desc_.num_beta_radial_points[i] * sizeof(double));
 
-        uspp_.beta_l[i] = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
-        lmax_beta       = std::max(lmax_beta, uspp_.beta_l[i]);
+        pp_desc_.beta_l[i] = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
+        lmax_beta = std::max(lmax_beta, pp_desc_.beta_l[i]);
     }
 
-    uspp_.d_mtrx_ion = mdarray<double, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
-    uspp_.d_mtrx_ion.zero();
+    pp_desc_.d_mtrx_ion = mdarray<double, 2>(pp_desc_.num_beta_radial_functions, pp_desc_.num_beta_radial_functions);
+    pp_desc_.d_mtrx_ion.zero();
     auto dion = parser["pseudo_potential"]["D_ion"].get<std::vector<double>>();
 
-    for (int i = 0; i < uspp_.num_beta_radial_functions; i++) {
-        for (int j = 0; j < uspp_.num_beta_radial_functions; j++) {
-            uspp_.d_mtrx_ion(i, j) = dion[j * uspp_.num_beta_radial_functions + i];
+    for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
+        for (int j = 0; j < pp_desc_.num_beta_radial_functions; j++) {
+            pp_desc_.d_mtrx_ion(i, j) = dion[j * pp_desc_.num_beta_radial_functions + i];
         }
     }
 
     if (parser["pseudo_potential"].count("augmentation")) {
-        uspp_.augmentation_        = true;
-        uspp_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2, 2 * lmax_beta + 1);
-        uspp_.q_radial_functions_l.zero();
+        pp_desc_.augment = true;
+        pp_desc_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, pp_desc_.num_beta_radial_functions * (pp_desc_.num_beta_radial_functions + 1) / 2, 2 * lmax_beta + 1);
+        pp_desc_.q_radial_functions_l.zero();
 
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
             int i    = parser["pseudo_potential"]["augmentation"][k]["i"];
@@ -506,7 +489,7 @@ void Atom_type::read_pseudo_uspp(json const& parser)
                 TERMINATE("wrong size of qij");
             }
 
-            std::memcpy(&uspp_.q_radial_functions_l(0, idx, l), &qij[0], num_mt_points_ * sizeof(double));
+            std::memcpy(&pp_desc_.q_radial_functions_l(0, idx, l), &qij[0], num_mt_points_ * sizeof(double));
         }
     }
 
@@ -525,50 +508,46 @@ void Atom_type::read_pseudo_uspp(json const& parser)
                 TERMINATE(s);
             }
             wf.first = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
-            uspp_.atomic_pseudo_wfs_.push_back(wf);
+            pp_desc_.atomic_pseudo_wfs_.push_back(wf);
 
             /* read occupation of the function */
             double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
-            uspp_.atomic_pseudo_wfs_occ_.push_back(occ);
+            pp_desc_.atomic_pseudo_wfs_occ_.push_back(occ);
         }
     }
-
-    uspp_.is_initialized = true;
 }
 
 void Atom_type::read_pseudo_paw(json const& parser)
 {
-    if (!uspp_.is_initialized) {
-        TERMINATE("Ultrasoft or base part of PAW is not initialized");
-    }
+    pp_desc_.is_paw = true;
 
     /* read core energy */
-    paw_.core_energy = parser["pseudo_potential"]["header"]["paw_core_energy"];
+    pp_desc_.core_energy = parser["pseudo_potential"]["header"]["paw_core_energy"];
 
     /* cutoff index */
-    paw_.cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
+    pp_desc_.cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
 
     /* read augmentation multipoles and integrals */
-    paw_.aug_integrals = parser["pseudo_potential"]["paw_data"]["aug_integrals"].get<std::vector<double>>();
+    //pp_desc_.aug_integrals = parser["pseudo_potential"]["paw_data"]["aug_integrals"].get<std::vector<double>>();
 
-    paw_.aug_multopoles = parser["pseudo_potential"]["paw_data"]["aug_multipoles"].get<std::vector<double>>();
+    //pp_desc_.aug_multopoles = parser["pseudo_potential"]["paw_data"]["aug_multipoles"].get<std::vector<double>>();
 
     /* read core density and potential */
-    paw_.all_elec_core_charge = parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>();
+    pp_desc_.all_elec_core_charge = parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>();
 
-    paw_.all_elec_loc_potential = parser["pseudo_potential"]["paw_data"]["ae_local_potential"].get<std::vector<double>>();
+    pp_desc_.all_elec_loc_potential = parser["pseudo_potential"]["paw_data"]["ae_local_potential"].get<std::vector<double>>();
 
     /* read occupations */
-    paw_.occupations = parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>();
+    pp_desc_.occupations = parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>();
 
     /* setups for reading AE and PS basis wave functions */
-    int num_wfc = uspp_.num_beta_radial_functions;
+    int num_wfc = pp_desc_.num_beta_radial_functions;
 
-    paw_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
-    paw_.pseudo_wfc   = mdarray<double, 2>(num_mt_points_, num_wfc);
+    pp_desc_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
+    pp_desc_.pseudo_wfc   = mdarray<double, 2>(num_mt_points_, num_wfc);
 
-    paw_.all_elec_wfc.zero();
-    paw_.pseudo_wfc.zero();
+    pp_desc_.all_elec_wfc.zero();
+    pp_desc_.pseudo_wfc.zero();
 
     /* read ae and ps wave functions */
     for (int i = 0; i < num_wfc; i++) {
@@ -583,7 +562,7 @@ void Atom_type::read_pseudo_paw(json const& parser)
             TERMINATE(s);
         }
 
-        std::memcpy(&paw_.all_elec_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index) * sizeof(double));
+        std::memcpy(&pp_desc_.all_elec_wfc(0, i), wfc.data(), (pp_desc_.cutoff_radius_index) * sizeof(double));
 
         /* read ps wave func */
         wfc.clear();
@@ -597,7 +576,7 @@ void Atom_type::read_pseudo_paw(json const& parser)
               << "radial grid size: " << num_mt_points_;
             TERMINATE(s);
         }
-        std::memcpy(&paw_.pseudo_wfc(0, i), wfc.data(), (paw_.cutoff_radius_index) * sizeof(double));
+        std::memcpy(&pp_desc_.pseudo_wfc(0, i), wfc.data(), (pp_desc_.cutoff_radius_index) * sizeof(double));
     }
 }
 
@@ -608,8 +587,8 @@ void Atom_type::read_input(const std::string& fname)
 
     if (!parameters_.full_potential()) {
         read_pseudo_uspp(parser);
-
-        if (parameters_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        
+        if (parser["pseudo_potential"].count("paw_data")) {
             read_pseudo_paw(parser);
         }
     }
@@ -628,6 +607,12 @@ void Atom_type::read_input(const std::string& fname)
         read_input_aw(parser);
 
         read_input_lo(parser);
+
+        /* create free atom radial grid */
+        auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
+        free_atom_radial_grid_ = Radial_grid(fa_r);
+        /* read density */
+        free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }
 }
         

@@ -79,6 +79,8 @@ class wave_functions
         /// Muffin-tin part of wave-functions.
         std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>> mt_coeffs_{nullptr};
 
+        bool has_mt_{false};
+
     public:
         
         /// Constructor for PW wave-functions.
@@ -109,7 +111,8 @@ class wave_functions
               comm_(comm__),
               gkvec_(gkvec__),
               gkvec_full_(gkvec_, mpi_comm_self()),
-              num_wf_(num_wf__)
+              num_wf_(num_wf__),
+              has_mt_(true)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()),
@@ -161,6 +164,16 @@ class wave_functions
             return *mt_coeffs_;
         }
 
+        inline bool has_mt() const
+        {
+            return has_mt_;
+        }
+
+        inline int num_wf() const
+        {
+            return num_wf_;
+        }
+
         inline Simulation_parameters const& params() const
         {
             return params_;
@@ -186,7 +199,7 @@ class wave_functions
                     std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
                                 src__.pw_coeffs().prime().at<CPU>(0, i0__),
                                 pw_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
-                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         std::memcpy(mt_coeffs().prime().at<CPU>(0, j0__),
                                     src__.mt_coeffs().prime().at<CPU>(0, i0__),
                                     mt_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
@@ -198,7 +211,7 @@ class wave_functions
                     acc::copy(pw_coeffs().prime().at<GPU>(0, j0__),
                               src__.pw_coeffs().prime().at<GPU>(0, i0__),
                               pw_coeffs().num_rows_loc() * n__);
-                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         acc::copy(mt_coeffs().prime().at<GPU>(0, j0__),
                                   src__.mt_coeffs().prime().at<GPU>(0, i0__),
                                   mt_coeffs().num_rows_loc() * n__);
@@ -220,7 +233,7 @@ class wave_functions
                     std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
                                 src__.pw_coeffs().prime().at<CPU>(0, i0__),
                                 pw_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
-                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         std::memcpy(mt_coeffs().prime().at<CPU>(0, j0__),
                                     src__.mt_coeffs().prime().at<CPU>(0, i0__),
                                     mt_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
@@ -232,7 +245,7 @@ class wave_functions
                     acc::copy(pw_coeffs().prime().at<GPU>(0, j0__),
                               src__.pw_coeffs().prime().at<GPU>(0, i0__),
                               pw_coeffs().num_rows_loc() * n__);
-                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         acc::copy(mt_coeffs().prime().at<GPU>(0, j0__),
                                   src__.mt_coeffs().prime().at<GPU>(0, i0__),
                                   mt_coeffs().num_rows_loc() * n__);
@@ -251,7 +264,7 @@ class wave_functions
         inline void prepare_full_column_distr(int n__)
         {
             pw_coeffs().set_num_extra(gkvec_.num_gvec(), comm_, n__);
-            if (params_.full_potential()) {
+            if (has_mt_) {
                 mt_coeffs().set_num_extra(num_mt_coeffs_, comm_, n__);
             }
         }
@@ -259,7 +272,7 @@ class wave_functions
         inline void remap_to_full_column_distr(int n__)
         {
             pw_coeffs().remap_forward(gkvec_full_.gvec_fft_slab(), comm_, n__);
-            if (params_.full_potential()) {
+            if (has_mt_) {
                 mt_coeffs().remap_forward(mt_coeffs_distr_, comm_, n__);
             }
         }
@@ -267,7 +280,7 @@ class wave_functions
         inline void remap_to_prime_distr(int n__)
         {
             pw_coeffs().remap_backward(gkvec_full_.gvec_fft_slab(), comm_, n__);
-            if (params_.full_potential()) {
+            if (has_mt_) {
                 mt_coeffs().remap_backward(mt_coeffs_distr_, comm_, n__);
             }
         }
@@ -299,7 +312,7 @@ class wave_functions
                             norm[i] *= 2;
                         }
                     }
-                    if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
                             norm[i] += (std::pow(mt_coeffs().prime(j, i).real(), 2) + std::pow(mt_coeffs().prime(j, i).imag(), 2));
                         }
@@ -310,7 +323,7 @@ class wave_functions
             if (params_.processing_unit() == GPU) {
                 add_square_sum_gpu(pw_coeffs().prime().at<GPU>(), pw_coeffs().num_rows_loc(), n__,
                                    gkvec_.reduced(), comm_.rank(), norm.at<GPU>());
-                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                if (has_mt_ && mt_coeffs().num_rows_loc()) {
                     add_square_sum_gpu(mt_coeffs().prime().at<GPU>(), mt_coeffs().num_rows_loc(), n__,
                                        0, comm_.rank(), norm.at<GPU>());
                 }
@@ -346,7 +359,7 @@ class wave_functions
                 mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
                 cs1.zero_on_device();
                 add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
-                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                if (has_mt_ && mt_coeffs().num_rows_loc()) {
                     add_checksum_gpu(mt_coeffs().prime().at<GPU>(0, i0__), mt_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
                 }
                 cs1.copy_to_host();
@@ -359,7 +372,7 @@ class wave_functions
                         cs += pw_coeffs().prime(j, i0__ + i);
                     }
                 }
-                if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+                if (has_mt_ && mt_coeffs().num_rows_loc()) {
                     for (int i = 0; i < n__; i++) {
                         for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
                             cs += mt_coeffs().prime(j, i0__ + i);
@@ -374,28 +387,28 @@ class wave_functions
         #ifdef __GPU
         void allocate_on_device() {
             pw_coeffs().allocate_on_device();
-            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+            if (has_mt_ && mt_coeffs().num_rows_loc()) {
                 mt_coeffs().allocate_on_device();
             }
         }
 
         void deallocate_on_device() {
             pw_coeffs().deallocate_on_device();
-            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+            if (has_mt_ && mt_coeffs().num_rows_loc()) {
                 mt_coeffs().deallocate_on_device();
             }
         }
 
         void copy_to_device(int i0__, int n__) {
             pw_coeffs().copy_to_device(i0__, n__);
-            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+            if (has_mt_ && mt_coeffs().num_rows_loc()) {
                 mt_coeffs().copy_to_device(i0__, n__);
             }
         }
 
         void copy_to_host(int i0__, int n__) {
             pw_coeffs().copy_to_host(i0__, n__);
-            if (params_.full_potential() && mt_coeffs().num_rows_loc()) {
+            if (has_mt_ && mt_coeffs().num_rows_loc()) {
                 mt_coeffs().copy_to_host(i0__, n__);
             }
         }
@@ -431,7 +444,7 @@ inline void transform(double alpha__,
     for (int i = 0; i < nwf; i++) { 
         assert(&wf_in__[i]->params() == &wf_out__[i]->params());
         assert(wf_in__[i]->pw_coeffs().num_rows_loc() == wf_out__[i]->pw_coeffs().num_rows_loc());
-        if (wf_in__[i]->params().full_potential()) {
+        if (wf_in__[i]->has_mt()) {
             assert(wf_in__[i]->mt_coeffs().num_rows_loc() == wf_out__[i]->mt_coeffs().num_rows_loc());
         }
         assert(wf_in__[i]->comm().size() == comm.size());
@@ -439,6 +452,16 @@ inline void transform(double alpha__,
     }
     
     auto pu = wf_in__[0]->params().processing_unit();
+
+    #ifdef __PRINT_PERFORMANCE
+    double ngop{0};
+    if (std::is_same<T, double>::value) {
+        ngop = 2e-9;
+    }
+    if (std::is_same<T, double_complex>::value) {
+        ngop = 8e-9;
+    }
+    #endif
 
     auto local_transform = [pu, alpha__](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int icol0__,
                                          wave_functions* wf_out__, int j0__, int n__)
@@ -455,7 +478,7 @@ inline void transform(double alpha__,
                                   beta,
                                   wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
                 /* transform muffin-tin part */
-                if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
+                if (wf_in__->has_mt() && wf_in__->mt_coeffs().num_rows_loc()) {
                     linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       alpha,
                                       wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
@@ -473,7 +496,7 @@ inline void transform(double alpha__,
                                   reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, icol0__)), mtrx__.ld(),
                                   beta,
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
-                if (wf_in__->params().full_potential()) {
+                if (wf_in__->has_mt()) {
                     TERMINATE_NOT_IMPLEMENTED;
                 }
             }
@@ -490,7 +513,7 @@ inline void transform(double alpha__,
                                   &beta,
                                   wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
 
-                if (wf_in__->params().full_potential() && wf_in__->mt_coeffs().num_rows_loc()) {
+                if (wf_in__->has_mt() && wf_in__->mt_coeffs().num_rows_loc()) {
                     linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       &alpha,
                                       wf_in__->mt_coeffs().prime().at<GPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
@@ -511,7 +534,7 @@ inline void transform(double alpha__,
                                   reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, icol0__)), mtrx__.ld(),
                                   &beta,
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
-                if (wf_in__->params().full_potential()) {
+                if (wf_in__->has_mt()) {
                     TERMINATE_NOT_IMPLEMENTED;
                 }
                 acc::sync_stream(-1);
@@ -519,7 +542,8 @@ inline void transform(double alpha__,
         }
         #endif
     };
-
+    
+    runtime::Timer t1("sirius::wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu == CPU) {
@@ -531,7 +555,7 @@ inline void transform(double alpha__,
                                 wf_out__[iv]->pw_coeffs().num_rows_loc() * sizeof(double_complex));
                 }
                 /* zero MT part */
-                if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                if (wf_out__[iv]->has_mt() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                     for (int j = 0; j < n__; j++) {
                         std::memset(wf_out__[iv]->mt_coeffs().prime().at<CPU>(0, j0__ + j),
                                     0,
@@ -546,7 +570,7 @@ inline void transform(double alpha__,
                         wf_out__[iv]->pw_coeffs().prime(k, j0__ + j) *= beta__;
                     }
                     /* scale MT part */
-                    if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                    if (wf_out__[iv]->has_mt() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                         for (int k = 0; k < wf_out__[iv]->mt_coeffs().num_rows_loc(); k++) {
                             wf_out__[iv]->mt_coeffs().prime(k, j0__ + j) *= beta__;
                         }
@@ -563,7 +587,7 @@ inline void transform(double alpha__,
                           wf_out__[iv]->pw_coeffs().num_rows_loc(),
                           n__);
                 /* zero MT part */
-                if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                if (wf_out__[iv]->has_mt() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                     acc::zero(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
                               wf_out__[iv]->mt_coeffs().prime().ld(),
                               wf_out__[iv]->mt_coeffs().num_rows_loc(),
@@ -577,7 +601,7 @@ inline void transform(double alpha__,
                                           n__,
                                           beta__);
                 /* scale MT part */
-                if (wf_out__[iv]->params().full_potential() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
+                if (wf_out__[iv]->has_mt() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
                     scale_matrix_elements_gpu(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
                                               wf_out__[iv]->mt_coeffs().prime().ld(),
                                               wf_out__[iv]->mt_coeffs().num_rows_loc(),
@@ -588,9 +612,13 @@ inline void transform(double alpha__,
         }
         #endif
     }
+    t1.stop();
     
     /* trivial case */
     if (comm.size() == 1) {
+        #ifdef __PRINT_PERFORMANCE
+        double time = -runtime::wtime();
+        #endif
         #ifdef __GPU
         if (pu == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, icol0__), mtrx__.ld(),
@@ -600,13 +628,27 @@ inline void transform(double alpha__,
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, icol0__, wf_out__[iv], j0__, n__);
         }
+        #ifdef __PRINT_PERFORMANCE
+        time += runtime::wtime();
+        int k = wf_in__[0]->pw_coeffs().num_rows_loc();
+        if (wf_in__[0]->has_mt()) {
+            k += wf_in__[0]->mt_coeffs().num_rows_loc();
+        }
+        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i]\n",
+               ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf);
+        #endif
         return;
     }
 
+    #ifdef __PRINT_PERFORMANCE
+    comm.barrier();
+    double time = -runtime::wtime();
+    #endif
+
     const int BS = sddk_block_size;
 
-    mdarray<T, 1> buf(BS * BS, memory_t::host, "buf");
-    matrix<T> submatrix(BS, BS, memory_t::host, "submatrix");
+    mdarray<T, 1> buf(BS * BS, memory_t::host, "transform::buf");
+    matrix<T> submatrix(BS, BS, memory_t::host, "transform::submatrix");
 
     #ifdef __GPU
     if (pu == GPU) {
@@ -698,6 +740,20 @@ inline void transform(double alpha__,
             }
         }
     }
+
+    #ifdef __PRINT_PERFORMANCE
+    comm.barrier();
+    time += runtime::wtime();
+    int k = wf_in__[0]->pw_coeffs().num_rows_loc();
+    if (wf_in__[0]->has_mt()) {
+        k += wf_in__[0]->mt_coeffs().num_rows_loc();
+    }
+    comm.allreduce(&k, 1);
+    if (comm.rank() == 0) {
+        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+               ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time);
+    }
+    #endif
 }
 
 template <typename T>
@@ -771,12 +827,22 @@ inline void inner(wave_functions& bra__,
     assert(&bra__.params() == &ket__.params());
     assert(&bra__.comm() == &ket__.comm());
     assert(bra__.pw_coeffs().num_rows_loc() == ket__.pw_coeffs().num_rows_loc());
-    if (bra__.params().full_potential()) {
+    if (bra__.has_mt()) {
         assert(bra__.mt_coeffs().num_rows_loc() == ket__.mt_coeffs().num_rows_loc());
     }
 
     auto& comm = bra__.comm();
     auto pu = bra__.params().processing_unit();
+
+    #ifdef __PRINT_PERFORMANCE
+    double ngop{0};
+    if (std::is_same<T, double>::value) {
+        ngop = 2e-9;
+    }
+    if (std::is_same<T, double_complex>::value) {
+        ngop = 8e-9;
+    }
+    #endif
 
     auto local_inner = [pu, &comm](wave_functions& bra__, int i0__, int m__, wave_functions& ket__, int j0__, int n__, T* buf__, int ld__){
         if (std::is_same<T, double_complex>::value) {
@@ -785,7 +851,7 @@ inline void inner(wave_functions& bra__,
                                   bra__.pw_coeffs().prime().at<CPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                                   ket__.pw_coeffs().prime().at<CPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
                                   reinterpret_cast<double_complex*>(buf__), ld__);
-                if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
+                if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                     double_complex alpha(1, 0);
                     linalg<CPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
                                       alpha,
@@ -801,7 +867,7 @@ inline void inner(wave_functions& bra__,
                                   bra__.pw_coeffs().prime().at<GPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                                   ket__.pw_coeffs().prime().at<GPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
                                   reinterpret_cast<double_complex*>(buf__), ld__);
-                if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
+                if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                     double_complex alpha(1, 0);
                     linalg<GPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
                                       &alpha,
@@ -832,7 +898,7 @@ inline void inner(wave_functions& bra__,
                                     reinterpret_cast<double*>(buf__), ld__); 
 
                 }
-                if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
+                if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                     TERMINATE_NOT_IMPLEMENTED;
                 }
             }
@@ -857,7 +923,7 @@ inline void inner(wave_functions& bra__,
                     acc::sync_stream(-1);
 
                 }
-                if (bra__.params().full_potential() && bra__.mt_coeffs().num_rows_loc()) {
+                if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                     TERMINATE_NOT_IMPLEMENTED;
                 }
                 acc::sync_stream(-1);
@@ -867,6 +933,9 @@ inline void inner(wave_functions& bra__,
     };
 
     if (comm.size() == 1) {
+        #ifdef __PRINT_PERFORMANCE
+        double time = -runtime::wtime();
+        #endif
         T* buf = (pu == CPU) ? result__.template at<CPU>(irow0__, icol0__) : result__.template at<GPU>(irow0__, icol0__);
         local_inner(bra__, i0__, m__, ket__, j0__, n__, buf, result__.ld());
         #ifdef __GPU
@@ -876,12 +945,24 @@ inline void inner(wave_functions& bra__,
                          m__, n__);
         }
         #endif
+        #ifdef __PRINT_PERFORMANCE
+        time += runtime::wtime();
+        int k = bra__.pw_coeffs().num_rows_loc();
+        if (bra__.has_mt()) {
+            k += bra__.mt_coeffs().num_rows_loc();
+        }
+        printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i]\n", ngop * m__ * n__ * k / time, m__, n__, k);
+        #endif
         return;
     }
 
+    #ifdef __PRINT_PERFORMANCE
+    double time = -runtime::wtime();
+    #endif
+
     const int BS = sddk_block_size;
 
-    mdarray<T, 2> c_tmp(BS * BS, 2);
+    mdarray<T, 2> c_tmp(BS * BS, 2, memory_t::host, "inner::c_tmp");
     if (pu == GPU) {
         c_tmp.allocate(memory_t::device);
     }
@@ -943,6 +1024,18 @@ inline void inner(wave_functions& bra__,
             store_panel(s);
         }
     }
+
+    #ifdef __PRINT_PERFORMANCE
+    time += runtime::wtime();
+    int k = bra__.pw_coeffs().num_rows_loc();
+    if (bra__.has_mt()) {
+        k += bra__.mt_coeffs().num_rows_loc();
+    }
+    comm.allreduce(&k, 1);
+    if (comm.rank() == 0) {
+        printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k);
+    }
+    #endif
 }
 
 template <typename T>
@@ -996,7 +1089,7 @@ inline void orthogonalize(int N__,
                                       reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
                                       e->pw_coeffs().prime().at<CPU>(0, N__), e->pw_coeffs().prime().ld());
 
-                    if (phi__.params().full_potential() && e->mt_coeffs().num_rows_loc()) {
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
                         linalg<CPU>::trmm('R', 'U', 'N', e->mt_coeffs().num_rows_loc(), n__, double_complex(1, 0),
                                           reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
                                           e->mt_coeffs().prime().at<CPU>(0, N__), e->mt_coeffs().prime().ld());
@@ -1008,7 +1101,7 @@ inline void orthogonalize(int N__,
                                       reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
                                       reinterpret_cast<double*>(e->pw_coeffs().prime().at<CPU>(0, N__)), 2 * e->pw_coeffs().prime().ld());
 
-                    if (phi__.params().full_potential() && e->mt_coeffs().num_rows_loc()) {
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
                         linalg<CPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs().num_rows_loc(), n__, 1.0,
                                           reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
                                           reinterpret_cast<double*>(e->mt_coeffs().prime().at<CPU>(0, N__)), 2 * e->mt_coeffs().prime().ld());
@@ -1045,7 +1138,7 @@ inline void orthogonalize(int N__,
                                       reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
                                       e->pw_coeffs().prime().at<GPU>(0, N__), e->pw_coeffs().prime().ld());
 
-                    if (phi__.params().full_potential() && e->mt_coeffs().num_rows_loc()) {
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
                         linalg<GPU>::trmm('R', 'U', 'N', e->mt_coeffs().num_rows_loc(), n__, &alpha,
                                           reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
                                           e->mt_coeffs().prime().at<GPU>(0, N__), e->mt_coeffs().prime().ld());
@@ -1060,7 +1153,7 @@ inline void orthogonalize(int N__,
                                       reinterpret_cast<double*>(o__.template at<GPU>()), o__.ld(),
                                       reinterpret_cast<double*>(e->pw_coeffs().prime().at<GPU>(0, N__)), 2 * e->pw_coeffs().prime().ld());
 
-                    if (phi__.params().full_potential() && e->mt_coeffs().num_rows_loc()) {
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
                         linalg<GPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs().num_rows_loc(), n__, &alpha,
                                           reinterpret_cast<double*>(o__.template at<GPU>()), o__.ld(),
                                           reinterpret_cast<double*>(e->mt_coeffs().prime().at<GPU>(0, N__)), 2 * e->mt_coeffs().prime().ld());
@@ -1072,15 +1165,20 @@ inline void orthogonalize(int N__,
         }
         #endif
     } else { /* parallel transformation */
+        runtime::Timer t1("sirius::wave_functions::orthogonalize|potrf");
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in factorization, info = " << info;
             TERMINATE(s);
         }
+        t1.stop();
 
+        runtime::Timer t2("sirius::wave_functions::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }
+        t2.stop();
+
         /* o is upper triangular matrix */
         for (int i = 0; i < n__; i++) {
             for (int j = i + 1; j < n__; j++) {
@@ -1088,6 +1186,168 @@ inline void orthogonalize(int N__,
             }
         }
 
+        /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
+        for (auto& e: wfs) {
+            transform(*e, N__, n__, o__, 0, 0, tmp__, 0, n__);
+            e->copy_from(tmp__, 0, n__, N__);
+        }
+    }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    for (auto& e: wfs) {
+        auto cs = e->checksum(N__, n__);
+        DUMP("checksum(orthogonalize(wf)): %18.10f %18.10f", cs.real(), cs.imag());
+    }
+    #endif
+}
+
+template <typename T>
+inline void orthogonalize(int N__,
+                          int n__,
+                          wave_functions& phi__,
+                          wave_functions& hphi__,
+                          dmatrix<T>& o__,
+                          wave_functions& tmp__)
+{
+    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
+    
+    PROFILE_WITH_TIMER("sirius::wave_functions::orthogonalize");
+
+    assert(&phi__.params() == &hphi__.params());
+    assert(&phi__.params() == &tmp__.params());
+
+    auto wfs = {&phi__, &hphi__};
+
+    /* project out the old subspace:
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
+    if (N__ > 0) {
+        inner(phi__, 0, N__, phi__, N__, n__, o__, 0, 0);
+        transform(-1, wfs, 0, N__, o__, 0, 0, 1, wfs, N__, n__);
+    }
+
+    /* orthogonalize new n__ x n__ block */
+    inner(phi__, N__, n__, phi__, N__, n__, o__, 0, 0);
+
+    /* single MPI rank */
+    if (o__.blacs_grid().comm().size() == 1) {
+        /* CPU version */
+        if (phi__.params().processing_unit() == CPU) {
+            /* Cholesky factorization */
+            if (int info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())) {
+                std::stringstream s;
+                s << "error in factorization, info = " << info;
+                TERMINATE(s);
+            }
+            /* inversion of triangular matrix */
+            if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld())) {
+                TERMINATE("error in inversion");
+            }
+            /* multiplication by triangular matrix */
+            for (auto& e: wfs) {
+                /* wave functions are complex, transformation matrix is complex */
+                if (std::is_same<T, double_complex>::value) {
+                    linalg<CPU>::trmm('R', 'U', 'N', e->pw_coeffs().num_rows_loc(), n__, double_complex(1, 0),
+                                      reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
+                                      e->pw_coeffs().prime().at<CPU>(0, N__), e->pw_coeffs().prime().ld());
+
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
+                        linalg<CPU>::trmm('R', 'U', 'N', e->mt_coeffs().num_rows_loc(), n__, double_complex(1, 0),
+                                          reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
+                                          e->mt_coeffs().prime().at<CPU>(0, N__), e->mt_coeffs().prime().ld());
+                    }
+                }
+                /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
+                if (std::is_same<T, double>::value) {
+                    linalg<CPU>::trmm('R', 'U', 'N', 2 * e->pw_coeffs().num_rows_loc(), n__, 1.0,
+                                      reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
+                                      reinterpret_cast<double*>(e->pw_coeffs().prime().at<CPU>(0, N__)), 2 * e->pw_coeffs().prime().ld());
+
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
+                        linalg<CPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs().num_rows_loc(), n__, 1.0,
+                                          reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
+                                          reinterpret_cast<double*>(e->mt_coeffs().prime().at<CPU>(0, N__)), 2 * e->mt_coeffs().prime().ld());
+                    }
+                }
+            }
+        }
+        #ifdef __GPU
+        if (phi__.params().processing_unit() == GPU) {
+            /* Cholesky factorization */
+            if (int info = linalg<GPU>::potrf(n__, o__.template at<GPU>(), o__.ld())) {
+                std::stringstream s;
+                s << "error in GPU factorization, info = " << info;
+                TERMINATE(s);
+                
+                //if (int info1 = linalg<CPU>::potrf(n__, o__.template at<CPU>(), o__.ld())) {
+                //    std::stringstream s;
+                //    s << "error in CPU factorization, info = " << info;
+                //    TERMINATE(s);
+                //}
+                //o__.copy_to_device();
+            }
+
+            /* inversion of triangular matrix */
+            if (linalg<GPU>::trtri(n__, o__.template at<GPU>(), o__.ld())) {
+                TERMINATE("error in inversion");
+            }
+            /* multiplication by triangular matrix */
+            for (auto& e: wfs) {
+                if (std::is_same<T, double_complex>::value) {
+                    double_complex alpha(1, 0);
+
+                    linalg<GPU>::trmm('R', 'U', 'N', e->pw_coeffs().num_rows_loc(), n__, &alpha,
+                                      reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
+                                      e->pw_coeffs().prime().at<GPU>(0, N__), e->pw_coeffs().prime().ld());
+
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
+                        linalg<GPU>::trmm('R', 'U', 'N', e->mt_coeffs().num_rows_loc(), n__, &alpha,
+                                          reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
+                                          e->mt_coeffs().prime().at<GPU>(0, N__), e->mt_coeffs().prime().ld());
+                    }
+                    /* alpha should not go out of the scope, so wait */
+                    acc::sync_stream(-1);
+                }
+                if (std::is_same<T, double>::value) {
+                    double alpha{1};
+
+                    linalg<GPU>::trmm('R', 'U', 'N', 2 * e->pw_coeffs().num_rows_loc(), n__, &alpha,
+                                      reinterpret_cast<double*>(o__.template at<GPU>()), o__.ld(),
+                                      reinterpret_cast<double*>(e->pw_coeffs().prime().at<GPU>(0, N__)), 2 * e->pw_coeffs().prime().ld());
+
+                    if (e->has_mt() && e->mt_coeffs().num_rows_loc()) {
+                        linalg<GPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs().num_rows_loc(), n__, &alpha,
+                                          reinterpret_cast<double*>(o__.template at<GPU>()), o__.ld(),
+                                          reinterpret_cast<double*>(e->mt_coeffs().prime().at<GPU>(0, N__)), 2 * e->mt_coeffs().prime().ld());
+                    }
+                    acc::sync_stream(-1);
+                }
+            }
+            acc::sync_stream(-1);
+        }
+        #endif
+    } else { /* parallel transformation */
+        runtime::Timer t1("sirius::wave_functions::orthogonalize|potrf");
+        if (int info = linalg<CPU>::potrf(n__, o__)) {
+            std::stringstream s;
+            s << "error in factorization, info = " << info;
+            TERMINATE(s);
+        }
+        t1.stop();
+
+        runtime::Timer t2("sirius::wave_functions::orthogonalize|trtri");
+        if (linalg<CPU>::trtri(n__, o__)) {
+            TERMINATE("error in inversion");
+        }
+        t2.stop();
+
+        /* o is upper triangular matrix */
+        for (int i = 0; i < n__; i++) {
+            for (int j = i + 1; j < n__; j++) {
+                o__.set(j, i, 0);
+            }
+        }
+
+        /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
         for (auto& e: wfs) {
             transform(*e, N__, n__, o__, 0, 0, tmp__, 0, n__);
             e->copy_from(tmp__, 0, n__, N__);
