@@ -5,7 +5,8 @@ using namespace sirius;
 void test_wf_ortho(std::vector<int> mpi_grid_dims__,
                    double cutoff__,
                    int num_bands__,
-                   int use_gpu__)
+                   int use_gpu__,
+                   int bs__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
@@ -41,13 +42,23 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
             ophi.pw_coeffs().prime(j, i) = phi.pw_coeffs().prime(j, i);
         }
     }
-    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, 64, 64);
+    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
     
-
 
     mpi_comm_world().barrier();
     orthogonalize<double_complex>(0, num_bands__, phi, hphi, ophi, ovlp, tmp);
     orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ophi, ovlp, tmp);
+
+    inner(phi, 0, 2 * num_bands__, ophi, 0, 2 * num_bands__, ovlp, 0, 0);
+
+    for (int j = 0; j < ovlp.num_cols_local(); j++) {
+        for (int i = 0; i < ovlp.num_rows_local(); i++) {
+            double_complex z = (ovlp.irow(i) == ovlp.icol(j)) ? ovlp(i, j) - 1.0 : ovlp(i, j);
+            if (std::abs(z) > 1e-12) {
+                TERMINATE("wrong overlap");
+            }
+        }
+    }
 }
 
 int main(int argn, char** argv)
@@ -56,6 +67,7 @@ int main(int argn, char** argv)
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--num_bands=", "{int} number of bands");
+    args.register_key("--bs=", "{int} block size");
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
     args.register_key("--repeat=", "{int} number of repeats");
 
@@ -70,10 +82,11 @@ int main(int argn, char** argv)
     auto num_bands = args.value<int>("num_bands", 10);
     auto use_gpu = args.value<int>("use_gpu", 0);
     auto repeat = args.value<int>("repeat", 1);
+    auto bs = args.value<int>("bs", 16);
 
     sirius::initialize(1);
     for (int i = 0; i < repeat; i++) {
-        test_wf_ortho(mpi_grid_dims, cutoff, num_bands, use_gpu);
+        test_wf_ortho(mpi_grid_dims, cutoff, num_bands, use_gpu, bs);
     }
     mpi_comm_world().barrier();
     runtime::Timer::print();
