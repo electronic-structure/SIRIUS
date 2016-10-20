@@ -420,7 +420,7 @@ inline void Simulation_context::initialize()
 
     /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and maximum MT radius) */
     if (full_potential()) {
-        set_gk_cutoff(aw_cutoff() / unit_cell_.max_mt_radius());
+        set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
     }
 
     if (esm_type() == electronic_structure_method_t::paw_pseudopotential) {
