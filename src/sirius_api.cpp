@@ -1655,28 +1655,42 @@ void sirius_update_atomic_potential()
     potential->update_atomic_potential();
 }
 
-void sirius_scalar_radial_solver(int32_t* zn, int32_t* l, int32_t* dme, double* enu, int32_t* nr, double* r,
-                                 double* v__, int32_t* nn, double* p0__, double* p1__, double* q0__, double* q1__)
+void sirius_radial_solver(ftn_char    type__,
+                          ftn_int*    zn__,
+                          ftn_int*    dme__,
+                          ftn_int*    l__,
+                          ftn_int*    k__, 
+                          ftn_double* enu__,
+                          ftn_int*    nr__,
+                          ftn_double* r__,
+                          ftn_double* v__,
+                          ftn_int*    nn__,
+                          ftn_double* p0__,
+                          ftn_double* p1__,
+                          ftn_double* q0__,
+                          ftn_double* q1__,
+                          ftn_int     type_len__)
 {
     PROFILE();
-    STOP();
-    //sirius::Radial_grid rgrid(*nr, r);
-    //sirius::Radial_solver solver(false, *zn, rgrid);
 
-    //std::vector<double> v(*nr);
-    //std::vector<double> p0;
-    //std::vector<double> p1;
-    //std::vector<double> q0;
-    //std::vector<double> q1;
+    std::string type(type__, type_len__);
+    if (type != "none") {
+        TERMINATE_NOT_IMPLEMENTED;
+    }
 
-    //memcpy(&v[0], v__, (*nr) * sizeof(double));
+    relativity_t rel = relativity_t::none;
 
-    //*nn = solver.solve(*l, *enu, *dme, v, p0, p1, q0, q1);
+    sirius::Radial_grid rgrid(*nr__, r__);
+    std::vector<double> v(v__, v__ + rgrid.num_points());
+    sirius::Radial_solver solver(*zn__, v, rgrid);
 
-    //memcpy(p0__, &p0[0], (*nr) * sizeof(double));
-    //memcpy(p1__, &p1[0], (*nr) * sizeof(double));
-    //memcpy(q0__, &q0[0], (*nr) * sizeof(double));
-    //memcpy(q1__, &q1[0], (*nr) * sizeof(double));
+    auto result = solver.solve(rel, *dme__, *l__, *k__, *enu__);
+
+    *nn__ = std::get<0>(result);
+    std::memcpy(p0__, std::get<1>(result).data(), rgrid.num_points() * sizeof(double));
+    std::memcpy(p1__, std::get<2>(result).data(), rgrid.num_points() * sizeof(double));
+    std::memcpy(q0__, std::get<3>(result).data(), rgrid.num_points() * sizeof(double));
+    std::memcpy(q1__, std::get<4>(result).data(), rgrid.num_points() * sizeof(double));
 }
 
 void sirius_get_aw_radial_function(int32_t const* ia__,

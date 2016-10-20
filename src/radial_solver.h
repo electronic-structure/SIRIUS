@@ -25,6 +25,7 @@
 #ifndef __RADIAL_SOLVER_H__
 #define __RADIAL_SOLVER_H__
 
+#include <tuple>
 #include "radial_grid.h"
 #include "spline.h"
 #include "constants.h"
@@ -133,40 +134,30 @@ class Radial_solver
             if (rel == relativity_t::dirac) ll_half = 0;
             
             double kappa{0};
-            if (rel == relativity_t::dirac)
-            {
-                if (k__ == l__)
-                {
+            if (rel == relativity_t::dirac) {
+                if (k__ == l__) {
                     kappa = k__;
-                }
-                else if (k__ == l__ + 1)
-                {
+                } else if (k__ == l__ + 1) {
                     kappa = -k__;
-                }
-                else
-                {
+                } else {
                     TERMINATE("wrong k");
                 }
             }
 
             /* try to find classical turning point */
             int idx_ctp{-1};
-            for (int ir = 0; ir < nr; ir++)
-            {
-                if (ve_[ir] - zn_ * radial_grid_.x_inv(ir) > enu__)
-                {
+            for (int ir = 0; ir < nr; ir++) {
+                if (ve_[ir] - zn_ * radial_grid_.x_inv(ir) > enu__) {
                     idx_ctp = ir;
                     break;
                 }
             }
             /* if we didn't fint the classical turning point, take half of the grid */
-            if (idx_ctp == -1)
-            {
+            //int idx_tail{-1};
+            if (idx_ctp == -1) {
                 double rmid = radial_grid_.last() / 2;
-                for (int ir = 0; ir < nr; ir++)
-                {
-                    if (radial_grid_[ir] > rmid)
-                    {
+                for (int ir = 0; ir < nr; ir++) {
+                    if (radial_grid_[ir] > rmid) {
                         idx_ctp = ir;
                         break;
                     }
@@ -183,21 +174,15 @@ class Radial_solver
             double veff2 = (v2 + vll2);
 
             /* r->0 asymptotics */
-            if (rel != relativity_t::dirac)
-            {
-                if (l__ == 0)
-                {
+            if (rel != relativity_t::dirac) {
+                if (l__ == 0) {
                     p__[0] = 2 * zn_ * x2;
                     q__[0] = -std::pow(zn_, 2) * x2;
-                }
-                else
-                {
+                } else {
                     p__[0] = std::pow(x2, l__ + 1);
                     q__[0] = std::pow(x2, l__) * l__ / 2;
                 }
-            }
-            else
-            {
+            } else {
                 double b = std::sqrt(std::pow(kappa, 2) - std::pow(zn_ / speed_of_light, 2));
                 p__[0] = std::pow(x2, b);
                 q__[0] = std::pow(x2, b) * speed_of_light * (b + kappa) / zn_;
@@ -253,8 +238,7 @@ class Radial_solver
                 vll2  = ll_half / M2 / std::pow(x2, 2);
                 veff2 = (v2 + vll2);
                 
-                if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora)
-                {
+                if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
                     /* k0 = F(Y(x), x) */
                     pk[0] = 2 * M0 * q0          + p0 * xinv0;
                     qk[0] = (veff0 - enu__) * p0 - q0 * xinv0 + chiq0;
@@ -275,8 +259,7 @@ class Radial_solver
                     p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
                     q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
                 }
-                if (rel == relativity_t::dirac)
-                {
+                if (rel == relativity_t::dirac) {
                     /* k0 = F(Y(x), x) */
                     pk[0] = alpha * (2 * rest_energy + enu__ - veff0) * q0 - kappa * p0 * xinv0;
                     qk[0] = alpha * (veff0 - enu__)                   * p0 + kappa * q0 * xinv0;
@@ -299,7 +282,8 @@ class Radial_solver
                 }
 
                 /* check overflow */
-                if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10) {
+                //if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10) {
+                if (std::abs(p2) > 1e4) {
                     /* if we didn't expect the overflow and it happended, or it happended before the 
                      * classical turning point, it's bad */
                     if (!prevent_overflow || (prevent_overflow && i < idx_ctp)) {
@@ -309,8 +293,16 @@ class Radial_solver
                         } else {
                             s << "overflow before the classical turning point ";
                         }
-                        s << "for atom type with zn = " << zn_ << ", l = " << l__ << ", enu = " << enu__;
-                        TERMINATE(s);
+                        s << "for atom type with zn = " << zn_ << ", l = " << l__ << ", enu = " << enu__ 
+                          << ", ir = " << i << ", idx_ctp: " << idx_ctp;
+                        for (int j = 0; j <= i; j++) {
+                            p__[j] /= 1e4;
+                            q__[j] /= 1e4;
+                        }
+                        p2 /= 1e4;
+                        q2 /= 1e4;
+
+                        //WARNING(s);
                     } else { /* if overflow happened after the classical turning point, it's ok */
                         last = i;
                         break;
@@ -321,18 +313,14 @@ class Radial_solver
                 q__[i + 1] = q2;
             }
 
-            if (prevent_overflow && last)
-            {
+            if (prevent_overflow && last) {
                 /* find the minimum value of the "tail" */
                 double pmax = std::abs(p__[last]);
-                for (int j = last; j >= 0; j--)
-                {
-                    if (std::abs(p__[j]) < pmax)
-                    {
+                /* go towards the origin */
+                for (int j = last; j >= 0; j--) {
+                    if (std::abs(p__[j]) < pmax) {
                         pmax = std::abs(p__[j]);
-                    }
-                    else
-                    {
+                    } else {
                         /* we may go through zero here and miss one node,
                          * so stay on the safe side with one extra point */
                         last = j + 1;
@@ -340,16 +328,17 @@ class Radial_solver
                     }
                 }
                 /* zero the tail */
-                for (int j = last; j < nr; j++)
-                {
+                for (int j = last; j < nr; j++) {
                     p__[j] = 0;
                     q__[j] = 0;
                 }
             }
             
             /* get number of nodes */
-            int nn = 0;
-            for (int i = 0; i < nr - 1; i++) if (p__[i] * p__[i + 1] < 0.0) nn++;
+            int nn{0};
+            for (int i = 0; i < nr - 1; i++) {
+                if (p__[i] * p__[i + 1] < 0.0) nn++;
+            }
 
             for (int i = 0; i < nr; i++)
             {
@@ -563,8 +552,69 @@ class Radial_solver
         {
             ve_ = Spline<double>(radial_grid__);
 
-            for (int i = 0; i < num_points(); i++) ve_[i] = v__[i] + zn_ * radial_grid_.x_inv(i);
+            for (int i = 0; i < num_points(); i++) {
+                ve_[i] = v__[i] + zn_ * radial_grid_.x_inv(i);
+            }
             ve_.interpolate();
+        }
+
+        std::tuple<int, std::vector<double>, std::vector<double>, std::vector<double>, std::vector<double>> 
+        solve(relativity_t rel__,
+              int dme__,
+              int l__,
+              int k__,
+              double enu__) const
+        {
+            int nr = num_points();
+            std::vector<std::vector<double>> p;
+            std::vector<std::vector<double>> q;
+            std::vector<std::vector<double>> dpdr;
+            std::vector<std::vector<double>> dqdr;
+
+            Spline<double> chi_p(radial_grid_);
+            Spline<double> chi_q(radial_grid_);
+
+            int nn{0};
+
+            for (int j = 0; j <= dme__; j++) {
+                p.push_back(std::move(std::vector<double>(nr)));
+                q.push_back(std::move(std::vector<double>(nr)));
+                dpdr.push_back(std::move(std::vector<double>(nr)));
+                dqdr.push_back(std::move(std::vector<double>(nr)));
+
+                if (j) {
+                    if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
+                        for (int i = 0; i < nr; i++) chi_q[i] = -j * p[j - 1][i];
+                        chi_q.interpolate();
+                    }
+                    else if (rel__ == relativity_t::koelling_harmon) {
+                        STOP();
+                    }
+                    else {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+
+                switch (rel__) {
+                    case relativity_t::none: {
+                        nn = integrate_forward_rk4<relativity_t::none, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon: {
+                        nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    case relativity_t::zora: {
+                        nn = integrate_forward_rk4<relativity_t::zora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    default: {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+            }
+
+            return std::make_tuple(nn, p.back(), dpdr.back(), q.back(), dqdr.back());
         }
 
         /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
@@ -594,87 +644,87 @@ class Radial_solver
          *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
          *  \f]
          */
-        int solve(relativity_t rel__, int dme__, int l__, double enu__, std::vector<double>& p__,
-                  std::vector<double>& rdudr__, std::array<double, 2>& uderiv__) const
+        int solve(relativity_t rel__,
+                  int dme__,
+                  int l__,
+                  double enu__,
+                  std::vector<double>& p__,
+                  std::vector<double>& rdudr__,
+                  std::array<double, 2>& uderiv__) const
         {
+            auto result = solve(rel__, dme__, l__, 0, enu__);
             int nr = num_points();
-            std::vector< std::vector<double> > p;
-            std::vector< std::vector<double> > q;
-            std::vector< std::vector<double> > dpdr;
-            std::vector< std::vector<double> > dqdr;
+            //std::vector<std::vector<double>> p;
+            //std::vector<std::vector<double>> q;
+            //std::vector<std::vector<double>> dpdr;
+            //std::vector<std::vector<double>> dqdr;
 
-            Spline<double> chi_p(radial_grid_);
-            Spline<double> chi_q(radial_grid_);
+            //Spline<double> chi_p(radial_grid_);
+            //Spline<double> chi_q(radial_grid_);
 
-            int nn{0};
+            //int nn{0};
 
-            for (int j = 0; j <= dme__; j++)
-            {
-                p.push_back(std::move(std::vector<double>(nr)));
-                q.push_back(std::move(std::vector<double>(nr)));
-                dpdr.push_back(std::move(std::vector<double>(nr)));
-                dqdr.push_back(std::move(std::vector<double>(nr)));
+            //for (int j = 0; j <= dme__; j++) {
+            //    p.push_back(std::move(std::vector<double>(nr)));
+            //    q.push_back(std::move(std::vector<double>(nr)));
+            //    dpdr.push_back(std::move(std::vector<double>(nr)));
+            //    dqdr.push_back(std::move(std::vector<double>(nr)));
 
-                if (j)
-                {
-                    if (rel__ == relativity_t::none || rel__ == relativity_t::zora)
-                    {
-                        for (int i = 0; i < nr; i++) chi_q[i] = -j * p[j - 1][i];
-                        chi_q.interpolate();
-                    }
-                    else if (rel__ == relativity_t::koelling_harmon)
-                    {
-                        STOP();
-                    }
-                    else
-                    {
-                        TERMINATE_NOT_IMPLEMENTED
-                    }
-                }
+            //    if (j) {
+            //        if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
+            //            for (int i = 0; i < nr; i++) chi_q[i] = -j * p[j - 1][i];
+            //            chi_q.interpolate();
+            //        }
+            //        else if (rel__ == relativity_t::koelling_harmon) {
+            //            STOP();
+            //        }
+            //        else {
+            //            TERMINATE_NOT_IMPLEMENTED
+            //        }
+            //    }
 
-                switch (rel__)
-                {
-                    case relativity_t::none:
-                    {
-                        nn = integrate_forward_rk4<relativity_t::none, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
-                        break;
-                    }
-                    case relativity_t::koelling_harmon:
-                    {
-                        nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
-                        break;
-                    }
-                    case relativity_t::zora:
-                    {
-                        nn = integrate_forward_rk4<relativity_t::zora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
-                        break;
-                    }
-                    default:
-                    {
-                        TERMINATE_NOT_IMPLEMENTED
-                    }
-                }
-            }
+            //    switch (rel__) {
+            //        case relativity_t::none: {
+            //            nn = integrate_forward_rk4<relativity_t::none, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+            //            break;
+            //        }
+            //        case relativity_t::koelling_harmon: {
+            //            nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+            //            break;
+            //        }
+            //        case relativity_t::zora: {
+            //            nn = integrate_forward_rk4<relativity_t::zora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+            //            break;
+            //        }
+            //        default: {
+            //            TERMINATE_NOT_IMPLEMENTED
+            //        }
+            //    }
+            //}
+
+            auto p0 = std::get<1>(result);
+            auto p1 = std::get<2>(result);
+            auto q0 = std::get<3>(result);
+            auto q1 = std::get<4>(result);
 
             /* save the results */
             p__.resize(nr);
             rdudr__.resize(nr);
-            for (int i = 0; i < radial_grid_.num_points(); i++)
-            {
-                p__[i] = p[dme__][i];
-                rdudr__[i] = dpdr[dme__][i] - p__[i] * radial_grid_.x_inv(i);
+            for (int i = 0; i < radial_grid_.num_points(); i++) {
+                p__[i] = p0[i];
+                rdudr__[i] = p1[i] - p0[i] * radial_grid_.x_inv(i);
             }
 
             double R = radial_grid_.last();
 
             /* 1st radial derivative of u(r) */
-            uderiv__[0] = (dpdr[dme__].back() - p[dme__].back() / R) / R;
+            uderiv__[0] = (p1.back() - p0.back() / R) / R;
             /* 2nd radial derivative of u(r) */
-            Spline<double> sdpdr(radial_grid_, dpdr[dme__]);
+            Spline<double> sdpdr(radial_grid_, p1);
             sdpdr.interpolate();
-            uderiv__[1] = (sdpdr.deriv(1, nr - 1) - 2 * dpdr[dme__].back() / R + 2 * p[dme__].back() / std::pow(R, 2)) / R;
+            uderiv__[1] = (sdpdr.deriv(1, nr - 1) - 2 * p1.back() / R + 2 * p0.back() / std::pow(R, 2)) / R;
 
-            return nn;
+            return std::get<0>(result);
         }
 
         inline int num_points() const
@@ -742,34 +792,27 @@ class Bound_state: public Radial_solver
             double denu{0.1};
             
             /* search for the bound state */
-            for (int iter = 0; iter < 1000; iter++)
-            {
+            for (int iter = 0; iter < 1000; iter++) {
                 int nn{0};
 
-                switch (rel__)
-                {
-                    case relativity_t::none:
-                    {
+                switch (rel__) {
+                    case relativity_t::none: {
                         nn = integrate_forward_rk4<relativity_t::none, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::koelling_harmon:
-                    {
+                    case relativity_t::koelling_harmon: {
                         nn = integrate_forward_rk4<relativity_t::koelling_harmon, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::zora:
-                    {
+                    case relativity_t::zora: {
                         nn = integrate_forward_rk4<relativity_t::zora, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::dirac:
-                    {
+                    case relativity_t::dirac: {
                         nn = integrate_forward_rk4<relativity_t::dirac, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    default:
-                    {
+                    default: {
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
@@ -780,11 +823,12 @@ class Bound_state: public Radial_solver
                 denu = (s != sp) ? denu * 0.5 : denu * 1.25;
                 enu_ += denu;
 
-                if (std::abs(denu) < enu_tolerance_ && iter > 4) break;
+                if (std::abs(denu) < enu_tolerance_ && iter > 4) {
+                    break;
+                }
             }
 
-            if (std::abs(denu) >= enu_tolerance_) 
-            {
+            if (std::abs(denu) >= enu_tolerance_) {
                 std::stringstream s;
                 s << "enu is not converged for n = " << n_ << " and l = " << l_ << std::endl
                   << "enu = " << enu_ << ", denu = " << denu;
@@ -793,14 +837,14 @@ class Bound_state: public Radial_solver
             }
 
             /* compute r * u'(r) */
-            for (int i = 0; i < num_points(); i++) rdudr[i] = dpdr[i] - p[i] / radial_grid(i);
+            for (int i = 0; i < num_points(); i++) {
+                rdudr[i] = dpdr[i] - p[i] / radial_grid(i);
+            }
 
             /* search for the turning point */
             int idxtp = np - 1;
-            for (int i = 0; i < np; i++)
-            {
-                if (ve_[i] - zn_ * radial_grid_.x_inv(i) > enu_)
-                {
+            for (int i = 0; i < np; i++) {
+                if (ve_[i] - zn_ * radial_grid_.x_inv(i) > enu_) {
                     idxtp = i;
                     break;
                 }
@@ -808,14 +852,10 @@ class Bound_state: public Radial_solver
 
             /* zero the tail of the wave-function */
             double t1 = 1e100;
-            for (int i = idxtp; i < np; i++)
-            {
-                if (std::abs(p[i]) < t1 && p[i - 1] * p[i] > 0)
-                {
+            for (int i = idxtp; i < np; i++) {
+                if (std::abs(p[i]) < t1 && p[i - 1] * p[i] > 0) {
                     t1 = std::abs(p[i]);
-                }
-                else
-                {
+                } else {
                     t1 = 0.0;
                     p[i] = 0.0;
                     q[i] = 0.0;
@@ -823,8 +863,7 @@ class Bound_state: public Radial_solver
                 }
             }
 
-            for (int i = 0; i < np; i++)
-            {
+            for (int i = 0; i < np; i++) {
                 p_[i] = p[i];
                 q_[i] = q[i];
                 u_[i] = p[i] * radial_grid_.x_inv(i);
@@ -837,7 +876,9 @@ class Bound_state: public Radial_solver
 
             /* p is not divided by r, so we integrate with r^0 prefactor */
             double norm = inner(p_, p_, 0);
-            if (rel__ == relativity_t::dirac) norm += inner(q_, q_, 0);
+            if (rel__ == relativity_t::dirac) {
+                norm += inner(q_, q_, 0);
+            }
 
             norm = 1.0 / std::sqrt(norm);
             p_.scale(norm);
@@ -846,11 +887,12 @@ class Bound_state: public Radial_solver
             rdudr_.scale(norm);
 
             /* count number of nodes of the function */
-            int nn = 0;
-            for (int i = 0; i < np - 1; i++) if (p_[i] * p_[i + 1] < 0.0) nn++;
+            int nn{0};
+            for (int i = 0; i < np - 1; i++) {
+                if (p_[i] * p_[i + 1] < 0.0) nn++;
+            }
 
-            if (nn != (n_ - l_ - 1))
-            {
+            if (nn != (n_ - l_ - 1)) {
                 FILE* fout = fopen("p.dat", "w");
                 for (int ir = 0; ir < np; ir++) 
                 {
@@ -867,10 +909,11 @@ class Bound_state: public Radial_solver
                 TERMINATE(s);
             }
 
-            for (int i = 0; i < np - 1; i++)
-            {
+            for (int i = 0; i < np - 1; i++) {
                 rho_[i] += std::pow(u_[i], 2);
-                if (rel__ == relativity_t::dirac) rho_[i] += std::pow(q_[i] * radial_grid_.x_inv(i), 2);
+                if (rel__ == relativity_t::dirac) {
+                    rho_[i] += std::pow(q_[i] * radial_grid_.x_inv(i), 2);
+                }
             }
         }
         
@@ -945,25 +988,20 @@ class Enu_finder: public Radial_solver
             for (int i = 0; i < 1000; i++) {
                 int nnd{0};
 
-                switch (rel__)
-                {
-                    case relativity_t::none:
-                    {
+                switch (rel__) {
+                    case relativity_t::none: {
                         nnd = integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::koelling_harmon:
-                    {
+                    case relativity_t::koelling_harmon: {
                         nnd = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::zora:
-                    {
+                    case relativity_t::zora: {
                         nnd = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    default:
-                    {
+                    default: {
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
@@ -1000,25 +1038,20 @@ class Enu_finder: public Radial_solver
             de = 1e-4;
             for (int i = 0; i < 100; i++) {
                 enu -= de;
-                switch (rel__)
-                {
-                    case relativity_t::none:
-                    {
+                switch (rel__) {
+                    case relativity_t::none: {
                         integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::koelling_harmon:
-                    {
+                    case relativity_t::koelling_harmon: {
                         integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    case relativity_t::zora:
-                    {
+                    case relativity_t::zora: {
                         integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
-                    default:
-                    {
+                    default: {
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
@@ -1028,92 +1061,90 @@ class Enu_finder: public Radial_solver
                 }
             }
 
-            /* refine bottom energy */
-            double e1 = enu;
-            double e0 = enu + de;
+            ///* refine bottom energy */
+            //double e1 = enu;
+            //double e0 = enu + de;
 
-            for (int i = 0; i < 100; i++) {
-                enu = (e1 + e0) / 2.0;
-                switch (rel__)
-                {
-                    case relativity_t::none:
-                    {
-                        integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-                        break;
-                    }
-                    case relativity_t::koelling_harmon:
-                    {
-                        integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-                        break;
-                    }
-                    case relativity_t::zora:
-                    {
-                        integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-                        break;
-                    }
-                    default:
-                    {
-                        TERMINATE_NOT_IMPLEMENTED
-                    }
-                }
-                /* derivative at the boundary */
-                if (std::abs(surface_deriv()) < 1e-10) {
-                    break;
-                }
+            //for (int i = 0; i < 100; i++) {
+            //    enu = (e1 + e0) / 2.0;
+            //    switch (rel__)
+            //    {
+            //        case relativity_t::none:
+            //        {
+            //            integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+            //            break;
+            //        }
+            //        case relativity_t::koelling_harmon:
+            //        {
+            //            integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+            //            break;
+            //        }
+            //        case relativity_t::zora:
+            //        {
+            //            integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+            //            break;
+            //        }
+            //        default:
+            //        {
+            //            TERMINATE_NOT_IMPLEMENTED
+            //        }
+            //    }
+            //    /* derivative at the boundary */
+            //    if (std::abs(surface_deriv()) < 1e-10) {
+            //        break;
+            //    }
 
-                if (surface_deriv() * sd > 0) {
-                    e0 = enu;
-                } else {
-                    e1 = enu;
-                }
-            }
+            //    if (surface_deriv() * sd > 0) {
+            //        e0 = enu;
+            //    } else {
+            //        e1 = enu;
+            //    }
+            //}
         
             ebot_ = enu;
             /* last check */
             int nn{0};
-            switch (rel__)
-            {
-                case relativity_t::none:
-                {
+            switch (rel__) {
+                case relativity_t::none: {
                     nn = integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                     break;
                 }
-                case relativity_t::koelling_harmon:
-                {
+                case relativity_t::koelling_harmon: {
                     nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                     break;
                 }
-                case relativity_t::zora:
-                {
+                case relativity_t::zora: {
                     nn = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE_NOT_IMPLEMENTED
                 }
             }
 
-            if (nn != n_ - l_ - 1)
-            {
-                //FILE* fout = fopen("p.dat", "w");
-                //for (int ir = 0; ir < np; ir++) 
-                //{
-                //    double x = radial_grid(ir);
-                //    fprintf(fout, "%16.8f %16.8f %16.8f\n", x, ptop[ir], p[ir]);
-                //}
-                //fclose(fout);
+            if (nn != n_ - l_ - 1) {
+                FILE* fout = fopen("p.dat", "w");
+                for (int ir = 0; ir < np; ir++) {
+                    double x = radial_grid(ir);
+                    fprintf(fout, "%16.8f %16.8f %16.8f\n", x, p[ir], q[ir]);
+                }
+                fclose(fout);
 
                 //printf("n: %i, l: %i, nn: %i", n_, l_, nn);
+                std::stringstream s;
+                s << "wrong number of nodes: " << nn << " instead of " << n_ - l_ - 1 << std::endl
+                  << "n: " << n_ << ", l: " << l_ << std::endl
+                  << "etop: " << etop_ << " ebot: " << ebot_;
 
-                TERMINATE("wrong number of nodes");
+                TERMINATE(s);
             }
                 
             enu_ = (ebot_ + etop_) / 2.0;
         }
 
     public:
-        
+
+        /// Constructor 
         Enu_finder(relativity_t rel__,
                    int zn__,
                    int n__,
@@ -1125,6 +1156,7 @@ class Enu_finder: public Radial_solver
               n_(n__),
               l_(l__)
         {
+            assert(l_ < n_); 
             find_enu(rel__, enu_start__);
         }
 
