@@ -450,7 +450,7 @@ module sirius
         end subroutine
 
         subroutine sirius_get_gkvec_arrays(kset_id, ik, num_gkvec, gvec_index, gkvec, gkvec_cart,&
-            &gkvec_len, gkvec_tp, gkvec_phase_factors, ld)&
+            &gkvec_len, gkvec_tp)&
             &bind(C, name="sirius_get_gkvec_arrays")
             integer,                 intent(in)  :: kset_id
             integer,                 intent(in)  :: ik
@@ -460,8 +460,6 @@ module sirius
             real(8),                 intent(out) :: gkvec_cart
             real(8),                 intent(out) :: gkvec_len
             real(8),                 intent(out) :: gkvec_tp
-            complex(8),              intent(out) :: gkvec_phase_factors
-            integer,                 intent(in)  :: ld
         end subroutine
 
         subroutine sirius_get_index_by_gvec(index_by_gvec)&

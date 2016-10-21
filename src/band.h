@@ -746,6 +746,7 @@ class Band
                              Periodic_function<double>* effective_potential, 
                              Periodic_function<double>* effective_magnetic_field[3]) const;
 
+        /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
         inline void solve_for_kset(K_set& kset,
                                    Potential& potential,
                                    bool precompute) const;

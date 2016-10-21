@@ -1325,83 +1325,77 @@ void sirius_get_basis_functions_index(int32_t* mt_basis_size, int32_t* offset_wf
 }
 
 /// Get number of G+k vectors for a given k-point in the set
-void sirius_get_num_gkvec(int32_t* kset_id, int32_t* ik, int32_t* num_gkvec)
+void sirius_get_num_gkvec(ftn_int* kset_id__,
+                          ftn_int* ik__,
+                          ftn_int* num_gkvec__)
 {
     PROFILE();
-    *num_gkvec = (*kset_list[*kset_id])[*ik - 1]->num_gkvec();
+    auto ks = kset_list[*kset_id__];
+    auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+    /* get rank that stores a given k-point */
+    int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
+    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
+    if (rank == comm_k.rank()) {
+        *num_gkvec__ = kp->num_gkvec();
+    }
+    comm_k.bcast(num_gkvec__, 1, rank);
 }
 
 /// Get maximum number of G+k vectors across all k-points in the set
-void sirius_get_max_num_gkvec(int32_t const* kset_id__,
-                              int32_t* max_num_gkvec__)
+void sirius_get_max_num_gkvec(ftn_int* kset_id__,
+                              ftn_int* max_num_gkvec__)
 {
     PROFILE();
     *max_num_gkvec__ = kset_list[*kset_id__]->max_num_gkvec();
 }
 
 /// Get all G+k vector related arrays
-void sirius_get_gkvec_arrays(int32_t* kset_id,
-                             int32_t* ik,
-                             int32_t* num_gkvec,
-                             int32_t* gvec_index,
-                             double* gkvec__,
-                             double* gkvec_cart__,
-                             double* gkvec_len,
-                             double* gkvec_tp__,
-                             double_complex* gkvec_phase_factors__,
-                             int32_t* ld)
+void sirius_get_gkvec_arrays(ftn_int*    kset_id__,
+                             ftn_int*    ik__,
+                             ftn_int*    num_gkvec__,
+                             ftn_int*    gvec_index__,
+                             ftn_double* gkvec__,
+                             ftn_double* gkvec_cart__,
+                             ftn_double* gkvec_len,
+                             ftn_double* gkvec_tp__)
 {
     PROFILE();
+    
+    auto ks = kset_list[*kset_id__];
+    auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
 
-    /* position of processors which store a given k-point */
-    int rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
+    /* get rank that stores a given k-point */
+    int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
 
-    auto& comm_r = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_row_);
     auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
 
-    if (rank == comm_k.rank())
-    {
-        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-        *num_gkvec = kp->num_gkvec();
+    if (rank == comm_k.rank()) {
+        *num_gkvec__ = kp->num_gkvec();
         mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec());
         mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
         mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec());
 
-        for (int igk = 0; igk < kp->num_gkvec(); igk++)
-        {
+        for (int igk = 0; igk < kp->num_gkvec(); igk++) {
             auto gkc = kp->gkvec().gkvec_cart(igk);
+            auto G = kp->gkvec().gvec(igk);
 
-            //gvec_index[igk] = kp->gvec_index(igk) + 1; // Fortran counts form 1
-            gvec_index[igk] = igk + 1; // Fortran counts from 1
-            for (int x = 0; x < 3; x++)
-            {
-                gkvec(x, igk) = kp->gkvec().gkvec(igk)[x]; //kp->gkvec<fractional>(igk)[x];
-                gkvec_cart(x, igk) = gkc[x]; //kp->gkvec().cart_shifted(igk)[x]; //kp->gkvec<cartesian>(igk)[x];
+            gvec_index__[igk] = sim_ctx->gvec().index_by_gvec(G) + 1; // Fortran counts from 1
+            for (int x: {0, 1, 2}) {
+                gkvec(x, igk) = kp->gkvec().gkvec(igk)[x];
+                gkvec_cart(x, igk) = gkc[x];
             }
             auto rtp = sirius::SHT::spherical_coordinates(gkc);
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
         }
-
-        mdarray<double_complex, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, sim_ctx->unit_cell().num_atoms());
-        gkvec_phase_factors.zero();
-        STOP();
-        //for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
-        //{
-        //    int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
-        //    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
-        //        gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
-        //}
-        comm_r.allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size());
     }
-    comm_k.bcast(num_gkvec, 1, rank);
-    comm_k.bcast(gvec_index, *num_gkvec, rank);
-    comm_k.bcast(gkvec__, *num_gkvec * 3, rank);
-    comm_k.bcast(gkvec_cart__, *num_gkvec * 3, rank);
-    comm_k.bcast(gkvec_len, *num_gkvec, rank);
-    comm_k.bcast(gkvec_tp__, *num_gkvec * 2, rank);
-    comm_k.bcast(gkvec_phase_factors__, *ld * sim_ctx->unit_cell().num_atoms(), rank);
+    comm_k.bcast(num_gkvec__,  1,                rank);
+    comm_k.bcast(gvec_index__, *num_gkvec__,     rank);
+    comm_k.bcast(gkvec__,      *num_gkvec__ * 3, rank);
+    comm_k.bcast(gkvec_cart__, *num_gkvec__ * 3, rank);
+    comm_k.bcast(gkvec_len,    *num_gkvec__,     rank);
+    comm_k.bcast(gkvec_tp__,   *num_gkvec__ * 2, rank);
 }
 
 void sirius_get_matching_coefficients(int32_t const* kset_id__,
