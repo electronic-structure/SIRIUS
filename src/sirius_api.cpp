@@ -1723,10 +1723,24 @@ void sirius_get_aw_deriv_radial_function(int32_t* ia__,
     }
 }
 
-void sirius_get_aw_surface_derivative(int32_t* ia__, int32_t* l__, int32_t* io__, double* dawrf__)
+void sirius_get_aw_surface_derivative(int32_t* ia__,
+                                      int32_t* l__,
+                                      int32_t* io__,
+                                      int32_t* dm__,
+                                      double* deriv__)
 {
     PROFILE();
-    *dawrf__ = sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().aw_surface_dm(*l__, *io__ - 1, 1);
+    *deriv__ = sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().aw_surface_dm(*l__, *io__ - 1, *dm__);
+}
+
+void sirius_set_aw_surface_derivative(int32_t* ia__,
+                                      int32_t* l__,
+                                      int32_t* io__,
+                                      int32_t* dm__,
+                                      double* deriv__)
+{
+    PROFILE();
+    sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().set_aw_surface_deriv(*l__, *io__ - 1, *dm__, *deriv__);
 }
 
 void sirius_get_lo_radial_function(int32_t const* ia__,
@@ -1794,6 +1808,22 @@ void sirius_get_aw_aw_h_radial_integral(int32_t* ia__, int32_t* l1, int32_t* io1
     *haa = sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }
 
+void sirius_set_aw_aw_h_radial_integral(int32_t* ia__,
+                                        int32_t* l1__,
+                                        int32_t* io1__,
+                                        int32_t* l2__,
+                                        int32_t* io2__,
+                                        int32_t* lm3__,
+                                        double* haa__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *io1__ - 1);
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *io2__ - 1);
+
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *haa__;
+}
+
 void sirius_get_lo_aw_h_radial_integral(int32_t* ia__, int32_t* ilo1, int32_t* l2, int32_t* io2, int32_t* lm3,
                                         double* hloa)
 {
@@ -1803,6 +1833,21 @@ void sirius_get_lo_aw_h_radial_integral(int32_t* ia__, int32_t* ilo1, int32_t* l
     int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2, *io2 - 1);
 
     *hloa = sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
+}
+
+void sirius_set_lo_aw_h_radial_integral(int32_t* ia__,
+                                        int32_t* ilo1__,
+                                        int32_t* l2__,
+                                        int32_t* io2__,
+                                        int32_t* lm3__,
+                                        double* hloa__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *io2__ - 1);
+
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *hloa__;
 }
 
 
@@ -1815,6 +1860,20 @@ void sirius_get_lo_lo_h_radial_integral(int32_t* ia__, int32_t* ilo1, int32_t* i
     int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2 - 1);
 
     *hlolo = sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
+}
+
+void sirius_set_lo_lo_h_radial_integral(int32_t* ia__,
+                                        int32_t* ilo1__,
+                                        int32_t* ilo2__,
+                                        int32_t* lm3__,
+                                        double* hlolo__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *hlolo__;
 }
 
 void sirius_generate_potential_pw_coefs()

@@ -268,7 +268,12 @@ class Atom
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
-        
+
+        inline double* h_radial_integrals(int idxrf1, int idxrf2)
+        {
+            return &h_radial_integrals_(0, idxrf1, idxrf2);
+        }
+
         inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);

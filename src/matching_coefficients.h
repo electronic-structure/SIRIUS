@@ -157,7 +157,8 @@ class Matching_coefficients
         }
 
     public:
-
+        
+        /// Constructor
         Matching_coefficients(Unit_cell const& unit_cell__,
                               int lmax_apw__,
                               int num_gkvec__, 

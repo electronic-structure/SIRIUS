@@ -42,10 +42,8 @@ void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
         std::array<double, 2> uderiv;
         
         #pragma omp for schedule(dynamic, 1)
-        for (int l = 0; l < num_aw_descriptors(); l++)
-        {
-            for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
-            {
+        for (int l = 0; l < num_aw_descriptors(); l++) {
+            for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
                 auto rsd = aw_descriptor(l)[order];
 
                 int idxrf = atom_type_.indexr().index_by_l_order(l, order);
@@ -53,49 +51,59 @@ void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
                 solver.solve(rel__, rsd.dme, rsd.l, rsd.enu, p, rdudr, uderiv);
 
                 /* normalize */
-                for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(p[ir], 2);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    s[ir] = std::pow(p[ir], 2);
+                }
                 double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
 
-                for (int ir = 0; ir < nmtp; ir++)
-                {
+                for (int ir = 0; ir < nmtp; ir++) {
                     radial_functions_(ir, idxrf, 0) = p[ir] * norm;
                     radial_functions_(ir, idxrf, 1) = rdudr[ir] * norm;
                 }
-                for (int i: {0, 1}) aw_surface_derivatives_(order, l, i) = uderiv[i] * norm;
+                aw_surface_derivatives_(order, l, 0) = norm * p.back() / atom_type_.mt_radius();
+                for (int i: {0, 1}) {
+                    aw_surface_derivatives_(order, l, i + 1) = uderiv[i] * norm;
+                }
 
                 /* orthogonalize to previous radial functions */
-                for (int order1 = 0; order1 < order; order1++)
-                {
+                for (int order1 = 0; order1 < order; order1++) {
                     int idxrf1 = atom_type_.indexr().index_by_l_order(l, order1);
 
-                    for (int ir = 0; ir < nmtp; ir++) 
+                    for (int ir = 0; ir < nmtp; ir++) {
                         s[ir] = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
+                    }
                     
                     /* <u_{\nu'}|u_{\nu}> */
                     double ovlp = s.interpolate().integrate(0);
 
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
+                    for (int ir = 0; ir < nmtp; ir++) {
                         radial_functions_(ir, idxrf, 0) -= radial_functions_(ir, idxrf1, 0) * ovlp;
                         radial_functions_(ir, idxrf, 1) -= radial_functions_(ir, idxrf1, 1) * ovlp;
                     }
-                    for (int i: {0, 1}) aw_surface_derivatives_(order, l, i) -= aw_surface_derivatives_(order1, l, i) * ovlp;
+                    for (int i: {0, 1, 2}) {
+                        aw_surface_derivatives_(order, l, i) -= aw_surface_derivatives_(order1, l, i) * ovlp;
+                    }
                 }
 
                 /* normalize again */
-                for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+                }
                 norm = s.interpolate().integrate(0);
 
-                if (std::abs(norm) < 1e-10) TERMINATE("aw radial functions are linearly dependent");
+                if (std::abs(norm) < 1e-10) {
+                    TERMINATE("aw radial functions are linearly dependent");
+                }
 
                 norm = 1.0 / std::sqrt(norm);
 
-                for (int ir = 0; ir < nmtp; ir++)
-                {
+                for (int ir = 0; ir < nmtp; ir++) {
                     radial_functions_(ir, idxrf, 0) *= norm;
                     radial_functions_(ir, idxrf, 1) *= norm;
                 }
-                for (int i: {0, 1}) aw_surface_derivatives_(order, l, i) *= norm;
+                for (int i: {0, 1, 2}) {
+                    aw_surface_derivatives_(order, l, i) *= norm;
+                }
             }
         }
     }
@@ -451,7 +459,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
 
 void Atom_symmetry_class::initialize()
 {
-    aw_surface_derivatives_ = mdarray<double, 3>(atom_type_.max_aw_order(), atom_type_.num_aw_descriptors(), 2);
+    aw_surface_derivatives_ = mdarray<double, 3>(atom_type_.max_aw_order(), atom_type_.num_aw_descriptors(), 3);
 
     radial_functions_ = mdarray<double, 3>(atom_type_.num_mt_points(), atom_type_.mt_radial_basis_size(), 2);
 
@@ -829,32 +837,6 @@ void Atom_symmetry_class::write_enu(runtime::pstdout& pout) const
         }
     }
     pout.printf("\n");
-}
-
-double Atom_symmetry_class::aw_surface_dm(int l, int order, int dm) const
-{
-    switch (dm)
-    {
-        case 0:
-        {
-            int idxrf = atom_type_.indexr().index_by_l_order(l, order);
-            return radial_functions_(atom_type_.num_mt_points() - 1, idxrf, 0);
-        }
-        case 1:
-        {
-            return aw_surface_derivatives_(order, l, 0);
-        }
-        case 2:
-        {
-            return aw_surface_derivatives_(order, l, 1);
-        }
-        default:
-        {
-            TERMINATE("wrong order of radial derivative");
-        }
-    }
-
-    return 0.0; // just to make compiler happy
 }
 
 void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
