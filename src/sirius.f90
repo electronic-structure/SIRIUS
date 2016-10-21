@@ -215,6 +215,68 @@ module sirius
             real(8),                 intent(in) :: enu
         end subroutine
 
+        subroutine sirius_set_aw_surface_derivative(ia, l, io, dm, deriv)&
+            &bind(C, name="sirius_set_aw_surface_derivative")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l
+            integer,                 intent(in) :: io
+            integer,                 intent(in) :: dm
+            real(8),                 intent(in) :: deriv
+        end subroutine
+
+        subroutine sirius_set_aw_lo_o_radial_integral(ia, l, io1, ilo2, oalo)&
+            &bind(C, name="sirius_set_aw_lo_o_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l
+            integer,                 intent(in) :: io1
+            integer,                 intent(in) :: ilo2
+            real(8),                 intent(in) :: oalo
+        end subroutine
+
+        subroutine sirius_set_lo_lo_o_radial_integral(ia, l, ilo1, ilo2, ololo)&
+            &bind(C, name="sirius_set_lo_lo_o_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l
+            integer,                 intent(in) :: ilo1
+            integer,                 intent(in) :: ilo2
+            real(8),                 intent(in) :: ololo
+        end subroutine
+
+        subroutine sirius_set_aw_aw_h_radial_integral(ia, l1, io1, l2, io2, lm3, haa)&
+            &bind(C, name="sirius_set_aw_aw_h_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l1
+            integer,                 intent(in) :: io1
+            integer,                 intent(in) :: l2
+            integer,                 intent(in) :: io2
+            integer,                 intent(in) :: lm3
+            real(8),                 intent(in) :: haa
+        end subroutine
+
+        subroutine sirius_set_lo_aw_h_radial_integral(ia, ilo1, l2, io2, lm3, hloa)&
+            &bind(C, name="sirius_set_lo_aw_h_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: ilo1
+            integer,                 intent(in) :: l2
+            integer,                 intent(in) :: io2
+            integer,                 intent(in) :: lm3
+            real(8),                 intent(in) :: hloa
+        end subroutine
+
+        subroutine sirius_set_lo_lo_h_radial_integral(ia, ilo1, ilo2, lm3, hlolo)&
+            &bind(C, name="sirius_set_lo_lo_h_radial_integral")
+            integer,                intent(in) :: ia
+            integer,                intent(in) :: ilo1
+            integer,                intent(in) :: ilo2
+            integer,                intent(in) :: lm3
+            real(8),                intent(in) :: hlolo
+        end subroutine
+
+        subroutine sirius_set_effective_potential_pw_coeffs(f_pw)&
+            &bind(C, name="sirius_set_effective_potential_pw_coeffs")
+            complex(8),           intent(in) :: f_pw
+        end subroutine
+
         subroutine sirius_get_num_gvec(num_gvec)&
             &bind(C, name="sirius_get_num_gvec")
             integer,                 intent(out) :: num_gvec

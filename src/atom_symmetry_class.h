@@ -200,9 +200,14 @@ class Atom_symmetry_class
             return h_spherical_integrals_(i1, i2);
         }
 
-        inline double o_radial_integral(int l, int order1, int order2) const
+        inline double const& o_radial_integral(int l, int order1, int order2) const
         {
             return o_radial_integrals_(l, order1, order2);
+        }
+
+        inline void set_o_radial_integral(int l, int order1, int order2, double oint__)
+        {
+            o_radial_integrals_(l, order1, order2) = oint__;
         }
         
         inline double so_radial_integral(int l, int order1, int order2) const

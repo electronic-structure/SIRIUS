@@ -1783,6 +1783,22 @@ void sirius_get_aw_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* io1,
     *oalo = sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l, *io1 - 1, order2);
 }
 
+void sirius_set_aw_lo_o_radial_integral(int32_t* ia__,
+                                        int32_t* l__,
+                                        int32_t* io1__,
+                                        int32_t* ilo2__,
+                                        double* oalo__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    int order2 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf2).order;
+
+    sim_ctx->unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, *io1__ - 1, order2, *oalo__);
+    sim_ctx->unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order2, *io1__ - 1, *oalo__);
+}
+
 void sirius_get_lo_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* ilo1, int32_t* ilo2,
                                         double* ololo)
 {
@@ -1795,6 +1811,23 @@ void sirius_get_lo_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* ilo1
     int order2 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf2).order;
 
     *ololo = sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l, order1, order2);
+}
+
+void sirius_set_lo_lo_o_radial_integral(int32_t* ia__,
+                                        int32_t* l__,
+                                        int32_t* ilo1__,
+                                        int32_t* ilo2__,
+                                        double* ololo__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    int order1 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf1).order;
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    int order2 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf2).order;
+
+    sim_ctx->unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, order2, *ololo__);
 }
 
 void sirius_get_aw_aw_h_radial_integral(int32_t* ia__, int32_t* l1, int32_t* io1, int32_t* l2,
@@ -1848,6 +1881,7 @@ void sirius_set_lo_aw_h_radial_integral(int32_t* ia__,
     int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *io2__ - 1);
 
     sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *hloa__;
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf2, idxrf1)[*lm3__ - 1] = *hloa__;
 }
 
 
@@ -1880,6 +1914,12 @@ void sirius_generate_potential_pw_coefs()
 {
     PROFILE();
     potential->generate_pw_coefs();
+}
+
+void sirius_set_effective_potential_pw_coeffs(double_complex* f_pw__)
+{
+    PROFILE();
+    std::memcpy(&potential->effective_potential()->f_pw(0), f_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
 }
 
 void sirius_generate_density_pw_coefs()
