@@ -45,7 +45,6 @@ inline void K_point::distribute_basis_index()
                 num_gkvec_row_++;
             }
         }
-
     }
 
     gklo_basis_descriptors_loc_.resize(gkvec().gvec_count(comm_.rank()));
