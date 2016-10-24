@@ -58,10 +58,16 @@ class Unit_cell
         
         /// List of atoms.
         std::vector<Atom> atoms_;
-       
+
         /// Split index of atoms.
         splindex<block> spl_num_atoms_;
         
+        /// List of PAW atoms pointers
+        std::vector<Atom*> paw_atoms_;
+
+        /// Split index of paw atoms.
+        splindex<block> spl_num_paw_atoms_;
+
         /// Split index of atom symmetry classes.
         splindex<block> spl_num_atom_symmetry_classes_;
 
@@ -239,7 +245,31 @@ class Unit_cell
             
             atoms_.push_back(std::move(Atom(atom_type(label), position, vector_field)));
             atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
+
+
         }
+
+        // add paw atoms
+        void init_paw()
+        {
+            paw_atoms_.clear();
+
+            for(auto &atom: atoms_)
+            {
+                if( atom.type().pp_desc().is_paw )
+                {
+                    paw_atoms_.push_back(&atom);
+                }
+            }
+
+            spl_num_paw_atoms_ = splindex<block>(paw_atoms_.size(), comm_.size(), comm_.rank());
+        }
+
+        // get spl index of paw atoms
+        splindex<block> get_spl_num_paw_atoms(){return spl_num_paw_atoms_;}
+
+        // get an array of paw atoms
+        std::vector<Atoms*>& get_paw_atoms(){return paw_atoms_; }
 
         /// Add new atom without vector field to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position)
@@ -593,6 +623,8 @@ class Unit_cell
                 }
 
                 set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
+
+                init_paw();
             }
         }
 };
