@@ -652,6 +652,7 @@ inline void Simulation_context::print_info()
     printf("lmax_rf                            : %i\n", unit_cell_.lmax());
     printf("smearing width                     : %f\n", smearing_width());
     printf("cyclic block size                  : %i\n", cyclic_block_size());
+    printf("|G+k| cutoff                       : %f\n", gk_cutoff());
 
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};

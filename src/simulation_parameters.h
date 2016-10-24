@@ -218,8 +218,7 @@ class Simulation_parameters
             m["norm_conserving_pseudopotential"] = electronic_structure_method_t::norm_conserving_pseudopotential;
             m["paw_pseudopotential"]             = electronic_structure_method_t::paw_pseudopotential;
 
-            if (m.count(name__) == 0)
-            {
+            if (m.count(name__) == 0) {
                 std::stringstream s;
                 s << "wrong type of electronic structure method: " << name__;
                 TERMINATE(s);
