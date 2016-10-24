@@ -101,7 +101,7 @@ void Force::ibs_force(Simulation_context& ctx__,
     dmatrix<double_complex> dm(ctx__.num_fv_states(), ctx__.num_fv_states(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
-    auto& fv_evec = kp__->fv_eigen_vectors().prime();
+    auto& fv_evec = kp__->fv_eigen_vectors();
 
     dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
@@ -125,8 +125,8 @@ void Force::ibs_force(Simulation_context& ctx__,
         auto& type = atom.type();
 
         /* generate matching coefficients for current atom */
-        kp__->alm_coeffs_row()->generate(ia, alm_row);
-        kp__->alm_coeffs_col()->generate(ia, alm_col);
+        kp__->alm_coeffs_row().generate(ia, alm_row);
+        kp__->alm_coeffs_col().generate(ia, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
         band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);

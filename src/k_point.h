@@ -62,7 +62,7 @@ class K_point
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
-        std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>> fv_eigen_vectors_;
+        dmatrix<double_complex> fv_eigen_vectors_;
 
         /// First-variational eigen vectors, distributed in slabs.
         std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
@@ -90,11 +90,11 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_; 
 
-        Matching_coefficients* alm_coeffs_row_{nullptr};
+        std::unique_ptr<Matching_coefficients> alm_coeffs_row_{nullptr};
 
-        Matching_coefficients* alm_coeffs_col_{nullptr};
+        std::unique_ptr<Matching_coefficients> alm_coeffs_col_{nullptr};
 
-        Matching_coefficients* alm_coeffs_{nullptr};
+        //Matching_coefficients* alm_coeffs_{nullptr};
 
         std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
@@ -199,9 +199,9 @@ class K_point
         ~K_point()
         {
             PROFILE();
-            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
-            if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
-            if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
+            //if (alm_coeffs_ != nullptr) delete alm_coeffs_;
+            //if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
+            //if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
             if (beta_projectors_ != nullptr) delete beta_projectors_;
         }
 
@@ -540,9 +540,9 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline matrix_storage<double_complex, matrix_storage_t::block_cyclic>& fv_eigen_vectors()
+        inline dmatrix<double_complex>& fv_eigen_vectors()
         {
-            return *fv_eigen_vectors_;
+            return fv_eigen_vectors_;
         }
 
         inline wave_functions& fv_eigen_vectors_slab()
@@ -575,20 +575,20 @@ class K_point
             return *gkvec_vloc_;
         }
 
-        inline Matching_coefficients* alm_coeffs_row()
+        inline Matching_coefficients const& alm_coeffs_row()
         {
-            return alm_coeffs_row_;
+            return *alm_coeffs_row_;
         }
 
-        inline Matching_coefficients* alm_coeffs_col()
+        inline Matching_coefficients const& alm_coeffs_col()
         {
-            return alm_coeffs_col_;
+            return *alm_coeffs_col_;
         }
 
-        inline Matching_coefficients const& alm_coeffs() const
-        {
-            return *alm_coeffs_;
-        }
+        //inline Matching_coefficients const& alm_coeffs() const
+        //{
+        //    return *alm_coeffs_;
+        //}
 
         inline Matching_coefficients const& alm_coeffs_loc() const
         {
