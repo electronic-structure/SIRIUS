@@ -645,6 +645,16 @@ module sirius
             &bind(C, name="sirius_get_fft_comm")
             integer,                 intent(out) :: fcomm
         end subroutine
+        
+        subroutine sirius_get_kpoint_inner_comm(fcomm)&
+            &bind(C, name="sirius_get_kpoint_inner_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
+
+        subroutine sirius_get_all_kpoints_comm(fcomm)&
+            &bind(C, name="sirius_get_all_kpoints_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
 
         subroutine sirius_radial_solver(solver_type, zn, dme, l, k, enu, nr, r, v, nn, p0, p1, q0, q1)&
             &bind(C, name="sirius_radial_solver")

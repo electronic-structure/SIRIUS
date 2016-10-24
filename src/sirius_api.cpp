@@ -1980,6 +1980,18 @@ void sirius_get_fft_comm(int32_t* fcomm__)
     *fcomm__ = MPI_Comm_c2f(sim_ctx->fft().comm().mpi_comm());
 }
 
+void sirius_get_kpoint_inner_comm(int32_t* fcomm__)
+{
+    PROFILE();
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_).mpi_comm());
+}
+
+void sirius_get_all_kpoints_comm(int32_t* fcomm__)
+{
+    PROFILE();
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_).mpi_comm());
+}
+
 void sirius_forces(double* forces__)
 {
     PROFILE();
