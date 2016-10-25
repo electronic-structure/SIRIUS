@@ -484,8 +484,10 @@ inline void Simulation_context::initialize()
                                           std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
     }
     
-    if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0)) {
-        TERMINATE("not enough first-variational states");
+    if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
+        std::stringstream s;
+        s << "not enough first-variational states : " << num_fv_states();
+        TERMINATE(s);
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
@@ -652,6 +654,7 @@ inline void Simulation_context::print_info()
     printf("lmax_rf                            : %i\n", unit_cell_.lmax());
     printf("smearing width                     : %f\n", smearing_width());
     printf("cyclic block size                  : %i\n", cyclic_block_size());
+    printf("|G+k| cutoff                       : %f\n", gk_cutoff());
 
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};

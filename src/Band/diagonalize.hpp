@@ -65,11 +65,15 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
     if (gen_evp_solver().solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                               eval.data(), kp->fv_eigen_vectors().prime().at<CPU>(), kp->fv_eigen_vectors().prime().ld(),
+                               eval.data(), kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld(),
                                kp->gklo_basis_size_row(), kp->gklo_basis_size_col())) {
         TERMINATE("error in generalized eigen-value problem");
     }
     kp->set_fv_eigen_values(&eval[0]);
+
+    /* remap to slab */
+    kp->fv_eigen_vectors_slab().pw_coeffs().remap_from(kp->fv_eigen_vectors(), 0);
+    kp->fv_eigen_vectors_slab().mt_coeffs().remap_from(kp->fv_eigen_vectors(), kp->num_gkvec());
 
     //== wave_functions phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
     //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());

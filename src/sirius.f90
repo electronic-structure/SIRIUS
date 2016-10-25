@@ -551,11 +551,26 @@ module sirius
             real(8),                 intent(out) :: f
         end subroutine
 
+        subroutine sirius_set_aw_radial_function(ia, l, io, f)&
+            &bind(C, name="sirius_set_aw_radial_function")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: io
+            real(8),                 intent(in)  :: f
+        end subroutine
+
         subroutine sirius_get_lo_radial_function(ia, idxlo, f)&
             &bind(C, name="sirius_get_lo_radial_function")
             integer,                 intent(in)  :: ia
             integer,                 intent(in)  :: idxlo
             real(8),                 intent(out) :: f
+        end subroutine
+
+        subroutine sirius_set_lo_radial_function(ia, idxlo, f)&
+            &bind(C, name="sirius_set_lo_radial_function")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: idxlo
+            real(8),                 intent(in)  :: f
         end subroutine
 
         subroutine sirius_get_evalsum(val)&

@@ -81,12 +81,13 @@ inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_
                     mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type.mt_aw_basis_size());
                     mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
-                    kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
-                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
-                    {
-                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
+                    kp__->alm_coeffs_row().generate(ia, alm_row_tmp);
+                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
+                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
+                            alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
+                        }
                     }
-                    kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
+                    kp__->alm_coeffs_col().generate(ia, alm_col_tmp);
                     apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col_tmp, halm_col_tmp);
 
                     /* setup apw-lo and lo-apw blocks */
@@ -194,7 +195,7 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
                                                             halm_col.at<GPU>(0, offsets[ialoc], s),
                                                             kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
-                    kp__->alm_coeffs_row()->generate(ia, alm_row_tmp);
+                    kp__->alm_coeffs_row().generate(ia, alm_row_tmp);
                     for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
                         for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
                             alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
@@ -202,7 +203,7 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
                     }
                     alm_row_tmp.async_copy_to_device(tid);
 
-                    kp__->alm_coeffs_col()->generate(ia, alm_col_tmp);
+                    kp__->alm_coeffs_col().generate(ia, alm_col_tmp);
                     alm_col_tmp.async_copy_to_device(tid);
 
                     apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col_tmp, halm_col_tmp);

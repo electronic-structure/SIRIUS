@@ -1037,6 +1037,7 @@ class Enu_finder: public Radial_solver
              * at the muffin-tin boundary. This will be the bottom of the band. */
             de = 1e-4;
             for (int i = 0; i < 100; i++) {
+                de *= 1.1;
                 enu -= de;
                 switch (rel__) {
                     case relativity_t::none: {
@@ -1055,7 +1056,6 @@ class Enu_finder: public Radial_solver
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
-                de *= 1.1;
                 if (surface_deriv() * sd <= 0) {
                     break;
                 }
@@ -1063,7 +1063,7 @@ class Enu_finder: public Radial_solver
 
             /* refine bottom energy */
             double e1 = enu;
-            double e0 = enu - de;
+            double e0 = enu + de;
 
             for (int i = 0; i < 100; i++) {
                 enu = (e1 + e0) / 2.0;
@@ -1129,7 +1129,8 @@ class Enu_finder: public Radial_solver
                 std::stringstream s;
                 s << "wrong number of nodes: " << nn << " instead of " << n_ - l_ - 1 << std::endl
                   << "n: " << n_ << ", l: " << l_ << std::endl
-                  << "etop: " << etop_ << " ebot: " << ebot_;
+                  << "etop: " << etop_ << " ebot: " << ebot_ << std::endl
+                  << "initial surface derivative: " << sd;
 
                 TERMINATE(s);
             }

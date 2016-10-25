@@ -510,9 +510,9 @@ void Atom_type::read_pseudo_uspp(json const& parser)
             wf.first = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
             pp_desc_.atomic_pseudo_wfs_.push_back(wf);
 
-            /* read occupation of the function */
-            double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
-            pp_desc_.atomic_pseudo_wfs_occ_.push_back(occ);
+            ///* read occupation of the function */
+            //double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
+            //pp_desc_.atomic_pseudo_wfs_occ_.push_back(occ);
         }
     }
 }
