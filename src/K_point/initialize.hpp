@@ -86,8 +86,6 @@ inline void K_point::initialize()
     }
 
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
-        //alm_coeffs_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec(),
-        //                                        gklo_basis_descriptors_);
         if (ctx_.iterative_solver_input_section().type_ == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
                 new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(),
@@ -104,7 +102,7 @@ inline void K_point::initialize()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit());
+        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit()));
         
         if (true) {
             p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());

@@ -1697,7 +1697,24 @@ void sirius_get_aw_radial_function(int32_t const* ia__,
     int io = *io__ - 1;
     auto& atom = sim_ctx->unit_cell().atom(ia);
     int idxrf = atom.type().indexr_by_l_order(*l__, io);
-    for (int ir = 0; ir < atom.num_mt_points(); ir++) f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    }
+}
+
+void sirius_set_aw_radial_function(int32_t const* ia__,
+                                   int32_t const* l__,
+                                   int32_t const* io__,
+                                   double* f__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int io = *io__ - 1;
+    auto& atom = sim_ctx->unit_cell().atom(ia);
+    int idxrf = atom.type().indexr_by_l_order(*l__, io);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
+    }
 }
 
 void sirius_get_aw_deriv_radial_function(int32_t* ia__,
@@ -1746,7 +1763,23 @@ void sirius_get_lo_radial_function(int32_t const* ia__,
     int idxlo = *idxlo__ - 1;
     auto& atom = sim_ctx->unit_cell().atom(ia);
     int idxrf = atom.type().indexr_by_idxlo(idxlo);
-    for (int ir = 0; ir < atom.num_mt_points(); ir++) f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    }
+}
+
+void sirius_set_lo_radial_function(int32_t const* ia__,
+                                   int32_t const* idxlo__,
+                                   double* f__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxlo = *idxlo__ - 1;
+    auto& atom = sim_ctx->unit_cell().atom(ia);
+    int idxrf = atom.type().indexr_by_idxlo(idxlo);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
+    }
 }
 
 void sirius_get_lo_deriv_radial_function(int32_t const* ia__,

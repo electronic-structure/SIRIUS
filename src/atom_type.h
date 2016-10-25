@@ -34,7 +34,6 @@
 #include "radial_solver.h"
 #include "xc_functional.h"
 #include "simulation_parameters.h"
-//#include "PAW/PAW_descriptor.h"
 
 namespace sirius {
 

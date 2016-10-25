@@ -94,8 +94,6 @@ class K_point
 
         std::unique_ptr<Matching_coefficients> alm_coeffs_col_{nullptr};
 
-        //Matching_coefficients* alm_coeffs_{nullptr};
-
         std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
         /// Number of G+k vectors distributed along rows of MPI grid
@@ -140,7 +138,7 @@ class K_point
 
         int num_ranks_row_;
 
-        Beta_projectors* beta_projectors_{nullptr};
+        std::unique_ptr<Beta_projectors> beta_projectors_{nullptr};
        
         /// Preconditioner matrix for Chebyshev solver.  
         mdarray<double_complex, 3> p_mtrx_;
@@ -194,15 +192,6 @@ class K_point
             #ifndef __GPU
             if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
             #endif
-        }
-
-        ~K_point()
-        {
-            PROFILE();
-            //if (alm_coeffs_ != nullptr) delete alm_coeffs_;
-            //if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
-            //if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
-            if (beta_projectors_ != nullptr) delete beta_projectors_;
         }
 
         /// Initialize the k-point related arrays and data
