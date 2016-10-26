@@ -76,9 +76,6 @@ struct local_orbital_descriptor
     int l;
 
     radial_solution_descriptor_set rsd_set;
-
-    //int p1;
-    //int p2;
 };
 
 struct pseudopotential_descriptor
@@ -218,22 +215,10 @@ struct unit_cell_parameters_descriptor
     double gamma;
 };
 
-/// Descriptor of the G+k or local-orbital basis function.
-/** This data structure describes one of the following basis sets:
- *      - LAPW+lo basis, which consists of G+k labeled augmented plane-waves and of local orbitals
- *      - PW+lo basis, which consists of G+k plane-waves and of local orbitals
- *      - pure G+k plane-wave basis */
-struct gklo_basis_descriptor
+/// Descriptor of the local-orbital part of the LAPW+lo basis. 
+struct lo_basis_descriptor
 {
-    vector3d<int> gvec;
-
-    /// G+k vector in fractional coordinates.
-    vector3d<double> gkvec;
-
-    /// Global index of the G vector for the corresponding G+k vector.
-    int ig;
-
-    /// Index of atom if this is a local orbital descriptor.
+    /// Index of atom.
     uint16_t ia;
 
     /// Index of orbital quantum number \f$ \ell \f$.
