@@ -92,9 +92,11 @@ bool cuda_check_device_ptr(void const* ptr__);
 
 void cuda_memset2d(void* ptr__, int ld__, int nrow__, int ncol__, int elem_size__, int value__);
 
+#ifdef __GPU_NVTX
 void cuda_begin_range_marker(const char* label__);
 
 void cuda_end_range_marker();
+#endif
 
 void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                   cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 

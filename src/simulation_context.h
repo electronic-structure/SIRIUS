@@ -295,6 +295,12 @@ class Simulation_context: public Simulation_parameters
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 
+        inline double_complex gvec_coarse_phase_factor(int ig__, int ia__) const
+        {
+            auto G = gvec_coarse_.gvec(ig__);
+            return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
+        }
+
         inline int gvec_count() const
         {
             return gvec_.gvec_count(comm_.rank());
@@ -357,8 +363,7 @@ inline void Simulation_context::init_fft()
 
     /* create a list of G-vectors for corase FFT grid */
     gvec_coarse_ = Gvec({0, 0, 0}, rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                        mpi_grid_fft_vloc_->size(), fft_coarse_->comm(),
-                        control_input_section_.reduce_gvec_);
+                        comm_.size(), fft_coarse_->comm(), control_input_section_.reduce_gvec_);
 }
 
 inline void Simulation_context::initialize()
