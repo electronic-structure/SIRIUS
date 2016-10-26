@@ -96,31 +96,31 @@ class K_point
 
         std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
+        std::vector<int> igk_row_;
+
+        std::vector<int> igk_col_;
+
+        std::vector<int> igk_loc_;
+
         /// Number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_{0};
         
         /// Number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_{0};
 
-        /// Short information about each G+k or lo basis function.
-        /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
-
         /// Basis descriptors distributed between rows of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
+        std::vector<lo_basis_descriptor> lo_basis_descriptors_row_;
         
         /// Basis descriptors distributed between columns of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
-
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_loc_;
+        std::vector<lo_basis_descriptor> lo_basis_descriptors_col_;
 
         /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
-        std::vector< std::vector<int> > atom_lo_cols_;
+        std::vector<std::vector<int>> atom_lo_cols_;
 
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
-        std::vector< std::vector<int> > atom_lo_rows_;
+        std::vector<std::vector<int>> atom_lo_rows_;
 
         /// imaginary unit to the power of l
         std::vector<double_complex> zil_;
@@ -151,12 +151,8 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator const& comm_col_;
 
-        /// Build G+k and lo basis descriptors.
-        inline void build_gklo_basis_descriptors();
+        inline void generate_gklo_basis();
 
-        /// Distribute basis function index between rows and columns of MPI grid.
-        inline void distribute_basis_index();
-        
         /// Test orthonormalization of first-variational states.
         inline void test_fv_states();
 
@@ -410,20 +406,16 @@ class K_point
             return vk_;
         }
 
-        /// Basis size of our electronic structure method.
-        /** In case of full-potential LAPW+lo or PW+lo method the total number of 
-         *  basis functions is equal to the number of (augmented) plane-waves plus the number 
-         *  of local orbitals. In case of plane-wave pseudopotential method this is just the 
-         *  number of G+k vectors. */
+        /// Basis size of LAPW+lo method.
         inline int gklo_basis_size() const
         {
-            return static_cast<int>(gklo_basis_descriptors_.size());
+            return static_cast<int>(num_gkvec() + unit_cell_.mt_lo_basis_size());
         }
-        
-        /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
-        inline int gklo_basis_size_row() const
+
+        /// Local number of G+k vectors in case of flat distributon.
+        inline int num_gkvec_loc() const
         {
-            return static_cast<int>(gklo_basis_descriptors_row_.size());
+            return gkvec_.gvec_count(comm_.rank());
         }
         
         /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
@@ -435,15 +427,15 @@ class K_point
         /// Local number of local orbitals for each MPI rank in the row of the 2D MPI grid.
         inline int num_lo_row() const
         {
-            return static_cast<int>(gklo_basis_descriptors_row_.size() - num_gkvec_row_);
+            return static_cast<int>(lo_basis_descriptors_row_.size());
         }
 
-        /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
-        inline int gklo_basis_size_col() const
+        /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
+        inline int gklo_basis_size_row() const
         {
-            return static_cast<int>(gklo_basis_descriptors_col_.size());
+            return num_gkvec_row() + num_lo_row();
         }
-        
+
         /// Local number of G+k vectors for each MPI rank in the column of the 2D MPI grid.
         inline int num_gkvec_col() const
         {
@@ -453,25 +445,40 @@ class K_point
         /// Local number of local orbitals for each MPI rank in the column of the 2D MPI grid.
         inline int num_lo_col() const
         {
-            return static_cast<int>(gklo_basis_descriptors_col_.size() - num_gkvec_col_);
+            return static_cast<int>(lo_basis_descriptors_col_.size());
         }
 
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_col(int idx) const
+        /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
+        inline int gklo_basis_size_col() const
         {
-            assert(idx >=0 && idx < (int)gklo_basis_descriptors_col_.size());
-            return gklo_basis_descriptors_col_[idx];
+            return num_gkvec_col() + num_lo_col();
+        }
+
+        inline lo_basis_descriptor const& lo_basis_descriptor_col(int idx) const
+        {
+            assert(idx >=0 && idx < (int)lo_basis_descriptors_col_.size());
+            return lo_basis_descriptors_col_[idx];
         }
         
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_row(int idx) const
+        inline lo_basis_descriptor const& lo_basis_descriptor_row(int idx) const
         {
-            assert(idx >= 0 && idx < (int)gklo_basis_descriptors_row_.size());
-            return gklo_basis_descriptors_row_[idx];
+            assert(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
+            return lo_basis_descriptors_row_[idx];
         }
 
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_loc(int idx__) const
+        inline int igk_loc(int idx__) const
         {
-            assert(idx__ >= 0 && idx__ < (int)gklo_basis_descriptors_loc_.size());
-            return gklo_basis_descriptors_loc_[idx__];
+            return igk_loc_[idx__];
+        }
+
+        inline int igk_row(int idx__) const
+        {
+            return igk_row_[idx__];
+        }
+
+        inline int igk_col(int idx__) const
+        {
+            return igk_col_[idx__];
         }
 
         inline int num_ranks_row() const
@@ -574,11 +581,6 @@ class K_point
             return *alm_coeffs_col_;
         }
 
-        //inline Matching_coefficients const& alm_coeffs() const
-        //{
-        //    return *alm_coeffs_;
-        //}
-
         inline Matching_coefficients const& alm_coeffs_loc() const
         {
             return *alm_coeffs_loc_;
@@ -609,11 +611,6 @@ class K_point
             return p_mtrx_;
         }
 
-        inline int num_gkvec_loc() const
-        {
-            return gkvec_.gvec_count(comm_.rank());
-        }
-
         Beta_projectors& beta_projectors()
         {
             return *beta_projectors_;
@@ -623,8 +620,7 @@ class K_point
 #include "K_point/generate_fv_states.hpp"
 #include "K_point/generate_spinor_wave_functions.hpp"
 #include "K_point/generate_gkvec.hpp"
-#include "K_point/build_gklo_basis_descriptors.hpp"
-#include "K_point/distribute_basis_index.hpp"
+#include "K_point/generate_gklo_basis.hpp"
 #include "K_point/initialize.hpp"
 #include "K_point/k_point.hpp"
 #include "K_point/test_fv_states.hpp"
