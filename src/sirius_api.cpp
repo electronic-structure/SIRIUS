@@ -1602,7 +1602,10 @@ void sirius_get_energy_kin(double* energy_kin)
 }
 
 /// Generate XC potential and magnetic field
-void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcmt__, double* bxcit__)
+void sirius_generate_xc_potential(ftn_double* vxcmt__,
+                                  ftn_double* vxcit__,
+                                  ftn_double* bxcmt__,
+                                  ftn_double* bxcit__)
 {
     PROFILE();
 
@@ -1634,10 +1637,12 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
     }
 }
 
-void sirius_generate_coulomb_potential(double* vclmt__, double* vclit__)
+void sirius_generate_coulomb_potential(ftn_double* vclmt__,
+                                       ftn_double* vclit__)
 {
     PROFILE();
     sim_ctx->fft().prepare(sim_ctx->gvec().partition());
+    density->rho()->fft_transform(-1);
     potential->poisson(density->rho(), potential->hartree_potential());
     sim_ctx->fft().dismiss();
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
