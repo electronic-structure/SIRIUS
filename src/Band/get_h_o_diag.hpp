@@ -115,7 +115,7 @@ Band::get_h_diag(K_point* kp__,
 
     /* local H contribution */
     for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
-        int ig = kp__->gklo_basis_descriptor_loc(ig_loc).ig;
+        int ig = kp__->igk_loc(ig_loc);
         auto vgk = kp__->gkvec().gkvec_cart(ig);
         h_diag[ig_loc] = 0.5 * (vgk * vgk) + v0__;
     }
