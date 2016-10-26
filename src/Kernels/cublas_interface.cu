@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <cublas_v2.h>
 #include "kernels_common.h"
 

@@ -342,7 +342,7 @@ class Gvec
                 /* starting G-vector index for a z-stick */
                 gvec_index_by_xy_(0, z_columns_[i].x, z_columns_[i].y) = ig;
                 /* size of a z-stick */
-                gvec_index_by_xy_(1, z_columns_[i].x, z_columns_[i].y) = static_cast<int>((z_columns_[i].z.size() << 16) + i);
+                gvec_index_by_xy_(1, z_columns_[i].x, z_columns_[i].y) = static_cast<int>((z_columns_[i].z.size() << 20) + i);
                 for (size_t j = 0; j < z_columns_[i].z.size(); j++) {
                     gvec_full_index_[ig++] = static_cast<int>((i << 12) + j);
                 }
@@ -485,12 +485,12 @@ class Gvec
             if (ig0 == -1) {
                 return -1;
             }
-            int icol = gvec_index_by_xy_(1, G__[0], G__[1]) & 0xFFFF;
-            int col_size = gvec_index_by_xy_(1, G__[0], G__[1]) >> 16;
+            int icol = gvec_index_by_xy_(1, G__[0], G__[1]) & 0xFFFFF;
+            int col_size = gvec_index_by_xy_(1, G__[0], G__[1]) >> 20;
             int z0 = G__[2] - z_columns_[icol].z[0];
             int offs = (z0 >= 0) ? z0 : z0 + col_size;
             int ig = ig0 + offs;
-            //assert(ig < num_gvec());
+            assert(ig < num_gvec());
             return ig;
         }
 

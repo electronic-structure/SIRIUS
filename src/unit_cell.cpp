@@ -41,6 +41,7 @@ void Unit_cell::initialize()
         max_mt_basis_size_        = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
         max_mt_aw_basis_size_     = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
+        max_mt_lo_basis_size_     = std::max(max_mt_lo_basis_size_,  atom_type(iat).mt_lo_basis_size());
         lmax_                     = std::max(lmax_, atom_type(iat).indexr().lmax());
         offs_lo += atom_type(iat).mt_lo_basis_size(); 
     }

@@ -295,6 +295,12 @@ class Simulation_context: public Simulation_parameters
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 
+        inline double_complex gvec_coarse_phase_factor(int ig__, int ia__) const
+        {
+            auto G = gvec_coarse_.gvec(ig__);
+            return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
+        }
+
         inline int gvec_count() const
         {
             return gvec_.gvec_count(comm_.rank());
@@ -328,43 +334,36 @@ inline void Simulation_context::init_fft()
         TERMINATE("wrong FFT mode");
     }
 
-    if (full_potential()) {
-        /* split bands between all ranks, use serial FFT */
-        mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
+    mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                                            mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
+
+    if (control_input_section_.fft_mode_ == "serial") {
+        /* serial FFT in Hloc */
+        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
     } else {
-        /* use parallel FFT for density and potential */
-        mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                                mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
-        
-        if (control_input_section_.fft_mode_ == "serial") {
-            /* serial FFT in Hloc */
-            mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
-        } else {
-            /* parallel FFT in Hloc */
-            mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                                         mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
-        }
+        /* parallel FFT in Hloc */
+        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
+                                                                     mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv), mpi_grid_fft_->communicator(1 << 0),
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv),
+                                            mpi_grid_fft_->communicator(1 << 0),
                                             processing_unit(), 0.9));
 
     /* create a list of G-vectors for dense FFT grid */
-    gvec_ = Gvec(vector3d<double>(0, 0, 0), rlv, pw_cutoff(), fft_->grid(),
+    /* G-vectors are divided between all available MPI ranks (comm_.size()) */
+    gvec_ = Gvec({0, 0, 0}, rlv, pw_cutoff(), fft_->grid(),
                  comm_.size(), fft_->comm(), control_input_section_.reduce_gvec_);
 
-    if (!full_potential()) {
-        /* create FFT driver for coarse mesh */
-        fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
-                                                       mpi_grid_fft_vloc_->communicator(1 << 0),
-                                                       processing_unit(), 0.9));
+    /* create FFT driver for coarse mesh */
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
+                                                   mpi_grid_fft_vloc_->communicator(1 << 0),
+                                                   processing_unit(), 0.9));
 
-        /* create a list of G-vectors for corase FFT grid */
-        gvec_coarse_ = Gvec(vector3d<double>(0, 0, 0), rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                            mpi_grid_fft_vloc_->size(), fft_coarse_->comm(),
-                            control_input_section_.reduce_gvec_);
-    }
+    /* create a list of G-vectors for corase FFT grid */
+    gvec_coarse_ = Gvec({0, 0, 0}, rlv, gk_cutoff() * 2, fft_coarse_->grid(),
+                        comm_.size(), fft_coarse_->comm(), control_input_section_.reduce_gvec_);
 }
 
 inline void Simulation_context::initialize()
@@ -423,6 +422,11 @@ inline void Simulation_context::initialize()
 
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
+
+    /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and maximum MT radius) */
+    if (full_potential()) {
+        set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
+    }
 
     if (esm_type() == electronic_structure_method_t::paw_pseudopotential) {
         lmax_rho_ = unit_cell_.lmax() * 2;
@@ -485,8 +489,10 @@ inline void Simulation_context::initialize()
                                           std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
     }
     
-    if (num_fv_states() < int(unit_cell_.num_valence_electrons() / 2.0)) {
-        TERMINATE("not enough first-variational states");
+    if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
+        std::stringstream s;
+        s << "not enough first-variational states : " << num_fv_states();
+        TERMINATE(s);
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
@@ -577,14 +583,21 @@ inline void Simulation_context::initialize()
 
 inline void Simulation_context::print_info()
 {
+    tm const* ptm = localtime(&start_time_.tv_sec); 
+    char buf[100];
+    strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
+
     printf("\n");
     printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
     printf("git hash       : %s\n", git_hash);
     printf("build date     : %s\n", build_date);
+    printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());
     printf("MPI grid                      :");
-    for (int i = 0; i < mpi_grid_->num_dimensions(); i++) printf(" %i", mpi_grid_->dimension_size(i));
+    for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
+        printf(" %i", mpi_grid_->dimension_size(i));
+    }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
     printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(1));
@@ -609,29 +622,28 @@ inline void Simulation_context::print_info()
     printf("  local number of G-vectors             : %i\n", gvec_.gvec_count(0));
     printf("  number of G-shells                    : %i\n", gvec_.num_shells());
     printf("\n");
-    if (!full_potential())
-    {
-        printf("\n");
-        printf("FFT context for applying Hloc\n");
-        printf("=============================\n");
-        auto fft_grid = fft_coarse_->grid();
-        printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
-                                                                                    fft_grid.size(1),
-                                                                                    fft_grid.size(2),
-                                                                                    fft_grid.size());
-        printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
-                                                                                    fft_grid.limits(0).second,
-                                                                                    fft_grid.limits(1).first,
-                                                                                    fft_grid.limits(1).second,
-                                                                                    fft_grid.limits(2).first,
-                                                                                    fft_grid.limits(2).second);
-        printf("  number of G-vectors within the cutoff : %i\n", gvec_coarse_.num_gvec());
-        printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
-        printf("\n");
-    }
+    printf("FFT context for coarse grid\n");
+    printf("===========================\n");
+    printf("  plane wave cutoff                     : %f\n", 2 * gk_cutoff());
+    fft_grid = fft_coarse_->grid();
+    printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
+                                                                                fft_grid.size(1),
+                                                                                fft_grid.size(2),
+                                                                                fft_grid.size());
+    printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
+                                                                                fft_grid.limits(0).second,
+                                                                                fft_grid.limits(1).first,
+                                                                                fft_grid.limits(1).second,
+                                                                                fft_grid.limits(2).first,
+                                                                                fft_grid.limits(2).second);
+    printf("  number of G-vectors within the cutoff : %i\n", gvec_coarse_.num_gvec());
+    printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
+    printf("\n");
 
     unit_cell_.print_info();
-    for (int i = 0; i < unit_cell_.num_atom_types(); i++) unit_cell_.atom_type(i).print_info();
+    for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
+        unit_cell_.atom_type(i).print_info();
+    }
 
     printf("\n");
     printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
@@ -647,6 +659,7 @@ inline void Simulation_context::print_info()
     printf("lmax_rf                            : %i\n", unit_cell_.lmax());
     printf("smearing width                     : %f\n", smearing_width());
     printf("cyclic block size                  : %i\n", cyclic_block_size());
+    printf("|G+k| cutoff                       : %f\n", gk_cutoff());
 
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};

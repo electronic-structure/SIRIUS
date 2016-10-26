@@ -101,7 +101,7 @@ void Force::ibs_force(Simulation_context& ctx__,
     dmatrix<double_complex> dm(ctx__.num_fv_states(), ctx__.num_fv_states(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     compute_dmat(param, kp__, dm);
 
-    auto& fv_evec = kp__->fv_eigen_vectors().prime();
+    auto& fv_evec = kp__->fv_eigen_vectors();
 
     dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
     dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), ctx__.blacs_grid(), param.cyclic_block_size(), param.cyclic_block_size());
@@ -125,8 +125,8 @@ void Force::ibs_force(Simulation_context& ctx__,
         auto& type = atom.type();
 
         /* generate matching coefficients for current atom */
-        kp__->alm_coeffs_row()->generate(ia, alm_row);
-        kp__->alm_coeffs_col()->generate(ia, alm_col);
+        kp__->alm_coeffs_row().generate(ia, alm_row);
+        kp__->alm_coeffs_col().generate(ia, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
         band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
@@ -152,12 +152,15 @@ void Force::ibs_force(Simulation_context& ctx__,
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
         {
-            auto gkvec_col_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_col(igk_col).gkvec;
+            auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
+            auto gkvec_col_cart = kp__->gkvec().gkvec_cart(kp__->igk_col(igk_col));
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
             {
-                auto gkvec_row_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_row(igk_row).gkvec;
-                int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
-                                                  kp__->gklo_basis_descriptor_col(igk_col).gvec);
+                auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                auto gkvec_row_cart = kp__->gkvec().gkvec_cart(kp__->igk_row(igk_row));
+
+                int ig12 = ctx__.gvec().index_g12(gvec_row, gvec_col);
+
                 int igs = ctx__.gvec().shell(ig12);
 
                 double_complex zt = std::conj(ctx__.gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
@@ -173,10 +176,11 @@ void Force::ibs_force(Simulation_context& ctx__,
         {
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
             {
+                auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
                 {
-                    int ig12 = ctx__.gvec().index_g12(kp__->gklo_basis_descriptor_row(igk_row).gvec,
-                                                      kp__->gklo_basis_descriptor_col(igk_col).gvec);
+                    auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                    int ig12 = ctx__.gvec().index_g12(gvec_row, gvec_col);
 
                     vector3d<double> vg = ctx__.gvec().gvec_cart(ig12);
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
@@ -184,23 +188,21 @@ void Force::ibs_force(Simulation_context& ctx__,
                 }
             }
 
-            for (int icol = kp__->num_gkvec_col(); icol < kp__->gklo_basis_size_col(); icol++)
-            {
-                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                {
-                    auto gkvec_row_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_row(igk_row).gkvec;
-                    h1(igk_row, icol) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol);
-                    o1(igk_row, icol) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol);
+            for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
+                    auto gkvec_row_cart = kp__->gkvec().gkvec_cart(kp__->igk_row(igk_row));
+                    h1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
+                    o1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
                 }
             }
                     
-            for (int irow = kp__->num_gkvec_row(); irow < kp__->gklo_basis_size_row(); irow++)
+            for (int irow = 0; irow < kp__->num_lo_row(); irow++)
             {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++)
                 {
-                    auto gkvec_col_cart = uc.reciprocal_lattice_vectors() * kp__->gklo_basis_descriptor_col(igk_col).gkvec;
-                    h1(irow, igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow, igk_col);
-                    o1(irow, igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow, igk_col);
+                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart(kp__->igk_col(igk_col));
+                    h1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
+                    o1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
                 }
             }
 

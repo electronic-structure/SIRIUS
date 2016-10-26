@@ -141,7 +141,7 @@ class Atom
                         int lm1    = type().indexb(xi1).lm;
                         int idxrf1 = type().indexb(xi1).idxrf;
                         if (lm1 == lm2) {
-                            d_mtrx_(xi1, xi2, 0) = type().uspp().d_mtrx_ion(idxrf1, idxrf2);
+                            d_mtrx_(xi1, xi2, 0) = type().pp_desc().d_mtrx_ion(idxrf1, idxrf2);
                         }
                     }
                 }
@@ -268,7 +268,12 @@ class Atom
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
-        
+
+        inline double* h_radial_integrals(int idxrf1, int idxrf2)
+        {
+            return &h_radial_integrals_(0, idxrf1, idxrf2);
+        }
+
         inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);

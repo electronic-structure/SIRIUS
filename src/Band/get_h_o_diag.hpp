@@ -115,7 +115,7 @@ Band::get_h_diag(K_point* kp__,
 
     /* local H contribution */
     for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
-        int ig = kp__->gklo_basis_descriptor_loc(ig_loc).ig;
+        int ig = kp__->igk_loc(ig_loc);
         auto vgk = kp__->gkvec().gkvec_cart(ig);
         h_diag[ig_loc] = 0.5 * (vgk * vgk) + v0__;
     }
@@ -185,7 +185,7 @@ Band::get_o_diag(K_point* kp__,
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        if (!atom_type.uspp().augmentation_) {
+        if (!atom_type.pp_desc().augment) {
             continue;
         }
 

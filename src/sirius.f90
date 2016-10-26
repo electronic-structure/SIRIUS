@@ -121,11 +121,11 @@ module sirius
             real(8),                 intent(in) :: radial_points
         end subroutine
 
-        subroutine sirius_set_free_atom_potential(label, num_radial_points, vs)&
-            &bind(C, name="sirius_set_free_atom_potential")
+        subroutine sirius_set_free_atom_density(label, num_radial_points, dens)&
+            &bind(C, name="sirius_set_free_atom_density")
             character, dimension(*), intent(in) :: label
             integer,                 intent(in) :: num_radial_points
-            real(8),                 intent(in) :: vs
+            real(8),                 intent(in) :: dens
         end subroutine
 
         subroutine sirius_set_equivalent_atoms(eqatoms)&
@@ -213,6 +213,68 @@ module sirius
             integer,                 intent(in) :: idxlo
             integer,                 intent(in) :: order
             real(8),                 intent(in) :: enu
+        end subroutine
+
+        subroutine sirius_set_aw_surface_derivative(ia, l, io, dm, deriv)&
+            &bind(C, name="sirius_set_aw_surface_derivative")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l
+            integer,                 intent(in) :: io
+            integer,                 intent(in) :: dm
+            real(8),                 intent(in) :: deriv
+        end subroutine
+
+        subroutine sirius_set_aw_lo_o_radial_integral(ia, l, io1, ilo2, oalo)&
+            &bind(C, name="sirius_set_aw_lo_o_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l
+            integer,                 intent(in) :: io1
+            integer,                 intent(in) :: ilo2
+            real(8),                 intent(in) :: oalo
+        end subroutine
+
+        subroutine sirius_set_lo_lo_o_radial_integral(ia, l, ilo1, ilo2, ololo)&
+            &bind(C, name="sirius_set_lo_lo_o_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l
+            integer,                 intent(in) :: ilo1
+            integer,                 intent(in) :: ilo2
+            real(8),                 intent(in) :: ololo
+        end subroutine
+
+        subroutine sirius_set_aw_aw_h_radial_integral(ia, l1, io1, l2, io2, lm3, haa)&
+            &bind(C, name="sirius_set_aw_aw_h_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: l1
+            integer,                 intent(in) :: io1
+            integer,                 intent(in) :: l2
+            integer,                 intent(in) :: io2
+            integer,                 intent(in) :: lm3
+            real(8),                 intent(in) :: haa
+        end subroutine
+
+        subroutine sirius_set_lo_aw_h_radial_integral(ia, ilo1, l2, io2, lm3, hloa)&
+            &bind(C, name="sirius_set_lo_aw_h_radial_integral")
+            integer,                 intent(in) :: ia
+            integer,                 intent(in) :: ilo1
+            integer,                 intent(in) :: l2
+            integer,                 intent(in) :: io2
+            integer,                 intent(in) :: lm3
+            real(8),                 intent(in) :: hloa
+        end subroutine
+
+        subroutine sirius_set_lo_lo_h_radial_integral(ia, ilo1, ilo2, lm3, hlolo)&
+            &bind(C, name="sirius_set_lo_lo_h_radial_integral")
+            integer,                intent(in) :: ia
+            integer,                intent(in) :: ilo1
+            integer,                intent(in) :: ilo2
+            integer,                intent(in) :: lm3
+            real(8),                intent(in) :: hlolo
+        end subroutine
+
+        subroutine sirius_set_effective_potential_pw_coeffs(f_pw)&
+            &bind(C, name="sirius_set_effective_potential_pw_coeffs")
+            complex(8),           intent(in) :: f_pw
         end subroutine
 
         subroutine sirius_get_num_gvec(num_gvec)&
@@ -388,7 +450,7 @@ module sirius
         end subroutine
 
         subroutine sirius_get_gkvec_arrays(kset_id, ik, num_gkvec, gvec_index, gkvec, gkvec_cart,&
-            &gkvec_len, gkvec_tp, gkvec_phase_factors, ld)&
+            &gkvec_len, gkvec_tp)&
             &bind(C, name="sirius_get_gkvec_arrays")
             integer,                 intent(in)  :: kset_id
             integer,                 intent(in)  :: ik
@@ -398,8 +460,6 @@ module sirius
             real(8),                 intent(out) :: gkvec_cart
             real(8),                 intent(out) :: gkvec_len
             real(8),                 intent(out) :: gkvec_tp
-            complex(8),              intent(out) :: gkvec_phase_factors
-            integer,                 intent(in)  :: ld
         end subroutine
 
         subroutine sirius_get_index_by_gvec(index_by_gvec)&
@@ -491,11 +551,26 @@ module sirius
             real(8),                 intent(out) :: f
         end subroutine
 
+        subroutine sirius_set_aw_radial_function(ia, l, io, f)&
+            &bind(C, name="sirius_set_aw_radial_function")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: io
+            real(8),                 intent(in)  :: f
+        end subroutine
+
         subroutine sirius_get_lo_radial_function(ia, idxlo, f)&
             &bind(C, name="sirius_get_lo_radial_function")
             integer,                 intent(in)  :: ia
             integer,                 intent(in)  :: idxlo
             real(8),                 intent(out) :: f
+        end subroutine
+
+        subroutine sirius_set_lo_radial_function(ia, idxlo, f)&
+            &bind(C, name="sirius_set_lo_radial_function")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: idxlo
+            real(8),                 intent(in)  :: f
         end subroutine
 
         subroutine sirius_get_evalsum(val)&
@@ -581,6 +656,39 @@ module sirius
             integer,                 intent(in)  :: apwordmax
         end subroutine
 
+        subroutine sirius_get_fft_comm(fcomm)&
+            &bind(C, name="sirius_get_fft_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
+        
+        subroutine sirius_get_kpoint_inner_comm(fcomm)&
+            &bind(C, name="sirius_get_kpoint_inner_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
+
+        subroutine sirius_get_all_kpoints_comm(fcomm)&
+            &bind(C, name="sirius_get_all_kpoints_comm")
+            integer,                 intent(out) :: fcomm
+        end subroutine
+
+        subroutine sirius_radial_solver(solver_type, zn, dme, l, k, enu, nr, r, v, nn, p0, p1, q0, q1)&
+            &bind(C, name="sirius_radial_solver")
+            character, dimension(*), intent(in)  :: solver_type
+            integer,                 intent(in)  :: zn
+            integer,                 intent(in)  :: dme
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: k
+            real(8),                 intent(in)  :: enu
+            integer,                 intent(in)  :: nr
+            real(8),                 intent(in)  :: r
+            real(8),                 intent(in)  :: v
+            integer,                 intent(in)  :: nn
+            real(8),                 intent(in)  :: p0
+            real(8),                 intent(in)  :: p1
+            real(8),                 intent(in)  :: q0
+            real(8),                 intent(in)  :: q1
+        end subroutine
+
         subroutine sirius_write_json_output()&
             &bind(C, name="sirius_write_json_output")
         end subroutine
@@ -636,7 +744,7 @@ module sirius
 
             &bind(C, name="sirius_set_atom_type_paw_data")
 
-            character, dimension(*) , intent(in) :: label__
+            character, dimension(*),  intent(in) :: label__
             real(8),                  intent(in) :: ae_wfc_rf__
             real(8),                  intent(in) :: ps_wfc_rf__
             integer,                  intent(in) :: num_wfc__

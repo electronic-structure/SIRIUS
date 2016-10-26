@@ -56,7 +56,7 @@ inline void Potential::generate_D_operator_matrix()
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type.mt_basis_size();
 
-        if (!atom_type.uspp().augmentation_) {
+        if (!atom_type.pp_desc().augment) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
@@ -181,7 +181,7 @@ inline void Potential::generate_D_operator_matrix()
                 int idxrf1 = atom_type.indexb(xi1).idxrf;
 
                 if (lm1 == lm2) {
-                    unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.uspp().d_mtrx_ion(idxrf1, idxrf2);
+                    unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2);
                 }
             }
         }

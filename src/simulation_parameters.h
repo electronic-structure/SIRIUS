@@ -81,6 +81,8 @@ class Simulation_parameters
         /// True if gamma-point (real) version of the PW code is used.
         bool gamma_point_{false};
 
+        bool molecule_{false};
+
         /// Type of the processing unit.
         device_t processing_unit_{CPU};
     
@@ -216,8 +218,7 @@ class Simulation_parameters
             m["norm_conserving_pseudopotential"] = electronic_structure_method_t::norm_conserving_pseudopotential;
             m["paw_pseudopotential"]             = electronic_structure_method_t::paw_pseudopotential;
 
-            if (m.count(name__) == 0)
-            {
+            if (m.count(name__) == 0) {
                 std::stringstream s;
                 s << "wrong type of electronic structure method: " << name__;
                 TERMINATE(s);
@@ -260,7 +261,12 @@ class Simulation_parameters
         {
             processing_unit_ = pu__;
         }
-    
+
+        inline void set_molecule(bool molecule__)
+        {
+            molecule_ = molecule__;
+        }
+
         inline int lmax_apw() const
         {
             return lmax_apw_;
@@ -453,6 +459,11 @@ class Simulation_parameters
         inline double spglib_tolerance() const
         {
             return control_input_section_.spglib_tolerance_;
+        }
+
+        inline bool molecule() const
+        {
+            return molecule_;
         }
 };
 

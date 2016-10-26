@@ -4,11 +4,11 @@ include ../../../make.inc
 
 .F90.o:
 #	$(MPI_FC) $(MPI_FC_OPT) -DWITH_OPENMP -DWITH_REAL_GENERIC_KERNEL -DWITH_COMPLEX_GENERIC_KERNEL -c -c $<
-	$(MPI_FC) $(MPI_FC_OPT) -c -c $<
+	$(MPI_FC) $(MPI_FC_OPT) -c $<
 
 .f90.o:
 #	$(MPI_FC) $(MPI_FC_OPT) -DWITH_OPENMP -DWITH_REAL_GENERIC_KERNEL -DWITH_COMPLEX_GENERIC_KERNEL -c -c $<
-	$(MPI_FC) $(MPI_FC_OPT) -c -c $<
+	$(MPI_FC) $(MPI_FC_OPT) -c $<
 
 OBJ = mod_precision.o elpa_utilities.o elpa2_utilities.o mod_mpi.o elpa1_compute_private.o elpa1_auxiliary.o elpa1.o qr_utils.o \
       elpa_pdlarfb.o elpa_pdgeqrf.o aligned_mem.o \

@@ -110,12 +110,6 @@ class Periodic_function: public Smooth_periodic_function<T>
               gvec_(ctx__.gvec()),
               angular_domain_size_(angular_domain_size__)
         {
-            if (parameters_.full_potential()) {
-                if (ctx__.fft().parallel()) {
-                    TERMINATE_NOT_IMPLEMENTED
-                }
-            }
-
             if (allocate_pw__) {
                 f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
                 this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
@@ -150,7 +144,9 @@ class Periodic_function: public Smooth_periodic_function<T>
             assert(f_mt_.size() != 0); 
 
             int ld = angular_domain_size_ * unit_cell_.max_num_mt_points(); 
-            comm_.allgather(&f_mt_(0, 0, 0), ld * unit_cell_.spl_num_atoms().global_offset(), ld * unit_cell_.spl_num_atoms().local_size());
+            comm_.allgather(&f_mt_(0, 0, 0),
+                            ld * unit_cell_.spl_num_atoms().global_offset(),
+                            ld * unit_cell_.spl_num_atoms().local_size());
         }
 
         /// Zero the function.
@@ -171,21 +167,19 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         inline void copy_to_global_ptr(T* f_mt__, T* f_it__) const
         {
-            STOP();
-            //comm_.allgather(f_it_local_.template at<CPU>(), f_it__, (int)spl_fft_size_.global_offset(), (int)spl_fft_size_.local_size());
+            std::memcpy(f_it__, this->f_rg_.template at<CPU>(), this->fft_->local_size() * sizeof(T));
 
-            //if (parameters_.full_potential()) 
-            //{
-            //    mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
-            //    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
-            //    {
-            //        int ia = unit_cell_.spl_num_atoms(ialoc);
-            //        memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
-            //    }
-            //    int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
-            //    comm_.allgather(f_mt__, static_cast<int>(ld * unit_cell_.spl_num_atoms().global_offset()),
-            //                    static_cast<int>(ld * unit_cell_.spl_num_atoms().local_size()));
-            //}
+            if (parameters_.full_potential()) {
+                mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    int ia = unit_cell_.spl_num_atoms(ialoc);
+                    std::memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
+                }
+                int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
+                comm_.allgather(f_mt__,
+                                ld * unit_cell_.spl_num_atoms().global_offset(),
+                                ld * unit_cell_.spl_num_atoms().local_size());
+            }
         }
 
         /// Add the function
@@ -286,7 +280,8 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         size_t size() const
         {
-            size_t size = this->fft_->local_size();
+            //size_t size = this->fft_->local_size();
+            size_t size = gvec_.num_gvec() * 2;
             if (parameters_.full_potential()) {
                 for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
                     size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points() * 
@@ -311,10 +306,16 @@ class Periodic_function: public Smooth_periodic_function<T>
                     }
                 }
             }
+            
+            double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
 
-            for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-                mixer__->input(offset__ + n++, this->f_rg_(ir));
+            for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
+                mixer__->input(offset__ + n++, pw[ig]);
             }
+
+            //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+            //    mixer__->input(offset__ + n++, this->f_rg_(ir));
+            //}
 
             return n;
         }
@@ -335,9 +336,16 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
             }
 
-            for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-                this->f_rg_(ir) = array__[n++];
+            double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
+            for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
+                pw[ig] = array__[n++];
             }
+            this->fft_->prepare(gvec_.partition());
+            this->fft_transform(1);
+            this->fft_->dismiss();
+            //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+            //    this->f_rg_(ir) = array__[n++];
+            //}
 
             return n;
         }
@@ -349,7 +357,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             set_local_mt_ptr();
         }
 
-        /// Set the global pointer to the interstitial part
+        /// Set the pointer to the interstitial part
         void set_rg_ptr(T* rg_ptr__)
         {
             this->f_rg_ = mdarray<T, 1>(rg_ptr__, this->fft_->local_size());

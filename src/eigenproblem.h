@@ -1446,6 +1446,24 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             
             return 0;
         }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double_complex* A, int32_t lda,
+                  double* eval, 
+                  double_complex* Z, int32_t ldz,
+                  int32_t num_rows_loc, int32_t num_cols_loc) const
+        {
+            assert(nevec <= matrix_size);
+
+            std::vector<double> w(matrix_size);
+            runtime::Timer t("Eigenproblem_elpa1|diag");
+            FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+            t.stop();
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
+            return 0;
+        }
         #endif
 
         bool parallel() const

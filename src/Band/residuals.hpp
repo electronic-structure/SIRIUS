@@ -43,7 +43,7 @@ Band::residuals_aux(K_point* kp__,
     assert(kp__->num_gkvec_loc() == res__.pw_coeffs().num_rows_loc());
     assert(kp__->num_gkvec_loc() == hpsi__.pw_coeffs().num_rows_loc());
     assert(kp__->num_gkvec_loc() == opsi__.pw_coeffs().num_rows_loc());
-    if (ctx_.full_potential()) {
+    if (res__.has_mt()) {
         assert(res__.mt_coeffs().num_rows_loc() == hpsi__.mt_coeffs().num_rows_loc());
         assert(res__.mt_coeffs().num_rows_loc() == opsi__.mt_coeffs().num_rows_loc());
     }
@@ -67,7 +67,7 @@ Band::residuals_aux(K_point* kp__,
             for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
                 res__.pw_coeffs().prime(ig, i) = hpsi__.pw_coeffs().prime(ig, i) - eval__[i] * opsi__.pw_coeffs().prime(ig, i);
             }
-            if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+            if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
                     res__.mt_coeffs().prime(j, i) = hpsi__.mt_coeffs().prime(j, i) - eval__[i] * opsi__.mt_coeffs().prime(j, i);
                 }
@@ -82,7 +82,7 @@ Band::residuals_aux(K_point* kp__,
                               kp__->num_gkvec_loc(),
                               num_bands__,
                               eval.at<GPU>());
-        if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+        if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             compute_residuals_gpu(hpsi__.mt_coeffs().prime().at<GPU>(),
                                   opsi__.mt_coeffs().prime().at<GPU>(),
                                   res__.mt_coeffs().prime().at<GPU>(),
@@ -106,7 +106,7 @@ Band::residuals_aux(K_point* kp__,
                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                 res__.pw_coeffs().prime(ig, i) /= p;
             }
-            if (ctx_.full_potential()) {
+            if (res__.has_mt()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
                     double p = h_diag__[kp__->num_gkvec_loc() + j] - eval__[i] * o_diag__[kp__->num_gkvec_loc() + j];
                     p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
@@ -123,7 +123,7 @@ Band::residuals_aux(K_point* kp__,
                                  eval.at<GPU>(),
                                  h_diag__.at<GPU>(),
                                  o_diag__.at<GPU>());
-        if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+        if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             apply_preconditioner_gpu(res__.mt_coeffs().prime().at<GPU>(),
                                      res__.mt_coeffs().num_rows_loc(),
                                      num_bands__,
@@ -144,7 +144,7 @@ Band::residuals_aux(K_point* kp__,
             for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
                 res__.pw_coeffs().prime(ig, i) *= a;
             }
-            if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+            if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
                     res__.mt_coeffs().prime(j, i) *= a;
                 }
@@ -162,7 +162,7 @@ Band::residuals_aux(K_point* kp__,
                                  res__.pw_coeffs().prime().at<GPU>(),
                                  p_norm.at<GPU>());
 
-        if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+        if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             scale_matrix_columns_gpu(res__.mt_coeffs().num_rows_loc(),
                                      num_bands__,
                                      res__.mt_coeffs().prime().at<GPU>(),
@@ -295,3 +295,4 @@ inline int Band::residuals(K_point* kp__,
 
     return n;
 }
+

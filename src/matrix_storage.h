@@ -114,9 +114,10 @@ class matrix_storage<T, matrix_storage_t::slab>
                 /* reallocate buffers if necessary */
                 if (extra_buf_.size() < sz) {
                     extra_buf_ = mdarray<T, 1>(sz);
-                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "send_recv_buf_");
+                    send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.send_recv_buf_");
                 }
-                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc);
+                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc,
+                                       "matrix_storage.extra_");
             }
         }
 
@@ -207,14 +208,109 @@ class matrix_storage<T, matrix_storage_t::slab>
                                 recv_buf, rd.counts.data(), rd.offsets.data());
         }
 
-        inline T& prime(int irow__, int icol__)
+        inline void remap_from(dmatrix<T> const& mtrx__, int irow0__)
         {
-            return prime_(irow__, icol__);
+            PROFILE_WITH_TIMER("sirius::matrix_storage::remap_from");
+
+            if (mtrx__.num_cols() != num_cols_) {
+                TERMINATE("different number of columns");
+            }
+
+            auto& comm = mtrx__.blacs_grid().comm();
+
+            /* cache cartesian ranks */
+            mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());
+            for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
+                for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
+                    cart_rank(j, i) = mtrx__.blacs_grid().cart_rank(j, i);
+                }
+            }
+
+            if (send_recv_buf_.size() < prime_.size()) {
+                send_recv_buf_ = mdarray<T, 1>(prime_.size(), memory_t::host, "matrix_storage::send_recv_buf_");
+            }
+
+            block_data_descriptor rd(comm.size());
+            rd.counts[comm.rank()] = num_rows_loc_;
+            comm.allgather(rd.counts.data(), comm.rank(), 1);
+            rd.calc_offsets();
+
+            block_data_descriptor sd(comm.size());
+
+            /* global index of column */
+            int j0 = 0;
+            /* actual number of columns in the submatrix */
+            int ncol = num_cols_;
+
+            splindex<block_cyclic> spl_col_begin(j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+            splindex<block_cyclic>   spl_col_end(j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+
+            int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
+            
+            for (int rank_row = 0; rank_row < comm.size(); rank_row++) {
+                if (!rd.counts[rank_row]) {
+                    continue;
+                }
+                /* global index of column */
+                int i0 = rd.offsets[rank_row];
+                /* actual number of rows in the submatrix */
+                int nrow = rd.counts[rank_row];
+
+                assert(nrow != 0);
+
+                splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+                splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+
+                int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
+
+                mdarray<T, 1> buf(local_size_row * local_size_col);
+
+                /* fetch elements of sub-matrix matrix */
+                if (local_size_row) {
+                    for (int j = 0; j < local_size_col; j++) {
+                        std::memcpy(&buf[local_size_row * j],
+                                    &mtrx__(spl_row_begin.local_size(), spl_col_begin.local_size() + j),
+                                    local_size_row * sizeof(T));
+                    }
+                }
+
+                sd.counts[comm.rank()] = local_size_row * local_size_col;
+                comm.allgather(sd.counts.data(), comm.rank(), 1);
+                sd.calc_offsets();
+
+                /* collect buffers submatrix */
+                T* send_buf = (buf.size() == 0) ? nullptr : &buf[0];
+                T* recv_buf = (send_recv_buf_.size() == 0) ? nullptr : &send_recv_buf_[0]; 
+                comm.gather(send_buf, recv_buf, sd.counts.data(), sd.offsets.data(), rank_row);
+
+                if (comm.rank() == rank_row) {
+                    /* unpack data */
+                    std::vector<int> counts(comm.size(), 0);
+                    for (int jcol = 0; jcol < ncol; jcol++) {
+                        auto pos_jcol = mtrx__.spl_col().location(j0 + jcol);
+                        for (int irow = 0; irow < nrow; irow++) {
+                            auto pos_irow = mtrx__.spl_row().location(irow0__ + i0 + irow);
+                            int rank = cart_rank(pos_irow.rank, pos_jcol.rank);
+
+                            prime_(irow, jcol) = send_recv_buf_[sd.offsets[rank] + counts[rank]];
+                            counts[rank]++;
+                        }
+                    }
+                    for (int rank = 0; rank < comm.size(); rank++) {
+                        assert(sd.counts[rank] == counts[rank]);
+                    }
+                }
+            }
         }
 
-        inline T const& prime(int irow__, int icol__) const
+        inline T& prime(int irow__, int jcol__)
         {
-            return prime_(irow__, icol__);
+            return prime_(irow__, jcol__);
+        }
+
+        inline T const& prime(int irow__, int jcol__) const
+        {
+            return prime_(irow__, jcol__);
         }
 
         mdarray<T, 2>& prime()

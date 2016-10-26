@@ -54,10 +54,10 @@ class Atom_symmetry_class
         /// List of radial functions.
         mdarray<double, 3> radial_functions_;
         
-        /// surface derivatives of aw radial functions
+        /// Surface derivatives of AW radial functions.
         mdarray<double, 3> aw_surface_derivatives_;
 
-        /// spherical part of radial integral
+        /// Spherical part of radial integral.
         mdarray<double, 2> h_spherical_integrals_;
 
         /// overlap integrals
@@ -125,7 +125,17 @@ class Atom_symmetry_class
         void dump_lo();
        
         /// Compute m-th order radial derivative at the MT surface.
-        double aw_surface_dm(int l, int order, int dm) const;
+        inline double aw_surface_dm(int l, int order, int dm) const
+        {
+            assert(dm <= 2);
+            return aw_surface_derivatives_(order, l, dm);
+        }
+
+        inline void set_aw_surface_deriv(int l, int order, int dm, double deriv)
+        {
+            assert(dm <= 2);
+            aw_surface_derivatives_(order, l, dm) = deriv;
+        }
         
         /// Find core states and generate core density.
         void generate_core_charge_density(relativity_t core_rel__);
@@ -190,9 +200,14 @@ class Atom_symmetry_class
             return h_spherical_integrals_(i1, i2);
         }
 
-        inline double o_radial_integral(int l, int order1, int order2) const
+        inline double const& o_radial_integral(int l, int order1, int order2) const
         {
             return o_radial_integrals_(l, order1, order2);
+        }
+
+        inline void set_o_radial_integral(int l, int order1, int order2, double oint__)
+        {
+            o_radial_integrals_(l, order1, order2) = oint__;
         }
         
         inline double so_radial_integral(int l, int order1, int order2) const
