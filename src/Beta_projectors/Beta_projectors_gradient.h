@@ -44,8 +44,6 @@ public:
 
     void calc_gradient(int calc_component)
     {
-        calc_component_ = calc_component;
-
         const Gvec &gkvec = bp_->gk_vectors();
 
         const matrix<double_complex> &beta_comps = bp_->beta_gk_a();
@@ -85,7 +83,7 @@ public:
 
     void generate(int chunk__)
     {
-        for(comp: {0,1,2}) generate(chunk__, comp);
+        for(int comp: {0,1,2}) generate(chunk__, comp);
     }
 
 
@@ -101,11 +99,11 @@ public:
     template <typename T>
     void inner(int chunk__, wave_functions& phi__, int idx0__, int n__)
     {
-        for(comp: {0,1,2}) inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[comp], beta_phi_[comp]);
+        for(int comp: {0,1,2}) inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[comp], beta_phi_[comp]);
     }
 
     template <typename T>
-    matrix<T> beta_phi(int chunk__, int n__, calc_component__)
+    matrix<T> beta_phi(int chunk__, int n__, int calc_component__)
     {
         int nbeta = bp_->beta_chunk(chunk__).num_beta_;
 
@@ -124,7 +122,7 @@ public:
     {
         std::array<matrix<T>,3> chunk_beta_phi;
 
-        for(comp: {0,1,2}) chunk_beta_phi[comp] = beta_phi(chunk__, n__, comp);
+        for(int comp: {0,1,2}) chunk_beta_phi[comp] = beta_phi<T>(chunk__, n__, comp);
 
         return std::move(chunk_beta_phi);
     }

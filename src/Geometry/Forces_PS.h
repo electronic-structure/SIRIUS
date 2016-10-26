@@ -48,22 +48,20 @@ private:
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
             {
+                /* total number of occupied bands for this spin */
                 int nbnd = kpoint.num_occupied_bands(ispn);
 
                 // inner product of beta gradient and WF
                 bp_grad.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 
                 // get inner product
-                std::array<matrix<T>, 3> bp_grad_phi_chunk = bp_grad.beta_phi(icnk, nbnd);
+                std::array<matrix<T>, 3> bp_grad_phi_chunk = bp_grad.beta_phi<double_complex>(icnk, nbnd);
 
                 // inner product of beta and WF
                 bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 
                 // get inner product
-                matrix<T> bp_phi_chunk = bp.beta_phi(icnk, nbnd);
-
-                /* total number of occupied bands for this spin */
-                int nbnd = kpoint.num_occupied_bands(ispn);
+                matrix<T> bp_phi_chunk = bp.beta_phi<double_complex>(icnk, nbnd);
 
                 splindex<block> spl_nbnd(nbnd, kpoint.comm().size(), kpoint.comm().rank());
 
@@ -77,15 +75,15 @@ private:
 
                     // mpi
                     // TODO make in smart way with matrix multiplication
-                    for (int ibnd_loc = 0; i < nbnd_loc; ibnd_loc++)
+                    for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++)
                     {
                         int ibnd = spl_nbnd[ibnd_loc];
 
                         auto D_aug_mtrx = [&](int i, int j)
                                 {
-                                    return unit_cell.atom(ia).d_mtrx(i, j) - kpoint.band_energy(ibnd) *
+                                    return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
                                             ctx_.augmentation_op(ia).q_mtrx(i, j);
-                                }
+                                };
 
                         for(int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++ )
                         {
@@ -100,7 +98,7 @@ private:
                                         std::conj(bp_phi_chunk(offs + ibf, ibnd));
 
                                 // multiply scalar part by gradient components
-                                for(comp: {0,1,2}) forces(comp,ia) += scalar_part * bp_grad_phi_chunk[comp](offs + jbf, ibnd);
+                                for(int comp: {0,1,2}) forces(comp,ia) += scalar_part * bp_grad_phi_chunk[comp](offs + jbf, ibnd);
                             }
                         }
                     }
