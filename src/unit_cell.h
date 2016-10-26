@@ -65,6 +65,8 @@ class Unit_cell
         /// List of PAW atoms pointers
         std::vector<Atom*> paw_atoms_;
 
+        std::vector<int> atom_ind_by_paw_;
+
         /// Split index of paw atoms.
         splindex<block> spl_num_paw_atoms_;
 
@@ -249,27 +251,48 @@ class Unit_cell
 
         }
 
-        // add paw atoms
+        /// add paw atoms
         void init_paw()
         {
             paw_atoms_.clear();
 
-            for(auto &atom: atoms_)
+            for(int i=0; i < static_cast<int>(atoms_.size()); i++)
             {
-                if( atom.type().pp_desc().is_paw )
+
+                if( atoms_[i].type().pp_desc().is_paw )
                 {
-                    paw_atoms_.push_back(&atom);
+                    paw_atoms_.push_back(&atoms_[i]);
+                    atom_ind_by_paw_.push_back(i);
                 }
             }
 
-            spl_num_paw_atoms_ = splindex<block>(paw_atoms_.size(), comm_.size(), comm_.rank());
+            spl_num_paw_atoms_ = splindex<block>(static_cast<int>(paw_atoms_.size()), comm_.size(), comm_.rank());
+
+            std::cout<<"Number of PAW atoms: "<<paw_atoms_.size()<<std::endl;
         }
 
-        // get spl index of paw atoms
-        splindex<block> get_spl_num_paw_atoms(){return spl_num_paw_atoms_;}
+        /// get spl index of paw atoms
+        inline splindex<block> get_spl_num_paw_atoms(){ return spl_num_paw_atoms_;}
 
-        // get an array of paw atoms
-        std::vector<Atoms*>& get_paw_atoms(){return paw_atoms_; }
+        /// get an array of paw atoms
+        inline std::vector<Atom*>& get_paw_atoms(){ return paw_atoms_; }
+
+        /// return number of PAW atoms
+        inline int get_num_paw_atoms(){ return static_cast<int>(paw_atoms_.size()); }
+
+        inline int paw_atom_ind_by_paw_spl(int paw_spl_ind){ return spl_num_paw_atoms_[paw_spl_ind];}
+
+        inline Atom* paw_atom_by_spl_ind(int paw_spl_ind){ return paw_atoms_[ paw_atom_ind_by_paw_spl(paw_spl_ind) ]; }
+
+        inline Atom* paw_atom(int paw_ind){ return paw_atoms_[ paw_ind ]; }
+
+        inline int abs_atom_ind_by_paw(int paw_ind)
+        {
+            assert(paw_ind >= 0 && paw_ind < (int)atom_ind_by_paw_.size());
+            return static_cast<int>(atom_ind_by_paw_[paw_ind]);
+        }
+
+        int abs_atom_ind_by_paw_spl(int paw_spl_ind) { return abs_atom_ind_by_paw(paw_atom_ind_by_paw_spl(paw_spl_ind)); }
 
         /// Add new atom without vector field to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position)
@@ -623,8 +646,6 @@ class Unit_cell
                 }
 
                 set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
-
-                init_paw();
             }
         }
 };

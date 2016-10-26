@@ -134,6 +134,8 @@ void Unit_cell::initialize()
             mt_lo_basis_descriptors_[n].xi = xi;
         }
     }
+
+    init_paw();
 }
 
 void Unit_cell::get_symmetry()
