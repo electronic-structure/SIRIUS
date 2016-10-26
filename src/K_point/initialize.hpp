@@ -49,30 +49,8 @@ inline void K_point::initialize()
     /* Build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(ctx_.gk_cutoff());
     /* build a list of basis functions */
-    build_gklo_basis_descriptors();
-    /* distribute basis functions */
-    distribute_basis_index();
-    
-    if (ctx_.full_potential())
-    {
-        atom_lo_cols_.clear();
-        atom_lo_cols_.resize(unit_cell_.num_atoms());
+    generate_gklo_basis();
 
-        atom_lo_rows_.clear();
-        atom_lo_rows_.resize(unit_cell_.num_atoms());
-
-        for (int icol = num_gkvec_col(); icol < gklo_basis_size_col(); icol++)
-        {
-            int ia = gklo_basis_descriptor_col(icol).ia;
-            atom_lo_cols_[ia].push_back(icol);
-        }
-        
-        for (int irow = num_gkvec_row(); irow < gklo_basis_size_row(); irow++)
-        {
-            int ia = gklo_basis_descriptor_row(irow).ia;
-            atom_lo_rows_[ia].push_back(irow);
-        }
-    }
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_pwlo)
     {
         /** \todo Correct the memory leak */
@@ -89,15 +67,16 @@ inline void K_point::initialize()
         if (ctx_.iterative_solver_input_section().type_ == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
                 new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(),
-                                          gklo_basis_descriptors_row_));
+                                          igk_row_, gkvec_));
             alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
                 new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(),
-                                          gklo_basis_descriptors_col_));
+                                          igk_col_, gkvec_));
         }
         alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(new Matching_coefficients(unit_cell_,
                                                                                            ctx_.lmax_apw(),
                                                                                            num_gkvec_loc(),
-                                                                                           gklo_basis_descriptors_loc_));
+                                                                                           igk_loc_,
+                                                                                           gkvec_));
     }
 
     if (!ctx_.full_potential()) {
