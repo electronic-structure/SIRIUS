@@ -66,17 +66,12 @@ inline void K_point::initialize()
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         if (ctx_.iterative_solver_input_section().type_ == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
-                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(),
-                                          igk_row_, gkvec_));
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec_));
             alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
-                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(),
-                                          igk_col_, gkvec_));
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec_));
         }
-        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(new Matching_coefficients(unit_cell_,
-                                                                                           ctx_.lmax_apw(),
-                                                                                           num_gkvec_loc(),
-                                                                                           igk_loc_,
-                                                                                           gkvec_));
+        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
+            new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec_));
     }
 
     if (!ctx_.full_potential()) {
