@@ -38,46 +38,40 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
 
     // here the calculations are in lattice vectors space
     #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+    for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
     {
-        int ig = spl_ngv[igloc];
+        Atom &atom = unit_cell.atom(ia);
 
-        int igs = valence_rho->gvec().shell(ig);
+        int iat = atom.type_id();
 
-        // fractional form for calculation of scalar product with atomic position
-        // since atomic positions are stored in fractional coords
-        vector3d<int> gvec = valence_rho->gvec().gvec(ig);
-
-        // cartesian form for getting cartesian force components
-        vector3d<double> gvec_cart = valence_rho->gvec().gvec_cart(ig);
-
-        // store conj(rho_G) * 4 * pi
-        double_complex g_dependent_prefactor =  fact * std::conj( valence_rho->f_pw_local(igloc) ) * fourpi;
-
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
+        for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
         {
-            Atom &atom = unit_cell.atom(ia);
+            int ig = spl_ngv[igloc];
 
-            int iat = atom.type_id();
+            int igs = valence_rho->gvec().shell(ig);
+
+            // fractional form for calculation of scalar product with atomic position
+            // since atomic positions are stored in fractional coords
+            vector3d<int> gvec = valence_rho->gvec().gvec(ig);
+
+            // cartesian form for getting cartesian force components
+            vector3d<double> gvec_cart = valence_rho->gvec().gvec_cart(ig);
+
+            // store conj(rho_G) * 4 * pi
+            double_complex g_dependent_prefactor =  fact * std::conj( valence_rho->f_pw_local(igloc) ) * fourpi;
 
             // scalar part of a force without multipying by G-vector
             double_complex z = vloc_radial_integrals(iat, igs) * g_dependent_prefactor *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
-            #pragma omp atomic
             forces(0, ia) += - (gvec_cart[0] * z).imag();
-
-            #pragma omp atomic
             forces(1, ia) += - (gvec_cart[1] * z).imag();
-
-            #pragma omp atomic
             forces(2, ia) += - (gvec_cart[2] * z).imag();
         }
     }
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
-
 
     return std::move(forces);
 }
@@ -107,28 +101,27 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 
     double reduce_g_fact = veff_full->gvec().reduced() ? 2.0 : 1.0 ;
 
-    // here the calculations are in lattice vectors space
+    // iterate over atoms
     #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+    for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
     {
-        int ig = spl_ngv[igloc];
+        Atom &atom = unit_cell.atom(ia);
 
-        // fractional form for calculation of scalar product with atomic position
-        // since atomic positions are stored in fractional coords
-        vector3d<int> gvec = veff_full->gvec().gvec(ig);
+        int iat = atom.type_id();
 
-        // cartesian form for getting cartesian force components
-        vector3d<double> gvec_cart = veff_full->gvec().gvec_cart(ig);
-
-        // store conjugate of g component of veff
-        double_complex veff_of_g = reduce_g_fact * std::conj(veff_full->f_pw_local(ig));
-
-        // iterate over atoms
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
+        for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
         {
-            Atom &atom = unit_cell.atom(ia);
+            int ig = spl_ngv[igloc];
 
-            int iat = atom.type_id();
+            // fractional form for calculation of scalar product with atomic position
+            // since atomic positions are stored in fractional coords
+            vector3d<int> gvec = veff_full->gvec().gvec(ig);
+
+            // cartesian form for getting cartesian force components
+            vector3d<double> gvec_cart = veff_full->gvec().gvec_cart(ig);
+
+            // store conjugate of g component of veff
+            double_complex veff_of_g = reduce_g_fact * std::conj(veff_full->f_pw_local(ig));
 
             // scalar part of a force without multipying by G-vector and Qij
             double_complex g_atom_part =  ctx_.unit_cell().omega() * veff_of_g * std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
@@ -145,17 +138,12 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
                     double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
 
                     // scalar part of force
-                    double_complex z = diag_fact * density_matrix(ib1,ib2,0,ia) * g_atom_part *
+                    double_complex z = diag_fact * density_matrix(ib1,ib2,0,ia).real() * g_atom_part *
                             double_complex( aug_op.q_pw( iqij , 2*igloc ), aug_op.q_pw( iqij , 2*igloc + 1 ) );
 
                     // get force components multiplying by cartesian G-vector ( -image part goes from formula)
-                    #pragma omp atomic
                     forces(0, ia) += - (gvec_cart[0] * z).imag();
-
-                    #pragma omp atomic
                     forces(1, ia) += - (gvec_cart[1] * z).imag();
-
-                    #pragma omp atomic
                     forces(2, ia) += - (gvec_cart[2] * z).imag();
                 }
             }
@@ -163,7 +151,6 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
     }
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
-
 
     return std::move(forces);
 }
@@ -179,9 +166,9 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
     mdarray<double,2> forces(3, unit_cell.num_atoms());
 
-    Beta_projectors_gradient grad(&kset.k_point(0)->beta_projectors());
+    forces.zero();
 
-    grad.calc_gradient(0);
+
 
 
     return std::move(forces);
