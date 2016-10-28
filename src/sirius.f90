@@ -94,6 +94,16 @@ module sirius
             integer,                 intent(in) :: dims
         end subroutine
 
+        subroutine sirius_set_valence_relativity(str)&
+            &bind(C, name="sirius_set_valence_relativity")
+            character, dimension(*), intent(in) :: str
+        end subroutine
+
+        subroutine sirius_set_core_relativity(str)&
+            &bind(C, name="sirius_set_core_relativity")
+            character, dimension(*), intent(in) :: str
+        end subroutine
+
         subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
             &bind(C, name="sirius_set_atom_type_properties")
             character, dimension(*), intent(in) :: label
@@ -213,6 +223,15 @@ module sirius
             integer,                 intent(in) :: idxlo
             integer,                 intent(in) :: order
             real(8),                 intent(in) :: enu
+        end subroutine
+
+        subroutine sirius_get_aw_surface_derivative(ia, l, io, dm, deriv)&
+            &bind(C, name="sirius_get_aw_surface_derivative")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: io
+            integer,                 intent(in)  :: dm
+            real(8),                 intent(out) :: deriv
         end subroutine
 
         subroutine sirius_set_aw_surface_derivative(ia, l, io, dm, deriv)&
@@ -528,20 +547,20 @@ module sirius
             &bind(C, name="sirius_generate_radial_integrals")
         end subroutine
 
-        subroutine sirius_get_aw_deriv_radial_function(ia, l, io, dfdr)&
-            &bind(C, name="sirius_get_aw_deriv_radial_function")
-            integer,                 intent(in)  :: ia
-            integer,                 intent(in)  :: l
-            integer,                 intent(in)  :: io
-            real(8),                 intent(out) :: dfdr
-        end subroutine
+        !subroutine sirius_get_aw_deriv_radial_function(ia, l, io, dfdr)&
+        !    &bind(C, name="sirius_get_aw_deriv_radial_function")
+        !    integer,                 intent(in)  :: ia
+        !    integer,                 intent(in)  :: l
+        !    integer,                 intent(in)  :: io
+        !    real(8),                 intent(out) :: dfdr
+        !end subroutine
 
-        subroutine sirius_get_lo_deriv_radial_function(ia, idxlo, dfdr)&
-            &bind(C, name="sirius_get_lo_deriv_radial_function")
-            integer,                 intent(in)  :: ia
-            integer,                 intent(in)  :: idxlo
-            real(8),                 intent(out) :: dfdr
-        end subroutine
+        !subroutine sirius_get_lo_deriv_radial_function(ia, idxlo, dfdr)&
+        !    &bind(C, name="sirius_get_lo_deriv_radial_function")
+        !    integer,                 intent(in)  :: ia
+        !    integer,                 intent(in)  :: idxlo
+        !    real(8),                 intent(out) :: dfdr
+        !end subroutine
 
         subroutine sirius_get_aw_radial_function(ia, l, io, f)&
             &bind(C, name="sirius_get_aw_radial_function")
@@ -559,6 +578,14 @@ module sirius
             real(8),                 intent(in)  :: f
         end subroutine
 
+        subroutine sirius_set_aw_radial_function_derivative(ia, l, io, f)&
+            &bind(C, name="sirius_set_aw_radial_function_derivative")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: io
+            real(8),                 intent(in)  :: f
+        end subroutine
+
         subroutine sirius_get_lo_radial_function(ia, idxlo, f)&
             &bind(C, name="sirius_get_lo_radial_function")
             integer,                 intent(in)  :: ia
@@ -568,6 +595,13 @@ module sirius
 
         subroutine sirius_set_lo_radial_function(ia, idxlo, f)&
             &bind(C, name="sirius_set_lo_radial_function")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: idxlo
+            real(8),                 intent(in)  :: f
+        end subroutine
+
+        subroutine sirius_set_lo_radial_function_derivative(ia, idxlo, f)&
+            &bind(C, name="sirius_set_lo_radial_function_derivative")
             integer,                 intent(in)  :: ia
             integer,                 intent(in)  :: idxlo
             real(8),                 intent(in)  :: f
@@ -691,6 +725,10 @@ module sirius
 
         subroutine sirius_write_json_output()&
             &bind(C, name="sirius_write_json_output")
+        end subroutine
+
+        subroutine sirius_ground_state_print_info()&
+            &bind(C, name="sirius_ground_state_print_info")
         end subroutine
 
         subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
