@@ -89,7 +89,7 @@ class Atom_symmetry_class
 
         /// Transform radial functions
         /** Local orbitals are orthogonalized and all radial functions are divided by r. */
-        void transform_radial_functions(bool ort_lo, bool ort_aw);
+        //void transform_radial_functions(bool ort_lo, bool ort_aw);
 
     public:
     
