@@ -626,19 +626,14 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* residuals */
     wave_functions res(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
 
-    //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma) {
-        TERMINATE("remember to pin memory in dmatrix");
-    }
-    #endif
+    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    //auto mem_type = memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 

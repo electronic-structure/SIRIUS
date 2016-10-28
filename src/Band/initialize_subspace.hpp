@@ -138,9 +138,9 @@ inline void Band::initialize_subspace(K_point* kp__,
     //#endif
 
     int bs = ctx_.cyclic_block_size();
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old;
 
     std::vector<double> eval(num_bands);
@@ -155,7 +155,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         ophi.allocate_on_device();
         wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
-        ovlp.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
     }
     #endif
@@ -172,7 +171,7 @@ inline void Band::initialize_subspace(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, hloc, d_op, q_op);
         
-        orthogonalize<T>(0, num_phi, phi, hphi, ophi, ovlp, wf_tmp);
+        orthogonalize<T>(0, num_phi, phi, hphi, ophi, hmlt, wf_tmp);
 
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);

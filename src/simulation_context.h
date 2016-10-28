@@ -377,6 +377,13 @@ inline void Simulation_context::initialize()
     
     /* get processing unit */
     std::string pu = control_input_section_.processing_unit_;
+    if (pu == "") {
+        #ifdef __GPU
+        pu = "gpu";
+        #else
+        pu = "cpu";
+        #endif
+    }
     if (pu == "cpu") {
         processing_unit_ = CPU;
     } else {
@@ -499,10 +506,18 @@ inline void Simulation_context::initialize()
 
     if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1) {
         if (evsn[0] == "") {
+            #if defined(__GPU) && defined(__MAGMA)
+            evsn[0] = "magma";
+            #else
             evsn[0] = "lapack";
+            #endif
         }
         if (evsn[1] == "") {
+            #if defined(__GPU) && defined(__MAGMA)
+            evsn[1] = "magma";
+            #else
             evsn[1] = "lapack";
+            #endif
         }
     } else {
         if (evsn[0] == "") {
