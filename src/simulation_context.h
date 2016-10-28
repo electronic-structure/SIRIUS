@@ -94,7 +94,7 @@ class Simulation_context: public Simulation_parameters
         
         #ifdef __GPU
         mdarray<int, 2> gvec_coord_;
-        std::vector< mdarray<double, 2> > atom_coord_;
+        std::vector<mdarray<double, 2>> atom_coord_;
         #endif
 
         double time_active_;
@@ -661,59 +661,78 @@ inline void Simulation_context::print_info()
     printf("cyclic block size                  : %i\n", cyclic_block_size());
     printf("|G+k| cutoff                       : %f\n", gk_cutoff());
 
+    std::string reln[] = {"valence relativity                 : ",
+                          "core relativity                    : "};
+
+    relativity_t relt[] = {valence_relativity_, core_relativity_};
+    for (int i = 0; i < 2; i++) {
+        printf("%s", reln[i].c_str());
+        switch (relt[i]) {
+            case relativity_t::none: {
+                printf("none\n");
+                break;
+            }
+            case relativity_t::koelling_harmon: {
+                printf("Koelling-Harmon\n");
+                break;
+            }
+            case relativity_t::zora: {
+                printf("zora\n");
+                break;
+            }
+            case relativity_t::iora: {
+                printf("iora\n");
+                break;
+            }
+            case relativity_t::dirac: {
+                printf("Dirac\n");
+                break;
+            }
+        }
+    }
+
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};
 
     ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++) {
         printf("%s", evsn[i].c_str());
-        switch (evst[i])
-        {
-            case ev_lapack:
-            {
+        switch (evst[i]) {
+            case ev_lapack: {
                 printf("LAPACK\n");
                 break;
             }
             #ifdef __SCALAPACK
-            case ev_scalapack:
-            {
+            case ev_scalapack: {
                 printf("ScaLAPACK\n");
                 break;
             }
-            case ev_elpa1:
-            {
+            case ev_elpa1: {
                 printf("ELPA1\n");
                 break;
             }
-            case ev_elpa2:
-            {
+            case ev_elpa2: {
                 printf("ELPA2\n");
                 break;
             }
-            case ev_rs_gpu:
-            {
+            case ev_rs_gpu: {
                 printf("RS_gpu\n");
                 break;
             }
-            case ev_rs_cpu:
-            {
+            case ev_rs_cpu: {
                 printf("RS_cpu\n");
                 break;
             }
             #endif
-            case ev_magma:
-            {
+            case ev_magma: {
                 printf("MAGMA\n");
                 break;
             }
-            case ev_plasma:
-            {
+            case ev_plasma: {
                 printf("PLASMA\n");
                 break;
             }
-            default:
-            {
+            default: {
                 TERMINATE("wrong eigen-value solver");
             }
         }
@@ -721,26 +740,22 @@ inline void Simulation_context::print_info()
 
     printf("\n");
     printf("processing unit : ");
-    switch (processing_unit())
-    {
-        case CPU:
-        {
+    switch (processing_unit()) {
+        case CPU: {
             printf("CPU\n");
             break;
         }
-        case GPU:
-        {
+        case GPU: {
             printf("GPU\n");
             break;
         }
     }
    
-    int i = 1;
+    int i{1};
     printf("\n");
     printf("XC functionals\n");
     printf("==============\n");
-    for (auto& xc_label: xc_functionals())
-    {
+    for (auto& xc_label: xc_functionals()) {
         XC_functional xc(xc_label, num_spins());
         printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
         printf("%s\n", xc.refs().c_str());
