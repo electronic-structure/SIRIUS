@@ -16,10 +16,11 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
         TERMINATE("eigen-value solver is not parallel");
     }
 
+    auto mem_type = (gen_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {

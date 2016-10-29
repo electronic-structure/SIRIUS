@@ -187,6 +187,8 @@ class Eigenproblem_lapack: public Eigenproblem
                   double_complex* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_lapack|AZ=eBZ");
+
             assert(nevec <= matrix_size);
 
             int nb = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
@@ -239,6 +241,8 @@ class Eigenproblem_lapack: public Eigenproblem
                   double* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_lapack|AD=eBD");
+
             assert(nevec <= matrix_size);
 
             int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size, 0, 0, 0);
@@ -283,6 +287,8 @@ class Eigenproblem_lapack: public Eigenproblem
 
         int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_lapack|AZ=eZ");
+
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
             
             std::vector<double_complex> work(work_sizes[0]);
@@ -307,6 +313,8 @@ class Eigenproblem_lapack: public Eigenproblem
 
         int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_lapack|AD=eD");
+
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
 
             int32_t lwork = 1 + 6 * matrix_size + 2 * matrix_size * matrix_size;
@@ -341,6 +349,8 @@ class Eigenproblem_lapack: public Eigenproblem
                   int32_t num_rows_loc = 0,
                   int32_t num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_lapack|AD=eD");
+
             int32_t lwork = -1;
             double lwork1, vl, vu;
             int32_t il, iu, m, info;
@@ -392,6 +402,8 @@ class Eigenproblem_lapack: public Eigenproblem
                   int32_t         num_rows_loc = 0,
                   int32_t         num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_lapack|AZ=eZ");
+
             int32_t lwork = -1;
             double vl, vu;
             int32_t il, iu, m, info;
@@ -698,6 +710,7 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double_complex* Z,
                   int32_t         ldz) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AZ=eZ");
 
             int desca[9];
             linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
@@ -749,6 +762,8 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double_complex* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AZ=eBZ");
+
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -844,6 +859,8 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AD=eBD");
+
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -934,6 +951,8 @@ class Eigenproblem_scalapack: public Eigenproblem
                   int32_t num_rows_loc = 0,
                   int32_t num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AD=eD");
+
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -1021,6 +1040,8 @@ class Eigenproblem_scalapack: public Eigenproblem
                   int32_t         num_rows_loc = 0,
                   int32_t         num_cols_loc = 0) const
         {
+            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AZ=eZ");
+
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
