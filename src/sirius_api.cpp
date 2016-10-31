@@ -2762,6 +2762,9 @@ void sirius_set_atom_type_paw_data(char* label__,
         TERMINATE("PAW error: different number of occupations and wave functions!");
     }
 
+    // we load PAW, so we set is_paw to true
+    pp_desc.is_paw = true;
+
     // load parameters
     pp_desc.core_energy = *core_energy__;
 
